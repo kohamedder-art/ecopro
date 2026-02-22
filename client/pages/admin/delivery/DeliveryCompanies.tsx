@@ -61,7 +61,7 @@ export default function DeliveryCompanies() {
 
   // Only allow ZR Express, Noest, Anderson, and Zimou Express to be configured
   const isComingSoon = (company: DeliveryCompany) => {
-    const openIds = ['zr-express', 'noest', 'anderson', 'zimou-express'];
+    const openIds = ['zr-express', 'noest', 'anderson', 'zimou-express', 'dhd'];
     return !openIds.includes(company.id);
   };
   
@@ -70,7 +70,7 @@ export default function DeliveryCompanies() {
   // Based on research: Only companies with verified public APIs
   // ========================================
   // List of company IDs that should appear first (working ones)
-  const workingCompanyOrder = ['zr-express', 'noest', 'anderson', 'zimou-express'];
+  const workingCompanyOrder = ['zr-express', 'noest', 'anderson', 'zimou-express', 'dhd'];
 
   const [companies, setCompanies] = useState<DeliveryCompany[]>(() => [
     // ⭐ TIER 1: Best API - Yalidine (Most documented, npm packages available)
@@ -220,6 +220,21 @@ export default function DeliveryCompanies() {
     // ============================
     // COMING SOON: Listed providers (no verified integration yet)
     // ============================
+    {
+      id: "dhd",
+      name: "DHD Livraison",
+      logo: getDeliveryCompanyLogoSrc("DHD"),
+      description: "DHD Livraison Express — 55 wilayas across Algeria. COD, tracking & labels via Ecotrack platform.",
+      apiFields: [
+        { label: "API Token", placeholder: "Your DHD API Token", field: "apiToken" },
+        { label: "GUID", placeholder: "Your DHD User GUID", field: "apiKey" },
+      ],
+      enabled: false,
+      hasApi: true,
+      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
+      docsUrl: "https://dhd-dz.com",
+      apiRating: 3,
+    },
     {
       id: "procolis",
       name: "ProColis",
@@ -484,6 +499,12 @@ export default function DeliveryCompanies() {
             apiSecret: (credentials.accountId || '').trim() || undefined,
           };
         }
+        if (id === 'dhd') {
+          return {
+            apiKey: (credentials.apiToken || '').trim(),
+            apiSecret: (credentials.apiKey || '').trim() || undefined,
+          };
+        }
 
         // Generic fallback
         const primary = (credentials.apiToken || credentials.apiKey || '').trim();
@@ -502,13 +523,14 @@ export default function DeliveryCompanies() {
         throw new Error('API Token is required');
       }
 
-      // Noest requires GUID/user_guid.
+      // Noest and DHD require GUID/user_guid.
       const isNoest = selectedCompany.id === 'noest' || selectedCompany.name.trim().toLowerCase() === 'noest';
-      if (isNoest && !apiSecret) {
+      const isDhd = selectedCompany.id === 'dhd' || selectedCompany.name.trim().toLowerCase().includes('dhd');
+      if ((isNoest || isDhd) && !apiSecret) {
         if (existing?.is_enabled && existing?.has_api_secret) {
           // Allow keeping the saved GUID if user isn't changing it.
         } else {
-          throw new Error('GUID is required for Noest');
+          throw new Error('GUID is required');
         }
       }
 

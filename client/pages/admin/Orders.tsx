@@ -82,10 +82,11 @@ export default function OrdersAdmin() {
 
   const selectedDeliveryCompanyData = deliveryCompanies.find(c => c.id === selectedDeliveryCompany) || null;
   const isNoestSelected = String(selectedDeliveryCompanyData?.name || '').trim().toLowerCase() === 'noest';
+  const isDhdSelected = String(selectedDeliveryCompanyData?.name || '').trim().toLowerCase().includes('dhd');
   const canGenerateLabels = Boolean(
     (selectedDeliveryCompanyData as any)?.features?.labels ??
     (selectedDeliveryCompanyData as any)?.features?.supports_labels
-  ) || isNoestSelected;
+  ) || isNoestSelected || isDhdSelected;
   
   const [newOrder, setNewOrder] = useState({
     customer_name: '',

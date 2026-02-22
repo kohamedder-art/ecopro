@@ -263,8 +263,9 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
       return;
     }
 
-    // Only Noest label proxy is implemented for now.
-    if (companyName !== 'noest' && companyName !== 'noest express') {
+    // Label proxy is supported for Noest and DHD (Ecotrack-powered couriers).
+    const supportedLabelCouriers = ['noest', 'noest express', 'dhd', 'dhd livraison', 'dhd livraison express'];
+    if (!supportedLabelCouriers.includes(companyName)) {
       res.status(400).json({ error: 'Label download not supported for this courier' });
       return;
     }

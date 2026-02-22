@@ -19,6 +19,7 @@ import { MaystroService } from './couriers/maystro';
 import { DolivrooService } from './couriers/dolivroo';
 import { ZimouExpressService } from './couriers/zimou-express';
 import { AndersonService } from './couriers/anderson';
+import { DhdService } from './couriers/dhd';
 
 // ========================================
 // REGISTER REAL ALGERIAN DELIVERY PROVIDERS
@@ -47,6 +48,11 @@ registerCourierService('zimou-express', ZimouExpressService);
 registerCourierService('anderson', AndersonService);
 registerCourierService('anderson ecommerce', AndersonService);
 registerCourierService('anderson-ecommerce', AndersonService);
+// DHD Livraison Express - Ecotrack-powered, 55 wilayas
+registerCourierService('dhd', DhdService);
+registerCourierService('dhd livraison', DhdService);
+registerCourierService('dhd livraison express', DhdService);
+registerCourierService('dhd-livraison', DhdService);
 
 export class DeliveryService {
   /**
