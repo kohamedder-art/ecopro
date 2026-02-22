@@ -85,8 +85,7 @@ export default function EmbeddedCheckout(props: {
   const [waitingForMessengerConnection, setWaitingForMessengerConnection] = React.useState(false);
 
   const [formData, setFormData] = React.useState({
-    firstName: '',
-    surname: '',
+    fullName: '',
     phone: '',
     address: '',
     wilayaId: '',
@@ -425,8 +424,7 @@ export default function EmbeddedCheckout(props: {
     }
 
     const missing: string[] = [];
-    if (!formData.firstName.trim()) missing.push(dir === 'rtl' ? 'الاسم الأول' : 'First Name');
-    if (!formData.surname.trim()) missing.push(dir === 'rtl' ? 'اللقب' : 'Surname');
+    if (!formData.fullName.trim()) missing.push(dir === 'rtl' ? 'الاسم الكامل' : 'Full Name');
     if (!formData.phone.trim()) missing.push(dir === 'rtl' ? 'رقم الهاتف' : 'Phone');
     if (formData.phone && !/^\+?[0-9]{7,}$/.test(formData.phone.replace(/\s/g, ''))) {
       setOrderStatus({ type: 'error', message: dir === 'rtl' ? 'رقم الهاتف غير صالح' : 'Invalid phone number' });
@@ -452,7 +450,7 @@ export default function EmbeddedCheckout(props: {
           ? [formData.address, selectedCommune?.name || '', selectedWilaya?.name || '']
           : [selectedCommune?.name || '', selectedWilaya?.name || ''];
 
-      const customerName = `${formData.firstName.trim()} ${formData.surname.trim()}`.trim();
+      const customerName = formData.fullName.trim();
       const orderData: any = {
         product_id: product.id,
         quantity,
@@ -514,44 +512,72 @@ export default function EmbeddedCheckout(props: {
           <div style={{ fontWeight: 900, color: theme.accent, fontSize: 13 }}>{formatPrice(price)}</div>
         </div>
 
+        {/* Row 1: Full Name + Phone */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'الاسم الأول' : 'First Name'}</span>
+            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'الاسم الكامل' : 'Full Name'} *</span>
             <input
-              value={formData.firstName}
+              value={formData.fullName}
               disabled={disabled}
-              onChange={(e) => setFormData((s) => ({ ...s, firstName: e.target.value }))}
+              onChange={(e) => setFormData((s) => ({ ...s, fullName: e.target.value }))}
               style={inputStyle}
-              placeholder={dir === 'rtl' ? 'الاسم الأول' : 'First name'}
+              placeholder={dir === 'rtl' ? 'الاسم الكامل' : 'Full name'}
             />
           </label>
           <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'اللقب' : 'Surname'}</span>
+            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'رقم الهاتف' : 'Phone'} *</span>
             <input
-              value={formData.surname}
+              type="tel"
+              value={formData.phone}
               disabled={disabled}
-              onChange={(e) => setFormData((s) => ({ ...s, surname: e.target.value }))}
+              onChange={(e) => setFormData((s) => ({ ...s, phone: e.target.value }))}
               style={inputStyle}
-              placeholder={dir === 'rtl' ? 'اللقب' : 'Surname'}
+              placeholder="0XXX XXX XXX"
+              dir="ltr"
             />
           </label>
         </div>
+        {formData.phone && !/^\+?[0-9]{7,}$/.test(formData.phone.replace(/\s/g, '')) && (
+          <span style={{ fontSize: 11, color: '#ef4444', marginTop: -4 }}>{dir === 'rtl' ? 'رقم الهاتف غير صالح' : 'Invalid phone number'}</span>
+        )}
 
-        <label style={{ display: 'grid', gap: 6 }}>
-          <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'رقم الهاتف' : 'Phone Number'}</span>
-          <input
-            type="tel"
-            value={formData.phone}
-            disabled={disabled}
-            onChange={(e) => setFormData((s) => ({ ...s, phone: e.target.value }))}
-            style={inputStyle}
-            placeholder={dir === 'rtl' ? '0XXX XXX XXX' : '0XXX XXX XXX'}
-          />
-          {formData.phone && !/^\+?[0-9]{7,}$/.test(formData.phone.replace(/\s/g, '')) && (
-            <span style={{ fontSize: 11, color: '#ef4444' }}>{dir === 'rtl' ? 'رقم الهاتف غير صالح' : 'Invalid phone number'}</span>
-          )}
-        </label>
+        {/* Row 2: Wilaya + Commune */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'الولاية' : 'State'} *</span>
+            <select
+              value={formData.wilayaId}
+              disabled={disabled}
+              onChange={(e) => setFormData((s) => ({ ...s, wilayaId: e.target.value, communeId: '' }))}
+              style={selectStyle}
+            >
+              <option value="">{dir === 'rtl' ? 'اختر ولاية' : 'Select state'}</option>
+              {dzWilayas.map((w) => (
+                <option key={w.id} value={String(w.id)}>
+                  {formatWilayaLabel(w)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'البلدية' : 'City'} *</span>
+            <select
+              value={formData.communeId}
+              disabled={disabled || !formData.wilayaId}
+              onChange={(e) => setFormData((s) => ({ ...s, communeId: e.target.value }))}
+              style={{ ...selectStyle, opacity: !formData.wilayaId ? 0.6 : 1 }}
+            >
+              <option value="">{formData.wilayaId ? (dir === 'rtl' ? 'اختر بلدية' : 'Select city') : (dir === 'rtl' ? 'اختر الولاية أولاً' : 'Select state first')}</option>
+              {dzCommunes.map((c) => (
+                <option key={c.id} value={String(c.id)}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
+        {/* Delivery Type */}
         <div style={{ display: 'grid', gap: 6 }}>
           <div style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'نوع التوصيل' : 'Delivery type'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -561,6 +587,7 @@ export default function EmbeddedCheckout(props: {
               onClick={() => {
                 if (disabled || deskUnavailable) return;
                 setDeliveryType('desk');
+                setFormData((s) => ({ ...s, address: '' }));
               }}
               style={{
                 borderRadius: 12,
@@ -571,9 +598,10 @@ export default function EmbeddedCheckout(props: {
                 cursor: disabled || deskUnavailable ? 'not-allowed' : 'pointer',
                 fontWeight: 900,
                 opacity: deskUnavailable ? 0.6 : 1,
+                textAlign: dir === 'rtl' ? 'right' : 'left',
               }}
             >
-              {dir === 'rtl' ? 'مكتب' : 'Desk'}
+              {dir === 'rtl' ? 'إلى المكتب' : 'Desk'}
               <div style={{ marginTop: 2, fontSize: 11, fontWeight: 700, opacity: deliveryType === 'desk' ? 0.85 : 0.7 }}>
                 {deskUnavailable
                   ? dir === 'rtl'
@@ -601,9 +629,10 @@ export default function EmbeddedCheckout(props: {
                 color: deliveryType === 'home' ? '#fff' : theme.text,
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 fontWeight: 900,
+                textAlign: dir === 'rtl' ? 'right' : 'left',
               }}
             >
-              {dir === 'rtl' ? 'منزل' : 'Home'}
+              {dir === 'rtl' ? 'إلى المنزل' : 'Home'}
               <div style={{ marginTop: 2, fontSize: 11, fontWeight: 700, opacity: deliveryType === 'home' ? 0.85 : 0.7 }}>
                 {deliveryPriceHome != null ? formatPrice(deliveryPriceHome) : loadingDeliveryPrice ? 'Loading…' : 'TBD'}
               </div>
@@ -611,9 +640,10 @@ export default function EmbeddedCheckout(props: {
           </div>
         </div>
 
+        {/* Address (only for home delivery) */}
         {deliveryType === 'home' && (
           <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'العنوان' : 'Address'}</span>
+            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'العنوان' : 'Address'} *</span>
             <input
               value={formData.address}
               disabled={disabled}
@@ -621,42 +651,6 @@ export default function EmbeddedCheckout(props: {
               style={inputStyle}
               placeholder={dir === 'rtl' ? 'شارع، حي...' : 'Street, neighborhood...'}
             />
-          </label>
-        )}
-
-        <label style={{ display: 'grid', gap: 6 }}>
-          <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'الولاية' : 'State'}</span>
-          <select
-            value={formData.wilayaId}
-            disabled={disabled}
-            onChange={(e) => setFormData((s) => ({ ...s, wilayaId: e.target.value, communeId: '' }))}
-            style={selectStyle}
-          >
-            <option value="">{dir === 'rtl' ? 'اختر ولاية' : 'Select state'}</option>
-            {dzWilayas.map((w) => (
-              <option key={w.id} value={String(w.id)}>
-                {formatWilayaLabel(w)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {formData.wilayaId && (
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'البلدية' : 'City'}</span>
-            <select
-              value={formData.communeId}
-              disabled={disabled}
-              onChange={(e) => setFormData((s) => ({ ...s, communeId: e.target.value }))}
-              style={selectStyle}
-            >
-              <option value="">{dir === 'rtl' ? 'اختر بلدية' : 'Select city'}</option>
-              {dzCommunes.map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
           </label>
         )}
 
