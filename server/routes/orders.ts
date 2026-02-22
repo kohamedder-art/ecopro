@@ -356,51 +356,51 @@ export const createOrder: RequestHandler = async (req, res) => {
           const botToken: string | undefined = bot?.telegram_bot_token;
 
           // Default templates (same spirit as public-store.ts)
-          const defaultInstantOrder = `🎉 Thank you, {customerName}!
+          const defaultInstantOrder = `🎉 شكراً لك، {customerName}!
 
-Your order has been received successfully ✅
-
-━━━━━━━━━━━━━━━━
-📦 Order Details
-━━━━━━━━━━━━━━━━
-🔢 Order ID: #{orderId}
-📱 Product: {productName}
-💰 Price: {totalPrice} DZD
-📍 Quantity: {quantity}
+تم استلام طلبك بنجاح ✅
 
 ━━━━━━━━━━━━━━━━
-👤 Delivery Information
+📦 تفاصيل الطلب
 ━━━━━━━━━━━━━━━━
-📛 Name: {customerName}
-📞 Phone: {customerPhone}
-🏠 Address: {address}
+🔢 رقم الطلب: #{orderId}
+📱 المنتج: {productName}
+💰 السعر: {totalPrice} دج
+📍 الكمية: {quantity}
 
 ━━━━━━━━━━━━━━━━
-🚚 Order Status: Processing
+👤 معلومات التوصيل
+━━━━━━━━━━━━━━━━
+📛 الاسم: {customerName}
+📞 الهاتف: {customerPhone}
+🏠 العنوان: {address}
+
+━━━━━━━━━━━━━━━━
+🚚 حالة الطلب: قيد المعالجة
 ━━━━━━━━━━━━━━━━
 
-We will contact you soon for confirmation 📞
+سنتواصل معك قريباً للتأكيد 📞
 
-⭐ From {storeName}`;
+⭐ من {storeName}`;
 
-          const defaultPinInstructions = `📌 Important tip:
+          const defaultPinInstructions = `📌 نصيحة مهمة:
 
-Long press on the previous message and select "Pin" to easily track your order!
+اضغط مطولاً على الرسالة السابقة واختر "تثبيت" لتتبع طلبك بسهولة!
 
-🔔 Make sure to:
-• Enable notifications for the bot
-• Don't mute the conversation
-• You will receive order status updates here directly`;
+🔔 تأكد من:
+• تفعيل الإشعارات للبوت
+• عدم كتم المحادثة
+• ستتلقى تحديثات حالة الطلب هنا مباشرة`;
 
-          const defaultConfirmationTemplate = `Hello {customerName}! 🌟
+          const defaultConfirmationTemplate = `مرحباً {customerName}! 🌟
 
-Do you confirm your order from {storeName}?
+هل تؤكد طلبك من {storeName}؟
 
-📦 Product: {productName}
-💰 Price: {totalPrice} DZD
-📍 Address: {address}
+📦 المنتج: {productName}
+💰 السعر: {totalPrice} دج
+📍 العنوان: {address}
 
-Press one of the buttons to confirm or cancel:`;
+اضغط على أحد الأزرار للتأكيد أو الإلغاء:`;
 
           const orderVars = {
             customerName: customer_name,
@@ -410,7 +410,7 @@ Press one of the buttons to confirm or cancel:`;
             quantity: quantity,
             orderId: order.id,
             customerPhone: customer_phone || normalizedPhone,
-            address: customer_address || 'Not specified',
+            address: customer_address || 'غير محدد',
             storeName: storeName,
             companyName: storeName,
           };

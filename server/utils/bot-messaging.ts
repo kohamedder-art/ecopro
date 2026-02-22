@@ -198,12 +198,12 @@ export async function sendMessengerOrderConfirmationDirect(
             buttons: [
               {
                 type: 'postback',
-                title: '✅ Confirm',
+                title: '✅ تأكيد',
                 payload: `CONFIRM_ORDER_${params.orderId}`,
               },
               {
                 type: 'postback',
-                title: '❌ Decline',
+                title: '❌ إلغاء',
                 payload: `DECLINE_ORDER_${params.orderId}`,
               },
             ],
@@ -424,9 +424,9 @@ export async function sendOrderConfirmationMessages(
     // Facebook Messenger: schedule message if enabled (provider 'facebook' or 'messenger', or messenger_enabled flag)
     const effectiveMessengerToken = String(settings.fb_page_access_token || '').trim() || PLATFORM_FB_PAGE_ACCESS_TOKEN;
     if ((provider === 'facebook' || provider === 'messenger' || settings.messenger_enabled) && effectiveMessengerToken) {
-      const defaultInstant = `✅ Order received!\n\nOrder #${orderId}\nProduct: {productName}\nTotal: {totalPrice} DZD\n\nWe will ask you to confirm shortly.`;
-      const defaultPin = `📌 Tip: Please pin this chat so you don't miss updates.`;
-      const defaultConfirmation = `Hello {customerName}!\n\nDo you confirm your order from {storeName}?\n\n📦 {productName}\n💰 {totalPrice} DZD\n\nUse the buttons below:`;
+      const defaultInstant = `✅ تم استلام الطلب!\n\nطلب #${orderId}\nالمنتج: {productName}\nالمجموع: {totalPrice} دج\n\nسنطلب منك التأكيد قريباً.`;
+      const defaultPin = `📌 نصيحة: قم بتثبيت هذه المحادثة حتى لا تفوتك التحديثات.`;
+      const defaultConfirmation = `مرحباً {customerName}!\n\nهل تؤكد طلبك من {storeName}؟\n\n📦 {productName}\n💰 {totalPrice} دج\n\nاستخدم الأزرار أدناه:`;
 
       const instantMessage = replaceTemplateVariables(
         String(settings.template_instant_order || defaultInstant),

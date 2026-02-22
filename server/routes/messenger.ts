@@ -210,7 +210,7 @@ export const getMessengerPageLink: RequestHandler = async (req, res) => {
       usingPlatform,
       instructions: {
         ar: 'اضغط على الزر لفتح Messenger وبدء محادثة. ثم ارجع هنا لإتمام طلبك وستتلقى التأكيد مباشرة!',
-        en: 'Click the button to open Messenger and start a chat. Then come back here to place your order and receive instant confirmation!'
+        en: 'اضغط على الزر لفتح Messenger وبدء محادثة. ثم ارجع هنا لإتمام طلبك وستتلقى التأكيد مباشرة!'
       }
     });
   } catch (error) {

@@ -672,24 +672,21 @@ export default function EmbeddedCheckout(props: {
         {telegramBotInfo && storeSlug && (
           <div style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 900, opacity: 0.75 }}>Telegram (Optional)</div>
+              <div style={{ fontSize: 10, fontWeight: 900, opacity: 0.75 }}>تيليجرام (اختياري)</div>
               <div style={{ fontSize: 10 }}>
                 {checkingTelegramConnection
-                  ? 'Checking…'
+                  ? 'جاري التحقق…'
                   : telegramConnected
-                  ? 'Connected ✓'
+                  ? 'متصل ✓'
                   : telegramBotInfo.enabled
-                  ? 'Not connected'
-                  : 'Unavailable'}
+                  ? 'غير متصل'
+                  : 'غير متوفر'}
               </div>
             </div>
             <button
               type="button"
               onClick={handleConnectTelegram}
-              disabled={
-                !telegramBotInfo.enabled ||
-                (formData.phone || '').replace(/\D/g, '').length < 9
-              }
+              disabled={!telegramBotInfo.enabled}
               style={{
                 width: '100%',
                 padding: '6px 10px',
@@ -699,16 +696,16 @@ export default function EmbeddedCheckout(props: {
                 color: '#fff',
                 fontWeight: 900,
                 fontSize: 11,
-                cursor: !telegramBotInfo.enabled || (formData.phone || '').replace(/\D/g, '').length < 9 ? 'not-allowed' : 'pointer',
-                opacity: !telegramBotInfo.enabled || (formData.phone || '').replace(/\D/g, '').length < 9 ? 0.6 : 1,
+                cursor: !telegramBotInfo.enabled ? 'not-allowed' : 'pointer',
+                opacity: !telegramBotInfo.enabled ? 0.6 : 1,
               }}
             >
-              {telegramBotInfo.enabled ? 'Connect Telegram' : 'Telegram Unavailable'}
+              {telegramBotInfo.enabled ? 'ربط تيليجرام' : 'تيليجرام غير متوفر'}
             </button>
             {!telegramBotInfo.enabled && (
-              <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>Telegram is not configured for this store.</div>
+              <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>تيليجرام غير مهيأ لهذا المتجر.</div>
             )}
-            <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>Add your phone number first, then connect to receive instant order updates.</div>
+            <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>اربط لتلقي تحديثات الطلب فورياً عبر تيليجرام.</div>
           </div>
         )}
 
@@ -718,14 +715,14 @@ export default function EmbeddedCheckout(props: {
               <div style={{ fontSize: 10, fontWeight: 900, opacity: 0.75 }}>ماسنجر (اختياري)</div>
               <div style={{ fontSize: 10 }}>
                 {checkingMessengerConnection
-                  ? 'Checking…'
+                  ? 'جاري التحقق…'
                   : messengerConnected
-                  ? 'Connected ✓'
+                  ? 'متصل ✓'
                   : waitingForMessengerConnection
-                  ? 'Waiting…'
+                  ? 'بانتظار الربط…'
                   : messengerInfo.enabled
-                  ? 'Not connected'
-                  : 'Unavailable'}
+                  ? 'غير متصل'
+                  : 'غير متوفر'}
               </div>
             </div>
             <button
@@ -733,7 +730,6 @@ export default function EmbeddedCheckout(props: {
               onClick={handleConnectMessenger}
               disabled={
                 !messengerInfo.enabled ||
-                (formData.phone || '').replace(/\D/g, '').length < 9 ||
                 waitingForMessengerConnection
               }
               style={{
@@ -747,28 +743,26 @@ export default function EmbeddedCheckout(props: {
                 fontSize: 11,
                 cursor:
                   !messengerInfo.enabled ||
-                  (formData.phone || '').replace(/\D/g, '').length < 9 ||
                   waitingForMessengerConnection
                     ? 'not-allowed'
                     : 'pointer',
                 opacity:
                   !messengerInfo.enabled ||
-                  (formData.phone || '').replace(/\D/g, '').length < 9 ||
                   waitingForMessengerConnection
                     ? 0.6
                     : 1,
               }}
             >
               {waitingForMessengerConnection
-                ? 'Connecting…'
+                ? 'جاري الربط…'
                 : messengerInfo.enabled
-                ? 'Connect Messenger'
-                : 'Messenger Unavailable'}
+                ? 'ربط ماسنجر'
+                : 'ماسنجر غير متوفر'}
             </button>
             {!messengerInfo.enabled && (
-              <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>Messenger is not configured for this store.</div>
+              <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>ماسنجر غير مهيأ لهذا المتجر.</div>
             )}
-            <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>Add your phone number first, then connect to receive instant order updates.</div>
+            <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>اربط لتلقي تحديثات الطلب فورياً عبر ماسنجر.</div>
           </div>
         )}
 

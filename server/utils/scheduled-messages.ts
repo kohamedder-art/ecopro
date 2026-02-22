@@ -144,8 +144,8 @@ export async function processScheduledMessages(): Promise<void> {
           replyMarkup = {
             inline_keyboard: [
               [
-                { text: '✅ Confirm Order', callback_data: confirmCallback },
-                { text: '❌ Cancel Order', callback_data: cancelCallback }
+                { text: '✅ تأكيد الطلب', callback_data: confirmCallback },
+                { text: '❌ إلغاء الطلب', callback_data: cancelCallback }
               ]
             ]
           };
