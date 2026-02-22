@@ -165,6 +165,7 @@ export default function UrgencyMaxTemplate(props: TemplateProps) {
   const mainProduct = products[0];
   const images = productImages(mainProduct);
   const [activeImage, setActiveImage] = React.useState(0);
+  const [expandedImage, setExpandedImage] = React.useState(false);
 
   const storeSlug = asString(s.store_slug);
 
@@ -431,20 +432,23 @@ export default function UrgencyMaxTemplate(props: TemplateProps) {
             
             {/* Left: Product */}
             <div>
-              {/* Product Image - with click indication */}
+              {/* Product Image - with click to expand */}
               <div
                 data-edit-path="layout.hero.image"
-                onClick={(e) => { stopIfManage(e); onSelect('layout.hero.image'); }}
+                onClick={(e) => {
+                  if (canManage) { stopIfManage(e); onSelect('layout.hero.image'); return; }
+                  setExpandedImage(true);
+                }}
                 style={{ 
                   position: 'relative', 
                   borderRadius: cardRadius, 
                   overflow: 'hidden', 
                   border: `2px solid ${accent}`,
                   marginBottom: 16,
-                  cursor: images.length > 1 ? 'pointer' : 'default',
+                  cursor: 'pointer',
                   transition: 'transform 0.2s ease',
                 }}
-                title={images.length > 1 ? 'اضغط لعرض الصور التالية' : ''}
+                title="اضغط لتكبير الصورة"
               >
                 <img src={images[activeImage] || images[0]} alt="منتج" style={{ width: '100%', aspectRatio: isMobile ? '3/4' : '4/3', objectFit: 'contain', background: 'rgba(0,0,0,0.03)' }} />
                 
@@ -781,6 +785,144 @@ export default function UrgencyMaxTemplate(props: TemplateProps) {
           </div>
         )}
       </footer>
+
+      {/* Fullscreen Image Lightbox */}
+      {expandedImage && (
+        <div
+          onClick={() => setExpandedImage(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(0,0,0,0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: isMobile ? '12px' : '24px',
+            cursor: 'zoom-out',
+          }}
+        >
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setExpandedImage(false)}
+            style={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              zIndex: 100000,
+              background: 'rgba(255,255,255,0.9)',
+              border: 'none',
+              borderRadius: '50%',
+              width: 40,
+              height: 40,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: 20,
+              fontWeight: 700,
+              color: '#000',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            }}
+            aria-label="إغلاق"
+          >
+            ✕
+          </button>
+
+          {/* Previous button */}
+          {images.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setActiveImage((i) => (i > 0 ? i - 1 : images.length - 1)); }}
+              style={{
+                position: 'absolute',
+                right: 16,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 100000,
+                background: 'rgba(255,255,255,0.9)',
+                border: 'none',
+                borderRadius: '50%',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: 22,
+                color: '#000',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              }}
+              aria-label="الصورة السابقة"
+            >
+              ‹
+            </button>
+          )}
+
+          {/* Image */}
+          <img
+            src={images[activeImage] || images[0]}
+            alt="منتج"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: isMobile ? '100%' : 'calc(100vw - 120px)',
+              maxHeight: isMobile ? '85vh' : '92vh',
+              objectFit: 'contain',
+              borderRadius: 8,
+              cursor: 'default',
+            }}
+          />
+
+          {/* Next button */}
+          {images.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setActiveImage((i) => (i < images.length - 1 ? i + 1 : 0)); }}
+              style={{
+                position: 'absolute',
+                left: 16,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 100000,
+                background: 'rgba(255,255,255,0.9)',
+                border: 'none',
+                borderRadius: '50%',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: 22,
+                color: '#000',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              }}
+              aria-label="الصورة التالية"
+            >
+              ›
+            </button>
+          )}
+
+          {/* Image counter */}
+          {images.length > 1 && (
+            <div style={{
+              position: 'absolute',
+              bottom: 20,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 600,
+              background: 'rgba(0,0,0,0.6)',
+              padding: '6px 16px',
+              borderRadius: 20,
+            }}>
+              {activeImage + 1} / {images.length}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* CSS Animation */}
       <style>{`
