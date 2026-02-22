@@ -2188,7 +2188,48 @@ export default function PlatformAdmin() {
             )}
 
             <div className="bg-slate-900/40 border border-slate-700/60 rounded-xl overflow-hidden">
-              <div className="overflow-x-auto">
+              {/* Mobile card layout */}
+              <div className="md:hidden divide-y divide-slate-800">
+                {platformErrorsLoading ? (
+                  <div className="px-3 py-4 text-slate-400 text-sm">Loading\u2026</div>
+                ) : displayPlatformErrors.length === 0 ? (
+                  <div className="px-3 py-4 text-slate-400 text-sm">No errors in the selected range.</div>
+                ) : (
+                  (displayPlatformErrors as any[]).map((row: any, idx: number) => {
+                    const ev = row?.kind === 'group' ? row.sample : row.ev;
+                    const whenMs = row?.kind === 'group' ? row.lastSeenMs : (ev?.created_at ? new Date(ev.created_at).getTime() : 0);
+                    const when = whenMs ? new Date(whenMs).toLocaleString() : '';
+                    const src = String(ev?.source || '').toUpperCase();
+                    const msg = String(ev?.message || '').slice(0, 200);
+                    const where = ev?.path ? `${ev?.method || ''} ${ev?.path}`.trim() : (ev?.url || '');
+                    const user = ev?.user_id ? `${ev?.user_type || ''}:${ev?.user_id}` : (ev?.client_id ? `client:${ev?.client_id}` : '\u2014');
+                    const count = row?.kind === 'group' ? Number(row.count || 1) : 1;
+                    const key = row?.kind === 'group' ? row.key : String(ev?.id ?? idx);
+                    return (
+                      <div key={key} className="p-3 hover:bg-slate-900/50">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] border ${ev?.source === 'server' ? 'border-red-500/40 text-red-200 bg-red-500/10' : 'border-amber-500/40 text-amber-200 bg-amber-500/10'}`}>
+                            {src}{ev?.status_code ? ` ${ev.status_code}` : ''}
+                          </span>
+                          {count > 1 && <span className="text-[10px] text-slate-300 bg-slate-700/50 px-1.5 py-0.5 rounded">\u00d7{count}</span>}
+                          <span className="text-[10px] text-slate-500 ml-auto">{when}</span>
+                        </div>
+                        <p className="text-xs text-slate-200 font-medium break-all line-clamp-3">{msg}</p>
+                        {where && <p className="text-[10px] text-slate-400 mt-1 truncate">{where}</p>}
+                        {user !== '\u2014' && <p className="text-[10px] text-slate-500 mt-0.5">{user}</p>}
+                        {ev?.stack ? (
+                          <p className="text-[10px] text-slate-600 mt-1 line-clamp-2 break-all">
+                            {String(ev.stack).split('\n').slice(0, 2).join(' \u2014 ')}
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-900/70 text-slate-300">
                     <tr>
@@ -2956,9 +2997,9 @@ export default function PlatformAdmin() {
         {/* Products Tab */}
         {activeTab === 'products' && (
           <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700/50 shadow-lg overflow-hidden">
-            <div className="p-6 border-b border-slate-700/50">
+            <div className="p-4 md:p-6 border-b border-slate-700/50">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <h3 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
                   <Package className="w-5 h-5 text-purple-400" />
                   All Products ({products.length})
                 </h3>
@@ -3021,7 +3062,109 @@ export default function PlatformAdmin() {
                 </div>
               )}
             </div>
-            <div className="overflow-x-auto">
+            {/* Select all on mobile */}
+            <div className="md:hidden px-4 py-2 border-b border-slate-700/50 flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={selectedProducts.size === products.length && products.length > 0}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedProducts(new Set(products.map(p => p.id)));
+                  } else {
+                    setSelectedProducts(new Set());
+                  }
+                }}
+                className="w-4 h-4 rounded"
+              />
+              <span className="text-xs text-slate-400">Select all</span>
+            </div>
+
+            {/* Mobile card layout */}
+            <div className="md:hidden divide-y divide-slate-700/30">
+              {products.filter(p =>
+                (filterStatus === 'all' || p.status === filterStatus) &&
+                p.title.toLowerCase().includes(searchQuery.toLowerCase())
+              ).sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0)).map((product) => {
+                const firstImage = product.images && product.images.length > 0 ? product.images[0] : null;
+                const isSelected = selectedProducts.has(product.id);
+                return (
+                  <div key={product.id} className={`p-3 ${isSelected ? 'bg-slate-700/40' : ''}`}>
+                    <div className="flex gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedProducts);
+                          if (e.target.checked) newSelected.add(product.id);
+                          else newSelected.delete(product.id);
+                          setSelectedProducts(newSelected);
+                        }}
+                        className="w-4 h-4 rounded mt-1 shrink-0"
+                      />
+                      {firstImage ? (
+                        <img src={firstImage} alt={product.title} className="w-12 h-12 rounded-lg object-cover border border-slate-600/50 shrink-0" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-slate-700/50 border border-slate-600/50 flex items-center justify-center shrink-0">
+                          <Package className="w-4 h-4 text-slate-500" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white truncate">{product.title}</p>
+                        <p className="text-xs text-slate-400 truncate">{product.seller_name} • {product.seller_email}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs font-bold text-emerald-400">{Math.round(Number(product.price) || 0)} دج</span>
+                          <Badge className={`text-[10px] px-1.5 py-0 ${product.status === 'active' ? 'bg-emerald-500/80' : product.flagged ? 'bg-red-500/80' : 'bg-slate-500/80'}`}>
+                            {product.flagged ? 'Flagged' : product.status}
+                          </Badge>
+                          <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Eye className="w-3 h-3" />{product.views}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <Button
+                          onClick={() => {
+                            setFlaggedProductId(product.id);
+                            setFlagReason(product.flag_reason || '');
+                            setShowFlagModal(true);
+                          }}
+                          className="px-2 py-1 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 rounded-md"
+                          size="sm"
+                        >
+                          {product.flagged ? 'Unflag' : 'Flag'}
+                        </Button>
+                        <Button
+                          onClick={async () => {
+                            if (!confirm(`Remove "${product.title}"?`)) return;
+                            try {
+                              const res = await fetch('/api/admin/bulk-remove-products', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ productIds: [product.id] }),
+                              });
+                              if (res.ok) {
+                                setProducts(products.filter(p => p.id !== product.id));
+                              } else {
+                                const err = await res.json();
+                                alert(err.error || 'Failed');
+                              }
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                          className="px-2 py-1 text-[10px] bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-300 rounded-md"
+                          size="sm"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table layout */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-700/30 border-b border-slate-600/50">
                   <tr>
@@ -3052,7 +3195,7 @@ export default function PlatformAdmin() {
                   {products.filter(p =>
                     (filterStatus === 'all' || p.status === filterStatus) &&
                     p.title.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map((product) => {
+                  ).sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0)).map((product) => {
                     const firstImage = product.images && product.images.length > 0 ? product.images[0] : null;
                     const isSelected = selectedProducts.has(product.id);
                     return (
@@ -3094,7 +3237,7 @@ export default function PlatformAdmin() {
                           <p className="text-xs text-slate-500">{product.seller_email}</p>
                         </div>
                       </td>
-                      <td className="p-4 font-bold text-emerald-400">${Math.round(Number(product.price) || 0)}</td>
+                      <td className="p-4 font-bold text-emerald-400">{Math.round(Number(product.price) || 0)} دج</td>
                       <td className="p-4">
                         <Badge className={product.status === 'active' ? 'bg-emerald-500/80' : product.flagged ? 'bg-red-500/80' : 'bg-slate-500/80'}>
                           {product.flagged ? 'Flagged' : product.status}

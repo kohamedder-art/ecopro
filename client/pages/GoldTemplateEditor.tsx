@@ -1576,7 +1576,7 @@ export default function GoldTemplateEditor() {
         {/* Content */}
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 flex-1 min-h-0 overflow-auto lg:overflow-hidden">
         {activeTab === 'preview' ? (
-          <div className={`grid grid-cols-1 ${previewGridCols} gap-2 sm:gap-4 items-start min-h-full lg:h-full`}>
+          <div className={`grid grid-cols-1 ${previewGridCols} gap-2 sm:gap-4 items-start lg:items-stretch min-h-full lg:h-full`}>
             <div className="space-y-3 min-w-0 min-h-0 flex flex-col pb-20 lg:pb-0">
               {/* Device Frame Container */}
               <div ref={previewFitRef} className="w-full flex-1 min-h-0 flex items-start justify-center lg:justify-start">

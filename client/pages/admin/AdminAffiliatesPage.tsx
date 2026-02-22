@@ -608,7 +608,81 @@ export default function AdminAffiliatesPage() {
       {/* Affiliates Table */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Mobile card layout */}
+          <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+            {affiliates.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">No affiliates found</div>
+            ) : (
+              affiliates.map((a) => (
+                <div key={a.id} className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">{a.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{a.email}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Badge variant={a.status === 'active' ? 'default' : a.status === 'disabled' ? 'secondary' : 'destructive'} className="text-[10px]">
+                        {a.status}
+                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => fetchAffiliateDetails(a.id)}>
+                            <Eye className="h-4 w-4 mr-2" /> View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(a)}>
+                            <Pencil className="h-4 w-4 mr-2" /> Edit
+                          </DropdownMenuItem>
+                          {a.pending_commissions > 0 && (
+                            <DropdownMenuItem onClick={() => openPayDialog(a)}>
+                              <CreditCard className="h-4 w-4 mr-2" /> Pay Commissions
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => handleStatusChange(a.id, a.status === 'active' ? 'disabled' : 'active')}>
+                            {a.status === 'active' ? 'Disable' : 'Enable'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(a.id)}>
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                    <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">{a.voucher_code}</code>
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => copyCode(a.voucher_code)}>
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="mt-2 grid grid-cols-4 gap-1 text-[11px]">
+                    <div>
+                      <span className="text-gray-500">Disc.</span>
+                      <p className="font-semibold text-blue-600">{a.discount_percent}%</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Comm.</span>
+                      <p className="font-semibold text-emerald-600">{a.commission_percent}% \u00d7{a.commission_months}mo</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Refs</span>
+                      <p className="font-semibold">{a.referral_count || a.total_referrals} <span className="text-gray-400">({a.total_paid_referrals}p)</span></p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Earned</span>
+                      <p className="font-semibold">${parseFloat(a.total_commission_earned || '0').toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50 dark:bg-gray-800">
