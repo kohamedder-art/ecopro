@@ -342,11 +342,12 @@ export default function EmbeddedCheckout(props: {
   const inputStyle: React.CSSProperties = {
     width: '100%',
     border: `1px solid ${theme.border}`,
-    borderRadius: 12,
-    padding: '10px 12px',
+    borderRadius: 8,
+    padding: '7px 10px',
     background: disabled ? 'rgba(0,0,0,0.03)' : theme.bg,
     color: theme.text,
     outline: 'none',
+    fontSize: 12,
   };
 
   const selectStyle: React.CSSProperties = {
@@ -358,6 +359,8 @@ export default function EmbeddedCheckout(props: {
     const botUsername = telegramBotInfo?.botUsername;
     if (!storeSlug || !botUsername) return;
 
+    // Open window synchronously to avoid popup blocker
+    const win = window.open('about:blank', '_blank');
     let url = `https://t.me/${botUsername}`;
     const normalizedPhone = (formData.phone || '').replace(/\D/g, '');
     if (normalizedPhone.length >= 9) {
@@ -374,7 +377,11 @@ export default function EmbeddedCheckout(props: {
       }
     }
 
-    window.open(url, '_blank');
+    if (win) {
+      win.location.href = url;
+    } else {
+      window.open(url, '_blank');
+    }
   };
 
   const handleConnectMessenger = async () => {
@@ -382,6 +389,8 @@ export default function EmbeddedCheckout(props: {
     const pageId = messengerInfo?.pageId;
     if (!storeSlug || !pageId) return;
 
+    // Open window synchronously to avoid popup blocker
+    const win = window.open('about:blank', '_blank');
     let url = messengerInfo?.url || `https://m.me/${encodeURIComponent(pageId)}`;
     if (normalizedPhone.length >= 9) {
       try {
@@ -398,7 +407,11 @@ export default function EmbeddedCheckout(props: {
     }
 
     setWaitingForMessengerConnection(true);
-    window.open(url, '_blank');
+    if (win) {
+      win.location.href = url;
+    } else {
+      window.open(url, '_blank');
+    }
   };
 
   const submit = async () => {
@@ -498,24 +511,24 @@ export default function EmbeddedCheckout(props: {
       style={{
         background: theme.cardBg,
         border: `1px solid ${theme.border}`,
-        borderRadius: 16,
-        padding: 14,
+        borderRadius: 12,
+        padding: 12,
         direction: dir,
       }}
     >
-      <div style={{ fontWeight: 900, fontSize: 14 }}>{heading}</div>
-      {subheading ? <div style={{ marginTop: 4, color: theme.muted, fontSize: 12 }}>{subheading}</div> : null}
+      <div style={{ fontWeight: 900, fontSize: 13 }}>{heading}</div>
+      {subheading ? <div style={{ marginTop: 2, color: theme.muted, fontSize: 11 }}>{subheading}</div> : null}
 
-      <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+      <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
           <div style={{ fontWeight: 900, fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
           <div style={{ fontWeight: 900, color: theme.accent, fontSize: 13 }}>{formatPrice(price)}</div>
         </div>
 
         {/* Row 1: Full Name + Phone */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'الاسم الكامل' : 'Full Name'} *</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <label style={{ display: 'grid', gap: 3 }}>
+            <span style={{ fontSize: 11, color: theme.muted }}>{dir === 'rtl' ? 'الاسم الكامل' : 'Full Name'} *</span>
             <input
               value={formData.fullName}
               disabled={disabled}
@@ -524,8 +537,8 @@ export default function EmbeddedCheckout(props: {
               placeholder={dir === 'rtl' ? 'الاسم الكامل' : 'Full name'}
             />
           </label>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'رقم الهاتف' : 'Phone'} *</span>
+          <label style={{ display: 'grid', gap: 3 }}>
+            <span style={{ fontSize: 11, color: theme.muted }}>{dir === 'rtl' ? 'رقم الهاتف' : 'Phone'} *</span>
             <input
               type="tel"
               value={formData.phone}
@@ -542,9 +555,9 @@ export default function EmbeddedCheckout(props: {
         )}
 
         {/* Row 2: Wilaya + Commune */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'الولاية' : 'State'} *</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <label style={{ display: 'grid', gap: 3 }}>
+            <span style={{ fontSize: 11, color: theme.muted }}>{dir === 'rtl' ? 'الولاية' : 'State'} *</span>
             <select
               value={formData.wilayaId}
               disabled={disabled}
@@ -559,8 +572,8 @@ export default function EmbeddedCheckout(props: {
               ))}
             </select>
           </label>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'البلدية' : 'City'} *</span>
+          <label style={{ display: 'grid', gap: 3 }}>
+            <span style={{ fontSize: 11, color: theme.muted }}>{dir === 'rtl' ? 'البلدية' : 'City'} *</span>
             <select
               value={formData.communeId}
               disabled={disabled || !formData.wilayaId}
@@ -578,9 +591,9 @@ export default function EmbeddedCheckout(props: {
         </div>
 
         {/* Delivery Type */}
-        <div style={{ display: 'grid', gap: 6 }}>
-          <div style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'نوع التوصيل' : 'Delivery type'}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 4 }}>
+          <div style={{ fontSize: 11, color: theme.muted }}>{dir === 'rtl' ? 'نوع التوصيل' : 'Delivery type'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <button
               type="button"
               disabled={disabled || deskUnavailable}
@@ -590,19 +603,20 @@ export default function EmbeddedCheckout(props: {
                 setFormData((s) => ({ ...s, address: '' }));
               }}
               style={{
-                borderRadius: 12,
+                borderRadius: 8,
                 border: `1px solid ${theme.border}`,
-                padding: '10px 12px',
+                padding: '7px 10px',
                 background: deliveryType === 'desk' ? theme.accent : theme.bg,
                 color: deliveryType === 'desk' ? '#fff' : theme.text,
                 cursor: disabled || deskUnavailable ? 'not-allowed' : 'pointer',
                 fontWeight: 900,
+                fontSize: 12,
                 opacity: deskUnavailable ? 0.6 : 1,
                 textAlign: dir === 'rtl' ? 'right' : 'left',
               }}
             >
               {dir === 'rtl' ? 'إلى المكتب' : 'Desk'}
-              <div style={{ marginTop: 2, fontSize: 11, fontWeight: 700, opacity: deliveryType === 'desk' ? 0.85 : 0.7 }}>
+              <div style={{ marginTop: 1, fontSize: 10, fontWeight: 700, opacity: deliveryType === 'desk' ? 0.85 : 0.7 }}>
                 {deskUnavailable
                   ? dir === 'rtl'
                     ? 'غير متوفر'
@@ -622,18 +636,19 @@ export default function EmbeddedCheckout(props: {
                 setDeliveryType('home');
               }}
               style={{
-                borderRadius: 12,
+                borderRadius: 8,
                 border: `1px solid ${theme.border}`,
-                padding: '10px 12px',
+                padding: '7px 10px',
                 background: deliveryType === 'home' ? theme.accent : theme.bg,
                 color: deliveryType === 'home' ? '#fff' : theme.text,
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 fontWeight: 900,
+                fontSize: 12,
                 textAlign: dir === 'rtl' ? 'right' : 'left',
               }}
             >
               {dir === 'rtl' ? 'إلى المنزل' : 'Home'}
-              <div style={{ marginTop: 2, fontSize: 11, fontWeight: 700, opacity: deliveryType === 'home' ? 0.85 : 0.7 }}>
+              <div style={{ marginTop: 1, fontSize: 10, fontWeight: 700, opacity: deliveryType === 'home' ? 0.85 : 0.7 }}>
                 {deliveryPriceHome != null ? formatPrice(deliveryPriceHome) : loadingDeliveryPrice ? 'Loading…' : 'TBD'}
               </div>
             </button>
@@ -642,8 +657,8 @@ export default function EmbeddedCheckout(props: {
 
         {/* Address (only for home delivery) */}
         {deliveryType === 'home' && (
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'العنوان' : 'Address'} *</span>
+          <label style={{ display: 'grid', gap: 3 }}>
+            <span style={{ fontSize: 11, color: theme.muted }}>{dir === 'rtl' ? 'العنوان' : 'Address'} *</span>
             <input
               value={formData.address}
               disabled={disabled}
@@ -655,10 +670,10 @@ export default function EmbeddedCheckout(props: {
         )}
 
         {telegramBotInfo && storeSlug && (
-          <div style={{ padding: '10px 12px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.75 }}>Telegram (Optional)</div>
-              <div style={{ fontSize: 11 }}>
+          <div style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, opacity: 0.75 }}>Telegram (Optional)</div>
+              <div style={{ fontSize: 10 }}>
                 {checkingTelegramConnection
                   ? 'Checking…'
                   : telegramConnected
@@ -677,13 +692,13 @@ export default function EmbeddedCheckout(props: {
               }
               style={{
                 width: '100%',
-                padding: '8px 12px',
-                borderRadius: 12,
+                padding: '6px 10px',
+                borderRadius: 8,
                 border: `1px solid ${theme.border}`,
                 background: theme.accent,
                 color: '#fff',
                 fontWeight: 900,
-                fontSize: 12,
+                fontSize: 11,
                 cursor: !telegramBotInfo.enabled || (formData.phone || '').replace(/\D/g, '').length < 9 ? 'not-allowed' : 'pointer',
                 opacity: !telegramBotInfo.enabled || (formData.phone || '').replace(/\D/g, '').length < 9 ? 0.6 : 1,
               }}
@@ -691,17 +706,17 @@ export default function EmbeddedCheckout(props: {
               {telegramBotInfo.enabled ? 'Connect Telegram' : 'Telegram Unavailable'}
             </button>
             {!telegramBotInfo.enabled && (
-              <div style={{ marginTop: 6, fontSize: 10, opacity: 0.6 }}>Telegram is not configured for this store.</div>
+              <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>Telegram is not configured for this store.</div>
             )}
-            <div style={{ marginTop: 6, fontSize: 10, opacity: 0.6 }}>Add your phone number first, then connect to receive instant order updates.</div>
+            <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>Add your phone number first, then connect to receive instant order updates.</div>
           </div>
         )}
 
         {messengerInfo && storeSlug && (
-          <div style={{ padding: '10px 12px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.75 }}>ماسنجر (اختياري)</div>
-              <div style={{ fontSize: 11 }}>
+          <div style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, opacity: 0.75 }}>ماسنجر (اختياري)</div>
+              <div style={{ fontSize: 10 }}>
                 {checkingMessengerConnection
                   ? 'Checking…'
                   : messengerConnected
@@ -723,13 +738,13 @@ export default function EmbeddedCheckout(props: {
               }
               style={{
                 width: '100%',
-                padding: '8px 12px',
-                borderRadius: 12,
+                padding: '6px 10px',
+                borderRadius: 8,
                 border: `1px solid ${theme.border}`,
                 background: theme.accent,
                 color: '#fff',
                 fontWeight: 900,
-                fontSize: 12,
+                fontSize: 11,
                 cursor:
                   !messengerInfo.enabled ||
                   (formData.phone || '').replace(/\D/g, '').length < 9 ||
@@ -751,41 +766,41 @@ export default function EmbeddedCheckout(props: {
                 : 'Messenger Unavailable'}
             </button>
             {!messengerInfo.enabled && (
-              <div style={{ marginTop: 6, fontSize: 10, opacity: 0.6 }}>Messenger is not configured for this store.</div>
+              <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>Messenger is not configured for this store.</div>
             )}
-            <div style={{ marginTop: 6, fontSize: 10, opacity: 0.6 }}>Add your phone number first, then connect to receive instant order updates.</div>
+            <div style={{ marginTop: 4, fontSize: 9, opacity: 0.6 }}>Add your phone number first, then connect to receive instant order updates.</div>
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', border: `1px solid ${theme.border}`, borderRadius: 14, padding: 12, background: 'rgba(0,0,0,0.02)' }}>
-          <div style={{ fontSize: 12, color: theme.muted }}>{dir === 'rtl' ? 'الكمية' : 'Quantity'}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.02)' }}>
+          <div style={{ fontSize: 11, color: theme.muted }}>{dir === 'rtl' ? 'الكمية' : 'Quantity'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               type="button"
               disabled={disabled}
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              style={{ width: 34, height: 34, borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.bg, cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 900, color: theme.text }}
+              style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bg, cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 900, color: theme.text, fontSize: 13 }}
             >
               −
             </button>
-            <div style={{ fontWeight: 900, minWidth: 18, textAlign: 'center' }}>{quantity}</div>
+            <div style={{ fontWeight: 900, minWidth: 16, textAlign: 'center', fontSize: 13 }}>{quantity}</div>
             <button
               type="button"
               disabled={disabled}
               onClick={() => setQuantity((q) => Math.min(99, q + 1))}
-              style={{ width: 34, height: 34, borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.bg, cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 900, color: theme.text }}
+              style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bg, cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 900, color: theme.text, fontSize: 13 }}
             >
               +
             </button>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gap: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: theme.muted }}>
+        <div style={{ display: 'grid', gap: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, color: theme.muted }}>
             <span>{dir === 'rtl' ? 'المجموع' : 'Subtotal'}</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: theme.muted }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, color: theme.muted }}>
             <span>{dir === 'rtl' ? 'التوصيل' : 'Delivery'}</span>
             <span>
               {loadingDeliveryPrice
@@ -795,7 +810,7 @@ export default function EmbeddedCheckout(props: {
                 : formatPrice(deliveryFee || 0)}
             </span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, fontWeight: 900 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12, fontWeight: 900 }}>
             <span>{dir === 'rtl' ? 'الإجمالي' : 'Total'}</span>
             <span style={{ color: theme.accent }}>{formatPrice(total)}</span>
           </div>
@@ -809,12 +824,12 @@ export default function EmbeddedCheckout(props: {
             width: '100%',
             background: theme.accent,
             border: 0,
-            borderRadius: 14,
-            padding: '13px 16px',
+            borderRadius: 10,
+            padding: '10px 14px',
             fontWeight: 950,
             cursor: disabled || isSubmitting ? 'not-allowed' : 'pointer',
             color: '#fff',
-            fontSize: 14,
+            fontSize: 13,
             opacity: disabled || isSubmitting ? 0.7 : 1,
           }}
         >
@@ -824,12 +839,12 @@ export default function EmbeddedCheckout(props: {
         {orderStatus.type && (
           <div
             style={{
-              padding: 12,
-              borderRadius: 14,
+              padding: 10,
+              borderRadius: 8,
               background: orderStatus.type === 'success' ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
               border: `1px solid ${orderStatus.type === 'success' ? 'rgba(34,197,94,0.22)' : 'rgba(239,68,68,0.22)'}`,
               color: orderStatus.type === 'success' ? '#166534' : '#991b1b',
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 700,
             }}
           >
@@ -845,8 +860,8 @@ export default function EmbeddedCheckout(props: {
             style={{
               display: 'block',
               textAlign: 'center',
-              padding: 12,
-              borderRadius: 14,
+              padding: 10,
+              borderRadius: 8,
               border: `1px solid ${theme.border}`,
               color: theme.text,
               fontWeight: 900,
@@ -858,7 +873,7 @@ export default function EmbeddedCheckout(props: {
           </a>
         ) : null}
 
-        <div style={{ textAlign: 'center', color: theme.muted, fontSize: 12 }}>
+        <div style={{ textAlign: 'center', color: theme.muted, fontSize: 10 }}>
           {dir === 'rtl' ? 'الدفع عند الاستلام • توصيل سريع' : 'Cash on delivery • Fast delivery'}
         </div>
       </div>

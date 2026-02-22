@@ -446,7 +446,7 @@ export default function UrgencyMaxTemplate(props: TemplateProps) {
                 }}
                 title={images.length > 1 ? 'اضغط لعرض الصور التالية' : ''}
               >
-                <img src={images[activeImage] || images[0]} alt="منتج" style={{ width: '100%', aspectRatio: isMobile ? '4/3' : '16/10', objectFit: 'cover' }} />
+                <img src={images[activeImage] || images[0]} alt="منتج" style={{ width: '100%', aspectRatio: isMobile ? '3/4' : '4/3', objectFit: 'contain', background: 'rgba(0,0,0,0.03)' }} />
                 
                 {/* Sale badge */}
                 <div
