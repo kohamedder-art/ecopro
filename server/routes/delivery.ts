@@ -242,7 +242,7 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
     }
 
     const orderResult = await pool.query(
-      `SELECT so.id, so.client_id, so.delivery_company_id, so.tracking_number, dc.name as company_name
+      `SELECT so.id, so.client_id, so.delivery_company_id, so.tracking_number, so.courier_response, dc.name as company_name
        FROM store_orders so
        JOIN delivery_companies dc ON dc.id = so.delivery_company_id
        WHERE so.id = $1 AND so.client_id = $2`,
@@ -263,8 +263,15 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
       return;
     }
 
-    // Label proxy is supported for Noest and DHD (Ecotrack-powered couriers).
-    const supportedLabelCouriers = ['noest', 'noest express', 'dhd', 'dhd livraison', 'dhd livraison express'];
+    // Label proxy is supported for couriers that require authenticated PDF fetches.
+    const supportedLabelCouriers = [
+      'noest',
+      'noest express',
+      'dhd',
+      'dhd livraison',
+      'dhd livraison express',
+      'dolivroo',
+    ];
     if (!supportedLabelCouriers.includes(companyName)) {
       res.status(400).json({ error: 'Label download not supported for this courier' });
       return;
@@ -272,7 +279,7 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
 
     // Load integration credentials
     const integrationResult = await pool.query(
-      `SELECT api_key_encrypted
+      `SELECT api_key_encrypted, api_secret_encrypted
        FROM delivery_integrations
        WHERE client_id = $1 AND delivery_company_id = $2 AND is_enabled = true`,
       [clientId, Number(order.delivery_company_id)]
@@ -287,6 +294,9 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
     const { decryptData } = await import('../utils/encryption');
     const { getCourierService } = await import('../services/courier-service');
     const token = decryptData(integrationResult.rows[0].api_key_encrypted);
+    const secondaryCredential = integrationResult.rows[0].api_secret_encrypted
+      ? decryptData(integrationResult.rows[0].api_secret_encrypted)
+      : undefined;
 
     const service = getCourierService(order.company_name);
     if (!service || typeof (service as any).getLabelPdf !== 'function') {
@@ -294,7 +304,16 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
       return;
     }
 
-    const labelResult = await (service as any).getLabelPdf(tracking, token);
+    const dolivrooCompanyCode = companyName === 'dolivroo'
+      ? String(order.courier_response?.company_code || order.courier_response?.provider || '').trim() || 'auto'
+      : undefined;
+
+    const labelResult = await (service as any).getLabelPdf(
+      tracking,
+      token,
+      secondaryCredential,
+      dolivrooCompanyCode
+    );
     if (!labelResult?.ok) {
       res.status(400).json({ error: labelResult?.error || 'Failed to fetch label' });
       return;

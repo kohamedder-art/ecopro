@@ -29,19 +29,19 @@ interface EnhancedSidebarProps {
   onCollapseChange?: (collapsed: boolean) => void;
 }
 
-// Professional futuristic color themes for sidebar - 4 dark + 4 light
+// Professional color themes for sidebar - 4 light + 4 dark
 const SIDEBAR_THEMES = {
   // Light themes
-  slate: { bg: '#f1f5f9', text: '#1e293b', accent: '#0f172a', border: '#e2e8f0' },
-  frost: { bg: '#f0f9ff', text: '#0c2d57', accent: '#0369a1', border: '#bae6fd' },
-  cream: { bg: '#fffbf0', text: '#7c2d12', accent: '#ea580c', border: '#fed7aa' },
-  mint: { bg: '#f0fdf4', text: '#14532d', accent: '#15803d', border: '#bbf7d0' },
-  
+  slate:    { bg: '#f8fafc', text: '#1e293b', accent: '#2563eb', border: '#e2e8f0' },
+  steel:    { bg: '#f0f6ff', text: '#1e3a5f', accent: '#0284c7', border: '#bfdbfe' },
+  pearl:    { bg: '#ffffff', text: '#1e293b', accent: '#6366f1', border: '#e2e8f0' },
+  warm:     { bg: '#fafaf9', text: '#292524', accent: '#d97706', border: '#e7e5e4' },
+
   // Dark themes
-  navy: { bg: '#0f172a', text: '#f1f5f9', accent: '#3b82f6', border: '#1e293b' },
-  cyberpunk: { bg: '#0a0e27', text: '#00ff88', accent: '#00ff88', border: '#1a4d2e' },
-  neon: { bg: '#1a1a2e', text: '#e0ffff', accent: '#00d9ff', border: '#16213e' },
-  matrix: { bg: '#000000', text: '#00ff00', accent: '#00ff00', border: '#003300' },
+  navy:     { bg: '#0f172a', text: '#e2e8f0', accent: '#60a5fa', border: '#1e293b' },
+  carbon:   { bg: '#111827', text: '#f3f4f6', accent: '#818cf8', border: '#1f2937' },
+  midnight: { bg: '#020617', text: '#cbd5e1', accent: '#38bdf8', border: '#0f172a' },
+  graphite: { bg: '#18181b', text: '#e4e4e7', accent: '#a78bfa', border: '#27272a' },
 };
 
 // Professional category colors
@@ -286,7 +286,7 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full pt-14 transition-all duration-300"
+    <div className="flex flex-col h-full pt-0 transition-all duration-300"
       style={{
         backgroundColor: SIDEBAR_THEMES[activeTheme].bg,
         color: SIDEBAR_THEMES[activeTheme].text,
@@ -433,7 +433,7 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
     <>
       {/* Desktop Sidebar */}
       <aside className={cn(
-        "hidden lg:block fixed top-0 h-screen transition-all duration-300 z-40 desktop-sidebar",
+        "hidden lg:block fixed top-[64px] h-[calc(100vh-64px)] transition-all duration-300 z-40 desktop-sidebar",
         isRTL ? "right-0 border-l shadow-2xl" : "left-0 border-r shadow-2xl",
         collapsed ? "w-20" : "w-[270px]"
       )}
@@ -451,11 +451,11 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
       {mobileOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] transition-colors duration-200"
+            className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-[105] transition-colors duration-200"
             onClick={() => setMobileOpen(false)}
           />
           <aside className={cn(
-            "lg:hidden fixed top-0 h-screen w-[270px] z-[70] border-r transition-all duration-300",
+            "lg:hidden fixed top-0 h-screen w-[270px] z-[110] border-r transition-all duration-300",
             isRTL ? "right-0" : "left-0"
           )}
           style={{

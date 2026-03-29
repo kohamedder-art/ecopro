@@ -220,6 +220,8 @@ export default function AdminWasselniSettings() {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
+
+
   const handleSetupMessengerGetStarted = async () => {
     // Requires store slug + saved page token
     const slug = String(storeSlug || '').trim();
@@ -1104,6 +1106,7 @@ export default function AdminWasselniSettings() {
             </div>
           </div>
         )}
+
 
         {/* Save Button */}
         <div className="fixed bottom-4 right-4">

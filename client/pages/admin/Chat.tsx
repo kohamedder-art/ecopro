@@ -4,9 +4,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Search, Send, AlertCircle, Plus, UserPlus, X, Tag, Percent, DollarSign, Gift, CheckCircle } from 'lucide-react';
+import { MessageCircle, Search, Send, AlertCircle, Plus, UserPlus, X, Tag, Percent, DollarSign, Gift, CheckCircle, Sparkles, Loader2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import Header from '@/components/layout/Header';
+import { useAI } from '@/hooks/useAI';
 
 interface Chat {
   id: number;
@@ -668,26 +669,14 @@ export default function AdminChat() {
               )}
 
               {/* Message Input */}
-              <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your message..."
-                  disabled={loading}
-                  className="flex-1 px-3 py-2 rounded-lg bg-slate-700/40 backdrop-blur border border-slate-600/50 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-400 disabled:opacity-50 transition-all text-sm"
-                />
-                {input.trim() ? (
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg disabled:from-slate-600 disabled:to-slate-500 font-bold transition-all flex items-center gap-2 text-sm"
-                  >
-                    <Send className="w-4 h-4" />
-                    Send
-                  </button>
-                ) : null}
-              </form>
+              <AIDraftReplyBar
+                selectedChat={selectedChat}
+                messages={messages}
+                input={input}
+                setInput={setInput}
+                loading={loading}
+                onSubmit={handleSendMessage}
+              />
             </div>
           </>
         ) : (
@@ -704,5 +693,70 @@ export default function AdminChat() {
       </div>
     </div>
     </>
+  );
+}
+
+// ─── AI Draft Reply Bar ────────────────────────────────────────────────────
+function AIDraftReplyBar({
+  selectedChat,
+  messages,
+  input,
+  setInput,
+  loading,
+  onSubmit,
+}: {
+  selectedChat: any;
+  messages: any[];
+  input: string;
+  setInput: (v: string) => void;
+  loading: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+}) {
+  const { call, loading: drafting } = useAI('/api/ai/admin/draft-reply');
+
+  const handleDraft = async () => {
+    const lastClientMsg = [...messages].reverse().find((m) => m.sender_type === 'client');
+    if (!lastClientMsg) return;
+    const data = await call({
+      messageContent: lastClientMsg.message_content,
+      clientName: selectedChat?.client_name || '',
+    });
+    if (data?.draft) setInput(data.draft);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      {messages.some((m) => m.sender_type === 'client') && (
+        <button
+          type="button"
+          onClick={handleDraft}
+          disabled={drafting}
+          className="flex items-center gap-1.5 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors disabled:opacity-50"
+        >
+          {drafting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+          AI Draft Reply
+        </button>
+      )}
+      <form onSubmit={onSubmit} className="flex items-center gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message..."
+          disabled={loading}
+          className="flex-1 px-3 py-2 rounded-lg bg-slate-700/40 backdrop-blur border border-slate-600/50 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-400 disabled:opacity-50 transition-all text-sm"
+        />
+        {input.trim() ? (
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg disabled:from-slate-600 disabled:to-slate-500 font-bold transition-all flex items-center gap-2 text-sm"
+          >
+            <Send className="w-4 h-4" />
+            Send
+          </button>
+        ) : null}
+      </form>
+    </div>
   );
 }

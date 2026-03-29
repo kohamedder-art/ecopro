@@ -122,23 +122,14 @@ export async function ensureSystemOrderStatuses(clientId: number): Promise<void>
   const cols = hasIsSystem ? [...baseCols, 'is_system'] : baseCols;
 
   const values: any[] = [];
-  // Keep system statuses minimal: only core defaults + statuses actually read/written by the bot system.
-  // (Extra statuses can still exist as user-created custom statuses.)
+  // Seed only the essential statuses for new accounts.
+  // All other statuses (failure types, call-center, quality control, etc.) can be added
+  // by the user via the Status Manager in their dashboard.
   const rows = [
-    // Core defaults used throughout the UI
-    { key: 'pending', name: 'Pending', color: '#eab308', icon: '●', sort_order: 0, is_default: true, counts_as_revenue: false, is_system: true },
-    { key: 'confirmed', name: 'Confirmed', color: '#22c55e', icon: '✓', sort_order: 1, is_default: true, counts_as_revenue: false, is_system: true },
-    { key: 'completed', name: 'Completed', color: '#10b981', icon: '✓', sort_order: 2, is_default: true, counts_as_revenue: true, is_system: true },
-    { key: 'cancelled', name: 'Cancelled', color: '#ef4444', icon: '✕', sort_order: 3, is_default: true, counts_as_revenue: false, is_system: true },
-    { key: 'at_delivery', name: 'At Delivery', color: '#8b5cf6', icon: '🚚', sort_order: 4, is_default: true, counts_as_revenue: false, is_system: true },
-
-    // Bot-used order statuses
-    { key: 'declined', name: 'Declined', color: '#ef4444', icon: '✕', sort_order: 10, is_default: false, counts_as_revenue: false, is_system: true },
-    { key: 'delivered', name: 'Delivered', color: '#10b981', icon: '✓', sort_order: 11, is_default: false, counts_as_revenue: false, is_system: true },
-    { key: 'didnt_pickup', name: "Didn't Pickup", color: '#f97316', icon: '⛔', sort_order: 12, is_default: false, counts_as_revenue: false, is_system: true },
-    { key: 'delivery_failed', name: 'Delivery Failed', color: '#ef4444', icon: '🚫', sort_order: 13, is_default: false, counts_as_revenue: false, is_system: true },
-    { key: 'failed', name: 'Failed', color: '#ef4444', icon: '✕', sort_order: 14, is_default: false, counts_as_revenue: false, is_system: true },
-    { key: 'returned', name: 'Returned', color: '#f97316', icon: '↩️', sort_order: 15, is_default: false, counts_as_revenue: false, is_system: true },
+    { key: 'pending',     name: 'Pending',              color: '#eab308', icon: '●',  sort_order: 0, is_default: true,  counts_as_revenue: false, is_system: true },
+    { key: 'confirmed',   name: 'Confirmed',             color: '#22c55e', icon: '✓',  sort_order: 1, is_default: true,  counts_as_revenue: false, is_system: true },
+    { key: 'at_delivery', name: 'At Delivery',           color: '#8b5cf6', icon: '🚚', sort_order: 2, is_default: true,  counts_as_revenue: false, is_system: true },
+    { key: 'completed',   name: 'Completed',             color: '#10b981', icon: '✓',  sort_order: 3, is_default: true,  counts_as_revenue: true,  is_system: true },
   ];
 
   // Insert missing keys one-by-one using WHERE NOT EXISTS to avoid duplicates.

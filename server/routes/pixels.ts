@@ -1,6 +1,19 @@
 import { Router, RequestHandler } from "express";
 import { ensureConnection } from "../utils/database";
 import { authenticate, requireClient } from "../middleware/auth";
+import { z } from 'zod';
+import {
+  backfillHistoricalSessions,
+  deleteCreativeCatalogEntry,
+  deleteCreativeSpendEntry,
+  getOmniInputs,
+  getOmniOverview,
+  upsertAnalyticSessionFromEvent,
+  upsertAnalyticSessionSummary,
+  upsertCreativeCatalogEntry,
+  upsertCreativeSpendEntry,
+  upsertProductEconomics,
+} from '../services/omni-intelligence';
 
 const router = Router();
 
@@ -14,6 +27,73 @@ const VALID_EVENTS = [
   'PageView', 'ViewContent', 'AddToCart', 'InitiateCheckout', 
   'Purchase', 'Lead', 'CompleteRegistration', 'Search', 'AddToWishlist'
 ];
+
+const productEconomicsSchema = z.object({
+  productId: z.coerce.number().int().positive(),
+  buyCost: z.coerce.number().min(0).max(1_000_000_000),
+  packagingCost: z.coerce.number().min(0).max(1_000_000_000).default(0),
+  handlingCost: z.coerce.number().min(0).max(1_000_000_000).default(0),
+  fallbackShippingCost: z.coerce.number().min(0).max(1_000_000_000).default(0),
+  notes: z.string().trim().max(1000).optional().nullable(),
+});
+
+const creativeCatalogSchema = z.object({
+  platform: z.enum(['facebook', 'tiktok', 'google', 'direct', 'other']),
+  campaignName: z.string().trim().max(160).optional().nullable(),
+  adsetName: z.string().trim().max(160).optional().nullable(),
+  creativeName: z.string().trim().min(1).max(160),
+  landingPage: z.string().trim().max(500).optional().nullable(),
+  promiseAngle: z.string().trim().max(1000).optional().nullable(),
+  targetPersona: z.string().trim().max(1000).optional().nullable(),
+  notes: z.string().trim().max(1000).optional().nullable(),
+  isActive: z.boolean().optional(),
+});
+
+const creativeSpendSchema = z.object({
+  entryDate: z.string().trim().min(1).max(30),
+  platform: z.enum(['facebook', 'tiktok', 'google', 'direct', 'other']),
+  campaignName: z.string().trim().max(160).optional().nullable(),
+  adsetName: z.string().trim().max(160).optional().nullable(),
+  creativeName: z.string().trim().max(160).optional().nullable(),
+  spend: z.coerce.number().min(0).max(1_000_000_000),
+  impressions: z.coerce.number().int().min(0).max(10_000_000).optional().nullable(),
+  clicks: z.coerce.number().int().min(0).max(10_000_000).optional().nullable(),
+  linkClicks: z.coerce.number().int().min(0).max(10_000_000).optional().nullable(),
+  notes: z.string().trim().max(1000).optional().nullable(),
+});
+
+const historicalImportSchema = z.object({
+  days: z.coerce.number().int().min(1).max(3650).optional(),
+});
+
+const sessionSummarySchema = z.object({
+  store_slug: z.string().trim().min(1).max(120),
+  session_id: z.string().trim().min(1).max(120),
+  visitor_id: z.string().trim().max(120).optional().nullable(),
+  page_url: z.string().trim().max(1000).optional().nullable(),
+  page_path: z.string().trim().max(500).optional().nullable(),
+  max_scroll_depth: z.coerce.number().int().min(0).max(100).optional().nullable(),
+  active_time_seconds: z.coerce.number().int().min(0).max(86_400).optional().nullable(),
+  locale: z.string().trim().max(16).optional().nullable(),
+  referrer: z.string().trim().max(1000).optional().nullable(),
+  source: z.string().trim().max(80).optional().nullable(),
+  medium: z.string().trim().max(80).optional().nullable(),
+  campaign_name: z.string().trim().max(160).optional().nullable(),
+  ended: z.boolean().optional(),
+});
+
+async function resolveClientIdByStoreSlug(storeSlug: string): Promise<number | null> {
+  const pool = await getPool();
+  const storeResult = await pool.query(
+    `SELECT client_id
+     FROM client_store_settings
+     WHERE store_slug = $1
+        OR LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)
+     LIMIT 1`,
+    [storeSlug]
+  );
+  return storeResult.rows.length > 0 ? Number(storeResult.rows[0].client_id) : null;
+}
 
 // =====================
 // PIXEL SETTINGS
@@ -148,6 +228,10 @@ export const trackPixelEvent: RequestHandler = async (req, res) => {
     if (!store_slug || !pixel_type || !event_name) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    if (!VALID_EVENTS.includes(String(event_name))) {
+      return res.status(400).json({ error: 'Invalid event name' });
+    }
     
     if (!['facebook', 'tiktok'].includes(pixel_type)) {
       return res.status(400).json({ error: 'Invalid pixel type' });
@@ -167,19 +251,11 @@ export const trackPixelEvent: RequestHandler = async (req, res) => {
     }
     
     // Get client_id from store_slug
-    const storeResult = await pool.query(
-      `SELECT client_id
-       FROM client_store_settings
-       WHERE store_slug = $1
-          OR LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)`,
-      [store_slug]
-    );
-    
-    if (storeResult.rows.length === 0) {
+    const clientId = await resolveClientIdByStoreSlug(String(store_slug));
+
+    if (!clientId) {
       return res.status(404).json({ error: 'Store not found' });
     }
-    
-    const clientId = storeResult.rows[0].client_id;
     
     // Check if pixel is enabled for this store
     const pixelSettings = await pool.query(
@@ -268,6 +344,27 @@ export const trackPixelEvent: RequestHandler = async (req, res) => {
     
     // Update daily stats
     await updateDailyStats(clientId, pixel_type, event_name, revenue);
+
+    try {
+      await upsertAnalyticSessionFromEvent({
+        clientId,
+        storeSlug: String(store_slug),
+        pixelType: String(pixel_type),
+        eventName: String(event_name),
+        eventData: mergedEventData,
+        pageUrl: page_url || null,
+        sessionId: session_id || null,
+        visitorId: visitor_id || null,
+        productId: product_id || null,
+        orderId: order_id || null,
+        revenue: revenue || null,
+        currency: currency || 'DZD',
+        userAgent: userAgent ? String(userAgent) : null,
+        ipAddress: ip ? String(ip).split(',')[0].trim() : null,
+      });
+    } catch (sessionError) {
+      console.error('[Pixels] Failed to upsert analytic session from event:', sessionError);
+    }
     
     res.json({ tracked: true });
   } catch (error) {
@@ -305,11 +402,65 @@ async function updateDailyStats(clientId: number, pixelType: string, eventName: 
         updated_at = NOW()
     `;
     
-    await pool.query(query, [clientId, pixelType, today, revenue || 0]);
+    const revenueToAdd = eventName === 'Purchase' ? (revenue || 0) : 0;
+    await pool.query(query, [clientId, pixelType, today, revenueToAdd]);
   } catch (error) {
     console.error("Update daily stats error:", error);
   }
 }
+
+// Track live session behavior snapshots from the storefront.
+export const trackSessionSummary: RequestHandler = async (req, res) => {
+  try {
+    const parsed = sessionSummarySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid session payload', details: parsed.error.flatten() });
+    }
+
+    const {
+      store_slug,
+      session_id,
+      visitor_id,
+      page_url,
+      page_path,
+      max_scroll_depth,
+      active_time_seconds,
+      locale,
+      referrer,
+      source,
+      medium,
+      campaign_name,
+      ended,
+    } = parsed.data;
+
+    const clientId = await resolveClientIdByStoreSlug(store_slug);
+    if (!clientId) {
+      return res.status(404).json({ error: 'Store not found' });
+    }
+
+    await upsertAnalyticSessionSummary({
+      clientId,
+      storeSlug: store_slug,
+      sessionId: session_id,
+      visitorId: visitor_id || null,
+      pageUrl: page_url || null,
+      pagePath: page_path || null,
+      maxScrollDepth: max_scroll_depth ?? 0,
+      activeTimeSeconds: active_time_seconds ?? 0,
+      locale: locale || null,
+      referrer: referrer || null,
+      source: source || null,
+      medium: medium || null,
+      campaignName: campaign_name || null,
+      ended: ended === true,
+    });
+
+    return res.json({ tracked: true });
+  } catch (error) {
+    console.error('Track session summary error:', error);
+    return res.status(500).json({ error: 'Failed to track session summary' });
+  }
+};
 
 // =====================
 // PIXEL STATISTICS
@@ -526,6 +677,161 @@ export const getPixelFunnel: RequestHandler = async (req, res) => {
   }
 };
 
+// =====================
+// OMNI INTELLIGENCE
+// =====================
+
+export const getOmniOverviewHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const numDays = Math.min(3650, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
+    const snapshot = await getOmniOverview(user.id, numDays);
+    return res.json(snapshot);
+  } catch (error) {
+    console.error('Get Omni overview error:', error);
+    return res.status(500).json({ error: 'Failed to fetch Omni overview' });
+  }
+};
+
+export const getOmniInputsHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const inputs = await getOmniInputs(user.id);
+    return res.json(inputs);
+  } catch (error) {
+    console.error('Get Omni inputs error:', error);
+    return res.status(500).json({ error: 'Failed to fetch Omni inputs' });
+  }
+};
+
+export const saveProductEconomicsHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const parsed = productEconomicsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid product economics payload', details: parsed.error.flatten() });
+    }
+
+    const row = await upsertProductEconomics(user.id, parsed.data);
+    return res.json(row);
+  } catch (error) {
+    console.error('Save product economics error:', error);
+    return res.status(500).json({ error: 'Failed to save product economics' });
+  }
+};
+
+export const saveCreativeCatalogHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const parsed = creativeCatalogSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid creative payload', details: parsed.error.flatten() });
+    }
+
+    const row = await upsertCreativeCatalogEntry(user.id, parsed.data);
+    return res.json(row);
+  } catch (error) {
+    console.error('Save creative catalog error:', error);
+    return res.status(500).json({ error: 'Failed to save creative metadata' });
+  }
+};
+
+export const deleteCreativeCatalogHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const entryId = Number(req.params.id);
+    if (!Number.isFinite(entryId) || entryId <= 0) {
+      return res.status(400).json({ error: 'Invalid creative id' });
+    }
+
+    await deleteCreativeCatalogEntry(user.id, entryId);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Delete creative catalog error:', error);
+    return res.status(500).json({ error: 'Failed to delete creative metadata' });
+  }
+};
+
+export const saveCreativeSpendHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const parsed = creativeSpendSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid spend payload', details: parsed.error.flatten() });
+    }
+
+    const row = await upsertCreativeSpendEntry(user.id, parsed.data);
+    return res.json(row);
+  } catch (error) {
+    console.error('Save creative spend error:', error);
+    return res.status(500).json({ error: 'Failed to save ad spend' });
+  }
+};
+
+export const deleteCreativeSpendHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const entryId = Number(req.params.id);
+    if (!Number.isFinite(entryId) || entryId <= 0) {
+      return res.status(400).json({ error: 'Invalid spend entry id' });
+    }
+
+    await deleteCreativeSpendEntry(user.id, entryId);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Delete creative spend error:', error);
+    return res.status(500).json({ error: 'Failed to delete spend entry' });
+  }
+};
+
+export const backfillHistoricalSessionsHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const parsed = historicalImportSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid historical import payload', details: parsed.error.flatten() });
+    }
+
+    const result = await backfillHistoricalSessions(user.id, parsed.data.days);
+    return res.json(result);
+  } catch (error) {
+    console.error('Backfill historical sessions error:', error);
+    return res.status(500).json({ error: 'Failed to backfill historical sessions' });
+  }
+};
+
 // Get public pixel config by store slug (for frontend script injection - no auth)
 export const getPublicPixelConfig: RequestHandler = async (req, res) => {
   try {
@@ -536,21 +842,11 @@ export const getPublicPixelConfig: RequestHandler = async (req, res) => {
     }
     
     const pool = await getPool();
-    
-    // Get client_id from store_slug
-    const storeResult = await pool.query(
-      `SELECT client_id
-       FROM client_store_settings
-       WHERE store_slug = $1
-          OR LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)`,
-      [storeSlug]
-    );
-    
-    if (storeResult.rows.length === 0) {
+    const clientId = await resolveClientIdByStoreSlug(storeSlug);
+
+    if (!clientId) {
       return res.status(404).json({ error: 'Store not found' });
     }
-    
-    const clientId = storeResult.rows[0].client_id;
     
     // Get pixel settings
     const pixelSettings = await pool.query(
@@ -591,9 +887,18 @@ router.put('/settings', authenticate, requireClient, updatePixelSettings);
 router.get('/stats', authenticate, requireClient, getPixelStats);
 router.get('/events', authenticate, requireClient, getRecentPixelEvents);
 router.get('/funnel', authenticate, requireClient, getPixelFunnel);
+router.get('/omni/overview', authenticate, requireClient, getOmniOverviewHandler);
+router.get('/omni/inputs', authenticate, requireClient, getOmniInputsHandler);
+router.put('/omni/product-economics', authenticate, requireClient, saveProductEconomicsHandler);
+router.post('/omni/creative-catalog', authenticate, requireClient, saveCreativeCatalogHandler);
+router.delete('/omni/creative-catalog/:id', authenticate, requireClient, deleteCreativeCatalogHandler);
+router.post('/omni/creative-spend', authenticate, requireClient, saveCreativeSpendHandler);
+router.delete('/omni/creative-spend/:id', authenticate, requireClient, deleteCreativeSpendHandler);
+router.post('/omni/import-historical-sessions', authenticate, requireClient, backfillHistoricalSessionsHandler);
 
 // Public routes (no auth required)
 router.post('/track', trackPixelEvent);
+router.post('/session', trackSessionSummary);
 router.get('/config/:storeSlug', getPublicPixelConfig);
 
 export default router;

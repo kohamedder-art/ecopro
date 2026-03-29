@@ -123,7 +123,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
               return (
                 <div key={message.id} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} group`}>
-                  <div className={`max-w-xs lg:max-w-md ${isOwnMessage ? 'items-end' : 'items-start'} flex flex-col`}>
+                  <div className={`max-w-[78%] ${isOwnMessage ? 'items-end' : 'items-start'} flex flex-col`}>
                     {/* Sender Label */}
                     {showSenderLabel && !isOwnMessage && (
                       <p className="text-xs font-bold text-gray-400 mb-1 ml-1">{getSenderLabel(message.sender_type)}</p>
@@ -342,11 +342,11 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                               <img
                                 src={message.metadata.fileUrl}
                                 alt={message.metadata.fileName || 'Shared image'}
-                                className="max-w-xs rounded-lg shadow-lg cursor-pointer hover:opacity-90 transition"
+                                className="w-full max-w-[220px] rounded-lg shadow-lg cursor-pointer hover:opacity-90 transition block"
                                 onClick={() => window.open(message.metadata.fileUrl, '_blank')}
                               />
-                              <div className="flex items-center justify-between gap-2 text-xs">
-                                <span className="truncate">{message.metadata.fileName}</span>
+                              <div className="flex items-center justify-between gap-1 text-xs mt-1">
+                                <span className="truncate max-w-[140px] opacity-70" title={message.metadata.fileName}>{message.metadata.fileName}</span>
                                 <a
                                   href={message.metadata.fileUrl}
                                   download
@@ -400,7 +400,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                           <audio
                             src={message.metadata?.fileUrl}
                             controls
-                            className="w-full max-w-xs h-10"
+                            className="w-full max-w-full h-8"
                           />
                           {message.metadata?.duration && (
                             <p className="text-xs opacity-75 mt-1">

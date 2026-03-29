@@ -2,8 +2,21 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
-import { FloatingShapes } from "@/components/ui/floating-shapes";
-import { UserPlus, Mail, Lock, Sparkles, User, Loader2, CheckCircle2, Eye, EyeOff, Tag, Gift } from "lucide-react";
+import { 
+  User, 
+  Mail, 
+  Lock, 
+  Sparkles, 
+  Loader2, 
+  CheckCircle2, 
+  Eye, 
+  EyeOff, 
+  Tag, 
+  AlertCircle,
+  Zap,
+  ArrowRight
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 // Google Icon Component
 function GoogleIcon({ className }: { className?: string }) {
@@ -30,7 +43,7 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export default function Signup() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
@@ -75,6 +88,7 @@ export default function Signup() {
       setVoucherLoading(true);
       try {
         const res = await fetch(`/api/affiliates/validate/${encodeURIComponent(voucherCode.trim())}`);
+        if (!res.ok) throw new Error('Invalid');
         const data = await res.json();
         setVoucherValid(data.valid);
         setVoucherDiscount(data.valid ? data.discount_percent : 0);
@@ -101,11 +115,11 @@ export default function Signup() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setError('Google signup unavailable');
+        setError('تعذر الاتصال بخدمة جوجل حالياً');
         setGoogleLoading(false);
       }
     } catch {
-      setError('Failed to connect to Google');
+      setError('فشل الاتصال بخدمة جوجل');
       setGoogleLoading(false);
     }
   }
@@ -118,7 +132,7 @@ export default function Signup() {
 
     try {
       if (!isGmailSignup(email)) {
-        throw new Error('Only @gmail.com email addresses are allowed');
+        throw new Error(t('signup.gmailOnlyError'));
       }
 
       const res = await fetch('/api/auth/register', {
@@ -137,7 +151,7 @@ export default function Signup() {
       const data = await res.json();
       
       if (!res.ok) {
-        throw new Error(data.error || 'Signup failed');
+        throw new Error(data.error || 'فشل إنشاء الحساب. تأكد من صحة البيانات.');
       }
 
       if (data.token) {
@@ -148,227 +162,242 @@ export default function Signup() {
         localStorage.setItem('user', JSON.stringify(data.user));
         if (data.user.role === 'admin' || data.user.user_type === 'admin') {
           localStorage.setItem('isAdmin', 'true');
-        } else {
-          localStorage.removeItem('isAdmin');
         }
-      } else {
-        // Safety: ensure we don't keep a stale admin flag
-        localStorage.removeItem('isAdmin');
       }
+      
+      setSuccess(t('signup.success'));
+      setTimeout(() => navigate('/dashboard'), 1500);
 
-      setSuccess('Account created successfully');
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed");
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      setError(err.message || 'حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <section className="relative container mx-auto py-6 sm:py-10 min-h-[70vh] flex items-center justify-center overflow-hidden">
-      <FloatingShapes variant="section" colors="warm" />
-      
-      <div className="relative z-10 mx-auto max-w-sm sm:max-w-sm w-full px-3">
-        <div className="rounded-xl sm:rounded-2xl border-2 border-accent/20 bg-gradient-to-br from-card via-card to-accent/5 p-5 sm:p-7 shadow-2xl backdrop-blur-sm">
-          <div className="text-center mb-2 sm:mb-4">
-            <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-accent to-orange-500 mb-2 shadow-lg">
-              <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+    <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden overflow-y-auto relative font-['Noto_Sans_Arabic'] flex flex-col">
+      {/* Background Orbs */}
+      <div className="fixed top-0 left-0 w-full h-full z-0 bg-[radial-gradient(circle_at_10%_10%,rgba(99,102,241,0.08)_0%,transparent_35%),radial-gradient(circle_at_90%_90%,rgba(168,85,247,0.05)_0%,transparent_35%)] dark:bg-[radial-gradient(circle_at_10%_10%,rgba(99,102,241,0.15)_0%,transparent_35%),radial-gradient(circle_at_90%_90%,rgba(168,85,247,0.12)_0%,transparent_35%)]"></div>
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[50vw] h-[40vh] bg-[radial-gradient(circle,rgba(99,102,241,0.15)_0%,transparent_60%)] blur-[80px] z-0 opacity-80 pointer-events-none"></div>
+
+      <div className="my-auto w-full px-4 sm:px-6 py-6 flex flex-col items-center">
+        <div className="relative z-10 w-full sm:max-w-md">
+          <Link to="/" className="flex items-center justify-center gap-2 mb-3 group cursor-pointer">
+            <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.3)] group-hover:scale-105 transition-transform duration-300">
+              <Zap className="text-white w-4 h-4" />
             </div>
-            <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-accent to-orange-600 bg-clip-text text-transparent">
-              {t("signup") || "Sign up"}
-            </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1 flex items-center justify-center gap-1">
-              <Sparkles className="w-2.5 h-2.5 text-accent" />
-              {t('signup.subtitle') || "Create your account"}
-            </p>
-          </div>
+            <span className="text-xl font-black tracking-tighter uppercase text-slate-900 dark:text-white">Sahla<span className="text-indigo-500">4</span>Eco</span>
+          </Link>
+          <h2 className="text-center text-xl font-black text-slate-900 dark:text-white tracking-tight">
+            {t('signup.title')}
+          </h2>
+          <p className="mt-1 text-center text-sm font-semibold text-slate-600 dark:text-slate-400">
+            {t('signup.hasAccount')}{' '}
+            <Link to="/login" className="font-bold text-indigo-600 hover:text-indigo-500 transition-colors">
+              {t('signup.loginLink')}
+            </Link>
+          </p>
+        </div>
+
+        <div className="mt-4 w-full sm:max-w-[480px] relative z-10">
+          <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-md py-5 px-5 sm:px-8 shadow-[0_8px_30px_-12px_rgba(99,102,241,0.2)] dark:shadow-[0_8px_30px_-12px_rgba(99,102,241,0.4)] border border-indigo-100 dark:border-white/5 rounded-3xl">
           
           {error && (
-            <div className="p-3 mb-4 bg-red-500/10 border-2 border-red-500/20 rounded-lg text-red-600 dark:text-red-400 text-xs sm:text-sm">
-              {error}
+            <div className="mb-3 bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-600 px-4 py-2.5 rounded-xl flex items-start gap-3 text-sm font-semibold">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="p-3 mb-4 bg-green-500/10 border-2 border-green-500/20 rounded-lg text-green-600 dark:text-green-400 text-xs sm:text-sm flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" />
-              {success}
+            <div className="mb-3 bg-green-50/80 backdrop-blur-sm border border-green-200 text-green-700 px-4 py-2.5 rounded-xl flex items-start gap-3 text-sm font-semibold">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{success}</span>
             </div>
           )}
 
-          {/* Step 1: Registration Form */}
-          <form onSubmit={handleSignup} className="space-y-2">
-              {/* Google Sign-Up Button */}
-              {googleEnabled && (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full flex items-center justify-center gap-2 py-4 border-2 hover:bg-muted/50 transition-all"
-                    onClick={handleGoogleSignup}
-                    disabled={loading || googleLoading}
-                  >
-                    {googleLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <GoogleIcon className="w-4 h-4" />
-                    )}
-                    <span>{t('signup.google') || 'Sign up with Google'}</span>
-                  </Button>
-                  
-                  <div className="relative my-3">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-muted-foreground/20" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">{t('login.or') || 'or'}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-1.5 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-accent" />
-                  {t("auth.name") || "Name"}
-                </label>
-                <input 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)} 
-                  className="w-full rounded-lg border-2 border-accent/20 bg-background px-3 py-1.5 text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all" 
-                  placeholder={t("auth.namePlaceholder") || "Enter your name"}
+          <form className="space-y-3" onSubmit={handleSignup}>
+            {/* Name */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                {t('signup.nameLabel')}
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <User className="h-4 w-4 text-slate-400" />
+                </div>
+                <Input
+                  id="name"
                   type="text"
                   required
-                  disabled={loading}
-                  minLength={2}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="block w-full bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-indigo-500 focus:border-indigo-500 pr-10 py-2.5 text-base rounded-xl font-medium transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/50"
+                  placeholder={t('signup.namePlaceholder')}
                 />
               </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-1.5 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-accent" />
-                  {t("auth.email") || "Email"}
-                </label>
-                <input 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  className="w-full rounded-lg border-2 border-accent/20 bg-background px-3 py-1.5 text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all" 
-                  placeholder={t('auth.emailPlaceholder') || "Enter your email"}
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                {t('signup.emailLabel')}
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <Mail className="h-4 w-4 text-slate-400" />
+                </div>
+                <Input
+                  id="email"
                   type="email"
                   required
-                  disabled={loading}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={`block w-full bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-indigo-500 focus:border-indigo-500 pr-10 py-2.5 text-base rounded-xl font-medium transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/50 ${
+                    email && !isGmailSignup(email) ? "border-red-300 focus:border-red-500 focus:ring-red-500" : ""
+                  }`}
+                  placeholder="name@gmail.com"
+                  dir="ltr"
                 />
-                <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-                  Only <span className="font-medium">@gmail.com</span> addresses can sign up right now.
-                </p>
+                {email && !isGmailSignup(email) && (
+                  <p className="text-xs text-red-500 font-semibold mt-1">{t('signup.emailError')}</p>
+                )}
               </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-1.5 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-accent" />
-                  {t("auth.password") || "Password"}
-                </label>
-                <div className="relative">
-                  <input 
-                    type={showPassword ? "text" : "password"}
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)} 
-                    className="w-full rounded-lg border-2 border-accent/20 bg-background px-3 py-1.5 pr-10 text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all" 
-                    placeholder={t('auth.passwordPlaceholder') || "Enter your password"}
-                    required
-                    disabled={loading}
-                    minLength={8}
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPassword ? (t('auth.hidePassword') || 'Hide password') : (t('auth.showPassword') || 'Show password')}
-                    disabled={loading}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                {t('signup.passwordLabel')}
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <Lock className="h-4 w-4 text-slate-400" />
                 </div>
-                <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-                  {t("auth.passwordHint") || "At least 8 characters"}
-                </p>
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`block w-full bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-indigo-500 focus:border-indigo-500 px-10 py-2.5 text-base rounded-xl font-medium transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/50 text-left ${
+                    password && password.length < 12 ? "border-red-300 focus:border-red-500 focus:ring-red-500" : ""
+                  }`}
+                  placeholder="••••••••"
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-indigo-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
-              
-              {/* Voucher Code Input */}
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-1.5 flex items-center gap-1.5">
-                  <Gift className="w-3.5 h-3.5 text-accent" />
-                  Voucher Code <span className="text-muted-foreground font-normal">(optional)</span>
-                </label>
-                <div className="relative">
-                  <input 
-                    type="text"
-                    value={voucherCode} 
-                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())} 
-                    className={`w-full rounded-lg border-2 bg-background px-3 py-1.5 pr-10 text-sm transition-all uppercase ${
-                      voucherValid === true 
-                        ? 'border-green-500 focus:border-green-500 focus:ring-green-500/20' 
-                        : voucherValid === false 
-                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                          : 'border-accent/20 focus:border-accent focus:ring-accent/20'
-                    } focus:ring-2`}
-                    placeholder="e.g., AHMED20"
-                    disabled={loading}
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                    {voucherLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                    ) : voucherValid === true ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    ) : voucherValid === false ? (
-                      <Tag className="w-4 h-4 text-red-500" />
-                    ) : null}
+              {password && password.length < 12 && (
+                <p className="text-xs text-red-500 font-semibold mt-1">{t('signup.passwordError')}</p>
+              )}
+            </div>
+
+            {/* Voucher Code */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                {t('signup.voucherLabel')} <span className="text-slate-400 dark:text-slate-500 font-medium">{t('signup.voucherOptional')}</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <Tag className="h-4 w-4 text-slate-400" />
+                </div>
+                <Input
+                  type="text"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                  className={`block w-full bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-indigo-500 focus:border-indigo-500 pr-10 py-2.5 text-base rounded-xl font-bold tracking-wider transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/50 ${
+                    voucherValid === true ? 'border-green-400 !bg-green-50 focus:border-green-500 focus:ring-green-500' : 
+                    voucherValid === false ? 'border-red-400 !bg-red-50 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
+                  placeholder={t('signup.voucherPlaceholder')}
+                  dir="ltr"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  {voucherLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                  ) : voucherValid === true ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  ) : voucherValid === false ? (
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  ) : null}
+                </div>
+              </div>
+              {voucherValid === true && voucherDiscount > 0 && (
+                <p className="mt-2 text-sm text-green-600 font-bold flex items-center gap-1">
+                  <Sparkles className="w-4 h-4" />
+                  {t('signup.voucherValid', { n: voucherDiscount })}
+                </p>
+              )}
+              {voucherValid === false && (
+                <p className="mt-2 text-sm text-red-500 font-semibold">{t('signup.voucherInvalid')}</p>
+              )}
+            </div>
+
+            <div>
+              <Button
+                type="submit"
+                disabled={loading || (email.length > 0 && !isGmailSignup(email)) || (password.length > 0 && password.length < 12)}
+                className="w-full flex justify-center h-12 px-4 border border-transparent rounded-xl shadow-lg text-base font-black text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:-translate-y-0.5 group disabled:opacity-70 disabled:hover:translate-y-0"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>                    
+                    {t('signup.submit')}
+                    <ArrowRight className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                  </>
+                )}
+              </Button>
+            </div>
+            
+          </form>
+
+          {/* Social Signups */}
+          {googleEnabled && (
+            <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+               <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                  </div>
+                  <div className="relative flex justify-center text-sm mb-4">
+                    <span className="px-3 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-bold">{t('signup.orWith')}</span>
                   </div>
                 </div>
-                {voucherValid === true && voucherDiscount > 0 && (
-                  <p className="text-[10px] sm:text-xs text-green-600 mt-1 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    {voucherDiscount}% discount on your first month!
-                  </p>
-                )}
-                {voucherValid === false && voucherCode.trim() && (
-                  <p className="text-[10px] sm:text-xs text-red-500 mt-1">
-                    Invalid or expired voucher code
-                  </p>
-                )}
-              </div>
-              
-              <div className="flex items-center justify-between pt-1">
-                <Button 
-                  type="submit" 
-                  className="w-full bg-gradient-to-r from-accent to-orange-500 hover:from-accent/90 hover:to-orange-500/90 shadow-lg hover:shadow-xl transition-all py-3 sm:py-4 text-sm sm:text-base"
-                  disabled={loading}
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGoogleSignup}
+                  disabled={googleLoading}
+                  className="w-full h-12 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-600 flex items-center justify-center gap-3 font-bold text-slate-700 dark:text-slate-200 rounded-xl transition-all shadow-sm"
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating account...
-                    </>
+                  {googleLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      <Mail className="w-4 h-4 mr-2" />
-                      {t("signup") || "Sign up"}
+                      <GoogleIcon className="w-5 h-5" />
+                      {t('signup.googleBtn')}
                     </>
                   )}
                 </Button>
-              </div>
-          </form>
-          
-          <div className="mt-3 text-center">
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              {t("auth.haveAccount") || "Already have an account?"}{" "}
-              <Link to="/login" className="text-accent hover:underline font-medium">
-                {t("login") || "Log in"}
-              </Link>
-            </p>
+            </div>
+          )}
+
+          <div className="mt-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed">
+            {t('signup.terms')}{' '}<Link to="#" className="text-indigo-600 hover:underline">{t('signup.termsLink')}</Link>{' '}{t('signup.and')}{' '}<Link to="#" className="text-indigo-600 hover:underline">{t('signup.privacyLink')}</Link> {locale === 'ar' ? 'الخاصة بنا.' : '.'}
+          </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

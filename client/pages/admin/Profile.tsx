@@ -1,12 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Gift, Lock, CheckCircle, AlertCircle, Loader, Ticket, Save, User, Key, Eye, EyeOff, Tag, Percent } from 'lucide-react';
+import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, Sparkles } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 
 type SubscriptionRow = {
@@ -112,7 +107,7 @@ export default function Profile() {
 
     try {
       if (!voucherCode.trim()) {
-        throw new Error('Please enter a code');
+        throw new Error(t('profile.error.enterCode'));
       }
       const res = await fetch('/api/codes/redeem', {
         method: 'POST',
@@ -167,17 +162,17 @@ export default function Profile() {
     const { currentPassword, newPassword, confirmPassword } = passwordForm;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError('All fields are required');
+      setPasswordError(t('profile.error.allFieldsRequired'));
       return;
     }
 
     if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters');
+      setPasswordError(t('profile.error.passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match');
+      setPasswordError(t('profile.error.passwordMismatch'));
       return;
     }
 
@@ -231,7 +226,7 @@ export default function Profile() {
 
     try {
       if (!affiliateCode.trim()) {
-        throw new Error('Please enter a voucher code');
+        throw new Error(t('profile.error.enterVoucher'));
       }
 
       const res = await fetch('/api/affiliates/apply-code', {
@@ -356,384 +351,236 @@ export default function Profile() {
   const trialEnds = profile?.subscription?.trial_ends_at || null;
   const periodEnds = profile?.subscription?.current_period_end || null;
 
-  // Get wallpaper based on theme
-  // NOTE: These assets live in /public so they deploy to Render (public/uploads is gitignored).
-  const wallpaper = theme === 'dark' 
-    ? '/profile-wallpaper-dark.png' 
-    : '/profile-wallpaper-light.png';
-
   const isLight = theme !== 'dark';
 
-  return (
-    <>
-      {/* Full-screen background that extends under sidebar */}
-      <div 
-        className="fixed inset-0 pointer-events-none z-0"
-        style={{
-          backgroundImage: `url(${wallpaper})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-      
-      <div className="space-y-1.5 w-full min-h-screen p-2 relative z-10">
-        {/* Decorative gold shapes (profile only) */}
-        <div aria-hidden className="pointer-events-none absolute -top-10 -right-10 h-48 w-48 rounded-full bg-gradient-to-br from-amber-300/30 via-yellow-200/20 to-orange-300/20 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute top-24 -left-12 h-32 w-32 rounded-full bg-gradient-to-tr from-amber-200/25 via-orange-200/15 to-yellow-200/15 blur-2xl" />
-        <div aria-hidden className="pointer-events-none absolute bottom-10 right-16 h-36 w-36 rounded-full bg-gradient-to-br from-amber-300/20 via-yellow-200/10 to-orange-300/15 blur-3xl" />
+  // Theming variables mapping based on context
+  const bgDeep = isLight ? 'bg-slate-100' : 'bg-[#03060b]';
+  const textMain = isLight ? 'text-gray-800' : 'text-[#e2e8f0]';
+  const cardBg = isLight ? 'bg-white' : 'bg-[#0b111a]';
+  const borderColor = isLight ? 'border-gray-200' : 'border-[#1e293b]';
+  const textMuted = isLight ? 'text-gray-500' : 'text-gray-400';
+  const inputBg = isLight ? 'bg-white' : 'bg-[#050a11]';
+  const inputBorder = isLight ? 'border-gray-300' : borderColor;
+  const gradientCard = isLight ? 'bg-white' : 'bg-gradient-to-br from-[#0b111a] to-[#111827]';
+  const cardShadow = isLight ? 'shadow-[0_2px_12px_rgba(0,0,0,0.08)]' : '';
+  const inputShadow = isLight ? 'shadow-sm' : '';
 
-        <div className="flex items-center justify-between backdrop-blur-md profile-glass rounded-lg p-1.5 border border-white/30 dark:border-slate-700/50">
-          <div>
-            <h1 className="text-lg font-bold">{t('admin.profile.title')}</h1>
-            <p className="text-muted-foreground text-xs">{t('admin.profile.subtitle')}</p>
+  return (
+    <div className={`min-h-screen ${bgDeep} ${textMain} p-3 sm:p-4 font-[Inter] transition-colors duration-300`}>
+      <div className="max-w-6xl mx-auto flex flex-col gap-3">
+
+        {/* ── Page Header ── */}
+        <div className={`${isLight ? 'bg-gradient-to-r from-blue-600 to-indigo-600' : 'bg-gradient-to-r from-blue-900/60 to-indigo-900/60 border border-white/5'} rounded-[20px] p-3.5 flex items-center gap-3 shadow-lg shadow-blue-500/20`}>
+          <div className="w-10 h-10 rounded-[14px] bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
+            <User className="w-5 h-5 text-white" />
           </div>
-          {hasAccess && (
-            <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              Gold
-            </Badge>
-          )}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-bold text-white truncate">
+              {loading ? '—' : (form.name || t('profile.yourAccount'))}
+            </h1>
+            <p className="text-xs text-blue-100/70 truncate">{form.email}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`text-[11px] px-2.5 py-1 rounded-xl font-bold border uppercase ${
+              subStatus === 'active' ? 'bg-emerald-400/20 border-emerald-300/40 text-emerald-200'
+              : subStatus === 'trial' ? 'bg-blue-300/20 border-blue-200/40 text-blue-100'
+              : 'bg-white/10 border-white/20 text-white/60'
+            }`}>{subStatus}</span>
+            <span className={`text-[11px] px-2.5 py-1 rounded-xl font-bold border uppercase ${
+              hasAccess ? 'bg-yellow-400/20 border-yellow-300/40 text-yellow-200' : 'bg-white/10 border-white/20 text-white/60'
+            }`}>
+              {hasAccess ? t('profile.goldTier') : t('profile.freePlan')}
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-1.5 items-start">
-          {/* Subscription + Account (merged) */}
-          <div className="backdrop-blur-md profile-glass rounded-lg border border-white/30 dark:border-slate-700/50 overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 p-1.5">
-              {/* Subscription */}
-              <div className={isLight ? 'rounded-lg overflow-hidden border border-amber-200/70' : 'rounded-lg overflow-hidden border border-slate-700/50'}>
-                <div
-                  className={
-                    isLight
-                      ? "bg-gradient-to-r from-amber-200/70 to-orange-200/60 p-2 text-center border-b border-amber-300/40"
-                      : "bg-gradient-to-r from-amber-500/30 to-orange-500/30 p-2 text-center border-b border-amber-500/30"
-                  }
-                >
-                  <div
-                    className={
-                      isLight
-                        ? "w-7 h-7 bg-amber-300/40 rounded-full flex items-center justify-center mx-auto mb-1 border border-amber-400/40"
-                        : "w-7 h-7 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-1 border border-amber-500/50"
-                    }
-                  >
-                    <Lock className={isLight ? "w-3.5 h-3.5 text-amber-700" : "w-3.5 h-3.5 text-amber-400"} />
-                  </div>
-                  <h2 className={isLight ? "text-sm font-bold text-amber-900" : "text-sm font-bold text-amber-300"}>{t('admin.profile.subscription')}</h2>
-                </div>
+        {/* ── Main Grid: 3 columns ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
 
-                <div className="p-1.5 space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className={isLight ? "text-slate-700" : "text-slate-300"}>{t('admin.profile.status')}</span>
-                    <Badge
-                      className={`text-xs ${
-                        hasAccess
-                          ? isLight
-                            ? 'bg-emerald-600/10 text-emerald-800 border border-emerald-600/20'
-                            : 'bg-emerald-600/20 text-emerald-200 border border-emerald-500/30'
-                          : isLight
-                            ? 'bg-amber-500/10 text-amber-900 border border-amber-500/20'
-                            : 'bg-amber-600/20 text-amber-200 border border-amber-500/30'
-                      }`}
-                    >
-                      {subStatus}
-                    </Badge>
-                  </div>
-
-                  {typeof access?.daysLeft === 'number' && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className={isLight ? "text-slate-700" : "text-slate-300"}>{t('admin.profile.daysLeft')}</span>
-                      <span className={isLight ? "text-slate-900 font-semibold" : "text-slate-100 font-semibold"}>{access.daysLeft}</span>
-                    </div>
-                  )}
-
-                  {(trialEnds || periodEnds) && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className={isLight ? "text-slate-700" : "text-slate-300"}>{t('admin.profile.renewalEnds')}</span>
-                      <span className={isLight ? "text-slate-900 font-semibold" : "text-slate-100 font-semibold"}>{formatDate(periodEnds || trialEnds)}</span>
-                    </div>
-                  )}
-
-                  {profile?.is_locked && (
-                    <div className="bg-slate-800/50 rounded-lg p-1.5 border border-slate-700/50">
-                      <p className="text-xs text-slate-300">
-                        <span className="font-semibold">{t('admin.profile.locked')}:</span> {profile.lock_type || t('admin.profile.locked')}
-                      </p>
-                      {profile.locked_reason && <p className="text-xs text-slate-400 mt-1">{profile.locked_reason}</p>}
-                    </div>
-                  )}
-
-                  {/* Voucher Code Redemption - Inline */}
-                  <div className="bg-slate-800/60 rounded-lg p-1.5 border border-slate-700/50 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <Ticket className="w-3 h-3 text-cyan-400" />
-                      <span className="text-xs font-semibold text-white">{t('admin.profile.redeemVoucher')}</span>
-                    </div>
-
-                    {voucherSuccess ? (
-                      <div className="flex items-center gap-1.5 p-1.5 bg-green-500/20 border border-green-500/30 rounded-lg">
-                        <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                        <span className="text-xs text-green-300">{t('admin.profile.codeRedeemed')}</span>
-                      </div>
-                    ) : (
-                      <form onSubmit={handleRedeemVoucher} className="space-y-1.5">
-                        <Input
-                          type="text"
-                          value={voucherCode}
-                          onChange={(e) => handleFormatVoucherCode(e.target.value)}
-                          placeholder="XXXX-XXXX-XXXX-XXXX"
-                          disabled={voucherLoading}
-                          className={
-                            isLight
-                              ? "h-6 bg-amber-200/80 border-amber-300 text-slate-900 placeholder:text-amber-800/70 font-mono text-center text-xs"
-                              : "h-6 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 font-mono text-center text-xs"
-                          }
-                        />
-
-                        {voucherError && (
-                          <div className="flex items-start gap-1.5 p-1.5 bg-red-500/20 border border-red-500/30 rounded-lg">
-                            <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
-                            <div className="text-xs">
-                              <p className="text-red-300">{voucherError}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        <Button
-                          type="submit"
-                          disabled={voucherLoading || !voucherCode}
-                          className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white h-6 font-semibold text-xs"
-                          size="sm"
-                        >
-                          {voucherLoading ? (
-                            <>
-                              <Loader className="w-3 h-3 mr-1 animate-spin" />
-                              {t('admin.profile.redeeming')}
-                            </>
-                          ) : (
-                            <>
-                              <Gift className="w-3 h-3 mr-1" />
-                              {t('admin.profile.redeemCode')}
-                            </>
-                          )}
-                        </Button>
-                      </form>
-                    )}
-                  </div>
-
-                  {/* Affiliate Voucher Code Section */}
-                  <div className="bg-gradient-to-r from-emerald-900/40 to-green-900/40 rounded-lg p-1.5 border border-emerald-500/30 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <Tag className="w-3 h-3 text-emerald-400" />
-                      <span className="text-xs font-semibold text-white">Referral Discount Code</span>
-                    </div>
-
-                    {affiliateInfo?.has_referral ? (
-                      <div className="flex items-center gap-2 p-1.5 bg-emerald-500/20 border border-emerald-500/30 rounded-lg">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                        <div className="flex-1 text-xs">
-                          <p className="text-emerald-300">
-                            Referred by <strong>{affiliateInfo.affiliate_name}</strong>
-                          </p>
-                          <p className="text-emerald-400/70 flex items-center gap-1">
-                            <Percent className="w-3 h-3" />
-                            {affiliateInfo.discount_percent}% off {affiliateInfo.discount_applied ? '(used)' : 'on first payment'}
-                          </p>
-                        </div>
-                        <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px]">
-                          {affiliateInfo.voucher_code}
-                        </Badge>
-                      </div>
-                    ) : (
-                      <form onSubmit={handleApplyAffiliateCode} className="space-y-1.5">
-                        <p className="text-[10px] text-slate-400">
-                          Have a referral code? Get a discount on your first payment!
-                        </p>
-                        <Input
-                          type="text"
-                          value={affiliateCode}
-                          onChange={(e) => setAffiliateCode(e.target.value.toUpperCase())}
-                          placeholder="e.g., AHMED20"
-                          disabled={affiliateLoading}
-                          className="h-6 bg-slate-900/50 border-emerald-600/50 text-white placeholder:text-slate-500 font-mono text-center text-xs uppercase"
-                        />
-
-                        {affiliateError && (
-                          <div className="flex items-start gap-1.5 p-1.5 bg-red-500/20 border border-red-500/30 rounded-lg">
-                            <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-red-300">{affiliateError}</p>
-                          </div>
-                        )}
-
-                        <Button
-                          type="submit"
-                          disabled={affiliateLoading || !affiliateCode}
-                          className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white h-6 font-semibold text-xs"
-                          size="sm"
-                        >
-                          {affiliateLoading ? (
-                            <>
-                              <Loader className="w-3 h-3 mr-1 animate-spin" />
-                              Applying...
-                            </>
-                          ) : (
-                            <>
-                              <Tag className="w-3 h-3 mr-1" />
-                              Apply Code
-                            </>
-                          )}
-                        </Button>
-                      </form>
-                    )}
-                  </div>
-                </div>
+          {/* Col 1 — Account Info */}
+          <div className={`lg:col-span-5 ${gradientCard} border ${isLight ? 'border-blue-100' : 'border-blue-900/40'} rounded-[20px] p-4 flex flex-col gap-3 ${cardShadow}`}>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                <User className="w-3.5 h-3.5 text-blue-500" />
               </div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-500">{t('profile.accountInfo')}</span>
+            </div>
 
-              {/* Account */}
-              <div className={isLight ? 'rounded-lg overflow-hidden border border-white/30' : 'rounded-lg overflow-hidden border border-slate-700/50'}>
-                <div className="p-1.5 pb-1 space-y-0">
-                  <div className="flex items-center gap-1.5 text-sm font-semibold leading-none tracking-tight">
-                    <User className="w-3 h-3" />
-                    {t('admin.profile.account')}
-                  </div>
-                </div>
-                <div className="space-y-1.5 p-1.5 pt-0">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="name" className="text-xs">{t('admin.profile.name')}</Label>
-                      <Input id="name" className="h-6" value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} />
-                    </div>
-                    <div className="space-y-0.5">
-                      <Label htmlFor="email" className="text-xs">{t('admin.profile.email')}</Label>
-                      <Input id="email" className="h-6" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
-                    </div>
-                    <div className="space-y-0.5">
-                      <Label htmlFor="phone" className="text-xs">{t('admin.profile.phone')}</Label>
-                      <Input id="phone" className="h-6" value={form.phone} onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))} />
-                    </div>
-                    <div className="space-y-0.5">
-                      <Label htmlFor="business_name" className="text-xs">{t('admin.profile.businessName')}</Label>
-                      <Input
-                        id="business_name"
-                        className="h-6"
-                        value={form.business_name}
-                        onChange={(e) => setForm((s) => ({ ...s, business_name: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-0.5">
-                      <Label htmlFor="country" className="text-xs">{t('admin.profile.country')}</Label>
-                      <Input id="country" className="h-6" value={form.country} onChange={(e) => setForm((s) => ({ ...s, country: e.target.value }))} />
-                    </div>
-                    <div className="space-y-0.5">
-                      <Label htmlFor="city" className="text-xs">{t('admin.profile.city')}</Label>
-                      <Input id="city" className="h-6" value={form.city} onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))} />
-                    </div>
-                  </div>
-
-                  <Button onClick={onSave} disabled={saving || loading} className="w-full h-6" size="sm">
-                    <Save className="w-3 h-3 mr-1" />
-                    {saving ? t('common.saving') : t('admin.profile.updateProfile')}
-                  </Button>
-
-                  {loading && <div className="text-xs text-muted-foreground">{t('platformAdmin.loading')}</div>}
-                </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+              <div>
+                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.fullName')}</label>
+                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
+                  placeholder={t('profile.placeholder.fullName')} />
               </div>
+              <div>
+                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.emailAddress')}</label>
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
+                  placeholder={t('profile.placeholder.email')} />
+              </div>
+              <div>
+                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.phoneNumber')}</label>
+                <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
+                  placeholder={t('profile.placeholder.phone')} />
+              </div>
+              <div>
+                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.storeName')}</label>
+                <input type="text" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })}
+                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
+                  placeholder={t('profile.placeholder.storeName')} />
+              </div>
+              <div>
+                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.cityWilaya')}</label>
+                <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
+                  placeholder={t('profile.placeholder.city')} />
+              </div>
+              <div>
+                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.country')}</label>
+                <input type="text" value={form.country} readOnly
+                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMuted} ${inputShadow} cursor-not-allowed opacity-60`}
+                  placeholder={t('profile.placeholder.country')} />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button onClick={onSave} disabled={saving}
+                className="h-9 px-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition-all shadow-md shadow-blue-500/20">
+                {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {t('profile.saveChanges')}
+              </button>
             </div>
           </div>
 
-          {/* Change Password */}
-          <Card className="p-0 backdrop-blur-md profile-glass border-white/30 dark:border-slate-700/50">
-          <CardHeader className="p-1.5 pb-1 space-y-0">
-            <CardTitle className="flex items-center gap-1.5 text-sm">
-              <Key className="w-3 h-3" />
-              {t('auth.changePassword') || 'Change Password'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1.5 p-1.5 pt-0">
-            {passwordSuccess && (
-              <div className="flex items-center gap-1.5 p-1.5 bg-green-500/20 border border-green-500/30 rounded-lg">
-                <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                <span className="text-xs text-green-300">{t('auth.passwordChanged') || 'Password changed successfully!'}</span>
+          {/* Col 2 — Security */}
+          <div className={`lg:col-span-4 ${gradientCard} border ${isLight ? 'border-orange-100' : 'border-orange-900/30'} rounded-[20px] p-4 flex flex-col gap-2.5 ${cardShadow}`}>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-orange-500/15 flex items-center justify-center">
+                <Lock className="w-3.5 h-3.5 text-orange-500" />
               </div>
-            )}
-
-            {passwordError && (
-              <div className="flex items-center gap-1.5 p-1.5 bg-red-500/20 border border-red-500/30 rounded-lg">
-                <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                <span className="text-xs text-red-300">{passwordError}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-orange-500">{t('profile.security')}</span>
+            </div>
+            <form onSubmit={handleChangePassword} className="flex flex-col gap-2.5">
+              <div className="relative">
+                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.currentPassword')}</label>
+                <input type={showCurrentPassword ? 'text' : 'password'} value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 pr-10 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all`}
+                  placeholder={t('profile.placeholder.currentPassword')} />
+                <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className={`absolute right-3 bottom-2 ${textMuted} hover:text-orange-400 transition-colors`}>
+                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
-            )}
-
-            <form onSubmit={handleChangePassword} className="space-y-1">
-              <div className="space-y-0.5">
-                <Label htmlFor="currentPassword" className="text-xs">{t('auth.currentPassword') || 'Current Password'}</Label>
-                <div className="relative">
-                  <Input 
-                    id="currentPassword" 
-                    type={showCurrentPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    className="h-6 pr-8" 
-                    value={passwordForm.currentPassword} 
-                    onChange={(e) => setPasswordForm((s) => ({ ...s, currentPassword: e.target.value }))}
-                    disabled={passwordLoading}
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showCurrentPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  </button>
-                </div>
+              <div className="relative">
+                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.newPassword')}</label>
+                <input type={showNewPassword ? 'text' : 'password'} value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 pr-10 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all`}
+                  placeholder={t('profile.placeholder.minChars')} />
+                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
+                  className={`absolute right-3 bottom-2 ${textMuted} hover:text-orange-400 transition-colors`}>
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
-              <div className="space-y-0.5">
-                <Label htmlFor="newPassword" className="text-xs">{t('auth.newPassword') || 'New Password'}</Label>
-                <div className="relative">
-                  <Input 
-                    id="newPassword" 
-                    type={showNewPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    className="h-6 pr-8" 
-                    value={passwordForm.newPassword} 
-                    onChange={(e) => setPasswordForm((s) => ({ ...s, newPassword: e.target.value }))}
-                    disabled={passwordLoading}
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showNewPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  </button>
-                </div>
+              <div>
+                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.confirmNewPassword')}</label>
+                <input type="password" value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all`}
+                  placeholder={t('profile.placeholder.repeatPassword')} />
               </div>
-              <div className="space-y-0.5">
-                <Label htmlFor="confirmPassword" className="text-xs">{t('auth.confirmPassword') || 'Confirm New Password'}</Label>
-                <Input 
-                  id="confirmPassword" 
-                  type="password"
-                  autoComplete="new-password"
-                  className="h-6" 
-                  value={passwordForm.confirmPassword} 
-                  onChange={(e) => setPasswordForm((s) => ({ ...s, confirmPassword: e.target.value }))}
-                  disabled={passwordLoading}
-                />
-              </div>
-              <Button type="submit" disabled={passwordLoading} className="w-full h-6" size="sm">
-                {passwordLoading ? (
-                  <>
-                    <Loader className="w-3 h-3 mr-1 animate-spin" />
-                    {t('common.saving') || 'Saving...'}
-                  </>
-                ) : (
-                  <>
-                    <Key className="w-3 h-3 mr-1" />
-                    {t('auth.changePassword') || 'Change Password'}
-                  </>
-                )}
-              </Button>
+              {passwordError && <p className="text-red-400 text-xs">{passwordError}</p>}
+              {passwordSuccess && <p className="text-emerald-400 text-xs">{t('profile.passwordUpdated')}</p>}
+              <button type="submit"
+                disabled={passwordLoading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                className="h-9 w-full bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all">
+                {passwordLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                {t('profile.updatePassword')}
+              </button>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Col 3 — Plan, Codes */}
+          <div className="lg:col-span-3 flex flex-col gap-3">
+
+            {/* Active Plan */}
+            <div className={`${isLight ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200' : 'bg-gradient-to-br from-yellow-900/20 to-amber-900/10 border-yellow-700/20'} border rounded-[20px] p-3.5 ${cardShadow}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-yellow-400/20 flex items-center justify-center">
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-500" />
+                  </div>
+                  <span className={`text-sm font-bold ${isLight ? 'text-yellow-700' : 'text-yellow-300'}`}>
+                    {profile?.subscription?.tier || 'Free Plan'}
+                  </span>
+                </div>
+                <span className={`text-[11px] px-2 py-0.5 rounded-lg font-bold border uppercase ${
+                  subStatus === 'active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-gray-500/10 border-gray-500/20 text-gray-400'
+                }`}>{subStatus}</span>
+              </div>
+              {(trialEnds || periodEnds) && (
+                <p className={`text-xs ${textMuted} mt-1.5`}>
+                  {trialEnds ? `${t('profile.trialEnds')} ${formatDate(trialEnds)}` : `${t('profile.renews')} ${formatDate(periodEnds)}`}
+                </p>
+              )}
+            </div>
+
+            {/* Redeem Voucher */}
+            <div className={`${isLight ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200' : 'bg-gradient-to-br from-blue-900/20 to-indigo-900/10 border-blue-700/20'} border-l-2 border-l-blue-500 border rounded-[20px] p-3.5 ${cardShadow}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Ticket className="w-4 h-4 text-blue-400" />
+                <span className={`text-[11px] font-bold uppercase tracking-wider ${textMuted}`}>{t('profile.redeemCode')}</span>
+              </div>
+              <form onSubmit={handleRedeemVoucher} className="flex gap-2">
+                <input type="text" value={voucherCode} onChange={(e) => handleFormatVoucherCode(e.target.value)}
+                  className={`flex-1 h-9 ${inputBg} border ${inputBorder} rounded-xl px-2 font-mono text-xs text-center ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
+                  placeholder={t('profile.placeholder.voucherCode')} />
+                <button type="submit" disabled={voucherLoading || !voucherCode}
+                  className="h-9 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-all whitespace-nowrap">
+                  {voucherLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : t('profile.apply')}
+                </button>
+              </form>
+              {voucherError && <p className="text-red-400 text-xs mt-1.5">{voucherError}</p>}
+              {voucherSuccess && <p className="text-emerald-400 text-xs mt-1.5">{t('profile.redeemed')}</p>}
+            </div>
+
+            {/* Referral Program */}
+            <div className={`${isLight ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200' : 'bg-gradient-to-br from-emerald-900/20 to-teal-900/10 border-emerald-700/20'} border-l-2 border-l-emerald-500 border rounded-[20px] p-3.5 ${cardShadow}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Gift className="w-4 h-4 text-emerald-400" />
+                <span className={`text-[11px] font-bold uppercase tracking-wider ${textMuted}`}>{t('profile.referral')}</span>
+              </div>
+              {affiliateInfo?.discount_applied ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-[12px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <Percent className="w-3.5 h-3.5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className={`text-sm font-bold ${isLight ? 'text-gray-800' : 'text-white'}`}>{affiliateInfo.discount_percent}{t('profile.percentOff')}</p>
+                    <p className={`text-xs ${textMuted}`}>{affiliateInfo.voucher_code}</p>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleApplyAffiliateCode} className="flex gap-2">
+                  <input type="text" value={affiliateCode} onChange={(e) => setAffiliateCode(e.target.value)}
+                    className={`flex-1 h-9 ${inputBg} border ${inputBorder} rounded-xl px-2 text-xs uppercase text-center ${textMain} ${inputShadow} focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all`}
+                    placeholder={t('profile.placeholder.partnerCode')} />
+                  <button type="submit" disabled={affiliateLoading || !affiliateCode}
+                    className="h-9 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-all">
+                    {affiliateLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : t('profile.apply')}
+                  </button>
+                </form>
+              )}
+              {affiliateError && <p className="text-red-400 text-xs mt-1.5">{affiliateError}</p>}
+            </div>
+
+          </div>
         </div>
+
       </div>
-    </>
+    </div>
   );
-}
+};

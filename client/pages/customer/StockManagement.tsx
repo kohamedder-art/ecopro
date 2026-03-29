@@ -386,9 +386,9 @@ export default function StockManagement() {
   };
 
   const uploadSingleImage = async (file: File): Promise<string> => {
-    // Validate file size (2MB max)
-    if (file.size > 2 * 1024 * 1024) {
-      throw new Error('Image must be less than 2MB');
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('Image must be less than 10MB');
     }
     if (!file.type.startsWith('image/')) {
       throw new Error('Please select an image file');
@@ -1510,7 +1510,7 @@ export default function StockManagement() {
                     className="cursor-pointer"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Upload up to 10 images. Each image must be &lt; 2MB.
+                    Upload up to 10 images. Each image must be &lt; 10MB.
                   </p>
                 </div>
               </div>

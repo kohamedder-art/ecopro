@@ -59,9 +59,9 @@ export default function DeliveryCompanies() {
     Record<number, { is_enabled: boolean; has_api_key: boolean; has_api_secret: boolean; updated_at?: string; configured_at?: string }>
   >({});
 
-  // Only allow ZR Express, Noest, Anderson, and Zimou Express to be configured
+  // Only allow providers with working integrations to be configured.
   const isComingSoon = (company: DeliveryCompany) => {
-    const openIds = ['zr-express', 'noest', 'anderson', 'zimou-express', 'dhd'];
+    const openIds = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd'];
     return !openIds.includes(company.id);
   };
   
@@ -70,7 +70,7 @@ export default function DeliveryCompanies() {
   // Based on research: Only companies with verified public APIs
   // ========================================
   // List of company IDs that should appear first (working ones)
-  const workingCompanyOrder = ['zr-express', 'noest', 'anderson', 'zimou-express', 'dhd'];
+  const workingCompanyOrder = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd'];
 
   const [companies, setCompanies] = useState<DeliveryCompany[]>(() => [
     // ⭐ TIER 1: Best API - Yalidine (Most documented, npm packages available)
@@ -158,15 +158,15 @@ export default function DeliveryCompanies() {
       id: "dolivroo",
       name: "Dolivroo",
       logo: getDeliveryCompanyLogoSrc("Dolivroo"),
-      description: "🔗 UNIFIED API - One integration for Yalidine, Ecotrack & more. Best choice!",
+      description: "Unified delivery API for Yalidine, ZR Express, Ecotrack and Maystro through one integration.",
       apiFields: [
-        { label: "Dolivroo API Key", placeholder: "Your Dolivroo API Key", field: "apiKey" },
-        { label: "Secret Key", placeholder: "Your Secret Key", field: "secretKey" },
+        { label: "API Key", placeholder: "dol_live_sk_...", field: "apiKey" },
+        { label: "Connection Label (optional)", placeholder: "primary or client_store_1", field: "connectionLabel" },
       ],
       enabled: false,
       hasApi: true,
       features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: true },
-      docsUrl: "https://dolivroo.com/docs",
+      docsUrl: "https://dolivroo.com",
       apiRating: 5,
     },
 
@@ -415,6 +415,25 @@ export default function DeliveryCompanies() {
     })();
   }, []);
 
+  const isPrimaryCredentialField = (company: DeliveryCompany | null, fieldName: string) => {
+    if (!company) return false;
+
+    const primaryFieldByCompanyId: Record<string, string> = {
+      yalidine: 'apiToken',
+      guepex: 'apiToken',
+      'zr-express': 'apiKey',
+      ecotrack: 'apiToken',
+      maystro: 'apiToken',
+      dolivroo: 'apiKey',
+      noest: 'apiToken',
+      'zimou-express': 'apiToken',
+      anderson: 'apiToken',
+      dhd: 'apiToken',
+    };
+
+    return primaryFieldByCompanyId[company.id] === fieldName;
+  };
+
   const handleCardClick = (company: DeliveryCompany) => {
     setSelectedCompany(company);
     setCredentials({});
@@ -478,7 +497,7 @@ export default function DeliveryCompanies() {
         if (id === 'dolivroo') {
           return {
             apiKey: (credentials.apiKey || '').trim(),
-            apiSecret: (credentials.secretKey || '').trim() || undefined,
+            apiSecret: (credentials.connectionLabel || '').trim() || undefined,
           };
         }
         if (id === 'noest') {
@@ -594,7 +613,7 @@ export default function DeliveryCompanies() {
   };
 
   const selectedCompanyDbId = selectedCompany
-    ? companyIdByName[String(selectedCompany.name || '').trim().toLowerCase()]
+    ? companyIdByName[toCompanyLookupKey(String(selectedCompany.name || ''))]
     : undefined;
 
   const selectedIntegrationMeta =
@@ -795,11 +814,11 @@ export default function DeliveryCompanies() {
                   {field.label}
                 </Label>
                 {(() => {
-                  const isTokenField = field.field === 'apiToken';
+                  const isPrimaryField = isPrimaryCredentialField(selectedCompany, field.field);
                   const isSavedHidden =
                     Boolean(selectedCompany?.enabled) &&
                     Boolean(selectedIntegrationMeta) &&
-                    (isTokenField ? Boolean(selectedIntegrationMeta?.has_api_key) : Boolean(selectedIntegrationMeta?.has_api_secret));
+                    (isPrimaryField ? Boolean(selectedIntegrationMeta?.has_api_key) : Boolean(selectedIntegrationMeta?.has_api_secret));
 
                   const currentValue = credentials[field.field] || '';
                   const placeholder = isSavedHidden && !currentValue ? 'Saved (hidden)' : field.placeholder;
@@ -816,11 +835,11 @@ export default function DeliveryCompanies() {
                   );
                 })()}
                 {(() => {
-                  const isTokenField = field.field === 'apiToken';
+                  const isPrimaryField = isPrimaryCredentialField(selectedCompany, field.field);
                   const isSavedHidden =
                     Boolean(selectedCompany?.enabled) &&
                     Boolean(selectedIntegrationMeta) &&
-                    (isTokenField ? Boolean(selectedIntegrationMeta?.has_api_key) : Boolean(selectedIntegrationMeta?.has_api_secret));
+                    (isPrimaryField ? Boolean(selectedIntegrationMeta?.has_api_key) : Boolean(selectedIntegrationMeta?.has_api_secret));
 
                   const currentValue = credentials[field.field] || '';
                   if (!isSavedHidden || currentValue) return null;

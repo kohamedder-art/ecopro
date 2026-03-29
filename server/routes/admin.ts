@@ -2291,3 +2291,123 @@ export const deleteAdminNote: RequestHandler = async (req, res) => {
     return jsonError(res, 500, "Failed to delete note");
   }
 };
+
+/**
+ * GET /api/admin/growth-metrics
+ * Returns time-series growth data: signups, orders, revenue by week for the last 12 weeks,
+ * plus store health scores and top/worst performing stores.
+ */
+export const getGrowthMetrics: RequestHandler = async (_req, res) => {
+  try {
+    // Weekly signups for last 12 weeks
+    const signupsR = await pool.query(`
+      SELECT date_trunc('week', created_at)::date AS week,
+             COUNT(*)::int AS signups
+      FROM clients
+      WHERE created_at >= NOW() - INTERVAL '12 weeks'
+      GROUP BY 1 ORDER BY 1
+    `);
+
+    // Weekly subscription payments (platform revenue) for last 12 weeks
+    const paymentsR = await pool.query(`
+      SELECT date_trunc('week', created_at)::date AS week,
+             COUNT(*)::int AS payments,
+             COALESCE(SUM(amount::numeric), 0)::numeric AS revenue
+      FROM payments
+      WHERE status = 'completed'
+        AND created_at >= NOW() - INTERVAL '12 weeks'
+      GROUP BY 1 ORDER BY 1
+    `);
+
+    // Weekly new paid subscribers (trial->active conversions + new actives)
+    const paidSubsR = await pool.query(`
+      SELECT date_trunc('week', current_period_start)::date AS week,
+             COUNT(*)::int AS new_paid
+      FROM subscriptions
+      WHERE status = 'active'
+        AND current_period_start >= NOW() - INTERVAL '12 weeks'
+      GROUP BY 1 ORDER BY 1
+    `);
+
+    // Current MRR snapshot
+    const mrrR = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE s.status = 'active')::int AS active_subs,
+        COUNT(*) FILTER (WHERE c.is_paid_temporarily = true AND c.subscription_extended_until > NOW())::int AS temp_paid,
+        COALESCE((SELECT setting_value::numeric FROM platform_settings WHERE setting_key = 'subscription_price'), 7) AS sub_price
+      FROM subscriptions s
+      JOIN clients c ON c.id = s.user_id
+    `);
+
+    const mrrRow = mrrR.rows[0] || { active_subs: 0, temp_paid: 0, sub_price: 7 };
+    const mrr = (Number(mrrRow.active_subs) + Number(mrrRow.temp_paid)) * Number(mrrRow.sub_price);
+
+    // Store health scores: orders last 30d, product count, last activity
+    const storeHealthR = await pool.query(`
+      SELECT css.client_id,
+             css.store_name,
+             css.store_slug,
+             c.email,
+             c.subscription_status,
+             COUNT(DISTINCT o.id) FILTER (WHERE o.created_at > NOW() - INTERVAL '30 days')::int AS orders_30d,
+             COUNT(DISTINCT o.id) FILTER (WHERE o.created_at > NOW() - INTERVAL '7 days')::int AS orders_7d,
+             COUNT(DISTINCT p.id)::int AS product_count,
+             MAX(o.created_at) AS last_order_at
+      FROM client_store_settings css
+      JOIN clients c ON c.id = css.client_id
+      LEFT JOIN store_orders o ON o.client_id = css.client_id
+      LEFT JOIN client_store_products p ON p.client_id = css.client_id
+      GROUP BY css.client_id, css.store_name, css.store_slug, c.email, c.subscription_status
+      ORDER BY orders_30d DESC
+      LIMIT 50
+    `);
+
+    // Calculate store health score: 0-100
+    const storeHealth = storeHealthR.rows.map((s: any) => {
+      let score = 0;
+      score += Math.min(s.orders_30d * 5, 40); // up to 40 pts from orders
+      score += Math.min(s.product_count * 3, 30); // up to 30 pts from products
+      if (s.last_order_at) {
+        const daysSince = (Date.now() - new Date(s.last_order_at).getTime()) / 86400000;
+        score += Math.max(0, 30 - daysSince); // up to 30 pts from recency
+      }
+      return {
+        clientId: s.client_id,
+        storeName: s.store_name,
+        storeSlug: s.store_slug,
+        email: s.email,
+        subscriptionStatus: s.subscription_status,
+        orders30d: s.orders_30d,
+        orders7d: s.orders_7d,
+        productCount: s.product_count,
+        lastOrderAt: s.last_order_at,
+        healthScore: Math.min(100, Math.round(score)),
+      };
+    });
+
+    // Recent activity: last 20 significant events
+    const activityR = await pool.query(`
+      (SELECT 'order' AS type, id, client_id, status AS detail, created_at
+       FROM store_orders ORDER BY created_at DESC LIMIT 10)
+      UNION ALL
+      (SELECT 'signup' AS type, id, id AS client_id, email AS detail, created_at
+       FROM clients ORDER BY created_at DESC LIMIT 10)
+      ORDER BY created_at DESC LIMIT 20
+    `);
+
+    res.json({
+      weeklySignups: signupsR.rows,
+      weeklyPayments: paymentsR.rows,
+      weeklyPaidSubs: paidSubsR.rows,
+      mrr,
+      activeSubs: Number(mrrRow.active_subs),
+      tempPaid: Number(mrrRow.temp_paid),
+      subscriptionPrice: Number(mrrRow.sub_price),
+      storeHealth,
+      recentActivity: activityR.rows,
+    });
+  } catch (err) {
+    console.error('[ADMIN] Error fetching growth metrics:', err);
+    return jsonError(res, 500, "Failed to fetch growth metrics");
+  }
+};

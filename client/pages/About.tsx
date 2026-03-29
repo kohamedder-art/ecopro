@@ -1,105 +1,89 @@
-import { Users, Heart, Target, Sparkles, Shield, Globe } from "lucide-react";
+import { Users, Heart, Target, Sparkles, Shield, Globe, Zap, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 
 export default function About() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isRTL = locale === 'ar';
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative py-8 sm:py-12 overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM4ODg4ODgiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItaDJ2LTJoLTJ6bTAgNGgtMnYyaDJ2LTJ6bS0yIDJoLTJ2Mmgydi0yek0zMiAzOGgtMnYyaDJ2LTJ6bS0yLTJoLTJ2Mmgydi0yek0yOCAzNGgtMnYyaDJ2LTJ6bS02IDB2LTJoLTJ2Mmgyem0tMiAydi0ySDR2Mmgyem0tMiAydi0ySDR2MmgyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-40"></div>
-        </div>
-
-        <div className="container relative z-10 mx-auto px-4 max-w-5xl">
-          {/* Hero Content */}
-          <div className="text-center mb-8 sm:mb-12">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-lg mb-4">
-              <Heart className="w-3.5 h-3.5 text-red-500" />
-              <span className="text-xs font-medium">{t('about.badge') || 'Built with passion'}</span>
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden relative font-['Noto_Sans_Arabic']">
+      <div className="fixed top-0 left-0 w-full h-full z-0 bg-[radial-gradient(circle_at_10%_10%,rgba(99,102,241,0.08)_0%,transparent_35%),radial-gradient(circle_at_90%_90%,rgba(168,85,247,0.05)_0%,transparent_35%),#f8fafc] dark:bg-[radial-gradient(circle_at_10%_10%,rgba(99,102,241,0.15)_0%,transparent_35%),radial-gradient(circle_at_90%_90%,rgba(168,85,247,0.10)_0%,transparent_35%),#020617]"></div>
+      
+      <div className="relative pt-32 pb-16 px-6 overflow-hidden z-10 w-full">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[50vw] h-[40vh] bg-[radial-gradient(circle,rgba(99,102,241,0.15)_0%,transparent_60%)] blur-[80px] z-0 opacity-80 pointer-events-none"></div>
+        
+        <div className="max-w-4xl mx-auto relative z-10">
+          {/* Hero Section */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center space-x-2 space-x-reverse bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full mb-6">
+              <Sparkles className="w-4 h-4 text-indigo-500" />
+              <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">{t('about.badge')}</span>
             </div>
-            
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black mb-2">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-cyan-600">
-                {t('about.title') || 'Our Mission'}
-              </span>
+            <h1 className="text-4xl md:text-5xl font-black mb-6 tracking-tight text-slate-900 dark:text-white leading-tight">
+              {t('about.title')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-400">{t('about.titleHighlight')}</span>
             </h1>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed">
-              {t('about.subtitle') || 'Empowering sellers, connecting buyers, and helping online businesses grow.'}
+            <p className="text-lg text-slate-600 dark:text-slate-400 font-semibold max-w-2xl mx-auto leading-relaxed">
+              {t('about.desc')}
             </p>
           </div>
 
-          {/* Story Section */}
-          <div className="max-w-3xl mx-auto mb-8 sm:mb-12">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-5 border border-indigo-100 dark:border-indigo-900">
-              <div className="flex items-start gap-2.5 mb-3">
-                <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-indigo-600 to-cyan-600 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold mb-1">{t('about.storyTitle') || 'Our Story'}</h2>
-                </div>
+          {/* Story Bento Box */}
+          <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-sm rounded-3xl p-8 md:p-10 mb-12 hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-md transition-all">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Zap className="text-white w-6 h-6" />
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-                {t('about.storyDesc') || 'We created this marketplace to remove barriers and bring communities together.'}
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">{t('about.storyTitle')}</h2>
+            </div>
+            <div className="space-y-4 text-slate-700 dark:text-slate-300 font-medium leading-loose text-lg">
+              <p>
+                {t('about.storyP1')}
               </p>
-              <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
-                <Shield className="w-4 h-4 text-indigo-600" />
-                <p className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  {t('about.unique') || 'What makes us unique? Openness, fairness, and real support—for everyone.'}
-                </p>
-              </div>
+              <p>
+                {t('about.storyP2')}
+              </p>
+            </div>
+            <div className="mt-8 flex items-center gap-3 bg-indigo-50/50 dark:bg-indigo-950/30 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
+              <Shield className="w-6 h-6 text-indigo-500 flex-shrink-0" />
+              <p className="text-sm font-bold text-indigo-900 dark:text-indigo-200">{t('about.storyBadge')}</p>
             </div>
           </div>
 
           {/* Values Grid */}
-          <div className="grid sm:grid-cols-3 gap-3 mb-8">
+          <div className="grid md:grid-cols-3 gap-6 mb-16">
             {[
-              {
-                icon: Target,
-                title: t('about.visionTitle') || 'Our Vision',
-                description: t('about.visionDesc') || 'To become the most accessible and trusted marketplace.'
-              },
-              {
-                icon: Users,
-                title: t('about.communityTitle') || 'Community First',
-                description: t('about.communityDesc') || 'We build trust and transparency between sellers and buyers.'
-              },
-              {
-                icon: Globe,
-                title: t('about.globalTitle') || 'Global Reach',
-                description: t('about.globalDesc') || 'We support growth from local businesses to international sellers.'
-              }
+              { icon: Target, titleKey: 'about.v1Title', descKey: 'about.v1Desc' },
+              { icon: Users, titleKey: 'about.v2Title', descKey: 'about.v2Desc' },
+              { icon: Globe, titleKey: 'about.v3Title', descKey: 'about.v3Desc' },
             ].map((item, i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-600 to-cyan-600 flex items-center justify-center mb-3">
-                  <item.icon className="w-4 h-4 text-white" />
+              <div key={i} className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-700 transition-all duration-300">
+                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center mb-4 text-slate-700 dark:text-slate-300">
+                  <item.icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-sm sm:text-base font-bold mb-1">{item.title}</h3>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{item.description}</p>
+                <h3 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">{t(item.titleKey as string)}</h3>
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-400 leading-relaxed">{t(item.descKey as string)}</p>
               </div>
             ))}
           </div>
 
-          {/* Team Section */}
-          <div className="text-center max-w-2xl mx-auto">
-            <div className="bg-gradient-to-br from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/20 rounded-lg p-4 sm:p-5 border border-indigo-100 dark:border-indigo-800">
-              <h2 className="text-base sm:text-lg font-bold mb-2">{t('about.teamTitle') || 'Meet the Team'}</h2>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-                {t('about.teamDesc') || 'Founded by Walid and friends—builders passionate about making a difference.'}
+          {/* Team CTA */}
+          <div className="text-center rounded-3xl p-10 bg-gradient-to-br from-indigo-900 to-slate-900 text-white shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+            <div className="relative z-10">
+              <h2 className="text-2xl md:text-3xl font-black mb-4">{t('about.ctaTitle')}</h2>
+              <p className="text-indigo-100 font-medium max-w-lg mx-auto mb-8 leading-relaxed">
+                {t('about.ctaDesc')}
               </p>
-              <Link to="/contact">
-                <Button size="sm" className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white shadow-lg text-sm">
-                  {t('about.teamCta') || 'Get in Touch'}
-                </Button>
+              <Link to="/contact" className="inline-flex items-center space-x-2 space-x-reverse bg-white text-slate-900 px-6 py-3 rounded-full font-black text-sm hover:bg-slate-50 transition-colors shadow-lg hover:scale-105 active:scale-95">
+                <span>{t('about.ctaBtn')}</span>
+                <ArrowLeft className="w-4 h-4 text-indigo-600" />
               </Link>
             </div>
           </div>
+          
         </div>
-      </section>
+      </div>
     </div>
   );
 }

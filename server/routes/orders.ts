@@ -515,6 +515,83 @@ export const createOrder: RequestHandler = async (req, res) => {
   }
 };
 
+/**
+ * Manually create an order from the dashboard (authenticated client)
+ * POST /api/client/orders
+ */
+export const createClientOrder: RequestHandler = async (req, res) => {
+  const clientId = (req as any).user?.id;
+  if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const {
+    customer_name,
+    customer_phone,
+    customer_address,
+    product_id,
+    quantity = 1,
+    total_price,
+    notes,
+  } = req.body as any;
+
+  const trimName = typeof customer_name === 'string' ? customer_name.trim() : '';
+  const trimPhone = typeof customer_phone === 'string' ? customer_phone.trim().replace(/\s/g, '') : '';
+  if (!trimName) return res.status(400).json({ error: 'Customer name is required' });
+  if (!trimPhone) return res.status(400).json({ error: 'Phone number is required' });
+  if (!/^\+?[0-9]{7,}$/.test(trimPhone)) return res.status(400).json({ error: 'Invalid phone number' });
+
+  try {
+    const storeOrderColumns = await getStoreOrdersColumns();
+    const insertCols: string[] = [];
+    const insertVals: any[] = [];
+    const addCol = (col: string, val: any) => {
+      if (!storeOrderColumns.has(col)) return;
+      insertCols.push(col);
+      insertVals.push(val);
+    };
+
+    // Resolve product if given, otherwise use a manual total_price
+    let unitPrice = 0;
+    let resolvedProductId: number | null = product_id ? Number(product_id) : null;
+    if (resolvedProductId) {
+      const pRes = await pool.query(
+        `SELECT id, price FROM client_store_products WHERE id = $1 AND client_id = $2 LIMIT 1`,
+        [resolvedProductId, clientId]
+      );
+      if (pRes.rows.length === 0) return res.status(404).json({ error: 'Product not found in your store' });
+      unitPrice = Number(pRes.rows[0].price);
+    }
+
+    const orderTotal = Number.isFinite(Number(total_price)) && Number(total_price) > 0
+      ? Number(total_price)
+      : unitPrice * Number(quantity);
+
+    addCol('client_id', clientId);
+    addCol('product_id', resolvedProductId);
+    addCol('quantity', Number(quantity) || 1);
+    addCol('total_price', orderTotal);
+    addCol('unit_price', unitPrice);
+    addCol('customer_name', trimName);
+    addCol('customer_phone', trimPhone);
+    addCol('shipping_address', typeof customer_address === 'string' ? customer_address.trim() || null : null);
+    addCol('notes', typeof notes === 'string' ? notes.trim() || null : null);
+    addCol('status', 'pending');
+    addCol('payment_status', 'unpaid');
+    addCol('delivery_type', 'home');
+    addCol('created_at', new Date());
+
+    const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(',');
+    const result = await pool.query(
+      `INSERT INTO store_orders (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+      insertVals
+    );
+    clearOrdersCache(Number(clientId));
+    return res.status(201).json({ success: true, order: result.rows[0] });
+  } catch (err: any) {
+    console.error('[createClientOrder]', err);
+    return res.status(500).json({ error: 'Failed to create order' });
+  }
+};
+
 // In-memory cache for orders (per-client)
 const ordersCache = new Map<number, { data: any; timestamp: number }>();
 const ORDERS_CACHE_TTL = 5 * 1000; // 5 seconds cache - orders need to be more real-time
@@ -1143,6 +1220,59 @@ export const updateClientOrder: RequestHandler = async (req, res) => {
 };
 
 /**
+ * Restore a preset system status that was previously removed.
+ * POST /api/client/order-statuses/restore-preset
+ */
+export const restorePresetStatus: RequestHandler = async (req, res) => {
+  try {
+    const clientId = (req as any).user?.id;
+    if (!clientId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const { key } = req.body;
+
+    const PRESET_CATALOG: Record<string, { name: string; color: string; icon: string; sort_order: number; counts_as_revenue: boolean }> = {
+      cancelled:       { name: 'Cancelled',        color: '#ef4444', icon: '✕',  sort_order: 5,  counts_as_revenue: false },
+      failed:          { name: 'Failed',            color: '#ef4444', icon: '✕',  sort_order: 21, counts_as_revenue: false },
+      delivered:       { name: 'Delivered',        color: '#10b981', icon: '✓',  sort_order: 11, counts_as_revenue: true  },
+      declined:        { name: 'Declined',          color: '#ef4444', icon: '✕',  sort_order: 20, counts_as_revenue: false },
+      failed:          { name: 'Failed',            color: '#ef4444', icon: '✕',  sort_order: 21, counts_as_revenue: false },
+      delivery_failed: { name: 'Delivery Failed',   color: '#ef4444', icon: '🚫', sort_order: 22, counts_as_revenue: false },
+      returned:        { name: 'Returned',          color: '#f97316', icon: '↩️', sort_order: 23, counts_as_revenue: false },
+      didnt_pickup:    { name: "Didn't Pickup",     color: '#f97316', icon: '⛔', sort_order: 24, counts_as_revenue: false },
+      no_answer_1:     { name: 'No Answer (1st)',   color: '#f59e0b', icon: '📞', sort_order: 30, counts_as_revenue: false },
+      no_answer_2:     { name: 'No Answer (2nd)',   color: '#f59e0b', icon: '📞', sort_order: 31, counts_as_revenue: false },
+      no_answer_3:     { name: 'No Answer (3rd)',   color: '#f59e0b', icon: '📞', sort_order: 32, counts_as_revenue: false },
+      waiting_callback:{ name: 'Waiting Callback',  color: '#3b82f6', icon: '📱', sort_order: 33, counts_as_revenue: false },
+      postponed:       { name: 'Postponed',         color: '#6366f1', icon: '⏰', sort_order: 34, counts_as_revenue: false },
+      fake:            { name: 'Fake',              color: '#dc2626', icon: '⚠️', sort_order: 40, counts_as_revenue: false },
+      duplicate:       { name: 'Duplicate',         color: '#9ca3af', icon: '📋', sort_order: 41, counts_as_revenue: false },
+    };
+
+    const preset = PRESET_CATALOG[key];
+    if (!preset) { res.status(400).json({ error: 'Unknown preset key' }); return; }
+
+    // Check not already exists
+    const existing = await pool.query(
+      'SELECT id FROM order_statuses WHERE client_id = $1 AND key = $2 LIMIT 1',
+      [clientId, key]
+    );
+    if (existing.rows.length) { res.status(409).json({ error: 'Status already exists' }); return; }
+
+    const result = await pool.query(
+      `INSERT INTO order_statuses (client_id, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue)
+       VALUES ($1, $2, $3, $4, $5, $6, false, true, $7)
+       RETURNING id, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue`,
+      [clientId, preset.name, key, preset.color, preset.icon, preset.sort_order, preset.counts_as_revenue]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Restore preset status error:', error);
+    res.status(500).json({ error: 'Failed to restore status' });
+  }
+};
+
+/**
  * Get custom order statuses for a client
  * GET /api/client/order-statuses
  */
@@ -1183,6 +1313,14 @@ export const getOrderStatuses: RequestHandler = async (req, res) => {
       'delivery_failed',
       'failed',
       'returned',
+      // call-center / quality control
+      'fake',
+      'duplicate',
+      'no_answer_1',
+      'no_answer_2',
+      'no_answer_3',
+      'waiting_callback',
+      'postponed',
     ]);
 
     const filtered = (result.rows || []).filter((s: any) => {
@@ -1317,9 +1455,11 @@ export const deleteOrderStatus: RequestHandler = async (req, res) => {
       return;
     }
 
-    // Check if this is a system status (cannot be deleted)
+    // The 4 core statuses are permanently locked; all others (including restored presets) can be removed
+    const CORE_LOCKED = ['pending', 'confirmed', 'at_delivery', 'completed'];
+
     const checkResult = await pool.query(
-      'SELECT is_system FROM order_statuses WHERE id = $1 AND client_id = $2',
+      'SELECT is_system, key FROM order_statuses WHERE id = $1 AND client_id = $2',
       [statusId, clientId]
     );
 
@@ -1328,13 +1468,14 @@ export const deleteOrderStatus: RequestHandler = async (req, res) => {
       return;
     }
 
-    if (checkResult.rows[0].is_system) {
-      res.status(400).json({ error: "Cannot delete system status. These statuses are required for platform functionality." });
+    const { is_system, key } = checkResult.rows[0];
+    if (is_system && CORE_LOCKED.includes(key)) {
+      res.status(400).json({ error: "Core statuses (pending, confirmed, at_delivery, completed) cannot be removed." });
       return;
     }
 
     const result = await pool.query(
-      'DELETE FROM order_statuses WHERE id = $1 AND client_id = $2 AND is_system = FALSE RETURNING id',
+      'DELETE FROM order_statuses WHERE id = $1 AND client_id = $2 RETURNING id',
       [statusId, clientId]
     );
 

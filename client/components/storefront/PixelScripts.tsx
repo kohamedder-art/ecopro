@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface PixelConfig {
   facebook_pixel_id: string | null;
@@ -10,6 +11,11 @@ interface PixelConfig {
 interface PixelScriptsProps {
   storeSlug: string;
 }
+
+const CANONICAL_SESSION_KEY = 'ecopro_session_id';
+const CANONICAL_VISITOR_KEY = 'ecopro_visitor_id';
+const LEGACY_SESSION_KEYS = [CANONICAL_SESSION_KEY, 'pixel_session_id'];
+const LEGACY_VISITOR_KEYS = [CANONICAL_VISITOR_KEY, 'pixel_visitor_id'];
 
 // Declare global types for pixel SDKs
 declare global {
@@ -26,7 +32,11 @@ declare global {
  * This component should be included in the storefront layout
  */
 export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
+  const location = useLocation();
   const [config, setConfig] = useState<PixelConfig | null>(null);
+  const pageEnterAtRef = useRef<number>(Date.now());
+  const maxScrollDepthRef = useRef<number>(0);
+  const lastFlushRef = useRef<string>('');
 
   // Set current store slug for backend tracking
   useEffect(() => {
@@ -44,20 +54,89 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       .then(data => {
         setConfig(data);
         setBackendPixelPreferenceFromConfig(data);
-        // Track PageView to our backend when pixel config loads (only once per page)
-        if (data.is_facebook_enabled || data.is_tiktok_enabled) {
-          // Prevent duplicate PageView on same URL
-          const lastPageViewKey = sessionStorage.getItem('last_pageview_key');
-          // Only use pathname for de-dupe so changing query params (fbclid/ttclid/utm) don't inflate views.
-          const currentKey = `${storeSlug}|${window.location.pathname}`;
-          if (lastPageViewKey !== currentKey) {
-            sessionStorage.setItem('last_pageview_key', currentKey);
-            trackPageView(storeSlug);
-          }
-        }
       })
       .catch(err => console.error('Failed to load pixel config:', err));
   }, [storeSlug]);
+
+  useEffect(() => {
+    pageEnterAtRef.current = Date.now();
+    maxScrollDepthRef.current = 0;
+    lastFlushRef.current = '';
+
+    const updateScrollDepth = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (docHeight <= 0) {
+        maxScrollDepthRef.current = 100;
+        return;
+      }
+      const percent = Math.max(0, Math.min(100, Math.round((scrollTop / docHeight) * 100)));
+      maxScrollDepthRef.current = Math.max(maxScrollDepthRef.current, percent);
+    };
+
+    const flushSessionSummary = (ended: boolean) => {
+      if (!storeSlug || !config || (!config.is_facebook_enabled && !config.is_tiktok_enabled)) return;
+
+      const flushKey = `${location.pathname}|${pageEnterAtRef.current}`;
+      if (lastFlushRef.current === flushKey) return;
+      lastFlushRef.current = flushKey;
+
+      const now = Date.now();
+      const url = new URL(window.location.href);
+      const payload = {
+        store_slug: storeSlug,
+        session_id: getSessionId(),
+        visitor_id: getVisitorId(),
+        page_url: window.location.href,
+        page_path: location.pathname,
+        max_scroll_depth: Math.max(maxScrollDepthRef.current, 0),
+        active_time_seconds: Math.max(1, Math.round((now - pageEnterAtRef.current) / 1000)),
+        locale: document.documentElement.lang || navigator.language || 'en',
+        referrer: document.referrer || '',
+        source: url.searchParams.get('utm_source') || '',
+        medium: url.searchParams.get('utm_medium') || '',
+        campaign_name: url.searchParams.get('utm_campaign') || '',
+        ended,
+      };
+
+      const body = JSON.stringify(payload);
+      if (navigator.sendBeacon) {
+        const blob = new Blob([body], { type: 'application/json' });
+        navigator.sendBeacon('/api/pixels/session', blob);
+        return;
+      }
+
+      fetch('/api/pixels/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    const onPageHide = () => flushSessionSummary(true);
+
+    updateScrollDepth();
+    window.addEventListener('scroll', updateScrollDepth, { passive: true });
+    window.addEventListener('pagehide', onPageHide);
+
+    return () => {
+      flushSessionSummary(false);
+      window.removeEventListener('scroll', updateScrollDepth);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [config, location.pathname, location.search, storeSlug]);
+
+  useEffect(() => {
+    if (!config || (!config.is_facebook_enabled && !config.is_tiktok_enabled)) return;
+
+    const lastPageViewKey = sessionStorage.getItem('last_pageview_key');
+    const currentKey = `${storeSlug}|${location.pathname}`;
+    if (lastPageViewKey !== currentKey) {
+      sessionStorage.setItem('last_pageview_key', currentKey);
+      trackPageView(storeSlug);
+    }
+  }, [config, location.pathname, storeSlug]);
 
   // Inject Facebook Pixel (supports multiple comma-separated IDs)
   useEffect(() => {
@@ -244,6 +323,7 @@ function trackToBackend(storeSlug: string, eventName: string, params?: Record<st
         ttclid,
         gclid,
         source: derivedSource,
+        locale: document.documentElement.lang || navigator.language || 'en',
       },
       page_url: window.location.href,
       product_id: params?.content_ids?.[0],
@@ -265,20 +345,38 @@ function trackPageView(storeSlug: string) {
 
 // Get or create session ID (per browser session)
 function getSessionId(): string {
-  let sessionId = sessionStorage.getItem('pixel_session_id');
+  let sessionId = '';
+  for (const key of LEGACY_SESSION_KEYS) {
+    const existing = sessionStorage.getItem(key);
+    if (existing) {
+      sessionId = existing;
+      break;
+    }
+  }
   if (!sessionId) {
     sessionId = 'sess_' + Math.random().toString(36).substring(2, 15);
-    sessionStorage.setItem('pixel_session_id', sessionId);
+  }
+  for (const key of LEGACY_SESSION_KEYS) {
+    sessionStorage.setItem(key, sessionId);
   }
   return sessionId;
 }
 
 // Get or create visitor ID (persistent across sessions)
 function getVisitorId(): string {
-  let visitorId = localStorage.getItem('pixel_visitor_id');
+  let visitorId = '';
+  for (const key of LEGACY_VISITOR_KEYS) {
+    const existing = localStorage.getItem(key);
+    if (existing) {
+      visitorId = existing;
+      break;
+    }
+  }
   if (!visitorId) {
     visitorId = 'vis_' + Math.random().toString(36).substring(2, 15);
-    localStorage.setItem('pixel_visitor_id', visitorId);
+  }
+  for (const key of LEGACY_VISITOR_KEYS) {
+    localStorage.setItem(key, visitorId);
   }
   return visitorId;
 }

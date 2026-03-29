@@ -55,3 +55,38 @@ tmp/template-editability-report.ts
 # Local backups
 *.dump
 backup-*.dump
+
+# One-off test/debug scripts (may contain credentials)
+test-*.cjs
+test-*.sh
+test-*.ts
+cookies.txt
+tsc_errors.txt
+build_output.txt
+
+# Temp files
+temp_*.tsx
+*.bak
+
+# One-off migration/fix scripts
+fix_*.cjs
+fix-*.cjs
+compress_*.cjs
+ultra_shrink.cjs
+upgrade_*.cjs
+replace_*.cjs
+add_magic.cjs
+delete_templates.cjs
+replace_tabs.cjs
+
+# SQL scratch files (not migrations)
+*.sql
+!migrations/*.sql
+!server/migrations/*.sql
+!demo-seed.sql
+
+# Prisma (not used)
+prisma/
+
+# Ghost files
+ghosts-to-delete.txt

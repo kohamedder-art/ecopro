@@ -9,7 +9,7 @@ import { z } from 'zod';
 // Images will be stored as base64 in the database instead of on disk
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
 async function requireStoreSlugOwner(req: any, storeSlug: string): Promise<number> {

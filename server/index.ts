@@ -49,6 +49,7 @@ import { usersRouter } from "./routes/users";
 import { deliveryRouter } from "./routes/delivery";
 import googleSheetsRouter from "./routes/google-sheets";
 import chatRouter from "./routes/chat";
+import aiRouter from "./routes/ai";
 import codesRouter from "./routes/codes";
 import customerBotRouter from "./routes/customer-bot";
 import pixelsRouter from "./routes/pixels";
@@ -61,6 +62,7 @@ import { hashPassword } from "./utils/auth";
 import { purgeOldSecurityEvents, securityMiddleware } from "./utils/security";
 import { startScheduledMessageWorker } from "./utils/scheduled-messages";
 import { startBotMessageWorker } from "./utils/bot-messaging";
+import { startGuardianWorker, stopGuardianWorker } from "./utils/guardian-worker";
 import oauthRouter from "./routes/oauth";
 import messengerRouter from "./routes/messenger";
 import legalRouter from "./routes/legal";
@@ -131,6 +133,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
           await initKernel().catch((e) => console.error('Kernel init failed:', e));
           startScheduledMessageWorker();
           startBotMessageWorker({ intervalMs: 30 * 1000 });
+          startGuardianWorker();
           return;
         }
         await runPendingMigrations();
@@ -138,6 +141,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
         // Start the scheduled message worker (for bot confirmations)
         startScheduledMessageWorker();
         startBotMessageWorker({ intervalMs: 30 * 1000 });
+        startGuardianWorker();
       })
       .catch((err) => {
         console.error('Failed to initialize database:', err);
@@ -996,6 +1000,14 @@ export function createServer(options?: { skipDbInit?: boolean }) {
     adminRoutes.deleteAdminNote
   );
 
+  // Growth metrics (admin overview analytics)
+  app.get(
+    "/api/admin/growth-metrics",
+    authenticate,
+    requireAdmin,
+    adminRoutes.getGrowthMetrics
+  );
+
   // Billing routes (both user and admin)
   app.get(
     "/api/billing/public",
@@ -1343,6 +1355,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
 
   // Order routes
   app.post("/api/orders/create", storefrontOrderLimiter, orderRoutes.createOrder); // Public - buyers can create orders
+  app.post("/api/client/orders", authenticate, requireClient, orderRoutes.createClientOrder); // Authenticated - store owner creates order manually
   app.get("/api/client/orders", authenticate, requireClient, orderRoutes.getClientOrders);
   app.get("/api/orders/new-count", authenticate, requireClient, orderRoutes.getNewOrdersCount); // Get count of new orders;
   
@@ -1355,6 +1368,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
   app.delete("/api/client/orders/:id", authenticate, requireClient, orderRoutes.deleteOrder);
   
   // Order statuses routes (authenticated - client only)
+  app.post("/api/client/order-statuses/restore-preset", authenticate, requireClient, orderRoutes.restorePresetStatus as any);
   app.get("/api/client/order-statuses", authenticate, requireClient, orderRoutes.getOrderStatuses);
   app.post("/api/client/order-statuses", authenticate, requireClient, orderRoutes.createOrderStatus);
   app.patch("/api/client/order-statuses/:id", authenticate, requireClient, orderRoutes.updateCustomOrderStatus as any);
@@ -1379,6 +1393,9 @@ export function createServer(options?: { skipDbInit?: boolean }) {
 
   // Chat routes (authenticated - handles both client and seller roles)
   app.use('/api/chat', authenticate, chatRouter);
+
+  // AI routes (mixed auth - each sub-route enforces its own role)
+  app.use('/api/ai', aiRouter);
 
   // Subscription codes routes (authenticated - client/seller operations)
   app.use('/api/codes', authenticate, codesRouter);

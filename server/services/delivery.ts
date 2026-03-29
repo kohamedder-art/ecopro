@@ -360,11 +360,20 @@ export class DeliveryService {
         throw new Error('No tracking number returned from courier; cannot generate label.');
       }
 
-      // Noest provides labels via a token-gated endpoint; serve it through our authenticated proxy.
+      // Serve token-gated label endpoints through our authenticated proxy.
       const companyRow = await pool.query('SELECT name FROM delivery_companies WHERE id = $1', [companyId]);
       const companyName = String(companyRow.rows?.[0]?.name || '').trim().toLowerCase();
-      const isNoest = companyName === 'noest' || companyName === 'noest express';
-      const labelUrl = shipmentResult.label_url || (isNoest ? `/api/delivery/orders/${orderId}/label` : null);
+      const proxyLabelCompanies = new Set([
+        'noest',
+        'noest express',
+        'dhd',
+        'dhd livraison',
+        'dhd livraison express',
+        'dolivroo',
+      ]);
+      const labelUrl = proxyLabelCompanies.has(companyName)
+        ? `/api/delivery/orders/${orderId}/label`
+        : shipmentResult.label_url || null;
 
       await pool.query(
         `INSERT INTO delivery_labels 

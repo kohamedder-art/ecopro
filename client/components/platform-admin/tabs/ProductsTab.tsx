@@ -1,0 +1,199 @@
+import { useState, useMemo } from 'react';
+import { Package, Search, Flag, Eye, Trash2, Grid, List, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+
+interface Product {
+  id: number;
+  title: string;
+  price: number;
+  seller_name: string;
+  seller_email: string;
+  status: string;
+  views: number;
+  created_at: string;
+  images?: string[];
+  flagged?: boolean;
+  flag_reason?: string;
+}
+
+interface Props {
+  products: Product[];
+  loading: boolean;
+  onFlag: (productId: number) => void;
+  onDelete: (productId: number) => void;
+  onUnflag: (productId: number) => void;
+}
+
+export default function ProductsTab({ products, loading, onFlag, onDelete, onUnflag }: Props) {
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'flagged' | 'active'>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  const filtered = useMemo(() => {
+    let result = products;
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(p => p.title?.toLowerCase().includes(q) || p.seller_name?.toLowerCase().includes(q));
+    }
+    if (filter === 'flagged') result = result.filter(p => p.flagged);
+    else if (filter === 'active') result = result.filter(p => !p.flagged);
+    return result;
+  }, [products, search, filter]);
+
+  const flaggedCount = products.filter(p => p.flagged).length;
+
+  return (
+    <div className="space-y-4">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4">
+          <p className="text-xs text-slate-400">Total Products</p>
+          <p className="text-2xl font-black text-white mt-1">{products.length}</p>
+        </div>
+        <div className="bg-emerald-500/10 rounded-2xl border border-emerald-500/30 p-4">
+          <p className="text-xs text-emerald-300">Active</p>
+          <p className="text-2xl font-black text-emerald-400 mt-1">{products.length - flaggedCount}</p>
+        </div>
+        <div className={`${flaggedCount > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-slate-800/40 border-slate-700/40'} rounded-2xl border p-4`}>
+          <p className={`text-xs ${flaggedCount > 0 ? 'text-red-300' : 'text-slate-400'}`}>Flagged</p>
+          <p className={`text-2xl font-black mt-1 ${flaggedCount > 0 ? 'text-red-400' : 'text-slate-500'}`}>{flaggedCount}</p>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search products or sellers..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 text-sm pl-10 pr-4 py-2.5 focus:border-blue-500/50 outline-none transition-all"
+          />
+        </div>
+        <div className="flex gap-1.5">
+          {(['all', 'flagged', 'active'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                filter === f ? 'bg-blue-600 text-white' : 'bg-slate-800/60 text-slate-400 hover:bg-slate-700'
+              }`}
+            >
+              {f === 'all' ? 'All' : f === 'flagged' ? `Flagged (${flaggedCount})` : 'Active'}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 bg-slate-800/60 rounded-lg p-0.5">
+          <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>
+            <Grid className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => setViewMode('list')} className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>
+            <List className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Products */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-400" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-slate-800/40 rounded-2xl border border-slate-700/40 py-12 text-center">
+          <Package className="w-10 h-10 mx-auto mb-2 text-slate-600" />
+          <p className="text-slate-500 text-sm">No products found</p>
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {filtered.slice(0, 40).map(p => (
+            <div key={p.id} className={`group bg-slate-800/40 backdrop-blur-xl rounded-2xl border ${p.flagged ? 'border-red-500/40' : 'border-slate-700/40'} overflow-hidden shadow-lg hover:shadow-xl transition-all`}>
+              {/* Image */}
+              <div className="aspect-square bg-slate-900/60 relative overflow-hidden">
+                {p.images?.[0] ? (
+                  <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="w-8 h-8 text-slate-700" />
+                  </div>
+                )}
+                {p.flagged && (
+                  <div className="absolute top-2 left-2">
+                    <Badge className="bg-red-600 text-white text-[10px] px-1.5 py-0.5">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      Flagged
+                    </Badge>
+                  </div>
+                )}
+                {/* Hover actions */}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  {p.flagged ? (
+                    <Button size="sm" onClick={() => onUnflag(p.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8">
+                      <CheckCircle className="w-3 h-3 mr-1" /> Unflag
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => onFlag(p.id)} className="bg-orange-600 hover:bg-orange-700 text-white text-xs h-8">
+                      <Flag className="w-3 h-3 mr-1" /> Flag
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={() => onDelete(p.id)} variant="destructive" className="text-xs h-8">
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="p-3">
+                <h4 className="text-xs font-medium text-white truncate">{p.title}</h4>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs font-bold text-emerald-400">{Number(p.price).toLocaleString()} DA</span>
+                  <div className="flex items-center gap-1 text-slate-500">
+                    <Eye className="w-3 h-3" />
+                    <span className="text-[10px]">{p.views}</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1 truncate">{p.seller_name}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 overflow-hidden">
+          <div className="divide-y divide-slate-700/30">
+            {filtered.slice(0, 50).map(p => (
+              <div key={p.id} className="group flex items-center gap-3 p-3 hover:bg-slate-900/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-slate-900/60 overflow-hidden flex-shrink-0">
+                  {p.images?.[0] ? (
+                    <img src={p.images[0]} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"><Package className="w-4 h-4 text-slate-700" /></div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white truncate">{p.title}</p>
+                  <p className="text-[11px] text-slate-500">{p.seller_name} · {p.views} views</p>
+                </div>
+                <span className="text-xs font-bold text-emerald-400">{Number(p.price).toLocaleString()} DA</span>
+                {p.flagged && <Badge className="bg-red-500/20 text-red-300 text-[10px]">Flagged</Badge>}
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {p.flagged ? (
+                    <button onClick={() => onUnflag(p.id)} className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <button onClick={() => onFlag(p.id)} className="p-1.5 rounded-lg hover:bg-orange-500/20 text-slate-400 hover:text-orange-300">
+                      <Flag className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button onClick={() => onDelete(p.id)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-300">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

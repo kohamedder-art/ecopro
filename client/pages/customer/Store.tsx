@@ -4,8 +4,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, Search, Eye, Copy, ExternalLink, Edit, Trash2, 
   Star, Package, DollarSign, Image as ImageIcon, Settings,
-  Link as LinkIcon, Check, Share2, Grid, List, Store as StoreIcon
+  Link as LinkIcon, Check, Share2, Grid, List, Store as StoreIcon,
+  Sparkles, Loader2
 } from 'lucide-react';
+import { useAI } from '@/hooks/useAI';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +63,91 @@ interface StoreProduct {
   slug: string;
   views: number;
   created_at: string;
+}
+
+// ─── AI Helper Components (store owner only, never shown to customers) ───────
+
+function AIGenerateDescription({
+  title,
+  category,
+  onGenerate,
+}: {
+  title: string;
+  category: string;
+  onGenerate: (desc: string) => void;
+}) {
+  const { call, loading } = useAI('/api/ai/product/description');
+  const handleClick = async () => {
+    if (!title.trim()) return;
+    const data = await call({ title, category });
+    if (data?.description) onGenerate(data.description);
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading || !title.trim()}
+      className="flex items-center gap-1 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 disabled:opacity-40 transition-colors"
+      title="Generate description with AI"
+    >
+      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+      AI Generate
+    </button>
+  );
+}
+
+function AISuggestTitles({
+  currentTitle,
+  category,
+  onSelect,
+}: {
+  currentTitle: string;
+  category: string;
+  onSelect: (title: string) => void;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const { call, loading } = useAI('/api/ai/product/title');
+
+  const handleClick = async () => {
+    if (!currentTitle.trim()) return;
+    const data = await call({ currentTitle, category });
+    if (data?.suggestions?.length) {
+      setSuggestions(data.suggestions);
+      setOpen(true);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={loading || !currentTitle.trim()}
+        className="flex items-center gap-1 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 disabled:opacity-40 transition-colors"
+        title="Suggest better titles with AI"
+      >
+        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+        AI Suggest
+      </button>
+      {open && suggestions.length > 0 && (
+        <div className="absolute left-0 top-full mt-1 z-[200] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-2 w-[260px]">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider px-2 pb-1">Pick a title</p>
+          {suggestions.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => { onSelect(s); setOpen(false); }}
+              className="w-full text-right text-sm px-2 py-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-slate-700 dark:text-slate-200 transition-colors"
+            >
+              {s}
+            </button>
+          ))}
+          <button type="button" onClick={() => setOpen(false)} className="w-full text-xs text-slate-400 mt-1 hover:text-slate-600 text-center">Cancel</button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Store() {
@@ -438,7 +525,7 @@ export default function Store() {
   const [productFormServerError, setProductFormServerError] = useState<string | null>(null);
   const titleIsValid = String(formData.title || '').trim().length > 0;
   const priceValue = formData.price;
-  const priceIsValid = typeof priceValue === 'number' && Number.isFinite(priceValue) && priceValue > 0;
+  const priceIsValid = Number(priceValue) > 0;
   const canSubmitProduct = titleIsValid && priceIsValid;
   const isActiveWithoutStock =
     (formData.status || 'active') === 'active' &&
@@ -598,7 +685,6 @@ export default function Store() {
   };
   // Modal and tab states
   const [showStoreSettingsModal, setShowStoreSettingsModal] = useState(false);
-  const [selectedTab, setSelectedTab] = useState(0);
   const [storeSettings, setStoreSettings] = useState<any>({
     store_slug: '',
     store_name: '',
@@ -630,22 +716,9 @@ export default function Store() {
 
     if (!hasOnboardingFlag && !openSettings && !tab && !action) return;
 
-    const tabMap: Record<string, number> = {
-      branding: 0,
-      customization: 1,
-      templates: 2,
-      storeUrl: 3,
-      statsHelp: 4,
-      help: 4,
-    };
-
     if (openSettings || tab) {
       setShowStoreSettingsModal(true);
       markOnboardingStepComplete('store_settings_opened');
-    }
-
-    if (tab && tabMap[tab] != null) {
-      setSelectedTab(tabMap[tab]);
     }
 
     if (action === 'create-product' || action === 'add-product' || action === 'createProduct') {
@@ -663,12 +736,12 @@ export default function Store() {
     navigate(location.pathname, { replace: true });
   }, [location.pathname, location.search, navigate]);
 
-  // Mark template step once user visits the Templates tab.
+  // Mark template step once user opens the settings/templates modal.
   useEffect(() => {
-    if (showStoreSettingsModal && selectedTab === 2) {
+    if (showStoreSettingsModal) {
       markOnboardingStepComplete('templates_opened');
     }
-  }, [showStoreSettingsModal, selectedTab]);
+  }, [showStoreSettingsModal]);
     // Handlers for uploads and removals
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -918,10 +991,10 @@ export default function Store() {
 
     const toUpload = files.slice(0, remaining);
 
-    // Validate upfront (2MB max)
+    // Validate upfront (10MB max)
     for (const file of toUpload) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast({ variant: 'destructive', title: 'Upload failed', description: 'Each image must be less than 2MB.' });
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ variant: 'destructive', title: 'Upload failed', description: 'Each image must be less than 10MB.' });
         e.target.value = '';
         return;
       }
@@ -1299,7 +1372,6 @@ export default function Store() {
                 variant="outline"
                 onClick={() => {
                   setShowStoreSettingsModal(true);
-                  setSelectedTab(2);
                   markOnboardingStepComplete('store_settings_opened');
                 }}
               >
@@ -1310,9 +1382,11 @@ export default function Store() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setShowStoreSettingsModal(true);
-                  setSelectedTab(3);
-                  markOnboardingStepComplete('store_settings_opened');
+                  const url = getStorefrontFullUrl(storeSettings);
+                  if (url) {
+                    navigator.clipboard.writeText(url);
+                    toast({ title: 'URL Copied!', description: 'Store URL copied to clipboard' });
+                  }
                 }}
               >
                 <LinkIcon className="w-4 h-4 mr-2" />
@@ -1337,15 +1411,15 @@ export default function Store() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="bg-card rounded-lg border overflow-hidden hover:shadow-lg transition-all"
+                className="group bg-card rounded-lg border overflow-hidden hover:shadow-lg transition-all"
               >
                 {/* Image */}
-                <div className="relative aspect-square bg-muted">
+                <div className="relative aspect-square bg-muted overflow-hidden">
                   {product.images?.[0] ? (
                     <img
                       src={product.images[0]}
                       alt={product.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -1376,49 +1450,24 @@ export default function Store() {
                      product.status === 'draft' ? t('store.drafts') : 
                      t('store.archived')}
                   </Badge>
+                  {/* Hover action tray */}
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 p-2 bg-gradient-to-t from-black/60 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-200">
+                    <button onClick={() => handleGetShareLink(product)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 backdrop-blur text-white hover:bg-white/30 transition-colors"><Share2 className="w-3 h-3" /></button>
+                    <button onClick={() => openEditModal(product)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/80 backdrop-blur text-white hover:bg-primary transition-colors"><Edit className="w-3 h-3" /></button>
+                    <button onClick={() => openDeleteDialog(product)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/80 backdrop-blur text-white hover:bg-red-500 transition-colors"><Trash2 className="w-3 h-3" /></button>
+                  </div>
                 </div>
 
-                <div className="p-2 space-y-1.5">
+                <div className="p-2">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-bold text-primary">
-                        ${Math.round(Number(product.price) || 0)}
+                    <span className="text-sm font-bold text-primary">
+                      ${Math.round(Number(product.price) || 0)}
+                    </span>
+                    {product.original_price && (
+                      <span className="text-xs text-muted-foreground line-through">
+                        ${Math.round(Number(product.original_price) || 0)}
                       </span>
-                      {product.original_price && (
-                        <span className="text-xs text-muted-foreground line-through ml-1">
-                          ${Math.round(Number(product.original_price) || 0)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-1.5 pt-1.5 border-t">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 h-7 text-xs px-2"
-                      onClick={() => handleGetShareLink(product)}
-                    >
-                      <Share2 className="w-3 h-3 mr-1" />
-                      {t('store.share')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 w-7 p-0"
-                      onClick={() => openEditModal(product)}
-                    >
-                      <Edit className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 w-7 p-0"
-                      onClick={() => openDeleteDialog(product)}
-                    >
-                      <Trash2 className="w-3 h-3 text-red-500" />
-                    </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1427,7 +1476,7 @@ export default function Store() {
         ) : (
           <div className="bg-card rounded-xl border divide-y">
             {filteredProducts.map((product) => (
-              <div key={product.id} className="p-4 hover:bg-muted/50 transition-colors">
+              <div key={product.id} className="group p-4 hover:bg-muted/50 transition-colors">
                 <div className="flex items-center gap-4">
                   <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                     {product.images?.[0] ? (
@@ -1479,7 +1528,7 @@ export default function Store() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       size="sm"
                       variant="outline"
@@ -1853,7 +1902,14 @@ export default function Store() {
                 <h3 className="text-lg font-bold text-primary">{t('store.productForm.basicInfo')}</h3>
 
                 <div className="space-y-1">
-                  <Label htmlFor="title" className="text-base font-bold">{t('store.productForm.title')} *</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="title" className="text-base font-bold">{t('store.productForm.title')} *</Label>
+                    <AISuggestTitles
+                      currentTitle={formData.title || ''}
+                      category={formData.category || ''}
+                      onSelect={(title) => setFormData({ ...formData, title })}
+                    />
+                  </div>
                   <Input
                     id="title"
                     value={formData.title || ''}
@@ -1867,7 +1923,14 @@ export default function Store() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="description" className="text-base font-bold">{t('store.productForm.description')}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="description" className="text-base font-bold">{t('store.productForm.description')}</Label>
+                    <AIGenerateDescription
+                      title={formData.title || ''}
+                      category={formData.category || ''}
+                      onGenerate={(desc) => setFormData({ ...formData, description: desc })}
+                    />
+                  </div>
                   <Textarea
                     id="description"
                     value={formData.description || ''}
@@ -2196,7 +2259,7 @@ export default function Store() {
                       {t('store.productForm.imageUrlHint')}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Upload up to 10 images. Each image must be &lt; 2MB.
+                      Upload up to 10 images. Each image must be &lt; 10MB.
                     </p>
                     <Input
                       id="images"
@@ -2336,7 +2399,7 @@ export default function Store() {
         </div>
       </div>
 
-      {/* Store Settings Modal with Tabs */}
+      {/* Store Settings Modal — Template Chooser Only */}
       <Dialog
         open={showStoreSettingsModal}
         onOpenChange={(open) => {
@@ -2346,290 +2409,17 @@ export default function Store() {
       >
         <DialogContent className="max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
           <DialogHeader className="pb-4 border-b border-slate-200 dark:border-slate-700">
-            <DialogTitle className="text-2xl font-bold">{t('store.settings')}</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">{t('store.settingsModal.tabs.templates')}</DialogTitle>
             <DialogDescription className="text-base">
-              {t('store.settingsModal.desc')}
+              {t('templates.chooseTemplateDesc')}
             </DialogDescription>
           </DialogHeader>
 
-          {/* Tabs Navigation */}
-          <div className="flex gap-1 mb-6 border-b-2 border-slate-200 dark:border-slate-700 overflow-x-auto bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-            {[
-              t('store.settingsModal.tabs.branding'),
-              t('store.settingsModal.tabs.customization'),
-              t('store.settingsModal.tabs.templates'),
-              t('store.settingsModal.tabs.storeUrl'),
-              t('store.settingsModal.tabs.statsHelp'),
-            ].map((tab, idx) => (
-              <button
-                key={tab}
-                className={`px-4 py-2.5 rounded-md font-semibold transition-all focus:outline-none whitespace-nowrap text-sm ${
-                  selectedTab === idx 
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-md ring-2 ring-blue-300 dark:ring-blue-600' 
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-                onClick={() => setSelectedTab(idx)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab Panels */}
           <div className="py-4">
-            {selectedTab === 0 && (
-              <div className="space-y-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 p-6 border border-blue-200 dark:border-slate-700 shadow-sm dark:text-slate-100">
-                <h3 className="text-base font-semibold">{t('store.settingsModal.brandingTitle')}</h3>
-                <div className="rounded-md border border-blue-200/60 bg-white/70 dark:bg-slate-900/30 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
-                  <div className="font-semibold">{t('store.settingsModal.quickTip.title')}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {t('store.settingsModal.quickTip.desc')}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Store Name *</Label>
-                  <Input
-                    placeholder="My Awesome Store"
-                    value={storeSettings.store_name || ''}
-                    onChange={(e) => setStoreSettings((s: any) => ({ ...s, store_name: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('store.settingsModal.storeNameHint')}</p>
-                  {/* Live Store URL Preview */}
-                  <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <LinkIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
-                      <span className="text-xs font-semibold text-green-700 dark:text-green-300">Your Store URL</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-sm px-2 py-1.5 bg-white dark:bg-slate-800 rounded border border-green-200 dark:border-green-700 text-green-800 dark:text-green-200 font-mono truncate">
-                        {window.location.origin}/store/{storeSettings.store_name ? storeNameToSlug(storeSettings.store_name) : 'your-store-name'}
-                      </code>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0 border-green-300 hover:bg-green-100 dark:border-green-700 dark:hover:bg-green-900/30"
-                        onClick={() => {
-                          const url = `${window.location.origin}/store/${storeSettings.store_name ? storeNameToSlug(storeSettings.store_name) : ''}`;
-                          navigator.clipboard.writeText(url);
-                          toast({ title: 'URL Copied!', description: 'Store URL copied to clipboard' });
-                        }}
-                        disabled={!storeSettings.store_name}
-                      >
-                        <Copy className="w-3 h-3" />
-                      </Button>
-                    </div>
-                    <p className="text-[10px] text-green-600 dark:text-green-400 mt-1.5">This URL updates live as you type your store name</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Seller Name *</Label>
-                  <Input
-                    placeholder="John Doe"
-                    value={storeSettings.seller_name || ''}
-                    onChange={(e) => setStoreSettings((s: any) => ({ ...s, seller_name: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('store.settingsModal.sellerNameHint')}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Seller Email (Gmail)</Label>
-                  <Input
-                    placeholder="you@gmail.com"
-                    value={storeSettings.seller_email || ''}
-                    onChange={(e) => setStoreSettings((s: any) => ({ ...s, seller_email: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('store.settingsModal.sellerEmailHint')}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Store Description</Label>
-                  <Textarea
-                    placeholder="Tell customers what makes your store special..."
-                    value={storeSettings.store_description || ''}
-                    onChange={(e) => setStoreSettings((s: any) => ({ ...s, store_description: e.target.value }))}
-                    rows={3}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('store.settingsModal.storeDescriptionHint')}</p>
-                </div>
-              </div>
-            )}
-            {selectedTab === 1 && (
-              <div className="space-y-3 rounded-xl bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-transparent dark:via-transparent dark:to-transparent p-3 shadow-sm dark:bg-slate-900 dark:text-slate-100 overflow-hidden max-w-full">
-                <h3 className="text-base font-semibold">{t('store.settingsModal.customizationTitle')}</h3>
-                {/* Store Logo */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Store Logo</Label>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="flex-1">
-                      <Input
-                        placeholder="https://example.com/logo.png"
-                        value={storeSettings.store_logo || ''}
-                        onChange={(e) => setStoreSettings((s: any) => ({ ...s, store_logo: e.target.value }))}
-                        className="max-w-0"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={uploadingLogo}
-                      onClick={() => document.getElementById('logo-upload')?.click()}
-                    >
-                      {uploadingLogo ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <ImageIcon className="w-4 h-4 mr-2" />
-                          Upload
-                        </>
-                      )}
-                    </Button>
-                    <input
-                      id="logo-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                    />
-                  </div>
-                  {storeSettings.store_logo ? (
-                    <div className="mt-2">
-                      <div className="relative w-40 h-40 rounded overflow-hidden border bg-white dark:bg-black">
-                        <img src={storeSettings.store_logo} alt="logo" className="w-full h-full object-contain" />
-                        <button type="button" onClick={removeLogo} className="absolute top-1 right-1 bg-white/80 dark:bg-black/60 text-red-600 rounded-full p-1 text-xs">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                  <p className="text-xs text-muted-foreground">{t('store.settingsModal.logoHint')}</p>
-                </div>
-                {/* Banner, Hero Images, Store Images */}
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Banner Image URL</Label>
-                    <div className="flex gap-2 min-w-0">
-                      <Input
-                        placeholder="https://example.com/banner.jpg"
-                        value={storeSettings.banner_url || ''}
-                        onChange={(e) => setStoreSettings((s: any) => ({ ...s, banner_url: e.target.value }))}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={uploadingBanner}
-                        onClick={() => document.getElementById('banner-upload')?.click()}
-                      >
-                        {uploadingBanner ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <ImageIcon className="w-4 h-4 mr-2" />
-                            Upload
-                          </>
-                        )}
-                      </Button>
-                      <input
-                        id="banner-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleBannerUpload}
-                        className="hidden"
-                      />
-                    </div>
-                    {storeSettings.banner_url ? (
-                        <div className="mt-2">
-                        <div className="relative w-full h-28 overflow-hidden rounded bg-muted">
-                          <img src={storeSettings.banner_url} alt="banner" className="w-full h-full object-cover" />
-                          <button type="button" onClick={removeBanner} className="absolute top-2 right-2 bg-white/80 dark:bg-black/60 rounded-full p-1 text-xs">
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                    <p className="text-xs text-muted-foreground">{t('store.settingsModal.bannerHint')}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Hero Images (main + tiles)</Label>
-                    <div className="grid grid-cols-1 gap-3 items-start max-w-full overflow-hidden">
-                      {/* Main hero image upload removed */}
-                      {/* Store Images upload removed */}
-                      <div className="md:col-span-1 grid grid-cols-2 gap-2">
-                        <div>
-                          <div className="text-xs mb-2">Tile 1</div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <input id="hero-tile1-upload" type="file" accept="image/*" onChange={(e) => handleFieldUpload('hero_tile1_url', e)} className="hidden" />
-                            <Button type="button" variant="outline" onClick={() => document.getElementById('hero-tile1-upload')?.click()}>Upload Tile 1</Button>
-                            {storeSettings.hero_tile1_url ? (
-                              <div className="ml-3 mt-2">
-                                <div className="relative w-20 h-12 rounded overflow-hidden">
-                                  <img src={storeSettings.hero_tile1_url} alt="hero-t1" className="w-full h-full object-cover" />
-                                  <button type="button" onClick={() => removeField('hero_tile1_url')} className="absolute top-1 right-1 bg-white/80 dark:bg-black/60 rounded-full p-1 text-xs">
-                                    <Trash2 className="w-3 h-3 text-red-600" />
-                                  </button>
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs mb-2">Tile 2</div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <input id="hero-tile2-upload" type="file" accept="image/*" onChange={(e) => handleFieldUpload('hero_tile2_url', e)} className="hidden" />
-                            <Button type="button" variant="outline" onClick={() => document.getElementById('hero-tile2-upload')?.click()}>Upload Tile 2</Button>
-                            {storeSettings.hero_tile2_url ? (
-                              <div className="ml-3 mt-2">
-                                <div className="relative w-20 h-12 rounded overflow-hidden">
-                                  <img src={storeSettings.hero_tile2_url} alt="hero-t2" className="w-full h-full object-cover" />
-                                  <button type="button" onClick={() => removeField('hero_tile2_url')} className="absolute top-1 right-1 bg-white/80 dark:bg-black/60 rounded-full p-1 text-xs">
-                                    <Trash2 className="w-3 h-3 text-red-600" />
-                                  </button>
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">{t('store.settingsModal.heroTilesHint')}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            {selectedTab === 2 && (
-              <TemplatesTab 
-                storeSettings={storeSettings}
-                setStoreSettings={setStoreSettings}
-              />
-            )}
-            {selectedTab === 3 && (
-              <div className="space-y-3 rounded-xl bg-white/70 dark:bg-slate-900/30 p-4 border border-slate-200 dark:border-slate-700">
-                <h3 className="text-base font-semibold">{t('store.settingsModal.storeUrlTitle')}</h3>
-                <p className="text-sm text-muted-foreground">{t('store.settingsModal.storeUrlDesc')}</p>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">{t('store.settingsModal.storeUrlLabel')}</Label>
-                  <Input readOnly value={getStorefrontFullUrl(storeSettings) || ''} />
-                  <p className="text-xs text-muted-foreground">{t('store.settingsModal.storeUrlHint')}</p>
-                </div>
-              </div>
-            )}
-            {selectedTab === 4 && (
-              <div className="space-y-3 rounded-xl bg-white/70 dark:bg-slate-900/30 p-4 border border-slate-200 dark:border-slate-700">
-                <h3 className="text-base font-semibold">{t('store.settingsModal.helpTitle')}</h3>
-                <ul className="text-sm text-slate-700 dark:text-slate-200 space-y-2 list-disc pl-5">
-                  <li>{t('store.settingsModal.help.products')}</li>
-                  <li>{t('store.settingsModal.help.stock')}</li>
-                  <li>{t('store.settingsModal.help.addFromStock')}</li>
-                  <li>{t('store.settingsModal.help.important')}</li>
-                </ul>
-              </div>
-            )}
-            {/* Store URL, product summary badges and 'How to Use Your Store' moved to Store Dashboard */}
+            <TemplatesTab 
+              storeSettings={storeSettings}
+              setStoreSettings={setStoreSettings}
+            />
           </div>
 
           <DialogFooter>

@@ -1,429 +1,209 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useTranslation } from "@/lib/i18n";
-import { Sparkles, Menu, X, LogOut, LayoutDashboard, ShoppingBag, Crown, PlusCircle, ChevronDown, MessageCircle } from "lucide-react";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation, Locale } from "@/lib/i18n";
+import { 
+  Zap, 
+  Sparkles, 
+  Menu, 
+  X, 
+  LogOut, 
+  LayoutDashboard, 
+  ShoppingBag, 
+  Crown, 
+  PlusCircle, 
+  ChevronDown, 
+  MessageCircle,
+  Sun,
+  Moon,
+  User as UserIcon,
+  Headset,
+  Info,
+  CreditCard
+} from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { authApi } from "@/lib/auth";
-import { storeNameToSlug } from "@/utils/storeUrl";
 import { safeJsonParse } from "@/utils/safeJson";
-import { useNotifications } from "@/contexts/NotificationContext";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 
 export default function Header() {
   const { toggle, theme } = useTheme();
-  const { locale, setLocale, t } = useTranslation();
+  const { t, locale, setLocale } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
-  const { unreadMessagesCount } = useNotifications();
-
-  const user = typeof window !== "undefined" ? safeJsonParse(localStorage.getItem("user"), null as any) : null;
+  
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const user = userStr ? safeJsonParse(userStr, null as any) : null;
   const isAdmin = user?.role === "admin";
   const isSeller = user?.role === "seller";
-  const isClient = !isAdmin && !isSeller;
-
+  const isClient = user?.role === "client";
+  
   const { storeSlug } = useStoreSettings({ enabled: Boolean(user && isClient) });
 
-  const unreadCount = unreadMessagesCount;
-
-  function handleLogout() {
+  const handleLogout = async () => {
     try {
       authApi.logout();
-    } catch {
-      localStorage.removeItem("authToken");
       localStorage.removeItem("user");
-      localStorage.removeItem("isAdmin");
       navigate("/");
+      window.location.reload();
+    } catch (error) {
+      console.error("Logout failed:", error);
     }
-  }
+  };
 
-  const tr = (key: string, fallback: string) => t(key) || fallback;
+  const navLinks = [
+    { name: t("menu.pricing") || "الأسعار", href: "/pricing", icon: CreditCard },
+    { name: t("menu.about") || "حولنا", href: "/about", icon: Info },
+    { name: t("features.support") || "الدعم", href: "/contact", icon: Headset },
+  ];
 
+  const getDashboardLink = () => {
+    if (isAdmin) return "/platform-admin";
+    return "/dashboard";
+  };
+
+  const isDark = theme === "dark" || document.documentElement.classList.contains("dark");
+
+  const changeLang = (l: Locale) => {
+    setLocale(l);
+    setLangMenuOpen(false);
+  };
+
+  // Ensure menu closes when clicking outside could be added here later if needed
+  
   return (
-    <>
-      <header className="sticky top-0 z-50 w-full border-b border-primary/20 bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90 shadow-lg shadow-primary/10 dark:bg-gradient-to-r dark:from-primary/15 dark:via-accent/10 dark:to-primary/15">
-        <div className="container mx-auto" style={{ padding: '0 clamp(0.75rem, 2vh, 1.25rem)' }}>
-          <div className="flex items-center justify-between" style={{ height: 'clamp(3rem, 7vh, 4rem)' }}>
-            {/* Logo & Brand */}
-            <Link to="/" className="flex items-center group z-10" style={{ gap: 'clamp(0.5rem, 1.2vh, 0.625rem)' }}>
-              {/* Modern Logo */}
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-accent/30 rounded-xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-60"></div>
-                <div 
-                  className="relative flex items-center justify-center rounded-lg bg-gradient-to-br from-primary via-accent to-purple-600 shadow-lg shadow-primary/30 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300 border border-primary/20"
-                  style={{ width: 'clamp(2rem, 4.5vh, 2.5rem)', height: 'clamp(2rem, 4.5vh, 2.5rem)' }}
-                >
-                  <img
-                    src="/brand/logo.png"
-                    alt="Sahla4Eco"
-                    className="drop-shadow rounded-md"
-                    style={{ width: 'clamp(1.5rem, 3.2vh, 2rem)', height: 'clamp(1.5rem, 3.2vh, 2rem)', objectFit: 'contain' }}
-                  />
-                  <div className="absolute -top-0.5 -right-0.5 bg-green-500 rounded-full border border-background animate-pulse" style={{ width: 'clamp(0.5rem, 1vh, 0.5rem)', height: 'clamp(0.5rem, 1vh, 0.5rem)' }}></div>
-                </div>
-              </div>
-              
-              <div className="hidden sm:block">
-                <span className="font-black text-foreground drop-shadow bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent" style={{ fontSize: 'clamp(1rem, 2.2vh, 1.125rem)' }}>
-                  {t("brand")}
-                </span>
-                <div className="text-foreground/70 font-semibold" style={{ fontSize: 'clamp(0.6rem, 1.1vh, 0.625rem)', marginTop: '-0.125rem' }}>
-                  {t("header.ecommercePlatform") || t("home.featuresSubtitle") || "E-commerce Platform"}
-                </div>
-              </div>
-            </Link>
-
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center" style={{ gap: 'clamp(0.25rem, 0.6vh, 0.375rem)' }}>
-              <Link 
-                to="/pricing" 
-                className="rounded-md font-semibold text-foreground hover:text-primary hover:bg-primary/10 transition-all"
-                style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.5vh, 0.875rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.875rem)' }}
-              >
-                {t("header.pricing") || t("menu.pricing") || "Pricing"}
-              </Link>
-              <Link 
-                to="/about" 
-                className="rounded-md font-semibold text-foreground hover:text-primary hover:bg-primary/10 transition-all"
-                style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.5vh, 0.875rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.875rem)' }}
-              >
-                {tr("header.about", "About")}
-              </Link>
-              {user && isClient ? (
-                <Link 
-                  to="/chat" 
-                  className="rounded-md font-semibold text-foreground hover:text-primary hover:bg-primary/10 transition-all relative flex items-center"
-                  style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.5vh, 0.875rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.875rem)', gap: 'clamp(0.25rem, 0.5vh, 0.375rem)' }}
-                >
-                  <MessageCircle style={{ width: 'clamp(0.9rem, 1.8vh, 1rem)', height: 'clamp(0.9rem, 1.8vh, 1rem)' }} />
-                  {tr("header.support", "Support")}
-                  {unreadCount > 0 && (
-                    <span 
-                      className="absolute -top-1 -right-1 flex items-center justify-center rounded-full bg-red-500 text-white font-bold animate-pulse"
-                      style={{
-                        minWidth: 'clamp(1rem, 2vh, 1.25rem)',
-                        height: 'clamp(1rem, 2vh, 1.25rem)',
-                        fontSize: 'clamp(0.5rem, 1vh, 0.625rem)',
-                        padding: '0 clamp(0.125rem, 0.3vh, 0.25rem)',
-                      }}
-                    >
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </Link>
-              ) : (
-                <Link 
-                  to="/contact" 
-                  className="rounded-md font-semibold text-foreground hover:text-primary hover:bg-primary/10 transition-all"
-                  style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.5vh, 0.875rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.875rem)' }}
-                >
-                  {tr("header.support", "Support")}
-                </Link>
-              )}
-              {user && isClient && (
-                <>
-                  <Link 
-                    to={storeSlug ? `/store/${storeSlug}` : "/dashboard/preview"} 
-                    className="rounded-md font-semibold text-accent hover:bg-accent/10 transition-all border border-accent/20"
-                    style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.5vh, 0.875rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.875rem)' }}
-                  >
-                    {tr("header.myStore", "My Store")}
-                  </Link>
-                </>
-              )}
-            </nav>
-
-            {/* Right Side Actions */}
-            <div className="flex items-center" style={{ gap: 'clamp(0.375rem, 1vh, 0.5rem)' }}>
-              {/* Language Selector */}
-              <div className="hidden md:block relative">
-                <button 
-                  onClick={() => setLangMenuOpen(!langMenuOpen)}
-                  className="rounded-md border border-primary/20 bg-primary/5 font-semibold hover:bg-primary/10 transition-all flex items-center"
-                  style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.5rem, 1.2vh, 0.625rem)', fontSize: 'clamp(0.75rem, 1.4vh, 0.8rem)', gap: 'clamp(0.3rem, 0.6vh, 0.375rem)' }}
-                >
-                  <span>{locale === 'ar' ? '🇩🇿' : locale === 'en' ? '🇬🇧' : '🇫🇷'}</span>
-                  <ChevronDown style={{ width: 'clamp(0.75rem, 1.4vh, 0.875rem)', height: 'clamp(0.75rem, 1.4vh, 0.875rem)' }} />
-                </button>
-                
-                {langMenuOpen && (
-                  <div className="absolute top-full mt-1 right-0 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 min-w-max">
-                    <button 
-                      onClick={() => { setLocale('ar'); setLangMenuOpen(false); }}
-                      className="w-full text-left text-black dark:text-white hover:bg-gray-100 dark:hover:bg-slate-700 first:rounded-t-lg transition-colors"
-                      style={{ padding: 'clamp(0.5rem, 1.2vh, 0.625rem) clamp(0.75rem, 1.5vh, 0.875rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.875rem)' }}
-                    >
-                      🇩🇿 العربية
-                    </button>
-                    <button 
-                      onClick={() => { setLocale('en'); setLangMenuOpen(false); }}
-                      className="w-full text-left text-black dark:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                      style={{ padding: 'clamp(0.5rem, 1.2vh, 0.625rem) clamp(0.75rem, 1.5vh, 0.875rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.875rem)' }}
-                    >
-                      🇬🇧 EN
-                    </button>
-                    <button 
-                      onClick={() => { setLocale('fr'); setLangMenuOpen(false); }}
-                      className="w-full text-left text-black dark:text-white hover:bg-gray-100 dark:hover:bg-slate-700 last:rounded-b-lg transition-colors"
-                      style={{ padding: 'clamp(0.5rem, 1.2vh, 0.625rem) clamp(0.75rem, 1.5vh, 0.875rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.875rem)' }}
-                    >
-                      🇫🇷 FR
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Theme Toggle */}
-              <button 
-                onClick={toggle} 
-                aria-label="Toggle Theme"
-                className="rounded-md border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all"
-                style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem)' }}
-              >
-                {theme === "dark" ? (
-                  <span style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1rem)' }}>🌙</span>
-                ) : (
-                  <span style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1rem)' }}>☀️</span>
-                )}
-              </button>
-
-              {!user ? (
-                <>
-                  <Link to="/login" className="hidden md:inline-block">
-                    <Button 
-                      variant="ghost" 
-                      className="font-semibold text-foreground hover:text-primary hover:bg-primary/10"
-                      style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.2vh, 0.75rem)', fontSize: 'clamp(0.8rem, 1.5vh, 0.875rem)', height: 'auto' }}
-                    >
-                      {t("auth.login")}
-                    </Button>
-                  </Link>
-                  <Link to="/signup">
-                    <Button 
-                      className="bg-gradient-to-r from-primary to-accent hover:opacity-90 shadow-md font-semibold text-white"
-                      style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.2vh, 0.75rem)', fontSize: 'clamp(0.8rem, 1.5vh, 0.875rem)', height: 'auto' }}
-                    >
-                      <Sparkles style={{ width: 'clamp(0.85rem, 1.6vh, 0.95rem)', height: 'clamp(0.85rem, 1.6vh, 0.95rem)', marginRight: 'clamp(0.2rem, 0.4vh, 0.25rem)' }} />
-                      {t("auth.signup")}
-                    </Button>
-                  </Link>
-                </>
-              ) : (
-                <div className="hidden md:flex items-center" style={{ gap: 'clamp(0.375rem, 1vh, 0.5rem)' }}>
-                  {isAdmin ? (
-                    <>
-                      <Link to="/platform-admin/chat">
-                        <Button 
-                          variant="outline" 
-                          className="border-blue-400/30 text-blue-600 font-semibold hover:bg-blue-400/10"
-                          style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.2vh, 0.75rem)', fontSize: 'clamp(0.8rem, 1.5vh, 0.875rem)', height: 'auto' }}
-                        >
-                          <span className="relative inline-flex items-center">
-                            <MessageCircle style={{ width: 'clamp(0.85rem, 1.6vh, 0.95rem)', height: 'clamp(0.85rem, 1.6vh, 0.95rem)', marginRight: 'clamp(0.2rem, 0.4vh, 0.25rem)' }} />
-                            {unreadCount > 0 && (
-                              <span className="absolute -top-2 -right-2 flex items-center justify-center rounded-full bg-red-500 text-white font-bold animate-pulse"
-                                style={{
-                                  minWidth: 'clamp(1rem, 2vh, 1.1rem)',
-                                  height: 'clamp(1rem, 2vh, 1.1rem)',
-                                  fontSize: 'clamp(0.5rem, 1vh, 0.6rem)',
-                                  padding: '0 clamp(0.125rem, 0.3vh, 0.25rem)',
-                                }}
-                              >
-                                {unreadCount > 99 ? '99+' : unreadCount}
-                              </span>
-                            )}
-                          </span>
-                          {tr("header.chat", "Chat")}
-                        </Button>
-                      </Link>
-                      <Link to="/platform-admin">
-                        <Button 
-                          variant="outline" 
-                          className="border-primary/30 text-primary font-semibold hover:bg-primary/10"
-                          style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.2vh, 0.75rem)', fontSize: 'clamp(0.8rem, 1.5vh, 0.875rem)', height: 'auto' }}
-                        >
-                          <Crown style={{ width: 'clamp(0.85rem, 1.6vh, 0.95rem)', height: 'clamp(0.85rem, 1.6vh, 0.95rem)', marginRight: 'clamp(0.2rem, 0.4vh, 0.25rem)' }} />
-                          {tr("header.admin", "Admin")}
-                        </Button>
-                      </Link>
-                    </>
-                  ) : (
-                    <Link to="/dashboard">
-                      <Button 
-                        variant="outline" 
-                        className="border-primary/30 text-primary font-semibold hover:bg-primary/10"
-                        style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.2vh, 0.75rem)', fontSize: 'clamp(0.8rem, 1.5vh, 0.875rem)', height: 'auto' }}
-                      >
-                        <LayoutDashboard style={{ width: 'clamp(0.85rem, 1.6vh, 0.95rem)', height: 'clamp(0.85rem, 1.6vh, 0.95rem)', marginRight: 'clamp(0.2rem, 0.4vh, 0.25rem)' }} />
-                        {t("header.dashboard") || t("dashboard.title") || "Dashboard"}
-                      </Button>
-                    </Link>
-                  )}
-                  <Button 
-                    variant="outline"
-                    onClick={handleLogout}
-                    className="border-destructive/30 text-destructive font-semibold hover:bg-destructive/10"
-                    style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.625rem, 1.2vh, 0.75rem)', fontSize: 'clamp(0.8rem, 1.5vh, 0.875rem)', height: 'auto' }}
-                  >
-                    <LogOut style={{ width: 'clamp(0.85rem, 1.6vh, 0.95rem)', height: 'clamp(0.85rem, 1.6vh, 0.95rem)', marginRight: 'clamp(0.2rem, 0.4vh, 0.25rem)' }} />
-                    {t("auth.logout")}
-                  </Button>
-                </div>
-              )}
-
-              {/* Mobile Menu Button */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden rounded-md border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all"
-                aria-label="Menu"
-                style={{ padding: 'clamp(0.375rem, 1vh, 0.5rem)' }}
-              >
-                {mobileMenuOpen ? (
-                  <X style={{ width: 'clamp(1.25rem, 2.8vh, 1.5rem)', height: 'clamp(1.25rem, 2.8vh, 1.5rem)' }} />
-                ) : (
-                  <Menu style={{ width: 'clamp(1.25rem, 2.8vh, 1.5rem)', height: 'clamp(1.25rem, 2.8vh, 1.5rem)' }} />
-                )}
-              </button>
+    <nav dir={locale === 'ar' ? 'rtl' : 'ltr'} className="sticky top-0 w-full z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-colors duration-300">
+      <div className="w-full max-w-7xl mx-auto flex items-center justify-between">
+        
+        {/* Right side: Logo */}
+        <div className="flex items-center space-x-6 space-x-reverse z-10">
+          <Link to="/" className="flex items-center space-x-2 space-x-reverse group">
+            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.3)] group-hover:scale-105 transition-transform duration-300">
+              <Zap className="text-white w-5 h-5" />
             </div>
-          </div>
+            <span className="text-xl font-black tracking-tighter uppercase text-slate-900 dark:text-white hidden sm:inline-block">Sahla<span className="text-indigo-500">4</span>Eco</span>
+          </Link>
         </div>
-      </header>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-20 z-40 bg-background/96 backdrop-blur-xl border-t border-primary/12">
-          <div className="container mx-auto px-4 py-6">
-            <nav className="flex flex-col gap-2">
+        {/* Center: Navigation Links */}
+        <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 items-center gap-8 text-sm font-bold text-slate-600 dark:text-slate-300">
+          {navLinks.map((link) => (
+            <Link key={link.href} to={link.href} className="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              {link.name}
+            </Link>
+          ))}
+        </div>
 
-              <Link 
-                to="/pricing" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-3 rounded-lg text-base font-bold text-foreground hover:text-primary hover:bg-gradient-to-r hover:from-primary/12 hover:to-accent/10 transition-all border border-transparent hover:border-primary/15 shadow-sm hover:shadow-md"
+        {/* Left side: Auth & Actions */}
+        <div className="flex items-center space-x-3 space-x-reverse">
+          {/* Controls: Theme & Lang */}
+          <div className="flex items-center space-x-2 space-x-reverse mr-2">
+            <div className="relative">
+              <button 
+                onClick={() => setLangMenuOpen(!langMenuOpen)}
+                className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               >
-                {t("header.pricing") || t("menu.pricing") || "Pricing"}
-              </Link>
-              <Link 
-                to="/about" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-3 rounded-lg text-base font-bold text-foreground hover:text-primary hover:bg-gradient-to-r hover:from-primary/12 hover:to-accent/10 transition-all border border-transparent hover:border-primary/15 shadow-sm hover:shadow-md"
-              >
-                {t("header.aboutUs") || t("header.about") || "About Us"}
-              </Link>
-              {user && isClient ? (
-                <Link 
-                  to="/chat" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-3 rounded-lg text-base font-bold text-foreground hover:text-primary hover:bg-gradient-to-r hover:from-primary/12 hover:to-accent/10 transition-all border border-transparent hover:border-primary/15 shadow-sm hover:shadow-md flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <MessageCircle className="w-5 h-5" />
-                    {tr("header.support", "Support")}
-                  </span>
-                  {unreadCount > 0 && (
-                    <span className="flex items-center justify-center rounded-full bg-red-500 text-white font-bold text-xs animate-pulse min-w-[1.25rem] h-5 px-1">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </Link>
-              ) : (
-                <Link 
-                  to="/contact" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-3 rounded-lg text-base font-bold text-foreground hover:text-primary hover:bg-gradient-to-r hover:from-primary/12 hover:to-accent/10 transition-all border border-transparent hover:border-primary/15 shadow-sm hover:shadow-md"
-                >
-                  {tr("header.support", "Support")}
-                </Link>
+                <span className="text-lg leading-none">{locale === 'fr' ? '🇫🇷' : locale === 'en' ? '🇬🇧' : '🇩🇿'}</span>
+                <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              </button>
+              {langMenuOpen && (
+                <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 py-1 z-50 min-w-32">
+                  <div onClick={() => changeLang('ar')} className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-sm font-medium flex items-center gap-2 dark:text-slate-200">
+                    <span className="text-base leading-none">🇩🇿</span> العربية
+                  </div>
+                  <div onClick={() => changeLang('en')} className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-sm font-medium flex items-center gap-2 dark:text-slate-200">
+                    <span className="text-base leading-none">🇬🇧</span> English
+                  </div>
+                  <div onClick={() => changeLang('fr')} className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-sm font-medium flex items-center gap-2 dark:text-slate-200">
+                    <span className="text-base leading-none">🇫🇷</span> Français
+                  </div>
+                </div>
               )}
-
-              {!user && (
-                <>
-                  <div className="h-px bg-border/40 my-2" />
-                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" className="justify-start border-2 border-primary/30 text-primary hover:bg-gradient-to-r hover:from-primary/15 hover:to-accent/10 hover:border-primary/45 font-bold w-full shadow-sm hover:shadow-md">
-                      {t("auth.login")}
-                    </Button>
-                  </Link>
-                  <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="justify-start bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-bold w-full shadow-sm hover:shadow-md">
-                      <Sparkles className="w-5 h-5 ml-2 drop-shadow" />
-                      {t("auth.signup")}
-                    </Button>
-                  </Link>
-                </>
-              )}
-
-              {user && (
-                <>
-                  <div className="h-px bg-border/40 my-2" />
-                  {isAdmin ? (
-                    <>
-                      <Link to="/platform-admin/chat" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="outline" className="justify-start border-2 border-blue-400/30 text-blue-600 hover:bg-gradient-to-r hover:from-blue-400/15 hover:to-blue-400/10 hover:border-blue-400/45 font-bold w-full shadow-sm hover:shadow-md">
-                          <span className="relative inline-flex">
-                            <MessageCircle className="w-5 h-5 ml-2 drop-shadow" />
-                            {unreadCount > 0 && (
-                              <span className="absolute -top-2 -right-2 flex items-center justify-center rounded-full bg-red-500 text-white font-bold text-[10px] min-w-[1rem] h-4 px-1 animate-pulse">
-                                {unreadCount > 99 ? '99+' : unreadCount}
-                              </span>
-                            )}
-                          </span>
-                          {tr("header.chat", "Chat")}
-                        </Button>
-                      </Link>
-                      <Link to="/platform-admin" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="outline" className="justify-start border-2 border-primary/30 text-primary hover:bg-gradient-to-r hover:from-primary/15 hover:to-accent/10 hover:border-primary/45 font-bold w-full shadow-sm hover:shadow-md">
-                          <Crown className="w-5 h-5 ml-2 drop-shadow" />
-                          {tr("header.admin", "Admin")}
-                        </Button>
-                      </Link>
-                    </>
-                  ) : (
-                    <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="outline" className="justify-start border-2 border-primary/30 text-primary hover:bg-gradient-to-r hover:from-primary/15 hover:to-accent/10 hover:border-primary/45 font-bold w-full shadow-sm hover:shadow-md">
-                        <LayoutDashboard className="w-5 h-5 ml-2 drop-shadow" />
-                        {t("header.dashboard") || t("dashboard.title") || "Dashboard"}
-                      </Button>
-                    </Link>
-                  )}
-                  {isClient && (
-                    <Link to={storeSlug ? `/store/${storeSlug}` : "/dashboard/preview"} onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="outline" className="justify-start border-2 border-primary/30 text-primary hover:bg-gradient-to-r hover:from-primary/15 hover:to-accent/10 hover:border-primary/45 font-bold w-full shadow-sm hover:shadow-md">
-                        <ShoppingBag className="w-5 h-5 ml-2 drop-shadow" />
-                        {tr("header.myStore", "My Store")}
-                      </Button>
-                    </Link>
-                  )}
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handleLogout();
-                    }}
-                    className="justify-start border-2 border-destructive/30 text-destructive hover:bg-gradient-to-r hover:from-destructive/15 hover:to-destructive/10 hover:border-destructive/45 font-bold w-full shadow-sm hover:shadow-md"
-                  >
-                    <LogOut className="w-5 h-5 ml-2 drop-shadow" />
-                    {t("auth.logout")}
-                  </Button>
-                </>
-              )}
-
-              <div className="md:hidden mt-4">
-                <select 
-                  value={locale} 
-                  onChange={(e) => setLocale(e.target.value as 'ar' | 'en' | 'fr')} 
-                  className="w-full px-3 py-2 rounded-lg border-2 border-primary/20 bg-background/50 text-sm font-medium"
-                >
-                  <option value="ar">🇩🇿 العربية</option>
-                  <option value="en">🇬🇧 English</option>
-                  <option value="fr">🇫🇷 Français</option>
-                </select>
-              </div>
-            </nav>
+            </div>
+            <button 
+              onClick={toggle}
+              className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-yellow-500"
+            >
+              {theme === "dark" || isDark ? <Moon className="w-5 h-5 text-indigo-400" /> : <Sun className="w-5 h-5" />}
+            </button>
           </div>
+
+          {user ? (
+            <div className="relative">
+              <button 
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <div className="w-7 h-7 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <UserIcon className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300 hidden sm:block max-w-[100px] truncate">{user.name || user.username || t("auth.user")}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+              
+              {userMenuOpen && (
+                <div className="absolute top-12 left-0 w-48 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl shadow-xl py-2 z-50 overflow-hidden">
+                  <Link to={getDashboardLink()} className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    <LayoutDashboard className="w-4 h-4 text-indigo-500" />
+                    {t("nav.dashboard") || "لوحة التحكم"}
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:text-red-400 text-sm font-medium text-slate-700 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    {t("auth.logout") || "تسجيل الخروج"}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <Link to="/login" className="hidden sm:block text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                {t('auth.login')}
+              </Link>
+              <Link to="/signup" className="flex items-center gap-2 px-4 md:px-5 py-2.5 rounded-xl bg-[#0ea5e9] text-white text-sm font-bold hover:bg-[#0284c7] transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                <Sparkles className="w-4 h-4" />
+                <span>{t('auth.createAccount')}</span>
+              </Link>
+            </>
+          )}
+
+          {/* Mobile Menu Toggle */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu Content */}
+      {mobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xl py-4 px-6 flex flex-col space-y-4">
+          {navLinks.map((link) => (
+            <Link 
+              key={link.href} 
+              to={link.href} 
+              className="flex items-center gap-2 font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 p-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <link.icon className="w-5 h-5 text-indigo-400" />
+              {link.name}
+            </Link>
+          ))}
+          {!user && (
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col space-y-3">
+              <Link to="/login" className="w-full text-center py-2 font-bold text-slate-700 dark:text-slate-300" onClick={() => setMobileMenuOpen(false)}>
+                {t('auth.login')}
+              </Link>
+            </div>
+          )}
         </div>
       )}
-    </>
+    </nav>
   );
 }

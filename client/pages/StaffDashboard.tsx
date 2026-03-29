@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, LogOut, User, ShoppingBag } from 'lucide-react';
+import { Loader2, LogOut, User, ShoppingBag, Sparkles, BrainCircuit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,27 @@ export default function StaffDashboard() {
   const [user, setUser] = useState<StaffUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [briefing, setBriefing] = useState<string | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+
+  const fetchBriefing = async () => {
+    setBriefingLoading(true);
+    try {
+      const res = await fetch('/api/ai/staff/order-digest', {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBriefing(data.digest || data.text || 'No briefing available.');
+      } else {
+        setBriefing('Could not load AI briefing.');
+      }
+    } catch {
+      setBriefing('Could not reach AI service.');
+    } finally {
+      setBriefingLoading(false);
+    }
+  };
 
   useEffect(() => {
     const run = async () => {
@@ -178,6 +199,39 @@ export default function StaffDashboard() {
               ))}
             </div>
           </CardContent>
+        </Card>
+
+        {/* AI Briefing Card */}
+        <Card className="mt-8 bg-slate-800 dark:bg-slate-900 border-purple-700/40 dark:border-purple-800/40">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-900/60 rounded-lg flex items-center justify-center border border-purple-700/50">
+                  <BrainCircuit className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-white">AI Order Briefing</CardTitle>
+                  <CardDescription className="text-slate-400">Let AI summarize today's order activity for you</CardDescription>
+                </div>
+              </div>
+              <Button
+                onClick={fetchBriefing}
+                disabled={briefingLoading}
+                size="sm"
+                className="gap-2 bg-purple-600 hover:bg-purple-700 text-white border-0"
+              >
+                {briefingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {briefingLoading ? 'Loading...' : briefing ? 'Refresh' : 'Get Briefing'}
+              </Button>
+            </div>
+          </CardHeader>
+          {briefing && (
+            <CardContent>
+              <div className="p-4 rounded-xl bg-purple-950/40 border border-purple-800/30 text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                {briefing}
+              </div>
+            </CardContent>
+          )}
         </Card>
 
         {/* Actions */}

@@ -144,7 +144,7 @@ export function VoiceRecorder({ chatId, onSuccess, onCancel }: VoiceRecorderProp
       formData.append('message_type', 'voice');
 
       // Upload voice message
-      const response = await fetch(`/api/chat/${chatId}/upload-file`, {
+      const response = await fetch(`/api/chat/${chatId}/upload`, {
         method: 'POST',
         body: formData,
       });

@@ -173,6 +173,8 @@ export interface CourierShipmentResponse {
   label_data?: string; // Base64 encoded PDF
   reference_id?: string;
   estimated_delivery?: string;
+  company_code?: string;
+  provider?: string;
   error?: string;
 }
 

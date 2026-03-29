@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+const CANONICAL_VISITOR_KEY = 'ecopro_visitor_id';
+const CANONICAL_SESSION_KEY = 'ecopro_session_id';
+const LEGACY_VISITOR_KEYS = [CANONICAL_VISITOR_KEY, 'pixel_visitor_id'];
+const LEGACY_SESSION_KEYS = [CANONICAL_SESSION_KEY, 'pixel_session_id'];
+
 /**
  * Hook for tracking pixel events in React components
  */
@@ -11,18 +16,36 @@ export function usePixelTracker(storeSlug: string) {
   // Initialize visitor and session IDs
   useEffect(() => {
     // Get or create visitor ID (persistent)
-    let vid = localStorage.getItem('ecopro_visitor_id');
+    let vid = '';
+    for (const key of LEGACY_VISITOR_KEYS) {
+      const existing = localStorage.getItem(key);
+      if (existing) {
+        vid = existing;
+        break;
+      }
+    }
     if (!vid) {
       vid = 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('ecopro_visitor_id', vid);
+    }
+    for (const key of LEGACY_VISITOR_KEYS) {
+      localStorage.setItem(key, vid);
     }
     visitorId.current = vid;
     
     // Get or create session ID (per session)
-    let sid = sessionStorage.getItem('ecopro_session_id');
+    let sid = '';
+    for (const key of LEGACY_SESSION_KEYS) {
+      const existing = sessionStorage.getItem(key);
+      if (existing) {
+        sid = existing;
+        break;
+      }
+    }
     if (!sid) {
       sid = 's_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      sessionStorage.setItem('ecopro_session_id', sid);
+    }
+    for (const key of LEGACY_SESSION_KEYS) {
+      sessionStorage.setItem(key, sid);
     }
     sessionId.current = sid;
     

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Heart, Share2, ChevronLeft, Plus, Minus, Maximize2 } from 'lucide-react';
+import { Heart, Share2, ChevronLeft, Plus, Minus, Maximize2, MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react';
 import PixelScripts, { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { useTranslation } from '@/lib/i18n';
 import { readStorefrontSettings, readStorefrontTemplate } from '@/lib/storefrontStorage';
@@ -520,6 +520,135 @@ export default function ProductDetail() {
         <Maximize2 className="w-5 h-5" />
       </button>
 
+      {/* AI Product Assistant Bubble */}
+      <AIProductBubble product={product} style={style} />
+
+    </>
+  );
+}
+
+// ─── AI Product Q&A Bubble ────────────────────────────────────────────────────
+function AIProductBubble({ product, style }: { product: any; style: any }) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open && messages.length === 0) {
+      setMessages([{ role: 'ai', text: `I can answer questions about "${product.title || product.name}". Ask me anything!` }]);
+    }
+    if (open) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [open, messages.length]);
+
+  const safeProduct = {
+    title: product.title || product.name,
+    description: product.description,
+    price: product.price,
+    category: product.category,
+    variants: Array.isArray(product.variants)
+      ? product.variants.map((v: any) => ({ name: v.name, price: v.price }))
+      : [],
+  };
+
+  const handleSend = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim() || loading) return;
+    const question = input.trim();
+    setInput('');
+    setMessages((prev) => [...prev, { role: 'user', text: question }]);
+    setLoading(true);
+    try {
+      const r = await fetch('/api/ai/storefront/qa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, product: safeProduct }),
+      });
+      const data = await r.json();
+      setMessages((prev) => [...prev, { role: 'ai', text: data?.answer || 'Sorry, I could not get an answer right now.' }]);
+    } catch {
+      setMessages((prev) => [...prev, { role: 'ai', text: 'Unable to connect. Please try again.' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Floating bubble button */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="fixed right-6 bottom-6 w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-transform"
+        style={{ background: style.accent || '#6366f1', zIndex: 9998 }}
+        title="Ask AI about this product"
+      >
+        {open ? <X className="w-5 h-5 text-white" /> : <Sparkles className="w-5 h-5 text-white" />}
+      </button>
+
+      {/* Chat panel */}
+      {open && (
+        <div
+          className="fixed right-6 bottom-24 w-80 rounded-2xl shadow-2xl flex flex-col overflow-hidden border"
+          style={{ zIndex: 9997, maxHeight: '400px', background: style.bg === 'bg-black' ? '#1e1e2e' : '#fff', borderColor: style.border?.replace('border-', '') || '#e2e8f0' }}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-2 px-3 py-2.5" style={{ background: style.accent || '#6366f1' }}>
+            <Sparkles className="w-4 h-4 text-white" />
+            <span className="text-sm font-bold text-white">AI Product Assistant</span>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2" style={{ maxHeight: '270px' }}>
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[85%] text-sm px-3 py-2 rounded-xl leading-relaxed`}
+                  style={
+                    m.role === 'user'
+                      ? { background: style.accent || '#6366f1', color: '#fff' }
+                      : { background: style.bg === 'bg-black' ? '#2d2d3f' : '#f1f5f9', color: style.bg === 'bg-black' ? '#e2e8f0' : '#1e293b' }
+                  }
+                >
+                  {m.text}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div className="flex justify-start">
+                <div className="px-3 py-2 rounded-xl" style={{ background: style.bg === 'bg-black' ? '#2d2d3f' : '#f1f5f9' }}>
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <form onSubmit={handleSend} className="flex items-center gap-2 p-2 border-t" style={{ borderColor: style.bg === 'bg-black' ? '#2d2d3f' : '#e2e8f0' }}>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask a question..."
+              disabled={loading}
+              className="flex-1 text-sm px-3 py-1.5 rounded-lg outline-none border disabled:opacity-50"
+              style={{
+                background: style.bg === 'bg-black' ? '#2d2d3f' : '#f8fafc',
+                color: style.bg === 'bg-black' ? '#e2e8f0' : '#1e293b',
+                borderColor: style.bg === 'bg-black' ? '#3d3d5f' : '#e2e8f0',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="p-1.5 rounded-lg disabled:opacity-40 transition"
+              style={{ background: style.accent || '#6366f1' }}
+            >
+              <Send className="w-4 h-4 text-white" />
+            </button>
+          </form>
+        </div>
+      )}
     </>
   );
 }

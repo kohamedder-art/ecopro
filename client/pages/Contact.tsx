@@ -1,198 +1,136 @@
-
-import { useState, useEffect } from "react";
-import { Mail, Phone, Clock, Send, CheckCircle2, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin, Send, MessageSquare, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
-import { useNavigate } from "react-router-dom";
-import { getCurrentUser } from "@/lib/auth";
 
 export default function Contact() {
-
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    // If user is logged in, redirect to chat
-    const checkUser = async () => {
-      try {
-        const user = await getCurrentUser();
-        if (user) {
-          navigate('/chat', { replace: true });
-        }
-      } catch (err) {
-        // Not logged in, show contact page
-      }
-    };
-    checkUser();
-  }, [navigate]);
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Simulate sending
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSubmitted(true);
-    setLoading(false);
-    setForm({ name: "", email: "", message: "" });
-    // Reset success message after 5s
-    setTimeout(() => setSubmitted(false), 5000);
-  }
-
+  const { t, locale } = useTranslation();
+  const isRTL = locale === 'ar';
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative py-8 sm:py-12 overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM4ODg4ODgiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItaDJ2LTJoLTJ6bTAgNGgtMnYyaDJ2LTJ6bS0yIDJoLTJ2Mmgydi0yek0zMiAzOGgtMnYyaDJ2LTJ6bS0yLTJoLTJ2Mmgydi0yek0yOCAzNGgtMnYyaDJ2LTJ6bS02IDB2LTJoLTJ2Mmgyem0tMiAydi0ySDR2Mmgyem0tMiAydi0ySDR2MmgyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-40"></div>
-        </div>
-
-        <div className="container relative z-10 mx-auto px-4 max-w-5xl">
-          {/* Hero Content */}
-          <div className="text-center mb-6 sm:mb-8">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-lg mb-3">
-              <Mail className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="text-xs font-medium">{t('contact.badge') || "We're here to help"}</span>
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden relative font-['Noto_Sans_Arabic']">
+      <div className="fixed top-0 left-0 w-full h-full z-0 bg-[radial-gradient(circle_at_10%_10%,rgba(99,102,241,0.08)_0%,transparent_35%),radial-gradient(circle_at_90%_90%,rgba(168,85,247,0.05)_0%,transparent_35%),#f8fafc] dark:bg-[radial-gradient(circle_at_10%_10%,rgba(99,102,241,0.15)_0%,transparent_35%),radial-gradient(circle_at_90%_90%,rgba(168,85,247,0.10)_0%,transparent_35%),#020617]"></div>
+      
+      <div className="relative pt-32 pb-16 px-6 overflow-hidden z-10 w-full">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[50vw] h-[40vh] bg-[radial-gradient(circle,rgba(99,102,241,0.15)_0%,transparent_60%)] blur-[80px] z-0 opacity-80 pointer-events-none"></div>
+        
+        <div className="max-w-5xl mx-auto relative z-10">
+          {/* Header */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center space-x-2 space-x-reverse bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full mb-6">
+              <MessageSquare className="w-4 h-4 text-indigo-500" />
+              <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">{t('contact.badge')}</span>
             </div>
-            
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black mb-2">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-cyan-600">
-                {t('contact.title') || 'Get in Touch'}
-              </span>
+            <h1 className="text-4xl md:text-5xl font-black mb-6 tracking-tight text-slate-900 dark:text-white leading-tight">
+              {t('contact.title')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-400">{t('contact.titleHighlight')}</span>
             </h1>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-xl mx-auto">
-              {t('contact.subtitle') || 'Have questions? Need help? Our support team is ready to assist you.'}
+            <p className="text-lg text-slate-600 dark:text-slate-400 font-semibold max-w-2xl mx-auto leading-relaxed">
+              {t('contact.desc')}
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-3 mb-4 sm:mb-6">
-            {/* Contact Info Cards */}
-            {[
-              {
-                icon: Mail,
-                title: t('contact.card.email.title') || 'Email Us',
-                content: t('contact.card.email.content') || 'support@walidstore.com',
-                description: t('contact.card.email.desc') || "We'll respond within 24 hours"
-              },
-              {
-                icon: Phone,
-                title: t('contact.card.phone.title') || 'Call Us',
-                content: t('contact.card.phone.content') || '+213 555 123 456',
-                description: t('contact.card.phone.desc') || 'Mon-Fri, 9AM - 6PM GMT+1'
-              },
-              {
-                icon: Clock,
-                title: t('contact.card.time.title') || 'Response Time',
-                content: t('contact.card.time.content') || '< 24 hours',
-                description: t('contact.card.time.desc') || 'Typical response time'
-              }
-            ].map((item, i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-md border border-gray-100 dark:border-gray-700 text-center hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-cyan-600 flex items-center justify-center mx-auto mb-2">
-                  <item.icon className="w-4 h-4 text-white" />
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Contact Information */}
+            <div className="space-y-6">
+              <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-sm rounded-3xl p-8 hover:border-indigo-200 dark:hover:border-indigo-700 transition-colors">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6">{t('contact.infoTitle')}</h3>
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1">{t('contact.emailLabel')}</p>
+                      <a href="mailto:support@sahla4eco.com" className="text-lg font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">support@sahla4eco.com</a>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                      <Phone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1">{t('contact.phoneLabel')}</p>
+                      <a href="tel:+21312345678" className="text-lg font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" dir="ltr">+213 12 345 678</a>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1">{t('contact.addressLabel')}</p>
+                      <p className="text-lg font-bold text-slate-900 dark:text-white">{t('contact.addressValue')}</p>
+                    </div>
+                  </div>
                 </div>
-                <h3 className="text-sm font-bold mb-0.5">{item.title}</h3>
-                <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mb-0.5">{item.content}</p>
-                <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">{item.description}</p>
               </div>
-            ))}
-          </div>
 
-          {/* Contact Form */}
-          <div className="max-w-lg mx-auto">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-5 border border-indigo-100 dark:border-indigo-900">
-              <h2 className="text-base sm:text-lg font-bold mb-4 text-center">{t('contact.form.title') || 'Send us a Message'}</h2>
-              
-              {submitted && (
-                <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border-2 border-green-500 rounded-lg flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                  <p className="text-xs sm:text-sm text-green-700 dark:text-green-300 font-semibold">
-                    {t('contact.form.success') || 'Thank you! Your message has been sent successfully.'}
-                  </p>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium mb-1.5">{t('contact.form.name') || 'Your Name'}</label>
-                  <input
-                    type="text"
-                    name="name"
-                    placeholder={t('contact.form.namePlaceholder')}
-                    value={form.name}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:border-indigo-600 dark:focus:border-indigo-500 outline-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium mb-1.5">{t('contact.form.email') || 'Email Address'}</label>
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder={t('contact.form.emailPlaceholder')}
-                    value={form.email}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:border-indigo-600 dark:focus:border-indigo-500 outline-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium mb-1.5">{t('contact.form.message') || 'Your Message'}</label>
-                  <textarea
-                    name="message"
-                    placeholder={t('contact.form.messagePlaceholder')}
-                    value={form.message}
-                    onChange={handleChange}
-                    required
-                    rows={4}
-                    className="w-full px-3 py-2 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:border-indigo-600 dark:focus:border-indigo-500 outline-none transition-colors resize-none"
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  size="default"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white shadow-lg h-10 text-sm"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5" />
-                      {t('contact.form.sending') || 'Sending...'}
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4 mr-1.5" />
-                      {t('contact.form.submit') || 'Send Message'}
-                    </>
-                  )}
+              {/* FAQ Teaser */}
+              <div className="bg-indigo-900 text-white rounded-3xl p-8 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-32 h-32 bg-indigo-500 rounded-full mix-blend-multiply filter blur-2xl opacity-30"></div>
+                <h4 className="text-xl font-black mb-3">{t('contact.faqTitle')}</h4>
+                <p className="text-indigo-100 font-medium mb-6 leading-relaxed">
+                  {t('contact.faqDesc')}
+                </p>
+                <Button className="bg-white text-indigo-900 hover:bg-slate-50 rounded-full px-6 font-bold flex items-center gap-2">
+                  <span>{t('contact.faqBtn')}</span>
+                  <ArrowLeft className="w-4 h-4" />
                 </Button>
+              </div>
+            </div>
+
+            {/* Contact Form */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-3xl p-8 shadow-indigo-100/50">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6">{t('contact.formTitle')}</h3>
+              <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t('contact.nameLabel')}</label>
+                  <input 
+                    type="text" 
+                    placeholder={t('contact.namePlaceholder')}
+                    className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t('contact.emailFormLabel')}</label>
+                  <input 
+                    type="email" 
+                    placeholder="example@mail.com"
+                    dir="ltr"
+                    className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-right"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t('contact.subjectLabel')}</label>
+                  <select className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                    <option value="">{t('contact.subjectDefault')}</option>
+                    <option value="support">{t('contact.subjectSupport')}</option>
+                    <option value="sales">{t('contact.subjectSales')}</option>
+                    <option value="billing">{t('contact.subjectBilling')}</option>
+                    <option value="other">{t('contact.subjectOther')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t('contact.messageLabel')}</label>
+                  <textarea 
+                    rows={4}
+                    placeholder={t('contact.messagePlaceholder')}
+                    className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+                  ></textarea>
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full bg-indigo-600 text-white rounded-xl py-3.5 px-4 font-black flex items-center justify-center gap-2 hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                >
+                  <span>{t('contact.sendBtn')}</span>
+                  <Send className="w-4 h-4" />
+                </button>
               </form>
             </div>
           </div>
-
-          {/* Additional Info */}
-          <div className="mt-4 sm:mt-6 text-center">
-            <div className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
-              <MapPin className="w-4 h-4 text-indigo-600" />
-              <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                <span className="font-semibold">{t('contact.location.label') || 'Location:'}</span> {t('contact.location.value') || 'Algeria'}
-              </p>
-            </div>
-          </div>
+          
         </div>
-      </section>
+      </div>
     </div>
   );
 }

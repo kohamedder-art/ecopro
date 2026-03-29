@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload } from "lucide-react";
+import React, { useEffect, useState, useRef } from "react";
+import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload, ChevronRight, Search, Copy, Check, StickyNote, AlertTriangle, Bell, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "@/lib/i18n";
 import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
@@ -58,6 +58,26 @@ export default function OrdersAdmin() {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkUploadResult, setBulkUploadResult] = useState<{ successCount: number; failCount: number; results: any[] } | null>(null);
 
+  // Search & date filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
+
+  // Copy-to-clipboard flash state: key = `phone|id` + value
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1500);
+    });
+  };
+
+  // Order notes (in-memory per session, keyed by raw_id)
+  const [orderNotes, setOrderNotes] = useState<Record<number, string>>({});
+
+  // New-order notification banner
+  const [newOrderCount, setNewOrderCount] = useState(0);
+  const prevOrderCountRef = useRef<number>(0);
+
   // Order editing (store owner)
   const [showEditOrder, setShowEditOrder] = useState(false);
   const [editOrder, setEditOrder] = useState<any | null>(null);
@@ -90,11 +110,9 @@ export default function OrdersAdmin() {
   
   const [newOrder, setNewOrder] = useState({
     customer_name: '',
-    customer_email: '',
     customer_phone: '',
     customer_address: '',
     total_price: '',
-    product_title: ''
   });
 
   const customerNames = {
@@ -156,12 +174,60 @@ export default function OrdersAdmin() {
 
   // Filter orders based on selected tab (uses English key)
   const getFilteredOrders = () => {
-    if (filterTab === 'all') return orders;
+    let result = orders;
+
+    // Status / tab filter
     if (filterTab === 'archived') {
-      return orders.filter(o => o.status === 'failed' || o.status === 'cancelled' || o.status === 'fake' || o.status === 'duplicate');
+      result = result.filter(o => o.status === 'failed' || o.status === 'cancelled' || o.status === 'fake' || o.status === 'duplicate');
+    } else if (filterTab !== 'all') {
+      result = result.filter(o => o.status === filterTab);
     }
-    // Filter by English key (stored in database)
-    return orders.filter(o => o.status === filterTab);
+
+    // Date range filter
+    if (dateRange !== 'all') {
+      const now = Date.now();
+      const cutoff =
+        dateRange === 'today' ? now - 86400000 :
+        dateRange === 'week'  ? now - 7 * 86400000 :
+        now - 30 * 86400000;
+      result = result.filter(o => parseUTCDate(o.created_at).getTime() >= cutoff);
+    }
+
+    // Search filter (customer, phone, order id, product title)
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(o =>
+        (o.customer || '').toLowerCase().includes(q) ||
+        (o.phone || '').toLowerCase().includes(q) ||
+        (o.id || '').toLowerCase().includes(q) ||
+        (o.product_title || '').toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  };
+
+  // Duplicate phone detection (phones appearing more than once across ALL orders)
+  const duplicatePhones = (() => {
+    const counts: Record<string, number> = {};
+    orders.forEach(o => { if (o.phone) counts[o.phone] = (counts[o.phone] || 0) + 1; });
+    return new Set(Object.entries(counts).filter(([, v]) => v > 1).map(([k]) => k));
+  })();
+
+  // CSV export
+  const exportCSV = () => {
+    const rows = getFilteredOrders();
+    const headers = ['Order ID', 'Customer', 'Phone', 'Product', 'Qty', 'Total (DZD)', 'Status', 'Date'];
+    const lines = [headers.join(','), ...rows.map(o => [
+      o.id, `"${o.customer || ''}"`, o.phone || '', `"${o.product_title || ''}"`,
+      o.quantity, Math.round(Number(o.total) || 0), o.status,
+      new Date(parseUTCDate(o.created_at)).toLocaleDateString()
+    ].join(','))];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `orders-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
   };
 
   // Get paginated orders
@@ -337,6 +403,7 @@ export default function OrdersAdmin() {
     try {
       const res = await fetch(`/api/client/order-statuses/${statusId}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       if (res.ok) {
         await loadStatuses();
@@ -420,11 +487,26 @@ export default function OrdersAdmin() {
 
   // Poll orders every 30 seconds for near-real-time updates (reduced from 5s for performance)
   useEffect(() => {
-    const id = setInterval(() => {
-      loadOrders(true);
+    const id = setInterval(async () => {
+      const prevCount = prevOrderCountRef.current;
+      await loadOrders(true);
+      // After load, compare (orders state is stale here — use a callback approach via ref)
     }, 30000); // 30 seconds instead of 5 seconds
     return () => clearInterval(id);
   }, []);
+
+  // Track new orders by comparing order count after silent reload
+  useEffect(() => {
+    if (prevOrderCountRef.current === 0) {
+      prevOrderCountRef.current = orders.length;
+      return;
+    }
+    const diff = orders.length - prevOrderCountRef.current;
+    if (diff > 0) {
+      setNewOrderCount(prev => prev + diff);
+    }
+    prevOrderCountRef.current = orders.length;
+  }, [orders.length]);
 
   // Update time display every minute
   useEffect(() => {
@@ -642,41 +724,30 @@ export default function OrdersAdmin() {
 
   async function handleAddOrder() {
     try {
-      if (!newOrder.customer_name || !newOrder.total_price || !newOrder.product_title) {
-        alert('Please fill in required fields');
+      if (!newOrder.customer_name || !newOrder.total_price) {
+        alert('Please fill in customer name and total price');
         return;
       }
 
-      const res = await fetch('/api/orders/create', {
+      const res = await fetch('/api/client/orders', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          product_id: 1,
-          client_id: null,
-          quantity: 1,
           total_price: parseFloat(newOrder.total_price),
           customer_name: newOrder.customer_name,
-          customer_email: newOrder.customer_email || null,
           customer_phone: newOrder.customer_phone || null,
-          customer_address: newOrder.customer_address || null
+          customer_address: newOrder.customer_address || null,
         })
       });
 
       if (res.ok) {
         setShowAddOrder(false);
-        setNewOrder({
-          customer_name: '',
-          customer_email: '',
-          customer_phone: '',
-          customer_address: '',
-          total_price: '',
-          product_title: ''
-        });
+        setNewOrder({ customer_name: '', customer_phone: '', customer_address: '', total_price: '' });
         await loadOrders();
       } else {
-        alert('Failed to create order');
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Failed to create order');
       }
     } catch (error) {
       console.error('Error adding order:', error);
@@ -696,6 +767,20 @@ export default function OrdersAdmin() {
           }
         }}
       />
+
+      {/* New orders notification banner */}
+      {newOrderCount > 0 && (
+        <div
+          className="mb-2 flex items-center gap-3 rounded-lg bg-green-500/10 border border-green-500/30 px-3 py-2 cursor-pointer hover:bg-green-500/20 transition-colors"
+          onClick={() => { setNewOrderCount(0); loadOrders(); setFilterTab('all'); setCurrentPage(1); }}
+        >
+          <Bell className="h-4 w-4 text-green-600 animate-bounce" />
+          <span className="text-sm font-bold text-green-700 dark:text-green-400">
+            {newOrderCount} new order{newOrderCount > 1 ? 's' : ''} arrived — click to refresh
+          </span>
+          <button className="ml-auto text-green-600 hover:text-green-800"><X className="h-4 w-4" /></button>
+        </div>
+      )}
       
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-2 mb-2 md:mb-3">
@@ -778,9 +863,39 @@ export default function OrdersAdmin() {
               >
                 <Settings className="h-4 w-4"/> {t('orders.statuses')}
               </button>
-              <button className="inline-flex items-center gap-1 rounded border border-primary/30 bg-background px-3 py-2 text-sm font-bold hover:bg-primary/10 transition-colors h-9">
+              <button onClick={exportCSV} className="inline-flex items-center gap-1 rounded border border-primary/30 bg-background px-3 py-2 text-sm font-bold hover:bg-primary/10 transition-colors h-9">
                 <Download className="h-4 w-4"/> {t('orders.download')}
               </button>
+            </div>
+          </div>
+
+          {/* Search + Date Range */}
+          <div className="flex flex-col sm:flex-row gap-2 mt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                placeholder="Search by customer, phone, order ID, product..."
+                className="w-full h-9 pl-8 pr-3 rounded border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="flex gap-1">
+              {(['all','today','week','month'] as const).map(r => (
+                <button
+                  key={r}
+                  onClick={() => { setDateRange(r); setCurrentPage(1); }}
+                  className={`px-2.5 h-9 rounded text-xs font-bold border transition-colors ${dateRange === r ? 'bg-primary text-white border-primary' : 'bg-background border-border hover:bg-primary/10'}`}
+                >
+                  {r === 'all' ? 'All' : r === 'today' ? 'Today' : r === 'week' ? '7d' : '30d'}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -947,7 +1062,7 @@ export default function OrdersAdmin() {
                 <React.Fragment key={o.id}>
                   <tr 
                     onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
-                    className="border-b border-primary/5 transition-all cursor-pointer hover:bg-primary/10"
+                    className={`group border-b border-primary/5 transition-all cursor-pointer hover:bg-primary/10 ${duplicatePhones.has(o.phone) ? 'bg-amber-500/5 border-l-2 border-l-amber-400' : ''}`}
                   >
                     <td className="whitespace-nowrap p-2 text-center" onClick={(e) => e.stopPropagation()}>
                       <button 
@@ -963,24 +1078,50 @@ export default function OrdersAdmin() {
                     </td>
                     <td className="whitespace-nowrap p-2 text-right">
                       {o.product_image ? (
-                        <img 
-                          src={o.product_image} 
-                          alt={o.product_title || 'Product'} 
-                          className="w-10 h-10 rounded object-cover border border-border/50 ml-auto"
-                        />
+                        <div className="w-10 h-10 rounded overflow-hidden border border-border/50 ml-auto">
+                          <img 
+                            src={o.product_image} 
+                            alt={o.product_title || 'Product'} 
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          />
+                        </div>
                       ) : (
                         <div className="w-10 h-10 rounded bg-muted flex items-center justify-center border border-border/50 ml-auto">
                           <ShoppingBag className="w-5 h-5 text-muted-foreground" />
                         </div>
                       )}
                     </td>
-                    <td className="whitespace-nowrap p-2 text-right font-bold text-sm">{o.id}</td>
+                    <td className="whitespace-nowrap p-2 text-right font-bold text-sm" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => copyToClipboard(o.id, `id-${o.id}`)}
+                        className="inline-flex items-center gap-1 group/copy hover:text-primary transition-colors"
+                        title="Copy order ID"
+                      >
+                        {o.id}
+                        {copiedKey === `id-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/copy:opacity-60" />}
+                      </button>
+                    </td>
                     <td className="whitespace-nowrap p-2 text-right">
                       <span className="text-sm font-semibold max-w-[150px] truncate block" title={o.product_title}>
                         {o.product_title || t('orders.noProduct')}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap p-2 text-right text-sm font-semibold">{o.customer}</td>
+                    <td className="whitespace-nowrap p-2 text-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className="text-sm font-semibold">{o.customer}</span>
+                        {o.phone && (
+                          <button
+                            onClick={() => copyToClipboard(o.phone, `phone-${o.id}`)}
+                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors group/phone"
+                            title="Copy phone"
+                          >
+                            {duplicatePhones.has(o.phone) && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                            {o.phone}
+                            {copiedKey === `phone-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/phone:opacity-60" />}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="whitespace-nowrap p-2 text-right">
                       <span className="font-bold bg-gradient-to-r from-accent to-orange-500 bg-clip-text text-transparent text-sm">
                         {Math.round(Number(o.total) || 0)} DZD
@@ -1005,9 +1146,7 @@ export default function OrdersAdmin() {
                     </td>
                     <td className="whitespace-nowrap p-2 text-right text-muted-foreground text-sm" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
                     <td className="p-2 text-right">
-                      <span className="text-xs text-muted-foreground">
-                        {expandedOrderId === o.id ? '▼' : '▶'}
-                      </span>
+                      <ChevronRight className={`h-4 w-4 text-muted-foreground ml-auto transition-transform duration-200 ${expandedOrderId === o.id ? 'rotate-90' : 'group-hover:translate-x-0.5'}`} />
                     </td>
                   </tr>
                   {expandedOrderId === o.id && (
@@ -1068,6 +1207,21 @@ export default function OrdersAdmin() {
                               <div className="text-sm font-semibold text-muted-foreground mb-0.5">Unit Price</div>
                               <div className="font-bold text-sm">{Math.round(Number(o.unit_price || 0))} DZD</div>
                             </div>
+                          </div>
+
+                          {/* Order Notes */}
+                          <div className="bg-background rounded p-2 border border-border/50">
+                            <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground mb-1">
+                              <StickyNote className="h-3.5 w-3.5" /> Internal Note
+                            </div>
+                            <textarea
+                              value={orderNotes[o.raw_id] || ''}
+                              onChange={e => setOrderNotes(prev => ({ ...prev, [o.raw_id]: e.target.value }))}
+                              onClick={e => e.stopPropagation()}
+                              placeholder="Add a private note about this order..."
+                              rows={2}
+                              className="w-full text-xs rounded border border-border bg-muted/30 px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
+                            />
                           </div>
 
                           {/* Edit action */}
@@ -1403,17 +1557,6 @@ export default function OrdersAdmin() {
             </div>
 
             <div>
-              <label className="text-sm font-bold">{t('orders.email')}</label>
-              <input
-                type="email"
-                value={newOrder.customer_email}
-                onChange={(e) => setNewOrder({...newOrder, customer_email: e.target.value})}
-                className="w-full mt-0.5 px-2 py-1 rounded border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-primary h-9 text-sm"
-                placeholder={t('orders.enterEmail')}
-              />
-            </div>
-
-            <div>
               <label className="text-sm font-bold">{t('orders.address')}</label>
               <input
                 type="text"
@@ -1456,74 +1599,159 @@ export default function OrdersAdmin() {
 
       {/* Status Manager Modal */}
       {showStatusManager && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
-          <div className="bg-card rounded-lg border border-primary/20 shadow-xl max-w-md w-full p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">{t('orders.statusManager')}</h2>
-              <button 
-                onClick={() => setShowStatusManager(false)}
-                className="p-1 rounded hover:bg-muted"
-              >
-                <X className="h-5 w-5" />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-3">
+          <div className="bg-card rounded-[24px] border border-primary/20 shadow-xl max-w-md w-full flex flex-col max-h-[88vh]">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border/40 shrink-0">
+              <h2 className="text-base font-bold">{t('orders.statusManager')}</h2>
+              <button onClick={() => setShowStatusManager(false)} className="p-1 rounded hover:bg-muted">
+                <X className="h-4 w-4" />
               </button>
             </div>
-            
-            {/* Existing Statuses */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold text-muted-foreground">{t('orders.customStatuses')}</h3>
-              {customStatuses.map(status => (
-                <div 
-                  key={status.id}
-                  className="flex items-center justify-between p-2 rounded border border-border/50 bg-background"
-                >
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-6 h-6 rounded flex items-center justify-center text-white text-sm"
-                      style={{ backgroundColor: status.color }}
-                    >
-                      {status.icon}
+
+            {/* Status list — scrollable */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
+              {(() => {
+                const groups = [
+                  { label: 'Core',            keys: ['pending','confirmed','at_delivery'] },
+                  { label: 'Success',         keys: ['completed','delivered'] },
+                  { label: 'Failure',         keys: ['delivery_failed','returned','declined','didnt_pickup'] },
+                  { label: 'Archived',        keys: ['failed','cancelled'] },
+                  { label: 'Call Center',     keys: ['no_answer_1','no_answer_2','no_answer_3','waiting_callback','postponed'] },
+                  { label: 'Quality Control', keys: ['fake','duplicate'] },
+                ];
+
+                const PRESET_CATALOG: Record<string, { name: string; color: string; icon: string }> = {
+                  cancelled:        { name: 'Cancelled',        color: '#ef4444', icon: '✕'  },
+                  failed:           { name: 'Failed',           color: '#ef4444', icon: '✕'  },
+                  delivered:        { name: 'Delivered',        color: '#10b981', icon: '✓'  },
+                  declined:         { name: 'Declined',         color: '#ef4444', icon: '✕'  },
+                  delivery_failed:  { name: 'Delivery Failed',  color: '#ef4444', icon: '🚫' },
+                  returned:         { name: 'Returned',         color: '#f97316', icon: '↩️' },
+                  didnt_pickup:     { name: "Didn't Pickup",    color: '#f97316', icon: '⛔' },
+                  no_answer_1:      { name: 'No Answer (1st)',  color: '#f59e0b', icon: '📞' },
+                  no_answer_2:      { name: 'No Answer (2nd)',  color: '#f59e0b', icon: '📞' },
+                  no_answer_3:      { name: 'No Answer (3rd)',  color: '#f59e0b', icon: '📞' },
+                  waiting_callback: { name: 'Waiting Callback', color: '#3b82f6', icon: '📱' },
+                  postponed:        { name: 'Postponed',        color: '#6366f1', icon: '⏰' },
+                  fake:             { name: 'Fake',             color: '#dc2626', icon: '⚠️' },
+                  duplicate:        { name: 'Duplicate',        color: '#9ca3af', icon: '📋' },
+                };
+
+                const activeKeys = new Set(customStatuses.map(s => s.key));
+                const systemByKey = Object.fromEntries(customStatuses.filter(s => s.is_system).map(s => [s.key, s]));
+                const customOnly = customStatuses.filter(s => !s.is_system);
+
+                const handleRestorePreset = async (key: string) => {
+                  try {
+                    const res = await fetch('/api/client/order-statuses/restore-preset', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ key }),
+                    });
+                    if (res.ok) await loadStatuses();
+                  } catch {}
+                };
+
+                const CORE_LOCKED_KEYS = new Set(['pending','confirmed','at_delivery','completed']);
+                const StatusRow = ({ status, onDelete }: { status: any; onDelete?: () => void }) => (
+                  <div className="flex items-center justify-between p-2 rounded-xl border border-border/50 bg-background">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shrink-0" style={{ backgroundColor: status.color }}>
+                        {status.icon}
+                      </div>
+                      <span className="font-semibold text-sm">{t(`orders.status.${status.key}`) || status.name}</span>
+                      {status.is_system && CORE_LOCKED_KEYS.has(status.key) && <span className="text-[10px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded-md">🔒 Core</span>}
+                      {status.counts_as_revenue && <span className="text-[10px] bg-green-500/15 text-green-400 px-1.5 py-0.5 rounded-md">💰 Revenue</span>}
                     </div>
-                    <span className="font-bold">{t(`orders.status.${status.key}`) || status.name}</span>
-                    {status.is_system && (
-                      <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">🔒 System</span>
-                    )}
-                    {status.counts_as_revenue && (
-                      <span className="text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">💰 Revenue</span>
+                    {onDelete && (
+                      <button onClick={onDelete} className="p-1 rounded-lg hover:bg-red-500/15 text-red-400 transition-colors">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     )}
                   </div>
-                  {!status.is_system && (
-                    <button
-                      onClick={() => handleDeleteStatus(status.id)}
-                      className="p-1 rounded hover:bg-red-500/20 text-red-500"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+
+                return (
+                  <>
+                    {groups.map(g => {
+                      const items = g.keys.map(k => systemByKey[k]).filter(Boolean);
+                      if (!items.length) return null;
+                      const CORE_LOCKED = new Set(['pending','confirmed','at_delivery','completed']);
+                      return (
+                        <div key={g.label} className="space-y-1.5">
+                          <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">{g.label}</p>
+                          {items.map(s => (
+                            <StatusRow
+                              key={s.id}
+                              status={s}
+                              onDelete={CORE_LOCKED.has(s.key) ? undefined : () => handleDeleteStatus(s.id)}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })}
+
+                    {customOnly.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">Custom</p>
+                        {customOnly.map(s => <StatusRow key={s.id} status={s} onDelete={() => handleDeleteStatus(s.id)} />)}
+                      </div>
+                    )}
+
+                    {/* Available presets */}
+                    {(() => {
+                      const available = Object.entries(PRESET_CATALOG).filter(([k]) => !activeKeys.has(k));
+                      if (!available.length) return null;
+                      return (
+                        <div className="space-y-1.5 pt-1 border-t border-border/40">
+                          <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">Add Preset</p>
+                          {available.map(([k, p]) => (
+                            <button
+                              key={k}
+                              onClick={() => handleRestorePreset(k)}
+                              className="w-full flex items-center justify-between p-2 rounded-xl border border-dashed border-border/50 bg-background/50 hover:bg-muted/50 hover:border-primary/40 transition-colors group"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: p.color }}>
+                                  {p.icon}
+                                </div>
+                                <span className="font-semibold text-sm text-muted-foreground group-hover:text-foreground transition-colors">{p.name}</span>
+                              </div>
+                              <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </>
+                );
+              })()}
             </div>
 
-            {/* Add New Status */}
-            <div className="space-y-3 pt-3 border-t border-border/50">
-              <h3 className="text-sm font-bold text-muted-foreground">{t('orders.addNewStatus')}</h3>
+            {/* Add custom status — footer */}
+            <div className="px-4 pb-4 pt-3 border-t border-border/40 space-y-2 shrink-0">
+              <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">{t('orders.addNewStatus')}</p>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={newStatusName}
                   onChange={(e) => setNewStatusName(e.target.value)}
-                  className="flex-1 px-3 py-2 rounded border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                  className="flex-1 px-3 h-9 rounded-xl border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm"
                   placeholder="Status name"
                 />
                 <input
                   type="color"
                   value={newStatusColor}
                   onChange={(e) => setNewStatusColor(e.target.value)}
-                  className="w-10 h-10 rounded border border-border/50 cursor-pointer"
+                  className="w-9 h-9 rounded-xl border border-border/50 cursor-pointer p-0.5"
                 />
                 <select
                   value={newStatusIcon}
                   onChange={(e) => setNewStatusIcon(e.target.value)}
-                  className="px-2 py-2 rounded border border-border/50 bg-background text-sm"
+                  className="px-2 h-9 rounded-xl border border-border/50 bg-background text-sm"
                 >
                   <option value="●">●</option>
                   <option value="✓">✓</option>
@@ -1537,22 +1765,24 @@ export default function OrdersAdmin() {
                   <option value="🔄">🔄</option>
                 </select>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={newStatusCountsAsRevenue}
-                  onChange={(e) => setNewStatusCountsAsRevenue(e.target.checked)}
-                  className="w-4 h-4 rounded border-border accent-green-500"
-                />
-                <span className="text-sm">💰 Count as revenue (orders with this status count toward revenue)</span>
-              </label>
-              <button
-                onClick={handleAddStatus}
-                disabled={!newStatusName.trim()}
-                className="w-full px-3 py-2 rounded bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-bold hover:from-purple-600 hover:to-purple-700 transition-colors shadow disabled:opacity-50"
-              >
-                <Plus className="h-4 w-4 inline mr-1" /> Add Status
-              </button>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer flex-1">
+                  <input
+                    type="checkbox"
+                    checked={newStatusCountsAsRevenue}
+                    onChange={(e) => setNewStatusCountsAsRevenue(e.target.checked)}
+                    className="w-4 h-4 rounded border-border accent-green-500"
+                  />
+                  <span className="text-sm text-muted-foreground">💰 Count as revenue</span>
+                </label>
+                <button
+                  onClick={handleAddStatus}
+                  disabled={!newStatusName.trim()}
+                  className="px-4 h-9 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-bold hover:from-purple-600 hover:to-purple-700 transition-colors shadow disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Status
+                </button>
+              </div>
             </div>
           </div>
         </div>

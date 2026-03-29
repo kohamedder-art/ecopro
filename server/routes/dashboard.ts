@@ -134,6 +134,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
       lastWeekRes,
       thisMonthRes,
       lastMonthRes,
+      allTimeRes,
       topProductsRes,
       recentOrdersRes,
       statusBreakdownRes,
@@ -152,7 +153,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COALESCE(SUM(total_price), 0)::float as total_value,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 AND created_at >= NOW() - INTERVAL '30 days'
+         WHERE client_id = $1 
          GROUP BY DATE(created_at)
          ORDER BY date ASC`,
         [clientId, revenueStatuses]
@@ -215,7 +216,18 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
            AND created_at < DATE_TRUNC('month', CURRENT_DATE)`,
         [clientId, revenueStatuses]
       ),
+      
+      // All Time
+      pool.query(
+        `SELECT 
+          COUNT(*)::int as orders,
+          COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
+         FROM store_orders 
+         WHERE client_id = $1`,
+        [clientId, revenueStatuses]
+      ),
       // Top products
+
       pool.query(
         `SELECT 
           p.id, p.title, p.price, 
@@ -308,6 +320,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
     const lastWeek = lastWeekRes.rows[0] || { orders: 0, revenue: 0 };
     const thisMonth = thisMonthRes.rows[0] || { orders: 0, revenue: 0 };
     const lastMonth = lastMonthRes.rows[0] || { orders: 0, revenue: 0 };
+    const allTime = allTimeRes.rows[0] || { orders: 0, revenue: 0 };
 
     const responseData = {
       dailyRevenue: dailyRevenueRes.rows,
@@ -325,12 +338,18 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           ordersGrowth: calcGrowth(thisWeek.orders, lastWeek.orders),
           revenueGrowth: calcGrowth(thisWeek.revenue, lastWeek.revenue),
         },
-        thisMonth: {
+                thisMonth: {
           orders: thisMonth.orders,
           revenue: thisMonth.revenue,
           ordersGrowth: calcGrowth(thisMonth.orders, lastMonth.orders),
           revenueGrowth: calcGrowth(thisMonth.revenue, lastMonth.revenue),
         },
+        allTime: {
+          orders: allTime.orders,
+          revenue: allTime.revenue,
+          ordersGrowth: 0,
+          revenueGrowth: 0,
+        }
       },
       topProducts: topProductsRes.rows,
       recentOrders: recentOrdersRes.rows,

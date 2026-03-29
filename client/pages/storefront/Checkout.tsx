@@ -197,6 +197,7 @@ export default function Checkout() {
     wilayaId: '',
     communeId: '',
     amount: '',
+    email: '',
   });
   const [haiSuggestions, setHaiSuggestions] = useState<string[]>([]);
   const [haiSuggestionsSupported, setHaiSuggestionsSupported] = useState(true);

@@ -705,7 +705,7 @@ const handleChatFileUpload = async (req: Request, res: Response, next: Function)
     }
 
     // Secure upload finalization (magic bytes + allowlist + malware scan + signed URL)
-    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4']);
+    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/wav']);
     const detected = await fileTypeFromFile(req.file.path);
     if (!detected || !allowed.has(detected.mime)) {
       await fs.unlink(req.file.path).catch(() => null);
@@ -732,6 +732,8 @@ const handleChatFileUpload = async (req: Request, res: Response, next: Function)
     const fileName = req.file.originalname;
     const fileType = detected.mime;
     const isImage = fileType.startsWith('image/');
+    const isVoice = fileType.startsWith('audio/');
+    const msgType = isVoice ? 'voice' : 'file_attachment';
 
     // Create message with file metadata
     const result = await pool.query(
@@ -744,7 +746,7 @@ const handleChatFileUpload = async (req: Request, res: Response, next: Function)
         userId,
         role,
         fileName,
-        'file_attachment',
+        msgType,
         JSON.stringify({ 
           fileUrl, 
           fileName,

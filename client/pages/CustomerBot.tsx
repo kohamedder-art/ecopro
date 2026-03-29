@@ -12,6 +12,7 @@ import {
   Trash2,
   Eye,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 
 interface CustomerSegment {
@@ -83,6 +84,40 @@ export default function CustomerBot({ embedded = false }: CustomerBotProps) {
   const [targetSegment, setTargetSegment] = useState("all");
   const [campaignChannel, setCampaignChannel] = useState("auto");
   const [creating, setCreating] = useState(false);
+  const [aiComposing, setAiComposing] = useState(false);
+
+  const composeWithAI = async () => {
+    if (!campaignName.trim()) {
+      alert('Please enter a campaign name first so AI knows the topic.');
+      return;
+    }
+    setAiComposing(true);
+    try {
+      const csrfMatch = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
+      const csrf = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
+      const res = await fetch('/api/ai/whatsapp/compose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        credentials: 'include',
+        body: JSON.stringify({
+          campaignName,
+          targetSegment,
+          segmentCount: segments?.[targetSegment as keyof CustomerSegment] ?? 0,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCampaignMessage(data.message || data.text || '');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'AI compose failed. Please try again.');
+      }
+    } catch {
+      alert('Could not reach AI service.');
+    } finally {
+      setAiComposing(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -368,8 +403,18 @@ export default function CustomerBot({ embedded = false }: CustomerBotProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">                    Message
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Message</label>
+                    <button
+                      type="button"
+                      onClick={composeWithAI}
+                      disabled={aiComposing}
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                    >
+                      {aiComposing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      {aiComposing ? 'Composing...' : 'AI Compose'}
+                    </button>
+                  </div>
                   <textarea
                     value={campaignMessage}
                     onChange={(e) => setCampaignMessage(e.target.value)}

@@ -2,6 +2,7 @@ import { createServer } from "./index";
 import http from "http";
 import { startScheduledMessageWorker, stopScheduledMessageWorker } from "./utils/scheduled-messages";
 import { startBotMessageWorker, stopBotMessageWorker } from "./utils/bot-messaging";
+import { startGuardianWorker, stopGuardianWorker } from "./utils/guardian-worker";
 import { initWebSocket } from "./utils/websocket";
 
 async function startServer() {
@@ -25,6 +26,8 @@ async function startServer() {
       startScheduledMessageWorker();
       // Process bot_messages (Messenger instant/pin/confirmations, etc.)
       startBotMessageWorker({ intervalMs: 30 * 1000 });
+      // Start the Guardian AI alert worker
+      startGuardianWorker();
     });
 
     // Graceful shutdown
@@ -32,6 +35,7 @@ async function startServer() {
       console.log("🛑 Received SIGTERM, shutting down gracefully");
       stopScheduledMessageWorker();
       stopBotMessageWorker();
+      stopGuardianWorker();
       process.exit(0);
     });
 
@@ -39,6 +43,7 @@ async function startServer() {
       console.log("🛑 Received SIGINT, shutting down gracefully");
       stopScheduledMessageWorker();
       stopBotMessageWorker();
+      stopGuardianWorker();
       process.exit(0);
     });
   } catch (error) {

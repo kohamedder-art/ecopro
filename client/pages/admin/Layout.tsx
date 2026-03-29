@@ -10,6 +10,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useStaffPermissions } from "@/contexts/StaffPermissionContext";
 import { PermissionGate } from "@/components/PermissionGate";
 import Header from "@/components/layout/Header";
+import FloatingChatBubble from "@/components/chat/FloatingChatBubble";
 
 export default function AdminLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -95,6 +96,7 @@ export default function AdminLayout() {
         </div>
         </main>
       </div>
+      <FloatingChatBubble />
     </div>
   );
 }

@@ -879,6 +879,14 @@ export const getStaffOrderStatuses: RequestHandler = async (req, res) => {
       'delivery_failed',
       'failed',
       'returned',
+      // call-center / quality control
+      'fake',
+      'duplicate',
+      'no_answer_1',
+      'no_answer_2',
+      'no_answer_3',
+      'waiting_callback',
+      'postponed',
     ]);
 
     const filtered = (statuses.rows || []).filter((s: any) => {
