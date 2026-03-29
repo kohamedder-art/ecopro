@@ -6,171 +6,37 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Save, Eye, Settings, Check, Search, X, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Monitor, Smartphone, Tablet, Wand2, Sparkles, LayoutTemplate, MousePointerClick, Zap, Save, Eye, ExternalLink, Settings, Check, Search, X, ChevronDown, Image as ImageIcon, UploadCloud, Type } from 'lucide-react';
 import { RenderStorefront, normalizeTemplateId } from './storefront/templates';
 import { uploadImage } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useStoreProducts } from '@/hooks/useStoreProducts';
 
-const DEFAULT_TEMPLATE_ID = 'minimal';
+const DEFAULT_TEMPLATE_ID = 'luxedark';
 
 // Templates that are considered 100% editable + verified against TEMPLATE_EDITS_CONTRACT.
 // These are the only templates shown by default in the picker.
-const READY_TEMPLATE_IDS = new Set([
-  'bags',
-  'books',
-  'wedding',
-  'tools',
-  'pro-atelier',
-  'pro-studio',
-  'amber-store',
-  'rose-catalog',
-  'lime-direct',
-  'urgency-max',
-  'papercraft',
-  'minimal',
-]);
+const READY_TEMPLATE_IDS = new Set(['dzshop', 'dzpremium', 'luxedrop', 'luxedark', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery']);
 
 // Template preview data with categories
 const TEMPLATE_PREVIEWS = [
-  // Original templates (updated previews)
-  { id: 'bags', name: 'Bags Editorial', image: '/template-previews/bags-preview.svg', categories: ['elegant', 'industry'] },
-  { id: 'jewelry', name: 'JewelryOS', image: '/template-previews/jewelry-preview.svg', categories: ['elegant', 'industry'] },
-  { id: 'fashion', name: 'Fashion', image: '/template-previews/fashion-preview.svg', categories: ['popular', 'elegant'] },
-  { id: 'electronics', name: 'Electronics', image: '/template-previews/electronics-preview.svg', categories: ['industry'] },
-  { id: 'beauty', name: 'Beauty', image: '/template-previews/beauty-preview.svg', categories: ['colorful', 'industry'] },
-  { id: 'food', name: 'Food & Restaurant', image: '/template-previews/food-preview.svg', categories: ['colorful', 'industry'] },
-  { id: 'cafe', name: 'Cafe & Bakery', image: '/template-previews/cafe-preview.svg', categories: ['colorful', 'industry'] },
-  { id: 'furniture', name: 'Furniture', image: '/template-previews/furniture-preview.svg', categories: ['minimal', 'industry'] },
-  { id: 'perfume', name: 'Perfume', image: '/template-previews/perfume-preview.svg', categories: ['elegant', 'industry'] },
-  { id: 'minimal', name: 'Minimal', image: '/template-previews/minimal.png', categories: ['popular', 'minimal'] },
-  { id: 'classic', name: 'Classic', image: '/template-previews/classic.png', categories: ['elegant'] },
-  { id: 'modern', name: 'Modern', image: '/template-previews/modern.png', categories: ['minimal'] },
-  // New templates - Industry/Niche
-  { id: 'sports', name: 'Sports & Fitness', image: '/template-previews/sports.svg', categories: ['colorful', 'industry'] },
-  { id: 'books', name: 'Bookstore', image: '/template-previews/books.svg', categories: ['elegant', 'industry'] },
-  { id: 'pets', name: 'Pet Supplies', image: '/template-previews/pets.svg', categories: ['colorful', 'industry'] },
-  { id: 'toys', name: 'Toys & Games', image: '/template-previews/toys.svg', categories: ['colorful', 'industry'] },
-  { id: 'garden', name: 'Garden & Plants', image: '/template-previews/garden.svg', categories: ['colorful', 'industry'] },
-  { id: 'art', name: 'Art Gallery', image: '/template-previews/art.svg', categories: ['elegant', 'industry'] },
-  { id: 'music', name: 'Music & Instruments', image: '/template-previews/music.svg', categories: ['industry'] },
-  { id: 'health', name: 'Health & Pharmacy', image: '/template-previews/health.svg', categories: ['minimal', 'industry'] },
-  { id: 'watches', name: 'Watches', image: '/template-previews/watches.svg', categories: ['elegant', 'industry'] },
-  { id: 'shoes', name: 'Shoes & Footwear', image: '/template-previews/shoes.svg', categories: ['industry'] },
-  { id: 'gaming', name: 'Gaming', image: '/template-previews/gaming.svg', categories: ['dark', 'industry'] },
-  { id: 'automotive', name: 'Automotive', image: '/template-previews/automotive.svg', categories: ['dark', 'industry'] },
-  { id: 'crafts', name: 'Handmade & Crafts', image: '/template-previews/crafts.svg', categories: ['colorful', 'industry'] },
-  { id: 'outdoor', name: 'Outdoor & Camping', image: '/template-previews/outdoor.svg', categories: ['industry'] },
-  { id: 'vintage', name: 'Vintage & Antiques', image: '/template-previews/vintage.svg', categories: ['elegant', 'industry'] },
-  { id: 'tech', name: 'Tech & Gadgets', image: '/template-previews/tech.svg', categories: ['dark', 'industry'] },
-  { id: 'organic', name: 'Organic & Natural', image: '/template-previews/organic.svg', categories: ['colorful', 'industry'] },
-  { id: 'luxury', name: 'Luxury', image: '/template-previews/luxury.svg', categories: ['elegant', 'industry'] },
-  { id: 'kids', name: 'Kids & Baby', image: '/template-previews/kids.svg', categories: ['colorful', 'industry'] },
-  { id: 'travel', name: 'Travel & Luggage', image: '/template-previews/travel.svg', categories: ['industry'] },
-  { id: 'photography', name: 'Photography', image: '/template-previews/photography.svg', categories: ['minimal', 'industry'] },
-  { id: 'wedding', name: 'Wedding', image: '/template-previews/wedding.svg', categories: ['elegant', 'industry'] },
-  { id: 'fitness', name: 'Fitness & Gym', image: '/template-previews/fitness.svg', categories: ['colorful', 'industry'] },
-  { id: 'gifts', name: 'Gift Shop', image: '/template-previews/gifts.svg', categories: ['colorful', 'industry'] },
-  { id: 'candles', name: 'Candles & Home Scents', image: '/template-previews/candles.svg', categories: ['elegant', 'industry'] },
-  { id: 'skincare', name: 'Skincare', image: '/template-previews/skincare.svg', categories: ['minimal', 'industry'] },
-  { id: 'supplements', name: 'Supplements & Vitamins', image: '/template-previews/supplements.svg', categories: ['minimal', 'industry'] },
-  { id: 'phone-accessories', name: 'Phone Accessories', image: '/template-previews/phone-accessories.svg', categories: ['industry'] },
-  { id: 'tools', name: 'Tools & Hardware', image: '/template-previews/tools.svg', categories: ['industry'] },
-  { id: 'office', name: 'Office Supplies', image: '/template-previews/office.svg', categories: ['minimal', 'industry'] },
-  { id: 'stationery', name: 'Stationery', image: '/template-previews/stationery.svg', categories: ['colorful', 'industry'] },
-  // New templates - Style/Design
-  { id: 'neon', name: 'Neon Cyberpunk', image: '/template-previews/neon.svg', categories: ['dark', 'colorful'] },
-  { id: 'pastel', name: 'Pastel Dreams', image: '/template-previews/pastel.svg', categories: ['colorful', 'elegant'] },
-  { id: 'monochrome', name: 'Monochrome', image: '/template-previews/monochrome.svg', categories: ['minimal', 'dark'] },
-  { id: 'gradient', name: 'Gradient Wave', image: '/template-previews/gradient.svg', categories: ['colorful'] },
-  { id: 'florist', name: 'Florist', image: '/template-previews/florist.svg', categories: ['elegant', 'industry'] },
-  { id: 'eyewear', name: 'Eyewear', image: '/template-previews/eyewear.svg', categories: ['minimal', 'industry'] },
-  { id: 'lingerie', name: 'Lingerie & Intimates', image: '/template-previews/lingerie.svg', categories: ['elegant', 'industry'] },
-  { id: 'swimwear', name: 'Swimwear & Beach', image: '/template-previews/swimwear.svg', categories: ['colorful', 'industry'] },
-  { id: 'streetwear', name: 'Streetwear', image: '/template-previews/streetwear.svg', categories: ['dark', 'industry'] },
-  { id: 'wine', name: 'Wine & Spirits', image: '/template-previews/wine.svg', categories: ['elegant', 'industry'] },
-  { id: 'chocolate', name: 'Chocolate & Sweets', image: '/template-previews/chocolate.svg', categories: ['colorful', 'industry'] },
-  { id: 'tea', name: 'Tea & Coffee', image: '/template-previews/tea.svg', categories: ['elegant', 'industry'] },
-  { id: 'pro', name: 'Pro (Professional)', image: '/template-previews/pro.svg', categories: ['popular', 'pro', 'minimal'] },
-  { id: 'pro-landing', name: 'Pro Landing', image: '/template-previews/pro-landing.svg', categories: ['popular', 'pro', 'minimal', 'landing'] },
-  { id: 'focus-one', name: 'Focus One', image: '/template-previews/focus-one.svg', categories: ['landing', 'popular', 'minimal'] },
-  { id: 'split-specs', name: 'Split Specs', image: '/template-previews/split-specs.svg', categories: ['landing', 'minimal', 'elegant'] },
-  // Pro variants (new)
-  { id: 'pro-aurora', name: 'Pro Aurora', image: '/template-previews/pro-aurora.svg', categories: ['pro', 'colorful'] },
-  { id: 'pro-vertex', name: 'Pro Vertex', image: '/template-previews/pro-vertex.svg', categories: ['pro', 'dark'] },
-  { id: 'pro-atelier', name: 'Pro Atelier', image: '/template-previews/pro-atelier.svg', categories: ['pro', 'elegant'] },
-  { id: 'pro-orbit', name: 'Pro Orbit', image: '/template-previews/pro-orbit.svg', categories: ['pro', 'dark'] },
-  { id: 'pro-zen', name: 'Pro Zen', image: '/template-previews/pro-zen.svg', categories: ['pro', 'minimal'] },
-  { id: 'pro-studio', name: 'Pro Studio', image: '/template-previews/pro-studio.svg', categories: ['pro', 'minimal'] },
-  { id: 'pro-mosaic', name: 'Pro Mosaic', image: '/template-previews/pro-mosaic.svg', categories: ['pro', 'colorful'] },
-  { id: 'pro-grid', name: 'Pro Grid', image: '/template-previews/pro-grid.svg', categories: ['pro', 'minimal'] },
-  { id: 'pro-catalog', name: 'Pro Catalog', image: '/template-previews/pro-catalog.svg', categories: ['pro', 'elegant'] },
-  // Screenshot-inspired templates - Batch 1 (Green/Sage)
-  { id: 'sage-boutique', name: 'Sage Boutique', image: '/template-previews/sage-boutique.svg', categories: ['elegant', 'colorful'] },
-  { id: 'mint-elegance', name: 'Mint Elegance', image: '/template-previews/mint-elegance.svg', categories: ['elegant', 'colorful'] },
-  { id: 'forest-store', name: 'Forest Store', image: '/template-previews/forest-store.svg', categories: ['dark', 'colorful'] },
-  // Screenshot-inspired templates - Batch 2 (Orange/Coral)
-  { id: 'sunset-shop', name: 'Sunset Shop', image: '/template-previews/sunset-shop.svg', categories: ['colorful', 'minimal'] },
-  { id: 'coral-market', name: 'Coral Market', image: '/template-previews/coral-market.svg', categories: ['colorful'] },
-  { id: 'amber-store', name: 'Amber Store', image: '/template-previews/amber-store.svg', categories: ['elegant', 'colorful'] },
-  // Screenshot-inspired templates - Batch 3 (Magenta/Pink)
-  { id: 'magenta-mall', name: 'Magenta Mall', image: '/template-previews/magenta-mall.svg', categories: ['colorful'] },
-  { id: 'berry-market', name: 'Berry Market', image: '/template-previews/berry-market.svg', categories: ['colorful'] },
-  { id: 'rose-catalog', name: 'Rose Catalog', image: '/template-previews/rose-catalog.svg', categories: ['colorful', 'elegant'] },
-  // Screenshot-inspired templates - Batch 4 (Lime/Green)
-  { id: 'lime-direct', name: 'Lime Direct', image: '/template-previews/lime-direct.svg', categories: ['colorful', 'minimal', 'landing'] },
-  { id: 'emerald-shop', name: 'Emerald Shop', image: '/template-previews/emerald-shop.svg', categories: ['colorful', 'elegant'] },
-  { id: 'neon-store', name: 'Neon Store', image: '/template-previews/neon-store.svg', categories: ['dark', 'colorful'] },
-  // Screenshot-inspired templates - Batch 5 (Clean/Minimal)
-  { id: 'clean-single', name: 'Clean Single', image: '/template-previews/clean-single.svg', categories: ['minimal', 'popular', 'landing'] },
-  { id: 'pure-product', name: 'Pure Product', image: '/template-previews/pure-product.svg', categories: ['minimal', 'landing'] },
-  { id: 'snow-shop', name: 'Snow Shop', image: '/template-previews/snow-shop.svg', categories: ['minimal'] },
-  // Screenshot-inspired templates - Batch 6 (Gallery)
-  { id: 'gallery-pro', name: 'Gallery Pro', image: '/template-previews/gallery-pro.svg', categories: ['minimal', 'elegant', 'landing'] },
-  { id: 'showcase-plus', name: 'Showcase Plus', image: '/template-previews/showcase-plus.svg', categories: ['colorful', 'landing'] },
-  { id: 'exhibit-store', name: 'Exhibit Store', image: '/template-previews/exhibit-store.svg', categories: ['elegant', 'minimal', 'landing'] },
-
-  // New Gold templates (2026 expansion)
-  { id: 'ocean-splash', name: 'Ocean Splash', image: '/template-previews/ocean-splash.svg', categories: ['colorful', 'elegant'] },
-  { id: 'noir-eclipse', name: 'Noir Eclipse', image: '/template-previews/noir-eclipse.svg', categories: ['dark', 'elegant'] },
-  { id: 'terra-market', name: 'Terra Market', image: '/template-previews/terra-market.svg', categories: ['colorful', 'industry'] },
-  { id: 'pixel-pop', name: 'Pixel Pop', image: '/template-previews/pixel-pop.svg', categories: ['colorful'] },
-  { id: 'zen-grove', name: 'Zen Grove', image: '/template-previews/zen-grove.svg', categories: ['minimal', 'elegant'] },
-  { id: 'skyline-editorial', name: 'Skyline Editorial', image: '/template-previews/skyline-editorial.svg', categories: ['minimal', 'elegant'] },
-  { id: 'copper-craft', name: 'Copper Craft', image: '/template-previews/copper-craft.svg', categories: ['elegant', 'industry'] },
-  { id: 'violet-vault', name: 'Violet Vault', image: '/template-previews/violet-vault.svg', categories: ['dark', 'colorful'] },
-  { id: 'chalk-cafe', name: 'Chalk Cafe', image: '/template-previews/chalk-cafe.svg', categories: ['colorful', 'industry'] },
-  { id: 'sunbeam', name: 'Sunbeam', image: '/template-previews/sunbeam.svg', categories: ['colorful'] },
-  { id: 'ice-glass', name: 'Ice Glass', image: '/template-previews/ice-glass.svg', categories: ['minimal'] },
-  { id: 'paperfold', name: 'Paperfold', image: '/template-previews/paperfold.svg', categories: ['minimal'] },
-  { id: 'orbit-mart', name: 'Orbit Mart', image: '/template-previews/orbit-mart.svg', categories: ['dark', 'industry'] },
-  { id: 'royal-boutique', name: 'Royal Boutique', image: '/template-previews/royal-boutique.svg', categories: ['elegant', 'dark'] },
-  { id: 'mono-press', name: 'Mono Press', image: '/template-previews/mono-press.svg', categories: ['minimal'] },
-  { id: 'citrus-bloom', name: 'Citrus Bloom', image: '/template-previews/citrus-bloom.svg', categories: ['colorful'] },
-  { id: 'harbor-ledger', name: 'Harbor Ledger', image: '/template-previews/harbor-ledger.svg', categories: ['minimal'] },
-
-  // Landing Page Templates (unique designs with embedded checkout)
-  { id: 'trust-pulse', name: 'Trust Pulse', image: '/template-previews/trust-pulse.svg', categories: ['landing', 'popular', 'colorful'] },
-  { id: 'social-proof', name: 'Social Proof', image: '/template-previews/social-proof.svg', categories: ['landing', 'colorful'] },
-  { id: 'authority-pro', name: 'Authority Pro', image: '/template-previews/authority-pro.svg', categories: ['landing', 'dark', 'elegant'] },
-  { id: 'guarantee-focus', name: 'Guarantee Focus', image: '/template-previews/guarantee-focus.svg', categories: ['landing', 'colorful'] },
-  { id: 'video-sales', name: 'Video Sales', image: '/template-previews/video-sales.svg', categories: ['landing', 'dark'] },
-  { id: 'lifestyle-story', name: 'Lifestyle Story', image: '/template-previews/lifestyle-story.svg', categories: ['landing', 'elegant', 'colorful'] },
-  { id: 'before-after', name: 'Before & After', image: '/template-previews/before-after.svg', categories: ['landing', 'colorful'] },
-  { id: 'cinematic-hero', name: 'Cinematic Hero', image: '/template-previews/cinematic-hero.svg', categories: ['landing', 'dark', 'elegant'] },
-  { id: 'magazine-style', name: 'Magazine Style', image: '/template-previews/magazine-style.svg', categories: ['landing', 'elegant', 'minimal'] },
-  { id: 'polaroid-memory', name: 'Polaroid Memory', image: '/template-previews/polaroid-memory.svg', categories: ['landing', 'colorful'] },
-  { id: 'urgency-max', name: 'Urgency Max', image: '/template-previews/urgency-max.svg', categories: ['landing', 'colorful', 'popular'] },
-  { id: 'bundle-builder', name: 'Bundle Builder', image: '/template-previews/bundle-builder.svg', categories: ['landing', 'colorful'] },
-  { id: 'quiz-funnel', name: 'Quiz Funnel', image: '/template-previews/quiz-funnel.svg', categories: ['landing', 'colorful'] },
-  { id: 'comparison-table', name: 'Comparison Table', image: '/template-previews/comparison-table.svg', categories: ['landing', 'minimal'] },
-  { id: 'flash-deal', name: 'Flash Deal', image: '/template-previews/flash-deal.svg', categories: ['landing', 'colorful', 'popular'] },
-  { id: 'neon-pulse', name: 'Neon Pulse', image: '/template-previews/neon-pulse.svg', categories: ['landing', 'dark', 'colorful'] },
-  { id: 'glassmorphism', name: 'Glassmorphism', image: '/template-previews/glassmorphism.svg', categories: ['landing', 'colorful', 'elegant'] },
-  { id: 'brutalist-raw', name: 'Brutalist Raw', image: '/template-previews/brutalist-raw.svg', categories: ['landing', 'dark', 'minimal'] },
-  { id: 'retrowave', name: 'Retrowave', image: '/template-previews/retrowave.svg', categories: ['landing', 'dark', 'colorful'] },
-  { id: 'papercraft', name: 'Papercraft', image: '/template-previews/papercraft.svg', categories: ['landing', 'colorful', 'elegant'] },
+  { id: 'dzshop', name: 'DZ Shop (Algerian)', image: '', categories: ['popular', 'industry'] },
+  { id: 'dzpremium', name: 'DZ Premium (Green Fast)', image: '', categories: ['popular', 'landing'] },
+  { id: 'luxedrop', name: 'Luxe Drop (Dark Edition)', image: '', categories: ['dark', 'landing'] },
+  { id: 'luxedark', name: 'Luxe Dark (Cosmetics)', image: '', categories: ['dark', 'elegant'] },
+  { id: 'needdz', name: 'NeedDZ Mobile App', image: '', categories: ['mobile', 'popular'] },
+  { id: 'novadz', name: 'Nova DZ (Modern Convert)', image: '', categories: ['popular', 'landing'] },
+  { id: 'minimalist', name: "L'Atelier (Minimalist)", image: '', categories: ['minimal', 'elegant'] },
+  { id: 'lumina', name: 'Lumina (Landing Page)', image: '', categories: ['landing', 'popular'] },
+  { id: 'zenith', name: 'Zenith (Clean Landing)', image: '', categories: ['landing', 'minimal'] },
+  { id: 'boutique', name: 'Boutique (Collection Store)', image: '', categories: ['popular', 'elegant'] },
+  { id: 'aurora', name: 'Aurora (Premium Dark)', image: '', categories: ['dark', 'elegant'] },
+  { id: 'sculptor', name: 'Sculptor (Product Detail)', image: '', categories: ['dark', 'elegant'] },
+  { id: 'artisan', name: 'Artisan (Earthy Collection)', image: '', categories: ['elegant', 'popular'] },
+  { id: 'vera', name: 'Véra (Cinematic Luxury)', image: '', categories: ['dark', 'elegant'] },
+  { id: 'streetwear', name: 'Streetwear (Grid Store)', image: '', categories: ['dark', 'popular'] },
+  { id: 'gallery', name: 'Gallery (Minimal Grid)', image: '', categories: ['minimal', 'popular'] }
 ];
 
 const TEMPLATE_CATEGORIES = [
@@ -247,15 +113,48 @@ export default function GoldTemplateEditor() {
   const queryClient = useQueryClient();
   const previewRootRef = React.useRef<HTMLDivElement | null>(null);
   const previewFitRef = React.useRef<HTMLDivElement | null>(null);
+  const canvasContainerRef = React.useRef<HTMLDivElement | null>(null);
   const previewIframeRef = React.useRef<HTMLIFrameElement | null>(null);
   const previewIframeRootRef = React.useRef<ReturnType<typeof createRoot> | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // CSRF token for mutating API calls
+  const getCsrfToken = (): string => {
+    const match = document.cookie.match(/ecopro_csrf=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  };
   const [settings, setSettings] = useState<StoreSettings>({});
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [activeTab, setActiveTab] = useState<'preview' | 'settings'>('preview');
+
+  // Lock body/html scroll so the editor never bleeds outside its h-dvh container
+  useEffect(() => {
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'TEMPLATE_UPDATE_SETTING') {
+        const { key, value } = event.data;
+        if (typeof key === 'string') {
+          handleSettingChange(key, value);
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
 
   const {
     data: storeSettingsData,
@@ -333,11 +232,11 @@ export default function GoldTemplateEditor() {
   }, []);
 
   // Reset iframe state when switching preview mode.
+  // Must reset for ALL modes — switching devices unmounts the old iframe,
+  // so the old React root becomes stale. Always create a fresh root.
   useEffect(() => {
-    if (previewDevice === 'desktop') {
-      setIframeReady(false);
-      previewIframeRootRef.current = null;
-    }
+    setIframeReady(false);
+    previewIframeRootRef.current = null;
   }, [previewDevice]);
 
   // Template picker (header)
@@ -441,7 +340,7 @@ export default function GoldTemplateEditor() {
     try {
       const res = await fetch('/api/client/store/template', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
         credentials: 'include',
         body: JSON.stringify({ template: nextTemplate, mode: 'import' }),
       });
@@ -485,7 +384,7 @@ export default function GoldTemplateEditor() {
     try {
       const res = await fetch('/api/client/store/template', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
         credentials: 'include',
         body: JSON.stringify({ template: effectiveTemplateId, mode: 'defaults' }),
       });
@@ -513,17 +412,71 @@ export default function GoldTemplateEditor() {
     }
   };
 
+  // Upload any base64 data URIs found in settings before saving
+  const sanitizeSettingsImages = async (raw: StoreSettings): Promise<StoreSettings> => {
+    const cleaned: StoreSettings = { ...raw };
+    const uploads: Promise<void>[] = [];
+
+    const uploadBase64 = async (b64DataUri: string): Promise<string> => {
+      const [header, b64] = b64DataUri.split(',');
+      const mime = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+      const bytes = atob(b64);
+      const arr = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      const file = new File([arr], `upload.jpg`, { type: mime });
+      const result = await uploadImage(file);
+      return result.url;
+    };
+
+    for (const key of Object.keys(cleaned)) {
+      const val = cleaned[key];
+      if (typeof val !== 'string') continue;
+
+      // Handle comma-separated image lists (banner_url, hero_main_url, etc.)
+      if (val.includes('data:image/')) {
+        uploads.push(
+          (async () => {
+            try {
+              const parts = val.split(',');
+              const resolved: string[] = [];
+              for (const part of parts) {
+                if (part.startsWith('data:image/')) {
+                  resolved.push(await uploadBase64(part));
+                } else if (part.trim()) {
+                  resolved.push(part.trim());
+                }
+              }
+              cleaned[key] = resolved.join(',');
+            } catch {
+              // Strip bad base64 to avoid huge payload
+              cleaned[key] = val.replace(/data:image\/[^,]+,[\w+/=]+/g, '').replace(/,,+/g, ',').replace(/^,|,$/g, '');
+            }
+          })()
+        );
+      }
+    }
+
+    await Promise.all(uploads);
+    return cleaned;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     setSuccess(null);
 
     try {
+      // Strip / upload any base64 images before sending
+      const cleanedSettings = await sanitizeSettingsImages(settings);
+
+      // "Publish Changes" means the store should go live
+      cleanedSettings.is_public = true;
+
       const res = await fetch('/api/client/store/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
         credentials: 'include',
-        body: JSON.stringify(settings),
+        body: JSON.stringify(cleanedSettings),
       });
 
       if (!res.ok) {
@@ -665,6 +618,16 @@ export default function GoldTemplateEditor() {
   );
 
   // Template preview props
+  // When no real products exist, show sample products so the template isn't blank
+  const SAMPLE_PRODUCTS: StoreProduct[] = useMemo(() => [
+    { id: 1, title: 'منتج تجريبي 1', price: 3500, images: ['https://placehold.co/600x800/1a1a2e/e0e0e0?text=Product+1'], category: 'ملابس', stock_quantity: 10, is_featured: true, slug: 'sample-1', views: 120, description: 'هذا منتج تجريبي لعرض القالب. أضف منتجات حقيقية من إدارة المتجر.' },
+    { id: 2, title: 'منتج تجريبي 2', price: 2800, images: ['https://placehold.co/600x800/2d2d44/e0e0e0?text=Product+2'], category: 'إكسسوارات', stock_quantity: 25, is_featured: false, slug: 'sample-2', views: 85, description: 'منتج تجريبي ثاني لعرض كيف يبدو القالب مع عدة منتجات.' },
+    { id: 3, title: 'منتج تجريبي 3', price: 4200, images: ['https://placehold.co/600x800/16213e/e0e0e0?text=Product+3'], category: 'ملابس', stock_quantity: 5, is_featured: true, slug: 'sample-3', views: 200, description: 'منتج تجريبي ثالث.' },
+    { id: 4, title: 'منتج تجريبي 4', price: 1900, images: ['https://placehold.co/600x800/0f3460/e0e0e0?text=Product+4'], category: 'إكسسوارات', stock_quantity: 15, is_featured: false, slug: 'sample-4', views: 60, description: 'منتج تجريبي رابع.' },
+  ], []);
+
+  const effectiveProducts = products.length > 0 ? products : SAMPLE_PRODUCTS;
+
   const templateProps = useMemo(
     () => ({
       storeSlug: settings.store_slug || 'preview',
@@ -673,9 +636,9 @@ export default function GoldTemplateEditor() {
         ...(isPreviewingDifferentTemplate ? getTemplateDefaults() : null),
         template: activeTemplateId,
       },
-      products,
-      filtered: products,
-      categories: [...new Set(products.map((p) => p.category).filter(Boolean))] as string[],
+      products: effectiveProducts,
+      filtered: effectiveProducts,
+      categories: [...new Set(effectiveProducts.map((p) => p.category).filter(Boolean))] as string[],
       searchQuery: '',
       setSearchQuery: () => {},
       categoryFilter: '',
@@ -693,14 +656,13 @@ export default function GoldTemplateEditor() {
       forcedBreakpoint: previewDevice,
       onSelect: handleSelectEditPath,
     }),
-    [settings, products, formatPrice, navigate, previewDevice, activeTemplateId, isPreviewingDifferentTemplate, handleSelectEditPath]
+    [settings, effectiveProducts, formatPrice, navigate, previewDevice, activeTemplateId, isPreviewingDifferentTemplate, handleSelectEditPath]
   );
 
   const selectedTemplateId = useMemo(() => normalizeTemplateId(String(activeTemplateId)), [activeTemplateId]);
 
-  // Render storefront into an iframe for mobile/tablet so CSS breakpoints match the simulated device width.
+  // Render storefront into an iframe for all device modes so CSS breakpoints match the simulated device.
   useEffect(() => {
-    if (previewDevice === 'desktop') return;
     const iframe = previewIframeRef.current;
     const doc = iframe?.contentDocument;
     if (!iframe || !doc || !iframeReady) return;
@@ -724,12 +686,33 @@ export default function GoldTemplateEditor() {
         {RenderStorefront(selectedTemplateId, templateProps as any)}
       </div>
     );
+
+    // Inject font-family override into iframe head if a custom font is selected
+    const fontFamily = (templateProps.settings as any)?.template_font_family;
+    if (fontFamily && fontFamily !== 'cairo') {
+      const fontMap: Record<string, { url: string; name: string }> = {
+        tajawal: { url: 'https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap', name: 'Tajawal' },
+        almarai: { url: 'https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap', name: 'Almarai' },
+        'ibm-plex-arabic': { url: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Arabic:wght@300;400;500;700&display=swap', name: 'IBM Plex Arabic' },
+      };
+      const fontInfo = fontMap[fontFamily];
+      if (fontInfo) {
+        doc.querySelectorAll('[data-font-inject]').forEach(n => n.remove());
+        const link = doc.createElement('link');
+        link.rel = 'stylesheet'; link.href = fontInfo.url;
+        link.setAttribute('data-font-inject', '1');
+        doc.head.appendChild(link);
+        const style = doc.createElement('style');
+        style.setAttribute('data-font-inject', '1');
+        style.textContent = `*{font-family:'${fontInfo.name}',sans-serif!important}`;
+        doc.head.appendChild(style);
+      }
+    }
   }, [iframeReady, previewDevice, selectedTemplateId, templateProps, syncIframeHead]);
 
   // Click-to-edit inside iframe (capture phase) so templates don't need special wiring.
   // Also handle touch events for mobile devices
   useEffect(() => {
-    if (previewDevice === 'desktop') return;
     const doc = previewIframeRef.current?.contentDocument;
     if (!doc || !iframeReady) return;
 
@@ -799,8 +782,8 @@ export default function GoldTemplateEditor() {
       // iPad Pro 11" scaled to 65%: 542x776
       return { width: '542px', maxWidth: '542px', height: '776px', aspectRatio: '542/776' } as const;
     }
-    // Desktop: cap width so the editor panels stay usable; height is controlled by layout.
-    return { width: '100%', maxWidth: '1100px', height: '100%', aspectRatio: 'auto' } as const;
+    // Desktop uses fluid width/height — no fixed frame.
+    return { width: '100%', maxWidth: '100%', height: '100%', aspectRatio: 'auto' } as const;
   }, [previewDevice]);
 
   const baseDeviceOuter = useMemo(() => {
@@ -812,44 +795,38 @@ export default function GoldTemplateEditor() {
       // Outer container is 562px wide; includes 12px vertical padding and a small camera area.
       return { width: 562, height: 776 + 24 + 20 };
     }
-    // Desktop uses fluid width; scaling is unnecessary.
+    // Desktop uses fluid layout.
     return { width: 0, height: 0 };
   }, [previewDevice]);
 
   const [deviceScale, setDeviceScale] = useState(1);
 
   useLayoutEffect(() => {
-    const host = previewFitRef.current;
-    if (!host) return;
+    const container = canvasContainerRef.current;
+    if (!container) return;
 
     const compute = () => {
       if (previewDevice === 'desktop') {
         setDeviceScale(1);
         return;
       }
-      const rect = host.getBoundingClientRect();
-      const availW = Math.max(1, rect.width);
-      // Fit to visible viewport, but keep a small bottom buffer.
-      const availH = Math.max(1, window.innerHeight - rect.top - 12);
-      const baseW = baseDeviceOuter.width || 1;
-      const baseH = baseDeviceOuter.height || 1;
-
-      // Allow scaling up more so the device fills the available space.
-      const maxScale = previewDevice === 'mobile' ? 3.0 : 2.35;
-      const s = Math.min(availW / baseW, availH / baseH, maxScale);
-      const clamped = Math.max(0.25, Math.min(maxScale, s));
-      setDeviceScale(clamped);
+      const availW = container.clientWidth;
+      const availH = container.clientHeight;
+      const naturalW = previewDevice === 'mobile' ? 375 : 768;
+      const naturalH = previewDevice === 'mobile' ? 812 : 1024;
+      const s = Math.min((availW * 0.98) / naturalW, (availH * 0.98) / naturalH, 1.4);
+      setDeviceScale(Math.max(0.25, s));
     };
 
     compute();
-    const ro = new ResizeObserver(() => compute());
-    ro.observe(host);
+    const ro = new ResizeObserver(compute);
+    ro.observe(container);
     window.addEventListener('resize', compute);
     return () => {
       ro.disconnect();
       window.removeEventListener('resize', compute);
     };
-  }, [previewDevice, baseDeviceOuter.width, baseDeviceOuter.height]);
+  }, [previewDevice]);
 
   useEffect(() => {
     if (!templatePickerOpen) return;
@@ -1462,808 +1439,327 @@ export default function GoldTemplateEditor() {
     );
   }, [selectedEditPath, settings, navigate, t, activeTemplateId]);
 
-  if (loading) {
+    if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0A0D14]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-background border-b">
-        <div className="container mx-auto px-2 md:px-4 py-2 md:py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div className="flex items-center gap-2 md:gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">{t('editor.back')}</span>
-            </Button>
-            <h1 className="text-base md:text-lg font-semibold truncate">{t('editor.title')}</h1>
-          </div>
+    <div dir="ltr" className="h-dvh flex overflow-hidden bg-slate-50 dark:bg-[#0A0D14] font-sans text-slate-800 dark:text-slate-200" style={{ isolation: 'isolate' }}>
+      {/* GLOW EFFECTS */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[120px] mix-blend-screen pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-violet-600/10 blur-[120px] mix-blend-screen pointer-events-none z-0" />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setTemplatePickerOpen((v) => !v)}
-              className="gap-1 md:gap-2 text-xs md:text-sm"
-              aria-label="Select template"
-            >
-              <span className="max-w-[80px] md:max-w-none truncate">
-                {TEMPLATE_PREVIEWS.find((t) => t.id === activeTemplateId)?.name || activeTemplateId}
-              </span>
-              <ChevronDown className="w-4 h-4" />
-            </Button>
-
-            {activeTab === 'preview' && (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant={previewDevice === 'mobile' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPreviewDevice('mobile')}
-                  className="px-2 md:px-3 text-xs md:text-sm"
-                >
-                  <span className="hidden sm:inline">{t('editor.mobile')}</span>
-                  <span className="sm:hidden">📱</span>
-                </Button>
-                <Button
-                  variant={previewDevice === 'tablet' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPreviewDevice('tablet')}
-                  className="px-2 md:px-3 text-xs md:text-sm"
-                >
-                  <span className="hidden sm:inline">{t('editor.tablet')}</span>
-                  <span className="sm:hidden">📋</span>
-                </Button>
-                <Button
-                  variant={previewDevice === 'desktop' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPreviewDevice('desktop')}
-                  className="px-2 md:px-3 text-xs md:text-sm"
-                >
-                  <span className="hidden sm:inline">{t('editor.desktop')}</span>
-                  <span className="sm:hidden">🖥️</span>
-                </Button>
-              </div>
-            )}
-
-            <Button
-              variant={activeTab === 'preview' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveTab('preview')}
-              className="px-2 md:px-3 text-xs md:text-sm"
-            >
-              <Eye className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">{t('editor.preview')}</span>
-            </Button>
-            <Button
-              variant={activeTab === 'settings' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveTab('settings')}
-              className="px-2 md:px-3 text-xs md:text-sm"
-            >
-              <Settings className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">{t('editor.settings')}</span>
-            </Button>
-            <Button onClick={handleSave} disabled={saving} className="px-2 md:px-3 text-xs md:text-sm">
-              <Save className="w-4 h-4 md:mr-2" />
-              <span className="hidden sm:inline">{saving ? t('editor.saving') : t('editor.save')}</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-hidden flex flex-col">
-        {/* Alerts */}
-        {(error || success) && (
-          <div className="mx-4 mt-4 space-y-3 shrink-0">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {success && (
-              <Alert className="border-green-500 text-green-700">
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            )}
+      
+      {/* Toast Notifications */}
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none">
+        {error && (
+          <div className="bg-red-500/90 text-white px-4 py-2 rounded-xl backdrop-blur-md shadow-lg border border-red-400/50 min-w-[200px] text-center text-sm font-medium animate-in fade-in slide-in-from-top-4">
+            {error}
           </div>
         )}
+        {success && (
+          <div className="bg-green-500/90 text-white px-4 py-2 rounded-xl backdrop-blur-md shadow-lg border border-green-400/50 min-w-[200px] text-center text-sm font-medium animate-in fade-in slide-in-from-top-4">
+            {success}
+          </div>
+        )}
+      </div>
 
-        {/* Content */}
-        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 flex-1 min-h-0 overflow-auto lg:overflow-hidden">
-        {activeTab === 'preview' ? (
-          <div className={`grid grid-cols-1 ${previewGridCols} gap-2 sm:gap-4 items-start lg:items-stretch min-h-full lg:h-full`}>
-            <div className="space-y-3 min-w-0 min-h-0 flex flex-col pb-20 lg:pb-0">
-              {/* Device Frame Container */}
-              <div ref={previewFitRef} className="w-full flex-1 min-h-0 flex items-start justify-center lg:justify-start">
-                {previewDevice === 'desktop' ? (
-                  <div
-                    style={{
-                      marginLeft: 'auto',
-                      marginRight: 'auto',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      width: '100%',
-                      maxWidth: deviceFrame.maxWidth as any,
-                      height: '100%',
-                    }}
-                  >
-                    <div
-                      className="overflow-hidden bg-white flex flex-col"
-                      style={{
-                        maxWidth: deviceFrame.maxWidth as any,
-                        width: deviceFrame.width as any,
-                        height: deviceFrame.height as any,
-                        aspectRatio: deviceFrame.aspectRatio as any,
-                        borderRadius: '4px',
-                        position: 'relative',
-                      }}
-                    >
-                      <style>{`[data-edit-selected="true"]{outline:2px solid hsl(var(--primary)); outline-offset:2px;}`}</style>
-                      <div
-                        ref={previewRootRef}
-                        onClickCapture={handlePreviewClickCapture}
-                        className="flex-1 overflow-y-auto overflow-x-hidden"
-                      >
-                        {RenderStorefront(selectedTemplateId, templateProps as any)}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      width: `${baseDeviceOuter.width * deviceScale}px`,
-                      height: `${baseDeviceOuter.height * deviceScale}px`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${baseDeviceOuter.width}px`,
-                        height: `${baseDeviceOuter.height}px`,
-                        transform: `scale(${deviceScale})`,
-                        transformOrigin: 'top left',
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: 'relative',
-                          marginLeft: '0',
-                          marginRight: 'auto',
-                          ...(previewDevice === 'mobile'
-                            ? {
-                                // Samsung Galaxy S24 Ultra frame styling
-                                background:
-                                  'linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 50%, #0d0d0d 100%)',
-                                borderRadius: '28px',
-                                padding: '6px',
-                                boxShadow:
-                                  '0 20px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), 0 0 0 1px #333',
-                                width: '342px',
-                              }
-                            : {
-                                // iPad frame styling (65% scale)
-                                background: '#2d2d2d',
-                                borderRadius: '16px',
-                                padding: '12px 10px',
-                                boxShadow:
-                                  '0 20px 40px -10px rgba(0,0,0,0.35), inset 0 0 0 2px #444',
-                                width: '562px',
-                              }),
-                        }}
-                      >
-                        {/* Front Camera for iPad */}
-                        {previewDevice === 'tablet' && (
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'center',
-                              marginBottom: '10px',
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: '10px',
-                                height: '10px',
-                                background: '#1a1a1a',
-                                borderRadius: '50%',
-                                boxShadow: 'inset 0 0 2px rgba(255,255,255,0.2)',
-                              }}
-                            />
-                          </div>
-                        )}
-
-                        {/* Screen */}
-                        <div
-                          className="overflow-hidden bg-white flex flex-col"
-                          style={{
-                            maxWidth: deviceFrame.maxWidth as any,
-                            width: deviceFrame.width as any,
-                            height: deviceFrame.height as any,
-                            aspectRatio: deviceFrame.aspectRatio as any,
-                            borderRadius: previewDevice === 'mobile' ? '22px' : '8px',
-                            position: 'relative',
-                          }}
-                        >
-                          <iframe
-                            ref={previewIframeRef}
-                            title="Storefront Preview"
-                            srcDoc={IFRAME_SRC_DOC}
-                            onLoad={() => setIframeReady(true)}
-                            style={{
-                              border: 0,
-                              width: '100%',
-                              height: '100%',
-                              display: 'block',
-                              background: '#ffffff',
-                            }}
-                          />
-                        </div>
-
-                        {/* Punch-hole camera overlay for Galaxy */}
-                        {previewDevice === 'mobile' && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: '12px',
-                              left: '50%',
-                              transform: 'translateX(-50%)',
-                              width: '12px',
-                              height: '12px',
-                              background: '#000',
-                              borderRadius: '50%',
-                              boxShadow: 'inset 0 0 3px rgba(255,255,255,0.15)',
-                              zIndex: 10,
-                            }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+      {/* TOP NAVIGATION / TOOLBAR */}
+      <div dir="auto" className="absolute top-0 left-0 right-0 h-16 bg-white/90 dark:bg-[#04060b]/90 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 z-50">
+          <div className="flex items-center gap-6">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl h-10">
+              <ArrowLeft className="w-4 h-4 mr-2" /> {t('common.back')} ({t('common.returnToDashboard')})
+            </Button>
+            <div className="h-5 w-px bg-white/10" />
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400 uppercase">STORE ENGINE</span>
             </div>
+          </div>
 
-            <div className="min-w-0 h-full overflow-hidden hidden lg:block">
-              <div className="relative h-full overflow-hidden">
-                {/* Edit panel stays mounted (so it feels instant when templates hide) */}
-                <div
-                  className={`transition-opacity duration-200 ${
-                    templatePickerOpen ? 'opacity-30 pointer-events-none select-none' : 'opacity-100'
-                  }`}
-                >
-                  <div className="h-full overflow-y-auto pr-1">{editPanel}</div>
-                </div>
+          {/* DEVICE PREVIEW TOGGLES */}
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-inner">
+            <button onClick={() => setPreviewDevice('mobile')} className={`p-2 rounded-xl transition-all duration-300 ${previewDevice === 'mobile' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}><Smartphone className="w-4 h-4" /></button>
+            <button onClick={() => setPreviewDevice('tablet')} className={`p-2 rounded-xl transition-all duration-300 ${previewDevice === 'tablet' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}><Tablet className="w-4 h-4" /></button>
+            <button onClick={() => setPreviewDevice('desktop')} className={`p-2 rounded-xl transition-all duration-300 ${previewDevice === 'desktop' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}><Monitor className="w-4 h-4" /></button>
+          </div>
 
-                {/* Templates panel slides over the edit panel - DESKTOP ONLY */}
-                <div
-                  className={
-                    `absolute inset-0 transition-all duration-200 ease-out will-change-transform ${
-                      templatePickerOpen
-                        ? 'opacity-100 translate-x-0 pointer-events-auto'
-                        : 'opacity-0 translate-x-6 pointer-events-none'
-                    }`
-                  }
-                >
-                  <Card className="h-full flex flex-col">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <CardTitle className="text-base">{(t('editor.chooseTemplate') as any) || 'Choose Template'}</CardTitle>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setTemplatePickerOpen(false)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-1">
-                      <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Check className="w-4 h-4 text-primary" />
-                          <span className="text-sm text-muted-foreground whitespace-nowrap">{(t('editor.currentTemplate') as any) || 'Current'}:</span>
-                          <span className="font-semibold text-primary truncate">
-                            {TEMPLATE_PREVIEWS.find((t) => t.id === effectiveTemplateId)?.name || effectiveTemplateId}
-                          </span>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={handleResetTemplate} className="text-xs">
-                          🔄 Reset
-                        </Button>
-                      </div>
+          <div className="flex items-center gap-3">
+            {settings.store_slug && (
+              <Button variant="ghost" size="sm" onClick={() => window.open(`/store/${settings.store_slug}`, '_blank')} className="hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl h-10 gap-2" title="Preview store in new tab">
+                <Eye className="w-4 h-4" /><ExternalLink className="w-3 h-3" />
+              </Button>
+            )}
+            <Button onClick={handleSave} disabled={saving} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-6 h-10 font-bold shadow-[0_0_20px_-5px_rgba(79,70,229,0.4)] transition-all">
+               {saving ? <span className="flex items-center gap-2"><div className="w-3.5 h-3.5 rounded-full border-2 border-white/20 border-t-white animate-spin"/> {t('editor.saving')}</span> : <span className="flex items-center gap-2"><Save className="w-4 h-4"/> {t('editor.publishChanges')}</span>}
+            </Button>
+          </div>
+      </div>
 
-                      {isPreviewingDifferentTemplate && (
-                        <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="min-w-0">
-                            <div className="text-xs text-muted-foreground">Previewing:</div>
-                            <div className="font-semibold truncate">
-                              {TEMPLATE_PREVIEWS.find((t) => t.id === activeTemplateId)?.name || activeTemplateId}
+      {/* LEFT SIDEBAR - TOOL PICKER */}
+      <div className="w-20 h-full pt-16 bg-white/80 dark:bg-[#04060b]/80 backdrop-blur-lg border-r border-slate-200 dark:border-white/5 flex flex-col items-center py-6 gap-6 z-40 relative">
+         <div className="flex flex-col gap-3 mt-4 w-full px-3">
+            <button onClick={() => setActiveTab('theme' as any)} className={`w-full aspect-square flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-300 ${activeTab === ('theme' as any) || activeTab === 'settings' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent'}`} title="Theme Settings">
+              <Wand2 className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{t('editor.theme')}</span>
+            </button>
+            <button onClick={() => setActiveTab('media' as any)} className={`w-full aspect-square flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-300 ${activeTab === ('media' as any) ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent'}`} title="Media & Branding">
+              <ImageIcon className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{t('editor.assets')}</span>
+            </button>
+            <button onClick={() => setActiveTab('layout' as any)} className={`w-full aspect-square flex flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-300 ${activeTab === ('layout' as any) || activeTab === 'preview' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent'}`} title="Layout & Structure">
+              <LayoutTemplate className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{t('editor.layout')}</span>
+            </button>
+         </div>
+      </div>
+
+      {/* SECONDARY SIDEBAR - SETTINGS PANEL */}
+      <div dir="auto" className="w-80 h-full pt-16 bg-white dark:bg-[#0B0F19] border-r border-slate-200 dark:border-white/5 flex flex-col z-30 overflow-y-auto relative custom-scrollbar shadow-2xl">
+         <div className="p-6">
+            {(activeTab === 'theme' as any || activeTab === 'settings') && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
+                 <div>
+                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('editor.globalStyles')}</h3>
+                   <p className="text-xs text-slate-500 dark:text-slate-400">{t('editor.globalStylesDesc')}</p>
+                 </div>
+                 
+                 {/* Brand Colors */}
+                 <div className="space-y-4">
+                    <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Zap className="w-3 h-3 text-indigo-500"/> {t('editor.coreColors')}</h4>
+                    <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-5">
+                       <div className="flex flex-col gap-3">
+                         <div className="flex items-center justify-between">
+                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('editor.primaryColor')}</span>
+                           <span className="text-xs font-mono text-slate-500">{settings.primary_color || '#2563eb'}</span>
+                         </div>
+                         <div className="flex gap-2">
+                            <input type="color" value={settings.primary_color || '#2563eb'} onChange={(e) => handleSettingChange('primary_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
+                            <div className="flex-1 flex gap-1">
+                               {/* Quick swatches */}
+                               {['#2563eb', '#f97316', '#10b981', '#6366f1', '#ec4899', '#0f172a'].map(color => (
+                                  <button key={color} onClick={() => handleSettingChange('primary_color', color)} className="flex-1 rounded-lg border border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
+                               ))}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              disabled={saving || !previewTemplateId}
-                              onClick={() => {
-                                if (!previewTemplateId) return;
-                                handleTemplateChange(previewTemplateId);
-                              }}
-                            >
-                              Use template
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={saving}
-                              onClick={() => setPreviewTemplateId(null)}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
+                         </div>
+                       </div>
+                       {/* Accent / CTA button color */}
+                       <div className="flex flex-col gap-3">
+                         <div className="flex items-center justify-between">
+                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">لون الزر / Accent</span>
+                           <span className="text-xs font-mono text-slate-500">{settings.template_accent_color || '#f97316'}</span>
+                         </div>
+                         <div className="flex gap-2">
+                            <input type="color" value={settings.template_accent_color || '#f97316'} onChange={(e) => handleSettingChange('template_accent_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
+                            <div className="flex-1 flex gap-1">
+                               {['#f97316', '#ef4444', '#22c55e', '#a855f7', '#06b6d4', '#fbbf24'].map(color => (
+                                  <button key={color} onClick={() => handleSettingChange('template_accent_color', color)} className="flex-1 rounded-lg border border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
+                               ))}
+                            </div>
+                         </div>
+                       </div>
+                       {/* Background color */}
+                       <div className="flex flex-col gap-3">
+                         <div className="flex items-center justify-between">
+                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">لون الخلفية / Background</span>
+                           <span className="text-xs font-mono text-slate-500">{settings.template_bg_color || '#ffffff'}</span>
+                         </div>
+                         <div className="flex gap-2">
+                            <input type="color" value={settings.template_bg_color || '#ffffff'} onChange={(e) => handleSettingChange('template_bg_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
+                            <div className="flex-1 flex gap-1">
+                               {['#ffffff', '#f8fafc', '#f9f8f6', '#0a0a0a', '#080808', '#0f172a'].map(color => (
+                                  <button key={color} onClick={() => handleSettingChange('template_bg_color', color)} className="flex-1 rounded-lg border border-slate-300 dark:border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
+                               ))}
+                            </div>
+                         </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Typography */}
+                 <div className="space-y-4">
+                    <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Type className="w-3 h-3 text-indigo-500"/> Typography & Copy</h4>
+                    <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
+
+                        <div className="space-y-2">
+                           <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.mainProduct')}</label>
+                           <select 
+                               value={settings.dzp_main_product_id || ''} 
+                               onChange={(e) => handleSettingChange('dzp_main_product_id', e.target.value)}
+                               className="w-full bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
+                           >
+                               <option value="">{t('editor.latestProduct')}</option>
+                               {products.map(p => (
+                                   <option key={p.id} value={p.id}>{p.title}</option>
+                               ))}
+                           </select>
                         </div>
+
+                        <div className="space-y-2">
+                           <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.storeName')}</label>
+                           <Input value={settings.store_name || ''} onChange={(e) => handleSettingChange('store_name', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl focus-visible:ring-indigo-500" placeholder="My Awesome Store" />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.heroTitle')}</label>
+                           <Input value={settings.template_hero_heading || ''} onChange={(e) => handleSettingChange('template_hero_heading', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl focus-visible:ring-indigo-500" placeholder="توصيل 58 ولاية" dir="rtl" />
+                        </div>
+                        {/* Font family */}
+                        <div className="space-y-2">
+                           <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">خط الواجهة / Font</label>
+                           <select
+                              value={(settings as any).template_font_family || 'cairo'}
+                              onChange={(e) => handleSettingChange('template_font_family', e.target.value)}
+                              className="w-full bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
+                           >
+                              <option value="cairo">Cairo — كايرو</option>
+                              <option value="tajawal">Tajawal — تجوال</option>
+                              <option value="almarai">Almarai — المرعي</option>
+                              <option value="ibm-plex-arabic">IBM Plex Arabic</option>
+                           </select>
+                        </div>
+                    </div>
+                 </div>
+              </div>
+            )}
+            
+            {activeTab === ('media' as any) && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
+                 <div>
+                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('editor.storeAssets')}</h3>
+                   <p className="text-xs text-slate-500 dark:text-slate-400">{t('editor.storeAssetsDesc')}</p>
+                 </div>
+                 <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-5">
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-3">{t('editor.storeLogo')}</label>
+                      {settings.store_logo ? (
+                        <div className="relative group rounded-xl overflow-hidden bg-slate-200 dark:bg-[#0A0D14] aspect-video flex items-center justify-center border border-slate-300 dark:border-white/5 p-4">
+                           <img src={settings.store_logo} alt="Logo" className="max-h-full w-auto object-contain" />
+                           <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                              <Button variant="destructive" size="sm" onClick={() => handleSettingChange('store_logo', '')} className="rounded-xl">{t('editor.removeLogo')}</Button>
+                           </div>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all cursor-pointer group">
+                           <UploadCloud className="w-8 h-8 text-slate-400 dark:text-slate-500 mb-2 group-hover:scale-110 transition-transform group-hover:text-indigo-400" />
+                           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('editor.uploadLogo')}</span>
+                           <Input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleImageUpload('store_logo', f); }} />
+                        </label>
                       )}
-
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          type="text"
-                          placeholder="Search templates..."
-                          value={templateSearch}
-                          onChange={(e) => setTemplateSearch(e.target.value)}
-                          className="pl-10 pr-8"
-                        />
-                        {templateSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setTemplateSearch('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            aria-label="Clear search"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        {TEMPLATE_CATEGORIES.map((cat) => (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => setTemplateCategory(cat.id)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                              templateCategory === cat.id
-                                ? 'bg-primary text-primary-foreground shadow-md'
-                                : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-                            }`}
-                          >
-                            <span className="mr-1">{cat.icon}</span>
-                            {cat.name}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm text-muted-foreground">
-                          Showing {filteredTemplates.length} of {showAllTemplates ? TEMPLATE_PREVIEWS.length : READY_TEMPLATE_IDS.size}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={!currentTemplateIsReady && showAllTemplates}
-                          onClick={() => {
-                            // If current template isn't ready, keep expanded so the current template remains reachable.
-                            if (!currentTemplateIsReady && showAllTemplates) return;
-                            setShowAllTemplates((v) => !v);
-                          }}
-                          className="text-xs"
-                          title={!currentTemplateIsReady && showAllTemplates ? 'Your current template is not fully tested. Keep all templates visible.' : undefined}
-                        >
-                          {showAllTemplates ? 'Show ready only' : 'Show all templates'}
-                        </Button>
-                      </div>
-
-                      {showAllTemplates && (
-                        <Alert className="border-amber-200 bg-amber-50 text-amber-900">
-                          <AlertDescription className="text-sm">
-                            Some templates are not fully tested in the editor yet. Use them at your own decision.
-                          </AlertDescription>
-                        </Alert>
-                      )}
-
-                      <div
-                        className={`grid gap-3 pb-1 ${
-                          previewDevice === 'mobile'
-                            ? 'grid-cols-5'
-                            : previewDevice === 'tablet'
-                              ? 'grid-cols-4'
-                              : 'grid-cols-3'
-                        }`}
-                      >
-                        {filteredTemplates.map((template) => {
-                          const isSelected = activeTemplateId === template.id;
-                          const isCurrent = effectiveTemplateId === template.id;
-                          const isReady = READY_TEMPLATE_IDS.has(template.id);
-                          return (
-                            <div
-                              key={template.id}
-                              onClick={() => {
-                                setPreviewTemplateId(template.id);
-                              }}
-                              className={`relative cursor-pointer group transition-all duration-200 ${
-                                isSelected ? 'scale-[1.01]' : 'hover:scale-[1.01]'
-                              }`}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  setPreviewTemplateId(template.id);
-                                }
-                              }}
-                            >
-                              <div
-                                className={`relative aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all ${
-                                  isSelected
-                                    ? 'border-primary shadow-lg shadow-primary/25 ring-2 ring-primary/50'
-                                    : 'border-border/50 hover:border-primary/50'
-                                }`}
-                              >
-                                <img
-                                  src={template.image}
-                                  alt={template.name}
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                />
-                                <div
-                                  className={`absolute inset-0 transition-opacity ${
-                                    isSelected ? 'bg-primary/10' : 'bg-black/0 group-hover:bg-black/20'
-                                  }`}
-                                />
-
-                                {!isReady && showAllTemplates && (
-                                  <div className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
-                                    Not ready
-                                  </div>
-                                )}
-
-                                {isCurrent && (
-                                  <div className="absolute bottom-2 left-2 rounded-full bg-primary/90 px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                                    Current
-                                  </div>
-                                )}
-
-                                {isSelected && (
-                                  <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                                    <Check className="w-3 h-3 text-primary-foreground" />
-                                  </div>
-                                )}
-                              </div>
-                              <p
-                                className={`mt-2 text-center text-xs font-medium truncate ${
-                                  isSelected ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-                                }`}
-                              >
-                                {template.name}
-                              </p>
-                            </div>
-                          );
-                        })}
-
-                        {filteredTemplates.length === 0 && (
-                          <div className="col-span-full py-8 text-center">
-                            <div className="text-3xl mb-2">🔍</div>
-                            <p className="text-muted-foreground">No templates found</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTemplateSearch('');
-                                setTemplateCategory('all');
-                              }}
-                              className="mt-2 text-sm text-primary hover:underline"
-                            >
-                              Clear filters
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </div>
-
-            {/* MOBILE Template Picker - Bottom Sheet */}
-            <div
-              className={`lg:hidden fixed inset-x-0 bottom-0 z-50 transition-transform duration-300 ease-out ${
-                templatePickerOpen ? 'translate-y-0' : 'translate-y-full'
-              }`}
-              style={{ maxHeight: '70vh' }}
-            >
-              {/* Backdrop */}
-              {templatePickerOpen && (
-                <div 
-                  className="fixed inset-0 bg-black/50 -z-10" 
-                  onClick={() => setTemplatePickerOpen(false)}
-                />
-              )}
-              
-              <div className="bg-background rounded-t-2xl border-t shadow-2xl flex flex-col" style={{ maxHeight: '70vh' }}>
-                {/* Handle bar */}
-                <div className="flex justify-center py-2">
-                  <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
-                </div>
-                
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 pb-3 border-b">
-                  <h3 className="font-semibold">{(t('editor.chooseTemplate') as any) || 'اختر قالبك'}</h3>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setTemplatePickerOpen(false)}>
-                    <X className="w-5 h-5" />
-                  </Button>
-                </div>
-
-                {/* Current template indicator */}
-                <div className="px-4 py-2 bg-primary/5 border-b flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Check className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-xs text-muted-foreground">Current:</span>
-                    <span className="text-sm font-semibold text-primary truncate">
-                      {TEMPLATE_PREVIEWS.find((t) => t.id === effectiveTemplateId)?.name || effectiveTemplateId}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Preview action bar - shows when previewing different template */}
-                {isPreviewingDifferentTemplate && (
-                  <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800 border-b flex items-center justify-between gap-2">
-                    <span className="text-sm truncate">
-                      <span className="text-muted-foreground">Preview: </span>
-                      <span className="font-medium">{TEMPLATE_PREVIEWS.find((t) => t.id === activeTemplateId)?.name}</span>
-                    </span>
-                    <div className="flex gap-2 shrink-0">
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="text-xs h-8"
-                        disabled={saving || !previewTemplateId}
-                        onClick={() => {
-                          if (!previewTemplateId) return;
-                          handleTemplateChange(previewTemplateId);
-                        }}
-                      >
-                        Use
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-8"
-                        onClick={() => setPreviewTemplateId(null)}
-                      >
-                        Cancel
-                      </Button>
                     </div>
-                  </div>
-                )}
-
-                {/* Template grid - scrollable */}
-                <div className="flex-1 overflow-y-auto px-4 py-3" style={{ maxHeight: 'calc(70vh - 140px)' }}>
-                  <div className="grid grid-cols-4 gap-2">
-                    {filteredTemplates.map((template) => {
-                      const isSelected = activeTemplateId === template.id;
-                      const isCurrent = effectiveTemplateId === template.id;
-                      return (
-                        <button
-                          key={template.id}
-                          type="button"
-                          onClick={() => setPreviewTemplateId(template.id)}
-                          className={`relative rounded-lg overflow-hidden border-2 transition-all ${
-                            isSelected
-                              ? 'border-primary ring-2 ring-primary/30'
-                              : 'border-border/50'
-                          }`}
-                        >
-                          <div className="aspect-[3/4] bg-muted">
-                            <img
-                              src={template.image}
-                              alt={template.name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
-                          {isCurrent && (
-                            <div className="absolute bottom-1 left-1 rounded bg-primary/90 px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
-                              Current
-                            </div>
-                          )}
-                          {isSelected && !isCurrent && (
-                            <div className="absolute top-1 right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                              <Check className="w-2.5 h-2.5 text-primary-foreground" />
-                            </div>
-                          )}
-                          <p className="text-[10px] font-medium text-center py-1 truncate px-1">
-                            {template.name}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                 </div>
               </div>
-            </div>
+            )}
 
-            {/* MOBILE Edit Panel - Bottom Sheet */}
-            <div
-              className={`lg:hidden fixed inset-x-0 bottom-0 z-50 transition-transform duration-300 ease-out ${
-                mobileEditPanelOpen && selectedEditPath ? 'translate-y-0' : 'translate-y-full'
-              }`}
-              style={{ maxHeight: '60vh' }}
-            >
-              {/* Backdrop */}
-              {mobileEditPanelOpen && selectedEditPath && (
-                <div 
-                  className="fixed inset-0 bg-black/50 -z-10" 
-                  onClick={() => {
-                    setMobileEditPanelOpen(false);
-                    setSelectedEditPath(null);
+            {(activeTab === 'layout' as any || activeTab === 'preview') && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+                 <div>
+                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('editor.architecture')}</h3>
+                   <p className="text-xs text-slate-500 dark:text-slate-400">{t('editor.architectureDesc')}</p>
+                 </div>
+                 <div className="grid gap-4">
+                   {TEMPLATE_PREVIEWS.map((template) => (
+                      <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden group rounded-2xl border transition-all text-left p-5 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825] hover:border-slate-300 dark:hover:border-white/20'}`}>
+                        <div className="flex items-center gap-4 relative z-10">
+                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-inner ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:bg-slate-300 dark:group-hover:bg-white/5'}`}>
+                             <LayoutTemplate className="w-6 h-6" />
+                           </div>
+                           <div>
+                             <h4 className={`font-bold text-sm ${effectiveTemplateId === template.id ? 'text-indigo-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
+                             <p className="text-xs text-slate-500 mt-1">{effectiveTemplateId === template.id ? t('editor.activeFramework') : t('editor.applyFramework')}</p>
+                           </div>
+                        </div>
+                      </button>
+                   ))}
+                 </div>
+              </div>
+            )}
+         </div>
+      </div>
+
+      {/* MAIN PREVIEW CANVAS */}
+      <div className="flex-1 h-full pt-16 bg-slate-100 dark:bg-[#04060b] relative overflow-hidden flex flex-col items-center">
+          {/* Subtle grid background to look like a workspace */}
+          <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03] dark:opacity-[0.02]" style={{ backgroundImage: 'linear-gradient(to right, #64748b 1px, transparent 1px), linear-gradient(to bottom, #64748b 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+
+          <div
+            ref={canvasContainerRef}
+            className="flex-1 w-full z-10 flex items-center justify-center overflow-hidden"
+          >
+            {previewDevice !== 'desktop' ? (
+              /* Compensating wrapper: layout footprint = visual (scaled) size */
+              <div style={{
+                width: (previewDevice === 'mobile' ? 375 : 768) * deviceScale,
+                height: (previewDevice === 'mobile' ? 812 : 1024) * deviceScale,
+                flexShrink: 0,
+                position: 'relative',
+              }}>
+                <div
+                  ref={previewFitRef}
+                  className="transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                  style={{
+                    width: previewDevice === 'mobile' ? '375px' : '768px',
+                    height: previewDevice === 'mobile' ? '812px' : '1024px',
+                    position: 'absolute',
+                    top: 0, left: 0,
+                    transform: `scale(${deviceScale})`,
+                    transformOrigin: 'top left',
+                    border: '14px solid #1a1a2e',
+                    borderRadius: '50px',
+                    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), inset 0 0 0 2px #333, inset 0 0 0 6px #000',
+                    backgroundColor: '#ffffff',
+                    overflow: 'hidden',
                   }}
-                />
-              )}
-              
-              <div className="bg-background rounded-t-2xl border-t shadow-2xl flex flex-col" style={{ maxHeight: '60vh' }}>
-                {/* Handle bar */}
-                <div className="flex justify-center py-2">
-                  <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
-                </div>
-                
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 pb-3 border-b">
-                  <h3 className="font-semibold">{t('editor.edit')}</h3>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => {
-                      setMobileEditPanelOpen(false);
-                      setSelectedEditPath(null);
-                    }}
-                  >
-                    <X className="w-5 h-5" />
-                  </Button>
-                </div>
-
-                {/* Edit Panel Content - scrollable */}
-                <div className="flex-1 overflow-y-auto px-4 py-3" style={{ maxHeight: 'calc(60vh - 70px)' }}>
-                  {editPanel}
+                >
+                  {/* Status bar */}
+                  <div className="absolute top-0 inset-x-0 h-9 flex items-center justify-between px-5 z-[60] pointer-events-none bg-[#1a1a2e]/90 backdrop-blur-sm">
+                    <span className="text-white text-[11px] font-semibold tracking-tight">
+                      {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <div className="w-[80px] h-5 bg-[#1a1a2e] rounded-full absolute left-1/2 -translate-x-1/2 top-0 flex items-center justify-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#333] border border-white/10" />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <svg width="12" height="10" viewBox="0 0 12 10" fill="none" className="text-white"><rect x="0" y="7" width="2" height="3" rx="0.5" fill="currentColor"/><rect x="3" y="5" width="2" height="5" rx="0.5" fill="currentColor"/><rect x="6" y="3" width="2" height="7" rx="0.5" fill="currentColor"/><rect x="9" y="0" width="2" height="10" rx="0.5" fill="currentColor"/></svg>
+                      <svg width="13" height="10" viewBox="0 0 13 10" fill="none" className="text-white"><path d="M6.5 8.5a1 1 0 100-2 1 1 0 000 2z" fill="currentColor"/><path d="M3.8 6.2a3.8 3.8 0 015.4 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" fill="none"/><path d="M1.5 3.9a6.5 6.5 0 019.8 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.5"/></svg>
+                      <div className="flex items-center gap-0.5">
+                        <div className="w-5 h-2.5 rounded-[3px] border border-white/70 relative p-px">
+                          <div className="h-full w-[75%] bg-white rounded-[2px]" />
+                        </div>
+                        <div className="w-0.5 h-1.5 bg-white/50 rounded-r-sm" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-full h-full bg-white relative z-50" style={{ paddingTop: '36px' }}>
+                    <iframe
+                      ref={previewIframeRef}
+                      title="Storefront Preview"
+                      srcDoc={IFRAME_SRC_DOC}
+                      onLoad={() => setIframeReady(true)}
+                      style={{ border: 0, width: '100%', height: '100%', display: 'block', background: '#ffffff', pointerEvents: 'auto' }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* Desktop — fill entire available space */
+              <div
+                ref={previewFitRef}
+                className="w-full h-full"
+                style={{ overflow: 'hidden', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.2)' }}
+              >
+                <iframe
+                  ref={previewIframeRef}
+                  title="Storefront Preview"
+                  srcDoc={IFRAME_SRC_DOC}
+                  onLoad={() => setIframeReady(true)}
+                  style={{ border: 0, width: '100%', height: '100%', display: 'block', background: '#ffffff', pointerEvents: 'auto' }}
+                />
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="h-full overflow-y-auto pr-1">
-            <div className="space-y-6">
-            {/* Basic Settings */}
-            <div className="max-w-2xl mx-auto space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('editor.storeInfo')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">{t('editor.storeName')}</label>
-                  <Input
-                    value={settings.store_name || ''}
-                    onChange={(e) => handleSettingChange('store_name', e.target.value)}
-                    placeholder={t('editor.storeNamePlaceholder')}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">{t('editor.storeDescription')}</label>
-                  <Input
-                    value={settings.store_description || ''}
-                    onChange={(e) => handleSettingChange('store_description', e.target.value)}
-                    placeholder={t('editor.storeDescPlaceholder')}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Hero Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('editor.heroSection')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">{t('editor.heroHeading')}</label>
-                  <Input
-                    value={settings.template_hero_heading || ''}
-                    onChange={(e) => handleSettingChange('template_hero_heading', e.target.value)}
-                    placeholder={t('editor.heroHeadingPlaceholder')}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">{t('editor.heroSubtitle')}</label>
-                  <Input
-                    value={settings.template_hero_subtitle || ''}
-                    onChange={(e) => handleSettingChange('template_hero_subtitle', e.target.value)}
-                    placeholder={t('editor.heroSubtitlePlaceholder')}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">{t('editor.buttonText')}</label>
-                  <Input
-                    value={settings.template_button_text || ''}
-                    onChange={(e) => handleSettingChange('template_button_text', e.target.value)}
-                    placeholder="Shop Now"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Branding */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('editor.branding')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">{t('editor.logo')}</label>
-                  <div className="flex items-center gap-4">
-                    {settings.store_logo && (
-                      <img src={settings.store_logo} alt="Logo" className="h-12 w-auto" />
-                    )}
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageUpload('store_logo', file);
-                      }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">{t('editor.bannerImage')}</label>
-                  <div className="flex items-center gap-4">
-                    {settings.banner_url && (
-                      <img src={settings.banner_url} alt="Banner" className="h-20 w-auto" />
-                    )}
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageUpload('banner_url', file);
-                      }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">{t('editor.accentColor')}</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={settings.template_accent_color || settings.primary_color || '#1E90FF'}
-                      onChange={(e) => handleSettingChange('template_accent_color', e.target.value)}
-                      className="w-10 h-10 rounded cursor-pointer"
-                    />
-                    <Input
-                      value={settings.template_accent_color || settings.primary_color || '#1E90FF'}
-                      onChange={(e) => handleSettingChange('template_accent_color', e.target.value)}
-                      placeholder="#1E90FF"
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            </div>
-          </div>
-          </div>
-        )}
-      </div>
       </div>
     </div>
   );

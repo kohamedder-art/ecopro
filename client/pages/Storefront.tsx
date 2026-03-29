@@ -6,7 +6,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/lib/i18n';
 import { RenderStorefront } from './storefront/templates';
-import { storeNameToSlug } from '@/utils/storeUrl';
 import UniversalStyleInjector from '@/components/storefront/UniversalStyleInjector';
 import PixelScripts from '@/components/storefront/PixelScripts';
 import { setWindowTemplateSettings } from '@/lib/templateWindow';
@@ -207,10 +206,10 @@ export default function Storefront() {
         };
         setStoreSettings(newSettings);
 
-        // Canonicalize the URL to prefer store name (prettier) when available.
-        // Backwards-compatible: backend accepts store_slug and normalized store_name.
-        const preferredSlug = newSettings.store_name ? storeNameToSlug(String(newSettings.store_name)) : '';
-        const canonical = preferredSlug || String(newSettings.store_slug || storeSlug);
+        // Canonicalize the URL to the authoritative store_slug from the backend.
+        // Always prefer store_slug over store_name-derived slugs to avoid expensive
+        // name-normalization fallbacks on the backend.
+        const canonical = String(newSettings.store_slug || storeSlug);
 
         // If we need to canonicalize, do it first; view tracking will happen on the next render.
         if (canonical && canonical !== storeSlug && location.pathname === `/store/${storeSlug}`) {

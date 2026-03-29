@@ -853,6 +853,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       'template_hero_subtitle',
       'template_button_text',
       'template_accent_color',
+      'template_bg_color',
       'seller_name',
       'seller_email',
     ]);
@@ -1002,6 +1003,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       'template_hero_subtitle',
       'template_button_text',
       'template_accent_color',
+      'template_bg_color',
       'hero_main_url',
       'hero_tile1_url',
       'hero_tile2_url',
@@ -1159,6 +1161,8 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       // Pro variants
       'pro-aurora', 'pro-vertex', 'pro-atelier', 'pro-orbit', 'pro-zen',
       'pro-studio', 'pro-mosaic', 'pro-grid', 'pro-catalog',
+      'dzshop', 'dzpremium', 'luxedark', 'luxedrop', 'needdz',
+      'dzshop', 'dzpremium', 'luxedark',
       // Screenshot-inspired templates
       'sage-boutique', 'mint-elegance', 'forest-store',
       'sunset-shop', 'coral-market', 'amber-store',
@@ -1422,6 +1426,7 @@ export const updateStoreTemplate: RequestHandler = async (req, res) => {
       'template_hero_subtitle',
       'template_button_text',
       'template_accent_color',
+      'template_bg_color',
       'hero_main_url',
       'hero_tile1_url',
       'hero_tile2_url',
