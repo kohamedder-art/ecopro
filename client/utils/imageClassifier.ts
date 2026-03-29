@@ -1,0 +1,201 @@
+/**
+ * Smart Image Classifier
+ * 
+ * Detects image dimensions and classifies them by aspect ratio so templates
+ * can automatically place images in the correct slots (hero, card, landing strip, etc).
+ * 
+ * Shape categories:
+ * - 'square'    → ratio ≈ 1:1  (0.8 – 1.25)   — product cards, thumbnails
+ * - 'wide'      → ratio > 1.25                  — banners, hero sections
+ * - 'tall'      → ratio < 0.8                   — landing strips, portrait product shots
+ */
+
+export type ImageShape = 'square' | 'wide' | 'tall';
+
+export interface ClassifiedImage {
+  url: string;
+  width: number;
+  height: number;
+  ratio: number;   // width / height
+  shape: ImageShape;
+}
+
+// In-memory cache to avoid re-measuring the same URL
+const cache = new Map<string, ClassifiedImage>();
+
+/**
+ * Load an image and return its natural dimensions + classification.
+ * Results are cached per URL.
+ */
+export function classifyImage(url: string): Promise<ClassifiedImage> {
+  const cached = cache.get(url);
+  if (cached) return Promise.resolve(cached);
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const ratio = h > 0 ? w / h : 1;
+      const shape: ImageShape =
+        ratio >= 0.8 && ratio <= 1.25 ? 'square' :
+        ratio > 1.25 ? 'wide' :
+        'tall';
+
+      const result: ClassifiedImage = { url, width: w, height: h, ratio, shape };
+      cache.set(url, result);
+      resolve(result);
+    };
+
+    img.onerror = () => {
+      // On error, default to square so the image still gets used somewhere
+      const result: ClassifiedImage = { url, width: 0, height: 0, ratio: 1, shape: 'square' };
+      cache.set(url, result);
+      resolve(result);
+    };
+
+    img.src = url;
+  });
+}
+
+/**
+ * Classify all images in an array. Returns them in the same order, enriched with shape data.
+ */
+export async function classifyImages(urls: string[]): Promise<ClassifiedImage[]> {
+  return Promise.all(urls.map(classifyImage));
+}
+
+/**
+ * Split images into shape buckets.
+ */
+export function groupByShape(classified: ClassifiedImage[]): Record<ImageShape, ClassifiedImage[]> {
+  const groups: Record<ImageShape, ClassifiedImage[]> = { square: [], wide: [], tall: [] };
+  for (const img of classified) {
+    groups[img.shape].push(img);
+  }
+  return groups;
+}
+
+/**
+ * Template image slot definitions.
+ * Each template declares what shapes work best for each slot.
+ * 'preferred' = ideal shape, 'fallback' = acceptable alternatives.
+ */
+export interface TemplateImageSlot {
+  name: string;
+  preferred: ImageShape[];
+  count: number;  // how many images this slot needs (1 = single, Infinity = all remaining)
+}
+
+export interface TemplateImageMap {
+  [slotName: string]: string[];
+}
+
+/**
+ * Pre-defined slot requirements per template.
+ */
+export const TEMPLATE_SLOTS: Record<string, TemplateImageSlot[]> = {
+  dzshop: [
+    { name: 'gallery', preferred: ['square'], count: 4 },       // main + 3 thumbs (square aspect)
+    { name: 'banner',  preferred: ['wide', 'tall'], count: 1 }, // bottom landing image
+  ],
+  dzpremium: [
+    { name: 'hero',     preferred: ['wide', 'square'], count: 1 }, // hero image
+    { name: 'features', preferred: ['wide', 'square'], count: 2 }, // 2 feature images
+  ],
+  luxedark: [
+    { name: 'hero', preferred: ['tall', 'square'], count: 1 },  // 4:5 product hero
+  ],
+  luxedrop: [
+    { name: 'gallery', preferred: ['square'], count: 5 },       // main + 4 thumbnails
+  ],
+  needdz: [
+    { name: 'cards', preferred: ['square'], count: Infinity },   // per-product square cards
+  ],
+  novadz: [
+    { name: 'gallery', preferred: ['tall', 'square'], count: Infinity }, // 4:5 gallery with thumbs
+  ],
+  minimalist: [
+    { name: 'cards', preferred: ['tall', 'square'], count: Infinity },   // 4:5 full-page cards
+  ],
+  lumina: [
+    { name: 'landing', preferred: ['tall', 'wide'], count: Infinity },   // long landing strips
+  ],
+  zenith: [
+    { name: 'landing', preferred: ['tall', 'wide'], count: Infinity },   // long landing strips
+  ],
+  boutique: [
+    { name: 'hero',  preferred: ['wide'], count: 1 },                   // wide hero banner
+    { name: 'cards', preferred: ['tall', 'square'], count: Infinity },   // 4:5 product cards
+  ],
+  aurora: [
+    { name: 'hero',  preferred: ['wide'], count: 1 },                   // 16:10 hero
+    { name: 'cards', preferred: ['tall', 'square'], count: Infinity },   // 3:4 product cards
+  ],
+  sculptor: [
+    { name: 'gallery', preferred: ['tall', 'square'], count: Infinity }, // 4:5 horizontal swipe
+  ],
+  artisan: [
+    { name: 'cards', preferred: ['tall', 'square'], count: Infinity },   // 4:5 product cards
+  ],
+  vera: [
+    { name: 'hero',  preferred: ['wide', 'tall'], count: 1 },           // full-screen hero
+    { name: 'cards', preferred: ['tall', 'square'], count: Infinity },   // bento grid
+  ],
+  streetwear: [
+    { name: 'cards', preferred: ['tall', 'square'], count: Infinity },   // 4:5 grid cards
+  ],
+  gallery: [
+    { name: 'cards', preferred: ['tall', 'square'], count: Infinity },   // 3:4 grid cards
+  ],
+};
+
+/**
+ * Given classified images and a template ID, distribute images into the template's slots.
+ * 
+ * Strategy:
+ * 1. For each slot (in order), pick images that match the preferred shape first.
+ * 2. If not enough, use any remaining images regardless of shape.
+ * 3. Once an image is assigned, it's removed from the pool.
+ * 4. Slots with count=Infinity get all remaining images.
+ */
+export function distributeImages(
+  classified: ClassifiedImage[],
+  templateId: string
+): TemplateImageMap {
+  const slots = TEMPLATE_SLOTS[templateId];
+  if (!slots) {
+    // Unknown template — just return all images in a 'default' slot
+    return { default: classified.map(img => img.url) };
+  }
+
+  const result: TemplateImageMap = {};
+  const pool = [...classified]; // mutable copy
+
+  for (const slot of slots) {
+    const assigned: string[] = [];
+    const needed = slot.count === Infinity ? pool.length : slot.count;
+
+    // First pass: pick preferred shapes
+    for (let i = 0; i < pool.length && assigned.length < needed; ) {
+      if (slot.preferred.includes(pool[i].shape)) {
+        assigned.push(pool[i].url);
+        pool.splice(i, 1);
+      } else {
+        i++;
+      }
+    }
+
+    // Second pass: fill remaining from any shape
+    while (assigned.length < needed && pool.length > 0) {
+      assigned.push(pool[0].url);
+      pool.splice(0, 1);
+    }
+
+    result[slot.name] = assigned;
+  }
+
+  return result;
+}
