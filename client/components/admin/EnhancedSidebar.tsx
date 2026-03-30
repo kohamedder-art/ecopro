@@ -90,14 +90,14 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
       ]
     },
     {
-      titleKey: "sidebar.pixels",
-      path: "/dashboard/pixel-statistics",
+      titleKey: "sidebar.marketing",
+      path: "/dashboard/marketing-analytics",
       icon: <BarChart3 className="w-[18px] h-[18px]" />,
       permission: "view_settings"
     },
     {
-      titleKey: "sidebar.wasselni",
-      path: "/dashboard/wasselni-settings",
+      titleKey: "sidebar.bot",
+      path: "/dashboard/bot-settings",
       icon: <Bot className="w-[18px] h-[18px]" />,
       permission: "manage_bot_settings"
     },

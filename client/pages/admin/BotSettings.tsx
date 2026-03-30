@@ -46,7 +46,7 @@ interface BotSettings {
   templateShipping: string;
 }
 
-export default function AdminWasselniSettings() {
+export default function AdminBotSettings() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
@@ -1109,7 +1109,7 @@ export default function AdminWasselniSettings() {
 
 
         {/* Save Button */}
-        <div className="fixed bottom-4 right-4">
+        <div className={`fixed bottom-4 ${isRTL ? 'left-4' : 'right-4'}`}>
           <button
             onClick={handleSave}
             disabled={saving}

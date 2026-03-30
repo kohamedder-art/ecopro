@@ -354,7 +354,7 @@ export default function Profile() {
   const isLight = theme !== 'dark';
 
   // Theming variables mapping based on context
-  const bgDeep = isLight ? 'bg-slate-100' : 'bg-[#03060b]';
+  const bgDeep = 'bg-transparent';
   const textMain = isLight ? 'text-gray-800' : 'text-[#e2e8f0]';
   const cardBg = isLight ? 'bg-white' : 'bg-[#0b111a]';
   const borderColor = isLight ? 'border-gray-200' : 'border-[#1e293b]';

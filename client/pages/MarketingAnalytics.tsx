@@ -40,6 +40,8 @@ import {
   Upload,
   X,
   Facebook,
+  ScanEye,
+  ImagePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -297,7 +299,7 @@ const inputClass =
 
 // ─── Component ──────────────────────────────────────────────────
 
-export default function PixelStatistics() {
+export default function MarketingAnalytics() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
@@ -478,6 +480,9 @@ export default function PixelStatistics() {
           </TabsTrigger>
           <TabsTrigger value="ai" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
             <Sparkles className="h-3.5 w-3.5" /> AI
+          </TabsTrigger>
+          <TabsTrigger value="vision" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+            <ScanEye className="h-3.5 w-3.5" /> Vision
           </TabsTrigger>
           <TabsTrigger value="settings" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
             <Settings className="h-3.5 w-3.5" /> Settings
@@ -1017,6 +1022,11 @@ export default function PixelStatistics() {
           </Card>
         </TabsContent>
 
+        {/* ═══════════════════════════════ VISION ═══════════════════════════════ */}
+        <TabsContent value="vision" className="space-y-4">
+          <VisionAnalytics surfaceCard={surfaceCard} surfaceMuted={surfaceMuted} />
+        </TabsContent>
+
         {/* ═══════════════════════════════ SETTINGS ═══════════════════════════════ */}
         <TabsContent value="settings" className="space-y-4">
           {settingsLoading ? (
@@ -1122,6 +1132,150 @@ export default function PixelStatistics() {
 }
 
 // ─── Sub-components ─────────────────────────────────────────────
+
+function VisionAnalytics({ surfaceCard, surfaceMuted }: { surfaceCard: string; surfaceMuted: string }) {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['vision-usage-stats'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/ai/vision/usage-stats');
+      if (!res.ok) throw new Error('Failed to load vision stats');
+      return res.json();
+    },
+  });
+
+  const featureLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+    analyze_product: { label: 'Product Analysis', icon: <ScanEye className="h-3 w-3 text-white" />, color: 'from-violet-600 to-purple-600 shadow-violet-500/30' },
+    vision_chat: { label: 'Vision Chat', icon: <Brain className="h-3 w-3 text-white" />, color: 'from-fuchsia-600 to-pink-600 shadow-fuchsia-500/30' },
+    quality_check: { label: 'Quality Checks', icon: <CheckCircle className="h-3 w-3 text-white" />, color: 'from-emerald-600 to-teal-600 shadow-emerald-500/30' },
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+      </div>
+    );
+  }
+
+  const totals = data?.totals || { total_requests: 0, total_tokens: 0, active_days: 0 };
+  const byFeature = data?.byFeature || [];
+  const daily = data?.daily || [];
+
+  return (
+    <>
+      {/* Totals */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KPICard
+          icon={<ScanEye className="h-3.5 w-3.5 text-white" />}
+          iconBg="from-violet-600 to-purple-600 shadow-violet-500/30"
+          label="Vision Requests"
+          value={String(totals.total_requests || 0)}
+          sub={`${totals.active_days || 0} active days`}
+        />
+        <KPICard
+          icon={<Zap className="h-3.5 w-3.5 text-white" />}
+          iconBg="from-amber-500 to-orange-500 shadow-amber-500/30"
+          label="Est. Tokens Used"
+          value={fmtNum(totals.total_tokens || 0)}
+          sub="Across all features"
+        />
+        <KPICard
+          icon={<ImagePlus className="h-3.5 w-3.5 text-white" />}
+          iconBg="from-sky-500 to-blue-600 shadow-sky-500/30"
+          label="Images Analyzed"
+          value={String(byFeature.find((f: any) => f.feature === 'analyze_product')?.count || 0)}
+          sub="Product photos scanned"
+        />
+        <KPICard
+          icon={<Brain className="h-3.5 w-3.5 text-white" />}
+          iconBg="from-fuchsia-600 to-pink-600 shadow-fuchsia-500/30"
+          label="Vision Chats"
+          value={String(byFeature.find((f: any) => f.feature === 'vision_chat')?.count || 0)}
+          sub="Image-based conversations"
+        />
+      </div>
+
+      {/* Feature Breakdown */}
+      <Card className={surfaceCard}>
+        <CardHeader className="p-3 md:p-4">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-md shadow-violet-500/30">
+              <ScanEye className="h-3.5 w-3.5 text-white" />
+            </div>
+            Vision Feature Usage
+          </CardTitle>
+          <CardDescription className="text-xs">Breakdown of AI vision feature usage across your store</CardDescription>
+        </CardHeader>
+        <CardContent className="p-3 md:p-4 pt-0">
+          {byFeature.length === 0 ? (
+            <div className={`${surfaceMuted} p-6 text-center text-sm text-muted-foreground`}>
+              <ScanEye className="h-8 w-8 mx-auto mb-2 text-violet-400 opacity-50" />
+              <p className="font-medium">No vision data yet</p>
+              <p className="text-xs mt-1">Use AI Auto-Fill on product images or send images in AI chat to start tracking.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {byFeature.map((f: any) => {
+                const meta = featureLabels[f.feature] || { label: f.feature, icon: <Zap className="h-3 w-3 text-white" />, color: 'from-slate-500 to-slate-600' };
+                const pct = totals.total_requests > 0 ? Math.round((f.count / totals.total_requests) * 100) : 0;
+                return (
+                  <div key={f.feature} className="flex items-center gap-3">
+                    <div className={`flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br shadow-md ${meta.color} flex-shrink-0`}>
+                      {meta.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold">{meta.label}</span>
+                        <span className="text-muted-foreground">{f.count} requests ({pct}%)</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 mt-1 overflow-hidden">
+                        <div className={`h-full rounded-full bg-gradient-to-r ${meta.color.split(' shadow')[0]}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Daily Activity */}
+      {daily.length > 0 && (
+        <Card className={surfaceCard}>
+          <CardHeader className="p-3 md:p-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/30">
+                <Activity className="h-3.5 w-3.5 text-white" />
+              </div>
+              Daily Vision Activity (Last 30 Days)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 md:p-4 pt-0">
+            <div className="flex items-end gap-1 h-24">
+              {daily.slice(0, 30).reverse().map((d: any, i: number) => {
+                const maxReq = Math.max(...daily.map((dd: any) => Number(dd.requests || 0)), 1);
+                const barH = Math.max(4, Math.round((Number(d.requests) / maxReq) * 80));
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.date}: ${d.requests} requests`}>
+                    <div
+                      className="w-full rounded-t-sm bg-gradient-to-t from-violet-600 to-fuchsia-500 opacity-80 hover:opacity-100 transition-opacity"
+                      style={{ height: `${barH}px`, minWidth: 4 }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+              <span>30 days ago</span>
+              <span>Today</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </>
+  );
+}
 
 function KPICard({ icon, iconBg, label, value, sub, positive }: { icon: React.ReactNode; iconBg: string; label: string; value: string; sub?: string; positive?: boolean }) {
   return (

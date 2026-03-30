@@ -49,7 +49,7 @@ export default function AdminLayout() {
   return (
     <div className={cn(
       "flex flex-col min-h-screen admin-no-break",
-      isDark ? "bg-black" : "bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50"
+      isDark ? "bg-black" : "bg-gray-200"
     )}>
       {/* Platform Header */}
       <Header />
@@ -61,7 +61,7 @@ export default function AdminLayout() {
         <main 
           className={cn(
             "flex-1 overflow-auto transition-all duration-300",
-            isDark ? "bg-black" : "bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50",
+            isDark ? "bg-black" : "bg-gray-200",
             // Add left/right margin on large screens to account for fixed sidebar
             isRTL 
               ? (sidebarCollapsed ? 'lg:mr-20' : 'lg:mr-[270px]')

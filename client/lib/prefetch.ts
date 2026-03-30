@@ -14,7 +14,7 @@ const routePrefetchMap: Record<string, string[]> = {
   '/dashboard/preview': ['/api/client/store/settings', '/api/client/store/products'],
   '/dashboard/profile': ['/api/auth/me'],
   '/dashboard/delivery/companies': ['/api/delivery/companies'],
-  '/dashboard/wasselni-settings': ['/api/bot/settings', '/api/client/store/settings'],
+  '/dashboard/bot-settings': ['/api/bot/settings', '/api/client/store/settings'],
   '/dashboard/staff': ['/api/client/staff'],
   '/template-editor': ['/api/client/store/settings'],
 };

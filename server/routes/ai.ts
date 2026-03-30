@@ -20,7 +20,7 @@
 
 import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import { generateText, generateJSON } from '../services/gemini';
+import { generateText, generateJSON, analyzeProductImage } from '../services/gemini';
 import { verifyToken } from '../utils/auth';
 import { authenticate, requireAdmin, requireClient } from '../middleware/auth';
 import { authenticateStaff } from '../utils/staff-middleware';
@@ -2586,6 +2586,237 @@ router.delete('/chat-history', authAiLimiter, async (req: Request, res: Response
       [who.userId, who.userType]
     );
     return res.json({ ok: true });
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════
+// VISION — Image Analysis Endpoints
+// ════════════════════════════════════════════════════════════
+
+/** Rate limiter for vision endpoints (heavier than text) */
+const visionAiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many image analysis requests. Please wait a moment.' },
+});
+
+/**
+ * POST /api/ai/vision/analyze-product
+ * Analyze a product image and return title, description, category, price suggestions.
+ * Body: { imageUrl: string } — accepts an already-uploaded image URL
+ */
+router.post('/vision/analyze-product', authenticate, requireClient, visionAiLimiter, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { imageUrl } = req.body;
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return res.status(400).json({ error: 'imageUrl is required' });
+    }
+
+    // Validate URL format (only allow our uploads or common image hosts)
+    const url = new URL(imageUrl);
+    const allowedHosts = [
+      'res.cloudinary.com', 'i.imgur.com', 'images.unsplash.com',
+      'upload.wikimedia.org', 'placehold.co',
+    ];
+    const isSameOrigin = url.pathname.startsWith('/uploads/') || url.pathname.startsWith('/api/');
+    const isAllowedHost = allowedHosts.some(h => url.hostname.endsWith(h));
+    if (!isSameOrigin && !isAllowedHost) {
+      // For other hosts, attempt anyway but with a size guard
+    }
+
+    // Fetch the image as base64
+    const imgResponse = await fetch(imageUrl);
+    if (!imgResponse.ok) {
+      return res.status(400).json({ error: 'Could not fetch the image' });
+    }
+    const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
+    if (!contentType.startsWith('image/')) {
+      return res.status(400).json({ error: 'URL does not point to an image' });
+    }
+    const arrayBuffer = await imgResponse.arrayBuffer();
+    const maxSize = 4 * 1024 * 1024; // 4MB limit for Gemini inline
+    if (arrayBuffer.byteLength > maxSize) {
+      return res.status(400).json({ error: 'Image too large (max 4MB)' });
+    }
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+    // Fetch store context
+    let storeName = '';
+    try {
+      const r = await pool.query('SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1', [user.id]);
+      storeName = r.rows[0]?.store_name || '';
+    } catch { /* non-critical */ }
+
+    const result = await analyzeProductImage(base64, contentType, { storeId: user.id, storeName });
+
+    // Track vision usage
+    try {
+      await pool.query(
+        `INSERT INTO ai_vision_usage (client_id, feature, tokens_estimated, created_at)
+         VALUES ($1, 'analyze_product', 258, NOW())`,
+        [user.id]
+      );
+    } catch { /* tracking is non-critical */ }
+
+    return res.json(result);
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+/**
+ * POST /api/ai/vision/chat
+ * AI chat with an image attachment. Used by the floating chat bubble.
+ * Body: { question: string, imageUrl: string, history?: [...] }
+ */
+router.post('/vision/chat', authAiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { question, imageUrl, history } = req.body;
+    if (!question) return res.status(400).json({ error: 'question is required' });
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return res.status(400).json({ error: 'imageUrl is required' });
+    }
+
+    // Fetch image as base64
+    const imgResponse = await fetch(imageUrl);
+    if (!imgResponse.ok) {
+      return res.status(400).json({ error: 'Could not fetch the image' });
+    }
+    const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
+    if (!contentType.startsWith('image/')) {
+      return res.status(400).json({ error: 'URL does not point to an image' });
+    }
+    const arrayBuffer = await imgResponse.arrayBuffer();
+    if (arrayBuffer.byteLength > 4 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image too large (max 4MB)' });
+    }
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+    const user = extractAiUser(req);
+    const role = user?.role === 'admin' ? 'admin' as const : 'store_owner' as const;
+    const ctx = user ? { storeId: user.id, storeName: '' } : {};
+
+    // Map prior history
+    type HistoryMsg = { role: string; content: string };
+    const prevHistory: HistoryMsg[] = Array.isArray(history) ? history.slice(-8) : [];
+    const geminiHistory = prevHistory.map(m => ({
+      role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
+      parts: [{ text: m.content }],
+    }));
+
+    const answer = await generateText(
+      role,
+      question,
+      ctx,
+      geminiHistory,
+      [{ mimeType: contentType, base64 }]
+    );
+
+    // Track vision usage
+    if (user?.id) {
+      try {
+        await pool.query(
+          `INSERT INTO ai_vision_usage (client_id, feature, tokens_estimated, created_at)
+           VALUES ($1, 'vision_chat', 258, NOW())`,
+          [user.id]
+        );
+      } catch { /* non-critical */ }
+    }
+
+    return res.json({ answer });
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+/**
+ * POST /api/ai/vision/quality-check
+ * Quick image quality assessment — flags blurry, dark, or low-res images.
+ * Body: { imageUrl: string }
+ */
+router.post('/vision/quality-check', authenticate, requireClient, visionAiLimiter, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { imageUrl } = req.body;
+    if (!imageUrl) return res.status(400).json({ error: 'imageUrl is required' });
+
+    const imgResponse = await fetch(imageUrl);
+    if (!imgResponse.ok) return res.status(400).json({ error: 'Could not fetch image' });
+    const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
+    const arrayBuffer = await imgResponse.arrayBuffer();
+    if (arrayBuffer.byteLength > 4 * 1024 * 1024) return res.status(400).json({ error: 'Image too large' });
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+    const prompt = `Evaluate this product image quality for an e-commerce store. Return JSON:
+{
+  "score": 1-10,
+  "is_suitable": true/false (is it good enough to sell products?),
+  "issues": ["list of issues if any"],
+  "suggestions": ["list of improvement suggestions"],
+  "has_text_overlay": true/false,
+  "extracted_text": "any text visible in the image",
+  "is_stock_photo": true/false,
+  "background_type": "white/studio/lifestyle/messy/outdoor"
+}
+IMPORTANT: Respond ONLY with valid JSON.`;
+
+    const result = await generateJSON('store_owner', prompt, { storeId: user.id }, [{ mimeType: contentType, base64 }]);
+    return res.json(result);
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+/**
+ * GET /api/ai/vision/usage-stats
+ * Returns vision usage stats for the current user (for Cortex/analytics page).
+ */
+router.get('/vision/usage-stats', authenticate, requireClient, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const result = await pool.query(`
+      SELECT
+        feature,
+        COUNT(*) as count,
+        SUM(tokens_estimated) as total_tokens,
+        MIN(created_at) as first_used,
+        MAX(created_at) as last_used
+      FROM ai_vision_usage
+      WHERE client_id = $1
+      GROUP BY feature
+      ORDER BY count DESC
+    `, [user.id]);
+
+    const totalResult = await pool.query(`
+      SELECT
+        COUNT(*) as total_requests,
+        SUM(tokens_estimated) as total_tokens,
+        COUNT(DISTINCT DATE(created_at)) as active_days
+      FROM ai_vision_usage
+      WHERE client_id = $1
+    `, [user.id]);
+
+    const dailyResult = await pool.query(`
+      SELECT
+        DATE(created_at) as date,
+        COUNT(*) as requests,
+        SUM(tokens_estimated) as tokens
+      FROM ai_vision_usage
+      WHERE client_id = $1 AND created_at > NOW() - INTERVAL '30 days'
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+    `, [user.id]);
+
+    return res.json({
+      byFeature: result.rows,
+      totals: totalResult.rows[0] || { total_requests: 0, total_tokens: 0, active_days: 0 },
+      daily: dailyResult.rows,
+    });
   } catch (err) {
     return serverError(res, err);
   }

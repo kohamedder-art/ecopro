@@ -72,9 +72,18 @@ If asked about anything beyond product info or their own order status, say: "I c
 
 // ─── Core fetch wrapper ─────────────────────────────────────────────────────
 
-interface GeminiPart {
+interface GeminiTextPart {
   text: string;
 }
+
+interface GeminiImagePart {
+  inline_data: {
+    mime_type: string;
+    data: string; // base64
+  };
+}
+
+type GeminiPart = GeminiTextPart | GeminiImagePart;
 
 interface GeminiContent {
   role: 'user' | 'model';
@@ -84,16 +93,26 @@ interface GeminiContent {
 async function callGemini(
   systemPrompt: string,
   userMessage: string,
-  conversationHistory: GeminiContent[] = []
+  conversationHistory: GeminiContent[] = [],
+  images?: { mimeType: string; base64: string }[]
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
   const url = `${GEMINI_API_BASE}/${GEMINI_TEXT_MODEL}:generateContent?key=${apiKey}`;
 
+  // Build user parts: text + optional images
+  const userParts: GeminiPart[] = [];
+  if (images && images.length > 0) {
+    for (const img of images) {
+      userParts.push({ inline_data: { mime_type: img.mimeType, data: img.base64 } });
+    }
+  }
+  userParts.push({ text: userMessage });
+
   const contents: GeminiContent[] = [
     ...conversationHistory,
-    { role: 'user', parts: [{ text: userMessage }] },
+    { role: 'user', parts: userParts },
   ];
 
   const body = {
@@ -143,10 +162,11 @@ export async function generateText(
   role: AIUserRole,
   prompt: string,
   ctx: RoleContext = {},
-  history: GeminiContent[] = []
+  history: GeminiContent[] = [],
+  images?: { mimeType: string; base64: string }[]
 ): Promise<string> {
   const systemPrompt = buildSystemPrompt(role, ctx);
-  return callGemini(systemPrompt, prompt, history);
+  return callGemini(systemPrompt, prompt, history, images);
 }
 
 /**
@@ -156,12 +176,57 @@ export async function generateText(
 export async function generateJSON<T = any>(
   role: AIUserRole,
   prompt: string,
-  ctx: RoleContext = {}
+  ctx: RoleContext = {},
+  images?: { mimeType: string; base64: string }[]
 ): Promise<T> {
   const systemPrompt = buildSystemPrompt(role, ctx);
   const jsonPrompt = `${prompt}\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no explanation text.`;
-  const raw = await callGemini(systemPrompt, jsonPrompt);
+  const raw = await callGemini(systemPrompt, jsonPrompt, [], images);
   // Strip markdown fences if model ignores the instruction
   const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
   return JSON.parse(cleaned) as T;
+}
+
+/**
+ * Analyze an image and return structured product suggestions.
+ */
+export async function analyzeProductImage(
+  imageBase64: string,
+  mimeType: string,
+  ctx: RoleContext = {}
+): Promise<{
+  title: string;
+  title_ar: string;
+  description: string;
+  description_ar: string;
+  category: string;
+  tags: string[];
+  estimated_price_dzd: { min: number; max: number };
+  quality_score: number;
+  quality_issues: string[];
+  alt_text: string;
+  brand_detected: string;
+}> {
+  const systemPrompt = buildSystemPrompt('store_owner', ctx);
+  const prompt = `Analyze this product image for an Algerian e-commerce store. Return a JSON object with:
+{
+  "title": "Product title in English",
+  "title_ar": "Product title in Arabic",
+  "description": "2-3 sentence product description in English",
+  "description_ar": "2-3 sentence product description in Arabic",
+  "category": "Product category (e.g. electronics, clothing, beauty, food, accessories, home, sports)",
+  "tags": ["tag1", "tag2", "tag3"],
+  "estimated_price_dzd": { "min": number, "max": number },
+  "quality_score": 1-10 (image quality: lighting, resolution, background),
+  "quality_issues": ["issue1"] or [] if none,
+  "alt_text": "SEO-friendly alt text, max 15 words",
+  "brand_detected": "brand name if visible, empty string if none"
+}
+
+Context: This is for the Algerian market. Currency is DZD (Algerian Dinar). Prices should be realistic for Algeria.
+IMPORTANT: Respond ONLY with valid JSON. No markdown fences.`;
+
+  const raw = await callGemini(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }]);
+  const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+  return JSON.parse(cleaned);
 }

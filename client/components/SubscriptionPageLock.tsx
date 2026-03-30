@@ -76,7 +76,7 @@ export default function SubscriptionPageLock({ children }: SubscriptionPageLockP
   }
 
   // Check if on bot/wasselni page to show bot-specific message
-  const isBotPage = location.pathname.includes('wasselni') || location.pathname.includes('customer-bot') || location.pathname.includes('bot');
+  const isBotPage = location.pathname.includes('bot-settings') || location.pathname.includes('customer-bot') || location.pathname.includes('bot');
 
   return (
     <div className="relative">

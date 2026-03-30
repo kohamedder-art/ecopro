@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Search, Bell, Calendar, Star, TrendingUp, MoreHorizontal, ChevronDown, Package, X, Sparkles, Loader2
+  Search, Bell, Calendar, Star, TrendingUp, MoreHorizontal, ChevronDown, Package, X, Sparkles, Loader2, MapPin
 } from 'lucide-react';
 import { useTranslation } from "@/lib/i18n";
 import { useAI } from '@/hooks/useAI';
@@ -129,18 +129,33 @@ export default function Dashboard() {
     : [];
 
   const maxRevenue = Math.max(...chartData.map(d => Number(d.revenue) || Number((d as any).total_value) || 1), 1);
+  const maxOrders = Math.max(...chartData.map(d => Number(d.orders) || 1), 1);
 
   const points = chartData.map((d, i) => {
-    const x = (i / (chartData.length - 1)) * 100;
+    const x = (i / Math.max(chartData.length - 1, 1)) * 100;
     const y = 100 - ((Number(d.revenue) || Number((d as any).total_value) || 0) / maxRevenue) * 100;
     return `${x},${y}`;
   }).join(' ');
 
+  const ordersPoints = chartData.map((d, i) => {
+    const x = (i / Math.max(chartData.length - 1, 1)) * 100;
+    const y = 100 - ((Number(d.orders) || 0) / maxOrders) * 100;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const totalRevenuePeriod = chartData.reduce((s, d) => s + (Number(d.revenue) || Number((d as any).total_value) || 0), 0);
+  const totalOrdersPeriod = chartData.reduce((s, d) => s + (Number(d.orders) || 0), 0);
+
   const visitorsPoints = chartData.map((d, i) => {
-    const x = (i / (chartData.length - 1)) * 100;
+    const x = (i / Math.max(chartData.length - 1, 1)) * 100;
     const y = 100 - ((Number(d.orders) || 0) / Math.max(...chartData.map(o => Number(o.orders) || 1), 1)) * 100;
     return `${x},${y}`;
   }).join(' ');
+
+  const cityData = analytics?.cityBreakdown && analytics.cityBreakdown.length > 0
+    ? analytics.cityBreakdown.slice(0, 6)
+    : [];
+  const maxCityCount = Math.max(...cityData.map(c => c.count), 1);
 
   const statuses: { status: string; count: number; revenue?: number }[] = analytics?.statusBreakdown || [];
 
@@ -180,20 +195,8 @@ export default function Dashboard() {
     { label: t('dashboard.kpi.grossProfit'), val: `${grossMargin}%`, bg: 'bg-[#FF8A00]', shadow: 'shadow-[#FF8A00]/30', icon: '⚖️' }
   ];
 
-  const recentTasks = analytics?.recentOrders && analytics.recentOrders.length > 0
-    ? analytics.recentOrders.slice(0, 4)
-    : [];
-
-  const timeAgo = (dateStr: string) => {
-    const d = new Date(dateStr);
-    const md = Math.floor((Date.now() - d.getTime()) / 60000);
-    if (md < 60) return t('dashboard.minutesAgo', { n: md });
-    if (md < 1440) return t('dashboard.hoursAgo', { n: Math.floor(md / 60) });
-    return t('dashboard.daysAgo', { n: Math.floor(md / 1440) });
-  };
-
   return (
-    <div className="flex flex-col bg-[#F8F9FB] dark:bg-black font-sans text-slate-900 dark:text-slate-100 p-2 sm:p-4 -mx-4 -mt-2 md:-mx-6 md:-mt-3">
+    <div className="flex flex-col bg-transparent font-sans text-slate-900 dark:text-slate-100 p-2 sm:p-4 -mx-4 -mt-2 md:-mx-6 md:-mt-3">
 
       {/* Header */}
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 bg-white dark:bg-[#111] p-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 mb-2">
@@ -331,38 +334,56 @@ export default function Dashboard() {
         {/* Middle Row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-stretch">
 
-          {/* Goal Completion Chart */}
+          {/* Revenue & Orders Chart */}
           <div className="lg:col-span-6 bg-white dark:bg-[#111] p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col">
             <div className="flex justify-between items-start mb-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('dashboard.goalCompletion')}</h3>
-                <p className="text-xs text-slate-400 mt-0.5">{stats.revenue > 0 ? `${stats.revenue} DZD` : t('dashboard.goalCompletionDesc')}</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-lg font-black text-slate-800 dark:text-white">{totalRevenuePeriod.toLocaleString()} <span className="text-xs font-bold text-slate-400">DZD</span></span>
+                  <span className="text-xs font-bold text-slate-400">|</span>
+                  <span className="text-sm font-bold text-slate-500">{totalOrdersPeriod} {t('dashboard.ordersLabel')}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-xs font-bold bg-[#F8F9FB] dark:bg-slate-800 px-3 py-1 rounded-lg text-slate-600 dark:text-slate-300">
-                {t('dashboard.lastNDays', { n: dayRange })}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 text-[10px] font-bold">
+                  <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#4379EE]"></div><span className="text-slate-500">{t('dashboard.revenueLabel')}</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#10B981]"></div><span className="text-slate-500">{t('dashboard.ordersLabel')}</span></div>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-bold bg-[#F8F9FB] dark:bg-slate-800 px-3 py-1 rounded-lg text-slate-600 dark:text-slate-300">
+                  {t('dashboard.lastNDays', { n: dayRange })}
+                </div>
               </div>
             </div>
 
-            <div className="flex w-full">
-              <div className="flex flex-col justify-between text-[10px] text-slate-400 font-bold items-start pr-2 z-10 hidden sm:flex" style={{height:'90px'}}>
-                <span>{maxRevenue}</span>
-                <span>{Math.round(maxRevenue * 0.75)}</span>
-                <span>{Math.round(maxRevenue * 0.5)}</span>
-                <span>{Math.round(maxRevenue * 0.25)}</span>
+            <div className="flex w-full flex-1">
+              <div className="flex flex-col justify-between text-[10px] text-slate-400 font-bold items-start pr-2 z-10 hidden sm:flex">
+                <span>{maxRevenue.toLocaleString()}</span>
+                <span>{Math.round(maxRevenue * 0.75).toLocaleString()}</span>
+                <span>{Math.round(maxRevenue * 0.5).toLocaleString()}</span>
+                <span>{Math.round(maxRevenue * 0.25).toLocaleString()}</span>
                 <span>0</span>
               </div>
               <div className="flex-1 flex flex-col">
-                <div className="relative h-[100px] w-full">
+                <div className="relative flex-1 min-h-[100px] w-full">
                   <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full rounded-md overflow-hidden">
                     <defs>
                       <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#4379EE" stopOpacity="0.3" />
                         <stop offset="100%" stopColor="#4379EE" stopOpacity="0" />
                       </linearGradient>
+                      <linearGradient id="ordersGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10B981" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
+                      </linearGradient>
                     </defs>
                     {[20, 40, 60, 80].map(y => (
                       <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="currentColor" className="text-slate-100 dark:text-slate-800/50" strokeWidth="0.5" strokeDasharray="2,2" />
                     ))}
+                    {/* Orders area + line (behind) */}
+                    <polygon points={`0,100 ${ordersPoints} 100,100`} fill="url(#ordersGrad)" />
+                    <polyline points={ordersPoints} fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4,3" />
+                    {/* Revenue area + line (front) */}
                     <polygon points={`0,100 ${points} 100,100`} fill="url(#chartFill)" />
                     <polyline points={points} fill="none" stroke="#4379EE" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     {points.split(' ').map((p, i) => {
@@ -373,12 +394,10 @@ export default function Dashboard() {
                 </div>
                 <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 uppercase">
                   {(() => {
-                    // Pick ~6 evenly-spaced labels from the actual chart data
                     const step = Math.max(1, Math.floor((chartData.length - 1) / 5));
                     const indices = [0, step, step*2, step*3, step*4, chartData.length - 1].filter((v, i, a) => a.indexOf(v) === i && v < chartData.length);
                     return indices.map(idx => {
                       const raw = chartData[idx]?.date || '';
-                      // Format: if it's a full ISO date, show short form
                       try {
                         const d = new Date(raw);
                         if (!isNaN(d.getTime())) return <span key={idx}>{d.toLocaleDateString('en', { day: '2-digit', month: 'short' })}</span>;
@@ -513,84 +532,100 @@ export default function Dashboard() {
             </table>
           </div>
 
-          {/* Store Impressions Chart */}
+          {/* Store Visitors Chart */}
           <div className="lg:col-span-5 bg-white dark:bg-[#111] p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col">
             <div className="flex justify-between items-start mb-2">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('dashboard.storeImpressions')}</h3>
-              <div className="flex items-center gap-2 text-[10px] font-bold">
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#4379EE]"></div><span className="text-slate-500">{t('dashboard.chart.new')}</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#8CAEFF]"></div><span className="text-slate-500">{t('dashboard.chart.returning')}</span></div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('dashboard.storeImpressions')}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{stats.visitors > 0 ? `${stats.visitors.toLocaleString()} ${t('dashboard.lastNDays', { n: dayRange })}` : t('dashboard.goalCompletionDesc')}</p>
+              </div>
+              <div className="flex items-center gap-3 text-[10px] font-bold">
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#8B5CF6]"></div><span className="text-slate-500">{t('dashboard.revenueLabel')}</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#06B6D4]"></div><span className="text-slate-500">{t('dashboard.ordersLabel')}</span></div>
               </div>
             </div>
 
-            <div className="flex w-full">
-              <div className="flex flex-col justify-between text-[10px] text-slate-400 font-bold items-start pr-2 z-10 hidden sm:flex" style={{height:'90px'}}>
-                <span>20k</span>
-                <span>15k</span>
-                <span>10k</span>
-                <span>5k</span>
-                <span>0k</span>
+            <div className="flex w-full flex-1">
+              <div className="flex flex-col justify-between text-[10px] text-slate-400 font-bold items-start pr-2 z-10 hidden sm:flex">
+                <span>{maxOrders}</span>
+                <span>{Math.round(maxOrders * 0.75)}</span>
+                <span>{Math.round(maxOrders * 0.5)}</span>
+                <span>{Math.round(maxOrders * 0.25)}</span>
+                <span>0</span>
               </div>
               <div className="flex-1 flex flex-col">
-                <div className="relative h-[100px] w-full">
+                <div className="relative flex-1 min-h-[100px] w-full">
                   <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full rounded-md overflow-hidden">
                     <defs>
                       <linearGradient id="chartFill2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#4379EE" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="#4379EE" stopOpacity="0.05" />
+                        <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.02" />
                       </linearGradient>
                       <linearGradient id="chartFill3" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8CAEFF" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="#8CAEFF" stopOpacity="0.05" />
+                        <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.02" />
                       </linearGradient>
                     </defs>
                     {[20, 40, 60, 80].map(y => (
                       <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="currentColor" className="text-slate-100 dark:text-slate-800/50" strokeWidth="0.5" strokeDasharray="2,2" />
                     ))}
-                    <polygon points={`0,100 ${points} 100,100`} fill="url(#chartFill3)" />
-                    <polyline points={points} fill="none" stroke="#8CAEFF" strokeWidth="2.5" strokeLinecap="round" />
-                    <polygon points={`0,100 ${visitorsPoints} 100,100`} fill="url(#chartFill2)" />
-                    <polyline points={visitorsPoints} fill="none" stroke="#4379EE" strokeWidth="2.5" strokeLinecap="round" />
+                    <polygon points={`0,100 ${visitorsPoints} 100,100`} fill="url(#chartFill3)" />
+                    <polyline points={visitorsPoints} fill="none" stroke="#06B6D4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <polygon points={`0,100 ${points} 100,100`} fill="url(#chartFill2)" />
+                    <polyline points={points} fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeDasharray="4,3" />
                   </svg>
                 </div>
-                <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 capitalize">
-                  {chartData.length > 0
-                    ? chartData.filter((_, i) => i % Math.ceil(chartData.length / 7) === 0 || i === chartData.length - 1).map((d, i) => <span key={i}>{d.date}</span>)
-                    : <span className="text-slate-400 text-xs w-full text-center">{t('dashboard.noData') || 'No data yet'}</span>
-                  }
+                <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 uppercase overflow-hidden">
+                  {(() => {
+                    if (chartData.length === 0) return <span className="text-slate-400 text-xs w-full text-center">{t('dashboard.noData') || 'No data yet'}</span>;
+                    const step = Math.max(1, Math.floor((chartData.length - 1) / 5));
+                    const indices = [0, step, step*2, step*3, step*4, chartData.length - 1].filter((v, i, a) => a.indexOf(v) === i && v < chartData.length);
+                    return indices.map(idx => {
+                      const raw = chartData[idx]?.date || '';
+                      try {
+                        const d = new Date(raw);
+                        if (!isNaN(d.getTime())) return <span key={idx}>{d.toLocaleDateString('en', { day: '2-digit', month: 'short' })}</span>;
+                      } catch {}
+                      return <span key={idx}>{raw}</span>;
+                    });
+                  })()}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Task Last Month */}
+          {/* Orders by Wilaya */}
           <div className="lg:col-span-3 bg-white dark:bg-[#111] p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col">
             <div className="flex justify-between items-start mb-2">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('dashboard.taskLastMonth')}</h3>
-              <MoreHorizontal className="text-slate-300 w-5 h-5" />
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#4379EE]" />
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('dashboard.ordersByWilaya')}</h3>
+              </div>
             </div>
 
-            <div className="flex gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 mb-2 text-xs font-bold text-slate-400">
-              <span className="text-[#4379EE] border-b-2 border-[#4379EE] pb-2 cursor-pointer -mb-[9px] relative z-10">{t('dashboard.tab.all')}</span>
-              <span className="cursor-pointer hover:text-slate-600 transition">{t('dashboard.tab.complete')}</span>
-              <span className="cursor-pointer hover:text-slate-600 transition">{t('dashboard.tab.order')}</span>
-            </div>
-
-            <div className="flex-1 space-y-0 relative pl-4 border-l border-slate-100 dark:border-slate-800">
-              {recentTasks.length === 0 ? (
-                <div className="py-4 text-center text-xs text-slate-400">{t('dashboard.noData') || 'No data yet'}</div>
-              ) : recentTasks.map((task, i) => (
-                <div key={i} className="relative py-1">
-                  <div className={`absolute -left-[21px] top-[18px] w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#111] shadow-sm ${i === 0 ? 'bg-[#10B981]' : i === 1 ? 'bg-[#FFAB00]' : 'bg-slate-300'}`}></div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-snug">{task.customer_name || t('dashboard.systemNotification')}</span>
-                    <div className="flex justify-between items-center w-full">
-                      <span className="text-[10px] text-slate-400 font-medium">#{task.id} - {t('dashboard.system')}</span>
-                      <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{timeAgo(task.created_at)}</span>
+            <div className="flex-1 space-y-1.5 overflow-y-auto">
+              {cityData.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center py-6">
+                  <p className="text-xs text-slate-400 font-semibold">{t('dashboard.noOrdersYet')}</p>
+                </div>
+              ) : cityData.map((city, i) => {
+                const barWidth = Math.max((city.count / maxCityCount) * 100, 8);
+                const colors = ['bg-[#4379EE]', 'bg-[#10B981]', 'bg-[#F59E0B]', 'bg-[#8B5CF6]', 'bg-[#EC4899]', 'bg-[#06B6D4]'];
+                return (
+                  <div key={i} className="flex flex-col gap-0.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[120px]">{city.city}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-500">{city.count}</span>
+                        <span className="text-[9px] text-slate-400">{city.revenue?.toLocaleString()} DZD</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${colors[i % colors.length]} transition-all`} style={{ width: `${barWidth}%` }}></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, X, ArrowLeft, Zap, Pin, PinOff, Sparkles, Send, Loader2, Check, AlertTriangle, Copy, RotateCcw, ChevronRight } from 'lucide-react';
+import { MessageCircle, X, ArrowLeft, Zap, Pin, PinOff, Sparkles, Send, Loader2, Check, AlertTriangle, Copy, RotateCcw, ChevronRight, ImagePlus } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { safeJsonParse } from '@/utils/safeJson';
 import { apiFetch } from '@/lib/api';
@@ -73,7 +73,7 @@ export default function FloatingChatBubble() {
   // AI mode for client users
   type ChatMode = 'admin' | 'ai';
   const [chatMode, setChatMode] = useState<ChatMode>('admin');
-  type AIMsg = { role: 'user' | 'assistant'; content: string };
+  type AIMsg = { role: 'user' | 'assistant'; content: string; imageUrl?: string };
   type AIAction = {
     type: string;
     // order action fields
@@ -99,6 +99,8 @@ export default function FloatingChatBubble() {
   const [aiMessages, setAiMessages] = useState<AIMsg[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [aiInput, setAiInput] = useState('');
+  const [aiAttachedImage, setAiAttachedImage] = useState<string | null>(null);
+  const aiImageInputRef = useRef<HTMLInputElement>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<AIAction | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -159,12 +161,45 @@ export default function FloatingChatBubble() {
     '🔔 Any out-of-stock or low-stock alerts?',
   ];
 
+  const handleAiImageAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 4 * 1024 * 1024) {
+      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Image is too large (max 4MB). Please choose a smaller one.' }]);
+      return;
+    }
+    // Upload to server first
+    const csrfMatch = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
+    const csrf = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrf },
+        credentials: 'include',
+        body: form,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setAiAttachedImage(data.url);
+      }
+    } catch {
+      setAiAttachedImage(URL.createObjectURL(file));
+    }
+    e.target.value = '';
+  };
+
   const sendAI = async (message?: string) => {
     const q = (message ?? aiInput).trim();
-    if (!q || aiLoading) return;
+    const attachedImg = aiAttachedImage;
+    if ((!q && !attachedImg) || aiLoading) return;
     if (!message) setAiInput('');
+    setAiAttachedImage(null);
     setPendingAction(null);
-    const next: AIMsg[] = [...aiMessages, { role: 'user', content: q }];
+    const userMsg: AIMsg = { role: 'user', content: q || '(image attached)', ...(attachedImg ? { imageUrl: attachedImg } : {}) };
+    const next: AIMsg[] = [...aiMessages, userMsg];
     setAiMessages(next);
     setAiLoading(true);
 
@@ -174,14 +209,17 @@ export default function FloatingChatBubble() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
       try {
-        const res = await fetch('/api/ai/chat', {
+        const endpoint = attachedImg ? '/api/ai/vision/chat' : '/api/ai/chat';
+        const body: any = {
+          question: q || 'What do you see in this image? Describe it in detail.',
+          history: aiMessages.slice(-8).map(m => ({ role: m.role, content: m.content })),
+        };
+        if (attachedImg) body.imageUrl = attachedImg;
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
-          body: JSON.stringify({
-            question: q,
-            history: aiMessages.slice(-8).map(m => ({ role: m.role, content: m.content })),
-          }),
+          body: JSON.stringify(body),
           signal: controller.signal,
         });
         const data = await res.json();
@@ -750,7 +788,10 @@ export default function FloatingChatBubble() {
                         </div>
                       ) : (
                         <div className="max-w-[85%] bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-2xl rounded-br-sm px-3 py-2 text-xs leading-relaxed">
-                          {m.content}
+                          {m.imageUrl && (
+                            <img src={m.imageUrl} alt="Attached" className="max-w-full max-h-32 rounded-lg mb-1.5 object-cover" />
+                          )}
+                          {m.content !== '(image attached)' && m.content}
                         </div>
                       )}
                     </div>
@@ -793,19 +834,50 @@ export default function FloatingChatBubble() {
                   </div>
                 )}
 
+                {/* Image preview strip */}
+                {aiAttachedImage && (
+                  <div className="mx-3 mb-1 flex items-center gap-2">
+                    <div className="relative">
+                      <img src={aiAttachedImage} alt="Attached" className="w-14 h-14 rounded-lg object-cover border border-purple-300 dark:border-purple-700" />
+                      <button
+                        onClick={() => setAiAttachedImage(null)}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                    <span className="text-[10px] text-purple-500 dark:text-purple-400">Image attached — ask about it</span>
+                  </div>
+                )}
+
                 {/* Input */}
                 <div className="p-3 border-t border-slate-200 dark:border-slate-700 flex gap-2 flex-shrink-0">
+                  <input
+                    type="file"
+                    ref={aiImageInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAiImageAttach}
+                  />
+                  <button
+                    onClick={() => aiImageInputRef.current?.click()}
+                    disabled={aiLoading}
+                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-colors disabled:opacity-40"
+                    title="Attach image"
+                  >
+                    <ImagePlus className="w-3.5 h-3.5" />
+                  </button>
                   <input
                     value={aiInput}
                     onChange={(e) => setAiInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendAI(); } }}
-                    placeholder="Ask a question…"
+                    placeholder={aiAttachedImage ? "Ask about this image…" : "Ask a question…"}
                     disabled={aiLoading}
                     className="flex-1 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                   />
                   <button
                     onClick={() => void sendAI()}
-                    disabled={aiLoading || !aiInput.trim()}
+                    disabled={aiLoading || (!aiInput.trim() && !aiAttachedImage)}
                     className="p-2 bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
                   >
                     <Send className="w-3.5 h-3.5" />

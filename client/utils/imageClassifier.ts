@@ -105,9 +105,7 @@ export const TEMPLATE_SLOTS: Record<string, TemplateImageSlot[]> = {
     { name: 'hero',     preferred: ['wide', 'square'], count: 1 }, // hero image
     { name: 'features', preferred: ['wide', 'square'], count: 2 }, // 2 feature images
   ],
-  luxedark: [
-    { name: 'hero', preferred: ['tall', 'square'], count: 1 },  // 4:5 product hero
-  ],
+
   luxedrop: [
     { name: 'gallery', preferred: ['square'], count: 5 },       // main + 4 thumbnails
   ],
@@ -157,7 +155,8 @@ export const TEMPLATE_SLOTS: Record<string, TemplateImageSlot[]> = {
  * 
  * Strategy:
  * 1. For each slot (in order), pick images that match the preferred shape first.
- * 2. If not enough, use any remaining images regardless of shape.
+ * 2. If not enough, fill from remaining images — but skip images that are preferred
+ *    by a later slot that still needs them (reservation system).
  * 3. Once an image is assigned, it's removed from the pool.
  * 4. Slots with count=Infinity get all remaining images.
  */
@@ -174,7 +173,8 @@ export function distributeImages(
   const result: TemplateImageMap = {};
   const pool = [...classified]; // mutable copy
 
-  for (const slot of slots) {
+  for (let slotIdx = 0; slotIdx < slots.length; slotIdx++) {
+    const slot = slots[slotIdx];
     const assigned: string[] = [];
     const needed = slot.count === Infinity ? pool.length : slot.count;
 
@@ -188,7 +188,26 @@ export function distributeImages(
       }
     }
 
-    // Second pass: fill remaining from any shape
+    // Build a set of shapes that later slots prefer (so we can avoid stealing them)
+    const laterPreferred = new Set<ImageShape>();
+    for (let j = slotIdx + 1; j < slots.length; j++) {
+      for (const shape of slots[j].preferred) {
+        laterPreferred.add(shape);
+      }
+    }
+
+    // Second pass: fill remaining from any shape, but prefer images NOT reserved by later slots
+    // Pass 2a: use images that no later slot wants
+    for (let i = 0; i < pool.length && assigned.length < needed; ) {
+      if (!laterPreferred.has(pool[i].shape)) {
+        assigned.push(pool[i].url);
+        pool.splice(i, 1);
+      } else {
+        i++;
+      }
+    }
+
+    // Pass 2b: if still short, take any remaining (better to show something than leave a slot empty)
     while (assigned.length < needed && pool.length > 0) {
       assigned.push(pool[0].url);
       pool.splice(0, 1);

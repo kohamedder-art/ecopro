@@ -1,7 +1,6 @@
 import React from 'react';
 import { TemplateProps } from './types';
 import DZShopTemplate from './dzshop/DZShopTemplate';
-import LuxeDarkTemplate from './luxedark/LuxeDarkTemplate';
 import DZPremiumTemplate from './dzpremium/DZPremiumTemplate';
 import LuxeDropTemplate from './luxedrop/LuxeDropTemplate';
 import NeedDZTemplate from './needdz/NeedDZTemplate';
@@ -17,10 +16,11 @@ import VeraTemplate from './vera/VeraTemplate';
 import StreetwearTemplate from './streetwear/StreetwearTemplate';
 import GalleryTemplate from './gallery/GalleryTemplate';
 
-export type TemplateId = 'dzshop' | 'dzpremium' | 'luxedark' | 'luxedrop' | string;
+export type TemplateId = 'dzshop' | 'dzpremium' | 'luxedrop' | string;
 
 export function normalizeTemplateId(id: string): string {
-    const validIds = ['dzshop', 'dzpremium', 'luxedark', 'luxedrop', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery'];
+    if (id === 'luxedark') return 'luxedrop'; // Removed template, redirect to closest
+    const validIds = ['dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery'];
     if (validIds.includes(id)) return id;
     return 'dzshop'; // Fallback
 }
@@ -80,12 +80,10 @@ export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
           return <LuxeDropTemplate {...sanitizedProps} />;
       case 'needdz':
           return <NeedDZTemplate {...sanitizedProps} />;
-      case 'luxedark':
-          return <LuxeDarkTemplate {...sanitizedProps} />;
       case 'dzshop':
       default:
           return <DZShopTemplate {...sanitizedProps} />;
   }
 }
 
-export { DZShopTemplate, DZPremiumTemplate, LuxeDarkTemplate, LuxeDropTemplate, NeedDZTemplate, NovaDzTemplate, MinimalistTemplate, LuminaTemplate, ZenithTemplate, BoutiqueTemplate, AuroraTemplate, SculptorTemplate, ArtisanTemplate, VeraTemplate, StreetwearTemplate, GalleryTemplate };
+export { DZShopTemplate, DZPremiumTemplate, LuxeDropTemplate, NeedDZTemplate, NovaDzTemplate, MinimalistTemplate, LuminaTemplate, ZenithTemplate, BoutiqueTemplate, AuroraTemplate, SculptorTemplate, ArtisanTemplate, VeraTemplate, StreetwearTemplate, GalleryTemplate };

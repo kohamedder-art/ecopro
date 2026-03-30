@@ -31,13 +31,13 @@ const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const EnhancedDashboard = lazy(() => import("./pages/admin/EnhancedDashboard"));
 const AdminOrders = lazy(() => import("./pages/admin/Orders"));
 const AdminCalls = lazy(() => import("./pages/admin/Calls"));
-const AdminWasselniSettings = lazy(() => import("./pages/admin/WasselniSettings"));
+const AdminBotSettings = lazy(() => import("./pages/admin/BotSettings"));
 const AdminChats = lazy(() => import("./pages/admin/Chats"));
 const AdminChat = lazy(() => import("./pages/admin/Chat"));
 const Profile = lazy(() => import("./pages/admin/Profile"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
 const CustomerBot = lazy(() => import("./pages/CustomerBot"));
-const PixelStatistics = lazy(() => import("./pages/PixelStatistics"));
+const MarketingAnalytics = lazy(() => import("./pages/MarketingAnalytics"));
 const LogoDemo = lazy(() => import("./pages/LogoDemo"));
 const DataMigration = lazy(() => import("./pages/DataMigration"));
 
@@ -429,8 +429,10 @@ const App = () => (
                     {/* Settings merged into Profile page */}
                     <Route path="staff" element={<StaffManagement />} />
                     <Route path="calls" element={<AdminCalls />} />
-                    <Route path="wasselni-settings" element={<SubscriptionPageLock><AdminWasselniSettings /></SubscriptionPageLock>} />
-                    <Route path="pixel-statistics" element={<PixelStatistics />} />
+                    <Route path="bot-settings" element={<SubscriptionPageLock><AdminBotSettings /></SubscriptionPageLock>} />
+                    <Route path="wasselni-settings" element={<Navigate to="/dashboard/bot-settings" replace />} />
+                    <Route path="marketing-analytics" element={<MarketingAnalytics />} />
+                    <Route path="pixel-statistics" element={<Navigate to="/dashboard/marketing-analytics" replace />} />
                     <Route path="billing" element={<Billing />} />
                   </Route>
                   {/* Secret Platform Admin Panel removed */}
@@ -456,7 +458,7 @@ const App = () => (
                   <Route path="/chat" element={<RequirePaidClient><ChatPage /></RequirePaidClient>} />
                   <Route path="/customer-bot" element={<RequirePaidClient><SubscriptionPageLock><CustomerBot /></SubscriptionPageLock></RequirePaidClient>} />
                   {/* Redirect old pixel-statistics URL to dashboard */}
-                  <Route path="/pixel-statistics" element={<Navigate to="/dashboard/pixel-statistics" replace />} />
+                  <Route path="/pixel-statistics" element={<Navigate to="/dashboard/marketing-analytics" replace />} />
                   {/* My Store - logged in client viewing their own store */}
                   <Route path="/my-store" element={<MyStore />}> 
                     <Route index element={<MyStoreIndex />} />

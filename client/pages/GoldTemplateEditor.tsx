@@ -13,18 +13,18 @@ import { useTranslation } from '@/lib/i18n';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useStoreProducts } from '@/hooks/useStoreProducts';
 
-const DEFAULT_TEMPLATE_ID = 'luxedark';
+const DEFAULT_TEMPLATE_ID = 'dzshop';
 
 // Templates that are considered 100% editable + verified against TEMPLATE_EDITS_CONTRACT.
 // These are the only templates shown by default in the picker.
-const READY_TEMPLATE_IDS = new Set(['dzshop', 'dzpremium', 'luxedrop', 'luxedark', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery']);
+const READY_TEMPLATE_IDS = new Set(['dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery']);
 
 // Template preview data with categories
 const TEMPLATE_PREVIEWS = [
   { id: 'dzshop', name: 'DZ Shop (Algerian)', image: '', categories: ['popular', 'industry'] },
   { id: 'dzpremium', name: 'DZ Premium (Green Fast)', image: '', categories: ['popular', 'landing'] },
   { id: 'luxedrop', name: 'Luxe Drop (Dark Edition)', image: '', categories: ['dark', 'landing'] },
-  { id: 'luxedark', name: 'Luxe Dark (Cosmetics)', image: '', categories: ['dark', 'elegant'] },
+
   { id: 'needdz', name: 'NeedDZ Mobile App', image: '', categories: ['mobile', 'popular'] },
   { id: 'novadz', name: 'Nova DZ (Modern Convert)', image: '', categories: ['popular', 'landing'] },
   { id: 'minimalist', name: "L'Atelier (Minimalist)", image: '', categories: ['minimal', 'elegant'] },
@@ -413,46 +413,113 @@ export default function GoldTemplateEditor() {
   };
 
   // Upload any base64 data URIs found in settings before saving
+  // Compress image via canvas before uploading — keeps high-res images under control
+  const compressImage = (dataUri: string, maxWidth = 1920, quality = 0.85): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round(height * (maxWidth / width));
+          width = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas context failed'));
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Blob conversion failed')),
+          'image/webp',
+          quality
+        );
+      };
+      img.onerror = () => reject(new Error('Image load failed'));
+      img.src = dataUri;
+    });
+  };
+
   const sanitizeSettingsImages = async (raw: StoreSettings): Promise<StoreSettings> => {
     const cleaned: StoreSettings = { ...raw };
     const uploads: Promise<void>[] = [];
 
     const uploadBase64 = async (b64DataUri: string): Promise<string> => {
-      const [header, b64] = b64DataUri.split(',');
-      const mime = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
-      const bytes = atob(b64);
-      const arr = new Uint8Array(bytes.length);
-      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-      const file = new File([arr], `upload.jpg`, { type: mime });
+      const blob = await compressImage(b64DataUri);
+      const file = new File([blob], `upload.webp`, { type: 'image/webp' });
       const result = await uploadImage(file);
       return result.url;
     };
 
+    // Regex to match a complete data URI: data:image/...;base64,...
+    const dataUriRegex = /data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g;
+
+    const processString = async (val: string): Promise<string> => {
+      if (!val.includes('data:image/')) return val;
+      try {
+        const matches = val.match(dataUriRegex);
+        if (!matches || matches.length === 0) {
+          return val.replace(/data:image\/[^,]+,[^\s,]*/g, '').replace(/,,+/g, ',').replace(/^,|,$/g, '');
+        }
+        let result = val;
+        for (const dataUri of matches) {
+          const url = await uploadBase64(dataUri);
+          result = result.replace(dataUri, url);
+        }
+        return result;
+      } catch {
+        return val.replace(dataUriRegex, '').replace(/,,+/g, ',').replace(/^,|,$/g, '');
+      }
+    };
+
+    const processArray = async (arr: any[]): Promise<any[]> => {
+      const result = [...arr];
+      for (let i = 0; i < result.length; i++) {
+        if (typeof result[i] === 'string' && result[i].includes('data:image/')) {
+          result[i] = await processString(result[i]);
+        }
+      }
+      return result;
+    };
+
+    const processObject = async (obj: Record<string, any>): Promise<Record<string, any>> => {
+      const out = { ...obj };
+      for (const k of Object.keys(out)) {
+        const v = out[k];
+        if (typeof v === 'string' && v.includes('data:image/')) {
+          out[k] = await processString(v);
+        } else if (Array.isArray(v)) {
+          if (JSON.stringify(v).includes('data:image/')) {
+            out[k] = await processArray(v);
+          }
+        } else if (v && typeof v === 'object') {
+          if (JSON.stringify(v).includes('data:image/')) {
+            out[k] = await processObject(v);
+          }
+        }
+      }
+      return out;
+    };
+
+    // Process all keys recursively
     for (const key of Object.keys(cleaned)) {
       const val = cleaned[key];
-      if (typeof val !== 'string') continue;
-
-      // Handle comma-separated image lists (banner_url, hero_main_url, etc.)
-      if (val.includes('data:image/')) {
+      if (typeof val === 'string' && val.includes('data:image/')) {
         uploads.push(
-          (async () => {
-            try {
-              const parts = val.split(',');
-              const resolved: string[] = [];
-              for (const part of parts) {
-                if (part.startsWith('data:image/')) {
-                  resolved.push(await uploadBase64(part));
-                } else if (part.trim()) {
-                  resolved.push(part.trim());
-                }
-              }
-              cleaned[key] = resolved.join(',');
-            } catch {
-              // Strip bad base64 to avoid huge payload
-              cleaned[key] = val.replace(/data:image\/[^,]+,[\w+/=]+/g, '').replace(/,,+/g, ',').replace(/^,|,$/g, '');
-            }
-          })()
+          (async () => { cleaned[key] = await processString(val); })()
         );
+      } else if (Array.isArray(val)) {
+        if (JSON.stringify(val).includes('data:image/')) {
+          uploads.push(
+            (async () => { cleaned[key] = await processArray(val); })()
+          );
+        }
+      } else if (val && typeof val === 'object') {
+        if (JSON.stringify(val).includes('data:image/')) {
+          uploads.push(
+            (async () => { cleaned[key] = await processObject(val); })()
+          );
+        }
       }
     }
 
@@ -471,6 +538,27 @@ export default function GoldTemplateEditor() {
 
       // "Publish Changes" means the store should go live
       cleanedSettings.is_public = true;
+
+      // If the user is previewing a different template, apply it on publish
+      if (previewTemplateId && normalizeTemplateId(previewTemplateId) !== effectiveTemplateId) {
+        cleanedSettings.template = normalizeTemplateId(previewTemplateId);
+      }
+
+      // Strip DB-internal columns that should never be sent back
+      // (they cause exponential data growth when re-embedded into template_settings JSONB)
+      delete cleanedSettings.template_settings;
+      delete cleanedSettings.template_settings_by_template;
+      delete cleanedSettings.global_settings;
+      delete cleanedSettings.id;
+      delete cleanedSettings.client_id;
+      delete cleanedSettings.created_at;
+      delete cleanedSettings.updated_at;
+      delete cleanedSettings.page_views;
+      delete cleanedSettings.subscription_status;
+      delete cleanedSettings.subscription_plan;
+      delete cleanedSettings.trial_ends_at;
+      delete cleanedSettings.subscription_ends_at;
+      delete cleanedSettings.is_locked;
 
       const res = await fetch('/api/client/store/settings', {
         method: 'PUT',
@@ -492,6 +580,7 @@ export default function GoldTemplateEditor() {
         throw new Error('Database unavailable. Changes were not saved.');
       }
       setSettings(savedData);
+      setPreviewTemplateId(null);
       queryClient.invalidateQueries({ queryKey: ['storeSettings'] });
       
       setSuccess(t('editor.saved'));
@@ -505,7 +594,19 @@ export default function GoldTemplateEditor() {
 
   const handleImageUpload = async (key: string, file: File) => {
     try {
-      const result = await uploadImage(file);
+      // Compress large images before uploading
+      let uploadFile = file;
+      if (file.type.startsWith('image/') && file.size > 500 * 1024) {
+        const dataUri = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const blob = await compressImage(dataUri);
+        uploadFile = new File([blob], file.name.replace(/\.\w+$/, '.webp'), { type: 'image/webp' });
+      }
+      const result = await uploadImage(uploadFile);
       handleSettingChange(key, result.url);
     } catch (err) {
       setError('Failed to upload image');
@@ -1659,16 +1760,26 @@ export default function GoldTemplateEditor() {
                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('editor.architecture')}</h3>
                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('editor.architectureDesc')}</p>
                  </div>
+                 {isPreviewingDifferentTemplate && (
+                   <button
+                     onClick={() => handleTemplateChange(previewTemplateId!)}
+                     disabled={saving}
+                     className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all shadow-[0_0_20px_-5px_rgba(79,70,229,0.4)] disabled:opacity-60 flex items-center justify-center gap-2"
+                   >
+                     {saving ? <div className="w-3.5 h-3.5 rounded-full border-2 border-white/20 border-t-white animate-spin" /> : <Check className="w-4 h-4" />}
+                     {t('editor.applyFramework')} — {TEMPLATE_PREVIEWS.find(tp => tp.id === normalizeTemplateId(previewTemplateId!))?.name || previewTemplateId}
+                   </button>
+                 )}
                  <div className="grid gap-4">
                    {TEMPLATE_PREVIEWS.map((template) => (
-                      <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden group rounded-2xl border transition-all text-left p-5 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825] hover:border-slate-300 dark:hover:border-white/20'}`}>
+                      <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden group rounded-2xl border transition-all text-left p-5 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]' : previewTemplateId === template.id ? 'border-violet-400 bg-violet-500/5 dark:bg-violet-500/10 shadow-[0_0_10px_-3px_rgba(139,92,246,0.2)]' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825] hover:border-slate-300 dark:hover:border-white/20'}`}>
                         <div className="flex items-center gap-4 relative z-10">
-                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-inner ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:bg-slate-300 dark:group-hover:bg-white/5'}`}>
+                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-inner ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : previewTemplateId === template.id ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:bg-slate-300 dark:group-hover:bg-white/5'}`}>
                              <LayoutTemplate className="w-6 h-6" />
                            </div>
                            <div>
-                             <h4 className={`font-bold text-sm ${effectiveTemplateId === template.id ? 'text-indigo-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
-                             <p className="text-xs text-slate-500 mt-1">{effectiveTemplateId === template.id ? t('editor.activeFramework') : t('editor.applyFramework')}</p>
+                             <h4 className={`font-bold text-sm ${effectiveTemplateId === template.id ? 'text-indigo-400' : previewTemplateId === template.id ? 'text-violet-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
+                             <p className="text-xs text-slate-500 mt-1">{effectiveTemplateId === template.id ? t('editor.activeFramework') : previewTemplateId === template.id ? t('editor.previewingTemplate') : t('editor.applyFramework')}</p>
                            </div>
                         </div>
                       </button>

@@ -37,6 +37,26 @@ const storefrontSettingsInFlight = new Map<string, Promise<any>>();
 const storefrontProductsCache = new Map<string, CacheEntry<any[]>>();
 const storefrontProductsInFlight = new Map<string, Promise<any[]>>();
 
+/**
+ * Invalidate public storefront settings cache for a given store slug.
+ * Called from client-store routes after settings/template updates.
+ */
+export function invalidateStorefrontSettingsCache(storeSlug: string) {
+  if (storeSlug) {
+    storefrontSettingsCache.delete(`settings:${storeSlug}`);
+    storefrontSettingsInFlight.delete(`settings:${storeSlug}`);
+  }
+}
+
+/**
+ * Invalidate ALL entries in the public storefront settings cache.
+ * Useful when we only have a clientId but not the store slug.
+ */
+export function invalidateAllStorefrontSettingsCache() {
+  storefrontSettingsCache.clear();
+  storefrontSettingsInFlight.clear();
+}
+
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
   const hit = cache.get(key);
   if (!hit) return null;

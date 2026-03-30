@@ -419,9 +419,9 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
     // Process each order
     for (const orderId of order_ids) {
       try {
-        // Get order details for COD amount
+        // Get order details for COD amount + save previous status for rollback
         const orderResult = await pool.query(
-          'SELECT total_price FROM store_orders WHERE id = $1 AND client_id = $2',
+          'SELECT total_price, status, delivery_company_id, delivery_status, cod_amount FROM store_orders WHERE id = $1 AND client_id = $2',
           [orderId, clientId]
         );
 
@@ -431,6 +431,10 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
         }
 
         const codAmount = orderResult.rows[0].total_price;
+        const previousStatus = orderResult.rows[0].status;
+        const previousDeliveryCompanyId = orderResult.rows[0].delivery_company_id;
+        const previousDeliveryStatus = orderResult.rows[0].delivery_status;
+        const previousCodAmount = orderResult.rows[0].cod_amount;
 
         // Assign delivery company
         const assignResult = await DeliveryService.assignDeliveryCompany(
@@ -447,6 +451,11 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
 
         // Upload shipment to courier API (if supported). Labels are optional.
         if (supportsApiUpload) {
+          let apiSuccess = false;
+          let apiError = '';
+          let tracking_number: string | undefined;
+          let label_url: string | undefined;
+
           if (generate_labels) {
             const labelResult = await DeliveryService.generateLabel(
               orderId,
@@ -454,19 +463,11 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
               Number(delivery_company_id)
             );
             if (labelResult.success) {
-              results.push({
-                orderId,
-                success: true,
-                tracking_number: labelResult.tracking_number,
-                label_url: labelResult.label_url,
-              });
+              apiSuccess = true;
+              tracking_number = labelResult.tracking_number;
+              label_url = labelResult.label_url;
             } else {
-              // Upload failed - mark as failure, not partial success
-              results.push({
-                orderId,
-                success: false,
-                error: labelResult.error || 'Failed to upload to courier',
-              });
+              apiError = labelResult.error || 'Failed to upload to courier';
             }
           } else {
             const uploadResult = await DeliveryService.createShipment(
@@ -475,19 +476,32 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
               Number(delivery_company_id)
             );
             if (uploadResult.success) {
-              results.push({
-                orderId,
-                success: true,
-                tracking_number: uploadResult.tracking_number,
-              });
+              apiSuccess = true;
+              tracking_number = uploadResult.tracking_number;
             } else {
-              // Upload failed - mark as failure, not partial success
-              results.push({
-                orderId,
-                success: false,
-                error: uploadResult.error || 'Failed to upload to courier',
-              });
+              apiError = uploadResult.error || 'Failed to upload to courier';
             }
+          }
+
+          if (apiSuccess) {
+            results.push({ orderId, success: true, tracking_number, label_url });
+          } else {
+            // API call failed — revert order status back to what it was before assignment
+            try {
+              await pool.query(
+                `UPDATE store_orders 
+                 SET status = $1, 
+                     delivery_company_id = $2, 
+                     delivery_status = $3, 
+                     cod_amount = $4, 
+                     updated_at = NOW()
+                 WHERE id = $5 AND client_id = $6`,
+                [previousStatus, previousDeliveryCompanyId || null, previousDeliveryStatus || null, previousCodAmount || null, orderId, clientId]
+              );
+            } catch (revertErr) {
+              console.error(`[Delivery] Failed to revert order ${orderId} status:`, revertErr);
+            }
+            results.push({ orderId, success: false, error: apiError });
           }
         } else {
           // Manual/non-API couriers: assignment only.

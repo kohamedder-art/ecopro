@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "@/lib/i18n";
 import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
 import { RiskAlert } from "@/components/orders/RiskAlert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getAlgeriaCommunesByWilayaId, getAlgeriaWilayas } from "@/lib/algeriaGeo";
 
 interface DeliveryCompany {
@@ -81,6 +82,7 @@ export default function OrdersAdmin() {
   // Order editing (store owner)
   const [showEditOrder, setShowEditOrder] = useState(false);
   const [editOrder, setEditOrder] = useState<any | null>(null);
+  const [deliveryOrder, setDeliveryOrder] = useState<any | null>(null);
   const [editVariants, setEditVariants] = useState<any[]>([]);
   const [loadingEditVariants, setLoadingEditVariants] = useState(false);
   const [savingEditOrder, setSavingEditOrder] = useState(false);
@@ -1153,91 +1155,86 @@ export default function OrdersAdmin() {
                     <tr className="bg-muted/30 border-b border-primary/10">
                       <td colSpan={9} className="p-3">
                         <div className="space-y-2">
-                          {/* Order Details Grid */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {/* Order Details Grid - Compact */}
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                             <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-sm font-semibold text-muted-foreground mb-0.5">{t('orders.orderNumber')}</div>
+                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.orderNumber')}</div>
                               <div className="font-bold text-sm">{o.id}</div>
                             </div>
                             <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-sm font-semibold text-muted-foreground mb-0.5">{t('orders.customerName')}</div>
+                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.customerName')}</div>
                               <div className="font-bold text-sm">{o.customer}</div>
                             </div>
                             <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-sm font-semibold text-muted-foreground mb-0.5">{t('orders.phoneNumber')}</div>
+                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.phoneNumber')}</div>
                               <div className="font-bold text-sm">{o.phone || t('orders.notAvailable')}</div>
                             </div>
                             <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-sm font-semibold text-muted-foreground mb-0.5">{t('orders.email')}</div>
-                              <div className="font-bold text-sm">{o.email || t('orders.notAvailable')}</div>
+                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.address')}</div>
+                              <div className="font-bold text-sm truncate">{o.address || t('orders.notAvailable')}</div>
                             </div>
+                          </div>
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                             <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-sm font-semibold text-muted-foreground mb-0.5">{t('orders.address')}</div>
-                              <div className="font-bold text-sm">{o.address || t('orders.notAvailable')}</div>
-                            </div>
-                            <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-sm font-semibold text-muted-foreground mb-0.5">{t('orders.product')}</div>
+                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.product')}</div>
                               <div className="flex items-center gap-2">
                                 {o.product_image ? (
                                   <img 
                                     src={o.product_image} 
                                     alt={o.product_title || 'Product'} 
-                                    className="w-12 h-12 rounded object-cover border border-border/50"
+                                    className="w-8 h-8 rounded object-cover border border-border/50"
                                   />
                                 ) : (
-                                  <div className="w-12 h-12 rounded bg-muted flex items-center justify-center border border-border/50">
-                                    <ShoppingBag className="w-6 h-6 text-muted-foreground" />
+                                  <div className="w-8 h-8 rounded bg-muted flex items-center justify-center border border-border/50">
+                                    <ShoppingBag className="w-4 h-4 text-muted-foreground" />
                                   </div>
                                 )}
-                                <div className="font-bold text-sm">{o.product_title || t('orders.notAvailable')}</div>
+                                <div className="font-bold text-sm truncate">{o.product_title || t('orders.notAvailable')}</div>
                               </div>
                             </div>
-
                             <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-sm font-semibold text-muted-foreground mb-0.5">Variant</div>
+                              <div className="text-xs font-semibold text-muted-foreground">Variant</div>
                               <div className="font-bold text-sm">
                                 {o.variant_name || [o.variant_color, o.variant_size].filter(Boolean).join(' / ') || '—'}
                               </div>
                             </div>
                             <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-sm font-semibold text-muted-foreground mb-0.5">Quantity</div>
+                              <div className="text-xs font-semibold text-muted-foreground">Quantity</div>
                               <div className="font-bold text-sm">{Number(o.quantity || 0)}</div>
                             </div>
                             <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-sm font-semibold text-muted-foreground mb-0.5">Unit Price</div>
+                              <div className="text-xs font-semibold text-muted-foreground">Unit Price</div>
                               <div className="font-bold text-sm">{Math.round(Number(o.unit_price || 0))} DZD</div>
                             </div>
                           </div>
 
-                          {/* Order Notes */}
-                          <div className="bg-background rounded p-2 border border-border/50">
-                            <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground mb-1">
-                              <StickyNote className="h-3.5 w-3.5" /> Internal Note
+                          {/* Notes + Edit inline */}
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 bg-background rounded p-2 border border-border/50">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1">
+                                <StickyNote className="h-3 w-3" /> Internal Note
+                              </div>
+                              <textarea
+                                value={orderNotes[o.raw_id] || ''}
+                                onChange={e => setOrderNotes(prev => ({ ...prev, [o.raw_id]: e.target.value }))}
+                                onClick={e => e.stopPropagation()}
+                                placeholder="Add a private note about this order..."
+                                rows={1}
+                                className="w-full text-xs rounded border border-border bg-muted/30 px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
+                              />
                             </div>
-                            <textarea
-                              value={orderNotes[o.raw_id] || ''}
-                              onChange={e => setOrderNotes(prev => ({ ...prev, [o.raw_id]: e.target.value }))}
-                              onClick={e => e.stopPropagation()}
-                              placeholder="Add a private note about this order..."
-                              rows={2}
-                              className="w-full text-xs rounded border border-border bg-muted/30 px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
-                            />
-                          </div>
-
-                          {/* Edit action */}
-                          {localStorage.getItem('isStaff') !== 'true' && (
-                            <div className="flex items-center justify-end">
+                            {localStorage.getItem('isStaff') !== 'true' && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openEditModal(o);
                                 }}
-                                className="inline-flex items-center rounded bg-primary/10 px-3 py-2 text-sm font-bold hover:bg-primary/20 transition-colors"
+                                className="inline-flex items-center rounded bg-primary/10 px-3 py-2 text-sm font-bold hover:bg-primary/20 transition-colors self-end"
                               >
                                 ✎ Edit Order
                               </button>
-                            </div>
-                          )}
+                            )}
+                          </div>
 
                           {/* Actions - Custom Statuses & Delete */}
                           <div className="flex flex-wrap gap-2">
@@ -1270,24 +1267,12 @@ export default function OrdersAdmin() {
                             >
                               <Trash2 className="h-4 w-4 mr-1" /> Delete
                             </button>
-                          </div>
-
-                          {/* Delivery Management Section */}
-                          <div className="mt-4 pt-4 border-t border-border/50">
-                            <OrderFulfillment 
-                              order={{
-                                id: o.raw_id,
-                                customer_name: o.customer,
-                                customer_phone: o.phone || '',
-                                customer_address: o.address || '',
-                                total_price: Number(o.total) || 0,
-                                delivery_company_id: o.delivery_company_id,
-                                tracking_number: o.tracking_number,
-                                delivery_status: o.delivery_status,
-                                shipping_label_url: o.shipping_label_url
-                              }}
-                              onDeliveryAssigned={() => loadOrders()}
-                            />
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeliveryOrder(o); }}
+                              className="inline-flex items-center rounded bg-gradient-to-r from-indigo-500 to-blue-600 px-3 py-2 text-sm font-bold text-white hover:from-indigo-600 hover:to-blue-700 transition-colors shadow h-9"
+                            >
+                              <Truck className="h-4 w-4 mr-1" /> Delivery
+                            </button>
                           </div>
                         </div>
                       </td>
@@ -1790,150 +1775,165 @@ export default function OrdersAdmin() {
 
       {/* Bulk Upload Modal */}
       {showBulkUpload && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
-          <div className="bg-card rounded-lg border border-primary/20 shadow-xl max-w-lg w-full p-4 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <Truck className="h-5 w-5 text-blue-500" />
-                Upload to Delivery Company
-              </h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => { setShowBulkUpload(false); setBulkUploadResult(null); }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative rounded-[20px] bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/60 ring-1 ring-black/5 dark:ring-white/10 shadow-2xl shadow-blue-500/10 dark:shadow-black/50 max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col"
+          >
+            {/* Header gradient bar */}
+            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+                  <Truck className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white tracking-tight">Upload to Delivery</h2>
+                  <p className="text-xs text-white/70">{selectedOrders.size} orders &middot; {orders.filter(o => selectedOrders.has(o.raw_id)).reduce((sum, o) => sum + (Number(o.total) || 0), 0).toLocaleString()} DZD</p>
+                </div>
+              </div>
               <button 
-                onClick={() => {
-                  setShowBulkUpload(false);
-                  setBulkUploadResult(null);
-                }}
-                className="p-1 rounded hover:bg-muted"
+                onClick={() => { setShowBulkUpload(false); setBulkUploadResult(null); }}
+                className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4 text-white" />
               </button>
             </div>
 
-            {/* Selected Orders Summary */}
-            <div className="bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckSquare className="h-4 w-4 text-blue-500" />
-                <span className="font-bold text-blue-600">{selectedOrders.size} orders selected</span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Total value: {orders.filter(o => selectedOrders.has(o.raw_id)).reduce((sum, o) => sum + (Number(o.total) || 0), 0).toLocaleString()} DZD
-              </div>
-            </div>
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
-            {/* Delivery Company Selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-bold">Select Delivery Company</label>
-              {deliveryCompanies.length === 0 ? (
-                <div className="p-4 rounded bg-yellow-500/10 border border-yellow-500/20 text-center">
-                  <p className="text-sm text-yellow-600 font-bold mb-2">No delivery companies configured</p>
-                  <p className="text-xs text-muted-foreground">Go to Settings → Delivery Companies to add one</p>
+              {/* Delivery Company Selection */}
+              {deliveryCompanies.filter(c => c.is_configured && c.has_api_key).length === 0 ? (
+                <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-center">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mx-auto mb-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <p className="text-sm font-bold text-amber-700 dark:text-amber-400">No delivery companies configured</p>
+                  <p className="text-xs text-muted-foreground mt-1">Go to Settings → Delivery Companies to connect one</p>
                 </div>
               ) : (
-                <div className="grid gap-2">
-                  {deliveryCompanies.map(company => {
-                    const isConfigured = company.is_configured && company.has_api_key;
-                    return (
-                      <button
-                        key={company.id}
-                        onClick={() => isConfigured && setSelectedDeliveryCompany(company.id)}
-                        disabled={!isConfigured}
-                        className={`p-3 rounded border text-left transition-colors ${
-                          !isConfigured
-                            ? 'border-border/30 bg-muted/30 opacity-60 cursor-not-allowed'
-                            : selectedDeliveryCompany === company.id
-                              ? 'border-blue-500 bg-blue-500/10'
-                              : 'border-border/50 bg-background hover:bg-muted'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold">{company.name}</span>
-                          {isConfigured ? (
-                            <span className="text-xs bg-green-500/20 text-green-600 px-2 py-0.5 rounded">✓ Ready</span>
-                          ) : (
-                            <span className="text-xs bg-yellow-500/20 text-yellow-600 px-2 py-0.5 rounded">⚠ Not configured</span>
-                          )}
-                        </div>
-                        {company.features && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {company.features.tracking && '📍 Tracking '}
-                            {company.features.cod && '💰 COD '}
-                            {company.features.labels && '🏷️ Labels'}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Select Company</p>
+                  <div className="grid gap-2">
+                    {deliveryCompanies.filter(c => c.is_configured && c.has_api_key).map(company => {
+                      const isSelected = selectedDeliveryCompany === company.id;
+                      return (
+                        <button
+                          key={company.id}
+                          onClick={() => setSelectedDeliveryCompany(company.id)}
+                          className={`group relative p-3 rounded-xl border-2 text-left transition-all duration-200 ${
+                            isSelected
+                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-md shadow-blue-500/10'
+                              : 'border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/40 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600'
+                            }`}>
+                              {isSelected ? <Check className="h-4 w-4" /> : <Truck className="h-4 w-4" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-bold text-sm">{company.name}</span>
+                              {company.features && (
+                                <div className="flex gap-2 mt-0.5">
+                                  {company.features.tracking && <span className="text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded-md font-medium">Tracking</span>}
+                                  {company.features.cod && <span className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded-md font-medium">COD</span>}
+                                  {company.features.labels && <span className="text-[11px] text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 px-1.5 py-0.5 rounded-md font-medium">Labels</span>}
+                                </div>
+                              )}
+                            </div>
+                            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isSelected ? 'bg-blue-500 ring-4 ring-blue-500/20' : 'bg-slate-300 dark:bg-slate-600'}`} />
                           </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Options */}
+              {selectedDeliveryCompany && (
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 p-3 space-y-3">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {isNoestSelected
+                      ? 'Noest uses an Ecotrack-powered API. Configure your Noest Token + GUID in Settings → Delivery Companies, then enable "Generate labels".'
+                      : '"Assign only" marks orders locally. Enable "Generate labels" to call the courier API and get tracking numbers.'}
+                  </p>
+                  <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700/40 transition-colors">
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                      generateLabels 
+                        ? 'bg-blue-500 border-blue-500' 
+                        : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                    }`}>
+                      {generateLabels && <Check className="h-3.5 w-3.5 text-white" />}
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={generateLabels}
+                      onChange={(e) => setGenerateLabels(e.target.checked)}
+                      disabled={!canGenerateLabels}
+                      className="sr-only"
+                    />
+                    <span className="text-sm font-medium">Generate shipping labels</span>
+                  </label>
+                </div>
+              )}
+
+              {/* Results */}
+              {bulkUploadResult && (
+                <div className={`p-4 rounded-xl border ${
+                  bulkUploadResult.failCount === 0 
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50' 
+                    : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {bulkUploadResult.failCount === 0 
+                      ? <CheckSquare className="h-5 w-5 text-emerald-600" />
+                      : <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    }
+                    <span className="font-bold text-sm">
+                      {bulkUploadResult.failCount === 0 ? 'All orders uploaded!' : 'Some orders failed'}
+                    </span>
+                  </div>
+                  <div className="flex gap-3 text-sm">
+                    <span className="text-emerald-600 font-medium">{bulkUploadResult.successCount} successful</span>
+                    {bulkUploadResult.failCount > 0 && (
+                      <span className="text-red-500 font-medium">{bulkUploadResult.failCount} failed</span>
+                    )}
+                  </div>
+                  {bulkUploadResult.failCount > 0 && (
+                    <div className="mt-2 max-h-28 overflow-y-auto space-y-1">
+                      {bulkUploadResult.results.filter(r => !r.success).map((r, i) => (
+                        <div key={i} className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded">
+                          Order #{r.orderId}: {r.error}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Options */}
-            <div className="space-y-3 pt-2 border-t border-border/30">
-              <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
-                <strong>Note:</strong>{' '}
-                {isNoestSelected
-                  ? 'Noest uses an Ecotrack-powered API. Configure your Noest Token + GUID in Settings → Delivery Companies, then enable "Generate labels".'
-                  : '"Assign only" just marks orders for this delivery company locally. To actually send orders to the courier API and get tracking numbers, enable "Generate labels" (requires API credentials configured in Settings → Delivery Companies).'}
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={generateLabels}
-                  onChange={(e) => setGenerateLabels(e.target.checked)}
-                  disabled={!canGenerateLabels}
-                  className="w-4 h-4 rounded border-border accent-blue-500"
-                />
-                <span className="text-sm">🏷️ Generate shipping labels (calls courier API - requires configured credentials)</span>
-              </label>
-            </div>
-
-            {/* Results */}
-            {bulkUploadResult && (
-              <div className={`p-3 rounded border ${
-                bulkUploadResult.failCount === 0 
-                  ? 'bg-green-500/10 border-green-500/20' 
-                  : 'bg-yellow-500/10 border-yellow-500/20'
-              }`}>
-                <div className="font-bold mb-2">
-                  {bulkUploadResult.failCount === 0 ? '✅ All orders uploaded successfully!' : '⚠️ Some orders failed'}
-                </div>
-                <div className="text-sm">
-                  <span className="text-green-600">{bulkUploadResult.successCount} successful</span>
-                  {bulkUploadResult.failCount > 0 && (
-                    <span className="text-red-600 ml-2">{bulkUploadResult.failCount} failed</span>
-                  )}
-                </div>
-                {bulkUploadResult.failCount > 0 && (
-                  <div className="mt-2 max-h-32 overflow-y-auto">
-                    {bulkUploadResult.results.filter(r => !r.success).map((r, i) => (
-                      <div key={i} className="text-xs text-red-600">
-                        Order #{r.orderId}: {r.error}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-2">
+            {/* Footer actions */}
+            <div className="px-5 py-3 border-t border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30 flex gap-3">
               <button
-                onClick={() => {
-                  setShowBulkUpload(false);
-                  setBulkUploadResult(null);
-                }}
-                className="flex-1 px-3 py-2 rounded border border-primary/30 hover:bg-primary/10 transition-colors text-sm h-10 font-bold"
+                onClick={() => { setShowBulkUpload(false); setBulkUploadResult(null); }}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 {bulkUploadResult ? 'Close' : 'Cancel'}
               </button>
               {!bulkUploadResult && (
                 <button
                   onClick={handleBulkUpload}
-                  disabled={bulkUploading || deliveryCompanies.length === 0 || !selectedDeliveryCompany}
-                  className="flex-1 px-3 py-2 rounded bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-bold hover:from-blue-600 hover:to-blue-700 transition-colors shadow h-10 disabled:opacity-50 flex items-center justify-center gap-2"
+                  disabled={bulkUploading || !selectedDeliveryCompany}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-40 disabled:shadow-none flex items-center justify-center gap-2"
                 >
                   {bulkUploading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
                       Uploading...
                     </>
                   ) : (
@@ -1948,6 +1948,33 @@ export default function OrdersAdmin() {
           </div>
         </div>
       )}
+
+      {/* Delivery Management Dialog */}
+      <Dialog open={!!deliveryOrder} onOpenChange={(open) => { if (!open) setDeliveryOrder(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" /> Delivery Management
+            </DialogTitle>
+          </DialogHeader>
+          {deliveryOrder && (
+            <OrderFulfillment
+              order={{
+                id: deliveryOrder.raw_id,
+                customer_name: deliveryOrder.customer,
+                customer_phone: deliveryOrder.phone || '',
+                customer_address: deliveryOrder.address || '',
+                total_price: Number(deliveryOrder.total) || 0,
+                delivery_company_id: deliveryOrder.delivery_company_id,
+                tracking_number: deliveryOrder.tracking_number,
+                delivery_status: deliveryOrder.delivery_status,
+                shipping_label_url: deliveryOrder.shipping_label_url
+              }}
+              onDeliveryAssigned={() => { loadOrders(); setDeliveryOrder(null); }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

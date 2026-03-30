@@ -24,6 +24,8 @@ async function storeOrdersHasColumn(columnName: string): Promise<boolean> {
 export const getDashboardStats: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 365);
+    const dateFilter = `AND created_at >= NOW() - INTERVAL '${days} days'`;
 
     const hasDeliveryFee = await storeOrdersHasColumn('delivery_fee');
     const revenueExpr = hasDeliveryFee
@@ -45,19 +47,19 @@ export const getDashboardStats: RequestHandler = async (req, res) => {
         [clientId]
       ),
       pool.query(
-        `SELECT COUNT(*)::int AS orders FROM store_orders WHERE client_id = $1`,
+        `SELECT COUNT(*)::int AS orders FROM store_orders WHERE client_id = $1 ${dateFilter}`,
         [clientId]
       ),
       pool.query(
-        `SELECT COALESCE(SUM(${revenueExpr}),0)::float AS revenue FROM store_orders WHERE client_id = $1 AND status = ANY($2)`,
+        `SELECT COALESCE(SUM(${revenueExpr}),0)::float AS revenue FROM store_orders WHERE client_id = $1 AND status = ANY($2) ${dateFilter}`,
         [clientId, revenueStatuses]
       ),
       pool.query(
-        `SELECT COUNT(*)::int AS pending FROM store_orders WHERE status = 'pending' AND client_id = $1`,
+        `SELECT COUNT(*)::int AS pending FROM store_orders WHERE status = 'pending' AND client_id = $1 ${dateFilter}`,
         [clientId]
       ),
       pool.query(
-        `SELECT COUNT(*)::int AS completed FROM store_orders WHERE client_id = $1 AND status = ANY($2)`,
+        `SELECT COUNT(*)::int AS completed FROM store_orders WHERE client_id = $1 AND status = ANY($2) ${dateFilter}`,
         [clientId, revenueStatuses]
       ),
     ]);
@@ -101,9 +103,13 @@ const ANALYTICS_CACHE_TTL = 10 * 1000; // 10 seconds cache
 export const getDashboardAnalytics: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 365);
+    const dateFilter = `AND created_at >= NOW() - INTERVAL '${days} days'`;
+    const dateFilterO = `AND o.created_at >= NOW() - INTERVAL '${days} days'`;
     
-    // Check cache first
-    const cached = analyticsCache.get(clientId);
+    // Check cache first (include days in cache key)
+    const cacheKey = `${clientId}_${days}`;
+    const cached = analyticsCache.get(cacheKey as any);
     if (cached && Date.now() - cached.timestamp < ANALYTICS_CACHE_TTL) {
       return res.json(cached.data);
     }
@@ -145,7 +151,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
         `SELECT key, name, color, icon FROM order_statuses WHERE client_id = $1 ORDER BY sort_order`,
         [clientId]
       ),
-      // Daily orders & revenue for last 30 days
+      // Daily orders & revenue for selected day range
       pool.query(
         `SELECT 
           DATE(created_at) as date,
@@ -153,7 +159,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COALESCE(SUM(total_price), 0)::float as total_value,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 
+         WHERE client_id = $1 ${dateFilter}
          GROUP BY DATE(created_at)
          ORDER BY date ASC`,
         [clientId, revenueStatuses]
@@ -227,7 +233,6 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
         [clientId, revenueStatuses]
       ),
       // Top products
-
       pool.query(
         `SELECT 
           p.id, p.title, p.price, 
@@ -236,7 +241,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COALESCE(SUM(o.quantity), 0)::int as total_quantity,
           COALESCE(SUM(CASE WHEN o.status = ANY($2) THEN ${revenueExprO} ELSE 0 END), 0)::float as total_revenue
          FROM client_store_products p
-         LEFT JOIN store_orders o ON o.product_id = p.id AND o.client_id = $1
+         LEFT JOIN store_orders o ON o.product_id = p.id AND o.client_id = $1 ${dateFilterO}
          WHERE p.client_id = $1
          GROUP BY p.id, p.title, p.price, p.images
          ORDER BY total_orders DESC
@@ -250,7 +255,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COALESCE(p.title, 'Unknown Product') as product_title
          FROM store_orders o
          LEFT JOIN client_store_products p ON o.product_id = p.id
-         WHERE o.client_id = $1 
+         WHERE o.client_id = $1 ${dateFilter.replace('created_at', 'o.created_at')}
          ORDER BY o.created_at DESC 
          LIMIT 10`,
         [clientId]
@@ -262,7 +267,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as count,
           COALESCE(SUM(${revenueExpr}), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1
+         WHERE client_id = $1 ${dateFilter}
          GROUP BY status
          ORDER BY count DESC`,
         [clientId]
@@ -278,7 +283,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as count,
           COALESCE(SUM(${revenueExpr}), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1
+         WHERE client_id = $1 ${dateFilter}
          GROUP BY shipping_wilaya_id
          ORDER BY count DESC
          LIMIT 10`,
@@ -357,8 +362,8 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
       cityBreakdown: cityBreakdown,
     };
 
-    // Cache the response
-    analyticsCache.set(clientId, { data: responseData, timestamp: Date.now() });
+    // Cache the response (keyed by client + days)
+    analyticsCache.set(cacheKey as any, { data: responseData, timestamp: Date.now() });
     
     res.json(responseData);
   } catch (error) {

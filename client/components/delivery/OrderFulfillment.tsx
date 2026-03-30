@@ -16,6 +16,8 @@ interface DeliveryCompany {
     supports_tracking: boolean;
     supports_labels: boolean;
   };
+  is_configured?: boolean;
+  has_api_key?: boolean;
 }
 
 interface Order {
@@ -55,7 +57,8 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
       const response = await fetch('/api/delivery/companies');
       if (response.ok) {
         const data = await response.json();
-        setCompanies(data);
+        // Only show configured/connected companies
+        setCompanies(data.filter((c: DeliveryCompany) => c.is_configured && c.has_api_key));
       }
     } catch (err) {
       console.error('Failed to fetch delivery companies', err);

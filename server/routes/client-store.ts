@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import { pool, ensureConnection, getPool } from "../utils/database";
 import type { Pool } from "pg";
 import { logStoreSettings } from "../utils/logger";
+import { invalidateStorefrontSettingsCache, invalidateAllStorefrontSettingsCache } from "./public-store";
 
 const router = Router();
 
@@ -11,6 +12,22 @@ const settingsCache = new Map<number, { data: any; expires: number }>();
 const productsCache = new Map<number, { data: any; expires: number }>();
 const CACHE_TTL_MS = 30000; // 30 seconds cache
 const PRODUCTS_CACHE_TTL_MS = 15000; // 15 seconds for products (shorter since they change more)
+
+// Schema cache: column names rarely change at runtime (only after migrations)
+let storeSettingsColumnCache: { cols: Set<string>; expires: number } | null = null;
+const SCHEMA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getStoreSettingsColumns(db: any): Promise<Set<string>> {
+  if (storeSettingsColumnCache && storeSettingsColumnCache.expires > Date.now()) {
+    return storeSettingsColumnCache.cols;
+  }
+  const colsRes = await db.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'client_store_settings'`
+  );
+  const cols = new Set<string>(colsRes.rows.map((r: any) => String(r.column_name)));
+  storeSettingsColumnCache = { cols, expires: Date.now() + SCHEMA_CACHE_TTL_MS };
+  return cols;
+}
 
 function getCachedSettings(clientId: number) {
   const cached = settingsCache.get(clientId);
@@ -895,13 +912,8 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
     }
     const existingRow = existingRes.rows[0];
 
-    // Detect available columns to avoid updating fields that don't exist
-    const colsRes = await withRetry((db) => db.query(
-      `SELECT column_name
-       FROM information_schema.columns
-       WHERE table_schema = 'public' AND table_name = 'client_store_settings'`
-    ));
-    const existingCols = new Set<string>(colsRes.rows.map((r: any) => String(r.column_name)));
+    // Detect available columns (cached to avoid slow information_schema queries)
+    const existingCols = await getStoreSettingsColumns(await ensureConnection());
 
     // Reserved control payload for template switching.
     const templateSwitch = (updates as any).__templateSwitch;
@@ -1019,6 +1031,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       if (!normalized) return 'pro';
       if (normalized === 'shiro-hana') return 'pro';
       if (normalized === 'babyos' || normalized === 'baby') return 'kids';
+      if (normalized === 'luxedark') return 'luxedrop';
       return normalized;
     };
 
@@ -1028,6 +1041,11 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       existingRow?.template_settings && typeof existingRow.template_settings === 'object'
         ? existingRow.template_settings
         : {};
+    // Clean previously embedded DB columns from template_settings JSONB (past data-compounding bug)
+    for (const staleKey of ['template_settings', 'template_settings_by_template', 'global_settings',
+      'id', 'client_id', 'created_at', 'updated_at', 'page_views']) {
+      delete existingTemplateSettings[staleKey];
+    }
     const existingTemplateByTemplate =
       existingRow?.template_settings_by_template && typeof existingRow.template_settings_by_template === 'object'
         ? existingRow.template_settings_by_template
@@ -1046,11 +1064,19 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
     const safeObject = (v: any) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
 
     // Unknown keys are persisted into template_settings JSONB instead of being dropped.
+    // IMPORTANT: Exclude actual DB column names so they never get re-embedded into template_settings JSONB,
+    // which would cause exponential data growth on every save cycle.
+    const dbMetaColumns = new Set([
+      'template_settings', 'template_settings_by_template', 'global_settings',
+      'created_at', 'updated_at', 'page_views', 'subscription_status',
+      'subscription_plan', 'trial_ends_at', 'subscription_ends_at', 'is_locked',
+    ]);
     const extraUpdates: Record<string, any> = {};
     Object.entries(updates).forEach(([key, value]) => {
       if (key === 'id' || key === 'client_id') return;
       if (key.startsWith('__')) return;
       if (allowedCols.has(key)) return;
+      if (dbMetaColumns.has(key)) return;
       // Store any other key in JSON settings.
       extraUpdates[key] = value;
     });
@@ -1161,8 +1187,8 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       // Pro variants
       'pro-aurora', 'pro-vertex', 'pro-atelier', 'pro-orbit', 'pro-zen',
       'pro-studio', 'pro-mosaic', 'pro-grid', 'pro-catalog',
-      'dzshop', 'dzpremium', 'luxedark', 'luxedrop', 'needdz',
-      'dzshop', 'dzpremium', 'luxedark',
+      'dzshop', 'dzpremium', 'luxedrop', 'needdz',
+      'dzshop', 'dzpremium',
       // Screenshot-inspired templates
       'sage-boutique', 'mint-elegance', 'forest-store',
       'sunset-shop', 'coral-market', 'amber-store',
@@ -1265,6 +1291,12 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
     
     // Invalidate cache after update
     invalidateSettingsCache(clientId);
+    // Also invalidate public storefront cache so visitors see the new template immediately
+    if (merged.store_slug) {
+      invalidateStorefrontSettingsCache(merged.store_slug);
+    } else {
+      invalidateAllStorefrontSettingsCache();
+    }
     // Also update cache with new data
     setCachedSettings(clientId, merged);
     
@@ -1389,11 +1421,8 @@ export const updateStoreTemplate: RequestHandler = async (req, res) => {
 
       const existingRow = currentRes.rows[0];
 
-      // Discover existing columns so we can safely update scoped columns if present.
-      const colsRes = await db.query(
-        `SELECT column_name FROM information_schema.columns WHERE table_name = 'client_store_settings'`
-      );
-      const existingCols = new Set<string>(colsRes.rows.map((r) => String(r.column_name)));
+      // Discover existing columns (cached to avoid slow information_schema queries)
+      const existingCols = await getStoreSettingsColumns(db);
 
     const normalizeTemplateIdForAvailability = (id: any): string => {
       const normalized = String(id || '')
@@ -1404,6 +1433,7 @@ export const updateStoreTemplate: RequestHandler = async (req, res) => {
       if (!normalized) return 'pro';
       if (normalized === 'shiro-hana') return 'pro';
       if (normalized === 'babyos' || normalized === 'baby') return 'kids';
+      if (normalized === 'luxedark') return 'luxedrop';
       return normalized;
     };
 
@@ -1413,6 +1443,11 @@ export const updateStoreTemplate: RequestHandler = async (req, res) => {
       existingRow?.template_settings && typeof existingRow.template_settings === 'object'
         ? existingRow.template_settings
         : {};
+    // Clean previously embedded DB columns from template_settings JSONB (past data-compounding bug)
+    for (const staleKey of ['template_settings', 'template_settings_by_template', 'global_settings',
+      'id', 'client_id', 'created_at', 'updated_at', 'page_views']) {
+      delete existingTemplateSettings[staleKey];
+    }
     const existingTemplateByTemplate =
       existingRow?.template_settings_by_template && typeof existingRow.template_settings_by_template === 'object'
         ? existingRow.template_settings_by_template
@@ -1521,6 +1556,12 @@ export const updateStoreTemplate: RequestHandler = async (req, res) => {
     }
 
     invalidateSettingsCache(clientId);
+    // Also invalidate public storefront cache so visitors see the new template immediately
+    if (merged.store_slug) {
+      invalidateStorefrontSettingsCache(merged.store_slug);
+    } else {
+      invalidateAllStorefrontSettingsCache();
+    }
     setCachedSettings(clientId, merged);
 
     logStoreSettings('updateStoreTemplate:success', { clientId, template: merged?.template, mode: switchMode });

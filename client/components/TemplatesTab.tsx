@@ -71,18 +71,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     icon: <Star className="w-5 h-5" />,
     tags: ['داكن', 'فاخر'],
   },
-  {
-    id: 'luxedark',
-    name: 'Luxe Dark',
-    nameAr: 'لوكس دارك',
-    descAr: 'قالب مستحضرات تجميل داكن — أناقة وفخامة',
-    category: 'storefront',
-    imageType: 'long',
-    gradient: 'linear-gradient(135deg, #18181b 0%, #27272a 40%, #f472b6 100%)',
-    accent: '#f472b6',
-    icon: <Sparkles className="w-5 h-5" />,
-    tags: ['داكن', 'تجميل'],
-  },
+
   {
     id: 'needdz',
     name: 'NeedDZ',
