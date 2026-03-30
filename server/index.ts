@@ -284,10 +284,11 @@ export function createServer(options?: { skipDbInit?: boolean }) {
     : (_req: any, _res: any, next: any) => next();
 
   // Public storefront order limiter (protects checkout from spam/fake orders)
+  // Strict: 10 orders per 5 minutes per IP — legitimate buyers never hit this
   const storefrontOrderLimiter = isProduction
     ? rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: 50,
+        windowMs: 5 * 60 * 1000,
+        max: 10,
         standardHeaders: true,
         legacyHeaders: false,
         message: { error: 'Too many order attempts. Please try again later.' },

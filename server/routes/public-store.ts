@@ -4,6 +4,7 @@ import { sendBotMessagesForOrder } from "./order-confirmation";
 import { createOrderTelegramLink } from "../utils/telegram";
 import { createConfirmationLink, sendTelegramMessage, replaceTemplateVariables } from "../utils/bot-messaging";
 import { ensureBotSettingsRow } from "../utils/client-provisioning";
+import { assessOrderRisk } from "../utils/fraud-detection";
 import { z, ZodError } from "zod";
 import type { Pool } from "pg";
 
@@ -896,7 +897,48 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     addCol('shipping_wilaya_id', shipping_wilaya_id || null);
     addCol('shipping_commune_id', shipping_commune_id || null);
     addCol('shipping_hai', shipping_hai || null);
-    addCol('status', 'pending');
+
+    // --- Fraud & duplicate detection ---
+    let initialStatus = 'pending';
+
+    // 1. Phone velocity check: block rapid-fire spam (same phone, 3+ orders in 10 min)
+    try {
+      const velocityCheck = await client.query(
+        `SELECT COUNT(*) AS cnt FROM store_orders
+         WHERE client_id = $1 AND customer_phone = $2
+           AND created_at > NOW() - INTERVAL '10 minutes'`,
+        [clientId, normalizedPhone]
+      );
+      if (parseInt(velocityCheck.rows[0]?.cnt || '0') >= 3) {
+        await client.query('ROLLBACK');
+        inTransaction = false;
+        return res.status(429).json({ error: 'Too many orders from this phone number. Please wait before ordering again.' });
+      }
+    } catch {}
+
+    // 2. Risk assessment — auto-flag high/critical risk as fake
+    try {
+      const risk = await assessOrderRisk(Number(clientId), normalizedPhone, customer_address || undefined);
+      if (risk.level === 'critical' || risk.level === 'high') {
+        initialStatus = 'fake';
+      }
+    } catch {}
+
+    // 3. Duplicate phone detection (only if not already flagged as fake)
+    if (initialStatus === 'pending') {
+      try {
+        const dupCheck = await client.query(
+          `SELECT id FROM store_orders
+           WHERE client_id = $1 AND customer_phone = $2
+             AND status NOT IN ('cancelled','failed','fake','duplicate','completed','delivered','returned')
+           LIMIT 1`,
+          [clientId, normalizedPhone]
+        );
+        if (dupCheck.rows.length > 0) initialStatus = 'duplicate';
+      } catch {}
+    }
+
+    addCol('status', initialStatus);
     addCol('payment_status', 'unpaid');
     addCol('created_at', new Date());
 

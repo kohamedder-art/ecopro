@@ -130,6 +130,8 @@ export async function ensureSystemOrderStatuses(clientId: number): Promise<void>
     { key: 'confirmed',   name: 'Confirmed',             color: '#22c55e', icon: '✓',  sort_order: 1, is_default: true,  counts_as_revenue: false, is_system: true },
     { key: 'at_delivery', name: 'At Delivery',           color: '#8b5cf6', icon: '🚚', sort_order: 2, is_default: true,  counts_as_revenue: false, is_system: true },
     { key: 'completed',   name: 'Completed',             color: '#10b981', icon: '✓',  sort_order: 3, is_default: true,  counts_as_revenue: true,  is_system: true },
+    { key: 'fake',        name: 'Fake',                  color: '#dc2626', icon: '⚠️', sort_order: 89, is_default: true,  counts_as_revenue: false, is_system: true },
+    { key: 'duplicate',   name: 'Duplicate',             color: '#9ca3af', icon: '📋', sort_order: 90, is_default: true,  counts_as_revenue: false, is_system: true },
   ];
 
   // Insert missing keys one-by-one using WHERE NOT EXISTS to avoid duplicates.

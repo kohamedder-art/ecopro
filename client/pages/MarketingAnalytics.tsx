@@ -585,8 +585,8 @@ export default function MarketingAnalytics() {
                           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                           <div className="space-y-0.5">
                             <p className="font-bold text-xs">{rec.title}</p>
-                            <p className="text-[11px] opacity-80">{rec.detail}</p>
-                            <p className="text-[11px] font-medium opacity-90">→ {rec.action}</p>
+                            <p className="text-sm opacity-80">{rec.detail}</p>
+                            <p className="text-sm font-medium opacity-90">→ {rec.action}</p>
                           </div>
                         </div>
                       </div>
@@ -637,7 +637,7 @@ export default function MarketingAnalytics() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="text-[10px] uppercase tracking-wider">
+                    <TableRow className="text-xs uppercase tracking-wider">
                       <TableHead className="w-[180px]">Creative</TableHead>
                       <TableHead className="text-right">Sessions</TableHead>
                       <TableHead className="text-right">Purchases</TableHead>
@@ -655,7 +655,7 @@ export default function MarketingAnalytics() {
                       <TableRow key={c.key} className={c.toxicSuccess ? 'bg-red-50/50 dark:bg-red-900/10' : ''}>
                         <TableCell className="text-xs">
                           <div className="max-w-[180px] truncate font-medium">{c.creativeName || c.campaignName || c.key}</div>
-                          {c.platform && <span className="text-[10px] text-muted-foreground capitalize">{c.platform}</span>}
+                          {c.platform && <span className="text-xs text-muted-foreground capitalize">{c.platform}</span>}
                         </TableCell>
                         <TableCell className="text-right text-xs">{fmtNum(c.sessions)}</TableCell>
                         <TableCell className="text-right text-xs">{fmtNum(c.purchases)}</TableCell>
@@ -665,11 +665,11 @@ export default function MarketingAnalytics() {
                         <TableCell className="text-right text-xs font-semibold">{fmtPoas(c.poas)}</TableCell>
                         <TableCell className="text-right text-xs">{fmtPct(c.returnRate)}</TableCell>
                         <TableCell className="text-xs">
-                          {c.topFriction && <Badge variant="secondary" className="text-[10px] py-0.5">{c.topFriction}</Badge>}
+                          {c.topFriction && <Badge variant="secondary" className="text-xs py-0.5">{c.topFriction}</Badge>}
                         </TableCell>
                         <TableCell>
                           {c.toxicSuccess && (
-                            <Badge variant="destructive" className="text-[9px] py-0 px-1.5">TOXIC</Badge>
+                            <Badge variant="destructive" className="text-xs py-0 px-1.5">TOXIC</Badge>
                           )}
                         </TableCell>
                       </TableRow>
@@ -700,11 +700,11 @@ export default function MarketingAnalytics() {
                     clusters.map((cl, idx) => (
                       <div key={idx} className={`rounded-xl border p-3 ${surfaceMuted}`}>
                         <div className="flex items-center justify-between mb-2">
-                          <Badge className={`text-[10px] py-0.5 rounded-lg ${frictionColor(cl.label)}`}>{cl.label}</Badge>
+                          <Badge className={`text-xs py-0.5 rounded-lg ${frictionColor(cl.label)}`}>{cl.label}</Badge>
                           <span className="text-xs font-bold">{fmtNum(cl.sessions)} sessions ({fmtPct(cl.share)})</span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground mb-2">{cl.reason}</p>
-                        <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                        <p className="text-sm text-muted-foreground mb-2">{cl.reason}</p>
+                        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1"><Scroll className="h-3 w-3" /> Scroll: {Math.round(cl.avgScrollDepth)}%</span>
                           <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Time: {fmtSeconds(cl.avgActiveTimeSeconds)}</span>
                           {cl.topExitPage && <span className="flex items-center gap-1">Exit: {cl.topExitPage}</span>}
@@ -729,7 +729,7 @@ export default function MarketingAnalytics() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="text-[10px] uppercase tracking-wider">
+                          <TableRow className="text-xs uppercase tracking-wider">
                             <TableHead>Time</TableHead>
                             <TableHead>Source</TableHead>
                             <TableHead>Product</TableHead>
@@ -749,16 +749,16 @@ export default function MarketingAnalytics() {
                               <TableCell className="text-xs max-w-[120px] truncate">{s.productTitle || '—'}</TableCell>
                               <TableCell>
                                 {s.diagnosticLabel ? (
-                                  <Badge className={`text-[10px] py-0.5 rounded-lg ${frictionColor(s.diagnosticLabel)}`}>{s.diagnosticLabel}</Badge>
+                                  <Badge className={`text-xs py-0.5 rounded-lg ${frictionColor(s.diagnosticLabel)}`}>{s.diagnosticLabel}</Badge>
                                 ) : '—'}
                               </TableCell>
                               <TableCell className="text-right text-xs">{Math.round(s.maxScrollDepth)}%</TableCell>
                               <TableCell className="text-right text-xs">{fmtSeconds(s.activeTimeSeconds)}</TableCell>
                               <TableCell>
                                 {s.converted ? (
-                                  <Badge className="text-[10px] py-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">Converted</Badge>
+                                  <Badge className="text-xs py-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">Converted</Badge>
                                 ) : (
-                                  <Badge variant="secondary" className="text-[10px] py-0">Dropped</Badge>
+                                  <Badge variant="secondary" className="text-xs py-0">Dropped</Badge>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -792,7 +792,7 @@ export default function MarketingAnalytics() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="text-[10px] uppercase tracking-wider">
+                          <TableRow className="text-xs uppercase tracking-wider">
                             <TableHead>Product</TableHead>
                             <TableHead className="text-right">Sell Price</TableHead>
                             <TableHead className="text-right">Buy Cost</TableHead>
@@ -892,11 +892,11 @@ export default function MarketingAnalytics() {
                     <p className="text-xs font-bold">Add Spend Entry</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       <div>
-                        <Label className="text-[10px] text-muted-foreground">Date</Label>
+                        <Label className="text-xs text-muted-foreground">Date</Label>
                         <Input type="date" className={inputClass} value={spendDraft.entryDate} onChange={e => setSpendDraft(d => ({ ...d, entryDate: e.target.value }))} />
                       </div>
                       <div>
-                        <Label className="text-[10px] text-muted-foreground">Platform</Label>
+                        <Label className="text-xs text-muted-foreground">Platform</Label>
                         <Select value={spendDraft.platform} onValueChange={v => setSpendDraft(d => ({ ...d, platform: v }))}>
                           <SelectTrigger className={inputClass}><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -908,11 +908,11 @@ export default function MarketingAnalytics() {
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-[10px] text-muted-foreground">Campaign Name</Label>
+                        <Label className="text-xs text-muted-foreground">Campaign Name</Label>
                         <Input className={inputClass} placeholder="e.g. Summer sale" value={spendDraft.campaignName} onChange={e => setSpendDraft(d => ({ ...d, campaignName: e.target.value }))} />
                       </div>
                       <div>
-                        <Label className="text-[10px] text-muted-foreground">Spend (DZD)</Label>
+                        <Label className="text-xs text-muted-foreground">Spend (DZD)</Label>
                         <Input className={inputClass} type="number" placeholder="0" value={spendDraft.spend} onChange={e => setSpendDraft(d => ({ ...d, spend: e.target.value }))} />
                       </div>
                     </div>
@@ -939,7 +939,7 @@ export default function MarketingAnalytics() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="text-[10px] uppercase tracking-wider">
+                          <TableRow className="text-xs uppercase tracking-wider">
                             <TableHead>Date</TableHead>
                             <TableHead>Platform</TableHead>
                             <TableHead>Campaign</TableHead>
@@ -980,7 +980,7 @@ export default function MarketingAnalytics() {
                     Backfill last 90 days
                   </Button>
                   {inputs?.importJobs && inputs.importJobs.length > 0 && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       Last import: {inputs.importJobs[0].status} ({inputs.importJobs[0].processed_rows ?? 0} rows)
                     </span>
                   )}
@@ -1050,7 +1050,7 @@ export default function MarketingAnalytics() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold truncate">{px.name || `${px.type} Pixel`}</p>
-                            <p className="text-[10px] text-muted-foreground font-mono truncate">{px.pixel_id}</p>
+                            <p className="text-xs text-muted-foreground font-mono truncate">{px.pixel_id}</p>
                           </div>
                           <Switch checked={px.enabled} onCheckedChange={v => {
                             setPixels(prev => prev.map(p => p.id === px.id ? { ...p, enabled: v } : p));
@@ -1266,7 +1266,7 @@ function VisionAnalytics({ surfaceCard, surfaceMuted }: { surfaceCard: string; s
                 );
               })}
             </div>
-            <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>30 days ago</span>
               <span>Today</span>
             </div>
@@ -1284,11 +1284,11 @@ function KPICard({ icon, iconBg, label, value, sub, positive }: { icon: React.Re
         <span className={`flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br shadow-md ${iconBg}`}>
           {icon}
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
       </div>
       <p className="text-lg md:text-xl font-extrabold">{value}</p>
       {sub && (
-        <p className={`text-[10px] mt-0.5 ${positive === true ? 'text-emerald-600 dark:text-emerald-400' : positive === false ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground'}`}>
+        <p className={`text-[11px] mt-0.5 ${positive === true ? 'text-emerald-600 dark:text-emerald-400' : positive === false ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground'}`}>
           {sub}
         </p>
       )}
@@ -1299,7 +1299,7 @@ function KPICard({ icon, iconBg, label, value, sub, positive }: { icon: React.Re
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/60 bg-white/75 dark:bg-slate-900/35 backdrop-blur p-2.5">
-      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
       <p className="text-sm font-bold mt-0.5">{value}</p>
     </div>
   );

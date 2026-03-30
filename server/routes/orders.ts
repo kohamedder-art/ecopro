@@ -253,7 +253,50 @@ export const createOrder: RequestHandler = async (req, res) => {
     addCol('shipping_wilaya_id', shipping_wilaya_id || null);
     addCol('shipping_commune_id', shipping_commune_id || null);
     addCol('shipping_hai', shipping_hai || null);
-    addCol('status', 'pending');
+
+    // --- Fraud & duplicate detection ---
+    let initialStatus = 'pending';
+
+    // 1. Phone velocity check: block rapid-fire spam (same phone, 3+ orders in 10 min)
+    try {
+      const velocityCheck = await client.query(
+        `SELECT COUNT(*) AS cnt FROM store_orders
+         WHERE client_id = $1 AND customer_phone = $2
+           AND created_at > NOW() - INTERVAL '10 minutes'`,
+        [resolvedClientId, normalizedPhone]
+      );
+      if (parseInt(velocityCheck.rows[0]?.cnt || '0') >= 3) {
+        await client.query('ROLLBACK');
+        inTransaction = false;
+        return res.status(429).json({ error: 'Too many orders from this phone number. Please wait before ordering again.' });
+      }
+    } catch {}
+
+    // 2. Risk assessment — auto-flag high/critical risk as fake
+    try {
+      const risk = await assessOrderRisk(Number(resolvedClientId), normalizedPhone, customer_address || undefined);
+      if (risk.level === 'critical') {
+        initialStatus = 'fake';
+      } else if (risk.level === 'high') {
+        initialStatus = 'fake';
+      }
+    } catch {}
+
+    // 3. Duplicate phone detection (only if not already flagged as fake)
+    if (initialStatus === 'pending') {
+      try {
+        const dupCheck = await client.query(
+          `SELECT id FROM store_orders
+           WHERE client_id = $1 AND customer_phone = $2
+             AND status NOT IN ('cancelled','failed','fake','duplicate','completed','delivered','returned')
+           LIMIT 1`,
+          [resolvedClientId, normalizedPhone]
+        );
+        if (dupCheck.rows.length > 0) initialStatus = 'duplicate';
+      } catch {}
+    }
+
+    addCol('status', initialStatus);
     addCol('payment_status', 'unpaid');
     addCol('created_at', new Date());
 
@@ -574,7 +617,20 @@ export const createClientOrder: RequestHandler = async (req, res) => {
     addCol('customer_phone', trimPhone);
     addCol('shipping_address', typeof customer_address === 'string' ? customer_address.trim() || null : null);
     addCol('notes', typeof notes === 'string' ? notes.trim() || null : null);
-    addCol('status', 'pending');
+
+    // Auto-detect duplicate: check if this phone already has an active order for this store
+    let clientOrderStatus = 'pending';
+    try {
+      const dupCheck = await pool.query(
+        `SELECT id FROM store_orders
+         WHERE client_id = $1 AND customer_phone = $2
+           AND status NOT IN ('cancelled','failed','fake','duplicate','completed','delivered','returned')
+         LIMIT 1`,
+        [clientId, trimPhone]
+      );
+      if (dupCheck.rows.length > 0) clientOrderStatus = 'duplicate';
+    } catch {}
+    addCol('status', clientOrderStatus);
     addCol('payment_status', 'unpaid');
     addCol('delivery_type', 'home');
     addCol('created_at', new Date());
@@ -596,9 +652,51 @@ export const createClientOrder: RequestHandler = async (req, res) => {
 const ordersCache = new Map<number, { data: any; timestamp: number }>();
 const ORDERS_CACHE_TTL = 5 * 1000; // 5 seconds cache - orders need to be more real-time
 
+// Track which clients have had duplicate-phone backfill applied
+const duplicateBackfillDone = new Set<number>();
+
 // Clear orders cache when an order is modified
 export function clearOrdersCache(clientId: number) {
   ordersCache.delete(clientId);
+}
+
+/**
+ * One-time backfill: mark existing duplicate-phone orders.
+ * For each phone with multiple active orders, keep the oldest as pending
+ * and flag all newer ones as 'duplicate'.
+ */
+async function backfillDuplicateOrders(clientId: number): Promise<void> {
+  if (duplicateBackfillDone.has(clientId)) return;
+  duplicateBackfillDone.add(clientId);
+  try {
+    // Find phones with 2+ active (non-terminal) orders, then flag all but the oldest
+    await pool.query(`
+      UPDATE store_orders
+      SET status = 'duplicate'
+      WHERE id IN (
+        SELECT id FROM (
+          SELECT id, customer_phone,
+                 ROW_NUMBER() OVER (PARTITION BY customer_phone ORDER BY created_at ASC) AS rn
+          FROM store_orders
+          WHERE client_id = $1
+            AND status IN ('pending')
+            AND customer_phone IS NOT NULL
+            AND customer_phone != ''
+        ) ranked
+        WHERE rn > 1
+        AND customer_phone IN (
+          SELECT customer_phone FROM store_orders
+          WHERE client_id = $1
+            AND status IN ('pending')
+            AND customer_phone IS NOT NULL
+            AND customer_phone != ''
+          GROUP BY customer_phone HAVING COUNT(*) > 1
+        )
+      )
+    `, [clientId]);
+  } catch (e) {
+    console.warn('[backfillDuplicateOrders] Failed:', (e as any)?.message || e);
+  }
 }
 
 /**
@@ -612,6 +710,10 @@ export const getClientOrders: RequestHandler = async (req, res) => {
       res.status(401).json({ error: "Not authenticated" });
       return;
     }
+
+    // One-time backfill: flag existing duplicate-phone orders for this client
+    const clientIdNum = Number((req.user as any).id);
+    backfillDuplicateOrders(clientIdNum).catch(() => {});
 
     // Get pagination params
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 500); // Max 500 to prevent huge queries

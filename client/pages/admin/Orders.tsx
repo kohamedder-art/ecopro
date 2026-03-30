@@ -1064,7 +1064,7 @@ export default function OrdersAdmin() {
                 <React.Fragment key={o.id}>
                   <tr 
                     onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
-                    className={`group border-b border-primary/5 transition-all cursor-pointer hover:bg-primary/10 ${duplicatePhones.has(o.phone) ? 'bg-amber-500/5 border-l-2 border-l-amber-400' : ''}`}
+                    className={`group border-b border-primary/5 transition-all cursor-pointer hover:bg-primary/10 ${duplicatePhones.has(o.phone) ? 'bg-red-500/5 border-l-[3px] border-l-red-500' : ''}`}
                   >
                     <td className="whitespace-nowrap p-2 text-center" onClick={(e) => e.stopPropagation()}>
                       <button 
@@ -1117,7 +1117,7 @@ export default function OrdersAdmin() {
                             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors group/phone"
                             title="Copy phone"
                           >
-                            {duplicatePhones.has(o.phone) && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                            {duplicatePhones.has(o.phone) && <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />}
                             {o.phone}
                             {copiedKey === `phone-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/phone:opacity-60" />}
                           </button>
@@ -1599,12 +1599,11 @@ export default function OrdersAdmin() {
             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
               {(() => {
                 const groups = [
-                  { label: 'Core',            keys: ['pending','confirmed','at_delivery'] },
+                  { label: 'Core',            keys: ['pending','confirmed','at_delivery','fake','duplicate'] },
                   { label: 'Success',         keys: ['completed','delivered'] },
                   { label: 'Failure',         keys: ['delivery_failed','returned','declined','didnt_pickup'] },
                   { label: 'Archived',        keys: ['failed','cancelled'] },
                   { label: 'Call Center',     keys: ['no_answer_1','no_answer_2','no_answer_3','waiting_callback','postponed'] },
-                  { label: 'Quality Control', keys: ['fake','duplicate'] },
                 ];
 
                 const PRESET_CATALOG: Record<string, { name: string; color: string; icon: string }> = {
@@ -1640,7 +1639,7 @@ export default function OrdersAdmin() {
                   } catch {}
                 };
 
-                const CORE_LOCKED_KEYS = new Set(['pending','confirmed','at_delivery','completed']);
+                const CORE_LOCKED_KEYS = new Set(['pending','confirmed','at_delivery','completed','fake','duplicate']);
                 const StatusRow = ({ status, onDelete }: { status: any; onDelete?: () => void }) => (
                   <div className="flex items-center justify-between p-2 rounded-xl border border-border/50 bg-background">
                     <div className="flex items-center gap-2">
@@ -1664,7 +1663,7 @@ export default function OrdersAdmin() {
                     {groups.map(g => {
                       const items = g.keys.map(k => systemByKey[k]).filter(Boolean);
                       if (!items.length) return null;
-                      const CORE_LOCKED = new Set(['pending','confirmed','at_delivery','completed']);
+                      const CORE_LOCKED = new Set(['pending','confirmed','at_delivery','completed','fake','duplicate']);
                       return (
                         <div key={g.label} className="space-y-1.5">
                           <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">{g.label}</p>
