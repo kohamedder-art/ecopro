@@ -43,8 +43,25 @@ You CANNOT talk directly to customers or expose individual store owner private d
     case 'store_owner':
       return `${identity}
 
-You are assisting a Store Owner on EcoPro. They manage their own storefront, products, orders, and customer communications.
-You can help them: write product descriptions, suggest titles, compose WhatsApp broadcast messages, narrate analytics, forecast demand, recommend delivery zones.
+You are the ultimate e-commerce success partner for a Store Owner on EcoPro — the Algerian e-commerce platform that makes selling online ridiculously easy.
+
+YOUR CORE PERSONALITY:
+- You are ENTHUSIASTIC, PROACTIVE, and MOTIVATIONAL. You make e-commerce feel like a gold mine the user just stepped into.
+- You ALWAYS keep the conversation going. Never give a dead-end answer. Every response should end with a follow-up suggestion, a new idea, or a question that pulls the user deeper.
+- You are the user's secret weapon. You do the hard work (analysis, research, calculations) so they don't have to. Their only job is to show up and make money.
+- You speak like a trusted business partner who's genuinely excited about their success. Not corporate, not robotic — real, warm, and confident.
+- NEVER mention problems without immediately offering a solution. Frame everything positively: challenges become "opportunities", slow days become "the perfect time to prepare for the next wave".
+- Keep things simple. The user doesn't need to understand algorithms or marketing theory. Give them clear, actionable next steps.
+
+ENGAGEMENT & RETENTION RULES:
+- After answering ANY question, always suggest the next thing they should look at or try. ("Now that your orders are rolling, want me to find you a trending product to add to your catalog?")
+- Proactively suggest product ideas, marketing tips, or store improvements even when not asked — weave them naturally into your responses.
+- When the user seems idle or asks a simple question, use it as a springboard: "By the way, I just noticed [opportunity]. Want me to look into it?"
+- Celebrate every win — even small ones. "3 orders today? That's momentum! Let's keep it going."
+- Make the user feel like leaving the platform would mean missing out on easy money.
+- Use phrases like "I found something interesting...", "You're going to love this...", "Here's a quick win for you..."
+
+You can help them: write product descriptions, suggest titles, compose WhatsApp broadcast messages, narrate analytics, forecast demand, recommend delivery zones, find winning products, write ad copy, and optimize their entire store.
 You MUST NEVER access or mention data from other stores. All your recommendations are scoped to this store only.
 When writing product descriptions or messages, adapt to the Algerian market context (DZD currency, Wilaya delivery, Arabic/French customers).`;
 
@@ -153,6 +170,86 @@ async function callGemini(
   return text.trim();
 }
 
+// ─── Search-grounded generation (Google Search tool) ────────────────────────
+
+export interface WebSource {
+  title: string;
+  uri: string;
+}
+
+interface SearchGroundedResult {
+  text: string;
+  sources: WebSource[];
+}
+
+/**
+ * Call Gemini with Google Search grounding enabled.
+ * The model autonomously decides whether to run a search based on the prompt.
+ * Returns the text response plus any web sources from groundingMetadata.
+ */
+async function callGeminiWithSearch(
+  systemPrompt: string,
+  userMessage: string,
+  conversationHistory: GeminiContent[] = [],
+): Promise<SearchGroundedResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  const url = `${GEMINI_API_BASE}/${GEMINI_TEXT_MODEL}:generateContent?key=${apiKey}`;
+
+  const contents: GeminiContent[] = [
+    ...conversationHistory,
+    { role: 'user', parts: [{ text: userMessage }] },
+  ];
+
+  const body = {
+    system_instruction: {
+      parts: [{ text: systemPrompt }],
+    },
+    contents,
+    tools: [{ google_search: {} }],
+    generationConfig: {
+      maxOutputTokens: 2048,
+      temperature: 0.7,
+      topP: 0.9,
+    },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+    ],
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    if (response.status === 429) throw new Error('AI_QUOTA_EXCEEDED');
+    const errText = await response.text();
+    throw new Error(`Gemini API error ${response.status}: ${errText}`);
+  }
+
+  const data: any = await response.json();
+  const candidate = data?.candidates?.[0];
+  const text = candidate?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Empty response from Gemini');
+
+  // Extract web sources from grounding metadata
+  const sources: WebSource[] = [];
+  const chunks: any[] = candidate?.groundingMetadata?.groundingChunks || [];
+  for (const chunk of chunks) {
+    if (chunk?.web?.uri && chunk?.web?.title) {
+      sources.push({ title: chunk.web.title, uri: chunk.web.uri });
+    }
+  }
+
+  return { text: text.trim(), sources };
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -167,6 +264,21 @@ export async function generateText(
 ): Promise<string> {
   const systemPrompt = buildSystemPrompt(role, ctx);
   return callGemini(systemPrompt, prompt, history, images);
+}
+
+/**
+ * Generate a text response with Google Search grounding enabled.
+ * The model autonomously searches the web when it determines a search would help.
+ * Returns both the text and any web sources used.
+ */
+export async function generateTextWithSearch(
+  role: AIUserRole,
+  prompt: string,
+  ctx: RoleContext = {},
+  history: GeminiContent[] = [],
+): Promise<SearchGroundedResult> {
+  const systemPrompt = buildSystemPrompt(role, ctx);
+  return callGeminiWithSearch(systemPrompt, prompt, history);
 }
 
 /**

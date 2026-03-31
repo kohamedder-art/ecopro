@@ -98,14 +98,14 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {Object.entries(groupedMessages).map(([date, dayMessages]) => (
         <div key={date}>
           {/* Date Divider */}
           <div className="flex items-center gap-2 my-3">
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
-            <span className="text-xs font-semibold text-gray-500 px-2 py-0.5 bg-gray-800 rounded-full">{date}</span>
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/50"></div>
+            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 px-2 py-0.5 bg-slate-50 dark:bg-slate-800 rounded-full">{date}</span>
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/50"></div>
           </div>
 
           {/* Messages */}
@@ -126,19 +126,19 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                   <div className={`max-w-[78%] ${isOwnMessage ? 'items-end' : 'items-start'} flex flex-col`}>
                     {/* Sender Label */}
                     {showSenderLabel && !isOwnMessage && (
-                      <p className="text-xs font-bold text-gray-400 mb-1 ml-1">{getSenderLabel(message.sender_type)}</p>
+                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-0.5 ml-1">{getSenderLabel(message.sender_type)}</p>
                     )}
 
                     {/* Reply Preview */}
                     {message.reply_to_id && (
-                      <div className={`text-xs mb-1 px-2 py-1 rounded-lg border-l-2 ${
-                        isOwnMessage ? 'bg-blue-400/20 border-blue-400' : 'bg-gray-700/50 border-gray-500'
+                      <div className={`text-[10px] mb-1 px-2 py-1 rounded-lg border-l-2 ${
+                        isOwnMessage ? 'bg-violet-100 dark:bg-violet-400/10 border-violet-400' : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600'
                       }`}>
-                        <div className="flex items-center gap-1 text-gray-400">
-                          <CornerUpLeft className="w-3 h-3" />
+                        <div className="flex items-center gap-1 text-slate-400">
+                          <CornerUpLeft className="w-2.5 h-2.5" />
                           <span>Replying to</span>
                         </div>
-                        <p className="text-gray-300 truncate">
+                        <p className="text-slate-500 dark:text-slate-300 truncate">
                           {getReplyMessage(message.reply_to_id)?.message_content || 'Deleted message'}
                         </p>
                       </div>
@@ -146,12 +146,12 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                     {/* Edit/Delete/Reaction Actions - Only for own messages (edit/delete) or any message (react) */}
                     {editingId !== message.id && (
-                      <div className={`flex items-center gap-1 mb-1 opacity-0 group-hover:opacity-100 transition-opacity ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`flex items-center gap-1 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
                         {/* Reaction button */}
                         <div className="relative">
                           <button
                             onClick={() => setShowReactionPicker(showReactionPicker === message.id ? null : message.id)}
-                            className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-gray-200 transition"
+                            className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
                             title="Add reaction"
                           >
                             <SmilePlus className="w-3 h-3" />
@@ -159,12 +159,12 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                           
                           {/* Reaction Picker */}
                           {showReactionPicker === message.id && (
-                            <div className={`absolute ${isOwnMessage ? 'right-0' : 'left-0'} bottom-full mb-1 bg-gray-800 rounded-lg border border-gray-700 p-1 flex gap-0.5 shadow-lg z-10`}>
+                            <div className={`absolute ${isOwnMessage ? 'right-0' : 'left-0'} bottom-full mb-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-1 flex gap-0.5 shadow-lg z-10`}>
                               {REACTIONS.map(emoji => (
                                 <button
                                   key={emoji}
                                   onClick={() => handleReaction(message.id, emoji)}
-                                  className="p-1 hover:bg-gray-700 rounded transition text-sm"
+                                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition text-sm"
                                 >
                                   {emoji}
                                 </button>
@@ -177,7 +177,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                         {onReply && (
                           <button
                             onClick={() => onReply(message)}
-                            className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-gray-200 transition"
+                            className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
                             title="Reply"
                           >
                             <Reply className="w-3 h-3" />
@@ -192,7 +192,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                                 setEditingId(message.id);
                                 setEditContent(message.message_content);
                               }}
-                              className="p-1 rounded hover:bg-white/10 text-blue-300 hover:text-blue-200 transition"
+                              className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-white/10 text-violet-400 hover:text-violet-600 dark:hover:text-violet-300 transition"
                               title="Edit message"
                             >
                               <Pencil className="w-3 h-3" />
@@ -208,7 +208,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                                 }
                               }}
                               disabled={deletingId === message.id}
-                              className="p-1 rounded hover:bg-red-500/20 text-red-400 hover:text-red-300 transition disabled:opacity-50"
+                              className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400 hover:text-red-500 transition disabled:opacity-50"
                               title="Delete message"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -220,16 +220,16 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                     {/* Message Bubble */}
                     <div
-                      className={`px-3 py-2 rounded-2xl transition-all shadow-sm hover:shadow-md ${
+                      className={`px-3 py-2 rounded-2xl transition-all ${
                         isOwnMessage
-                          ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-none'
-                          : 'bg-gray-800 text-gray-100 border border-gray-700 rounded-bl-none'
+                          ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-br-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm'
                       }`}
                     >
                       {/* System Message */}
                       {message.message_type === 'system' && (
-                        <p className={`text-sm italic text-center ${
-                          isOwnMessage ? 'text-blue-100' : 'text-gray-300'
+                        <p className={`text-xs italic text-center ${
+                          isOwnMessage ? 'text-violet-100' : 'text-slate-400 dark:text-slate-500'
                         }`}>
                           {message.message_content}
                         </p>
@@ -242,7 +242,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                             <textarea
                               value={editContent}
                               onChange={(e) => setEditContent(e.target.value)}
-                              className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-sm text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 resize-none"
+                              className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-xs text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
                               rows={3}
                               autoFocus
                             />
@@ -275,7 +275,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                           </div>
                         ) : (
                           <div>
-                            <p className="text-sm break-words leading-relaxed whitespace-pre-wrap">
+                            <p className="text-xs break-words leading-relaxed whitespace-pre-wrap">
                               {highlightText(message.message_content, searchHighlight)}
                             </p>
                             {message.metadata?.edited && (
@@ -287,7 +287,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                       {/* Code Request Message */}
                       {message.message_type === 'code_request' && (
-                        <div className={`text-sm space-y-2 ${isOwnMessage ? 'text-blue-100' : 'text-gray-300'}`}>
+                        <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
                           <div className="flex items-center gap-2 font-bold">
                             <span className="text-lg">📋</span>
                             <span>Code Request</span>
@@ -307,16 +307,16 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                       {/* Code Response Message */}
                       {message.message_type === 'code_response' && (
-                        <div className={`text-sm space-y-3 ${isOwnMessage ? 'text-blue-100' : 'text-gray-300'}`}>
-                          <div className="flex items-center gap-2 font-bold text-green-400">
+                        <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                          <div className="flex items-center gap-2 font-bold text-emerald-500 dark:text-emerald-400">
                             <span className="text-lg">✅</span>
                             <span>Code Issued!</span>
                           </div>
                           {message.metadata?.code && (
-                            <div className={`mt-2 p-3 rounded-lg font-mono text-center text-sm font-bold tracking-wider ${
+                            <div className={`mt-2 p-3 rounded-lg font-mono text-center text-xs font-bold tracking-wider ${
                               isOwnMessage 
-                                ? 'bg-blue-400/30 text-blue-50' 
-                                : 'bg-gray-700 text-gray-100'
+                                ? 'bg-violet-400/30 text-violet-50' 
+                                : 'bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-100'
                             }`}>
                               {message.metadata.code}
                             </div>
@@ -331,7 +331,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                       {/* File Attachment Message */}
                       {message.message_type === 'file_attachment' && (
-                        <div className={`text-sm space-y-2 ${isOwnMessage ? 'text-blue-100' : 'text-gray-300'}`}>
+                        <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
                           {(() => {
                             console.log('[MessageList] File attachment metadata:', message.metadata);
                             return null;
@@ -365,10 +365,10 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                             </div>
                           )}
                           {!message.metadata?.isImage && (
-                            <div className={`p-3 rounded-lg flex items-center gap-3 ${
+                            <div className={`p-2.5 rounded-lg flex items-center gap-2 ${
                               isOwnMessage 
-                                ? 'bg-blue-400/30' 
-                                : 'bg-gray-700'
+                                ? 'bg-violet-400/30' 
+                                : 'bg-slate-50 dark:bg-slate-700'
                             }`}>
                               <File className="w-8 h-8 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
@@ -392,7 +392,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                       {/* Voice Message */}
                       {message.message_type === 'voice' && (
-                        <div className={`text-sm ${isOwnMessage ? 'text-blue-100' : 'text-gray-300'}`}>
+                        <div className={`text-xs ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-lg">🎤</span>
                             <span className="font-medium">Voice Message</span>
@@ -413,15 +413,15 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                     {/* Reactions Display */}
                     {message.reactions && Object.keys(message.reactions).length > 0 && (
-                      <div className={`flex flex-wrap gap-1 mt-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`flex flex-wrap gap-1 mt-0.5 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
                         {Object.entries(message.reactions).map(([emoji, userIds]) => (
                           <button
                             key={emoji}
                             onClick={() => handleReaction(message.id, emoji)}
-                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition ${
+                            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] transition ${
                               userIds.includes(userId)
-                                ? 'bg-blue-500/30 border border-blue-400/50 text-blue-200'
-                                : 'bg-gray-700/50 border border-gray-600/50 text-gray-300 hover:bg-gray-600/50'
+                                ? 'bg-violet-100 dark:bg-violet-500/20 border border-violet-300 dark:border-violet-500/30 text-violet-700 dark:text-violet-300'
+                                : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                             }`}
                           >
                             <span>{emoji}</span>
@@ -432,8 +432,8 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                     )}
 
                     {/* Time and Read Status */}
-                    <div className={`flex items-center justify-end gap-1 mt-1 text-xs font-medium ${
-                      isOwnMessage ? 'text-blue-400' : 'text-gray-500'
+                    <div className={`flex items-center justify-end gap-1 mt-0.5 text-[10px] font-medium ${
+                      isOwnMessage ? 'text-violet-400 dark:text-violet-300' : 'text-slate-400 dark:text-slate-500'
                     }`}>
                       <span>{formatTime(message.created_at)}</span>
                       {isOwnMessage && (

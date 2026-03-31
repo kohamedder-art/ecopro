@@ -96,9 +96,9 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
 
   const getTierBadge = (tier?: string) => {
     const colors: Record<string, string> = {
-      bronze: 'bg-amber-900/50 text-amber-300',
-      silver: 'bg-slate-700 text-slate-200',
-      gold: 'bg-yellow-900/50 text-yellow-300',
+      bronze: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+      silver: 'bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-300',
+      gold: 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
     };
     const icons: Record<string, string> = {
       bronze: '🥉',
@@ -115,60 +115,57 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 to-gray-950 dark:from-slate-800 dark:to-slate-900 border-r border-gray-700">
-      {/* Header - Compact on mobile */}
-      <div className="p-2 sm:p-3 md:p-4 border-b border-gray-700 bg-gray-900">
-        <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
-            <div className="w-6 sm:w-7 md:w-8 h-6 sm:h-7 md:h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-              <MessageCircle className="w-3.5 sm:w-4 md:w-5 h-3.5 sm:h-4 md:h-5 text-white" />
-            </div>
-            <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-100 truncate">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+      {/* Header */}
+      <div className="px-3 py-2.5 border-b border-slate-100 dark:border-white/5">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <h2 className="text-xs font-bold text-slate-700 dark:text-slate-200">
               {userRole === 'admin' ? 'Tickets' : 'Messages'}
             </h2>
           </div>
           {userRole === 'client' && onCreateChat && (
-              <button
-                onClick={onCreateChat}
-                className="p-1 sm:p-1.5 md:p-2 hover:bg-blue-900/30 rounded-lg transition text-blue-400 font-bold flex-shrink-0"
-                title="Start new chat"
-              >
-                <Plus className="w-3.5 sm:w-4 md:w-5 h-3.5 sm:h-4 md:h-5" />
-              </button>
-            )}
+            <button
+              onClick={onCreateChat}
+              className="p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-500/10 text-violet-500 transition"
+              title="Start new chat"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Search and Filter - Admin/Seller only */}
         {(userRole === 'admin' || userRole === 'seller') && (
-          <div className="space-y-2 md:space-y-3">
+          <div className="space-y-2">
             <div className="relative">
-              <Search className="absolute left-3 top-2 md:top-2.5 w-3 md:w-4 h-3 md:h-4 text-gray-500" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 md:pl-10 pr-3 md:pr-4 py-1.5 md:py-2 border border-gray-700 bg-gray-800 text-gray-100 placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-gray-600 text-xs md:text-sm"
+                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent text-[11px]"
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <button
                 onClick={() => setSortBy('recent')}
-                className={`flex-1 text-xs font-medium py-1.5 md:py-2 px-2 md:px-3 rounded-lg transition ${
+                className={`flex-1 text-[10px] font-semibold py-1 px-2 rounded-lg transition ${
                   sortBy === 'recent'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    ? 'bg-violet-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 Recent
               </button>
               <button
                 onClick={() => setSortBy('unread')}
-                className={`flex-1 text-xs font-medium py-1.5 md:py-2 px-2 md:px-3 rounded-lg transition ${
+                className={`flex-1 text-[10px] font-semibold py-1 px-2 rounded-lg transition ${
                   sortBy === 'unread'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    ? 'bg-red-500 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 Unread ({chats.reduce((sum, c) => sum + (c.unread_count || 0), 0)})
@@ -181,69 +178,68 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto">
         {error && (
-          <div className="p-3 md:p-4 m-2 md:m-3 bg-red-900/30 border border-red-700 rounded-lg text-red-200 text-xs md:text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <div className="p-2.5 m-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-[11px] flex items-center gap-2">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {loading ? (
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-300 border-t-blue-600 mx-auto mb-2"></div>
-            <p className="text-gray-500 text-xs md:text-sm">Loading...</p>
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-violet-200 border-t-violet-600 mx-auto mb-2"></div>
+            <p className="text-slate-400 text-[11px]">Loading…</p>
           </div>
         ) : filteredChats.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium text-sm">No chats yet</p>
-            <p className="text-xs mt-1 opacity-75">
+          <div className="p-8 text-center">
+            <MessageCircle className="w-10 h-10 mx-auto mb-2 text-slate-200 dark:text-slate-700" />
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">No chats yet</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
               {searchTerm ? 'Try a different search' : 'Start a new conversation'}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-700">
+          <div className="divide-y divide-slate-100 dark:divide-white/5">
             {filteredChats.map((chat) => (
               <button
                 key={chat.id}
                 onClick={() => onSelectChat(chat.id)}
-                className={`w-full p-2.5 md:p-4 text-left hover:bg-gray-800 transition-colors ${
-                  selectedChatId === chat.id ? 'bg-blue-900/40 border-l-4 border-blue-600' : 'hover:bg-gray-800/50'
+                className={`w-full px-3 py-2.5 text-left transition-colors ${
+                  selectedChatId === chat.id
+                    ? 'bg-violet-50 dark:bg-violet-500/10 border-l-2 border-violet-500'
+                    : 'hover:bg-slate-50 dark:hover:bg-white/[0.03]'
                 }`}
               >
-                <div className="flex items-start justify-between gap-2 md:gap-3 mb-1.5 md:mb-2">
+                <div className="flex items-start justify-between gap-2 mb-1">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 md:gap-2">
-                      <p className="font-bold text-gray-100 truncate text-sm md:text-base">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-semibold text-slate-800 dark:text-slate-100 truncate text-xs">
                         {userRole === 'admin' || userRole === 'seller'
                           ? chat.client_name || 'Unknown'
                           : 'Support Team'}
                       </p>
                       {chat.unread_count! > 0 && (
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex-shrink-0">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex-shrink-0">
                           {Math.min(chat.unread_count || 0, 9)}
                         </span>
                       )}
                     </div>
-                      <p className="text-xs text-gray-500 truncate">{chat.client_email}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{chat.client_email}</p>
                   </div>
-                  <span className="text-xs text-gray-500 flex-shrink-0 font-medium">
+                  <span className="text-[10px] text-slate-400 flex-shrink-0">
                     {formatTime(chat.last_message_at)}
                   </span>
                 </div>
 
                 {/* Status and Tier */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {chat.status && chat.status !== 'active' && (
-                      <span className="text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded bg-yellow-900/50 text-yellow-300 font-medium">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">
                         {chat.status}
                       </span>
                     )}
                     {chat.tier && getTierBadge(chat.tier)}
                   </div>
-                  {chat.unread_count! > 0 && (
-                    <Zap className="w-3.5 md:w-4 h-3.5 md:h-4 text-orange-500 flex-shrink-0" />
-                  )}
                 </div>
               </button>
             ))}

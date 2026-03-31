@@ -107,7 +107,7 @@ export default function StoresTab({ stores, loading }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.slice(0, 30).map(store => (
+          {filtered.map(store => (
             <div key={store.id} className="group bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4 hover:border-slate-600/60 transition-all shadow-lg hover:shadow-xl">
               <div className="flex items-start justify-between mb-3">
                 <div className="min-w-0 flex-1">
@@ -156,9 +156,7 @@ export default function StoresTab({ stores, loading }: Props) {
           ))}
         </div>
       )}
-      {filtered.length > 30 && (
-        <p className="text-center text-xs text-slate-500">Showing 30 of {filtered.length} stores</p>
-      )}
+
     </div>
   );
 }

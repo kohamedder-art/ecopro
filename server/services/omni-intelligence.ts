@@ -7,6 +7,20 @@ const SUCCESS_ORDER_STATUSES = new Set(['delivered', 'completed']);
 const RETURNED_ORDER_STATUSES = new Set(['returned', 'failed', 'delivery_failed', 'didnt_pickup']);
 const EXCLUDED_BOOKED_ORDER_STATUSES = new Set(['cancelled', 'declined', 'fake', 'duplicate', 'refunded']);
 
+// Map old English friction labels (stored in DB) to i18n-friendly keys
+const FRICTION_LABEL_MAP: Record<string, string> = {
+  'Converted': 'converted',
+  'Shipping/Payment Friction': 'shipping_friction',
+  'High Interest, Price/Trust Friction': 'price_trust_friction',
+  'Ad/Creative Mismatch': 'ad_mismatch',
+  'Low-Confidence Drop-Off': 'low_confidence',
+};
+
+function normalizeFrictionLabel(label: string | null | undefined): string | null {
+  if (!label) return null;
+  return FRICTION_LABEL_MAP[label] || label;
+}
+
 function toNumber(value: unknown): number {
   if (value === null || value === undefined || value === '') return 0;
   const parsed = Number(value);
@@ -100,33 +114,33 @@ function classifySessionRow(row: {
   const exitPage = String(row.exit_page ?? '').toLowerCase();
 
   if (purchases > 0) {
-    return { label: 'Converted', reason: 'The session completed a purchase.' };
+    return { label: 'converted', reason: 'converted' };
   }
 
   if (checkout > 0 || addToCart > 0 || exitPage.includes('checkout')) {
     return {
-      label: 'Shipping/Payment Friction',
-      reason: 'The visitor showed buying intent but dropped before purchase, usually around shipping, payment, or trust at checkout.',
+      label: 'shipping_friction',
+      reason: 'shipping_friction',
     };
   }
 
   if (productViews > 0 && scrollDepth >= 60 && activeTime >= 45) {
     return {
-      label: 'High Interest, Price/Trust Friction',
-      reason: 'The visitor stayed engaged on the product page without moving into cart, which usually points to price, proof, or trust friction.',
+      label: 'price_trust_friction',
+      reason: 'price_trust_friction',
     };
   }
 
   if (pageViews <= 1 && activeTime < 20) {
     return {
-      label: 'Ad/Creative Mismatch',
-      reason: 'The landing did not hold attention long enough, which usually means the ad promise and page experience are misaligned.',
+      label: 'ad_mismatch',
+      reason: 'ad_mismatch',
     };
   }
 
   return {
-    label: 'Low-Confidence Drop-Off',
-    reason: 'The session ended without enough engagement data to identify a stronger friction cause.',
+    label: 'low_confidence',
+    reason: 'low_confidence',
   };
 }
 
@@ -418,10 +432,9 @@ export async function upsertAnalyticSessionSummary(input: {
 }
 
 export interface OmniRecommendation {
-  title: string;
-  detail: string;
+  key: string;
   severity: 'high' | 'medium' | 'low';
-  action: string;
+  params?: Record<string, string | number>;
 }
 
 export interface OmniOverviewResponse {
@@ -503,61 +516,53 @@ export interface OmniOverviewResponse {
 
 function buildOverviewRecommendations(snapshot: OmniOverviewResponse): OmniRecommendation[] {
   const recommendations: OmniRecommendation[] = [];
-  const shippingFriction = snapshot.frictionClusters.find(cluster => cluster.label === 'Shipping/Payment Friction');
-  const priceTrustFriction = snapshot.frictionClusters.find(cluster => cluster.label === 'High Interest, Price/Trust Friction');
-  const mismatchFriction = snapshot.frictionClusters.find(cluster => cluster.label === 'Ad/Creative Mismatch');
+  const shippingFriction = snapshot.frictionClusters.find(cluster => cluster.label === 'shipping_friction');
+  const priceTrustFriction = snapshot.frictionClusters.find(cluster => cluster.label === 'price_trust_friction');
+  const mismatchFriction = snapshot.frictionClusters.find(cluster => cluster.label === 'ad_mismatch');
 
   if (snapshot.overview.toxicCreativeCount > 0) {
     recommendations.push({
-      title: 'Pause or repair toxic creatives',
-      detail: `${snapshot.overview.toxicCreativeCount} creative segments are generating revenue with weak realized profit or high return rates.`,
+      key: 'toxic_creatives',
       severity: 'high',
-      action: 'Audit creative profit and lower spend on toxic rows first.',
+      params: { count: snapshot.overview.toxicCreativeCount },
     });
   }
 
   if ((shippingFriction?.share || 0) >= 20) {
     recommendations.push({
-      title: 'Reduce checkout friction',
-      detail: `${shippingFriction?.sessions || 0} sessions reached cart or checkout and still dropped.`,
+      key: 'checkout_friction',
       severity: 'high',
-      action: 'Review delivery price display, COD trust copy, and checkout reassurance above the fold.',
+      params: { sessions: shippingFriction?.sessions || 0 },
     });
   }
 
   if ((priceTrustFriction?.share || 0) >= 15) {
     recommendations.push({
-      title: 'Improve price and trust proof',
-      detail: `${priceTrustFriction?.sessions || 0} engaged sessions stayed on the product page without moving to cart.`,
+      key: 'price_trust',
       severity: 'medium',
-      action: 'Add social proof, warranty, clearer value framing, and richer product proof on the landing page.',
+      params: { sessions: priceTrustFriction?.sessions || 0 },
     });
   }
 
   if ((mismatchFriction?.share || 0) >= 20) {
     recommendations.push({
-      title: 'Match ad promise to landing page',
-      detail: 'Too many sessions bounce before meaningful engagement, which usually means the ad angle is not being fulfilled on-page.',
+      key: 'ad_mismatch',
       severity: 'medium',
-      action: 'Rewrite the hero and first screen to reflect the creative promise and product hook exactly.',
     });
   }
 
   if (snapshot.overview.missingEconomicsProducts > 0) {
     recommendations.push({
-      title: 'Complete product cost inputs',
-      detail: `${snapshot.overview.missingEconomicsProducts} products are still missing economics data, so profit and POAS are understated in confidence.`,
+      key: 'missing_economics',
       severity: 'medium',
-      action: 'Add buy cost, packaging, handling, and fallback shipping for the missing products.',
+      params: { count: snapshot.overview.missingEconomicsProducts },
     });
   }
 
   if (snapshot.overview.adSpend <= 0) {
     recommendations.push({
-      title: 'Enter ad spend',
-      detail: 'The page has traffic and order data, but ad spend is still missing for this period.',
+      key: 'missing_spend',
       severity: 'low',
-      action: 'Add daily spend rows so creative POAS and toxic-success detection become actionable.',
     });
   }
 
@@ -1102,8 +1107,8 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
     activeTimeSeconds: toSafeInt(row.active_time_seconds),
     maxScrollDepth: toSafeInt(row.max_scroll_depth),
     productTitle: toOptionalText(row.product_title),
-    diagnosticLabel: toOptionalText(row.diagnostic_label),
-    diagnosticReason: toOptionalText(row.diagnostic_reason),
+    diagnosticLabel: normalizeFrictionLabel(toOptionalText(row.diagnostic_label)),
+    diagnosticReason: normalizeFrictionLabel(toOptionalText(row.diagnostic_reason)),
     exitPage: toOptionalText(row.exit_page),
     partial: Boolean(row.is_partial),
   }));
@@ -1167,6 +1172,7 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
   let bookedRevenue = 0;
   let realizedRevenue = 0;
   let grossProfit = 0;
+  let totalOrders = 0;
   let deliveredOrders = 0;
   let returnedOrders = 0;
   let unattributedOrders = 0;
@@ -1182,7 +1188,10 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
     const isDelivered = SUCCESS_ORDER_STATUSES.has(status);
     const isReturned = RETURNED_ORDER_STATUSES.has(status) || RETURNED_ORDER_STATUSES.has(String(row.delivery_status || ''));
 
-    if (isBooked) bookedRevenue += orderTotal;
+    if (isBooked) {
+      totalOrders += 1;
+      bookedRevenue += orderTotal;
+    }
     if (isDelivered) {
       deliveredOrders += 1;
       realizedRevenue += orderTotal;
@@ -1321,6 +1330,7 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
     addToCart: sessions.reduce((sum, session) => sum + session.addToCart, 0),
     checkout: sessions.reduce((sum, session) => sum + session.checkout, 0),
     purchases: sessions.reduce((sum, session) => sum + session.purchases, 0),
+    totalOrders,
     bookedRevenue: Number(bookedRevenue.toFixed(2)),
     realizedRevenue: Number(realizedRevenue.toFixed(2)),
     adSpend: Number(spendResult.rows.reduce((sum, row) => sum + toNumber(row.spend), 0).toFixed(2)),
@@ -1340,7 +1350,7 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
 
   const frictionClusters = Array.from(
     sessions.reduce((map, session) => {
-      const label = session.diagnosticLabel || 'Low-Confidence Drop-Off';
+      const label = session.diagnosticLabel || 'low_confidence';
       if (!map.has(label)) {
         map.set(label, {
           label,
@@ -1350,7 +1360,7 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
           exitPages: new Map<string, number>(),
           products: new Map<string, number>(),
           sources: new Map<string, number>(),
-          reason: session.diagnosticReason || 'Session classified deterministically from engagement and funnel signals.',
+          reason: session.diagnosticReason || 'low_confidence',
         });
       }
       const bucket = map.get(label)!;
@@ -1363,7 +1373,7 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
       return map;
     }, new Map<string, any>()).values()
   )
-    .filter(cluster => cluster.label !== 'Converted')
+    .filter(cluster => cluster.label !== 'converted')
     .map(cluster => ({
       label: cluster.label,
       sessions: cluster.sessions,
@@ -1397,11 +1407,10 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
     periodDays: safeDays,
     overview,
     funnel: [
-      { label: 'Sessions', value: overview.sessions, rate: 100 },
-      { label: 'Product Views', value: overview.productViews, rate: percent(overview.productViews, Math.max(1, overview.sessions)) },
-      { label: 'Add To Cart', value: overview.addToCart, rate: percent(overview.addToCart, Math.max(1, overview.productViews)) },
-      { label: 'Checkout', value: overview.checkout, rate: percent(overview.checkout, Math.max(1, overview.addToCart)) },
-      { label: 'Purchases', value: overview.purchases, rate: percent(overview.purchases, Math.max(1, overview.checkout || overview.sessions)) },
+      { label: 'sessions', value: overview.sessions, rate: 100 },
+      { label: 'views', value: overview.productViews, rate: percent(overview.productViews, Math.max(1, overview.sessions)) },
+      { label: 'orders', value: overview.totalOrders, rate: percent(overview.totalOrders, Math.max(1, overview.productViews || overview.sessions)) },
+      { label: 'delivered', value: deliveredOrders, rate: percent(deliveredOrders, Math.max(1, overview.totalOrders)) },
     ],
     frictionClusters,
     creativeComparison,

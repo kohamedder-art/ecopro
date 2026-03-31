@@ -20,7 +20,7 @@
 
 import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import { generateText, generateJSON, analyzeProductImage } from '../services/gemini';
+import { generateText, generateTextWithSearch, generateJSON, analyzeProductImage } from '../services/gemini';
 import { verifyToken } from '../utils/auth';
 import { authenticate, requireAdmin, requireClient } from '../middleware/auth';
 import { authenticateStaff } from '../utils/staff-middleware';
@@ -442,22 +442,30 @@ router.post('/analyze-behavior', authenticate, requireClient, authAiLimiter, asy
         suggestedMessage: `Follow up with delivered buyers from ${creative.creativeName || creative.campaignName || creative.platform || 'this audience'} using a post-purchase upsell or review request.`,
       }));
 
+    const RECOMMENDATION_LABELS: Record<string, { title: string; type: string; detail: string; action: string }> = {
+      toxic_creatives:   { title: 'Toxic Success Creatives',  type: 'review_creative',      detail: 'Some creatives appear profitable on the surface but have high return/failure rates.',       action: 'Review flagged creatives and pause under-performers.' },
+      checkout_friction:  { title: 'Checkout Friction',        type: 'audit_checkout',       detail: 'Visitors are reaching checkout but not completing their purchase.',                         action: 'Simplify the checkout form and review delivery pricing.' },
+      price_trust:        { title: 'Price / Trust Issues',     type: 'improve_landing_page', detail: 'Engaged visitors are leaving without adding to cart — possible price or trust barrier.',     action: 'Add social proof, reviews, or adjust pricing on key products.' },
+      ad_mismatch:        { title: 'Ad–Landing Page Mismatch', type: 'improve_landing_page', detail: 'Traffic is bouncing quickly — the ad promise may not match the landing experience.',        action: 'Align ad creatives with landing page content and offer.' },
+      missing_economics:  { title: 'Missing Product Costs',    type: 'fill_product_costs',   detail: 'Product cost data is incomplete, making profit calculations unreliable.',                  action: 'Fill in buy cost, packaging, and handling for all products.' },
+      missing_spend:      { title: 'Missing Ad Spend Data',    type: 'add_spend_data',       detail: 'No ad spend entries found — POAS and net profit cannot be calculated.',                    action: 'Add daily ad spend data in the creative catalog.' },
+    };
+
     const optimizationCommands = snapshot.recommendations.map((recommendation, index) => {
-      const normalizedTitle = recommendation.title.toLowerCase();
-      let type = 'general_review';
-      if (normalizedTitle.includes('toxic')) type = 'review_creative';
-      else if (normalizedTitle.includes('checkout')) type = 'audit_checkout';
-      else if (normalizedTitle.includes('price') || normalizedTitle.includes('trust')) type = 'improve_landing_page';
-      else if (normalizedTitle.includes('cost')) type = 'fill_product_costs';
-      else if (normalizedTitle.includes('ad spend')) type = 'add_spend_data';
+      const meta = RECOMMENDATION_LABELS[recommendation.key] || {
+        title: recommendation.key.replace(/_/g, ' '),
+        type: 'general_review',
+        detail: '',
+        action: '',
+      };
 
       return {
         id: `cmd-${index + 1}`,
-        type,
+        type: meta.type,
         priority: recommendation.severity,
-        label: recommendation.title,
-        rationale: recommendation.detail,
-        nextStep: recommendation.action,
+        label: meta.title,
+        rationale: meta.detail,
+        nextStep: meta.action,
       };
     });
 
@@ -1112,6 +1120,8 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
       let staffActivity: any[] = [];
       // Customer blacklist
       let blacklistCount = 0;
+      // Store design state
+      let storeDesign: Record<string, string> = {};
 
       try {
         const [
@@ -1124,7 +1134,12 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
         ] = await Promise.all([
           // Store settings
           pool.query(
-            `SELECT store_name, store_slug, currency_code, template, is_public, page_views
+            `SELECT store_name, store_slug, currency_code, template, is_public, page_views,
+                    store_description, primary_color, secondary_color, template_accent_color, template_bg_color,
+                    template_hero_heading, template_hero_subtitle, template_button_text,
+                    template_font_family, font_family, template_text_color, template_muted_color,
+                    template_card_bg, template_header_bg, template_footer_bg,
+                    template_border_radius, template_card_border_radius, template_button_border_radius
              FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
             [clientId]
           ),
@@ -1262,6 +1277,21 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
         template = s.template || '';
         isPublic = s.is_public || false;
         pageViews = parseInt(s.page_views || '0');
+        storeDesign = {
+          description: s.store_description || '',
+          accentColor: s.template_accent_color || s.primary_color || '',
+          bgColor: s.template_bg_color || '',
+          textColor: s.template_text_color || '',
+          mutedColor: s.template_muted_color || '',
+          cardBg: s.template_card_bg || '',
+          headerBg: s.template_header_bg || '',
+          footerBg: s.template_footer_bg || '',
+          heroHeading: s.template_hero_heading || '',
+          heroSubtitle: s.template_hero_subtitle || '',
+          buttonText: s.template_button_text || '',
+          font: s.template_font_family || s.font_family || 'Inter',
+          borderRadius: s.template_border_radius || '',
+        };
 
         // Orders
         for (const row of orderStatusRes.rows) {
@@ -1357,6 +1387,22 @@ Business: ${profileBusiness || 'N/A'} | Country: ${profileCountry || 'N/A'} | Ci
 Store: "${storeName}" (slug: ${storeSlug || 'not set'})
 Template: ${template || 'not set'} | Public: ${isPublic ? 'yes' : 'no (hidden)'} | Currency: ${currency}
 Page views: ${pageViews}
+Description: ${storeDesign.description || '(not set)'}
+
+=== CURRENT STORE DESIGN ===
+Accent color: ${storeDesign.accentColor || '(default)'}
+Background color: ${storeDesign.bgColor || '(default)'}
+Text color: ${storeDesign.textColor || '(default)'}
+Muted color: ${storeDesign.mutedColor || '(default)'}
+Card background: ${storeDesign.cardBg || '(default)'}
+Header background: ${storeDesign.headerBg || '(default)'}
+Footer background: ${storeDesign.footerBg || '(default)'}
+Hero heading: ${storeDesign.heroHeading || '(not set)'}
+Hero subtitle: ${storeDesign.heroSubtitle || '(not set)'}
+Button text: ${storeDesign.buttonText || '(not set)'}
+Font: ${storeDesign.font || 'Inter'}
+Border radius: ${storeDesign.borderRadius || '(default)'}px
+(You can change ANY of these via update_store_settings or update_store_design actions)
 
 === BILLING ===
 Plan: ${subTier || 'N/A'} | Status: ${subStatus || 'N/A'}
@@ -1441,6 +1487,33 @@ CRITICAL BEHAVIOR RULES:
 3. ALWAYS answer helpfully. Never say you don't know if the answer is in the data above. Be direct.
 4. Respond in the same language as the user's question (Arabic, French, or English).
 
+═══ ENGAGEMENT & RETENTION (HIGHEST PRIORITY) ═══
+Your #1 job is making this store owner feel like they're sitting on a gold mine. E-commerce is EASY with you. You do the heavy lifting.
+
+PROACTIVE PRODUCT SUGGESTIONS:
+- After answering ANY question (orders, analytics, settings, anything), naturally pivot to a product opportunity. Example: "By the way, I spotted something interesting — [product idea] is trending right now and could be a hit in your store. Want me to dig into the numbers?"
+- When the store has few products (<10), ALWAYS suggest new products to add. Say things like: "I found a product that's blowing up on AliExpress right now — [product]. Stores like yours are making X DZD profit per unit. Want me to add it to your store?"
+- When discussing revenue/orders, tie it to growth: "You made X DZD this week — nice! Here's how we can double that: [actionable suggestion]."
+
+CONVERSATION STICKINESS:
+- NEVER give a one-line answer and stop. Always add value beyond what was asked.
+- End every response with either: a suggestion, an opportunity, a question, or a "want me to..." offer.
+- Use hooks like: "I just found something you'll love...", "Quick win for you:", "Here's what smart sellers are doing right now...", "I noticed something in your data..."
+- When the user seems new or uncertain, be extra encouraging: "You're already ahead of most sellers just by being here. Let me show you the fastest path to your first sales."
+- Celebrate wins enthusiastically: "🔥 3 orders today! That's momentum building. Let's ride this wave — want me to find a complementary product to upsell?"
+
+MAKING E-COMMERCE EASY:
+- If the user asks "what should I do?", "how do I start?", "I don't know what to sell" — take full control. Don't ask 10 questions. Search the web, find 3-5 specific trending products with direct marketplace links, present them with buy price, sell price, margin, shipping cost, recommended starting quantity, and why they'll work in Algeria. Then offer to create the product listing right there.
+- Always do the math for them. Don't say "good margins" — say "Buy at 800 DZD, sell at 2500 DZD = 1700 DZD profit per sale. 10 sales/day = 17,000 DZD/day. Start with 20 units (16,000 DZD investment) to test."
+- When suggesting products, present them as READY-TO-GO opportunities: product name, direct link to see it, source price + shipping, sell price, profit math, how many to order first, target audience, and ad angle. The user should be able to read your message and immediately know exactly what to buy, where, how much, and how much they'll make.
+- NEVER just say "search for products on AliExpress" — YOU search, YOU find the products, YOU present them with links. The user's only job is picking which ones they like.
+
+POSITIVE FRAMING (MANDATORY):
+- Never say "your store is doing badly" → say "your store has huge untapped potential"
+- Never say "you have no orders" → say "your store is brand new — the first orders are the hardest, after that it snowballs. Let's get those first sales."
+- Never say "this product won't sell" → say "this could work, but I found something with even better margins. Want to see?"
+- If something is genuinely wrong (expired subscription, empty store), frame it as a quick fix: "One small thing to handle first — [fix]. Takes 2 minutes, then we're back to growing."
+
 STORE MANAGEMENT CAPABILITIES — append EXACTLY ONE action marker at the very end of your response when the user explicitly requests an action. Format: a single line starting with ECOPRO_ACTION: followed by JSON. Nothing after the marker.
 
 ═══ ORDER STATUS UPDATES ═══
@@ -1458,9 +1531,86 @@ ECOPRO_ACTION:{"type":"edit_product","productId":<number>,"field":"price|stock|s
 Delete/archive a product (soft-delete — sets it to inactive):
 ECOPRO_ACTION:{"type":"delete_product","productId":<number>,"title":"<product title>"}
 
-═══ STORE SETTINGS ═══
-Change store name, description, currency, or contact info:
-ECOPRO_ACTION:{"type":"update_store_settings","field":"store_name|store_description|currency_code|contact_email|contact_phone","value":"<new value>"}
+═══ STORE SETTINGS (single field) ═══
+Change store name, description, currency:
+ECOPRO_ACTION:{"type":"update_store_settings","field":"store_name|store_description|currency_code","value":"<new value>"}
+
+═══ STORE DESIGN & TEMPLATE CUSTOMIZATION (POWERFUL — USE PROACTIVELY!) ═══
+You can completely redesign the user's store to match their products and brand. Use this when:
+- User adds a new product / product category — suggest matching colors and content
+- User asks to improve/change their store look
+- User's store looks generic — proactively offer to customize it
+- After finding winning products — offer to theme the store around them
+
+For a SINGLE design change:
+ECOPRO_ACTION:{"type":"update_store_settings","field":"<field_name>","value":"<new_value>"}
+
+For MULTIPLE design changes at once (preferred for design overhauls):
+ECOPRO_ACTION:{"type":"update_store_design","changes":{"field1":"value1","field2":"value2",...}}
+
+AVAILABLE DESIGN FIELDS:
+Colors:
+  - template_accent_color: Main brand/accent color (hex, e.g. "#e11d48")
+  - template_bg_color: Page background color (hex)
+  - primary_color: Primary UI color (hex)
+  - secondary_color: Secondary UI color (hex)
+  - text_color: Main text color (hex)
+  - secondary_text_color: Secondary text color (hex)
+  - template_text_color: Template-specific text color (hex)
+  - template_muted_color: Muted/subtle text color (hex)
+  - template_card_bg: Product card background (hex)
+  - template_product_title_color: Product title color (hex)
+  - template_product_price_color: Price tag color (hex)
+  - template_header_bg: Header background (hex)
+  - template_header_text: Header text color (hex)
+  - template_footer_bg: Footer background (hex)
+  - template_section_title_color: Section heading color (hex)
+  - template_section_subtitle_color: Section subtitle color (hex)
+
+Content / Copy:
+  - store_name: The store's display name
+  - store_description: Store description / tagline
+  - template_hero_heading: Main hero banner title (e.g. "تسوقي بأناقة" or "Shop the Latest Trends")
+  - template_hero_subtitle: Hero banner subtitle/description
+  - template_button_text: Main CTA button text (e.g. "اطلب الآن", "Shop Now")
+  - template_button2_text: Secondary button text
+  - template_hero_kicker: Small text above hero title
+  - template_featured_title: Featured products section title
+  - template_featured_subtitle: Featured products section subtitle
+  - template_add_to_cart_label: Add to cart button text
+  - template_footer_text: Footer text content
+  - template_copyright: Copyright line
+  - footer_about: Footer about section text
+  - meta_title: SEO page title
+  - meta_description: SEO meta description
+  - meta_keywords: SEO keywords
+
+Typography:
+  - template_font_family: Font name (e.g. "Cairo", "Inter", "Tajawal", "Poppins")
+  - font_family: Fallback font
+
+Borders/Radius:
+  - template_border_radius: Global border radius in px (e.g. "12")
+  - template_card_border_radius: Card corner radius in px
+  - template_button_border_radius: Button corner radius in px
+
+Template-specific keys (go into JSONB settings — use the template name as prefix):
+  - {template}_hero_title, {template}_hero_subtitle, {template}_tagline
+  - {template}_brand_name, {template}_accent_color, {template}_bg_color
+  - {template}_cta_text, {template}_heading, {template}_subheading, {template}_badge_text
+
+DESIGN STRATEGY:
+When suggesting a design overhaul, think about the product category:
+- Electronics/Tech: Dark backgrounds (#0a0a0a), neon accents (#3b82f6 or #06b6d4), modern fonts (Inter, Poppins)
+- Beauty/Cosmetics: Soft pinks (#fce7f3), rose accents (#e11d48), elegant fonts (Playfair Display, Lora)
+- Fashion/Streetwear: Bold contrasts, dark bg (#111), vibrant accents (#f59e0b), urban fonts (Oswald, Bebas Neue)
+- Kids/Baby: Pastel backgrounds (#fef3c7), playful accents (#f472b6), rounded buttons (border-radius: 20+), fun fonts (Nunito, Quicksand)
+- Home/Kitchen: Warm neutrals (#fafaf9), earthy accents (#84cc16 or #d97706), clean fonts (DM Sans, Inter)
+- General/Multi-category: Clean white (#ffffff), professional blue accent (#3b82f6), universal font (Inter, Cairo for Arabic)
+
+For Arabic stores: use RTL-friendly fonts (Cairo, Tajawal, Noto Sans Arabic) and Arabic CTA text (اطلب الآن, تسوق الآن, اكتشف المزيد).
+
+When you suggest a design change, ALWAYS preview what it will look like by describing the changes, then offer to apply everything at once with update_store_design.
 
 ═══ BOT MESSAGING (supports WhatsApp, Telegram, and Messenger) ═══
 Enable/disable bot: ECOPRO_ACTION:{"type":"bot_toggle","enable":true|false}
@@ -1470,15 +1620,56 @@ Auto-configure: ECOPRO_ACTION:{"type":"bot_auto_configure","language":"ar|fr|en"
 Send message to customer (ask for confirmation first, then append): ECOPRO_ACTION:{"type":"bot_send_message","orderId":<number>,"intent":"<what to say>","channel":"telegram|messenger|whatsapp"}
 If user mentions a channel (Telegram, Messenger, WhatsApp), use it. Default: telegram.
 
-RULES: Only ONE action marker per response. Never chain multiple. Always confirm before delete_product and bot_send_message. For ambiguous requests, ask which product/order/field they mean.`;
+RULES: Only ONE action marker per response. Never chain multiple. Always confirm before delete_product and bot_send_message. For ambiguous requests, ask which product/order/field they mean.
+
+═══ PRODUCT RESEARCH (WEB SEARCH) ═══
+You have access to Google Search. USE IT AGGRESSIVELY. Don't wait to be asked — anytime the conversation touches products, sales, or growth, search for winning products.
+
+YOUR ROLE: You ARE the product research tool. You are the user's spy tool, trend finder, and market analyst all in one. The user should NEVER need to leave this chat to find products. You do ALL the research and present the results ready to act on.
+
+DEFAULT BEHAVIOR (when user asks about products, winning products, what to sell, etc.):
+→ Search Google for actual specific products on marketplaces (AliExpress, Amazon, Temu, Alibaba, Shein)
+→ Find the ACTUAL products — real product names, real prices, real links
+→ Present them fully researched and ready for the user to decide
+
+Only mention product research platforms (like spy tools, trend-tracking websites, etc.) if the user SPECIFICALLY asks "where can I find products?" or "which platforms should I use to research?" Even then, mention them briefly AFTER you've already given them actual product suggestions first.
+
+WHEN TO SEARCH:
+- User asks about winning / trending products
+- User asks "what should I sell?" or "how do I start?"
+- User's store has few products — proactively suggest new ones
+- User asks about revenue growth — search for high-margin products to recommend
+- User mentions any marketplace (AliExpress, Amazon, Temu, Shein, Alibaba)
+- ANY moment where a product suggestion would be valuable — just do it
+
+Search queries should target ACTUAL PRODUCTS on marketplaces: "best selling [category] AliExpress 2026", "trending [category] products for dropshipping", "top selling products Algeria e-commerce", "produits les plus vendus Algérie", "[category] AliExpress best seller".
+
+FOR EVERY PRODUCT YOU SUGGEST, include ALL of these:
+1. 🏷️ Product name (specific — e.g. "Portable Mini Projector HY300 Pro" not just "projector")
+2. 🔗 Direct source link — provide the actual AliExpress/Amazon/Temu URL from your search results so the user can click and see the product immediately
+3. 💰 Source price (what the user pays to buy it) → Suggested sell price in DZD → Profit per unit in DZD
+4. 🚚 Shipping cost & estimated delivery time to Algeria (e.g. "Free shipping / 15-25 days" or "~500 DZD shipping / 10-20 days")
+5. 📦 Recommended order quantity — how many units to start with and why (e.g. "Start with 10-20 units to test, then scale to 50+ once you confirm demand")
+6. 📊 Revenue math — be VERY specific:
+   - Profit per unit
+   - Daily sales estimate → daily profit → monthly profit
+   - Example: "Buy at 800 DZD, sell at 2500 DZD = 1700 DZD profit/unit. Start with 10/day = 17,000 DZD/day = 510,000 DZD/month"
+7. 🎯 Why it sells in Algeria (demand, trending on TikTok/Facebook, seasonal, everyday need)
+8. 📱 One-line Facebook/TikTok ad angle
+9. 👥 Target audience (age, gender, interests)
+10. 💡 Should the user sell just this product or bundle it? (e.g. "Pair this with [complementary product] for a bundle deal at 4500 DZD — increases average order value")
+
+Focus ONLY on products that work for Algeria: COD-friendly, reasonable shipping times, good margins (50%+), categories Algerian buyers love (beauty, electronics accessories, fashion, home gadgets, phone accessories, kitchen tools, car accessories, fitness, baby products).
+Always give at least 3-5 SPECIFIC product suggestions with REAL numbers and REAL links, not generic advice. Make the user feel like each product is a money printer waiting to be turned on.
+After presenting products, always ask: "Want me to add any of these to your store right now? I'll set up the listing for you — title, price, description, everything."`;
 
       const prompt = `${storeContext}${historyText}${actionInstruction}
 
 Current question: "${question}"
 
-Answer directly using the data above. Be concise. Respond in the language of the question.`;
+You are this store owner's AI business partner. Answer their question using the data above, then proactively add value — suggest opportunities, products, or next steps. Keep the conversation going. Respond in the language of the question.`;
 
-      const rawAnswer = await generateText('store_owner', prompt, { storeId: clientId, storeName });
+      const { text: rawAnswer, sources } = await generateTextWithSearch('store_owner', prompt, { storeId: clientId, storeName });
       // Strip optional action marker from the visible answer
       const actionParts = rawAnswer.split('\nECOPRO_ACTION:');
       const answer = actionParts[0].trim();
@@ -1486,7 +1677,7 @@ Answer directly using the data above. Be concise. Respond in the language of the
       if (actionParts.length === 2) {
         try { action = JSON.parse(actionParts[1].trim()); } catch { /* ignore malformed */ }
       }
-      return res.json({ answer, ...(action ? { action } : {}) });
+      return res.json({ answer, ...(sources.length > 0 ? { sources } : {}), ...(action ? { action } : {}) });
     }
 
     // ── Admin ──
@@ -1661,7 +1852,8 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
 /**
  * POST /api/ai/store-action
  * Executes a store-owner-confirmed store settings update.
- * Body: { type: 'update_store_settings', field: string, value: string }
+ * Supports single-field: { type: 'update_store_settings', field: string, value: string }
+ * Supports multi-field:  { type: 'update_store_design', changes: Record<string, string|number|boolean> }
  */
 router.post('/store-action', authAiLimiter, async (req: Request, res: Response) => {
   try {
@@ -1671,23 +1863,145 @@ router.post('/store-action', authAiLimiter, async (req: Request, res: Response) 
       return res.status(401).json({ error: 'Authentication required.' });
     }
     const clientId = user.id || user.clientId;
-    const { field, value } = req.body;
+    const { field, value, changes } = req.body;
 
-    if (!field || value === undefined) return res.status(400).json({ error: 'field and value are required.' });
+    // ── Whitelist of AI-modifiable fields ──
+    // Direct DB columns
+    const allowedDirectCols = new Set([
+      'store_name', 'store_description', 'currency_code',
+      'primary_color', 'secondary_color', 'text_color', 'secondary_text_color',
+      'template_accent_color', 'template_bg_color',
+      'template_hero_heading', 'template_hero_subtitle', 'template_button_text',
+      'template_hero_title_color', 'template_hero_subtitle_color',
+      'template_hero_kicker',
+      'template_button2_text',
+      'template_featured_title', 'template_featured_subtitle',
+      'template_section_title_color', 'template_section_subtitle_color',
+      'template_card_bg', 'template_product_title_color', 'template_product_price_color',
+      'template_copyright', 'template_footer_text', 'template_footer_bg',
+      'template_font_family',
+      'template_border_radius', 'template_card_border_radius', 'template_button_border_radius',
+      'template_add_to_cart_label',
+      'template_text_color', 'template_muted_color',
+      'template_header_bg', 'template_header_text',
+      'font_family',
+      'meta_title', 'meta_description', 'meta_keywords',
+      'featured_section_title', 'newsletter_title', 'newsletter_subtitle',
+      'footer_about',
+      'template_seasonal_title', 'template_seasonal_subtitle',
+      'template_grid_title',
+      'template_custom_css',
+    ]);
 
-    // Strict whitelist — never allow slug or client_id changes
-    const allowedFields = ['store_name', 'store_description', 'currency_code', 'contact_email', 'contact_phone'];
-    if (!allowedFields.includes(String(field))) {
-      return res.status(400).json({ error: `Field "${field}" cannot be changed via AI.` });
+    // Keys that go into template_settings JSONB (template-prefixed)
+    const allowedJsonbPatterns = [
+      /^[a-z]+_hero_title$/,
+      /^[a-z]+_hero_subtitle$/,
+      /^[a-z]+_tagline$/,
+      /^[a-z]+_brand_name$/,
+      /^[a-z]+_accent_color$/,
+      /^[a-z]+_bg_color$/,
+      /^[a-z]+_text_color$/,
+      /^[a-z]+_cta_text$/,
+      /^[a-z]+_heading$/,
+      /^[a-z]+_subheading$/,
+      /^[a-z]+_badge_text$/,
+      /^[a-z]+_footer_text$/,
+      /^[a-z]+_section_title$/,
+      /^[a-z]+_button_text$/,
+    ];
+
+    const isAllowedJsonb = (key: string) => allowedJsonbPatterns.some(p => p.test(key));
+
+    // ── Single-field update (legacy) ──
+    if (field && !changes) {
+      const f = String(field);
+      if (!allowedDirectCols.has(f) && !isAllowedJsonb(f)) {
+        return res.status(400).json({ error: `Field "${f}" cannot be changed via AI.` });
+      }
+
+      if (allowedDirectCols.has(f)) {
+        const result = await pool.query(
+          `UPDATE client_store_settings SET ${f} = $1, updated_at = NOW()
+           WHERE client_id = $2 RETURNING store_name`,
+          [String(value).slice(0, 500), clientId]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Store settings not found.' });
+      } else {
+        // JSONB update
+        await pool.query(
+          `UPDATE client_store_settings
+           SET template_settings = COALESCE(template_settings, '{}'::jsonb) || $1::jsonb,
+               updated_at = NOW()
+           WHERE client_id = $2`,
+          [JSON.stringify({ [f]: value }), clientId]
+        );
+      }
+      return res.json({ success: true, message: `Store setting "${f}" updated to "${value}".` });
     }
 
-    const result = await pool.query(
-      `UPDATE client_store_settings SET ${String(field)} = $1, updated_at = NOW()
-       WHERE client_id = $2 RETURNING store_name`,
-      [String(value).slice(0, 255), clientId]
-    );
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Store settings not found.' });
-    return res.json({ success: true, message: `Store setting "${field}" updated to "${value}".` });
+    // ── Multi-field update (design overhaul) ──
+    if (changes && typeof changes === 'object') {
+      const directUpdates: Record<string, any> = {};
+      const jsonbUpdates: Record<string, any> = {};
+      const rejected: string[] = [];
+
+      for (const [key, val] of Object.entries(changes)) {
+        if (allowedDirectCols.has(key)) {
+          directUpdates[key] = String(val).slice(0, 500);
+        } else if (isAllowedJsonb(key)) {
+          jsonbUpdates[key] = val;
+        } else {
+          rejected.push(key);
+        }
+      }
+
+      if (Object.keys(directUpdates).length === 0 && Object.keys(jsonbUpdates).length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update.', rejected });
+      }
+
+      // Build direct column update query
+      if (Object.keys(directUpdates).length > 0) {
+        const setClauses: string[] = [];
+        const params: any[] = [];
+        let pi = 1;
+        for (const [col, val] of Object.entries(directUpdates)) {
+          setClauses.push(`${col} = $${pi}`);
+          params.push(val);
+          pi++;
+        }
+        setClauses.push('updated_at = NOW()');
+        params.push(clientId);
+        await pool.query(
+          `UPDATE client_store_settings SET ${setClauses.join(', ')} WHERE client_id = $${pi}`,
+          params
+        );
+      }
+
+      // Merge JSONB updates
+      if (Object.keys(jsonbUpdates).length > 0) {
+        await pool.query(
+          `UPDATE client_store_settings
+           SET template_settings = COALESCE(template_settings, '{}'::jsonb) || $1::jsonb,
+               updated_at = NOW()
+           WHERE client_id = $2`,
+          [JSON.stringify(jsonbUpdates), clientId]
+        );
+      }
+
+      const updatedCount = Object.keys(directUpdates).length + Object.keys(jsonbUpdates).length;
+      const summary = Object.entries({ ...directUpdates, ...jsonbUpdates })
+        .slice(0, 5)
+        .map(([k, v]) => `${k.replace(/^template_/, '').replace(/_/g, ' ')}: "${v}"`)
+        .join(', ');
+      return res.json({
+        success: true,
+        message: `Updated ${updatedCount} store settings: ${summary}${updatedCount > 5 ? '...' : ''}.`,
+        ...(rejected.length > 0 ? { rejected } : {}),
+      });
+    }
+
+    return res.status(400).json({ error: 'Either field+value or changes object is required.' });
   } catch (err) {
     return serverError(res, err);
   }

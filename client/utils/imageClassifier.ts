@@ -98,8 +98,8 @@ export interface TemplateImageMap {
  */
 export const TEMPLATE_SLOTS: Record<string, TemplateImageSlot[]> = {
   dzshop: [
-    { name: 'gallery', preferred: ['square'], count: 4 },       // main + 3 thumbs (square aspect)
-    { name: 'banner',  preferred: ['wide', 'tall'], count: 1 }, // bottom landing image
+    { name: 'gallery', preferred: ['square', 'wide'], count: 4 }, // main + 3 thumbs (normal product photos)
+    { name: 'banner',  preferred: ['tall'], count: 1 },           // bottom long landing page image
   ],
   dzpremium: [
     { name: 'hero',     preferred: ['wide', 'square'], count: 1 }, // hero image
@@ -207,7 +207,30 @@ export function distributeImages(
       }
     }
 
-    // Pass 2b: if still short, take any remaining (better to show something than leave a slot empty)
+    // Pass 2b: if still short, take remaining — but skip images that a later slot
+    // specifically needs (e.g. don't let gallery steal the only tall image meant for banner)
+    for (let i = 0; i < pool.length && assigned.length < needed; ) {
+      const img = pool[i];
+      let reservedByLater = false;
+      for (let j = slotIdx + 1; j < slots.length; j++) {
+        if (slots[j].preferred.includes(img.shape)) {
+          const laterNeeded = slots[j].count === Infinity ? 1 : slots[j].count;
+          const availableForLater = pool.filter(p => slots[j].preferred.includes(p.shape)).length;
+          if (availableForLater <= laterNeeded) {
+            reservedByLater = true;
+            break;
+          }
+        }
+      }
+      if (!reservedByLater) {
+        assigned.push(img.url);
+        pool.splice(i, 1);
+      } else {
+        i++;
+      }
+    }
+
+    // Pass 2c: absolute last resort — only take if nothing else exists
     while (assigned.length < needed && pool.length > 0) {
       assigned.push(pool[0].url);
       pool.splice(0, 1);

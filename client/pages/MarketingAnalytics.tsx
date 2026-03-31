@@ -1,11 +1,10 @@
-import { useState, useEffect, useMemo, useCallback, Fragment } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Brain,
   TrendingUp,
   TrendingDown,
   ShoppingCart,
-  CreditCard,
   Eye,
   MousePointer,
   BarChart3,
@@ -23,7 +22,6 @@ import {
   Plus,
   Trash2,
   Zap,
-  Sparkles,
   AlertTriangle,
   Package,
   Save,
@@ -40,8 +38,6 @@ import {
   Upload,
   X,
   Facebook,
-  ScanEye,
-  ImagePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,6 +86,7 @@ interface OmniOverview {
   addToCart: number;
   checkout: number;
   purchases: number;
+  totalOrders: number;
   bookedRevenue: number;
   realizedRevenue: number;
   adSpend: number;
@@ -176,10 +173,9 @@ interface StatusRow {
 }
 
 interface OmniRecommendation {
-  title: string;
-  detail: string;
+  key: string;
   severity: 'high' | 'medium' | 'low';
-  action: string;
+  params?: Record<string, string | number>;
 }
 
 interface OmniSnapshot {
@@ -280,10 +276,10 @@ function severityColor(s: string) {
 }
 
 function frictionColor(label: string) {
-  if (label === 'Converted') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400';
-  if (label.includes('Shipping')) return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
-  if (label.includes('Price')) return 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400';
-  if (label.includes('Mismatch')) return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+  if (label === 'converted') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400';
+  if (label === 'shipping_friction') return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+  if (label === 'price_trust_friction') return 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400';
+  if (label === 'ad_mismatch') return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
   return 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300';
 }
 
@@ -326,23 +322,6 @@ export default function MarketingAnalytics() {
     enabled: activeTab === 'settings',
   });
 
-  // AI analysis
-  const [aiResult, setAiResult] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-
-  const runAIAnalysis = useCallback(async () => {
-    setAiLoading(true);
-    setAiResult(null);
-    try {
-      const data = await apiFetch<{ answer?: string; analysis?: string }>('/api/ai/analyze-behavior', { method: 'POST' });
-      setAiResult(data.answer || data.analysis || 'No analysis returned.');
-    } catch {
-      setAiResult('Failed to get AI analysis. Please try again.');
-    } finally {
-      setAiLoading(false);
-    }
-  }, []);
-
   // ─── Mutations ─────────────────────────────────────────────
 
   const saveEconomics = useMutation({
@@ -351,9 +330,9 @@ export default function MarketingAnalytics() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['omni-inputs'] });
       queryClient.invalidateQueries({ queryKey: ['omni-overview'] });
-      toast({ title: 'Saved', description: 'Product economics updated.' });
+      toast({ title: t('marketing.toast.saved'), description: t('marketing.toast.economicsUpdated') });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to save product economics.', variant: 'destructive' }),
+    onError: () => toast({ title: t('marketing.toast.error'), description: t('marketing.toast.economicsFailed'), variant: 'destructive' }),
   });
 
   const saveSpend = useMutation({
@@ -362,9 +341,9 @@ export default function MarketingAnalytics() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['omni-inputs'] });
       queryClient.invalidateQueries({ queryKey: ['omni-overview'] });
-      toast({ title: 'Saved', description: 'Ad spend entry saved.' });
+      toast({ title: t('marketing.toast.saved'), description: t('marketing.toast.spendSaved') });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to save spend entry.', variant: 'destructive' }),
+    onError: () => toast({ title: t('marketing.toast.error'), description: t('marketing.toast.spendFailed'), variant: 'destructive' }),
   });
 
   const deleteSpend = useMutation({
@@ -378,19 +357,19 @@ export default function MarketingAnalytics() {
   const runBackfill = useMutation({
     mutationFn: (days: number) => apiFetch<any>('/api/pixels/omni/import-historical-sessions', { method: 'POST', body: JSON.stringify({ days }) }),
     onSuccess: (data: any) => {
-      toast({ title: 'Backfill complete', description: `Processed ${data.processedRows ?? 0} sessions.` });
+      toast({ title: t('marketing.toast.backfillDone'), description: t('marketing.toast.backfillProcessed', { count: String(data.processedRows ?? 0) }) });
       queryClient.invalidateQueries({ queryKey: ['omni-overview'] });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to run backfill.', variant: 'destructive' }),
+    onError: () => toast({ title: t('marketing.toast.error'), description: t('marketing.toast.backfillFailed'), variant: 'destructive' }),
   });
 
   const updatePixelSettings = useMutation({
     mutationFn: (payload: any) => apiFetch('/api/pixels/settings', { method: 'PUT', body: JSON.stringify(payload) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pixel-settings'] });
-      toast({ title: 'Settings saved' });
+      toast({ title: t('marketing.toast.settingsSaved') });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to save settings.', variant: 'destructive' }),
+    onError: () => toast({ title: t('marketing.toast.error'), description: t('marketing.toast.settingsFailed'), variant: 'destructive' }),
   });
 
   // ─── Local state for input forms ──────────────────────────
@@ -430,6 +409,7 @@ export default function MarketingAnalytics() {
   const statuses = snapshot?.statusBreakdown || [];
   const recs = snapshot?.recommendations || [];
   const maxFunnel = Math.max(1, ...funnel.map(f => f.value));
+  const funnelLabelKey: Record<string, string> = { sessions: 'marketing.funnel.sessions', views: 'marketing.funnel.views', orders: 'marketing.funnel.orders', delivered: 'marketing.funnel.delivered' };
 
   // ─── Render ────────────────────────────────────────────────
 
@@ -442,19 +422,19 @@ export default function MarketingAnalytics() {
             <Brain className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight">Omni-Intelligence</h1>
-            <p className="text-xs text-muted-foreground">Pixel analytics + profit diagnostics + AI recommendations</p>
+            <h1 className="text-xl font-extrabold tracking-tight">{t('marketing.title')}</h1>
+            <p className="text-xs text-muted-foreground">{t('marketing.subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedDays} onValueChange={setSelectedDays}>
             <SelectTrigger className={`w-[130px] ${inputClass}`}><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="14">Last 14 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="60">Last 60 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="7">{t('marketing.last7')}</SelectItem>
+              <SelectItem value="14">{t('marketing.last14')}</SelectItem>
+              <SelectItem value="30">{t('marketing.last30')}</SelectItem>
+              <SelectItem value="60">{t('marketing.last60')}</SelectItem>
+              <SelectItem value="90">{t('marketing.last90')}</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => refetchSnapshot()}>
@@ -467,25 +447,19 @@ export default function MarketingAnalytics() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className={tabsSurface}>
           <TabsTrigger value="overview" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-            <BarChart3 className="h-3.5 w-3.5" /> Overview
+            <BarChart3 className="h-3.5 w-3.5" /> {t('marketing.tab.overview')}
           </TabsTrigger>
           <TabsTrigger value="creatives" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-            <Megaphone className="h-3.5 w-3.5" /> Creatives
+            <Megaphone className="h-3.5 w-3.5" /> {t('marketing.tab.creatives')}
           </TabsTrigger>
           <TabsTrigger value="diagnostics" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-            <Activity className="h-3.5 w-3.5" /> Diagnostics
+            <Activity className="h-3.5 w-3.5" /> {t('marketing.tab.diagnostics')}
           </TabsTrigger>
           <TabsTrigger value="inputs" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-            <FileSpreadsheet className="h-3.5 w-3.5" /> Inputs
-          </TabsTrigger>
-          <TabsTrigger value="ai" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-            <Sparkles className="h-3.5 w-3.5" /> AI
-          </TabsTrigger>
-          <TabsTrigger value="vision" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-            <ScanEye className="h-3.5 w-3.5" /> Vision
+            <FileSpreadsheet className="h-3.5 w-3.5" /> {t('marketing.tab.inputs')}
           </TabsTrigger>
           <TabsTrigger value="settings" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-            <Settings className="h-3.5 w-3.5" /> Settings
+            <Settings className="h-3.5 w-3.5" /> {t('marketing.tab.settings')}
           </TabsTrigger>
         </TabsList>
 
@@ -497,26 +471,26 @@ export default function MarketingAnalytics() {
             </div>
           ) : !overview ? (
             <div className={`${surfaceMuted} p-8 text-center text-sm text-muted-foreground`}>
-              No data yet. Make sure your pixel is installed and tracking events.
+              {t('marketing.noData')}
             </div>
           ) : (
             <>
               {/* KPI row */}
-              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-3">
-                <KPICard icon={<Users className="h-3.5 w-3.5 text-white" />} iconBg="from-blue-500 to-indigo-600" label="Sessions" value={fmtNum(overview.sessions)} sub={overview.partialSessions > 0 ? `${fmtNum(overview.partialSessions)} partial` : undefined} />
-                <KPICard icon={<Eye className="h-3.5 w-3.5 text-white" />} iconBg="from-violet-500 to-purple-600" label="Product Views" value={fmtNum(overview.productViews)} />
-                <KPICard icon={<ShoppingCart className="h-3.5 w-3.5 text-white" />} iconBg="from-orange-500 to-amber-600" label="Add to Cart" value={fmtNum(overview.addToCart)} />
-                <KPICard icon={<CreditCard className="h-3.5 w-3.5 text-white" />} iconBg="from-emerald-500 to-green-600" label="Purchases" value={fmtNum(overview.purchases)} />
-                <KPICard icon={<DollarSign className="h-3.5 w-3.5 text-white" />} iconBg="from-teal-500 to-cyan-600" label="Net Profit" value={fmtCurrency(overview.netProfit)} sub={overview.poas !== null ? `POAS ${fmtPoas(overview.poas)}` : 'No spend data'} positive={overview.netProfit > 0} />
-                <KPICard icon={<Package className="h-3.5 w-3.5 text-white" />} iconBg="from-rose-500 to-pink-600" label="Return Rate" value={overview.deliveredOrders + overview.returnedOrders > 0 ? fmtPct((overview.returnedOrders / (overview.deliveredOrders + overview.returnedOrders)) * 100) : '—'} sub={`${fmtNum(overview.returnedOrders)} returned`} positive={false} />
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 md:gap-3">
+                <KPICard icon={<Users className="h-3.5 w-3.5 text-white" />} iconBg="from-blue-500 to-indigo-600" label={t('marketing.kpi.sessions')} value={fmtNum(overview.sessions)} sub={overview.partialSessions > 0 ? t('marketing.kpi.partial', { count: fmtNum(overview.partialSessions) }) : undefined} />
+                <KPICard icon={<Eye className="h-3.5 w-3.5 text-white" />} iconBg="from-violet-500 to-purple-600" label={t('marketing.kpi.productViews')} value={fmtNum(overview.productViews)} />
+                <KPICard icon={<ShoppingCart className="h-3.5 w-3.5 text-white" />} iconBg="from-orange-500 to-amber-600" label={t('marketing.kpi.orders')} value={fmtNum(overview.totalOrders)} sub={overview.totalOrders > 0 ? t('marketing.kpi.deliveredPct', { pct: fmtPct((overview.deliveredOrders / overview.totalOrders) * 100) }) : undefined} />
+                <KPICard icon={<CheckCircle className="h-3.5 w-3.5 text-white" />} iconBg="from-emerald-500 to-green-600" label={t('marketing.kpi.delivered')} value={fmtNum(overview.deliveredOrders)} sub={overview.deliveredOrders > 0 ? fmtCurrency(overview.realizedRevenue) : undefined} positive={overview.deliveredOrders > 0} />
+                <KPICard icon={<DollarSign className="h-3.5 w-3.5 text-white" />} iconBg="from-teal-500 to-cyan-600" label={t('marketing.kpi.netProfit')} value={fmtCurrency(overview.netProfit)} sub={overview.poas !== null ? `POAS ${fmtPoas(overview.poas)}` : t('marketing.kpi.noSpend')} positive={overview.netProfit > 0} />
+                <KPICard icon={<Package className="h-3.5 w-3.5 text-white" />} iconBg="from-rose-500 to-pink-600" label={t('marketing.kpi.returnRate')} value={overview.deliveredOrders + overview.returnedOrders > 0 ? fmtPct((overview.returnedOrders / (overview.deliveredOrders + overview.returnedOrders)) * 100) : '—'} sub={t('marketing.kpi.returned', { count: fmtNum(overview.returnedOrders) })} positive={false} />
               </div>
 
               {/* Revenue breakdown mini-row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <MiniStat label="Booked Revenue" value={fmtCurrency(overview.bookedRevenue)} />
-                <MiniStat label="Realized Revenue" value={fmtCurrency(overview.realizedRevenue)} />
-                <MiniStat label="Ad Spend" value={fmtCurrency(overview.adSpend)} />
-                <MiniStat label="Gross Profit" value={fmtCurrency(overview.grossProfit)} />
+                <MiniStat label={t('marketing.mini.bookedRevenue')} value={fmtCurrency(overview.bookedRevenue)} />
+                <MiniStat label={t('marketing.mini.realizedRevenue')} value={fmtCurrency(overview.realizedRevenue)} />
+                <MiniStat label={t('marketing.mini.adSpend')} value={fmtCurrency(overview.adSpend)} />
+                <MiniStat label={t('marketing.mini.grossProfit')} value={fmtCurrency(overview.grossProfit)} />
               </div>
 
               {/* Funnel + Sources */}
@@ -524,13 +498,13 @@ export default function MarketingAnalytics() {
                 {/* Funnel */}
                 <Card className={surfaceCard}>
                   <CardHeader className="p-3 md:p-4">
-                    <CardTitle className="flex items-center gap-2 text-sm"><Target className="h-4 w-4" /> Conversion Funnel</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-sm"><Target className="h-4 w-4" /> {t('marketing.funnel.title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 md:p-4 pt-0 space-y-2">
                     {funnel.map((step, idx) => (
                       <div key={step.label} className="space-y-0.5">
                         <div className="flex justify-between text-xs">
-                          <span className="font-medium">{step.label}</span>
+                          <span className="font-medium">{t(funnelLabelKey[step.label] || step.label)}</span>
                           <span className="text-muted-foreground">{fmtNum(step.value)} ({fmtPct(step.rate)})</span>
                         </div>
                         <div className="h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -547,11 +521,11 @@ export default function MarketingAnalytics() {
                 {/* Source breakdown */}
                 <Card className={surfaceCard}>
                   <CardHeader className="p-3 md:p-4">
-                    <CardTitle className="flex items-center gap-2 text-sm"><Megaphone className="h-4 w-4" /> Traffic Sources</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-sm"><Megaphone className="h-4 w-4" /> {t('marketing.sources.title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 md:p-4 pt-0">
                     {sources.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No source data yet.</p>
+                      <p className="text-xs text-muted-foreground">{t('marketing.sources.noData')}</p>
                     ) : (
                       <div className="space-y-2">
                         {sources.map(src => (
@@ -562,8 +536,8 @@ export default function MarketingAnalytics() {
                                 <div className="h-full rounded-full bg-indigo-500" style={{ width: `${src.share}%` }} />
                               </div>
                             </div>
-                            <span className="text-muted-foreground w-16 text-right">{fmtNum(src.sessions)} sess</span>
-                            <span className="text-muted-foreground w-12 text-right">{fmtNum(src.purchases)} pur</span>
+                            <span className="text-muted-foreground w-16 text-right">{fmtNum(src.sessions)} {t('marketing.sources.sessions')}</span>
+                            <span className="text-muted-foreground w-12 text-right">{fmtNum(src.purchases)} {t('marketing.sources.orders')}</span>
                           </div>
                         ))}
                       </div>
@@ -576,21 +550,25 @@ export default function MarketingAnalytics() {
               {recs.length > 0 && (
                 <Card className={surfaceCard}>
                   <CardHeader className="p-3 md:p-4">
-                    <CardTitle className="flex items-center gap-2 text-sm"><Zap className="h-4 w-4 text-amber-500" /> Recommendations</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-sm"><Zap className="h-4 w-4 text-amber-500" /> {t('marketing.recs.title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 md:p-4 pt-0 space-y-2">
-                    {recs.map((rec, i) => (
-                      <div key={i} className={`rounded-xl border p-3 ${severityColor(rec.severity)}`}>
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                          <div className="space-y-0.5">
-                            <p className="font-bold text-xs">{rec.title}</p>
-                            <p className="text-sm opacity-80">{rec.detail}</p>
-                            <p className="text-sm font-medium opacity-90">→ {rec.action}</p>
+                    {recs.map((rec, i) => {
+                      const p = rec.params || {};
+                      const strParams = Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)]));
+                      return (
+                        <div key={i} className={`rounded-xl border p-3 ${severityColor(rec.severity)}`}>
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                            <div className="space-y-0.5">
+                              <p className="font-bold text-xs">{t(`marketing.rec.${rec.key}.title`, strParams)}</p>
+                              <p className="text-sm opacity-80">{t(`marketing.rec.${rec.key}.detail`, strParams)}</p>
+                              <p className="text-sm font-medium opacity-90">→ {t(`marketing.rec.${rec.key}.action`)}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </CardContent>
                 </Card>
               )}
@@ -599,13 +577,13 @@ export default function MarketingAnalytics() {
               {statuses.length > 0 && (
                 <Card className={surfaceCard}>
                   <CardHeader className="p-3 md:p-4">
-                    <CardTitle className="flex items-center gap-2 text-sm"><Package className="h-4 w-4" /> Order Status Breakdown</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-sm"><Package className="h-4 w-4" /> {t('marketing.status.title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 md:p-4 pt-0">
                     <div className="flex flex-wrap gap-2">
                       {statuses.map(st => (
                         <Badge key={st.status} variant="secondary" className="text-xs py-1 px-2.5 rounded-lg">
-                          {st.status}: {fmtNum(st.count)} ({fmtPct(st.share)})
+                          {t(`marketing.orderStatus.${st.status}`)}: {fmtNum(st.count)} ({fmtPct(st.share)})
                         </Badge>
                       ))}
                     </div>
@@ -622,7 +600,7 @@ export default function MarketingAnalytics() {
             <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-violet-500" /></div>
           ) : creatives.length === 0 ? (
             <div className={`${surfaceMuted} p-8 text-center text-sm text-muted-foreground`}>
-              No creative data yet. Add creative metadata and ad spend in the Inputs tab to unlock POAS leaderboard.
+              {t('marketing.creatives.noData')}
             </div>
           ) : (
             <>
@@ -630,7 +608,7 @@ export default function MarketingAnalytics() {
                 <div className="rounded-2xl border border-red-300/50 dark:border-red-700/50 bg-red-50/80 dark:bg-red-900/20 p-3 flex items-center gap-3">
                   <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
                   <span className="text-xs text-red-800 dark:text-red-300 font-medium">
-                    {overview.toxicCreativeCount} creative(s) flagged as <strong>toxic-success</strong> — generating revenue but with poor profit or high returns.
+                    {t('marketing.creatives.toxicWarning', { count: String(overview.toxicCreativeCount) })}
                   </span>
                 </div>
               )}
@@ -638,16 +616,17 @@ export default function MarketingAnalytics() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs uppercase tracking-wider">
-                      <TableHead className="w-[180px]">Creative</TableHead>
-                      <TableHead className="text-right">Sessions</TableHead>
-                      <TableHead className="text-right">Purchases</TableHead>
-                      <TableHead className="text-right">Revenue</TableHead>
-                      <TableHead className="text-right">Spend</TableHead>
-                      <TableHead className="text-right">Net Profit</TableHead>
-                      <TableHead className="text-right">POAS</TableHead>
-                      <TableHead className="text-right">Return %</TableHead>
-                      <TableHead>Top Friction</TableHead>
-                      <TableHead className="w-[60px]">Flag</TableHead>
+                      <TableHead className="w-[180px]">{t('marketing.creatives.col.creative')}</TableHead>
+                      <TableHead className="text-right">{t('marketing.creatives.col.sessions')}</TableHead>
+                      <TableHead className="text-right">{t('marketing.creatives.col.orders')}</TableHead>
+                      <TableHead className="text-right">{t('marketing.creatives.col.delivered')}</TableHead>
+                      <TableHead className="text-right">{t('marketing.creatives.col.revenue')}</TableHead>
+                      <TableHead className="text-right">{t('marketing.creatives.col.spend')}</TableHead>
+                      <TableHead className="text-right">{t('marketing.creatives.col.netProfit')}</TableHead>
+                      <TableHead className="text-right">{t('marketing.creatives.col.poas')}</TableHead>
+                      <TableHead className="text-right">{t('marketing.creatives.col.returnPct')}</TableHead>
+                      <TableHead>{t('marketing.creatives.col.friction')}</TableHead>
+                      <TableHead className="w-[60px]">{t('marketing.creatives.col.flag')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -659,17 +638,18 @@ export default function MarketingAnalytics() {
                         </TableCell>
                         <TableCell className="text-right text-xs">{fmtNum(c.sessions)}</TableCell>
                         <TableCell className="text-right text-xs">{fmtNum(c.purchases)}</TableCell>
+                        <TableCell className="text-right text-xs font-medium text-emerald-600 dark:text-emerald-400">{fmtNum(c.deliveredOrders)}</TableCell>
                         <TableCell className="text-right text-xs">{fmtCurrency(c.realizedRevenue)}</TableCell>
                         <TableCell className="text-right text-xs">{fmtCurrency(c.spend)}</TableCell>
                         <TableCell className={`text-right text-xs font-bold ${c.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{fmtCurrency(c.netProfit)}</TableCell>
                         <TableCell className="text-right text-xs font-semibold">{fmtPoas(c.poas)}</TableCell>
                         <TableCell className="text-right text-xs">{fmtPct(c.returnRate)}</TableCell>
                         <TableCell className="text-xs">
-                          {c.topFriction && <Badge variant="secondary" className="text-xs py-0.5">{c.topFriction}</Badge>}
+                          {c.topFriction && <Badge variant="secondary" className="text-xs py-0.5">{t(`marketing.friction.${c.topFriction}`)}</Badge>}
                         </TableCell>
                         <TableCell>
                           {c.toxicSuccess && (
-                            <Badge variant="destructive" className="text-xs py-0 px-1.5">TOXIC</Badge>
+                            <Badge variant="destructive" className="text-xs py-0 px-1.5">{t('marketing.creatives.toxic')}</Badge>
                           )}
                         </TableCell>
                       </TableRow>
@@ -690,26 +670,26 @@ export default function MarketingAnalytics() {
               {/* Friction clusters */}
               <Card className={surfaceCard}>
                 <CardHeader className="p-3 md:p-4">
-                  <CardTitle className="flex items-center gap-2 text-sm"><Activity className="h-4 w-4" /> Why They Left — Friction Clusters</CardTitle>
-                  <CardDescription className="text-xs">Sessions grouped by behavioral friction pattern</CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-sm"><Activity className="h-4 w-4" /> {t('marketing.diag.frictionTitle')}</CardTitle>
+                  <CardDescription className="text-xs">{t('marketing.diag.frictionDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 md:p-4 pt-0 space-y-3">
                   {clusters.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No session diagnostics available yet.</p>
+                    <p className="text-xs text-muted-foreground">{t('marketing.diag.noData')}</p>
                   ) : (
                     clusters.map((cl, idx) => (
                       <div key={idx} className={`rounded-xl border p-3 ${surfaceMuted}`}>
                         <div className="flex items-center justify-between mb-2">
-                          <Badge className={`text-xs py-0.5 rounded-lg ${frictionColor(cl.label)}`}>{cl.label}</Badge>
-                          <span className="text-xs font-bold">{fmtNum(cl.sessions)} sessions ({fmtPct(cl.share)})</span>
+                          <Badge className={`text-xs py-0.5 rounded-lg ${frictionColor(cl.label)}`}>{t(`marketing.friction.${cl.label}`)}</Badge>
+                          <span className="text-xs font-bold">{fmtNum(cl.sessions)} {t('marketing.diag.sessions')} ({fmtPct(cl.share)})</span>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">{cl.reason}</p>
+                        <p className="text-sm text-muted-foreground mb-2">{t(`marketing.frictionReason.${cl.reason}`)}</p>
                         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Scroll className="h-3 w-3" /> Scroll: {Math.round(cl.avgScrollDepth)}%</span>
-                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Time: {fmtSeconds(cl.avgActiveTimeSeconds)}</span>
-                          {cl.topExitPage && <span className="flex items-center gap-1">Exit: {cl.topExitPage}</span>}
-                          {cl.topSource && <span className="flex items-center gap-1">Source: {cl.topSource}</span>}
-                          {cl.topProductTitle && <span className="flex items-center gap-1">Product: {cl.topProductTitle}</span>}
+                          <span className="flex items-center gap-1"><Scroll className="h-3 w-3" /> {t('marketing.diag.scroll')}: {Math.round(cl.avgScrollDepth)}%</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {t('marketing.diag.time')}: {fmtSeconds(cl.avgActiveTimeSeconds)}</span>
+                          {cl.topExitPage && <span className="flex items-center gap-1">{t('marketing.diag.exit')}: {cl.topExitPage}</span>}
+                          {cl.topSource && <span className="flex items-center gap-1">{t('marketing.diag.source')}: {cl.topSource}</span>}
+                          {cl.topProductTitle && <span className="flex items-center gap-1">{t('marketing.diag.product')}: {cl.topProductTitle}</span>}
                         </div>
                       </div>
                     ))
@@ -720,23 +700,23 @@ export default function MarketingAnalytics() {
               {/* Recent sessions */}
               <Card className={surfaceCard}>
                 <CardHeader className="p-3 md:p-4">
-                  <CardTitle className="flex items-center gap-2 text-sm"><LayoutGrid className="h-4 w-4" /> Recent Sessions</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-sm"><LayoutGrid className="h-4 w-4" /> {t('marketing.diag.recentTitle')}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 md:p-4 pt-0">
                   {sessions.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No recorded sessions for this period.</p>
+                    <p className="text-xs text-muted-foreground">{t('marketing.diag.noSessions')}</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow className="text-xs uppercase tracking-wider">
-                            <TableHead>Time</TableHead>
-                            <TableHead>Source</TableHead>
-                            <TableHead>Product</TableHead>
-                            <TableHead>Friction Label</TableHead>
-                            <TableHead className="text-right">Scroll</TableHead>
-                            <TableHead className="text-right">Time</TableHead>
-                            <TableHead>Outcome</TableHead>
+                            <TableHead>{t('marketing.diag.col.time')}</TableHead>
+                            <TableHead>{t('marketing.diag.col.source')}</TableHead>
+                            <TableHead>{t('marketing.diag.col.product')}</TableHead>
+                            <TableHead>{t('marketing.diag.col.friction')}</TableHead>
+                            <TableHead className="text-right">{t('marketing.diag.col.scroll')}</TableHead>
+                            <TableHead className="text-right">{t('marketing.diag.col.duration')}</TableHead>
+                            <TableHead>{t('marketing.diag.col.outcome')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -749,16 +729,16 @@ export default function MarketingAnalytics() {
                               <TableCell className="text-xs max-w-[120px] truncate">{s.productTitle || '—'}</TableCell>
                               <TableCell>
                                 {s.diagnosticLabel ? (
-                                  <Badge className={`text-xs py-0.5 rounded-lg ${frictionColor(s.diagnosticLabel)}`}>{s.diagnosticLabel}</Badge>
+                                  <Badge className={`text-xs py-0.5 rounded-lg ${frictionColor(s.diagnosticLabel)}`}>{t(`marketing.friction.${s.diagnosticLabel}`)}</Badge>
                                 ) : '—'}
                               </TableCell>
                               <TableCell className="text-right text-xs">{Math.round(s.maxScrollDepth)}%</TableCell>
                               <TableCell className="text-right text-xs">{fmtSeconds(s.activeTimeSeconds)}</TableCell>
                               <TableCell>
                                 {s.converted ? (
-                                  <Badge className="text-xs py-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">Converted</Badge>
+                                  <Badge className="text-xs py-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">{t('marketing.diag.converted')}</Badge>
                                 ) : (
-                                  <Badge variant="secondary" className="text-xs py-0">Dropped</Badge>
+                                  <Badge variant="secondary" className="text-xs py-0">{t('marketing.diag.dropped')}</Badge>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -782,23 +762,23 @@ export default function MarketingAnalytics() {
               {/* Product Economics */}
               <Card className={surfaceCard}>
                 <CardHeader className="p-3 md:p-4">
-                  <CardTitle className="flex items-center gap-2 text-sm"><Package className="h-4 w-4" /> Product Economics</CardTitle>
-                  <CardDescription className="text-xs">Set buy cost, packaging, handling, and fallback shipping per product. This unlocks profit and POAS calculations.</CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-sm"><Package className="h-4 w-4" /> {t('marketing.inputs.econTitle')}</CardTitle>
+                  <CardDescription className="text-xs">{t('marketing.inputs.econDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 md:p-4 pt-0">
                   {(!inputs?.products || inputs.products.length === 0) ? (
-                    <p className="text-xs text-muted-foreground">No products found. Add products to your store first.</p>
+                    <p className="text-xs text-muted-foreground">{t('marketing.inputs.noProducts')}</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow className="text-xs uppercase tracking-wider">
-                            <TableHead>Product</TableHead>
-                            <TableHead className="text-right">Sell Price</TableHead>
-                            <TableHead className="text-right">Buy Cost</TableHead>
-                            <TableHead className="text-right">Packaging</TableHead>
-                            <TableHead className="text-right">Handling</TableHead>
-                            <TableHead className="text-right">Ship Fallback</TableHead>
+                            <TableHead>{t('marketing.inputs.col.product')}</TableHead>
+                            <TableHead className="text-right">{t('marketing.inputs.col.sellPrice')}</TableHead>
+                            <TableHead className="text-right">{t('marketing.inputs.col.buyCost')}</TableHead>
+                            <TableHead className="text-right">{t('marketing.inputs.col.packaging')}</TableHead>
+                            <TableHead className="text-right">{t('marketing.inputs.col.handling')}</TableHead>
+                            <TableHead className="text-right">{t('marketing.inputs.col.shipping')}</TableHead>
                             <TableHead className="w-[100px]"></TableHead>
                           </TableRow>
                         </TableHeader>
@@ -866,7 +846,7 @@ export default function MarketingAnalytics() {
                                         fallback_shipping_cost: String(p.fallback_shipping_cost || ''),
                                       });
                                     }}>
-                                      Edit
+                                      {t('edit')}
                                     </Button>
                                   )}
                                 </TableCell>
@@ -883,36 +863,36 @@ export default function MarketingAnalytics() {
               {/* Ad Spend */}
               <Card className={surfaceCard}>
                 <CardHeader className="p-3 md:p-4">
-                  <CardTitle className="flex items-center gap-2 text-sm"><DollarSign className="h-4 w-4" /> Ad Spend Entries</CardTitle>
-                  <CardDescription className="text-xs">Enter your daily ad spend per platform/campaign to enable POAS and profit-on-ad-spend tracking.</CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-sm"><DollarSign className="h-4 w-4" /> {t('marketing.inputs.spendTitle')}</CardTitle>
+                  <CardDescription className="text-xs">{t('marketing.inputs.spendDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 md:p-4 pt-0 space-y-3">
                   {/* Add new entry */}
                   <div className={`${surfaceMuted} p-3 space-y-2`}>
-                    <p className="text-xs font-bold">Add Spend Entry</p>
+                    <p className="text-xs font-bold">{t('marketing.inputs.addEntry')}</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       <div>
-                        <Label className="text-xs text-muted-foreground">Date</Label>
+                        <Label className="text-xs text-muted-foreground">{t('marketing.inputs.col.date')}</Label>
                         <Input type="date" className={inputClass} value={spendDraft.entryDate} onChange={e => setSpendDraft(d => ({ ...d, entryDate: e.target.value }))} />
                       </div>
                       <div>
-                        <Label className="text-xs text-muted-foreground">Platform</Label>
+                        <Label className="text-xs text-muted-foreground">{t('marketing.inputs.col.platform')}</Label>
                         <Select value={spendDraft.platform} onValueChange={v => setSpendDraft(d => ({ ...d, platform: v }))}>
                           <SelectTrigger className={inputClass}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="facebook">Facebook</SelectItem>
                             <SelectItem value="tiktok">TikTok</SelectItem>
                             <SelectItem value="google">Google</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
+                            <SelectItem value="other">{t('marketing.platform.other')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-xs text-muted-foreground">Campaign Name</Label>
-                        <Input className={inputClass} placeholder="e.g. Summer sale" value={spendDraft.campaignName} onChange={e => setSpendDraft(d => ({ ...d, campaignName: e.target.value }))} />
+                        <Label className="text-xs text-muted-foreground">{t('marketing.inputs.col.campaign')}</Label>
+                        <Input className={inputClass} placeholder={t('marketing.inputs.campaignPlaceholder')} value={spendDraft.campaignName} onChange={e => setSpendDraft(d => ({ ...d, campaignName: e.target.value }))} />
                       </div>
                       <div>
-                        <Label className="text-xs text-muted-foreground">Spend (DZD)</Label>
+                        <Label className="text-xs text-muted-foreground">{t('marketing.inputs.col.spend')} (DZD)</Label>
                         <Input className={inputClass} type="number" placeholder="0" value={spendDraft.spend} onChange={e => setSpendDraft(d => ({ ...d, spend: e.target.value }))} />
                       </div>
                     </div>
@@ -930,7 +910,7 @@ export default function MarketingAnalytics() {
                       setSpendDraft({ entryDate: new Date().toISOString().slice(0, 10), platform: 'facebook', campaignName: '', spend: '', impressions: '', clicks: '', notes: '' });
                     }}>
                       {saveSpend.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
-                      Add Entry
+                      {t('marketing.inputs.addEntry')}
                     </Button>
                   </div>
 
@@ -940,10 +920,10 @@ export default function MarketingAnalytics() {
                       <Table>
                         <TableHeader>
                           <TableRow className="text-xs uppercase tracking-wider">
-                            <TableHead>Date</TableHead>
-                            <TableHead>Platform</TableHead>
-                            <TableHead>Campaign</TableHead>
-                            <TableHead className="text-right">Spend</TableHead>
+                            <TableHead>{t('marketing.inputs.col.date')}</TableHead>
+                            <TableHead>{t('marketing.inputs.col.platform')}</TableHead>
+                            <TableHead>{t('marketing.inputs.col.campaign')}</TableHead>
+                            <TableHead className="text-right">{t('marketing.inputs.col.spend')}</TableHead>
                             <TableHead className="w-[40px]"></TableHead>
                           </TableRow>
                         </TableHeader>
@@ -971,60 +951,23 @@ export default function MarketingAnalytics() {
               {/* Historical backfill */}
               <Card className={surfaceCard}>
                 <CardHeader className="p-3 md:p-4">
-                  <CardTitle className="flex items-center gap-2 text-sm"><Upload className="h-4 w-4" /> Historical Backfill</CardTitle>
-                  <CardDescription className="text-xs">Import existing pixel events into the Omni session model for retrospective diagnostics.</CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-sm"><Upload className="h-4 w-4" /> {t('marketing.inputs.backfillTitle')}</CardTitle>
+                  <CardDescription className="text-xs">{t('marketing.inputs.backfillDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 md:p-4 pt-0 flex items-center gap-3">
                   <Button size="sm" className="h-9 rounded-xl text-xs" disabled={runBackfill.isPending} onClick={() => runBackfill.mutate(90)}>
                     {runBackfill.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
-                    Backfill last 90 days
+                    {t('marketing.inputs.backfillBtn')}
                   </Button>
                   {inputs?.importJobs && inputs.importJobs.length > 0 && (
                     <span className="text-xs text-muted-foreground">
-                      Last import: {inputs.importJobs[0].status} ({inputs.importJobs[0].processed_rows ?? 0} rows)
+                      {t('marketing.inputs.lastImport', { status: inputs.importJobs[0].status, rows: String(inputs.importJobs[0].processed_rows ?? 0) })}
                     </span>
                   )}
                 </CardContent>
               </Card>
             </>
           )}
-        </TabsContent>
-
-        {/* ═══════════════════════════════ AI ═══════════════════════════════ */}
-        <TabsContent value="ai" className="space-y-4">
-          <Card className={surfaceCard}>
-            <CardHeader className="p-3 md:p-4">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-md shadow-violet-500/30">
-                  <Sparkles className="h-3.5 w-3.5 text-white" />
-                </div>
-                AI Behavior Analysis
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Let AI analyze your store's traffic, sessions, and order patterns to surface actionable insights you might miss.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-3 md:p-4 pt-0 space-y-3">
-              <Button
-                className="h-10 rounded-xl text-xs bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-md"
-                disabled={aiLoading}
-                onClick={runAIAnalysis}
-              >
-                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Brain className="h-3.5 w-3.5 mr-1.5" />}
-                Run Full Analysis
-              </Button>
-              {aiResult && (
-                <div className={`${surfaceMuted} p-4 text-xs leading-relaxed whitespace-pre-wrap`}>
-                  {aiResult}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ═══════════════════════════════ VISION ═══════════════════════════════ */}
-        <TabsContent value="vision" className="space-y-4">
-          <VisionAnalytics surfaceCard={surfaceCard} surfaceMuted={surfaceMuted} />
         </TabsContent>
 
         {/* ═══════════════════════════════ SETTINGS ═══════════════════════════════ */}
@@ -1036,8 +979,8 @@ export default function MarketingAnalytics() {
               {/* Existing pixel management */}
               <Card className={surfaceCard}>
                 <CardHeader className="p-3 md:p-4">
-                  <CardTitle className="flex items-center gap-2 text-sm"><Settings className="h-4 w-4" /> Pixel Configuration</CardTitle>
-                  <CardDescription className="text-xs">Manage your tracking pixels for Facebook and TikTok.</CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-sm"><Settings className="h-4 w-4" /> {t('marketing.settings.title')}</CardTitle>
+                  <CardDescription className="text-xs">{t('marketing.settings.desc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 md:p-4 pt-0 space-y-4">
                   {/* Current pixels */}
@@ -1067,7 +1010,7 @@ export default function MarketingAnalytics() {
 
                   {/* Add pixel */}
                   <div className={`${surfaceMuted} p-3 space-y-2`}>
-                    <p className="text-xs font-bold">Add Pixel</p>
+                    <p className="text-xs font-bold">{t('marketing.settings.addPixel')}</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       <Select value={newPixel.type || 'facebook'} onValueChange={v => setNewPixel(d => ({ ...d, type: v as 'facebook' | 'tiktok' }))}>
                         <SelectTrigger className={inputClass}><SelectValue /></SelectTrigger>
@@ -1076,13 +1019,13 @@ export default function MarketingAnalytics() {
                           <SelectItem value="tiktok">TikTok</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Input className={inputClass} placeholder="Pixel ID" value={newPixel.pixel_id || ''} onChange={e => setNewPixel(d => ({ ...d, pixel_id: e.target.value }))} />
-                      <Input className={inputClass} placeholder="Access Token (optional)" value={newPixel.access_token || ''} onChange={e => setNewPixel(d => ({ ...d, access_token: e.target.value }))} />
-                      <Input className={inputClass} placeholder="Name (optional)" value={newPixel.name || ''} onChange={e => setNewPixel(d => ({ ...d, name: e.target.value }))} />
+                      <Input className={inputClass} placeholder={t('marketing.settings.pixelId')} value={newPixel.pixel_id || ''} onChange={e => setNewPixel(d => ({ ...d, pixel_id: e.target.value }))} />
+                      <Input className={inputClass} placeholder={t('marketing.settings.accessToken')} value={newPixel.access_token || ''} onChange={e => setNewPixel(d => ({ ...d, access_token: e.target.value }))} />
+                      <Input className={inputClass} placeholder={t('marketing.settings.pixelName')} value={newPixel.name || ''} onChange={e => setNewPixel(d => ({ ...d, name: e.target.value }))} />
                     </div>
                     <Button size="sm" className="h-9 rounded-xl text-xs" onClick={() => {
                       if (!newPixel.pixel_id?.trim()) {
-                        toast({ title: 'Error', description: 'Enter a pixel ID.', variant: 'destructive' });
+                        toast({ title: t('marketing.toast.error'), description: t('marketing.toast.enterPixelId'), variant: 'destructive' });
                         return;
                       }
                       setPixels(prev => [...prev, {
@@ -1095,7 +1038,7 @@ export default function MarketingAnalytics() {
                       }]);
                       setNewPixel({ type: 'facebook', pixel_id: '', access_token: '', enabled: true, name: '' });
                     }}>
-                      <Plus className="h-3 w-3 mr-1" /> Add Pixel
+                      <Plus className="h-3 w-3 mr-1" /> {t('marketing.settings.addPixel')}
                     </Button>
                   </div>
 
@@ -1119,7 +1062,7 @@ export default function MarketingAnalytics() {
                     }}
                   >
                     {updatePixelSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                    Save Pixel Settings
+                    {t('marketing.settings.save')}
                   </Button>
                 </CardContent>
               </Card>
@@ -1132,150 +1075,6 @@ export default function MarketingAnalytics() {
 }
 
 // ─── Sub-components ─────────────────────────────────────────────
-
-function VisionAnalytics({ surfaceCard, surfaceMuted }: { surfaceCard: string; surfaceMuted: string }) {
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['vision-usage-stats'],
-    queryFn: async () => {
-      const res = await apiFetch('/api/ai/vision/usage-stats');
-      if (!res.ok) throw new Error('Failed to load vision stats');
-      return res.json();
-    },
-  });
-
-  const featureLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-    analyze_product: { label: 'Product Analysis', icon: <ScanEye className="h-3 w-3 text-white" />, color: 'from-violet-600 to-purple-600 shadow-violet-500/30' },
-    vision_chat: { label: 'Vision Chat', icon: <Brain className="h-3 w-3 text-white" />, color: 'from-fuchsia-600 to-pink-600 shadow-fuchsia-500/30' },
-    quality_check: { label: 'Quality Checks', icon: <CheckCircle className="h-3 w-3 text-white" />, color: 'from-emerald-600 to-teal-600 shadow-emerald-500/30' },
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
-      </div>
-    );
-  }
-
-  const totals = data?.totals || { total_requests: 0, total_tokens: 0, active_days: 0 };
-  const byFeature = data?.byFeature || [];
-  const daily = data?.daily || [];
-
-  return (
-    <>
-      {/* Totals */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPICard
-          icon={<ScanEye className="h-3.5 w-3.5 text-white" />}
-          iconBg="from-violet-600 to-purple-600 shadow-violet-500/30"
-          label="Vision Requests"
-          value={String(totals.total_requests || 0)}
-          sub={`${totals.active_days || 0} active days`}
-        />
-        <KPICard
-          icon={<Zap className="h-3.5 w-3.5 text-white" />}
-          iconBg="from-amber-500 to-orange-500 shadow-amber-500/30"
-          label="Est. Tokens Used"
-          value={fmtNum(totals.total_tokens || 0)}
-          sub="Across all features"
-        />
-        <KPICard
-          icon={<ImagePlus className="h-3.5 w-3.5 text-white" />}
-          iconBg="from-sky-500 to-blue-600 shadow-sky-500/30"
-          label="Images Analyzed"
-          value={String(byFeature.find((f: any) => f.feature === 'analyze_product')?.count || 0)}
-          sub="Product photos scanned"
-        />
-        <KPICard
-          icon={<Brain className="h-3.5 w-3.5 text-white" />}
-          iconBg="from-fuchsia-600 to-pink-600 shadow-fuchsia-500/30"
-          label="Vision Chats"
-          value={String(byFeature.find((f: any) => f.feature === 'vision_chat')?.count || 0)}
-          sub="Image-based conversations"
-        />
-      </div>
-
-      {/* Feature Breakdown */}
-      <Card className={surfaceCard}>
-        <CardHeader className="p-3 md:p-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-md shadow-violet-500/30">
-              <ScanEye className="h-3.5 w-3.5 text-white" />
-            </div>
-            Vision Feature Usage
-          </CardTitle>
-          <CardDescription className="text-xs">Breakdown of AI vision feature usage across your store</CardDescription>
-        </CardHeader>
-        <CardContent className="p-3 md:p-4 pt-0">
-          {byFeature.length === 0 ? (
-            <div className={`${surfaceMuted} p-6 text-center text-sm text-muted-foreground`}>
-              <ScanEye className="h-8 w-8 mx-auto mb-2 text-violet-400 opacity-50" />
-              <p className="font-medium">No vision data yet</p>
-              <p className="text-xs mt-1">Use AI Auto-Fill on product images or send images in AI chat to start tracking.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {byFeature.map((f: any) => {
-                const meta = featureLabels[f.feature] || { label: f.feature, icon: <Zap className="h-3 w-3 text-white" />, color: 'from-slate-500 to-slate-600' };
-                const pct = totals.total_requests > 0 ? Math.round((f.count / totals.total_requests) * 100) : 0;
-                return (
-                  <div key={f.feature} className="flex items-center gap-3">
-                    <div className={`flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br shadow-md ${meta.color} flex-shrink-0`}>
-                      {meta.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold">{meta.label}</span>
-                        <span className="text-muted-foreground">{f.count} requests ({pct}%)</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 mt-1 overflow-hidden">
-                        <div className={`h-full rounded-full bg-gradient-to-r ${meta.color.split(' shadow')[0]}`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Daily Activity */}
-      {daily.length > 0 && (
-        <Card className={surfaceCard}>
-          <CardHeader className="p-3 md:p-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/30">
-                <Activity className="h-3.5 w-3.5 text-white" />
-              </div>
-              Daily Vision Activity (Last 30 Days)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 md:p-4 pt-0">
-            <div className="flex items-end gap-1 h-24">
-              {daily.slice(0, 30).reverse().map((d: any, i: number) => {
-                const maxReq = Math.max(...daily.map((dd: any) => Number(dd.requests || 0)), 1);
-                const barH = Math.max(4, Math.round((Number(d.requests) / maxReq) * 80));
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.date}: ${d.requests} requests`}>
-                    <div
-                      className="w-full rounded-t-sm bg-gradient-to-t from-violet-600 to-fuchsia-500 opacity-80 hover:opacity-100 transition-opacity"
-                      style={{ height: `${barH}px`, minWidth: 4 }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-              <span>30 days ago</span>
-              <span>Today</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </>
-  );
-}
 
 function KPICard({ icon, iconBg, label, value, sub, positive }: { icon: React.ReactNode; iconBg: string; label: string; value: string; sub?: string; positive?: boolean }) {
   return (
