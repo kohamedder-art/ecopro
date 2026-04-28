@@ -138,6 +138,11 @@ export default function OrderSuccessConnect({
           </a>
         ))}
       </div>
+      {messagingChannels.some(ch => ch.platform === 'facebook') && (
+        <p className="text-xs text-center mt-3 opacity-70">
+          💬 افتح ماسنجر وأرسل أي رسالة لتفعيل الإشعارات
+        </p>
+      )}
     </div>
   );
 }
