@@ -216,6 +216,10 @@ export const getMessengerPageLink: RequestHandler = async (req, res) => {
 
         // Add ref parameter for tracking
         messengerUrl = `https://m.me/${encodeURIComponent(pageId)}?ref=${encodeURIComponent(refToken)}`;
+
+        // Ensure "Get Started" button is configured — ref tokens only work via the
+        // GET_STARTED postback, so this must be set up at least once per page.
+        setupGetStartedButton(effective.pageAccessToken).catch(() => {});
       }
     }
 
