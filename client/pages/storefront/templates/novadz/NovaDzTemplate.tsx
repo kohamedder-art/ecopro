@@ -303,7 +303,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
                 {settings?.nova_product_name || settings?.template_hero_heading || mainProduct.title}
             </h1>
             <div className="flex items-center gap-4">
-                <span className="text-2xl font-black" style={{ color: accentColor }}>{Math.round(mainProduct.price ?? 0).toLocaleString()} DA</span>
+                <span className="text-2xl font-black" style={{ color: accentColor }}>{Math.round(mainProduct.price).toLocaleString()} DA</span>
                 <span className="text-sm line-through font-medium" style={{ color: textMuted }}>{Math.round(mainProduct.original_price || (mainProduct.price + 2000)).toLocaleString()} DA</span>
             </div>
             
@@ -538,7 +538,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
             className="w-full py-4 text-white rounded-2xl font-black text-lg shadow-xl flex items-center justify-center gap-2"
             style={{ backgroundColor: accentColor }}
           >
-            اطلب الآن - {Math.round((mainProduct.price ?? 0) * quantity).toLocaleString()} DA
+            اطلب الآن - {Math.round(mainProduct.price * quantity).toLocaleString()} DA
           </button>
       </div>
       

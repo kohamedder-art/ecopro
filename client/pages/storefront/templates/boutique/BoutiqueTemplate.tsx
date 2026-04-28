@@ -292,12 +292,12 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             {orderProduct && (
               <div className="flex justify-between">
                 <span style={{ color: surfaceTextMuted }}>{orderProduct.title} × {orderQty}</span>
-                <span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round(((orderVariant?.price ?? orderProduct.price) * orderQty) ?? 0).toLocaleString()} {currency}</span>
+                <span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round((orderVariant?.price ?? orderProduct.price) * orderQty).toLocaleString()} {currency}</span>
               </div>
             )}
             <div className="h-px my-1" style={{ backgroundColor: surfaceBorderColor }} />
             <div className="flex justify-between"><span style={{ color: surfaceTextMuted }}>التوصيل</span><span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round(deliveryFee ?? 0).toLocaleString()} {currency}</span></div>
-            <div className="flex justify-between"><span className="font-black" style={{ color: surfaceTextColor }}>المجموع</span><span className="font-black text-lg" style={{ color: surfaceTextColor }}>{Math.round((orderProduct ? (orderVariant?.price ?? orderProduct.price) * orderQty + deliveryFee : 0) ?? 0).toLocaleString()} {currency}</span></div>
+            <div className="flex justify-between"><span className="font-black" style={{ color: surfaceTextColor }}>المجموع</span><span className="font-black text-lg" style={{ color: surfaceTextColor }}>{Math.round(orderProduct ? (orderVariant?.price ?? orderProduct.price) * orderQty + deliveryFee : 0).toLocaleString()} {currency}</span></div>
           </div>
         </div>
       </div>
@@ -556,7 +556,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               <div className="p-4 border-t space-y-3" style={{ backgroundColor: surfaceColor, borderColor: surfaceBorderColor }}>
                 <div className="flex justify-between font-black text-base" style={{ color: surfaceTextColor }}>
                   <span>المجموع</span>
-                  <span style={{ color: accentColor }}>{Math.round((((orderVariant?.price ?? orderProduct.price) * orderQty) + deliveryFee) ?? 0).toLocaleString()} {currency}</span>
+                  <span style={{ color: accentColor }}>{Math.round(((orderVariant?.price ?? orderProduct.price) * orderQty) + deliveryFee).toLocaleString()} {currency}</span>
                 </div>
                 <button
                   type="button"

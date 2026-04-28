@@ -171,7 +171,7 @@ export default function VeraTemplate(props: TemplateProps) {
           ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
           quantity: selectedOffer?.quantity || 1,
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-          total_price: (selectedOffer ? selectedOffer.bundle_price : (product.price ?? 0)) + shipping,
+          total_price: (selectedOffer ? selectedOffer.bundle_price : product.price) + shipping,
           delivery_fee: shipping,
           delivery_type: 'desk',
           customer_name: formData.name,
@@ -306,7 +306,7 @@ export default function VeraTemplate(props: TemplateProps) {
                     {product.description?.slice(0, 30) || 'Collection'}
                   </p>
                   <h4 className="text-2xl font-black italic tracking-tight">{product.name || product.title}</h4>
-                  <p className="text-white/60 font-medium mt-1">{fmtPrice(product.price ?? 0)}</p>
+                  <p className="text-white/60 font-medium mt-1">{fmtPrice(product.price)}</p>
                 </div>
                 <button className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 shadow-2xl">
                   <ShoppingBag size={20} />
@@ -376,7 +376,7 @@ export default function VeraTemplate(props: TemplateProps) {
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               <div className="flex justify-between items-start gap-4">
                 <h3 className="text-xl font-black italic leading-tight text-white">{detailProduct.name || detailProduct.title}</h3>
-                <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{fmtPrice(detailProduct.price ?? 0)}</p>
+                <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{fmtPrice(detailProduct.price)}</p>
               </div>
               {detailProduct.description && <p className="text-sm leading-relaxed whitespace-pre-line text-white/50">{detailProduct.description}</p>}
               {detailProduct.category && <span className="inline-block text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border border-white/10 text-white/50">{detailProduct.category}</span>}
@@ -401,7 +401,7 @@ export default function VeraTemplate(props: TemplateProps) {
               {selectedProduct.images?.[0] && <img src={selectedProduct.images[0]} className="w-24 h-32 rounded-2xl object-cover" alt="" />}
               <div>
                 <h4 className="text-xl font-black italic">{selectedProduct.name || selectedProduct.title}</h4>
-                <p className="font-black mt-1" style={{ color: accentColor }}>{fmtPrice(selectedProduct.price ?? 0)}</p>
+                <p className="font-black mt-1" style={{ color: accentColor }}>{fmtPrice(selectedProduct.price)}</p>
               </div>
             </div>
             <div className="space-y-3" dir="rtl">
@@ -437,9 +437,9 @@ export default function VeraTemplate(props: TemplateProps) {
               {showNotes && <textarea placeholder="ملاحظات" rows={2} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/30 resize-none" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />}
             </div>
             <div className="mt-6 bg-white/5 p-4 rounded-2xl space-y-1">
-              <div className="flex justify-between text-sm text-white/50"><span>المنتج:</span><span>{fmtPrice(selectedProduct.price ?? 0)}</span></div>
+              <div className="flex justify-between text-sm text-white/50"><span>المنتج:</span><span>{fmtPrice(selectedProduct.price)}</span></div>
               <div className="flex justify-between text-sm text-white/50"><span>التوصيل:</span><span>{fmtPrice(shipping)}</span></div>
-              <div className="flex justify-between text-lg font-black pt-2 border-t border-white/10"><span>المجموع:</span><span style={{ color: accentColor }}>{fmtPrice((selectedProduct.price ?? 0) + shipping)}</span></div>
+              <div className="flex justify-between text-lg font-black pt-2 border-t border-white/10"><span>المجموع:</span><span style={{ color: accentColor }}>{fmtPrice(selectedProduct.price + shipping)}</span></div>
             </div>
             <button
               onClick={() => handleOrder(selectedProduct)}
