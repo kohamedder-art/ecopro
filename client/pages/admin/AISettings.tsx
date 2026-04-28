@@ -5,7 +5,8 @@ import {
   ClipboardList, Store, Brain, ScanEye, AlertTriangle,
   TrendingDown, MessageCircleReply, Radio, Radar,
   RefreshCw, PlusCircle, Pencil, Trash2, Palette, BotMessageSquare, Sparkles,
-  Zap, CheckCheck, XCircle, ChevronRight, Info
+  Zap, CheckCheck, XCircle, ChevronRight, Info,
+  Send, MessageCircle, Instagram, Phone
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +35,11 @@ interface AISettings {
   action_delete_product: boolean;
   action_store_design: boolean;
   action_bot_control: boolean;
+  ai_reply_telegram: boolean;
+  ai_reply_messenger: boolean;
+  ai_reply_instagram: boolean;
+  ai_reply_whatsapp: boolean;
+  ai_reply_viber: boolean;
   ai_instructions: string;
 }
 
@@ -59,6 +65,11 @@ const DEFAULT: AISettings = {
   action_delete_product: true,
   action_store_design: true,
   action_bot_control: true,
+  ai_reply_telegram: true,
+  ai_reply_messenger: true,
+  ai_reply_instagram: true,
+  ai_reply_whatsapp: true,
+  ai_reply_viber: true,
   ai_instructions: '',
 };
 
@@ -406,8 +417,9 @@ export default function AISettingsPage() {
     }
   };
 
-  const enabledCount = Object.entries(settings).filter(([k, v]) => k !== "ai_instructions" && v === true).length;
-  const totalCount = Object.keys(settings).filter((k) => k !== "ai_instructions").length;
+  const platformKeys = new Set(["ai_reply_telegram", "ai_reply_messenger", "ai_reply_instagram", "ai_reply_whatsapp", "ai_reply_viber"]);
+  const enabledCount = Object.entries(settings).filter(([k, v]) => k !== "ai_instructions" && !platformKeys.has(k) && v === true).length;
+  const totalCount = Object.keys(settings).filter((k) => k !== "ai_instructions" && !platformKeys.has(k)).length;
   const progressPct = Math.round((enabledCount / totalCount) * 100);
 
   if (loading) {
@@ -603,32 +615,77 @@ export default function AISettingsPage() {
                     )}
                   </button>
 
-                  {/* Inline AI Instructions under storefront_assistant */}
+                  {/* Inline AI Instructions + Platform Toggles under storefront_assistant */}
                   {item.key === "storefront_assistant" && isOn && (
-                    <div className={`mt-2 rounded-xl border p-4 ${colors.glow} ${colors.border}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="h-4 w-4 text-amber-500" />
-                        <p className="text-xs font-bold">
-                          {isRTL ? "تعليمات الذكاء الاصطناعي" : "AI Instructions"}
+                    <div className="space-y-2 mt-2">
+                      {/* Per-platform AI toggles */}
+                      <div className={`rounded-xl border p-4 ${colors.glow} ${colors.border}`}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <MessageCircle className="h-4 w-4 text-blue-500" />
+                          <p className="text-xs font-bold">
+                            {isRTL ? "منصات الرد التلقائي" : "Auto-Reply Platforms"}
+                          </p>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mb-3">
+                          {isRTL
+                            ? "اختر المنصات التي يرد عليها الذكاء الاصطناعي تلقائياً"
+                            : "Choose which platforms AI auto-replies on"}
                         </p>
-                        <span className="ms-auto text-[10px] text-muted-foreground font-medium">
-                          {settings.ai_instructions?.length || 0}/500
-                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {([
+                            { key: 'ai_reply_telegram' as keyof AISettings, icon: <Send className="h-4 w-4" />, label: 'Telegram', labelAr: 'تيليغرام', color: 'text-sky-500' },
+                            { key: 'ai_reply_messenger' as keyof AISettings, icon: <MessageCircle className="h-4 w-4" />, label: 'Messenger', labelAr: 'ماسنجر', color: 'text-blue-500' },
+                            { key: 'ai_reply_instagram' as keyof AISettings, icon: <Instagram className="h-4 w-4" />, label: 'Instagram', labelAr: 'إنستغرام', color: 'text-pink-500' },
+                            { key: 'ai_reply_whatsapp' as keyof AISettings, icon: <Phone className="h-4 w-4" />, label: 'WhatsApp', labelAr: 'واتساب', color: 'text-green-500' },
+                            { key: 'ai_reply_viber' as keyof AISettings, icon: <MessageCircle className="h-4 w-4" />, label: 'Viber', labelAr: 'فايبر', color: 'text-purple-500' },
+                          ]).map(p => (
+                            <div
+                              key={p.key}
+                              className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border transition-colors cursor-pointer ${
+                                settings[p.key] ? 'bg-background/80 border-border' : 'bg-muted/30 border-border/50 opacity-60'
+                              }`}
+                              onClick={() => toggle(p.key)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={p.color}>{p.icon}</span>
+                                <span className="text-xs font-semibold">{isRTL ? p.labelAr : p.label}</span>
+                              </div>
+                              <Switch
+                                checked={settings[p.key] as boolean}
+                                onCheckedChange={() => toggle(p.key)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <Textarea
-                        value={settings.ai_instructions || ""}
-                        onChange={(e) => {
-                          setSettings((s) => ({ ...s, ai_instructions: e.target.value.slice(0, 500) }));
-                          setDirty(true);
-                        }}
-                        rows={4}
-                        placeholder={
-                          isRTL
-                            ? "مثال: ركز على بيع المنتجات الجديدة، رحب بالزبائن باسم المتجر، لا تعطي خصومات..."
-                            : "E.g. Focus on new products, greet by store name, never offer discounts..."
-                        }
-                        className="bg-background/60 border-border/60 rounded-xl text-xs resize-none"
-                      />
+
+                      {/* AI Instructions */}
+                      <div className={`rounded-xl border p-4 ${colors.glow} ${colors.border}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className="h-4 w-4 text-amber-500" />
+                          <p className="text-xs font-bold">
+                            {isRTL ? "تعليمات الذكاء الاصطناعي" : "AI Instructions"}
+                          </p>
+                          <span className="ms-auto text-[10px] text-muted-foreground font-medium">
+                            {settings.ai_instructions?.length || 0}/500
+                          </span>
+                        </div>
+                        <Textarea
+                          value={settings.ai_instructions || ""}
+                          onChange={(e) => {
+                            setSettings((s) => ({ ...s, ai_instructions: e.target.value.slice(0, 500) }));
+                            setDirty(true);
+                          }}
+                          rows={4}
+                          placeholder={
+                            isRTL
+                              ? "مثال: ركز على بيع المنتجات الجديدة، رحب بالزبائن باسم المتجر، لا تعطي خصومات..."
+                              : "E.g. Focus on new products, greet by store name, never offer discounts..."
+                          }
+                          className="bg-background/60 border-border/60 rounded-xl text-xs resize-none"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

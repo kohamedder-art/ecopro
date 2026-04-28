@@ -21,17 +21,34 @@ interface StoreContext {
 }
 
 /**
- * Check if AI auto-reply is enabled for a given client.
+ * Check if AI auto-reply is enabled for a given client and platform.
+ * Checks both the global storefront_assistant toggle AND the per-platform toggle.
  */
-export async function isAiAutoReplyEnabled(clientId: number): Promise<boolean> {
+export async function isAiAutoReplyEnabled(clientId: number, platform?: Platform): Promise<boolean> {
   try {
   const pool = await ensureConnection();
   const res = await pool.query(
-    `SELECT storefront_assistant FROM ai_settings WHERE client_id = $1 LIMIT 1`,
+    `SELECT storefront_assistant, ai_reply_telegram, ai_reply_messenger, ai_reply_instagram, ai_reply_whatsapp, ai_reply_viber FROM ai_settings WHERE client_id = $1 LIMIT 1`,
     [clientId]
   );
   // Default to true if no row exists (matches ai_settings default behavior)
-  return res.rows.length === 0 ? true : res.rows[0]?.storefront_assistant !== false;
+  if (res.rows.length === 0) return true;
+  const row = res.rows[0];
+  // Global toggle must be on
+  if (row.storefront_assistant === false) return false;
+  // Check per-platform toggle
+  if (platform) {
+    const platformCol: Record<string, string> = {
+      telegram: 'ai_reply_telegram',
+      messenger: 'ai_reply_messenger',
+      instagram: 'ai_reply_instagram',
+      whatsapp: 'ai_reply_whatsapp',
+      viber: 'ai_reply_viber',
+    };
+    const col = platformCol[platform];
+    if (col && row[col] === false) return false;
+  }
+  return true;
   } catch {
     return true; // Default to enabled if table missing
   }
@@ -188,8 +205,8 @@ export async function handleCustomerMessage(
   platformChatId: string,
   customerMessage: string
 ): Promise<string | null> {
-  // Check if AI is enabled
-  const enabled = await isAiAutoReplyEnabled(clientId);
+  // Check if AI is enabled (global + per-platform)
+  const enabled = await isAiAutoReplyEnabled(clientId, platform);
   if (!enabled) return null;
 
   // Don't auto-reply to the store owner

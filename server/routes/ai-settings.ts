@@ -23,6 +23,11 @@ const COLUMNS = [
   "action_delete_product",
   "action_store_design",
   "action_bot_control",
+  "ai_reply_telegram",
+  "ai_reply_messenger",
+  "ai_reply_instagram",
+  "ai_reply_whatsapp",
+  "ai_reply_viber",
 ] as const;
 
 type SettingsRow = Record<(typeof COLUMNS)[number], boolean>;
