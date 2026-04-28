@@ -10,7 +10,7 @@
 import { Router, RequestHandler } from 'express';
 import { ensureConnection } from '../utils/database';
 import crypto from 'crypto';
-import { replaceTemplateVariables } from '../utils/bot-messaging';
+import { replaceTemplateVariables, processPendingMessages } from '../utils/bot-messaging';
 import { getPublicBaseUrl } from '../utils/public-url';
 import { logSecurityEvent } from '../utils/security';
 import { handleCustomerMessage } from '../services/ai-customer';
@@ -128,6 +128,8 @@ async function tryLinkPlatformSenderToLatestToken(
          AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
       [clientId, customerPhone]
     );
+    // Trigger immediate processing so messages arrive fast
+    processPendingMessages().catch(() => {});
   } catch (e) {
     console.warn('[Messenger] Failed to release queued bot_messages in tryLink:', (e as any)?.message || e);
   }
@@ -753,6 +755,8 @@ async function handleReferral(pageId: string, senderId: string, referral: any) {
            AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
         [client_id, customer_phone]
       );
+      // Trigger immediate processing so messages arrive fast
+      processPendingMessages().catch(() => {});
     } catch (e) {
       console.warn('[Messenger] Failed to release queued bot_messages after referral:', (e as any)?.message || e);
     }
@@ -1129,7 +1133,8 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
           [ref_token]
         );
 
-        // Late-connect fix: release queued Messenger messages now that PSID is known.
+        // Late-connect fix: if the customer already placed an order, there may be queued bot_messages
+        // waiting for a PSID. Release those immediately now that we have linked the PSID.
         try {
           await pool.query(
             `UPDATE bot_messages
@@ -1144,6 +1149,8 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
                AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
             [client_id, customer_phone]
           );
+          // Trigger immediate processing so messages arrive fast
+          processPendingMessages().catch(() => {});
         } catch (e) {
           console.warn('[Messenger] Failed to release queued bot_messages after GET_STARTED:', (e as any)?.message || e);
         }
@@ -1440,6 +1447,8 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
              AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
           [linkClientId, customer_phone]
         );
+        // Trigger immediate processing so messages arrive fast
+        processPendingMessages().catch(() => {});
       } catch (e) {
         console.warn('[Messenger] Failed to release queued bot_messages after message link:', (e as any)?.message || e);
       }
