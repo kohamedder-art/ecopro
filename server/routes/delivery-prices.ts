@@ -7,8 +7,40 @@
 
 import { Router, RequestHandler } from 'express';
 import { ensureConnection } from '../utils/database';
+import { decryptData } from '../utils/encryption';
 
 const router = Router();
+
+const MAYSTRO_API_BASE = 'https://orders-management.maystro-delivery.com/api';
+
+interface MaystroDeliveryOption {
+  type: string;
+  price: number;
+}
+
+async function fetchMaystroDeliveryOptions(token: string, communeId: number): Promise<MaystroDeliveryOption[]> {
+  const url = `${MAYSTRO_API_BASE}/base/delivery-options/?commune=${encodeURIComponent(String(communeId))}`;
+  const res = await fetch(url, {
+    headers: { Authorization: token },
+  });
+  if (!res.ok) {
+    throw new Error(`Maystro delivery-options failed (${res.status}) for commune ${communeId}`);
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchMaystroCommunes(token: string, wilayaId: number): Promise<Array<{ id: number }>> {
+  const url = `${MAYSTRO_API_BASE}/base/communes/?wilaya=${encodeURIComponent(String(wilayaId))}`;
+  const res = await fetch(url, {
+    headers: { Authorization: token },
+  });
+  if (!res.ok) {
+    throw new Error(`Maystro communes failed (${res.status}) for wilaya ${wilayaId}`);
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
 
 // Type for delivery price
 interface DeliveryPrice {
@@ -84,32 +116,52 @@ export const upsertDeliveryPrice: RequestHandler = async (req, res) => {
 
     const pool = await ensureConnection();
 
-    // Upsert: insert or update on conflict
-    const result = await pool.query(
-      `INSERT INTO delivery_prices (
-        client_id, wilaya_id, delivery_company_id, home_delivery_price, 
-        desk_delivery_price, is_active, estimated_days, notes, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-      ON CONFLICT (client_id, wilaya_id, delivery_company_id) 
-      DO UPDATE SET 
-        home_delivery_price = EXCLUDED.home_delivery_price,
-        desk_delivery_price = EXCLUDED.desk_delivery_price,
-        is_active = EXCLUDED.is_active,
-        estimated_days = EXCLUDED.estimated_days,
-        notes = EXCLUDED.notes,
-        updated_at = NOW()
-      RETURNING *`,
-      [
-        clientId,
-        wilaya_id,
-        delivery_company_id || null,
-        home_delivery_price,
-        desk_delivery_price ?? null,
-        is_active ?? true,
-        estimated_days ?? 3,
-        notes || null
-      ]
-    );
+    const companyId = delivery_company_id || null;
+
+    // PostgreSQL UNIQUE constraint treats NULL != NULL so ON CONFLICT won't fire
+    // for null delivery_company_id. Use UPDATE first, INSERT if no rows updated.
+    let result;
+    if (companyId === null) {
+      const upd = await pool.query(
+        `UPDATE delivery_prices SET
+           home_delivery_price = $3, desk_delivery_price = $4,
+           is_active = $5, estimated_days = $6, notes = $7, updated_at = NOW()
+         WHERE client_id = $1 AND wilaya_id = $2 AND delivery_company_id IS NULL
+         RETURNING *`,
+        [clientId, wilaya_id, home_delivery_price, desk_delivery_price ?? null,
+         is_active ?? true, estimated_days ?? 3, notes || null]
+      );
+      if (upd.rows.length > 0) {
+        result = upd;
+      } else {
+        result = await pool.query(
+          `INSERT INTO delivery_prices
+             (client_id, wilaya_id, delivery_company_id, home_delivery_price,
+              desk_delivery_price, is_active, estimated_days, notes, updated_at)
+           VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, NOW()) RETURNING *`,
+          [clientId, wilaya_id, home_delivery_price, desk_delivery_price ?? null,
+           is_active ?? true, estimated_days ?? 3, notes || null]
+        );
+      }
+    } else {
+      result = await pool.query(
+        `INSERT INTO delivery_prices (
+          client_id, wilaya_id, delivery_company_id, home_delivery_price,
+          desk_delivery_price, is_active, estimated_days, notes, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        ON CONFLICT (client_id, wilaya_id, delivery_company_id)
+        DO UPDATE SET
+          home_delivery_price = EXCLUDED.home_delivery_price,
+          desk_delivery_price = EXCLUDED.desk_delivery_price,
+          is_active = EXCLUDED.is_active,
+          estimated_days = EXCLUDED.estimated_days,
+          notes = EXCLUDED.notes,
+          updated_at = NOW()
+        RETURNING *`,
+        [clientId, wilaya_id, companyId, home_delivery_price,
+         desk_delivery_price ?? null, is_active ?? true, estimated_days ?? 3, notes || null]
+      );
+    }
 
     res.json({ success: true, price: result.rows[0] });
   } catch (error) {
@@ -142,35 +194,61 @@ export const bulkUpdateDeliveryPrices: RequestHandler = async (req, res) => {
       await client.query('BEGIN');
 
       const results = [];
+      // Use UPDATE+INSERT to handle NULL delivery_company_id
+      // (PostgreSQL UNIQUE treats NULL != NULL, so ON CONFLICT won't fire for nulls)
+      const companyId = delivery_company_id || null;
+
       for (const p of prices) {
         if (!p.wilaya_id || p.wilaya_id < 1 || p.wilaya_id > 58) continue;
-        
-        const result = await client.query(
-          `INSERT INTO delivery_prices (
-            client_id, wilaya_id, delivery_company_id, home_delivery_price, 
-            desk_delivery_price, is_active, estimated_days, notes, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-          ON CONFLICT (client_id, wilaya_id, delivery_company_id) 
-          DO UPDATE SET 
-            home_delivery_price = EXCLUDED.home_delivery_price,
-            desk_delivery_price = EXCLUDED.desk_delivery_price,
-            is_active = EXCLUDED.is_active,
-            estimated_days = EXCLUDED.estimated_days,
-            notes = EXCLUDED.notes,
-            updated_at = NOW()
-          RETURNING *`,
-          [
-            clientId,
-            p.wilaya_id,
-            delivery_company_id || null,
-            p.home_delivery_price ?? 0,
-            p.desk_delivery_price ?? null,
-            p.is_active ?? true,
-            p.estimated_days ?? 3,
-            p.notes || null
-          ]
-        );
-        results.push(result.rows[0]);
+
+        let row;
+        if (companyId === null) {
+          const upd = await client.query(
+            `UPDATE delivery_prices SET
+               home_delivery_price = $3, desk_delivery_price = $4,
+               is_active = $5, estimated_days = $6, notes = $7, updated_at = NOW()
+             WHERE client_id = $1 AND wilaya_id = $2 AND delivery_company_id IS NULL
+             RETURNING *`,
+            [clientId, p.wilaya_id, p.home_delivery_price ?? 0,
+             p.desk_delivery_price ?? null, p.is_active ?? true,
+             p.estimated_days ?? 3, p.notes || null]
+          );
+          if (upd.rows.length > 0) {
+            row = upd.rows[0];
+          } else {
+            const ins = await client.query(
+              `INSERT INTO delivery_prices
+                 (client_id, wilaya_id, delivery_company_id, home_delivery_price,
+                  desk_delivery_price, is_active, estimated_days, notes, updated_at)
+               VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, NOW()) RETURNING *`,
+              [clientId, p.wilaya_id, p.home_delivery_price ?? 0,
+               p.desk_delivery_price ?? null, p.is_active ?? true,
+               p.estimated_days ?? 3, p.notes || null]
+            );
+            row = ins.rows[0];
+          }
+        } else {
+          const res2 = await client.query(
+            `INSERT INTO delivery_prices (
+               client_id, wilaya_id, delivery_company_id, home_delivery_price,
+               desk_delivery_price, is_active, estimated_days, notes, updated_at
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+             ON CONFLICT (client_id, wilaya_id, delivery_company_id)
+             DO UPDATE SET
+               home_delivery_price = EXCLUDED.home_delivery_price,
+               desk_delivery_price = EXCLUDED.desk_delivery_price,
+               is_active = EXCLUDED.is_active,
+               estimated_days = EXCLUDED.estimated_days,
+               notes = EXCLUDED.notes,
+               updated_at = NOW()
+             RETURNING *`,
+            [clientId, p.wilaya_id, companyId, p.home_delivery_price ?? 0,
+             p.desk_delivery_price ?? null, p.is_active ?? true,
+             p.estimated_days ?? 3, p.notes || null]
+          );
+          row = res2.rows[0];
+        }
+        if (row) results.push(row);
       }
 
       await client.query('COMMIT');
@@ -277,6 +355,11 @@ export const getStorefrontDeliveryPrices: RequestHandler = async (req, res) => {
       [clientId]
     );
 
+    // If no prices configured yet, return a flag so the frontend can show a default
+    if (result.rows.length === 0) {
+      return res.json({ prices: [], default_price: 500, no_prices_configured: true });
+    }
+
     res.json({ prices: result.rows });
   } catch (error) {
     console.error('[DeliveryPrices] Storefront fetch error:', error);
@@ -295,11 +378,105 @@ export const importFromDeliveryCompany: RequestHandler = async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // This feature depends on delivery company integrations, which may not be present
-    // in all deployments. Keep the route but return a safe response.
-    res.status(501).json({
-      success: false,
-      message: 'Auto-import from delivery company API is not available. Please enter prices manually.'
+    const deliveryCompanyId = Number(req.body?.delivery_company_id);
+    if (!Number.isFinite(deliveryCompanyId) || deliveryCompanyId <= 0) {
+      return res.status(400).json({ error: 'delivery_company_id is required' });
+    }
+
+    const pool = await ensureConnection();
+    const integrationResult = await pool.query(
+      `SELECT di.api_key_encrypted, dc.name
+       FROM delivery_integrations di
+       JOIN delivery_companies dc ON dc.id = di.delivery_company_id
+       WHERE di.client_id = $1 AND di.delivery_company_id = $2 AND di.is_enabled = true
+       LIMIT 1`,
+      [clientId, deliveryCompanyId]
+    );
+
+    if (integrationResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Delivery integration not configured for this company' });
+    }
+
+    const companyName = String(integrationResult.rows[0].name || '').toLowerCase();
+    if (!companyName.includes('maystro')) {
+      return res.status(501).json({
+        success: false,
+        message: 'Auto-import is currently supported for Maystro Delivery only.',
+      });
+    }
+
+    const token = decryptData(integrationResult.rows[0].api_key_encrypted || '');
+    if (!token) {
+      return res.status(400).json({ error: 'Missing Maystro API token in integration' });
+    }
+
+    const imported: Array<{ wilaya_id: number; home_delivery_price: number; desk_delivery_price: number | null }> = [];
+    const failed: Array<{ wilaya_id: number; error: string }> = [];
+
+    // Iterate through all Algerian wilayas (1..58) and infer default pricing
+    // from the first commune returned by Maystro for each wilaya.
+    for (let wilayaId = 1; wilayaId <= 58; wilayaId++) {
+      try {
+        const communes = await fetchMaystroCommunes(token, wilayaId);
+        if (!communes.length || !communes[0]?.id) {
+          failed.push({ wilaya_id: wilayaId, error: 'No communes returned by Maystro' });
+          continue;
+        }
+
+        const communeId = Number(communes[0].id);
+        const options = await fetchMaystroDeliveryOptions(token, communeId);
+        const home = options.find((o: any) => String(o?.type || '').toLowerCase() === 'home');
+        const desk = options.find((o: any) => String(o?.type || '').toLowerCase() === 'stopdesk');
+
+        if (!home) {
+          failed.push({ wilaya_id: wilayaId, error: 'Home delivery option not found' });
+          continue;
+        }
+
+        const homePrice = Number(home.price);
+        const deskPrice = desk ? Number(desk.price) : null;
+        if (!Number.isFinite(homePrice) || homePrice < 0) {
+          failed.push({ wilaya_id: wilayaId, error: 'Invalid home price from Maystro' });
+          continue;
+        }
+
+        await pool.query(
+          `INSERT INTO delivery_prices (
+            client_id, wilaya_id, delivery_company_id, home_delivery_price,
+            desk_delivery_price, is_active, estimated_days, notes, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, true, 3, $6, NOW())
+          ON CONFLICT (client_id, wilaya_id, delivery_company_id)
+          DO UPDATE SET
+            home_delivery_price = EXCLUDED.home_delivery_price,
+            desk_delivery_price = EXCLUDED.desk_delivery_price,
+            is_active = true,
+            updated_at = NOW()`,
+          [
+            clientId,
+            wilayaId,
+            deliveryCompanyId,
+            homePrice,
+            Number.isFinite(deskPrice as number) && (deskPrice as number) >= 0 ? deskPrice : null,
+            `Imported from Maystro commune ${communeId}`,
+          ]
+        );
+
+        imported.push({
+          wilaya_id: wilayaId,
+          home_delivery_price: homePrice,
+          desk_delivery_price: Number.isFinite(deskPrice as number) ? (deskPrice as number) : null,
+        });
+      } catch (e: any) {
+        failed.push({ wilaya_id: wilayaId, error: e?.message || 'Unknown import error' });
+      }
+    }
+
+    res.json({
+      success: imported.length > 0,
+      importedCount: imported.length,
+      failedCount: failed.length,
+      imported,
+      failed,
     });
 
   } catch (error) {

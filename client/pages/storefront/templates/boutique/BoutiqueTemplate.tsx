@@ -1,10 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ShoppingCart, Plus, Minus, X, Truck, ShieldCheck, Star,
-  Phone, Trash2, CheckCircle2
+  Phone, Trash2, CheckCircle2, ArrowRight, ShoppingBag
 } from 'lucide-react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
+import { useOrderFields } from '@/hooks/useOrderFields';
+import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
+import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 
 interface CartItem {
   id: number;
@@ -12,38 +16,163 @@ interface CartItem {
   price: number;
   image: string;
   qty: number;
+  variant_id?: number;
+  variant_name?: string;
 }
 
-export default function BoutiqueTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
+function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextMuted, surfaceBorderColor, onZoom }: {
+  product: any; surfaceMuted: string; accentColor: string; surfaceTextMuted: string; surfaceBorderColor: string; onZoom: (src: string) => void;
+}) {
+  const [idx, setIdx] = React.useState(0);
+  const [showVideo, setShowVideo] = React.useState(true);
+  const imgs: string[] = product.images?.filter(Boolean) || [];
+  const tsRef = useRef<number | null>(null);
+  const videoUrl = product?.metadata?.video_url || '';
+  const videoEmbed = useMemo(() => {
+    if (!videoUrl) return null;
+    const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (yt) return { type: 'youtube' as const, id: yt[1] };
+    if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
+    return { type: 'iframe' as const, url: videoUrl };
+  }, [videoUrl]);
+  React.useEffect(() => { setIdx(0); setShowVideo(!!videoEmbed); }, [product?.id]);
+  return (
+    <div className="boutique-gallery-wrap flex flex-col h-full">
+      <div className="boutique-gallery-img relative w-full aspect-square overflow-hidden shrink-0 select-none" style={{ backgroundColor: surfaceMuted }}
+        onTouchStart={e => { e.stopPropagation(); tsRef.current = e.touches[0].clientX; }}
+        onTouchMove={e => e.stopPropagation()}
+        onTouchEnd={e => {
+          e.stopPropagation();
+          if (videoEmbed && showVideo) return;
+          if (tsRef.current === null || imgs.length <= 1) return;
+          const d = tsRef.current - e.changedTouches[0].clientX;
+          tsRef.current = null;
+          if (Math.abs(d) < 40) return;
+          setIdx(i => d > 0 ? Math.min(i + 1, imgs.length - 1) : Math.max(i - 1, 0));
+        }}
+        onClick={() => { if (videoEmbed && showVideo) return; imgs[idx] && onZoom(imgs[idx]); }}
+      >
+        {videoEmbed && showVideo ? (
+          <div className="w-full h-full">
+            {videoEmbed.type === 'youtube' ? (
+              <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+            ) : videoEmbed.type === 'video' ? (
+              <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+            ) : (
+              <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
+            )}
+          </div>
+        ) : imgs.length > 0 ? (
+          <img src={imgs[idx] || imgs[0]} alt="" className="w-full h-full object-cover transition-all duration-300 pointer-events-none" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center" style={{ color: surfaceTextMuted }}><ShoppingBag size={48} strokeWidth={1} /></div>
+        )}
+        {(videoEmbed || imgs.length > 1) && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 items-center">
+            {videoEmbed && <button onClick={e => { e.stopPropagation(); setShowVideo(true); }} className="w-5 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: showVideo ? '#000' : 'rgba(0,0,0,0.4)', border: showVideo ? `1.5px solid ${accentColor}` : 'none' }}><svg width="8" height="8" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></button>}
+            {imgs.map((_, i) => <button key={i} onClick={e => { e.stopPropagation(); setShowVideo(false); setIdx(i); }} className="w-2 h-2 rounded-full transition-all" style={{ backgroundColor: !showVideo && i === idx ? accentColor : 'rgba(255,255,255,0.5)', transform: !showVideo && i === idx ? 'scale(1.3)' : 'scale(1)' }} />)}
+          </div>
+        )}
+      </div>
+      {(videoEmbed || imgs.length > 1) && (
+        <div className="flex gap-2 px-4 py-2 overflow-x-auto shrink-0" style={{ borderBottom: `1px solid ${surfaceBorderColor}` }}>
+          {videoEmbed && <button onClick={() => setShowVideo(true)} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 flex items-center justify-center transition-all" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></button>}
+          {imgs.map((img, i) => (
+            <button key={i} onClick={() => { setShowVideo(false); setIdx(i); }} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition-all" style={{ borderColor: !showVideo && i === idx ? accentColor : 'transparent', opacity: !showVideo && i === idx ? 1 : 0.6 }}>
+              <img src={img} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function BoutiqueTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView, initialProductSlug }: TemplateProps) {
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
+  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
+  const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
 
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
+  useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const deliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [commune, setCommune] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerNotes, setCustomerNotes] = useState('');
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [detailProduct, setDetailProduct] = useState<any>(null);
+  const [detailVariant, setDetailVariant] = useState<SelectedVariant | null>(null);
+  const [orderProduct, setOrderProduct] = useState<any>(null);
+  const [orderVariant, setOrderVariant] = useState<SelectedVariant | null>(null);
+  const [orderQty, setOrderQty] = useState(1);
+  useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) setDetailProduct(p); } }, [initialProductSlug, products]);
 
   const currency = settings?.currency_code || 'د.ج';
-  const accentColor = settings?.template_accent_color || '#f59e0b'; // amber-500
+  const accentColor = settings?.template_accent_color || propPrimaryColor || '#f59e0b'; // amber-500
   const themeColor = settings?.boutique_theme_color || settings?.primary_color || '#0f172a'; // slate-900
+  const bgColor = settings?.template_bg_color || '#ffffff';
+  const isDark = useMemo(() => {
+    const hex = bgColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, [bgColor]);
+  const headerColor = settings?.iyco_header_color || (isDark ? '#1e293b' : '#ffffff');
+  const isHeaderDark = useMemo(() => {
+    const hex = headerColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, [headerColor]);
+  const isLight = (hex: string) => {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.substring(0, 2), 16);
+    const g = parseInt(h.substring(2, 4), 16);
+    const b = parseInt(h.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 >= 128;
+  };
+  const textColor = isDark ? (isLight(accentColor) ? accentColor : '#f1f5f9') : '#1e293b';
+  const textMuted = isDark ? '#94a3b8' : '#64748b';
+  const borderColor = isDark ? '#334155' : '#e2e8f0';
+  const surfaceMuted = isDark ? '#0f172a' : '#f1f5f9';
+  const surfaceColor = headerColor;
+  const surfaceTextColor = isHeaderDark ? '#f1f5f9' : '#1e293b';
+  const surfaceTextMuted = isHeaderDark ? '#94a3b8' : '#64748b';
+  const surfaceBorderColor = isHeaderDark ? '#334155' : '#e2e8f0';
+  const inputBg = isHeaderDark ? 'rgba(255,255,255,0.06)' : '#ffffff';
 
   // Editable text fields
   const brandName = settings?.boutique_brand_name || settings?.store_name || 'BOUTIQUE';
-  const categoryName = settings?.boutique_category_name || 'مجموعة المنتجات';
-  const footerText = settings?.boutique_footer_text || 'صنع بشغف لزبائننا في الجزائر';
+  const categoryName = settings?.boutique_category_name || settings?.template_featured_title || 'مجموعة المنتجات';
+  const footerText = settings?.boutique_footer_text || settings?.store_description || 'صنع بشغف لزبائننا في الجزائر';
 
   // Hero product = first product (or dzp_main_product_id)
   const heroProduct = useMemo(() => {
+    if (initialProductSlug) {
+      const bySlug = products?.find((p: any) => p.slug === initialProductSlug);
+      if (bySlug) return bySlug;
+    }
     const mainId = settings?.dzp_main_product_id;
     const found = mainId ? products?.find((p: any) => String(p.id) === String(mainId)) : null;
     return found || products?.[0] || null;
-  }, [products, settings?.dzp_main_product_id]);
+  }, [products, settings?.dzp_main_product_id, initialProductSlug]);
+
+  // Offers system
+  const { offers } = useProductOffers(storeSlug, heroProduct?.id);
+  const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
+  const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
+  const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
 
   // Collection = rest of products (excluding the hero)
   const collectionProducts = useMemo(() => {
@@ -58,67 +187,86 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
     }
   };
 
+  // Body scroll lock
+  useEffect(() => {
+    if (orderProduct || detailProduct || zoomImage) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [orderProduct, detailProduct, zoomImage]);
+
   // Cart logic
-  const addToCart = (product: { id: number; title?: string; name?: string; price: number; images?: string[] }) => {
+  const addToCart = (product: { id: number; title?: string; name?: string; price: number; images?: string[] }, variant?: SelectedVariant | null) => {
+    onProductView?.(product as any);
+    const variantPrice = variant?.price ?? product.price;
+    const cartKey = variant ? `${product.id}-${variant.id}` : `${product.id}`;
     const item: CartItem = {
       id: product.id,
       name: product.title || product.name || 'منتج',
-      price: product.price,
-      image: product.images?.[0] || '',
+      price: variantPrice,
+      image: variant?.images?.[0] || product.images?.[0] || '',
       qty: 1,
+      variant_id: variant?.id,
+      variant_name: variant?.variant_name || [variant?.color, variant?.size].filter(Boolean).join(' / ') || undefined,
     };
     setCart(prev => {
-      const exists = prev.find(i => i.id === item.id);
-      if (exists) return prev.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i);
+      const exists = prev.find(i => i.id === item.id && i.variant_id === item.variant_id);
+      if (exists) return prev.map(i => (i.id === item.id && i.variant_id === item.variant_id) ? { ...i, qty: i.qty + 1 } : i);
       return [...prev, item];
     });
     setIsCartOpen(true);
   };
 
-  const updateQty = (id: number, delta: number) => {
+  const updateQty = (id: number, delta: number, vid?: number) => {
     setCart(prev => prev.map(item =>
-      item.id === id ? { ...item, qty: Math.max(1, item.qty + delta) } : item
+      (item.id === id && item.variant_id === vid) ? { ...item, qty: Math.max(1, item.qty + delta) } : item
     ));
   };
 
-  const removeFromCart = (id: number) => setCart(prev => prev.filter(item => item.id !== id));
+  const removeFromCart = (id: number, vid?: number) => setCart(prev => prev.filter(item => !(item.id === id && item.variant_id === vid)));
 
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + (item.price * item.qty), 0), [cart]);
   const total = subtotal + (cart.length > 0 ? deliveryFee : 0);
 
   const handleOrder = async () => {
-    if (!customerName || !customerPhone || !selectedWilayaId || cart.length === 0) {
+    if (!customerName || !customerPhone || !selectedWilayaId || !orderProduct) {
       alert('الرجاء تعبئة جميع الحقول المطلوبة');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const address = `${selectedWilaya?.labelAR || ''} - ${commune}`;
+      const address = [selectedWilaya?.labelAR || '', commune, customerAddress, customerNotes].filter(Boolean).join(' - ');
+      const isOfferItem = selectedOffer && orderProduct.id === heroProduct?.id;
+      const itemPrice = orderVariant?.price ?? orderProduct.price;
 
-      // Submit one order per cart item
-      for (const item of cart) {
-        const res = await fetch('/api/orders/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            store_slug: storeSlug,
-            product_id: item.id,
-            quantity: item.qty,
-            total_price: item.price * item.qty,
-            delivery_fee: deliveryFee,
-            delivery_type: 'desk',
-            customer_name: customerName,
-            customer_phone: customerPhone,
-            customer_address: address,
-          }),
-        });
+      const res = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store_slug: storeSlug,
+          product_id: orderProduct.id,
+          ...(orderVariant?.id ? { variant_id: orderVariant.id } : {}),
+          quantity: isOfferItem ? selectedOffer.quantity : orderQty,
+          ...(isOfferItem ? { offer_id: selectedOffer.offer_id } : {}),
+          total_price: isOfferItem ? selectedOffer.bundle_price : itemPrice * orderQty,
+          delivery_fee: deliveryFee,
+          delivery_type: 'desk',
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_address: address,
+          shipping_wilaya_id: selectedWilayaId,
+        }),
+      });
 
-        const data = await res.json();
-        if (!res.ok) {
-          alert(data.error || 'حدث خطأ أثناء إرسال الطلب');
-          return;
-        }
+      const data = await res.json();
+      setLastOrderId(data.order?.id || null);
+      setLastTelegramUrl(data.telegramStartUrl || null);
+      if (!res.ok) {
+        alert(data.error || 'حدث خطأ أثناء إرسال الطلب');
+        return;
       }
 
       setOrderSuccess(true);
@@ -132,23 +280,24 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   // Order success screen
   if (orderSuccess) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6" dir="rtl">
-        <div className="max-w-md mx-auto bg-white rounded-2xl p-8 text-center w-full">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor }} dir="rtl">
+        <div className="max-w-md mx-auto rounded-2xl p-8 text-center w-full" style={{ backgroundColor: surfaceColor }}>
           <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: accentColor + '20' }}>
             <CheckCircle2 size={36} style={{ color: accentColor }} />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-2">تم تسجيل طلبك بنجاح! 🎉</h2>
-          <p className="text-slate-500 text-sm mb-6">سنتصل بك قريباً لتأكيد الطلب</p>
-          <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-2 text-right">
-            {cart.map(item => (
-              <div key={item.id} className="flex justify-between">
-                <span className="text-slate-500">{item.name} × {item.qty}</span>
-                <span className="font-bold">{item.price * item.qty} {currency}</span>
+          <h2 className="text-2xl font-black mb-2" style={{ color: surfaceTextColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
+          <p className="text-sm mb-6" style={{ color: surfaceTextMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+          <div className="rounded-xl p-4 text-sm space-y-2 text-right" style={{ backgroundColor: surfaceMuted }}>
+            {orderProduct && (
+              <div className="flex justify-between">
+                <span style={{ color: surfaceTextMuted }}>{orderProduct.title} × {orderQty}</span>
+                <span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round(((orderVariant?.price ?? orderProduct.price) * orderQty) ?? 0).toLocaleString()} {currency}</span>
               </div>
-            ))}
-            <div className="h-px bg-slate-200 my-1" />
-            <div className="flex justify-between"><span className="text-slate-500">التوصيل</span><span className="font-bold">{deliveryFee} {currency}</span></div>
-            <div className="flex justify-between"><span className="font-black">المجموع</span><span className="font-black text-lg">{total} {currency}</span></div>
+            )}
+            <div className="h-px my-1" style={{ backgroundColor: surfaceBorderColor }} />
+            <div className="flex justify-between"><span style={{ color: surfaceTextMuted }}>التوصيل</span><span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round(deliveryFee ?? 0).toLocaleString()} {currency}</span></div>
+            <div className="flex justify-between"><span className="font-black" style={{ color: surfaceTextColor }}>المجموع</span><span className="font-black text-lg" style={{ color: surfaceTextColor }}>{Math.round((orderProduct ? (orderVariant?.price ?? orderProduct.price) * orderQty + deliveryFee : 0) ?? 0).toLocaleString()} {currency}</span></div>
           </div>
         </div>
       </div>
@@ -156,11 +305,11 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   }
 
   return (
-    <div className="min-h-screen font-sans text-slate-900" style={{ backgroundColor: settings?.template_bg_color || '#ffffff' }} dir="rtl">
+    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
 
       {/* HEADER */}
-      <header className="sticky top-0 z-40 text-white px-4 py-4 shadow-md" style={{ backgroundColor: themeColor }}>
-        <div className="max-w-md mx-auto flex justify-between items-center">
+      <header className="sticky top-0 z-40 text-white px-4 py-3 shadow-md" style={{ backgroundColor: themeColor }}>
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" />}
             <h1
@@ -172,32 +321,19 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               {brandName}
             </h1>
           </div>
-          <button onClick={() => setIsCartOpen(true)} className="relative p-2">
-            <ShoppingCart size={24} />
-            {cart.length > 0 && (
-              <span
-                className="absolute top-0 right-0 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2"
-                style={{ backgroundColor: accentColor, borderColor: themeColor }}
-              >
-                {cart.reduce((a, b) => a + b.qty, 0)}
-              </span>
-            )}
-          </button>
         </div>
       </header>
 
-      <div className="max-w-md mx-auto">
-
-        {/* HERO SECTION */}
-        {heroProduct && (
-          <section className="relative h-[450px] overflow-hidden">
-            <img
-              src={heroProduct.images?.[0] || ''}
-              alt={heroProduct.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
-            <div className="absolute bottom-0 p-6 text-white">
+      {/* HERO SECTION - full width */}
+      {heroProduct && (
+        <section className="relative overflow-hidden" style={{ height: '420px' }}>
+          <img
+            src={heroProduct.images?.[0] || ''}
+            alt={heroProduct.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent, transparent)' }} />
+          <div className="absolute bottom-0 p-6 text-white max-w-6xl mx-auto w-full left-0 right-0">
               <span
                 className="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest text-white"
                 style={{ backgroundColor: accentColor }}
@@ -206,30 +342,33 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               </span>
               <h2 className="text-3xl font-black mt-2">{heroProduct.title}</h2>
               {heroProduct.description && (
-                <p className="text-sm text-slate-300 mt-2 line-clamp-2">{heroProduct.description}</p>
+                <p className="text-sm mt-2 line-clamp-2" style={{ color: 'rgba(255,255,255,0.7)' }}>{heroProduct.description}</p>
               )}
               <div className="flex items-center gap-3 mt-4">
                 <span className="text-2xl font-black" style={{ color: accentColor }}>
-                  {heroProduct.price} {currency}
+                  {Math.round(heroProduct.price ?? 0).toLocaleString()} {currency}
                 </span>
                 {(heroProduct as any).original_price && (heroProduct as any).original_price > heroProduct.price && (
-                  <span className="text-sm text-slate-400 line-through" dir="ltr">
-                    {(heroProduct as any).original_price} {currency}
+                  <span className="text-sm line-through" style={{ color: 'rgba(255,255,255,0.5)' }} dir="ltr">
+                    {Math.round(((heroProduct as any).original_price) ?? 0).toLocaleString()} {currency}
                   </span>
                 )}
                 <button
-                  onClick={() => addToCart(heroProduct)}
-                  className="bg-white text-slate-900 font-bold px-6 py-2 rounded-full text-sm hover:opacity-90 transition-colors active:scale-95"
+                  onClick={() => { setDetailProduct(heroProduct); onProductView?.(heroProduct); }}
+                  className="font-bold px-6 py-2 rounded-full text-sm hover:opacity-90 transition-colors active:scale-95"
+                  style={{ backgroundColor: surfaceColor, color: surfaceTextColor }}
                 >
-                  أضف للسلة
+                  اطلب الآن
                 </button>
               </div>
-            </div>
-          </section>
-        )}
+          </div>
+        </section>
+      )}
+
+      <div className="max-w-6xl mx-auto">
 
         {/* TRUST MINI-BAR */}
-        <div className="flex justify-around py-4 border-b border-slate-100 bg-slate-50 text-[10px] font-bold text-slate-500">
+        <div className="flex justify-around py-4 border-b text-[10px] font-bold" style={{ borderColor, backgroundColor: surfaceMuted, color: textMuted }}>
           <div className="flex items-center gap-1"><Truck size={14} /> توصيل 58 ولاية</div>
           <div className="flex items-center gap-1"><ShieldCheck size={14} /> الدفع عند الاستلام</div>
           <div className="flex items-center gap-1"><Star size={14} fill="currentColor" /> جودة مضمونة</div>
@@ -247,25 +386,38 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             >
               {categoryName}
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {collectionProducts.map(product => (
-                <div key={product.id} className="bg-white group">
-                  <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-3">
+                <div key={product.id} className="group cursor-pointer rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor }} onClick={() => { setDetailProduct(product); onProductView?.(product); }}>
+                  <div className="relative aspect-[4/5] overflow-hidden">
                     <img
                       src={product.images?.[0] || ''}
                       alt={product.title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       loading="lazy"
                     />
+                    {(product as any).original_price && (product as any).original_price > product.price && (
+                      <div className="absolute top-2 right-2 text-white text-[9px] font-black px-2 py-0.5 rounded-full" style={{ backgroundColor: accentColor }}>
+                        -{Math.round((1 - product.price / (product as any).original_price) * 100)}%
+                      </div>
+                    )}
                     <button
-                      onClick={() => addToCart(product)}
-                      className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur text-slate-900 text-xs font-bold py-2 rounded-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all"
+                      onClick={(e) => { e.stopPropagation(); setDetailProduct(product); onProductView?.(product); }}
+                      className="absolute bottom-2 left-2 right-2 backdrop-blur text-xs font-bold py-2 rounded-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: surfaceTextColor }}
                     >
-                      أضف للسلة +
+                      اطلب الآن
                     </button>
                   </div>
-                  <h4 className="font-bold text-sm text-slate-800">{product.title}</h4>
-                  <p className="font-black text-sm" style={{ color: accentColor }}>{product.price} {currency}</p>
+                  <div className="p-2">
+                    <h4 className="font-bold text-xs line-clamp-1" style={{ color: textColor }}>{product.title}</h4>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="font-black text-sm" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
+                      {(product as any).original_price && (product as any).original_price > product.price && (
+                        <p className="text-[10px] line-through" style={{ color: textMuted }}>{Math.round((product as any).original_price ?? 0).toLocaleString()}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -274,14 +426,14 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
         {/* No products placeholder */}
         {!heroProduct && collectionProducts.length === 0 && (
-          <div className="p-10 text-center text-slate-400">
-            <ShoppingCart size={48} className="mx-auto mb-4 text-slate-200" />
+          <div className="p-10 text-center" style={{ color: textMuted }}>
+            <ShoppingCart size={48} className="mx-auto mb-4" style={{ color: borderColor }} />
             <p className="font-bold">أضف منتجات من لوحة التحكم</p>
           </div>
         )}
 
         {/* FOOTER */}
-        <footer className="p-10 text-center text-slate-400 bg-slate-50 mt-10">
+        <footer className="p-10 text-center mt-10" style={{ backgroundColor: surfaceMuted, color: textMuted }}>
           <p className="text-xs uppercase tracking-widest font-bold">{brandName}</p>
           <p
             className="text-[10px] mt-2 italic"
@@ -291,63 +443,64 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           >
             {footerText}
           </p>
+          <p className="text-[10px] mt-3">صنع بواسطة <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor, textDecoration: 'none' }}>Sahla4Eco</a></p>
         </footer>
       </div>
 
       {/* ── SIDE CART & CHECKOUT DRAWER ── */}
-      {isCartOpen && (
+      {orderProduct && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />
-          <div className="absolute inset-y-0 left-0 max-w-full flex">
-            <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col">
+          <div className="absolute inset-0 backdrop-blur-sm" style={{ backgroundColor: 'rgba(15,23,42,0.6)' }} onClick={() => { setOrderProduct(null); setOrderQty(1); }} />
+          <div className="absolute inset-y-0 right-0 max-w-full flex">
+            <div className="w-screen max-w-md shadow-2xl flex flex-col" style={{ backgroundColor: surfaceColor }}>
 
               {/* Drawer Header */}
-              <div className="px-4 py-6 border-b flex justify-between items-center">
-                <button onClick={() => setIsCartOpen(false)} className="p-2"><X size={24} /></button>
-                <h2 className="text-lg font-black">سلة المشتريات</h2>
+              <div className="px-4 py-6 border-b flex justify-between items-center" style={{ borderColor: surfaceBorderColor }}>
+                <button onClick={() => { setOrderProduct(null); setOrderQty(1); }} className="p-2" style={{ color: surfaceTextColor }}><X size={24} /></button>
+                <h2 className="text-lg font-black" style={{ color: surfaceTextColor }}>تأكيد الطلب</h2>
                 <span className="w-10" />
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {cart.length === 0 ? (
-                  <div className="text-center py-20">
-                    <ShoppingCart size={64} className="mx-auto text-slate-200 mb-4" />
-                    <p className="text-slate-500 font-bold">سلتك فارغة حالياً</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Item List */}
-                    <div className="space-y-4">
-                      {cart.map(item => (
-                        <div key={item.id} className="flex gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                          {item.image && (
-                            <img src={item.image} className="w-20 h-20 object-cover rounded-xl" alt={item.name} />
-                          )}
-                          <div className="flex-1">
-                            <h4 className="font-bold text-sm">{item.name}</h4>
-                            <p className="font-black text-sm mt-1" style={{ color: accentColor }}>{item.price} {currency}</p>
-                            <div className="flex items-center gap-4 mt-2">
-                              <div className="flex items-center border bg-white rounded-lg">
-                                <button type="button" onClick={() => updateQty(item.id, 1)} className="p-1 text-slate-400"><Plus size={14} /></button>
-                                <span className="px-2 font-bold text-sm">{item.qty}</span>
-                                <button type="button" onClick={() => updateQty(item.id, -1)} className="p-1 text-slate-400"><Minus size={14} /></button>
-                              </div>
-                              <button type="button" onClick={() => removeFromCart(item.id)} className="text-rose-500"><Trash2 size={16} /></button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                  {/* Product Summary */}
+                  <div className="flex gap-3 p-3 rounded-2xl border" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
+                    {orderProduct.images?.[0] && <img src={orderProduct.images[0]} className="w-20 h-20 object-cover rounded-xl shrink-0" alt={orderProduct.title} />}
+                    <div className="flex-1">
+                      <h4 className="font-bold text-sm" style={{ color: surfaceTextColor }}>{orderProduct.title}</h4>
+                      {orderVariant?.variant_name && <p className="text-xs mt-0.5" style={{ color: surfaceTextMuted }}>{orderVariant.variant_name}</p>}
+                      <p className="font-black text-sm mt-1" style={{ color: accentColor }}>{Math.round(orderVariant?.price ?? orderProduct.price ?? 0).toLocaleString()} {currency}</p>
+                      <div className="flex items-center border rounded-lg mt-2 w-fit" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
+                        <button type="button" onClick={() => setOrderQty(q => Math.max(1, q - 1))} className="p-1.5" style={{ color: surfaceTextMuted }}><Minus size={14} /></button>
+                        <span className="px-3 font-bold text-sm" style={{ color: surfaceTextColor }}>{orderQty}</span>
+                        <button type="button" onClick={() => setOrderQty(q => q + 1)} className="p-1.5" style={{ color: surfaceTextMuted }}><Plus size={14} /></button>
+                      </div>
                     </div>
+                  </div>
 
-                    {/* COD FORM */}
-                    <div className="mt-10 border-t pt-10">
-                      <h3 className="text-lg font-black mb-4">معلومات التوصيل</h3>
+                  {/* COD FORM */}
+                  <div className="border-t pt-4" style={{ borderColor: surfaceBorderColor }}>
+                      {offers.length > 0 && orderProduct.id === heroProduct?.id && (
+                        <OfferSelector
+                          offers={offers}
+                          unitPrice={heroProduct?.price || 0}
+                          currency={currency}
+                          selectedOfferId={selectedOffer?.offer_id ?? null}
+                          onSelect={handleOfferSelect}
+                          accentColor={accentColor}
+                          textColor={surfaceTextColor}
+                          borderColor={surfaceBorderColor}
+                        />
+                      )}
+                      <h3 className="text-lg font-black mb-4 mt-2" style={{ color: surfaceTextColor }}>معلومات التوصيل</h3>
                       <div className="space-y-4">
                         <input
                           type="text"
                           required
                           placeholder="الاسم الكامل"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900"
+                          className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
+                          style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
+                          onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                          onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
                           value={customerName}
                           onChange={(e) => setCustomerName(e.target.value)}
                         />
@@ -357,15 +510,21 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             required
                             dir="ltr"
                             placeholder="05 55 55 55 55"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-right outline-none focus:ring-2 focus:ring-slate-900"
+                            className="w-full border rounded-xl px-4 py-3 text-sm text-right outline-none focus:ring-2"
+                            style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
+                            onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                            onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
                             value={customerPhone}
                             onChange={(e) => setCustomerPhone(e.target.value)}
                           />
-                          <Phone size={16} className="absolute left-4 top-3.5 text-slate-400" />
+                          <Phone size={16} className="absolute left-4 top-3.5" style={{ color: surfaceTextMuted }} />
                         </div>
                         <select
                           required
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 appearance-none"
+                          className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 appearance-none"
+                          style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
+                          onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                          onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
                           value={selectedWilayaId ?? ''}
                           onChange={(e) => setSelectedWilayaId(e.target.value ? Number(e.target.value) : null)}
                         >
@@ -377,69 +536,92 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             </option>
                           ))}
                         </select>
-                        <input
+                        {showCommune && <input
                           type="text"
-                          required
                           placeholder="البلدية"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900"
+                          className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
+                          style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
+                          onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                          onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
                           value={commune}
                           onChange={(e) => setCommune(e.target.value)}
-                        />
+                        />}
+                        {showAddress && <input type="text" placeholder="العنوان" className="w-full border rounded-xl px-4 py-3 text-sm outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />}
+                        {showNotes && <textarea placeholder="ملاحظات" rows={2} className="w-full border rounded-xl px-4 py-3 text-sm outline-none resize-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />}
                       </div>
-                    </div>
-                  </>
-                )}
+                  </div>
               </div>
 
-              {/* Drawer Footer / Checkout CTA */}
-              {cart.length > 0 && (
-                <div className="p-4 bg-white border-t space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-slate-500">
-                      <span>المنتجات</span>
-                      <span>{subtotal} {currency}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-500">
-                      <span>التوصيل</span>
-                      <span>{deliveryFee} {currency}</span>
-                    </div>
-                    <div className="flex justify-between font-black text-lg">
-                      <span>المجموع النهائي</span>
-                      <span style={{ color: accentColor }}>{total} {currency}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleOrder}
-                    disabled={isSubmitting}
-                    className="w-full text-white font-bold py-4 rounded-xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-60"
-                    style={{ backgroundColor: themeColor }}
-                  >
-                    {isSubmitting ? 'جاري الإرسال...' : (
-                      <><CheckCircle2 size={20} /> تأكيد الطلب (الدفع عند الاستلام)</>
-                    )}
-                  </button>
+              {/* Drawer Footer */}
+              <div className="p-4 border-t space-y-3" style={{ backgroundColor: surfaceColor, borderColor: surfaceBorderColor }}>
+                <div className="flex justify-between font-black text-base" style={{ color: surfaceTextColor }}>
+                  <span>المجموع</span>
+                  <span style={{ color: accentColor }}>{Math.round((((orderVariant?.price ?? orderProduct.price) * orderQty) + deliveryFee) ?? 0).toLocaleString()} {currency}</span>
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={handleOrder}
+                  disabled={isSubmitting}
+                  className="w-full text-white font-bold py-4 rounded-xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-60"
+                  style={{ backgroundColor: themeColor }}
+                >
+                  {isSubmitting ? 'جاري الإرسال...' : (
+                    <><CheckCircle2 size={20} /> تأكيد الطلب (الدفع عند الاستلام)</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* STICKY BOTTOM BAR */}
-      {!isCartOpen && cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md border-t border-slate-200 z-30">
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="max-w-md mx-auto w-full text-white font-bold py-4 rounded-xl shadow-xl flex items-center justify-between px-6"
-            style={{ backgroundColor: themeColor }}
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingCart size={20} />
-              <span>عرض السلة ({cart.reduce((a, b) => a + b.qty, 0)})</span>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (min-width: 768px) {
+          .boutique-modal-card { height: 85vh !important; max-height: 85vh !important; }
+          .boutique-gallery-wrap { height: 100%; }
+          .boutique-gallery-img { aspect-ratio: unset !important; max-height: 100% !important; flex: 1; min-height: 0; }
+        }
+      `}} />
+
+      {/* Product Detail Modal */}
+      {detailProduct && (
+        <div className="fixed inset-0 z-[90] flex items-end md:items-center md:justify-center md:p-4" onTouchMove={e => e.preventDefault()} style={{ touchAction: 'none' }}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetailProduct(null)} />
+          <div className="boutique-modal-card relative z-10 w-full md:max-w-4xl md:mx-auto md:rounded-[32px] overflow-hidden flex flex-col md:flex-row" dir="ltr" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, height: '100dvh', maxHeight: '100dvh' }}>
+            <button onClick={() => setDetailProduct(null)} className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }}><X size={18} /></button>
+            <div className="w-full md:w-[55%] md:shrink-0 md:h-full">
+              <BoutiqueImageGallery product={detailProduct} surfaceMuted={surfaceMuted} accentColor={accentColor} surfaceTextMuted={surfaceTextMuted} surfaceBorderColor={surfaceBorderColor} onZoom={setZoomImage} />
             </div>
-            <div className="font-black" style={{ color: accentColor }}>{total} {currency}</div>
+            <div className="flex-1 flex flex-col overflow-hidden" dir="rtl">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+                <div className="flex justify-between items-start gap-4">
+                  <h3 className="text-xl font-black leading-tight" style={{ color: surfaceTextColor }}>{detailProduct.title}</h3>
+                  <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{Math.round(detailProduct.price ?? 0).toLocaleString()} {currency}</p>
+                </div>
+                {detailProduct.description && <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: surfaceTextMuted }}>{detailProduct.description}</p>}
+                {detailProduct.category && <span className="inline-block text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border" style={{ borderColor: surfaceBorderColor, color: surfaceTextMuted }}>{detailProduct.category}</span>}
+                {detailProduct.variants && detailProduct.variants.length > 0 && (
+                  <VariantSelector variants={detailProduct.variants} selected={detailVariant} onSelect={setDetailVariant} accentColor={accentColor} currency={currency} basePrice={detailProduct.price} />
+                )}
+              </div>
+              <div className="shrink-0 px-6 pb-6 pt-3 space-y-3" style={{ borderTop: `1px solid ${surfaceBorderColor}` }}>
+                <button onClick={() => { setOrderProduct(detailProduct); setOrderVariant(detailVariant); setDetailProduct(null); setDetailVariant(null); }} className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold tracking-wide transition-all active:scale-95 shadow-lg" style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}>
+                  اطلب الآن →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Zoom Modal */}
+      {zoomImage && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+            <X size={20} />
           </button>
+          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>

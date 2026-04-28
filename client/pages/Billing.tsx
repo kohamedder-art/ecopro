@@ -66,7 +66,7 @@ export default function Billing() {
                 </div>
                 <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                   <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">Monthly Cost</p>
-                  <p className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">$29.99</p>
+                  <p className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">2,900 دج</p>
                 </div>
                 <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                   <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">Chat Requests/Month</p>

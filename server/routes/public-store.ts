@@ -58,6 +58,16 @@ export function invalidateAllStorefrontSettingsCache() {
   storefrontSettingsInFlight.clear();
 }
 
+export function invalidateStorefrontProductsCache(storeSlug?: string) {
+  if (storeSlug) {
+    storefrontProductsCache.delete(`products:${storeSlug}`);
+    storefrontProductsInFlight.delete(`products:${storeSlug}`);
+  } else {
+    storefrontProductsCache.clear();
+    storefrontProductsInFlight.clear();
+  }
+}
+
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
   const hit = cache.get(key);
   if (!hit) return null;
@@ -180,7 +190,7 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
             `SELECT 
               p.id, p.title, p.description, p.price, p.original_price, 
               p.images, p.category, p.stock_quantity, p.is_featured, 
-              p.slug, p.views, p.created_at,
+              p.slug, p.views, p.created_at, p.metadata,
               s.store_name, s.owner_name AS seller_name, s.owner_email AS seller_email
             FROM client_store_products p
             INNER JOIN client_store_settings s ON p.client_id = s.client_id
@@ -192,10 +202,34 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
         if (!isProduction) {
           console.log(`Found ${result.rows.length} client products for store ${storeSlug}`);
         }
+
+        // Fetch variants for all products in one query
+        const productIds = result.rows.map((p: any) => p.id);
+        let variantsByProduct: Record<number, any[]> = {};
+        if (productIds.length > 0) {
+          try {
+            const vRes = await pool.query(
+              `SELECT id, product_id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+               FROM product_variants
+               WHERE product_id = ANY($1) AND is_active = true
+               ORDER BY sort_order ASC, id ASC`,
+              [productIds]
+            );
+            for (const v of vRes.rows) {
+              const pid = Number(v.product_id);
+              if (!variantsByProduct[pid]) variantsByProduct[pid] = [];
+              variantsByProduct[pid].push(v);
+            }
+          } catch {
+            // Variants table may not exist yet — continue without
+          }
+        }
+
         // Ensure all products have a slug (generate fallback if missing)
         const productsWithSlugs = result.rows.map((p: any) => ({
           ...p,
-          slug: p.slug || `${String(p.title || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${p.id}`
+          slug: p.slug || `${String(p.title || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${p.id}`,
+          variants: variantsByProduct[p.id] || [],
         }));
         setCached(storefrontProductsCache, cacheKey, productsWithSlugs, PRODUCTS_CACHE_TTL_MS);
         return productsWithSlugs;
@@ -325,7 +359,7 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
       const selectClientSettings = (whereSql: string) =>
         `SELECT store_name, store_description, store_logo, 
                 primary_color, secondary_color,
-                template, banner_url, currency_code,
+                template, banner_url, 'DZD' as currency_code,
                 hero_main_url, hero_tile1_url, hero_tile2_url, 
                 store_images,
                 owner_name, owner_email,
@@ -336,7 +370,7 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
          ${whereSql}`;
 
       const selectClientSettingsLegacy = (whereSql: string) =>
-        `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, currency_code,
+        `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, 'DZD' as currency_code,
                 NULL as hero_main_url, NULL as hero_tile1_url, NULL as hero_tile2_url,
                 store_images, owner_name, owner_email,
                 NULL as template_hero_heading, NULL as template_hero_subtitle, NULL as template_button_text, NULL as template_accent_color,
@@ -391,12 +425,12 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
         // Fall back to seller storefront settings
         let sellerRes: any;
         const selectSellerSettings = (whereSql: string) =>
-          `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, currency_code, 
+          `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, 'DZD' as currency_code, 
                   hero_main_url, hero_tile1_url, hero_tile2_url, store_images
            FROM seller_store_settings
            ${whereSql}`;
         const selectSellerSettingsLegacy = (whereSql: string) =>
-          `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, currency_code,
+          `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, 'DZD' as currency_code,
                   NULL as hero_main_url, NULL as hero_tile1_url, NULL as hero_tile2_url, store_images
            FROM seller_store_settings
            ${whereSql}`;
@@ -548,6 +582,7 @@ export const getPublicProduct: RequestHandler = async (req, res) => {
         s.store_name,
         s.primary_color,
         s.secondary_color,
+        s.template AS store_template,
         s.store_slug,
         s.owner_name AS seller_name,
         s.owner_email AS seller_email
@@ -649,6 +684,7 @@ export const getStorefrontProductById: RequestHandler = async (req, res) => {
         s.store_name,
         s.primary_color,
         s.secondary_color,
+        s.template AS store_template,
         s.store_slug,
         s.owner_name AS seller_name,
         s.owner_email AS seller_email
@@ -712,6 +748,10 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     const CreatePublicStoreOrderSchema = z.object({
       product_id: z.preprocess((v) => Number(v), z.number().int().positive()),
       variant_id: VariantIdSchema.optional(),
+      offer_id: z.preprocess(
+        (v) => (v === null || v === undefined || v === '' ? undefined : Number(v)),
+        z.number().int().positive()
+      ).optional(),
       quantity: z.preprocess((v) => Number(v), z.number().int().positive()),
       // Client-provided total_price is accepted for backward-compatibility but ignored.
       // Total is computed server-side from the current product price.
@@ -746,6 +786,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     const {
       product_id,
       variant_id,
+      offer_id,
       quantity,
       total_price: _ignoredTotalPrice,
       delivery_type,
@@ -838,6 +879,31 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     }
 
     const unitPrice = variantRow && variantRow.price != null ? Number(variantRow.price) : Number(productRow.price);
+
+    // Validate offer if provided
+    let offerRow: any | null = null;
+    if (offer_id) {
+      try {
+        const offerRes = await pool.query(
+          `SELECT id, quantity, bundle_price, compare_price, free_delivery
+           FROM product_offers
+           WHERE id = $1 AND product_id = $2 AND client_id = $3 AND is_active = true
+           LIMIT 1`,
+          [Number(offer_id), product_id, clientId]
+        );
+        if (offerRes.rows.length === 0) {
+          return res.status(400).json({ error: 'Invalid offer' });
+        }
+        offerRow = offerRes.rows[0];
+        // Ensure the submitted quantity matches the offer's quantity
+        if (Number(offerRow.quantity) !== Number(quantity)) {
+          return res.status(400).json({ error: 'Quantity does not match offer' });
+        }
+      } catch {
+        return res.status(400).json({ error: 'Invalid offer' });
+      }
+    }
+
     // Total includes product price * quantity + delivery fee (computed server-side)
     let deliveryAmount = 0;
     if (shipping_wilaya_id) {
@@ -865,7 +931,15 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       }
     }
 
-    const expectedTotalPrice = (unitPrice * Number(quantity)) + deliveryAmount;
+    // If offer has free_delivery, override delivery fee to 0
+    if (offerRow?.free_delivery) {
+      deliveryAmount = 0;
+    }
+
+    // Use offer bundle_price if present, otherwise normal unit * qty
+    const expectedTotalPrice = offerRow
+      ? Number(offerRow.bundle_price) + deliveryAmount
+      : (unitPrice * Number(quantity)) + deliveryAmount;
 
     await client.query('BEGIN');
     inTransaction = true;
@@ -890,6 +964,9 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     addCol('variant_size', variantRow ? (variantRow.size || null) : null);
     addCol('variant_name', variantRow ? (variantRow.variant_name || null) : null);
     addCol('unit_price', unitPrice);
+    addCol('offer_id', offerRow ? Number(offerRow.id) : null);
+    addCol('offer_quantity', offerRow ? Number(offerRow.quantity) : null);
+    addCol('offer_bundle_price', offerRow ? Number(offerRow.bundle_price) : null);
     addCol('customer_name', customer_name);
     addCol('customer_email', customer_email || null);
     addCol('customer_phone', normalizedPhone || null);
@@ -1411,9 +1488,21 @@ export const trackStorefrontPageView: RequestHandler = async (req, res) => {
        SET page_views = COALESCE(page_views, 0) + 1
        WHERE store_slug = $1 
           OR LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)
-       RETURNING page_views`,
+       RETURNING client_id, page_views`,
       [storeSlug]
     );
+
+    // Also track daily views for chart
+    if (result.rows.length > 0) {
+      const clientId = result.rows[0].client_id;
+      await pool.query(
+        `INSERT INTO client_store_daily_views (client_id, view_date, views)
+         VALUES ($1, CURRENT_DATE, 1)
+         ON CONFLICT (client_id, view_date)
+         DO UPDATE SET views = client_store_daily_views.views + 1`,
+        [clientId]
+      ).catch(() => {}); // non-critical
+    }
 
     if (result.rows.length === 0) {
       // Try seller store
@@ -1435,4 +1524,167 @@ export const trackStorefrontPageView: RequestHandler = async (req, res) => {
     res.json({ success: false });
   }
 };
-// trigger rebuild
+
+/**
+ * GET /api/storefront/:storeSlug/contact-channels
+ * Returns available contact channels (WhatsApp, Telegram, Instagram, Facebook, Phone)
+ * for the chat bubble on the public storefront.
+ */
+export const getStorefrontContactChannels: RequestHandler = async (req, res) => {
+  let storeSlug: string;
+  try {
+    storeSlug = StoreSlugSchema.parse(req.params.storeSlug);
+  } catch {
+    return res.status(400).json({ error: 'Invalid store ID' });
+  }
+
+  try {
+    const pool = await ensureConnection();
+
+    // Look up client_id from store slug
+    const storeRes = await pool.query(
+      `SELECT client_id FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
+      [storeSlug]
+    );
+
+    if (storeRes.rows.length === 0) {
+      return res.json({ channels: [] });
+    }
+
+    const clientId = storeRes.rows[0].client_id;
+
+    // Fetch bot settings for connected platforms
+    const botRes = await pool.query(
+      `SELECT enabled, provider, whatsapp_phone_id, whatsapp_token, 
+              telegram_bot_token, telegram_bot_username,
+              viber_auth_token, viber_sender_name, support_phone,
+              messenger_enabled, fb_page_id
+       FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+
+    if (botRes.rows.length === 0) {
+      return res.json({ channels: [] });
+    }
+
+    const bot = botRes.rows[0];
+
+    // Bot must be enabled for chat icons to show
+    if (!bot.enabled) {
+      return res.json({ channels: [] });
+    }
+
+    const channels: { platform: string; url: string; label: string }[] = [];
+
+    // Facebook Messenger
+    const fbPageId = String(bot.fb_page_id || '').trim();
+    const platformFbPageId = String(process.env.PLATFORM_FB_PAGE_ID || '').trim();
+    const effectivePageId = fbPageId || platformFbPageId;
+    if (bot.messenger_enabled && effectivePageId) {
+      channels.push({
+        platform: 'facebook',
+        url: `https://m.me/${effectivePageId}`,
+        label: 'Messenger',
+      });
+    }
+
+    // Instagram - own account via facebook_tokens, or platform fallback
+    let instagramAdded = false;
+    try {
+      const igRes = await pool.query(
+        `SELECT instagram_username FROM facebook_tokens
+         WHERE client_id = $1 AND is_active = TRUE AND instagram_username IS NOT NULL AND instagram_username != ''
+         LIMIT 1`,
+        [clientId]
+      );
+      if (igRes.rows.length && igRes.rows[0].instagram_username) {
+        const username = igRes.rows[0].instagram_username.replace(/^@/, '');
+        channels.push({ platform: 'instagram', url: `https://ig.me/m/${username}`, label: 'Instagram' });
+        instagramAdded = true;
+      }
+    } catch { /* facebook_tokens may not exist */ }
+    // Platform Instagram fallback
+    if (!instagramAdded) {
+      const platformIgUsername = String(process.env.PLATFORM_INSTAGRAM_USERNAME || '').trim();
+      if (platformIgUsername) {
+        channels.push({
+          platform: 'instagram',
+          url: `https://ig.me/m/${platformIgUsername.replace(/^@/, '')}`,
+          label: 'Instagram',
+        });
+      }
+    }
+
+    // WhatsApp - support_phone, whatsapp_phone_id (Cloud API number), or platform display phone
+    const whatsappPhone = String(bot.support_phone || bot.whatsapp_phone_id || '').replace(/[^0-9]/g, '');
+    const platformWaPhone = String(process.env.PLATFORM_WHATSAPP_DISPLAY_PHONE || '').replace(/[^0-9]/g, '');
+    const effectiveWaPhone = whatsappPhone || platformWaPhone;
+    if (effectiveWaPhone) {
+      channels.push({
+        platform: 'whatsapp',
+        url: `https://wa.me/${effectiveWaPhone}`,
+        label: 'WhatsApp',
+      });
+    }
+
+    // Telegram - stored username or platform bot username
+    const telegramUsername = String(bot.telegram_bot_username || '').trim().replace(/^@/, '');
+    const platformTelegramUsername = String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim().replace(/^@/, '');
+    const effectiveTelegramUsername = telegramUsername || platformTelegramUsername;
+    if (effectiveTelegramUsername) {
+      channels.push({
+        platform: 'telegram',
+        url: `https://t.me/${effectiveTelegramUsername}`,
+        label: 'Telegram',
+      });
+    }
+
+    // Viber - own token/sender, or platform fallback (only when platform token is set)
+    const viberSender = String(bot.viber_sender_name || '').trim();
+    const platformViberToken = String(process.env.PLATFORM_VIBER_AUTH_TOKEN || '').trim();
+    const platformViberSender = String(process.env.PLATFORM_VIBER_SENDER_NAME || '').trim();
+    const effectiveViberSender = (bot.viber_auth_token && viberSender)
+      ? viberSender
+      : (platformViberToken && platformViberSender ? platformViberSender : '');
+    if (effectiveViberSender) {
+      channels.push({
+        platform: 'viber',
+        url: `viber://pa?chatURI=${encodeURIComponent(effectiveViberSender)}`,
+        label: 'Viber',
+      });
+    }
+
+    // Phone - support_phone as direct call
+    // Read from store template settings (phone_call_enabled + contact_phone)
+    try {
+      const storeSettingsRes = await pool.query(
+        `SELECT template_settings, global_settings FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
+        [clientId]
+      );
+      if (storeSettingsRes.rows.length) {
+        const ts = storeSettingsRes.rows[0].template_settings || {};
+        const gs = storeSettingsRes.rows[0].global_settings || {};
+        const merged = { ...gs, ...ts };
+        if (merged.phone_call_enabled && merged.contact_phone) {
+          const phone = String(merged.contact_phone).replace(/[^0-9+]/g, '');
+          if (phone) {
+            channels.push({
+              platform: 'phone',
+              url: `tel:${phone}`,
+              label: 'اتصل بنا',
+            });
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    res.json({ channels });
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Contact channels error:', error);
+    }
+    res.json({ channels: [] });
+  }
+};

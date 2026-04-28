@@ -1,12 +1,15 @@
 import { ensureConnection } from './database';
 
-const PLATFORM_TELEGRAM_BOT_TOKEN = String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim();
-const PLATFORM_TELEGRAM_BOT_USERNAME = String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim();
-const PLATFORM_TELEGRAM_AVAILABLE = !!PLATFORM_TELEGRAM_BOT_TOKEN && !!PLATFORM_TELEGRAM_BOT_USERNAME;
+// Read env vars lazily so they're always current at call time
+function getPlatformTelegramBotToken() { return String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim(); }
+function getPlatformTelegramBotUsername() { return String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim(); }
+function isPlatformTelegramAvailable() { return !!getPlatformTelegramBotToken() && !!getPlatformTelegramBotUsername(); }
 
-const PLATFORM_FB_PAGE_ID = String(process.env.PLATFORM_FB_PAGE_ID || '').trim();
-const PLATFORM_FB_PAGE_ACCESS_TOKEN = String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim();
-const PLATFORM_MESSENGER_AVAILABLE = !!PLATFORM_FB_PAGE_ID && !!PLATFORM_FB_PAGE_ACCESS_TOKEN;
+function getPlatformFbPageId() { return String(process.env.PLATFORM_FB_PAGE_ID || '').trim(); }
+function getPlatformFbPageAccessToken() { return String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim(); }
+function isPlatformMessengerAvailable() { return !!getPlatformFbPageId() && !!getPlatformFbPageAccessToken(); }
+
+
 
 const DEFAULT_TEMPLATES = {
   greeting: `شكراً لطلبك من {storeName}، {customerName}! 🎉\n\n✅ فعّل الإشعارات لتلقي تأكيد الطلب وتحديثات التتبع.`,
@@ -43,19 +46,48 @@ export async function ensureBotSettingsRow(
 ): Promise<void> {
   const pool = await ensureConnection();
 
-  const existing = await pool.query('SELECT id FROM bot_settings WHERE client_id = $1 LIMIT 1', [clientId]);
-  if (existing.rowCount) return;
+  const existing = await pool.query('SELECT id, enabled, telegram_bot_token, fb_page_id FROM bot_settings WHERE client_id = $1 LIMIT 1', [clientId]);
+  
+  if (existing.rowCount) {
+    const row = existing.rows[0];
+    // Always backfill platform credentials if the row exists but is missing them
+    const needsTelegramBackfill = isPlatformTelegramAvailable() && !row.telegram_bot_token;
+    const needsMessengerBackfill = isPlatformMessengerAvailable() && !row.fb_page_id;
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (opts?.enabled !== undefined) {
+      updates.push(`enabled = $${idx++}`);
+      values.push(opts.enabled);
+    }
+    if (needsTelegramBackfill) {
+      updates.push(`telegram_bot_token = $${idx++}`, `telegram_bot_username = $${idx++}`);
+      values.push(getPlatformTelegramBotToken(), getPlatformTelegramBotUsername());
+    }
+    if (needsMessengerBackfill) {
+      updates.push(`fb_page_id = $${idx++}`, `messenger_enabled = $${idx++}`);
+      values.push(getPlatformFbPageId(), true);
+    }
+
+    if (updates.length > 0) {
+      values.push(clientId);
+      await pool.query(`UPDATE bot_settings SET ${updates.join(', ')}, updated_at = NOW() WHERE client_id = $${idx}`, values);
+    }
+    return;
+  }
 
   // Auto-enable bots when platform credentials are configured
-  const platformAvailable = PLATFORM_TELEGRAM_AVAILABLE || PLATFORM_MESSENGER_AVAILABLE;
+  const platformAvailable = isPlatformTelegramAvailable() || isPlatformMessengerAvailable();
   const enabled = opts?.enabled ?? platformAvailable;
 
   // Store Page ID but do NOT store platform Page Access Token (env-only).
-  const fbPageId = PLATFORM_MESSENGER_AVAILABLE ? PLATFORM_FB_PAGE_ID : null;
+  const fbPageId = isPlatformMessengerAvailable() ? getPlatformFbPageId() : null;
   const fbPageAccessToken = null;
 
   // Auto-enable Messenger when platform Messenger is configured
-  const messengerEnabled = PLATFORM_MESSENGER_AVAILABLE;
+  const messengerEnabled = isPlatformMessengerAvailable();
 
   await pool.query(
     `INSERT INTO bot_settings (
@@ -83,8 +115,8 @@ export async function ensureBotSettingsRow(
       'telegram',
       null,
       null,
-      PLATFORM_TELEGRAM_AVAILABLE ? PLATFORM_TELEGRAM_BOT_TOKEN : null,
-      PLATFORM_TELEGRAM_AVAILABLE ? PLATFORM_TELEGRAM_BOT_USERNAME : null,
+      isPlatformTelegramAvailable() ? getPlatformTelegramBotToken() : null,
+      isPlatformTelegramAvailable() ? getPlatformTelegramBotUsername() : null,
       5,
       24,
       null,
@@ -102,6 +134,54 @@ export async function ensureBotSettingsRow(
       5,
     ]
   );
+}
+
+/**
+ * Backfill ALL existing bot_settings rows with platform credentials.
+ * Run once at server startup so existing accounts get Sahla's shared bot connected.
+ */
+export async function backfillPlatformBotCredentials(): Promise<void> {
+  if (!isPlatformTelegramAvailable() && !isPlatformMessengerAvailable()) {
+    console.log('[Provisioning] No platform bot credentials configured — skipping backfill');
+    return;
+  }
+
+  try {
+    const pool = await ensureConnection();
+
+    const updates: string[] = [];
+    const baseValues: any[] = [];
+    let idx = 1;
+
+    if (isPlatformTelegramAvailable()) {
+      updates.push(
+        `telegram_bot_token = COALESCE(NULLIF(telegram_bot_token, ''), $${idx++})`,
+        `telegram_bot_username = COALESCE(NULLIF(telegram_bot_username, ''), $${idx++})`
+      );
+      baseValues.push(getPlatformTelegramBotToken(), getPlatformTelegramBotUsername());
+    }
+
+    if (isPlatformMessengerAvailable()) {
+      updates.push(
+        `fb_page_id = COALESCE(NULLIF(fb_page_id, ''), $${idx++})`,
+        `messenger_enabled = CASE WHEN fb_page_id IS NULL OR fb_page_id = '' THEN true ELSE messenger_enabled END`
+      );
+      baseValues.push(getPlatformFbPageId());
+    }
+
+    if (updates.length === 0) return;
+
+    const result = await pool.query(
+      `UPDATE bot_settings SET ${updates.join(', ')}, updated_at = NOW()
+       WHERE (telegram_bot_token IS NULL OR telegram_bot_token = ''
+              OR fb_page_id IS NULL OR fb_page_id = '')`,
+      baseValues
+    );
+
+    console.log(`[Provisioning] Backfilled platform bot credentials for ${result.rowCount} existing account(s)`);
+  } catch (err) {
+    console.error('[Provisioning] backfillPlatformBotCredentials failed (non-fatal):', err);
+  }
 }
 
 /**

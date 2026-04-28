@@ -21,8 +21,8 @@ const MAX_UPLOAD_BYTES = (() => {
   const raw = process.env.MAX_UPLOAD_BYTES;
   const n = raw ? Number.parseInt(raw, 10) : NaN;
   if (Number.isFinite(n) && n > 0) return n;
-  // Default to 10MB
-  return 10 * 1024 * 1024;
+  // Default to 100MB (supports video uploads)
+  return 100 * 1024 * 1024;
 })();
 
 // Allowlist MIME types (validated again via magic bytes)
@@ -32,6 +32,7 @@ const ALLOWED_MIME = new Set([
   'image/webp',
   'image/gif',
   'video/mp4',
+  'video/webm',
 ]);
 
 async function ensureDirs() {

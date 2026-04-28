@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Search, Grid, List
@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/lib/i18n';
 import { RenderStorefront } from './storefront/templates';
 import UniversalStyleInjector from '@/components/storefront/UniversalStyleInjector';
-import PixelScripts from '@/components/storefront/PixelScripts';
+import PixelScripts, { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import StorefrontChatBubble from '@/components/storefront/StorefrontChatBubble';
 import { setWindowTemplateSettings } from '@/lib/templateWindow';
 import { formatMoney } from '@/utils/money';
 import { STOREFRONT_SETTINGS_KEY, STOREFRONT_TEMPLATE_KEY } from '@/lib/storefrontStorage';
@@ -42,6 +43,7 @@ export default function Storefront() {
   // Support both new (:storeSlug) and legacy (:clientId) route params
   const params = useParams();
   const storeSlug = (params as any).storeSlug || (params as any).clientId;
+  const initialProductSlug = (params as any).productSlug;
   const navigate = useNavigate();
   const location = useLocation();
   const trackedViewRef = useRef<string | null>(null);
@@ -52,7 +54,7 @@ export default function Storefront() {
     template: 'books',
     primary_color: '#16a34a',
     secondary_color: '#0ea5e9',
-    currency_code: 'USD',
+    currency_code: 'DZD',
     store_name: '',
     store_description: '',
     store_logo: '',
@@ -193,7 +195,7 @@ export default function Storefront() {
         const newSettings = {
           primary_color: '#16a34a',
           secondary_color: '#0ea5e9',
-          currency_code: 'USD',
+          currency_code: 'DZD',
           store_name: '',
           store_description: '',
           store_logo: '',
@@ -303,6 +305,16 @@ export default function Storefront() {
     setWindowTemplateSettings(storeSettings);
   }, [storeSettings]);
 
+  const handleProductView = useCallback((product: any) => {
+    if (!product) return;
+    trackAllPixels(PixelEvents.VIEW_CONTENT, {
+      content_ids: [product.id],
+      content_name: product.title || product.name || '',
+      value: product.price,
+      currency: storeSettings.currency_code || 'DZD',
+    });
+  }, [storeSettings.currency_code]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
@@ -373,8 +385,11 @@ export default function Storefront() {
             bannerUrl: bannerUrl || null,
             navigate: (to: any) => navigate(to),
             canManage: false,
+            onProductView: handleProductView,
+            initialProductSlug: initialProductSlug || undefined,
           })}
       </div>
+      <StorefrontChatBubble storeSlug={storeSlug!} enabled={(storeSettings as any).chat_bubble_enabled !== false} />
     </>
   );
 }

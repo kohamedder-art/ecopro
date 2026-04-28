@@ -25,11 +25,11 @@ const REFRESH_COOKIE = cookieNames.REFRESH_COOKIE;
 const CSRF_COOKIE = cookieNames.CSRF_COOKIE;
 
 function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
-  const { isProduction, sameSite, domain } = getCookieOptions();
+  const { secure, sameSite, domain } = getCookieOptions();
 
   res.cookie(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
     path: '/',
@@ -38,7 +38,7 @@ function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
 
   res.cookie(REFRESH_COOKIE, refreshToken, {
     httpOnly: true,
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
     path: '/api/auth',
@@ -50,7 +50,7 @@ function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
     const csrf = crypto.randomBytes(32).toString('hex');
     res.cookie(CSRF_COOKIE, csrf, {
       httpOnly: false,
-      secure: isProduction,
+      secure,
       sameSite,
       domain,
       path: '/',
@@ -1924,7 +1924,7 @@ export const getLockedAccounts: RequestHandler = async (_req, res) => {
         c.unlock_reason,
         c.unlocked_at,
         c.unlocked_by_admin_id,
-        COALESCE(c.subscription_extended_until, s.trial_ends_at, s.current_period_end, c.subscription_ends_at) as subscription_ends_at,
+        COALESCE(c.subscription_extended_until, s.current_period_end, s.trial_ends_at, c.subscription_ends_at) as subscription_ends_at,
         c.is_paid_temporarily,
         c.subscription_extended_until,
         COALESCE(c.lock_type, 'critical') as lock_type,
@@ -1950,7 +1950,7 @@ export const getLockedAccounts: RequestHandler = async (_req, res) => {
           c.unlock_reason,
           c.unlocked_at,
           c.unlocked_by_admin_id,
-          COALESCE(c.subscription_extended_until, s.trial_ends_at, s.current_period_end, c.subscription_ends_at) as subscription_ends_at,
+          COALESCE(c.subscription_extended_until, s.current_period_end, s.trial_ends_at, c.subscription_ends_at) as subscription_ends_at,
           c.is_paid_temporarily,
           c.subscription_extended_until,
           'critical' as lock_type,
@@ -2010,7 +2010,7 @@ export const unlockAccountWithOptions: RequestHandler = async (req, res) => {
       // Get current client with subscription info
       const clientResult = await client.query(
         `SELECT c.*, 
-          COALESCE(c.subscription_extended_until, s.trial_ends_at, s.current_period_end) as current_end_date
+          COALESCE(c.subscription_extended_until, s.current_period_end, s.trial_ends_at) as current_end_date
          FROM clients c
          LEFT JOIN subscriptions s ON s.user_id = c.id
          WHERE c.id = $1`,

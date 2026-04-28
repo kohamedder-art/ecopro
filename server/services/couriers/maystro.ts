@@ -1,11 +1,16 @@
-// Maystro Delivery Courier Service
-// 3K+ stores, 600+ drivers
-// Features: Warehousing, packaging, call center
+/**
+ * Maystro Delivery Courier Service Integration
+ * Features: Warehousing (3K+ stores), 600+ drivers, packaging, call center
+ * API: https://api.maystro-delivery.com/v1
+ */
 
 import { CourierService } from '../courier-service';
 import { CourierShipmentResponse, CourierStatusResponse, ShipmentInput } from '../../types/delivery';
 import crypto from 'crypto';
 
+/**
+ * Response structure from Maystro API for order/shipment
+ */
 interface MaystroOrderResponse {
   id: number;
   tracking_id: string;
@@ -28,9 +33,16 @@ interface MaystroOrderResponse {
   updated_at: string;
 }
 
+/**
+ * Maystro courier service implementation
+ * Handles shipment creation, tracking, and webhook verification
+ */
 export class MaystroService implements CourierService {
   private readonly apiUrl = 'https://api.maystro-delivery.com/v1';
 
+  /**
+   * Create a shipment/order on Maystro platform
+   */
   async createShipment(
     shipment: ShipmentInput,
     apiKey: string,
@@ -81,7 +93,6 @@ export class MaystroService implements CourierService {
         success: true,
         tracking_number: order.tracking_id,
         reference_id: order.external_id,
-        // Maystro doesn't provide label URLs
       };
     } catch (error: any) {
       console.error('[Maystro] createShipment exception:', error);
@@ -93,6 +104,9 @@ export class MaystroService implements CourierService {
     }
   }
 
+  /**
+   * Get shipment status from Maystro API
+   */
   async getStatus(
     trackingNumber: string,
     apiKey: string,
@@ -135,12 +149,18 @@ export class MaystroService implements CourierService {
     }
   }
 
+  /**
+   * Verify webhook authenticity using HMAC-SHA256
+   */
   verifyWebhook(payload: any, signature: string, secret: string): boolean {
     const hmac = crypto.createHmac('sha256', secret);
     const digest = hmac.update(JSON.stringify(payload)).digest('hex');
     return digest === signature;
   }
 
+  /**
+   * Parse incoming webhook payload and normalize to standard format
+   */
   parseWebhookPayload(payload: any) {
     return {
       tracking_number: payload.tracking_id || payload.tracking_number,
@@ -152,6 +172,9 @@ export class MaystroService implements CourierService {
     };
   }
 
+  /**
+   * Map Maystro delivery statuses to platform-standard statuses
+   */
   private mapStatus(status: string): string {
     const statusMap: Record<string, string> = {
       'pending': 'pending',

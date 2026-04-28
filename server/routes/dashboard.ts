@@ -27,10 +27,9 @@ export const getDashboardStats: RequestHandler = async (req, res) => {
     const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 365);
     const dateFilter = `AND created_at >= NOW() - INTERVAL '${days} days'`;
 
-    const hasDeliveryFee = await storeOrdersHasColumn('delivery_fee');
-    const revenueExpr = hasDeliveryFee
-      ? '(total_price - COALESCE(delivery_fee, 0))'
-      : 'total_price';
+    // Revenue calculation: unit_price * quantity (matches Orders page logic)
+    // This excludes delivery fees and any adjustments, showing pure product revenue
+    const revenueExpr = '(COALESCE(unit_price, 0) * COALESCE(quantity, 1))';
     
     // Get custom statuses that count as revenue
     const revenueStatusesRes = await pool.query(
@@ -64,9 +63,9 @@ export const getDashboardStats: RequestHandler = async (req, res) => {
       ),
     ]);
 
-    // Get store views count
+    // Get store page views count for the selected date range
     const viewsRes = await pool.query(
-      `SELECT COALESCE(SUM(views), 0)::int AS total_views FROM client_store_products WHERE client_id = $1`,
+      `SELECT COALESCE(SUM(views), 0)::int AS total_views FROM client_store_daily_views WHERE client_id = $1 AND view_date >= CURRENT_DATE - INTERVAL '${days} days'`,
       [clientId]
     );
 
@@ -122,18 +121,16 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
     const revenueStatuses = revenueStatusesRes.rows.map(r => r.key || r.name);
     revenueStatuses.push('completed');
 
-    const hasDeliveryFee = await storeOrdersHasColumn('delivery_fee');
-    const revenueExpr = hasDeliveryFee
-      ? '(total_price - COALESCE(delivery_fee, 0))'
-      : 'total_price';
-    const revenueExprO = hasDeliveryFee
-      ? '(o.total_price - COALESCE(o.delivery_fee, 0))'
-      : 'o.total_price';
+    // Revenue calculation: unit_price * quantity (matches Orders page logic)
+    // This excludes delivery fees and any adjustments, showing pure product revenue
+    const revenueExpr = '(COALESCE(unit_price, 0) * COALESCE(quantity, 1))';
+    const revenueExprO = '(COALESCE(o.unit_price, 0) * COALESCE(o.quantity, 1))';
 
     // Run ALL analytics queries in parallel for maximum speed
     const [
       customStatusesRes,
       dailyRevenueRes,
+      dailyViewsRes,
       todayRes,
       yesterdayRes,
       thisWeekRes,
@@ -163,6 +160,14 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
          GROUP BY DATE(created_at)
          ORDER BY date ASC`,
         [clientId, revenueStatuses]
+      ),
+      // Daily page views
+      pool.query(
+        `SELECT view_date as date, views
+         FROM client_store_daily_views
+         WHERE client_id = $1 AND view_date >= CURRENT_DATE - INTERVAL '${days} days'
+         ORDER BY view_date ASC`,
+        [clientId]
       ),
       // Today
       pool.query(
@@ -329,6 +334,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
 
     const responseData = {
       dailyRevenue: dailyRevenueRes.rows,
+      dailyViews: dailyViewsRes.rows,
       customStatuses: customStatusesRes.rows,
       comparisons: {
         today: {

@@ -1,0 +1,9 @@
+ client_id | enabled | messenger_enabled |       tg_token       | telegram_bot_username |   fb_page_id    
+-----------+---------+-------------------+----------------------+-----------------------+-----------------
+         2 | t       | t                 | 8532648906:AAHW75CAh | SahlaOrdersBot        | 929814950220320
+        20 | t       | t                 |                      |                       | 
+        21 | t       | f                 |                      |                       | 
+        22 | t       | f                 |                      |                       | 
+        24 | t       | f                 |                      |                       | 
+(5 rows)
+

@@ -4,7 +4,7 @@ import {
   Truck, Megaphone, Star, Percent, Globe, BarChart3, 
   Users, Shield, Ban, Puzzle, CreditCard, Settings,
   ChevronDown, ChevronRight, Menu, X, Package, Bot,
-  Divide, Palette, User, Lock, Image
+    Divide, Palette, User, Lock, Image, Brain
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -74,10 +74,10 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
         { titleKey: "store.management", path: "/dashboard/preview", icon: <Eye className="w-3.5 h-3.5" />, permission: "view_products_list" },
         { titleKey: "store.templateEditor", path: "/template-editor", icon: <Palette className="w-3.5 h-3.5" />, permission: "view_products_list" },
         { titleKey: "store.viewStorefront", path: storefrontPath, icon: <Store className="w-3.5 h-3.5" />, permission: "view_products_list" },
+        { titleKey: "store.checkoutSettings", path: "/dashboard/checkout-settings", icon: <ShoppingCart className="w-3.5 h-3.5" />, permission: "view_products_list" },
       ],
     },
     { titleKey: "sidebar.stock", path: "/dashboard/stock", icon: <Package className="w-[18px] h-[18px]" />, permission: "view_inventory" },
-    { titleKey: "sidebar.images", path: "/dashboard/images", icon: <Image className="w-[18px] h-[18px]" />, permission: "view_products_list" },
     { titleKey: "sidebar.orders", path: "/dashboard/orders", icon: <ShoppingCart className="w-[18px] h-[18px]" />, permission: "view_orders_list" },
     {
       titleKey: "sidebar.delivery",
@@ -100,6 +100,12 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
       path: "/dashboard/bot-settings",
       icon: <Bot className="w-[18px] h-[18px]" />,
       permission: "manage_bot_settings"
+    },
+    {
+      titleKey: "sidebar.aiSettings",
+      path: "/dashboard/ai-settings",
+      icon: <Brain className="w-[18px] h-[18px]" />,
+      permission: "view_settings"
     },
     { titleKey: "sidebar.staff", path: "/dashboard/staff", icon: <Users className="w-[18px] h-[18px]" />, permission: "view_staff" },
     { titleKey: "sidebar.billing", path: "/dashboard/billing", icon: <CreditCard className="w-[18px] h-[18px]" />, permission: "view_settings" },
@@ -473,10 +479,7 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
       {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className={cn(
-          "lg:hidden fixed bottom-6 p-4 rounded-full text-white shadow-2xl z-[60] hover:scale-110 transition-transform",
-          isRTL ? "left-6" : "right-6"
-        )}
+        className="lg:hidden fixed bottom-4 left-4 p-3.5 rounded-full text-white shadow-2xl z-[120] hover:scale-110 active:scale-95 transition-transform"
         style={{
           backgroundColor: SIDEBAR_THEMES[activeTheme].accent,
         }}

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { Badge } from '@/components/ui/badge';
+import { useTranslation } from '@/lib/i18n';
 
 interface PlatformStats {
   totalUsers: number;
@@ -110,9 +111,9 @@ function KPICard({ title, value, subtitle, icon: Icon, color, sparkData, sparkKe
 
       <div className="relative flex items-start justify-between mb-2">
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-slate-400 font-medium truncate">{title}</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400 font-medium truncate">{title}</p>
           <h3 className={`text-2xl font-black ${textColor[color]} mt-0.5`}>{value}</h3>
-          {subtitle && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{subtitle}</p>}
+          {subtitle && <p className="text-[11px] text-gray-500 dark:text-slate-500 mt-0.5 truncate">{subtitle}</p>}
         </div>
         <div className={`p-2 rounded-xl bg-white/5 ${textColor[color]} opacity-40 group-hover:opacity-70 transition-opacity`}>
           <Icon className="w-5 h-5" />
@@ -137,7 +138,7 @@ function KPICard({ title, value, subtitle, icon: Icon, color, sparkData, sparkKe
           <span className={`text-[11px] font-semibold ${trend.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {trend.value >= 0 ? '+' : ''}{trend.value}
           </span>
-          <span className="text-[11px] text-slate-500">{trend.label}</span>
+          <span className="text-[11px] text-gray-500 dark:text-slate-500">{trend.label}</span>
         </div>
       )}
     </div>
@@ -145,6 +146,7 @@ function KPICard({ title, value, subtitle, icon: Icon, color, sparkData, sparkKe
 }
 
 export default function OverviewTab({ stats, onNavigate }: Props) {
+  const { t } = useTranslation();
   const [growth, setGrowth] = useState<GrowthMetrics | null>(null);
   const [growthLoading, setGrowthLoading] = useState(true);
 
@@ -161,9 +163,9 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
   }, []);
 
   const subscriptionData = useMemo(() => [
-    { name: 'Active', value: stats.activeSubscriptions, color: '#10b981' },
-    { name: 'Trial', value: stats.trialSubscriptions, color: '#f59e0b' },
-    { name: 'Expired', value: stats.expiredSubscriptions, color: '#ef4444' },
+    { name: t('platformAdmin.stores.active'), value: stats.activeSubscriptions, color: '#10b981' },
+    { name: t('platformAdmin.stores.trial'), value: stats.trialSubscriptions, color: '#f59e0b' },
+    { name: t('platformAdmin.stores.expired'), value: stats.expiredSubscriptions, color: '#ef4444' },
   ].filter(d => d.value > 0), [stats]);
 
   const topStores = growth?.storeHealth?.slice(0, 5) || [];
@@ -174,38 +176,38 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
       {/* KPI Bento Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard
-          title="Total Users"
+          title={t('platformAdmin.overview.totalUsers')}
           value={stats.totalUsers}
-          subtitle={`${stats.totalClients} stores`}
+          subtitle={`${stats.totalClients} ${t('platformAdmin.tabs.stores')}`}
           icon={Users}
           color="blue"
           sparkData={growth?.weeklySignups}
           sparkKey="signups"
           sparkColor={SPARKLINE_COLORS.signups}
-          trend={{ value: stats.newSignupsWeek, label: 'this week' }}
+          trend={{ value: stats.newSignupsWeek, label: t('platformAdmin.overview.thisWeek') }}
           onClick={() => onNavigate('users')}
         />
         <KPICard
-          title="Active Subscriptions"
+          title={t('platformAdmin.overview.activeSubscriptions')}
           value={stats.activeSubscriptions}
-          subtitle={`${stats.trialSubscriptions} trial`}
+          subtitle={`${stats.trialSubscriptions} ${t('platformAdmin.overview.trial')}`}
           icon={Zap}
           color="emerald"
-          trend={{ value: stats.activeSubscriptions - stats.expiredSubscriptions, label: 'net' }}
+          trend={{ value: stats.activeSubscriptions - stats.expiredSubscriptions, label: t('platformAdmin.overview.net') }}
           onClick={() => onNavigate('subscriptions')}
         />
         <KPICard
-          title="Trial Accounts"
+          title={t('platformAdmin.overview.trialAccounts')}
           value={stats.trialSubscriptions}
-          subtitle={`${stats.totalClients > 0 ? Math.round((stats.trialSubscriptions / stats.totalClients) * 100) : 0}% of stores`}
+          subtitle={`${stats.totalClients > 0 ? Math.round((stats.trialSubscriptions / stats.totalClients) * 100) : 0}% ${t('platformAdmin.overview.ofStores')}`}
           icon={Clock}
           color="amber"
           onClick={() => onNavigate('subscriptions')}
         />
         <KPICard
-          title="Locked Accounts"
+          title={t('platformAdmin.overview.lockedAccounts')}
           value={stats.lockedAccounts}
-          subtitle="need attention"
+          subtitle={t('platformAdmin.overview.needAttention')}
           icon={Lock}
           color="red"
           onClick={() => onNavigate('tools')}
@@ -215,17 +217,17 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
       {/* Second Row: MRR, Subscription Revenue, Paid Subs, Codes */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard
-          title="MRR"
-          value={growth?.mrr != null ? `${Number(growth.mrr).toLocaleString()} DA` : '—'}
-          subtitle={`${growth?.activeSubs ?? 0} active + ${growth?.tempPaid ?? 0} temp`}
+          title={t('platformAdmin.overview.mrr')}
+          value={growth?.mrr != null ? `${Number(growth.mrr).toLocaleString()} دج` : '—'}
+          subtitle={`${growth?.activeSubs ?? 0} ${t('platformAdmin.overview.active')} + ${growth?.tempPaid ?? 0} ${t('platformAdmin.overview.temp')}`}
           icon={TrendingUp}
           color="emerald"
           onClick={() => onNavigate('billing')}
         />
         <KPICard
-          title="Subscription Revenue"
-          value={growth?.weeklyPayments?.slice(-1)?.[0]?.revenue ? `${Number(growth.weeklyPayments.slice(-1)[0].revenue).toLocaleString()} DA` : '—'}
-          subtitle="this week"
+          title={t('platformAdmin.overview.subscriptionRevenue')}
+          value={growth?.weeklyPayments?.slice(-1)?.[0]?.revenue ? `${Number(growth.weeklyPayments.slice(-1)[0].revenue).toLocaleString()} دج` : '—'}
+          subtitle={t('platformAdmin.overview.thisWeek')}
           icon={Zap}
           color="cyan"
           sparkData={growth?.weeklyPayments}
@@ -233,9 +235,9 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
           sparkColor={SPARKLINE_COLORS.revenue}
         />
         <KPICard
-          title="New Paid Subscribers"
+          title={t('platformAdmin.overview.newPaidSubscribers')}
           value={growth?.weeklyPaidSubs?.slice(-1)?.[0]?.new_paid ?? '—'}
-          subtitle="this week"
+          subtitle={t('platformAdmin.overview.thisWeek')}
           icon={Users}
           color="purple"
           sparkData={growth?.weeklyPaidSubs}
@@ -243,9 +245,9 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
           sparkColor={SPARKLINE_COLORS.newPaid}
         />
         <KPICard
-          title="Active Codes"
+          title={t('platformAdmin.overview.activeCodes')}
           value={stats.pendingCodes}
-          subtitle={`${stats.redeemedCodes} redeemed`}
+          subtitle={`${stats.redeemedCodes} ${t('platformAdmin.codes.redeemed')}`}
           icon={BarChart3}
           color="amber"
           onClick={() => onNavigate('codes')}
@@ -255,10 +257,10 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
       {/* Bento Section: Charts + Activity + Store Health */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Subscription Donut */}
-        <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4 shadow-lg">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+        <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4 shadow-lg">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
             <Eye className="w-4 h-4 text-purple-400" />
-            Subscription Mix
+            {t('platformAdmin.overview.subscriptionMix')}
           </h3>
           {subscriptionData.length > 0 ? (
             <div className="flex items-center gap-4">
@@ -279,23 +281,23 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
                   <div key={d.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
-                      <span className="text-xs text-slate-300">{d.name}</span>
+                      <span className="text-xs text-gray-600 dark:text-slate-300">{d.name}</span>
                     </div>
-                    <span className="text-xs font-bold text-white">{d.value}</span>
+                    <span className="text-xs font-bold text-gray-900 dark:text-white">{d.value}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="text-slate-500 text-sm">No data</p>
+            <p className="text-gray-500 dark:text-slate-500 text-sm">{t('platformAdmin.overview.noData')}</p>
           )}
         </div>
 
         {/* Top Stores */}
-        <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4 shadow-lg">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+        <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4 shadow-lg">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
             <Store className="w-4 h-4 text-emerald-400" />
-            Top Performing Stores
+            {t('platformAdmin.overview.topStores')}
           </h3>
           {growthLoading ? (
             <div className="flex items-center justify-center py-6">
@@ -304,13 +306,13 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
           ) : topStores.length > 0 ? (
             <div className="space-y-2">
               {topStores.map((s, i) => (
-                <div key={s.clientId} className="flex items-center gap-2 p-2 rounded-lg bg-slate-900/40 hover:bg-slate-900/60 transition-colors">
+                <div key={s.clientId} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50/40 dark:bg-slate-900/40 hover:bg-slate-900/60 transition-colors">
                   <span className={`text-xs font-bold w-5 text-center ${
-                    i === 0 ? 'text-amber-400' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-400' : 'text-slate-500'
+                    i === 0 ? 'text-amber-400' : i === 1 ? 'text-gray-600 dark:text-slate-300' : i === 2 ? 'text-orange-400' : 'text-gray-500 dark:text-slate-500'
                   }`}>#{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-white truncate">{s.storeName}</p>
-                    <p className="text-[10px] text-slate-500">{s.orders30d} orders · {s.productCount} products</p>
+                    <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{s.storeName}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-slate-500">{s.orders30d} {t('platformAdmin.overview.orders')} · {s.productCount} {t('platformAdmin.overview.products')}</p>
                   </div>
                   <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                     s.healthScore >= 70 ? 'bg-emerald-500/20 text-emerald-300' :
@@ -323,18 +325,18 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
               ))}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm py-4 text-center">No store data yet</p>
+            <p className="text-gray-500 dark:text-slate-500 text-sm py-4 text-center">{t('platformAdmin.overview.noStoreData')}</p>
           )}
         </div>
 
         {/* Live Activity Feed */}
-        <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4 shadow-lg">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+        <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4 shadow-lg">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
             <Activity className="w-4 h-4 text-cyan-400" />
-            Recent Activity
+            {t('platformAdmin.overview.recentActivity')}
             <span className="ml-auto flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-[10px] text-emerald-400 font-normal">Live</span>
+              <span className="text-[10px] text-emerald-400 font-normal">{t('platformAdmin.overview.live')}</span>
             </span>
           </h3>
           {growthLoading ? (
@@ -344,7 +346,7 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
           ) : (growth?.recentActivity?.length ?? 0) > 0 ? (
             <div className="space-y-1.5 max-h-52 overflow-y-auto scrollbar-thin">
               {growth!.recentActivity.slice(0, 10).map((a, i) => (
-                <div key={`${a.type}-${a.id}-${i}`} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-slate-900/40 transition-colors">
+                <div key={`${a.type}-${a.id}-${i}`} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-gray-50/40 dark:bg-slate-900/40 transition-colors">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
                     a.type === 'order' ? 'bg-emerald-500/20' : 'bg-indigo-500/20'
                   }`}>
@@ -355,19 +357,19 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-slate-300 truncate">
-                      {a.type === 'order' ? `Order #${a.id}` : 'New signup'}{' '}
-                      <span className="text-slate-500">{a.detail}</span>
+                    <p className="text-[11px] text-gray-600 dark:text-slate-300 truncate">
+                      {a.type === 'order' ? `${t('platformAdmin.overview.order')} #${a.id}` : t('platformAdmin.overview.newSignup')}{' '}
+                      <span className="text-gray-500 dark:text-slate-500">{a.detail}</span>
                     </p>
                   </div>
-                  <span className="text-[10px] text-slate-500 flex-shrink-0">
-                    {new Date(a.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                  <span className="text-[10px] text-gray-500 dark:text-slate-500 flex-shrink-0">
+                    {new Date(a.created_at).toLocaleDateString('ar-DZ', { month: 'short', day: 'numeric' })}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm py-4 text-center">No recent activity</p>
+            <p className="text-gray-500 dark:text-slate-500 text-sm py-4 text-center">{t('platformAdmin.overview.noRecentActivity')}</p>
           )}
         </div>
       </div>
@@ -375,14 +377,14 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
       {/* At-Risk Stores Banner */}
       {weakStores.length > 0 && (
         <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 backdrop-blur-xl rounded-2xl border border-red-500/30 p-4 shadow-lg">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-2">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-2">
             <Sparkles className="w-4 h-4 text-red-400" />
-            Stores Needing Attention ({weakStores.length})
+            {t('platformAdmin.overview.storesNeedingAttention')} ({weakStores.length})
           </h3>
           <div className="flex flex-wrap gap-2">
             {weakStores.map(s => (
               <Badge key={s.clientId} className="bg-red-500/20 text-red-200 border border-red-500/30 text-xs">
-                {s.storeName} — Score {s.healthScore}
+                {s.storeName} — {t('platformAdmin.overview.score')} {s.healthScore}
               </Badge>
             ))}
           </div>
@@ -392,16 +394,16 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
-          { label: 'Manage Users', icon: Users, color: 'text-blue-400 bg-blue-500/10 hover:bg-blue-500/20', tab: 'users' },
-          { label: 'View Stores', icon: Store, color: 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20', tab: 'stores' },
-          { label: 'Check Errors', icon: Activity, color: 'text-red-400 bg-red-500/10 hover:bg-red-500/20', tab: 'errors' },
-          { label: 'AI Insights', icon: Sparkles, color: 'text-purple-400 bg-purple-500/10 hover:bg-purple-500/20', tab: 'ai' },
+          { label: t('platformAdmin.overview.manageUsers'), icon: Users, color: 'text-blue-400 bg-blue-500/10 hover:bg-blue-500/20', tab: 'users' },
+          { label: t('platformAdmin.overview.viewStores'), icon: Store, color: 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20', tab: 'stores' },
+          { label: t('platformAdmin.overview.checkErrors'), icon: Activity, color: 'text-red-400 bg-red-500/10 hover:bg-red-500/20', tab: 'errors' },
+          { label: t('platformAdmin.overview.aiInsights'), icon: Sparkles, color: 'text-purple-400 bg-purple-500/10 hover:bg-purple-500/20', tab: 'ai' },
         ].map(a => (
           <button key={a.tab} onClick={() => onNavigate(a.tab)}
             className={`flex items-center gap-2 p-3 rounded-xl border border-slate-700/40 transition-all ${a.color}`}
           >
             <a.icon className="w-4 h-4" />
-            <span className="text-xs font-medium text-white">{a.label}</span>
+            <span className="text-xs font-medium text-gray-900 dark:text-white">{a.label}</span>
           </button>
         ))}
       </div>

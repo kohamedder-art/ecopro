@@ -58,10 +58,12 @@ export function useStoreSettings(options?: { enabled?: boolean; onUnauthorized?:
 
   const storeSlug = useMemo(() => {
     const settings = (query.data || {}) as StoreSettingsLike;
-    const preferred = settings?.store_name ? storeNameToSlug(String(settings.store_name)) : null;
-    const fallback = settings?.store_slug ? String(settings.store_slug) : null;
-    const slug = (preferred || fallback || '').trim();
-    return slug ? slug : null;
+    // Prefer the authoritative store_slug from the DB; only fall back to
+    // name-derived slug if store_slug is absent (legacy accounts without a slug).
+    const dbSlug = settings?.store_slug ? String(settings.store_slug).trim() : null;
+    if (dbSlug) return dbSlug;
+    const nameDerived = settings?.store_name ? storeNameToSlug(String(settings.store_name)) : null;
+    return nameDerived || null;
   }, [query.data]);
 
   useEffect(() => {

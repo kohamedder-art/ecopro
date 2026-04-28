@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { 
   Zap, 
@@ -12,13 +13,32 @@ import {
   Facebook, 
   Instagram, 
   Twitter,
-  Sparkles
+  Sparkles,
+  ClipboardList
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { apiFetch } from "@/lib/api";
 
 export default function Index() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
+  const [trialDays, setTrialDays] = useState<number>(30);
+
+  useEffect(() => {
+    const fetchBilling = async () => {
+      try {
+        const res = await apiFetch<{ trialDays: number }>('/api/billing/public');
+        if (res?.trialDays) {
+          setTrialDays(res.trialDays);
+        }
+      } catch {
+        // keep default fallback
+      }
+    };
+
+    fetchBilling();
+  }, []);
+
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden relative">
       <style dangerouslySetInnerHTML={{__html: `
@@ -128,7 +148,10 @@ export default function Index() {
             gap: 1.25rem;
         }
 
-        .bento-item {
+        .bento-item,
+        .bento-item-4,
+        .bento-item-6,
+        .bento-item-8 {
             grid-column: span 12;
         }
 
@@ -266,7 +289,7 @@ export default function Index() {
                     </div>
                 </div>
 
-                {/* Feature 2 - Delivery Integration Image */}
+                {/* Feature 2 - Delivery Integration */}
                 <div className="bento-item-4 glass-card p-6 md:p-8 group flex flex-col">
                     <div>
                         <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/50 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6 border border-emerald-200 dark:border-emerald-800 group-hover:-translate-y-1 transition-transform shadow-sm">
@@ -275,8 +298,20 @@ export default function Index() {
                         <h3 className="text-xl font-black mb-2 text-slate-900 dark:text-white">{t('index.feat2Title')}</h3>
                         <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">{t('index.feat2Desc')}</p>
                     </div>
-                    <div className="mt-6 flex-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                        <img src="/screenshots/home-store-catalog.png" className="w-full h-full object-contain object-top opacity-95 group-hover:scale-[1.02] transition-transform duration-500" alt="متابعة حالات الطلبات والتوصيل" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <div className="mt-6 flex-1 grid grid-cols-3 gap-3 content-start">
+                        {[
+                          { src: '/delivery-logos/yalidine.png', name: 'Yalidine' },
+                          { src: '/delivery-logos/ZR-Express-1.webp', name: 'ZR Express' },
+                          { src: '/delivery-logos/NOEST.png', name: 'Nord et Ouest' },
+                          { src: '/delivery-logos/maystro.png', name: 'Maystro' },
+                          { src: '/delivery-logos/EMS.png', name: 'EMS' },
+                          { src: '/delivery-logos/dolivroo.png', name: 'Dolivroo' },
+                        ].map((c) => (
+                          <div key={c.name} className="flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 group-hover:shadow-md transition-shadow aspect-square">
+                            <img src={c.src} alt={c.name} className="w-10 h-10 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                            <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 mt-1.5 text-center leading-tight">{c.name}</span>
+                          </div>
+                        ))}
                     </div>
                 </div>
 
@@ -294,7 +329,23 @@ export default function Index() {
                     </div>
                 </div>
 
-                {/* Feature 4 - Store Products Image replacing abstract shape */}
+                {/* Feature 5 - Orders Management */}
+                <div className="bento-item-8 glass-card p-6 md:p-8 flex flex-col justify-between group overflow-hidden relative">
+                    <div className="relative z-10 w-full md:w-[38%]">
+                        <div className="w-12 h-12 bg-amber-100 dark:bg-amber-950/50 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-6 border border-amber-200 dark:border-amber-800 group-hover:scale-110 transition-transform shadow-sm">
+                            <ClipboardList className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-2xl font-black mb-3 text-slate-900 dark:text-white leading-snug">{t('index.feat5Title')}</h3>
+                        <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{t('index.feat5Desc')}</p>
+                    </div>
+                    <div className="mt-8 md:mt-0 md:absolute md:left-0 md:top-4 md:bottom-0 md:w-[68%] flex items-end justify-end">
+                        <div className="bg-white dark:bg-slate-800 p-2 rounded-t-2xl shadow-[-10px_0_30px_rgba(0,0,0,0.05)] border border-slate-200 dark:border-slate-700 border-b-0 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 w-full overflow-hidden">
+                            <img src="/screenshots/home-orders-management.png" className="w-full object-cover object-top rounded-t-xl" alt="إدارة الطلبات" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Feature 4 - Store Products */}
                 <div className="bento-item-8 glass-card p-6 md:p-8 flex flex-col md:flex-row items-center group overflow-hidden gap-6">
                     <div className="flex-1 w-full relative z-10">
                         <h3 className="text-2xl font-black mb-6 text-slate-900 dark:text-white">{t('index.feat4Title')}</h3>
@@ -319,7 +370,7 @@ export default function Index() {
                             <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
                             <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
                         </div>
-                        <img src="/screenshots/home-orders-management.png" className="w-full h-full object-contain object-top pt-4" alt="إدارة منتجات المتجر" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        <img src="/screenshots/home-store-catalog.png" className="w-full h-full object-contain object-top pt-4" alt="إدارة منتجات المتجر" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     </div>
                 </div>
             </div>
@@ -394,7 +445,7 @@ export default function Index() {
                         </Link>
                         <div className="bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl px-6 py-4 text-xs font-bold flex items-center justify-center w-full sm:w-auto">
                             <Check className="ml-2 w-4 h-4 text-emerald-400" />
-                            {t('index.ctaTrial')}
+                            {t('index.ctaTrial', { n: trialDays })}
                         </div>
                     </div>
                 </div>

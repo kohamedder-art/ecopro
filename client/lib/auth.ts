@@ -61,6 +61,7 @@ export function setAuthToken(token: string): void {
 export function removeAuthToken(): void {
   localStorage.removeItem("authToken");
   localStorage.removeItem("token");
+  localStorage.removeItem("auth_token");
   localStorage.removeItem("user");
 }
 
@@ -70,36 +71,48 @@ export function removeAuthToken(): void {
  */
 export async function syncAuthState(): Promise<boolean> {
   try {
+    // Check for OAuth token stored during Google login
+    const oauthToken = localStorage.getItem('auth_token');
+    const headers: Record<string, string> = {};
+    if (oauthToken) {
+      headers['Authorization'] = `Bearer ${oauthToken}`;
+      console.log('[Auth] OAuth token found, adding to Authorization header');
+    }
+
     const response = await fetch(`${API_BASE_URL}/auth/me`, {
       credentials: 'include',
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
     });
     
     if (response.ok) {
       const userData = await response.json();
+      console.log('[Auth] User validated from server:', { id: userData.id, email: userData.email });
       // Update localStorage with fresh user data from server
       localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.removeItem('auth_token'); // clear OAuth token once session confirmed
       if (userData.role === "admin") {
         localStorage.setItem("isAdmin", "true");
       }
       return true;
     } else if (response.status === 401) {
+      console.log('[Auth] Received 401, attempting token refresh...');
       // Try to refresh the token
       const refreshed = await refreshAuthToken();
       if (refreshed) {
+        console.log('[Auth] Token refreshed successfully, retrying syncAuthState...');
         return syncAuthState(); // Retry after refresh
       }
       // Session invalid - clear stale localStorage
-      const currentUser = localStorage.getItem("user");
-      if (currentUser) {
-        // Only clear if we had a user before (avoid clearing on first visit)
-        removeAuthToken();
-      }
+      console.log('[Auth] Token refresh failed, clearing localStorage');
+      removeAuthToken();
       return false;
     } else {
+      console.error('[Auth] Unexpected response status from /auth/me:', response.status);
       return false;
     }
-  } catch {
+  } catch (error) {
     // Network error - don't clear localStorage, user might just be offline
+    console.error('[Auth] Network error during syncAuthState:', error);
     return !!localStorage.getItem("user");
   }
 }
@@ -278,7 +291,9 @@ export const authApi = {
  * Check if user is authenticated
  */
 export function isAuthenticated(): boolean {
-  return getAuthToken() !== null;
+  // Check if user exists in localStorage (tokens are stored in httpOnly cookies)
+  const user = getCurrentUser();
+  return user !== null && user !== undefined;
 }
 
 /**

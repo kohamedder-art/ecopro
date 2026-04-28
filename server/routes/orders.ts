@@ -54,6 +54,18 @@ const createOrderBodySchema = z
       z.number().int().positive()
     ).optional().nullable(),
     shipping_hai: z.string().trim().max(120).optional().nullable(),
+    offer_id: z.preprocess(
+      (v) => (v === '' || v === null || v === undefined ? undefined : typeof v === 'string' ? Number(v) : v),
+      z.number().int().positive()
+    ).optional(),
+    offer_quantity: z.preprocess(
+      (v) => (v === '' || v === null || v === undefined ? undefined : typeof v === 'string' ? Number(v) : v),
+      z.number().int().positive()
+    ).optional(),
+    offer_bundle_price: z.preprocess(
+      (v) => (v === '' || v === null || v === undefined ? undefined : typeof v === 'string' ? Number(v) : v),
+      z.number().finite().positive()
+    ).optional(),
   })
   .strict();
 
@@ -117,6 +129,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       shipping_wilaya_id,
       shipping_commune_id,
       shipping_hai,
+      offer_id,
     } = parsed.data;
 
     const normalizedPhone = String(customer_phone).replace(/\s/g, '');
@@ -187,9 +200,11 @@ export const createOrder: RequestHandler = async (req, res) => {
         return res.status(400).json({ error: 'Invalid variant' });
       }
       variantRow = vRes.rows[0];
-      const vStock = Number(variantRow.stock_quantity ?? 0);
-      if (!Number.isFinite(vStock) || vStock < quantity) {
-        return res.status(400).json({ error: 'Insufficient stock' });
+      if (variantRow.stock_quantity !== null) {
+        const vStock = Number(variantRow.stock_quantity);
+        if (!Number.isFinite(vStock) || vStock < quantity) {
+          return res.status(400).json({ error: 'Insufficient stock' });
+        }
       }
     }
 
@@ -198,20 +213,46 @@ export const createOrder: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: 'Invalid product price' });
     }
 
-    if (!variantRow) {
-      const availableStock = Number(productRow.stock_quantity ?? 0);
+    // Validate offer if provided
+    let offerRow: any | null = null;
+    if (offer_id) {
+      try {
+        const offerRes = await pool.query(
+          `SELECT id, quantity, bundle_price, compare_price, free_delivery
+           FROM product_offers
+           WHERE id = $1 AND product_id = $2 AND client_id = $3 AND is_active = true
+           LIMIT 1`,
+          [Number(offer_id), product_id, productClientId]
+        );
+        if (offerRes.rows.length === 0) {
+          return res.status(400).json({ error: 'Invalid offer' });
+        }
+        offerRow = offerRes.rows[0];
+      } catch {
+        return res.status(400).json({ error: 'Invalid offer' });
+      }
+    }
+
+    if (!variantRow && productRow.stock_quantity !== null) {
+      const availableStock = Number(productRow.stock_quantity);
       if (!Number.isFinite(availableStock) || availableStock < quantity) {
         return res.status(400).json({ error: 'Insufficient stock' });
       }
     }
 
-    const { deliveryFee, deliveryType } = await resolveDeliveryFee({
+    const { deliveryFee: resolvedDeliveryFee, deliveryType } = await resolveDeliveryFee({
       clientId: Number(resolvedClientId),
       wilayaId: shipping_wilaya_id ?? null,
       deliveryType: delivery_type,
     });
 
-    const expectedTotalPrice = (unitPrice * Number(quantity)) + deliveryFee;
+    // If offer has free_delivery, override delivery fee to 0
+    const deliveryFee = offerRow?.free_delivery ? 0 : resolvedDeliveryFee;
+
+    // Use offer bundle_price if present, otherwise normal unit * qty
+    const expectedTotalPrice = offerRow
+      ? Number(offerRow.bundle_price) + deliveryFee
+      : (unitPrice * Number(quantity)) + deliveryFee;
 
     if (!resolvedClientId) {
       return res.status(400).json({ error: 'Could not determine store owner' });
@@ -246,6 +287,9 @@ export const createOrder: RequestHandler = async (req, res) => {
     addCol('variant_size', variantRow ? (variantRow.size || null) : null);
     addCol('variant_name', variantRow ? (variantRow.variant_name || null) : null);
     addCol('unit_price', unitPrice);
+    addCol('offer_id', offerRow ? Number(offerRow.id) : null);
+    addCol('offer_quantity', offerRow ? Number(offerRow.quantity) : null);
+    addCol('offer_bundle_price', offerRow ? Number(offerRow.bundle_price) : null);
     addCol('customer_name', customer_name);
     addCol('customer_email', customer_email || null);
     addCol('customer_phone', normalizedPhone || null);
@@ -977,12 +1021,12 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
     // Send if we have a telegram_bot_token, regardless of provider setting
     try {
       const settingsRes = await pool.query(
-        `SELECT enabled, provider, telegram_bot_token, template_shipping
+        `SELECT enabled, updates_enabled, provider, telegram_bot_token, template_shipping, messenger_enabled, fb_page_id
          FROM bot_settings WHERE client_id = $1 LIMIT 1`,
         [req.user.id]
       );
       const settings = settingsRes.rows[0];
-      if (settings?.enabled && settings?.telegram_bot_token) {
+      if (settings?.enabled && settings?.updates_enabled) {
         const orderRow = result.rows[0];
         const shouldNotify = ['processing', 'shipped', 'delivered', 'cancelled'].includes(String(status));
         if (shouldNotify) {
@@ -991,14 +1035,26 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
             {
               orderId: orderRow.id,
               status: String(status),
-              trackingNumber: '',
+              trackingNumber: orderRow.tracking_number || '',
+              customerName: orderRow.customer_name || '',
             }
           );
-          await pool.query(
-            `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-             VALUES ($1,$2,$3,'telegram',$4,NULL,NOW())`,
-            [orderRow.id, req.user.id, orderRow.customer_phone || '', msg]
-          );
+          // Send via Telegram
+          if (settings.telegram_bot_token) {
+            await pool.query(
+              `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+               VALUES ($1,$2,$3,'telegram',$4,NULL,NOW())`,
+              [orderRow.id, req.user.id, orderRow.customer_phone || '', msg]
+            );
+          }
+          // Send via Messenger
+          if (settings.messenger_enabled && settings.fb_page_id) {
+            await pool.query(
+              `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+               VALUES ($1,$2,$3,'messenger',$4,NULL,NOW())`,
+              [orderRow.id, req.user.id, orderRow.customer_phone || '', msg]
+            );
+          }
         }
       }
     } catch {

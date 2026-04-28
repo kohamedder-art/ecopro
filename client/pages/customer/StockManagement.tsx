@@ -120,7 +120,7 @@ export default function StockManagement() {
   // Form state
   const [formData, setFormData] = useState<Partial<StockItem>>({});
   const [uploading, setUploading] = useState(false);
-  const [activeFormSection, setActiveFormSection] = useState<'product' | 'variants' | 'price' | 'shipping' | 'images' | 'notes'>('product');
+  const [activeFormSection, setActiveFormSection] = useState<'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'notes'>('product');
   const [adjustData, setAdjustData] = useState({
     adjustment: 0,
     reason: 'adjustment',
@@ -745,290 +745,359 @@ export default function StockManagement() {
     a.click();
   };
 
+  const outOfStockCount = stock.filter(i => i.status === 'out_of_stock').length;
+  const inStockCount = stock.filter(i => i.status === 'active' && !i.is_low_stock).length;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+          <span className="text-sm text-muted-foreground">{t('stock.title')}…</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/30 p-3 md:p-4">
-      <div className="max-w-7xl mx-auto space-y-2 md:space-y-3">
-        {/* Header with Gradient */}
-        <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-primary/10 to-purple-600/10 dark:from-primary/5 dark:to-purple-600/5 rounded-lg border border-primary/20 p-3">
+    <div className="p-4 md:p-6 space-y-4">
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-lg md:text-xl font-bold tracking-tight flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 text-primary">
+              <Package className="w-4 h-4" />
+            </span>
+            {t('stock.title')}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">{t('stock.subtitle')}</p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Button variant="outline" size="sm" onClick={loadStock} className="h-8 w-8 p-0">
+            <RefreshCw className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium">
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t('stock.export')}</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowCategoryModal(true)} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium">
+            <Tag className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t('stock.categories')}</span>
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              setFormData({ name: '', description: '', category: '', quantity: 0, unit_price: undefined, reorder_level: 10, status: 'active', shipping_mode: 'delivery_pricing', shipping_flat_fee: null, images: [], notes: '' });
+              setActiveFormSection('product');
+              setVariantsDraft([]);
+              setVariantsLoaded(false);
+              setVariantsDirty(false);
+              setShowAddModal(true);
+            }}
+            className="h-8 gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90 text-white px-2.5 sm:px-3"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t('stock.addNewProduct')}</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Stats Row ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+        <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+            <Package className="w-[18px] h-[18px] text-blue-600 dark:text-blue-400" />
+          </div>
           <div>
-            <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              {t('stock.title')}
-            </h1>
-            <p className="text-muted-foreground text-base font-semibold">{t('stock.subtitle')}</p>
-            <div className="mt-2 rounded-md border border-primary/20 bg-background/70 dark:bg-slate-900/30 px-3 py-2 text-xs text-muted-foreground">
-              <div className="font-semibold text-foreground">{t('stock.hints.headerTitle')}</div>
-              <div className="mt-1">{t('stock.hints.headerDesc')}</div>
-            </div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.items')}</p>
+            <p className="text-xl font-bold leading-tight">{stock.length}</p>
           </div>
-          <div className="flex gap-1 md:gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowCategoryModal(true)}
-              className="border-primary/30 hover:bg-primary/10 transition-all gap-1 text-sm font-bold py-2 px-3 h-9"
-            >
-              <Tag className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">{t('stock.categories')}</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={exportToCSV}
-              className="border-primary/30 hover:bg-primary/10 transition-all gap-1 text-sm font-bold py-2 px-3 h-9"
-            >
-              <Download className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">{t('stock.export')}</span>
-            </Button>
-            <Button 
-              onClick={() => {
-                setFormData({
-                  name: '',
-                  description: '',
-                  category: '',
-                  quantity: 0,
-                  unit_price: undefined,
-                  reorder_level: 10,
-                  shipping_mode: 'delivery_pricing',
-                  shipping_flat_fee: null,
-                  images: [],
-                  notes: '',
-                });
-                setActiveFormSection('product');
-                setVariantsDraft([]);
-                setVariantsLoaded(false);
-                setVariantsDirty(false);
-                setShowAddModal(true);
-              }}
-              className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all gap-1 text-base font-bold py-2 px-4 h-10"
-            >
-              <Plus className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">{t('store.createProduct') || t('stock.addNewProduct') || t('stock.add')}</span>
-            </Button>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.totalValue')}</p>
+            <p className="text-xl font-bold leading-tight">{Math.round(totalValue).toLocaleString()} <span className="text-xs font-normal text-muted-foreground">DA</span></p>
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-[18px] h-[18px] text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.lowStock')}</p>
+            <p className="text-xl font-bold leading-tight text-amber-600 dark:text-amber-400">{lowStockCount}</p>
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+            <PackageX className="w-[18px] h-[18px] text-red-600 dark:text-red-400" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.outOfStock')}</p>
+            <p className="text-xl font-bold leading-tight text-red-600 dark:text-red-400">{outOfStockCount}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Table Card ── */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
+          <div className="relative flex-1 min-w-[120px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder={t('stock.searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-7 text-xs border-border bg-background focus-visible:ring-1"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[110px] h-7 text-xs border-border bg-background">
+              <SelectValue placeholder={t('stock.allCategories')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('stock.allCategories')}</SelectItem>
+              {categories.map(cat => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <button
+            onClick={() => setShowLowStock(!showLowStock)}
+            className={`inline-flex items-center gap-1 h-7 px-2 rounded text-xs font-medium border transition-colors ${
+              showLowStock
+                ? 'bg-amber-500 border-amber-500 text-white'
+                : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-amber-500/50'
+            }`}
+          >
+            <AlertTriangle className="w-3 h-3" />
+            <span className="hidden sm:inline">{t('stock.low')}</span>
+            {lowStockCount > 0 && (
+              <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${showLowStock ? 'bg-white/20' : 'bg-amber-500 text-white'}`}>
+                {lowStockCount}
+              </span>
+            )}
+          </button>
+          <div className="ml-auto text-[11px] text-muted-foreground whitespace-nowrap">
+            {filteredStock.length}/{stock.length}
           </div>
         </div>
 
-        {/* Stats Cards with Gradients - Compact */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
-          <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-900/20 dark:to-blue-900/5 rounded border border-blue-500/30 p-2 md:p-3 hover:border-blue-500/50 transition-all hover:shadow-md">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground font-medium truncate">{t('stock.items')}</p>
-                <p className="text-lg md:text-xl font-bold text-blue-600 dark:text-blue-400">{stock.length}</p>
-              </div>
-              <div className="bg-blue-500/20 dark:bg-blue-500/10 p-2 rounded flex-shrink-0">
-                <Package className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
-              </div>
+        {/* ── Mobile card list (hidden on md+) ── */}
+        <div className="md:hidden divide-y divide-border/60">
+          {filteredStock.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <PackageX className="w-8 h-8 mx-auto opacity-30 mb-2" />
+              <p className="text-sm font-medium">
+                {searchQuery || categoryFilter !== 'all' || showLowStock
+                  ? t('stock.noProductsMatch')
+                  : t('stock.noStockItems')}
+              </p>
             </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 dark:from-orange-900/20 dark:to-orange-900/5 rounded border border-orange-500/30 p-2 md:p-3 hover:border-orange-500/50 transition-all hover:shadow-md">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground font-medium truncate">{t('stock.lowStock')}</p>
-                <p className="text-lg md:text-xl font-bold text-orange-600 dark:text-orange-400">{lowStockCount}</p>
-              </div>
-              <div className="bg-orange-500/20 dark:bg-orange-500/10 p-2 rounded flex-shrink-0">
-                <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-orange-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 dark:from-emerald-900/20 dark:to-emerald-900/5 rounded border border-emerald-500/30 p-2 md:p-3 hover:border-emerald-500/50 transition-all hover:shadow-md">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground font-medium truncate">{t('stock.totalValue')}</p>
-                <p className="text-lg md:text-xl font-bold text-emerald-600 dark:text-emerald-400">{Math.round(totalValue)}</p>
-              </div>
-              <div className="bg-emerald-500/20 dark:bg-emerald-500/10 p-2 rounded flex-shrink-0">
-                <BarChart3 className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-red-500/10 to-red-600/5 dark:from-red-900/20 dark:to-red-900/5 rounded border border-red-500/30 p-2 md:p-3 hover:border-red-500/50 transition-all hover:shadow-md">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground font-medium truncate">{t('stock.outOfStock')}</p>
-                <p className="text-lg md:text-xl font-bold text-red-600 dark:text-red-400">
-                  {stock.filter(i => i.status === 'out_of_stock').length}
-                </p>
-              </div>
-              <div className="bg-red-500/20 dark:bg-red-500/10 p-2 rounded flex-shrink-0">
-                <PackageX className="w-4 h-4 md:w-5 md:h-5 text-red-500" />
-              </div>
-            </div>
-          </div>
+          ) : (
+            filteredStock.map((item) => {
+              const stockPct = item.reorder_level > 0 ? Math.min(100, Math.round((item.quantity / (item.reorder_level * 3)) * 100)) : 100;
+              const barColor = item.status === 'out_of_stock' ? 'bg-red-500' : item.is_low_stock ? 'bg-amber-500' : 'bg-emerald-500';
+              const statusColor = item.status === 'out_of_stock' ? 'text-red-600 dark:text-red-400' : item.is_low_stock ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+              return (
+                <div key={item.id} className="px-3 py-3 active:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    {/* Thumbnail */}
+                    <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+                      {item.images?.[0]
+                        ? <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-muted-foreground/30"><Package className="w-5 h-5" /></div>
+                      }
+                    </div>
+                    {/* Main info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-1">
+                        <p className="font-semibold text-sm leading-tight truncate">{item.name}</p>
+                        <span className={`text-sm font-bold tabular-nums flex-shrink-0 ml-1 ${statusColor}`}>{item.quantity}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        {item.category && (
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{item.category}</span>
+                        )}
+                        <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${statusColor}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'out_of_stock' ? 'bg-red-500' : item.is_low_stock ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                          {item.status === 'out_of_stock' ? t('stock.outStock') : item.is_low_stock ? t('stock.low') : t('stock.active')}
+                        </span>
+                        {item.unit_price && (
+                          <span className="text-[10px] text-muted-foreground ml-auto tabular-nums">{Math.round(Number(item.unit_price)).toLocaleString()} DA</span>
+                        )}
+                      </div>
+                      {/* Stock bar */}
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${stockPct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">min {item.reorder_level}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Action row */}
+                  <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-border/40">
+                    <button
+                      onClick={() => openAdjustModal(item)}
+                      className="flex-1 h-8 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-medium active:bg-emerald-500/20 transition-colors"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      {t('stock.adjustQuantity')}
+                    </button>
+                    <button
+                      onClick={() => openHistoryModal(item)}
+                      className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-muted text-muted-foreground active:bg-muted/80 transition-colors"
+                    >
+                      <History className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => openEditModal(item)}
+                      className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-muted text-muted-foreground active:bg-muted/80 transition-colors"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => openDeleteDialog(item)}
+                      className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-red-500/10 text-red-500 active:bg-red-500/20 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
-        {/* Filters */}
-        <div className="bg-gradient-to-r from-primary/5 to-purple-600/5 dark:from-slate-800/50 dark:to-slate-800/30 rounded border border-primary/20 p-2 md:p-3 backdrop-blur-sm">
-          <div className="flex flex-col md:flex-row gap-2">
-            <div className="flex-1 min-w-[150px]">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
-                <Input
-                  placeholder={t('stock.searchPlaceholder')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 border-primary/30 focus:border-primary/60 transition-colors h-9 text-base"
-                />
-              </div>
-            </div>
-
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-[140px] border-primary/30 focus:border-primary/60 h-8 text-sm">
-                <SelectValue placeholder={t('stock.category')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('stock.allCategories')}</SelectItem>
-                {categories.map(cat => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant={showLowStock ? 'default' : 'outline'}
-              onClick={() => setShowLowStock(!showLowStock)}
-              className={showLowStock ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg' : 'border-primary/30 hover:bg-primary/10'}
-              size="sm"
-            >
-              <Filter className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden md:inline ml-1 text-xs">{t('stock.low')}</span>
-            </Button>
-
-            <Button 
-              variant="outline" 
-              onClick={loadStock}
-              className="border-primary/30 hover:bg-primary/10"
-              size="sm"
-            >
-              <RefreshCw className="w-3 h-3 md:w-4 md:h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Stock Table */}
-        <div className="bg-gradient-to-br from-background to-primary/5 dark:from-slate-900/50 dark:to-slate-800/30 rounded border border-primary/20 overflow-hidden shadow">
-          <div className="overflow-x-auto">
-            <table className="w-full text-base font-semibold table-fixed">
-              <thead className="bg-gradient-to-r from-primary/15 to-purple-600/15 dark:from-primary/10 dark:to-purple-600/10 border-b border-primary/20">
+        {/* ── Desktop table (hidden on mobile) ── */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t('stock.product')}</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[100px]">{t('stock.category')}</th>
+                <th className="text-center px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[100px]">{t('stock.qty')}</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[90px]">{t('stock.status')}</th>
+                <th className="text-right px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[90px]">{t('stock.price')}</th>
+                <th className="text-right px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[120px]">{t('stock.actions')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {filteredStock.length === 0 ? (
                 <tr>
-                  <th className="text-left p-2 font-bold text-primary dark:text-primary/90 text-sm whitespace-nowrap w-[180px]">{t('stock.product')}</th>
-                  <th className="text-center p-2 font-bold text-primary dark:text-primary/90 text-sm whitespace-nowrap w-[80px]">{t('stock.category')}</th>
-                  <th className="text-center p-2 font-bold text-primary dark:text-primary/90 text-sm whitespace-nowrap w-[70px]">{t('stock.qty')}</th>
-                  <th className="text-right p-2 font-bold text-primary dark:text-primary/90 text-sm whitespace-nowrap w-[70px]">{t('stock.price')}</th>
-                  <th className="text-right p-2 font-bold text-primary dark:text-primary/90 text-sm whitespace-nowrap w-[140px]">{t('stock.actions')}</th>
+                  <td colSpan={6} className="text-center py-12 text-muted-foreground">
+                    <PackageX className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                    <p className="text-sm font-medium">
+                      {searchQuery || categoryFilter !== 'all' || showLowStock
+                        ? t('stock.noProductsMatch')
+                        : t('stock.noStockItems')}
+                    </p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredStock.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-4 md:py-6 text-muted-foreground">
-                      <Package className="w-6 h-6 mx-auto opacity-50 mb-2" />
-                      <p className="text-base font-semibold">
-                        {searchQuery || categoryFilter !== 'all'
-                          ? t('stock.noProductsMatch')
-                          : t('stock.noStockItems')}
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredStock.map(item => (
-                    <tr key={item.id} className="border-b border-primary/10 hover:bg-primary/10 dark:hover:bg-primary/5 transition-colors">
-                      <td className="p-2">
-                        <div className="flex items-center gap-2">
-                          {item.images?.[0] ? (
-                            <div className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0">
-                              <img
-                                src={item.images[0]}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-10 h-10 rounded-md bg-muted/40 flex items-center justify-center flex-shrink-0 text-xs text-muted-foreground">
-                              📦
-                            </div>
-                          )}
+              ) : (
+                filteredStock.map((item) => {
+                  const stockPct = item.reorder_level > 0 ? Math.min(100, Math.round((item.quantity / (item.reorder_level * 3)) * 100)) : 100;
+                  const barColor = item.status === 'out_of_stock' ? 'bg-red-500' : item.is_low_stock ? 'bg-amber-500' : 'bg-emerald-500';
+                  return (
+                    <tr key={item.id} className="hover:bg-muted/40 transition-colors group">
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                            {item.images?.[0]
+                              ? <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center text-muted-foreground/40"><Package className="w-4 h-4" /></div>
+                            }
+                          </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-sm truncate max-w-[100px]">{item.name}</p>
-                            {item.is_low_stock && (
-                              <Badge className="bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/30 text-[10px] py-0 px-1">
-                                <AlertTriangle className="w-2 h-2 mr-0.5" />
-                                Low
-                              </Badge>
+                            <p className="font-medium text-sm truncate leading-tight">{item.name}</p>
+                            {item.description && (
+                              <p className="text-[11px] text-muted-foreground truncate max-w-[170px] leading-tight">{item.description}</p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="p-2 text-center">
-                        {item.category && (
-                          <Badge variant="outline" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] py-0 px-1">{item.category}</Badge>
-                        )}
+                      <td className="px-3 py-2.5">
+                        {item.category
+                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-medium border border-primary/20">{item.category}</span>
+                          : <span className="text-[11px] text-muted-foreground/50">—</span>
+                        }
                       </td>
-                      <td className="p-2 text-center font-semibold text-sm">
-                        <span className={item.is_low_stock ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400'}>
-                          {item.quantity}
+                      <td className="px-3 py-2.5 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`tabular-nums font-bold text-sm ${
+                            item.status === 'out_of_stock' ? 'text-red-600 dark:text-red-400'
+                            : item.is_low_stock ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-foreground'
+                          }`}>{item.quantity}</span>
+                          <div className="w-12 h-1 rounded-full bg-muted overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${stockPct}%` }} />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground/60">min {item.reorder_level}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                          item.status === 'out_of_stock' ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                          : item.status === 'discontinued' ? 'bg-muted text-muted-foreground'
+                          : item.is_low_stock ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                          : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            item.status === 'out_of_stock' ? 'bg-red-500'
+                            : item.status === 'discontinued' ? 'bg-muted-foreground'
+                            : item.is_low_stock ? 'bg-amber-500'
+                            : 'bg-emerald-500'
+                          }`} />
+                          {item.status === 'out_of_stock' ? t('stock.outStock')
+                            : item.status === 'discontinued' ? t('stock.discontinued')
+                            : item.is_low_stock ? t('stock.low')
+                            : t('stock.active')}
                         </span>
-                        <span className="text-[10px] text-muted-foreground">/{item.reorder_level}</span>
                       </td>
-                      <td className="p-2 text-right font-medium text-sm">
-                        {item.unit_price ? Math.round(Number(item.unit_price)) : '-'}
+                      <td className="px-3 py-2.5 text-right tabular-nums">
+                        {item.unit_price
+                          ? <span className="font-semibold text-sm">{Math.round(Number(item.unit_price)).toLocaleString()} <span className="text-[10px] font-normal text-muted-foreground">DA</span></span>
+                          : <span className="text-muted-foreground/50 text-xs">—</span>
+                        }
                       </td>
-                      <td className="p-2 md:p-3 sticky right-0 bg-background dark:bg-slate-900">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openAdjustModal(item)}
-                            title="Adjust Quantity"
-                            className="h-8 w-8"
-                          >
-                            <TrendingUp className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openHistoryModal(item)}
-                            title="View History"
-                            className="h-8 w-8"
-                          >
-                            <History className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openEditModal(item)}
-                            title="Edit"
-                            className="h-8 w-8"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openDeleteDialog(item)}
-                            title="Delete"
-                            className="h-8 w-8"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openAdjustModal(item)} title={t('stock.adjustQuantity')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/30 text-muted-foreground transition-colors">
+                            <TrendingUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => openHistoryModal(item)} title={t('stock.history')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/30 text-muted-foreground transition-colors">
+                            <History className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => openEditModal(item)} title={t('stock.editProduct')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors">
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => openDeleteDialog(item)} title={t('stock.deleteProduct')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 text-muted-foreground transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
+
+        {/* Footer */}
+        {filteredStock.length > 0 && (
+          <div className="px-3 py-2 border-t border-border bg-muted/20 flex items-center gap-4 text-[11px] text-muted-foreground">
+            <span><span className="font-semibold text-foreground">{inStockCount}</span> {t('stock.active')}</span>
+            <span><span className="font-semibold text-amber-600">{lowStockCount}</span> {t('stock.low')}</span>
+            <span><span className="font-semibold text-red-600">{outOfStockCount}</span> {t('stock.outOfStock')}</span>
+            <span className="ml-auto">{t('stock.totalValue')}: <span className="font-semibold text-foreground">{Math.round(totalValue).toLocaleString()} DA</span></span>
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Product Modal */}
@@ -1058,12 +1127,14 @@ export default function StockManagement() {
             <div className="flex flex-wrap gap-2">
               {(
                 [
-                  { key: 'product', label: 'Product' },
-                  { key: 'variants', label: 'Variants' },
-                  { key: 'price', label: 'Price' },
-                  { key: 'shipping', label: 'Shipping' },
-                  { key: 'images', label: 'Images' },
-                  { key: 'notes', label: 'Notes' },
+                  { key: 'product', label: t('stock.form.sections.product') },
+                  { key: 'price', label: t('stock.form.sections.price') },
+                  { key: 'variants', label: t('stock.form.sections.variants') },
+                  { key: 'offers', label: t('stock.form.sections.offers') },
+                  { key: 'status', label: t('stock.form.sections.status') },
+                  { key: 'shipping', label: t('stock.form.sections.shipping') },
+                  { key: 'images', label: t('stock.form.sections.images') },
+                  { key: 'notes', label: t('stock.form.sections.notes') },
                 ] as const
               ).map((sec) => (
                 <Button
@@ -1359,6 +1430,38 @@ export default function StockManagement() {
               </div>
             )}
 
+            {activeFormSection === 'offers' && (
+              <div className="space-y-2 bg-orange-500/5 dark:bg-orange-900/10 p-2 md:p-3 rounded border border-orange-500/20">
+                <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400">{t('stock.offersTitle')}</h3>
+                <p className="text-sm text-muted-foreground">{t('stock.offersDesc')}</p>
+                <div className="rounded-md border border-orange-500/20 bg-orange-500/5 px-3 py-2 text-xs text-muted-foreground">
+                  {t('stock.offersHint')}
+                </div>
+              </div>
+            )}
+
+            {activeFormSection === 'status' && (
+              <div className="space-y-2 bg-amber-500/5 dark:bg-amber-900/10 p-2 md:p-3 rounded border border-amber-500/20">
+                <h3 className="text-lg font-bold text-amber-600 dark:text-amber-400">{t('stock.status')}</h3>
+                <div className="space-y-1">
+                  <Label htmlFor="stock_status" className="text-base font-bold">{t('stock.status')}</Label>
+                  <Select
+                    value={(formData.status as any) || 'active'}
+                    onValueChange={(value: any) => setFormData((prev) => ({ ...prev, status: value }))}
+                  >
+                    <SelectTrigger id="stock_status" className="border-amber-500/30 focus:border-amber-500/60 h-9 text-base font-semibold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">{t('stock.active')}</SelectItem>
+                      <SelectItem value="out_of_stock">{t('stock.outStock')}</SelectItem>
+                      <SelectItem value="discontinued">{t('stock.discontinued')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             {activeFormSection === 'price' && (
               <div className="space-y-2 bg-amber-500/5 dark:bg-amber-900/10 p-2 md:p-3 rounded border border-amber-500/20">
                 <h3 className="text-lg font-bold text-amber-600 dark:text-amber-400">Price & Inventory</h3>
@@ -1568,38 +1671,93 @@ export default function StockManagement() {
           setAdjustData({ adjustment: 0, reason: 'adjustment', notes: '' });
         }
       }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('stock.adjustQuantity')}</DialogTitle>
-            <DialogDescription>
-              {selectedItem && `${t('stock.currentQuantity')}: ${selectedItem.quantity}`}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="adjustment">{t('stock.adjustment')}</Label>
-              <Input
-                id="adjustment"
-                type="number"
-                value={adjustData.adjustment}
-                onChange={(e) => setAdjustData({ ...adjustData, adjustment: parseInt(e.target.value) || 0 })}
-                placeholder={t('stock.adjustment')}
-              />
+        <DialogContent className="max-w-sm p-0 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-sm font-semibold leading-tight">{t('stock.adjustQuantity')}</DialogTitle>
               {selectedItem && (
-                <p className="text-sm text-muted-foreground">
-                  {t('stock.newQuantity')}: {selectedItem.quantity + adjustData.adjustment}
-                </p>
+                <p className="text-[11px] text-muted-foreground truncate mt-0.5">{selectedItem.name}</p>
               )}
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="reason">{t('stock.reason')}</Label>
-              <Select
-                value={adjustData.reason}
-                onValueChange={(value) => setAdjustData({ ...adjustData, reason: value })}
-              >
-                <SelectTrigger>
+          {/* Body */}
+          <div className="px-4 py-3 space-y-3">
+            {/* Current → New qty display */}
+            {selectedItem && (
+              <div className="flex items-center justify-between rounded-lg bg-muted/40 border border-border px-3 py-2">
+                <div className="text-center">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.currentQuantity')}</p>
+                  <p className="text-2xl font-bold tabular-nums leading-tight">{selectedItem.quantity}</p>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <div className={`text-xs font-bold px-2 py-0.5 rounded ${adjustData.adjustment > 0 ? 'text-emerald-600' : adjustData.adjustment < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                    {adjustData.adjustment > 0 ? `+${adjustData.adjustment}` : adjustData.adjustment || '±0'}
+                  </div>
+                  <div className="w-8 h-px bg-border" />
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.newQuantity')}</p>
+                  <p className={`text-2xl font-bold tabular-nums leading-tight ${
+                    selectedItem.quantity + adjustData.adjustment < 0 ? 'text-red-500' : 'text-foreground'
+                  }`}>
+                    {Math.max(0, selectedItem.quantity + adjustData.adjustment)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Adjustment input with ± buttons */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground">{t('stock.adjustment')}</Label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setAdjustData(d => ({ ...d, adjustment: d.adjustment - 1 }))}
+                  className="h-8 w-8 rounded border border-border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors font-bold text-base flex-shrink-0"
+                >−</button>
+                <Input
+                  type="number"
+                  value={adjustData.adjustment === 0 ? '' : adjustData.adjustment}
+                  onChange={(e) => setAdjustData({ ...adjustData, adjustment: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
+                  placeholder="0"
+                  className="h-8 text-center text-sm font-semibold tabular-nums flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAdjustData(d => ({ ...d, adjustment: d.adjustment + 1 }))}
+                  className="h-8 w-8 rounded border border-border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors font-bold text-base flex-shrink-0"
+                >+</button>
+              </div>
+            </div>
+
+            {/* Quick presets */}
+            <div className="flex gap-1.5 flex-wrap">
+              {[-10, -5, -1, +1, +5, +10].map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setAdjustData(d => ({ ...d, adjustment: d.adjustment + v }))}
+                  className={`h-6 px-2 rounded text-[11px] font-semibold border transition-colors ${
+                    v > 0
+                      ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/15'
+                      : 'border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400 hover:bg-red-500/15'
+                  }`}
+                >
+                  {v > 0 ? `+${v}` : v}
+                </button>
+              ))}
+            </div>
+
+            {/* Reason */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground">{t('stock.reason')}</Label>
+              <Select value={adjustData.reason} onValueChange={(value) => setAdjustData({ ...adjustData, reason: value })}>
+                <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1613,26 +1771,28 @@ export default function StockManagement() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="adjust_notes">{t('stock.notes')}</Label>
+            {/* Notes */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground">{t('stock.notes')}</Label>
               <Textarea
-                id="adjust_notes"
                 value={adjustData.notes}
                 onChange={(e) => setAdjustData({ ...adjustData, notes: e.target.value })}
                 placeholder={t('stock.additionalNotes')}
-                rows={3}
+                rows={2}
+                className="text-xs resize-none"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdjustModal(false)}>
+          {/* Footer */}
+          <div className="flex items-center gap-2 px-4 py-3 border-t border-border bg-muted/20">
+            <Button variant="outline" size="sm" className="h-8 text-xs flex-1" onClick={() => setShowAdjustModal(false)}>
               {t('cancel')}
             </Button>
-            <Button onClick={handleAdjustQuantity}>
+            <Button size="sm" className="h-8 text-xs flex-1 bg-primary hover:bg-primary/90 text-white" onClick={handleAdjustQuantity}>
               {t('stock.applyAdjustment')}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

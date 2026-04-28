@@ -28,6 +28,13 @@ const getMyProfile: RequestHandler = async (req, res) => {
 			[userId]
 		);
 
+		// Get store_name from client_store_settings (synced with business_name)
+		const storeSettings = await pool.query(
+			`SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
+			[userId]
+		);
+		const storeName = storeSettings.rows[0]?.store_name || null;
+
 		return res.json({
 			id: String(user.id),
 			email: user.email,
@@ -38,7 +45,7 @@ const getMyProfile: RequestHandler = async (req, res) => {
 			locked_reason: (user as any).locked_reason || null,
 			lock_type: (user as any).lock_type || null,
 			phone: (user as any).phone || null,
-			business_name: (user as any).business_name || null,
+			business_name: storeName || (user as any).business_name || null,
 			country: (user as any).country || null,
 			city: (user as any).city || null,
 			subscription: sub.rows[0] || null,
@@ -114,6 +121,16 @@ const updateMyProfile: RequestHandler = async (req, res) => {
 
 		if (!result.rows.length) return jsonError(res, 404, 'User not found');
 		const updated = result.rows[0];
+
+		// Sync business_name to store_name in client_store_settings
+		if (updates.business_name) {
+			await pool.query(
+				`UPDATE client_store_settings
+				 SET store_name = $1, updated_at = NOW()
+				 WHERE client_id = $2`,
+				[updates.business_name, userId]
+			);
+		}
 
 		const token = generateToken({
 			id: String(updated.id),

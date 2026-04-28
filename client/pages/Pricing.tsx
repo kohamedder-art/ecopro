@@ -1,49 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { MessageCircle, Loader2, Check, Rocket, Gift, Shield, Infinity, Sparkles, Zap, ArrowLeft } from 'lucide-react';
+import { MessageCircle, Loader2, Check, Rocket, Gift, Shield, Sparkles, Zap, ArrowLeft,
+  Package, ShoppingCart, Bot, BarChart3, Users, Palette, Truck, Tag, Brain, Globe, Headphones, Layers, Image, CreditCard } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 
 type PublicBillingInfo = {
   trialDays: number;
-  subscriptionPriceUsd: number;
+  subscriptionPrice: number;
 };
 
 export default function Pricing() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [publicBilling, setPublicBilling] = useState<PublicBillingInfo | null>(null);
 
   useEffect(() => {
-    // Check if user is logged in
     const user = localStorage.getItem('user');
     setIsLoggedIn(!!user);
 
-    // Fetch public pricing config
     const fetchPricing = async () => {
       try {
         setLoading(true);
-        const res = await apiFetch<{ success: boolean; config: PublicBillingInfo }>('/api/v1/auth/public-billing');
-        if (res.success && res.config) {
-          setPublicBilling(res.config);
+        const res = await apiFetch<{ trialDays: number; subscriptionPrice: number }>('/api/billing/public');
+        if (res && res.trialDays) {
+          setPublicBilling(res);
         } else {
-          // Fallback values if API doesn't return anything config-wise
-          setPublicBilling({
-            trialDays: 3,
-            subscriptionPriceUsd: 2900
-          });
+          setPublicBilling({ trialDays: 30, subscriptionPrice: 2900 });
         }
-      } catch (err: any) {
-        console.error("Failed to fetch public pricing:", err);
-        // Fallback for demo visually
-        setPublicBilling({
-          trialDays: 3,
-          subscriptionPriceUsd: 2900
-        });
+      } catch {
+        setPublicBilling({ trialDays: 30, subscriptionPrice: 2900 });
       } finally {
         setLoading(false);
       }
@@ -52,13 +41,22 @@ export default function Pricing() {
     fetchPricing();
   }, []);
 
-  const FEATURES = [
-    t('pricing.f1'),
-    t('pricing.f2'),
-    t('pricing.f3'),
-    t('pricing.f4'),
-    t('pricing.f5'),
-    t('pricing.f6'),
+  const FEATURES: { icon: React.ReactNode; text: string }[] = [
+    { icon: <Package className="w-4 h-4" />, text: t('pricing.f1') },
+    { icon: <ShoppingCart className="w-4 h-4" />, text: t('pricing.f2') },
+    { icon: <Layers className="w-4 h-4" />, text: t('pricing.f3') },
+    { icon: <Bot className="w-4 h-4" />, text: t('pricing.f4') },
+    { icon: <Truck className="w-4 h-4" />, text: t('pricing.f5') },
+    { icon: <Users className="w-4 h-4" />, text: t('pricing.f6') },
+    { icon: <Palette className="w-4 h-4" />, text: t('pricing.f7') },
+    { icon: <BarChart3 className="w-4 h-4" />, text: t('pricing.f8') },
+    { icon: <Brain className="w-4 h-4" />, text: t('pricing.f9') },
+    { icon: <Tag className="w-4 h-4" />, text: t('pricing.f10') },
+    { icon: <Image className="w-4 h-4" />, text: t('pricing.f11') },
+    { icon: <Globe className="w-4 h-4" />, text: t('pricing.f12') },
+    { icon: <CreditCard className="w-4 h-4" />, text: t('pricing.f13') },
+    { icon: <Shield className="w-4 h-4" />, text: t('pricing.f14') },
+    { icon: <Headphones className="w-4 h-4" />, text: t('pricing.f15') },
   ];
 
   if (loading) {
@@ -69,8 +67,8 @@ export default function Pricing() {
     );
   }
 
-  const trialDays = publicBilling?.trialDays ?? 3;
-  const price = publicBilling?.subscriptionPriceUsd ?? 2900;
+  const trialDays = publicBilling?.trialDays ?? 30;
+  const price = publicBilling?.subscriptionPrice ?? 2900;
 
   return (
     <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden relative font-['Noto_Sans_Arabic'] pt-32 pb-16 px-4 md:px-6">
@@ -144,13 +142,13 @@ export default function Pricing() {
                  {t('pricing.featuresTitle')}
               </h4>
               
-              <ul className="space-y-4">
+              <ul className="space-y-3">
                 {FEATURES.map((feature, idx) => (
-                  <li key={idx} className="flex items-center gap-3 space-x-reverse font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-50 dark:border-slate-700 pb-3 last:border-0 last:pb-0">
-                    <div className="w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0 shadow-sm border border-indigo-100">
-                      <Check className="w-3.5 h-3.5 text-indigo-600" />
+                  <li key={idx} className="flex items-center gap-3 space-x-reverse font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-50 dark:border-slate-700 pb-2.5 last:border-0 last:pb-0">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0 text-indigo-600 dark:text-indigo-400">
+                      {feature.icon}
                     </div>
-                    <span className="text-sm md:text-base">{feature}</span>
+                    <span className="text-sm">{feature.text}</span>
                   </li>
                 ))}
               </ul>

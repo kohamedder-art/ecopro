@@ -8,6 +8,7 @@ import { getCourierService } from './courier-service';
 import { registerCourierService } from './courier-service';
 import { CourierShipmentResponse, DeliveryStatus } from '../types/delivery';
 import { getAlgeriaCommuneNameById, getAlgeriaWilayaNameById, getDefaultCommuneNameForWilayaId } from '../utils/algeria-geo';
+import { sendDeliveryStatusNotification } from '../utils/bot-messaging';
 
 // Import real courier services (verified APIs only)
 import { YalidineService } from './couriers/yalidine';
@@ -20,6 +21,9 @@ import { DolivrooService } from './couriers/dolivroo';
 import { ZimouExpressService } from './couriers/zimou-express';
 import { AndersonService } from './couriers/anderson';
 import { DhdService } from './couriers/dhd';
+import { EcomDeliveryService } from './couriers/ecom-delivery';
+import { ElogistiaService } from './couriers/elogistia';
+import { MdmService } from './couriers/mdm';
 
 // ========================================
 // REGISTER REAL ALGERIAN DELIVERY PROVIDERS
@@ -53,6 +57,13 @@ registerCourierService('dhd', DhdService);
 registerCourierService('dhd livraison', DhdService);
 registerCourierService('dhd livraison express', DhdService);
 registerCourierService('dhd-livraison', DhdService);
+registerCourierService('ecom delivery', EcomDeliveryService);
+registerCourierService('ecom-delivery', EcomDeliveryService);
+registerCourierService('elogistia', ElogistiaService);
+// MDM Express
+registerCourierService('mdm', MdmService);
+registerCourierService('mdm express', MdmService);
+registerCourierService('mdm-express', MdmService);
 
 export class DeliveryService {
   /**
@@ -100,7 +111,7 @@ export class DeliveryService {
       })();
 
       const integrationResult = await pool.query(
-        `SELECT id, api_key_encrypted, api_secret_encrypted
+        `SELECT id, api_key_encrypted, api_secret_encrypted, merchant_id
          FROM delivery_integrations
          WHERE client_id = $1 AND delivery_company_id = $2 AND is_enabled = true`,
         [clientId, companyId]
@@ -115,6 +126,7 @@ export class DeliveryService {
       const secondaryCredential = integration.api_secret_encrypted
         ? decryptData(integration.api_secret_encrypted)
         : undefined;
+      const accountId = integration.merchant_id || undefined;
 
       const service = getCourierService(order.company_name);
       if (!service) {
@@ -123,29 +135,41 @@ export class DeliveryService {
 
 
       // Validate required fields for Anderson and similar couriers
+      // Only block on truly required fields — wilaya/commune IDs are optional
+      // because storefront orders often only have a text address
       if (order.company_name.toLowerCase().includes('anderson')) {
-        const missingFields = [];
-        if (!order.customer_name || String(order.customer_name).trim().length === 0) missingFields.push('customer_name');
-        if (!order.customer_phone || String(order.customer_phone).trim().length === 0) missingFields.push('customer_phone');
-        if (!order.shipping_address || String(order.shipping_address).trim().length === 0) missingFields.push('shipping_address');
-        if (!order.shipping_wilaya_id) missingFields.push('shipping_wilaya_id');
-        if (!order.shipping_commune_id) missingFields.push('shipping_commune_id');
-        if (!order.cod_amount) missingFields.push('cod_amount');
-        if (missingFields.length > 0) {
+        const rawPhone = String(order.customer_phone || '').replace(/[\s\-().+]/g, '');
+        const fieldErrors: { field: string; code: string; value?: string }[] = [];
+        if (!order.customer_name || String(order.customer_name).trim().length === 0)
+          fieldErrors.push({ field: 'customer_name', code: 'missing' });
+        if (rawPhone.length === 0)
+          fieldErrors.push({ field: 'customer_phone', code: 'missing' });
+        else if (rawPhone.length < 9)
+          fieldErrors.push({ field: 'customer_phone', code: 'too_short', value: order.customer_phone });
+        if (!order.cod_amount && order.cod_amount !== 0)
+          fieldErrors.push({ field: 'cod_amount', code: 'missing' });
+        if (fieldErrors.length > 0) {
           await logDeliveryEvent(
             orderId,
             clientId,
             companyId,
             'upload_failed',
-            `Missing required fields for Anderson: ${missingFields.join(', ')}`,
+            `Missing/invalid fields for Anderson: ${fieldErrors.map(f => `${f.field}:${f.code}`).join(', ')}`,
             requestId
           );
           return {
             success: false,
-            error: `Missing required fields: ${missingFields.join(', ')}`,
+            error: 'VALIDATION_ERROR',
+            courier_response: { errorCode: 'VALIDATION_ERROR', fieldErrors, orderId },
           };
         }
       }
+
+      // Some couriers (MDM) need both store id and product id; pass as STORE_ID|PRODUCT_ID.
+      const courierCredential =
+        accountId && secondaryCredential
+          ? `${accountId}|${secondaryCredential}`
+          : accountId || secondaryCredential;
 
       const shipmentResponse = await service.createShipment(
         {
@@ -165,6 +189,11 @@ export class DeliveryService {
           })(),
           ...(order.shipping_wilaya_id ? { wilaya_id: Number(order.shipping_wilaya_id) } : {}),
           ...(order.shipping_commune_id ? { commune_id: Number(order.shipping_commune_id) } : {}),
+          ...(String(order.delivery_type || '').toLowerCase() === 'desk' ? { is_stopdesk: true } : {}),
+          ...(String(order.delivery_type || '').toLowerCase() === 'desk' && /^\d+$/.test(String(order.shipping_hai || '').trim())
+            ? { pickup_point: Number(String(order.shipping_hai).trim()) }
+            : {}),
+          ...(order.product_id ? { product_ref: String(order.product_id) } : {}),
           product_description: productDescription,
           quantity: order.quantity,
           cod_amount: order.cod_amount,
@@ -172,7 +201,7 @@ export class DeliveryService {
           ...(notes ? { notes } : {}),
         },
         apiKey,
-        secondaryCredential
+        courierCredential
       );
 
       let trackingNumber = shipmentResponse.tracking_number;
@@ -203,7 +232,19 @@ export class DeliveryService {
       }
 
       if (!shipmentResponse.success || !trackingNumber) {
-        // Do NOT update status if upload failed or tracking number missing
+        // Map known courier API error messages to structured codes
+        let errorPayload: string = shipmentResponse.error || 'Failed to create shipment';
+        if (
+          order.company_name.toLowerCase().includes('anderson') &&
+          typeof errorPayload === 'string' &&
+          (errorPayload.includes('t\u00e9l\u00e9phone') || errorPayload.includes('phone'))
+        ) {
+          errorPayload = JSON.stringify({
+            errorCode: 'VALIDATION_ERROR',
+            fieldErrors: [{ field: 'customer_phone', code: 'too_short', value: order.customer_phone }],
+            orderId,
+          });
+        }
         await logDeliveryEvent(
           orderId,
           clientId,
@@ -228,7 +269,7 @@ export class DeliveryService {
         );
         return {
           success: false,
-          error: shipmentResponse.error || 'Failed to create shipment',
+          error: errorPayload,
           courier_response: shipmentResponse,
         };
       }
@@ -370,6 +411,8 @@ export class DeliveryService {
         'dhd livraison',
         'dhd livraison express',
         'dolivroo',
+        'maystro delivery',
+        'maystro',
       ]);
       const labelUrl = proxyLabelCompanies.has(companyName)
         ? `/api/delivery/orders/${orderId}/label`
@@ -495,7 +538,7 @@ export class DeliveryService {
 
       // Find order by tracking number
       const orderResult = await pool.query(
-        'SELECT id, client_id FROM store_orders WHERE tracking_number = $1',
+        'SELECT id, client_id, customer_phone, customer_name FROM store_orders WHERE tracking_number = $1',
         [trackingNumber]
       );
 
@@ -504,7 +547,7 @@ export class DeliveryService {
         return { success: true }; // Don't fail, just log
       }
 
-      const { id: orderId, client_id: clientId } = orderResult.rows[0];
+      const { id: orderId, client_id: clientId, customer_phone: customerPhone, customer_name: customerName } = orderResult.rows[0];
 
       // Save event
       const eventInsert = await pool.query(
@@ -534,6 +577,20 @@ export class DeliveryService {
            WHERE id = $2`,
           [event.event_type, orderId]
         );
+      }
+
+      // Send customer bot notification (fire-and-forget)
+      if (customerPhone) {
+        sendDeliveryStatusNotification({
+          orderId,
+          clientId,
+          customerPhone,
+          customerName: customerName || '',
+          trackingNumber,
+          eventType: event.event_type,
+          description: event.description,
+          location: event.location,
+        }).catch(err => console.error('[Webhook] Bot notification failed:', err?.message || err));
       }
 
       console.log(`[Webhook] Event processed for order ${orderId}: ${event.event_type}`);

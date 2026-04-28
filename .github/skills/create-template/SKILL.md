@@ -54,10 +54,11 @@ export default function {Name}Template({
   products,
   canManage,
   storeSlug,
+  primaryColor: propPrimaryColor,
 }: TemplateProps) {
 ```
 
-All four props are **mandatory** to destructure and use.
+All props are **mandatory** to destructure. `primaryColor` (renamed to `propPrimaryColor`) is computed by the editor from raw settings and survives template preview overrides — use it as an accent fallback.
 
 ---
 
@@ -65,15 +66,108 @@ All four props are **mandatory** to destructure and use.
 
 ### Colors (CRITICAL — use correct priority)
 
-Global keys MUST take precedence over template-specific keys:
+The editor has **4 color pickers** in the "الألوان الأساسية" panel. Templates MUST wire to all of them:
+
+| Picker Label | Settings Key | Purpose |
+|-------------|-------------|---------|
+| اللون الأساسي | `primary_color` | Headings, body text on light bg |
+| لون الزر / Accent | `template_accent_color` | Buttons, CTA, prices, active states |
+| لون الخلفية / Background | `template_bg_color` | Page background |
+| لون الهيدر / Header | `iyco_header_color` | Nav, form cards, FAQ surfaces |
+
+#### Accent Color (buttons, prices)
 
 ```typescript
-const accentColor = settings?.template_accent_color || settings?.{id}_accent_color || '#DEFAULT';
-const bgColor = settings?.template_bg_color || settings?.{id}_bg_color || '#DEFAULT';
-const primaryColor = settings?.primary_color || '#DEFAULT';
+// propPrimaryColor survives editor preview override; settings.primary_color also survives
+const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#DEFAULT';
 ```
 
-**WRONG:** `settings?.{id}_accent_color || settings?.template_accent_color` — this breaks the editor color pickers.
+#### Background Color
+
+```typescript
+const bgColor = settings?.template_bg_color || settings?.{id}_bg_color || '#DEFAULT';
+```
+
+#### Primary / Text Color
+
+```typescript
+const primaryColor = settings?.primary_color || '#0f172a';
+```
+
+#### Header / Surface Color (new)
+
+```typescript
+const headerColor = settings?.iyco_header_color || (isDark ? '#1e293b' : '#ffffff');
+```
+
+**WRONG:** `settings?.{id}_accent_color || settings?.template_accent_color` — this breaks the editor color pickers (global keys MUST come first).
+
+### Dark/Light Auto-Detection (MANDATORY)
+
+Templates MUST detect whether `bgColor` and `headerColor` are dark and adapt all text/surface colors:
+
+```typescript
+const isDark = useMemo(() => {
+  const hex = bgColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+}, [bgColor]);
+
+const isHeaderDark = useMemo(() => {
+  const hex = headerColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+}, [headerColor]);
+
+// Helper: check if a color is light enough to read on dark backgrounds
+const isLight = (hex: string) => {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 >= 128;
+};
+
+// Page-level colors — primaryColor is used on dark bg ONLY if it's light enough to be readable
+const textColor = isDark ? (isLight(primaryColor) ? primaryColor : '#f1f5f9') : primaryColor;
+const textMuted = isDark ? (isLight(primaryColor) ? primaryColor + 'aa' : '#94a3b8') : '#64748b';
+const borderColor = isDark ? '#334155' : '#e2e8f0';
+const surfaceMuted = isDark ? '#0f172a' : '#f1f5f9';
+
+// Surface-level colors (adapt to headerColor) — use on nav, form cards, FAQ, inputs
+const surfaceColor = headerColor;
+const surfaceTextColor = isHeaderDark ? (isLight(primaryColor) ? primaryColor : '#f1f5f9') : primaryColor;
+const surfaceTextMuted = isHeaderDark ? (isLight(primaryColor) ? primaryColor + 'aa' : '#94a3b8') : '#64748b';
+```
+
+### CRITICAL: Do NOT Hardcode Tailwind Color Classes
+
+**WRONG** (ignores color pickers):
+```typescript
+<nav className="bg-white text-slate-900 border-slate-200">
+<div className="bg-slate-100 text-slate-700">
+```
+
+**RIGHT** (respects color pickers):
+```typescript
+<nav style={{ backgroundColor: surfaceColor, color: surfaceTextColor, borderBottom: `1px solid ${borderColor}` }}>
+<div style={{ backgroundColor: surfaceMuted, color: textColor }}>
+```
+
+Every element that has a visible background, text color, or border MUST use dynamic `style={{}}` with the derived colors. Tailwind color classes like `bg-white`, `text-slate-*`, `border-slate-*` will NOT respond to the editor pickers.
+
+### Editor Preview Override (important context)
+
+`GoldTemplateEditor.tsx` has a `TEMPLATE_SETTING_KEYS` array. When previewing a **different** template (before publishing), all keys in this array get set to `null`. Color keys (`template_bg_color`, `template_accent_color`) were **removed** from this array so they survive preview mode. Only text/copy settings reset.
+
+This means `settings?.template_accent_color` may still be `null` if the store has never set it. Always chain fallbacks:
+```typescript
+const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#DEFAULT';
+```
 
 ### Text Settings
 
@@ -548,10 +642,16 @@ Before considering the template done, verify ALL of these:
 - [ ] File at `client/pages/storefront/templates/{id}/{Name}Template.tsx`
 - [ ] Imports `TemplateProps` from `../types`
 - [ ] Imports `useStoreDeliveryPrices` from `@/hooks/useStoreDeliveryPrices`
-- [ ] Destructures `{ settings, products, canManage, storeSlug }`
-- [ ] Root div has `dir="rtl"` and `style={{ backgroundColor: bgColor }}`
-- [ ] Color priority: `template_accent_color` BEFORE template-specific key
-- [ ] Color priority: `template_bg_color` BEFORE template-specific key
+- [ ] Destructures `{ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor }`
+- [ ] Root div has `dir="rtl"` and `style={{ backgroundColor: bgColor, color: textColor }}`
+- [ ] Accent color chain: `template_accent_color || propPrimaryColor || primary_color || default`
+- [ ] Background color: `template_bg_color` before template-specific key
+- [ ] Header/surface color: `iyco_header_color` with dark/light fallback
+- [ ] Dark/light auto-detection via luminance on `bgColor` AND `headerColor`
+- [ ] `isLight()` helper: on dark bg, use `primaryColor` for text ONLY if light enough (luminance ≥ 128), else fall back to `#f1f5f9`
+- [ ] `textColor`, `textMuted`, `borderColor`, `surfaceMuted` derived from `isDark` + `isLight(primaryColor)`
+- [ ] `surfaceColor`, `surfaceTextColor`, `surfaceTextMuted` derived from `isHeaderDark` + `isLight(primaryColor)`
+- [ ] **NO hardcoded Tailwind color classes** (`bg-white`, `text-slate-*`, `border-slate-*`) on visible elements — use `style={{}}` with derived colors
 - [ ] Reads `currency_code` with fallback `'د.ج'`
 - [ ] Reads `dzp_main_product_id` with fallback to `products?.[0]`
 - [ ] Reads `template_hero_heading`, `template_hero_subtitle`, `template_button_text`

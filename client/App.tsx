@@ -10,7 +10,7 @@ import "./global.css";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { getCurrentUser, removeAuthToken, syncAuthState, startAutoRefresh } from "@/lib/auth";
 import Layout from "@/components/layout/Layout";
 import Index from "./pages/Index";
@@ -32,6 +32,7 @@ const EnhancedDashboard = lazy(() => import("./pages/admin/EnhancedDashboard"));
 const AdminOrders = lazy(() => import("./pages/admin/Orders"));
 const AdminCalls = lazy(() => import("./pages/admin/Calls"));
 const AdminBotSettings = lazy(() => import("./pages/admin/BotSettings"));
+const AdminAISettings = lazy(() => import("./pages/admin/AISettings"));
 const AdminChats = lazy(() => import("./pages/admin/Chats"));
 const AdminChat = lazy(() => import("./pages/admin/Chat"));
 const Profile = lazy(() => import("./pages/admin/Profile"));
@@ -141,6 +142,80 @@ function RedirectAdmin() {
   return <Navigate to={to} replace />;
 }
 
+// Handle OAuth redirect — store user from query param into localStorage
+function OAuthHandler() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    const handleOAuth = async () => {
+      const params = new URLSearchParams(location.search);
+      const oauthUser = params.get('oauth_user');
+      const oauthError = params.get('error');
+
+      if (oauthError) {
+        console.error('[OAuth] Error from server:', oauthError);
+        const errorMsg = oauthError === 'no_code' ? 'No authorization code' :
+                        oauthError === 'no_email' ? 'Email not found' :
+                        oauthError === 'account_locked' ? 'Account is locked' :
+                        'OAuth authentication failed';
+        localStorage.setItem('oauth_error', errorMsg);
+        // Redirect to login with error after a short delay
+        setTimeout(() => {
+          navigate('/login?oauth_error=' + encodeURIComponent(errorMsg), { replace: true });
+        }, 500);
+        return;
+      }
+
+      if (oauthUser) {
+        try {
+          console.log('[OAuth] Processing OAuth user data...');
+          const data = JSON.parse(decodeURIComponent(oauthUser));
+          const { token, ...user } = data;
+
+          console.log('[OAuth] Storing user in localStorage:', { id: user.id, email: user.email });
+          localStorage.setItem('user', JSON.stringify(user));
+
+          if (token) {
+            console.log('[OAuth] Storing auth token from OAuth callback');
+            localStorage.setItem('auth_token', token);
+          } else {
+            console.warn('[OAuth] No token provided in OAuth callback');
+          }
+
+          if (user.role === 'admin') {
+            localStorage.setItem('isAdmin', 'true');
+          }
+
+          console.log('[OAuth] Validating OAuth session with server...');
+          const valid = await syncAuthState();
+          if (!valid) {
+            console.error('[OAuth] Server validation failed after callback');
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            localStorage.setItem('oauth_error', 'Authentication failed. Please log in again.');
+            navigate('/login?oauth_error=authentication_failed', { replace: true });
+            return;
+          }
+
+          startAutoRefresh();
+          const redirectTo = user.role === 'admin' ? '/platform-admin' : '/dashboard';
+          console.log('[OAuth] Redirecting to:', redirectTo);
+
+          // Clear query params and redirect
+          navigate(redirectTo, { replace: true });
+        } catch (error) {
+          console.error('[OAuth] Error processing OAuth callback:', error);
+          localStorage.setItem('oauth_error', 'Failed to process authentication');
+          navigate('/login?oauth_error=processing_failed', { replace: true });
+        }
+      }
+    };
+
+    handleOAuth();
+  }, [location.search, navigate]);
+  return null;
+}
+
 // Route guard for dashboard: allow logged-in clients AND staff members
 function RequirePaidClient({ children }: { children: JSX.Element }) {
   const [authState, setAuthState] = React.useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
@@ -160,12 +235,27 @@ function RequirePaidClient({ children }: { children: JSX.Element }) {
       // Check localStorage first
       const user = getCurrentUser();
       if (!user) {
+        console.log('[Auth] No user in localStorage, redirecting to login');
         if (!cancelled) setAuthState('unauthenticated');
+        return;
+      }
+
+      // If we just came from OAuth, validate the token with the server
+      const oauthToken = localStorage.getItem('auth_token');
+      if (oauthToken) {
+        console.log('[Auth] OAuth token found, validating with server');
+        const isValid = await syncAuthState();
+        console.log('[Auth] syncAuthState result for oauthToken:', isValid);
+        if (!cancelled) {
+          setAuthState(isValid ? 'authenticated' : 'unauthenticated');
+        }
         return;
       }
       
       // Validate with server (will update localStorage if needed)
+      console.log('[Auth] Validating session with server...');
       const isValid = await syncAuthState();
+      console.log('[Auth] syncAuthState result:', isValid);
       if (!cancelled) {
         setAuthState(isValid ? 'authenticated' : 'unauthenticated');
       }
@@ -348,6 +438,7 @@ const App = () => (
               <GlobalAnnouncement />
               <Layout>
                 <CartProvider>
+                <OAuthHandler />
                 <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Index />} />
@@ -430,6 +521,7 @@ const App = () => (
                     <Route path="staff" element={<StaffManagement />} />
                     <Route path="calls" element={<AdminCalls />} />
                     <Route path="bot-settings" element={<SubscriptionPageLock><AdminBotSettings /></SubscriptionPageLock>} />
+                    <Route path="ai-settings" element={<SubscriptionPageLock><AdminAISettings /></SubscriptionPageLock>} />
                     <Route path="wasselni-settings" element={<Navigate to="/dashboard/bot-settings" replace />} />
                     <Route path="marketing-analytics" element={<MarketingAnalytics />} />
                     <Route path="pixel-statistics" element={<Navigate to="/dashboard/marketing-analytics" replace />} />
@@ -477,7 +569,7 @@ const App = () => (
                   <Route path="/store/:storeSlug" element={<StoreLayout />}>
                     <Route index element={<Storefront />} />
                     <Route path="build" element={<BuildPage />} />
-                    <Route path=":productSlug" element={<ProductCheckout />} />
+                    <Route path=":productSlug" element={<Storefront />} />
                     <Route path="checkout/:productSlug" element={<ProductCheckout />} />
                     <Route path="order/:orderId/confirm" element={<OrderConfirmation />} />
                   </Route>

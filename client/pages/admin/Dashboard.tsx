@@ -17,6 +17,7 @@ interface DashboardStats {
 
 interface Analytics {
   dailyRevenue: { date: string; orders: number; revenue: number; total_value: number }[];
+  dailyViews: { date: string; views: number }[];
   customStatuses: { key?: string; name: string; color: string; icon: string }[];
   topProducts: any[];
   recentOrders: { id: number; customer_name: string; customer_phone: string; total_price: number; status: string; created_at: string; product_title: string }[];
@@ -124,9 +125,15 @@ export default function Dashboard() {
 
   const currentHourGreeting = getGreeting();
 
-  const chartData = analytics?.dailyRevenue && analytics.dailyRevenue.length > 0
+  // Detect RTL for proper chart direction
+  const isRTL = t('direction') === 'rtl' || document.dir === 'rtl' || ['ar', 'he', 'ur'].includes(t('locale'));
+
+  const rawChartData = analytics?.dailyRevenue && analytics.dailyRevenue.length > 0
     ? analytics.dailyRevenue.slice(-10)
     : [];
+
+  // Reverse data for RTL so time flows right-to-left
+  const chartData = isRTL ? [...rawChartData].reverse() : rawChartData;
 
   const maxRevenue = Math.max(...chartData.map(d => Number(d.revenue) || Number((d as any).total_value) || 1), 1);
   const maxOrders = Math.max(...chartData.map(d => Number(d.orders) || 1), 1);
@@ -146,11 +153,20 @@ export default function Dashboard() {
   const totalRevenuePeriod = chartData.reduce((s, d) => s + (Number(d.revenue) || Number((d as any).total_value) || 0), 0);
   const totalOrdersPeriod = chartData.reduce((s, d) => s + (Number(d.orders) || 0), 0);
 
-  const visitorsPoints = chartData.map((d, i) => {
-    const x = (i / Math.max(chartData.length - 1, 1)) * 100;
-    const y = 100 - ((Number(d.orders) || 0) / Math.max(...chartData.map(o => Number(o.orders) || 1), 1)) * 100;
-    return `${x},${y}`;
-  }).join(' ');
+  const visitorsPoints = (() => {
+    const rawViewsData = analytics?.dailyViews && analytics.dailyViews.length > 0 ? analytics.dailyViews : [];
+    const viewsData = isRTL ? [...rawViewsData].reverse() : rawViewsData;
+    if (viewsData.length === 0) return chartData.map((d, i) => {
+      const x = (i / Math.max(chartData.length - 1, 1)) * 100;
+      return `${x},50`;
+    }).join(' ');
+    const maxViews = Math.max(...viewsData.map((d: any) => Number(d.views) || 0), 1);
+    return viewsData.map((d: any, i: number) => {
+      const x = (i / Math.max(viewsData.length - 1, 1)) * 100;
+      const y = 100 - ((Number(d.views) || 0) / maxViews) * 100;
+      return `${x},${y}`;
+    }).join(' ');
+  })();
 
   const cityData = analytics?.cityBreakdown && analytics.cityBreakdown.length > 0
     ? analytics.cityBreakdown.slice(0, 6)
@@ -319,7 +335,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-2 w-full max-w-[1400px] mx-auto">
 
         {/* KPI Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {topCards.map((card, i) => (
             <div key={i} className="bg-white dark:bg-[#111] py-3 px-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center hover:shadow-md transition-all">
               <div className={`w-8 h-8 ${card.bg} ${card.shadow} rounded-2xl flex items-center justify-center text-white text-xl shadow-lg mb-1.5 hover:scale-105 transition-transform`}>
@@ -364,8 +380,8 @@ export default function Dashboard() {
                 <span>{Math.round(maxRevenue * 0.25).toLocaleString()}</span>
                 <span>0</span>
               </div>
-              <div className="flex-1 flex flex-col">
-                <div className="relative flex-1 min-h-[100px] w-full">
+              <div className="flex-1 flex flex-col min-h-[120px] sm:min-h-[100px]">
+                <div className="relative flex-1 w-full min-h-[120px] sm:min-h-[100px]">
                   <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full rounded-md overflow-hidden">
                     <defs>
                       <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
@@ -434,11 +450,12 @@ export default function Dashboard() {
                 {statuses.slice(0, 3).map((s, i) => {
                   const colors = ['bg-[#10B981]', 'bg-[#F59E0B]', 'bg-[#EF4444]'];
                   const percent = Math.round((s.count / totalBreakdown) * 100);
+                  const statusLabel = t(`orders.status.${s.status}`) || s.status.replace(/_/g, ' ');
                   return (
                     <div key={i} className="flex items-center justify-between text-xs font-bold">
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${colors[i]}`}></div>
-                        <span className="text-slate-500 capitalize">{s.status.replace(/_/g, ' ')}</span>
+                        <span className="text-slate-500 capitalize">{statusLabel}</span>
                       </div>
                       <span className="text-slate-800 dark:text-white">{percent}%</span>
                     </div>
@@ -448,46 +465,85 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Customer Reviews */}
+          {/* Store Performance Rating */}
           <div className="lg:col-span-3 bg-white dark:bg-[#111] p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col">
             <div className="flex justify-between items-start mb-2">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('dashboard.customerReviews')}</h3>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">تقييم المتجر</h3>
               <MoreHorizontal className="text-slate-300 w-5 h-5" />
             </div>
 
-            <div className="flex items-center gap-1.5 mb-1">
-              <div className="flex text-[#FFAB00]">
-                {[1,2,3,4,5].map(s => (
-                  <Star key={s} size={16} fill="transparent" stroke="#cbd5e1" strokeWidth="1.5" />
-                ))}
-              </div>
-              <span className="text-lg font-black text-slate-800 dark:text-white">0</span>
-            </div>
-            <p className="text-[9px] text-slate-400 mb-2 font-semibold">{t('dashboard.overallRating')}</p>
+            {(() => {
+              const visitors = stats.visitors || 0;
+              const orders = stats.orders || 0;
+              // orders per 100 visitors
+              const ordersPerHundred = visitors > 0 ? (orders / visitors) * 100 : 0;
+              const rounded = Math.round(ordersPerHundred * 10) / 10;
 
-            <div className="flex-1 space-y-1.5">
-              {[
-                { label: t('dashboard.rating.excellent'), val: 0, color: 'bg-emerald-500' },
-                { label: t('dashboard.rating.good'), val: 0, color: 'bg-teal-400' },
-                { label: t('dashboard.rating.average'), val: 0, color: 'bg-yellow-400' },
-                { label: t('dashboard.rating.avgBelow'), val: 0, color: 'bg-orange-400' },
-                { label: t('dashboard.rating.poor'), val: 0, color: 'bg-red-400' },
-              ].map(r => (
-                <div key={r.label} className="flex items-center gap-2">
-                  <span className="w-16 text-xs text-slate-500 font-semibold">{r.label}</span>
-                  <div className="flex-1 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${r.color}`} style={{ width: `${r.val * 2}%` }}></div>
+              let tier: { label: string; color: string; bg: string; stars: number; tip: string };
+              if (rounded >= 4) {
+                tier = { label: 'ممتاز', color: 'text-emerald-500', bg: 'bg-emerald-500', stars: 5, tip: 'تسويقك مثالي — الآن وقت زيادة ميزانية الإعلانات!' };
+              } else if (rounded >= 3) {
+                tier = { label: 'جيد', color: 'text-teal-500', bg: 'bg-teal-400', stars: 4, tip: 'متجر ناجح — معظم المتاجر الاحترافية هنا.' };
+              } else if (rounded >= 2) {
+                tier = { label: 'متوسط', color: 'text-yellow-500', bg: 'bg-yellow-400', stars: 3, tip: 'معيار الصناعة — حسّن وصف المنتجات أو تصميم المتجر.' };
+              } else if (rounded >= 1) {
+                tier = { label: 'أقل من المتوسط', color: 'text-orange-500', bg: 'bg-orange-400', stars: 2, tip: 'مبيعات موجودة — لكن تكلفة الإعلانات مرتفعة مقارنة بالعائد.' };
+              } else if (visitors === 0) {
+                tier = { label: 'لا يوجد بيانات', color: 'text-slate-400', bg: 'bg-slate-300', stars: 0, tip: 'لم يتم تسجيل زيارات بعد.' };
+              } else {
+                tier = { label: 'ضعيف', color: 'text-red-500', bg: 'bg-red-400', stars: 1, tip: 'شيء معطوب — تحقّق من زر الطلب والسعر وثقة الزوار.' };
+              }
+
+              const tiers = [
+                { label: 'ممتاز (4-5)', range: '4–5 طلبات', color: 'bg-emerald-500', active: rounded >= 4 },
+                { label: 'جيد (3)', range: '3 طلبات', color: 'bg-teal-400', active: rounded >= 3 && rounded < 4 },
+                { label: 'متوسط (2)', range: '2 طلبات', color: 'bg-yellow-400', active: rounded >= 2 && rounded < 3 },
+                { label: 'أقل (1)', range: '1 طلب', color: 'bg-orange-400', active: rounded >= 1 && rounded < 2 },
+                { label: 'ضعيف (0)', range: '0 طلبات', color: 'bg-red-400', active: rounded < 1 && visitors > 0 },
+              ];
+
+              // bar width: map 0-5 orders/100 to 0-100%
+              const barWidths = [100, 80, 60, 40, 20];
+
+              return (
+                <>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="flex text-[#FFAB00]">
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} size={14}
+                          fill={s <= tier.stars ? '#FFAB00' : 'transparent'}
+                          stroke={s <= tier.stars ? '#FFAB00' : '#cbd5e1'}
+                          strokeWidth="1.5"
+                        />
+                      ))}
+                    </div>
+                    <span className={`text-lg font-black ${tier.color}`}>{tier.label}</span>
                   </div>
-                  <span className="w-6 text-right text-xs font-bold text-slate-800 dark:text-white">{r.val}</span>
-                </div>
-              ))}
-            </div>
+                  <p className="text-[9px] text-slate-400 mb-2 font-semibold">
+                    {visitors > 0 ? `${rounded} طلب لكل 100 زائر` : 'لا توجد بيانات كافية'}
+                  </p>
 
-            <div className="mt-3">
-              <button className="w-full py-1 rounded-full bg-blue-50 dark:bg-blue-500/10 text-[#4379EE] text-xs font-bold border border-blue-100 dark:border-blue-900 hover:bg-[#4379EE] hover:text-white transition-colors">
-                {t('dashboard.seeAllReviews')}
-              </button>
-            </div>
+                  <div className="flex-1 space-y-1.5">
+                    {tiers.map((r, i) => (
+                      <div key={r.label} className="flex items-center gap-2">
+                        <span className={`w-16 text-[10px] font-semibold truncate ${r.active ? 'text-slate-800 dark:text-white' : 'text-slate-400'}`}>{r.label}</span>
+                        <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${r.color} ${r.active ? 'opacity-100' : 'opacity-30'}`}
+                            style={{ width: `${barWidths[i]}%` }}
+                          />
+                        </div>
+                        <span className={`w-6 text-right text-[10px] font-bold ${r.active ? 'text-slate-800 dark:text-white' : 'text-slate-300'}`}>
+                          {r.active ? '◄' : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-[9px] text-slate-400 mt-2 leading-relaxed">{tier.tip}</p>
+                </>
+              );
+            })()}
           </div>
 
         </div>
@@ -539,59 +595,82 @@ export default function Dashboard() {
                 <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('dashboard.storeImpressions')}</h3>
                 <p className="text-xs text-slate-400 mt-0.5">{stats.visitors > 0 ? `${stats.visitors.toLocaleString()} ${t('dashboard.lastNDays', { n: dayRange })}` : t('dashboard.goalCompletionDesc')}</p>
               </div>
-              <div className="flex items-center gap-3 text-[10px] font-bold">
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#8B5CF6]"></div><span className="text-slate-500">{t('dashboard.revenueLabel')}</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#06B6D4]"></div><span className="text-slate-500">{t('dashboard.ordersLabel')}</span></div>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                <div className="w-2 h-2 rounded-full bg-[#06B6D4]"></div>
+                <span className="text-slate-500">{t('dashboard.visitors') || 'زوار'}</span>
               </div>
             </div>
+            {(() => {
+              const viewsData: {date: string; views: number}[] = analytics?.dailyViews ?? [];
+              const cumulativeViews = viewsData.reduce((acc, item) => {
+                const last = acc.length > 0 ? acc[acc.length - 1].views : 0;
+                acc.push({ date: item.date, views: last + (Number(item.views) || 0) });
+                return acc;
+              }, [] as {date: string; views: number}[]);
 
-            <div className="flex w-full flex-1">
-              <div className="flex flex-col justify-between text-[10px] text-slate-400 font-bold items-start pr-2 z-10 hidden sm:flex">
-                <span>{maxOrders}</span>
-                <span>{Math.round(maxOrders * 0.75)}</span>
-                <span>{Math.round(maxOrders * 0.5)}</span>
-                <span>{Math.round(maxOrders * 0.25)}</span>
-                <span>0</span>
-              </div>
-              <div className="flex-1 flex flex-col">
-                <div className="relative flex-1 min-h-[100px] w-full">
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full rounded-md overflow-hidden">
-                    <defs>
-                      <linearGradient id="chartFill2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.02" />
-                      </linearGradient>
-                      <linearGradient id="chartFill3" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.02" />
-                      </linearGradient>
-                    </defs>
-                    {[20, 40, 60, 80].map(y => (
-                      <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="currentColor" className="text-slate-100 dark:text-slate-800/50" strokeWidth="0.5" strokeDasharray="2,2" />
-                    ))}
-                    <polygon points={`0,100 ${visitorsPoints} 100,100`} fill="url(#chartFill3)" />
-                    <polyline points={visitorsPoints} fill="none" stroke="#06B6D4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <polygon points={`0,100 ${points} 100,100`} fill="url(#chartFill2)" />
-                    <polyline points={points} fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeDasharray="4,3" />
-                  </svg>
+              const maxViews = Math.max(stats.visitors || 0, ...cumulativeViews.map(d => Number(d.views) || 0), 1);
+              const vPoints = cumulativeViews.length > 1
+                ? cumulativeViews.map((d, i) => {
+                    const x = (i / (cumulativeViews.length - 1)) * 100;
+                    const y = 100 - ((Number(d.views) || 0) / maxViews) * 100;
+                    return `${x},${y}`;
+                  }).join(' ')
+                : cumulativeViews.length === 1 ? `0,${100 - ((Number(cumulativeViews[0].views) || 0) / maxViews) * 100} 100,${100 - ((Number(cumulativeViews[0].views) || 0) / maxViews) * 100}` : '0,50 100,50';
+
+              const yAxisLabels = cumulativeViews.length > 0
+                ? [maxViews, Math.ceil(maxViews * 0.75), Math.ceil(maxViews * 0.5), Math.ceil(maxViews * 0.25), 0]
+                : [0, 0, 0, 0, 0];
+              const xLabels = cumulativeViews.length === 0
+                ? []
+                : (() => {
+                    const step = Math.max(1, Math.floor((cumulativeViews.length - 1) / 5));
+                    return [0, step, step*2, step*3, step*4, cumulativeViews.length - 1]
+                      .filter((v, i, a) => a.indexOf(v) === i && v < cumulativeViews.length);
+                  })();
+
+              return (
+                <div className="flex w-full flex-1">
+                  <div className="flex flex-col text-[10px] text-slate-400 font-bold items-start pr-2 z-10 sm:flex">
+                    <span className="text-[10px] uppercase tracking-[0.12em] text-slate-500 mb-2">{t('dashboard.visitors') || 'Visitors'}</span>
+                    <div className="flex-1 flex flex-col justify-between h-full">
+                      {yAxisLabels.map((label, idx) => (
+                        <span key={idx}>{label}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col min-h-[120px] sm:min-h-[100px]">
+                    <div className="relative flex-1 w-full min-h-[120px] sm:min-h-[100px]">
+                      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full rounded-md overflow-hidden">
+                        <defs>
+                          <linearGradient id="chartFillVisitors" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.3" />
+                            <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.02" />
+                          </linearGradient>
+                        </defs>
+                        {[20, 40, 60, 80].map(y => (
+                          <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="currentColor" className="text-slate-100 dark:text-slate-800/50" strokeWidth="0.5" strokeDasharray="2,2" />
+                        ))}
+                        <polygon points={`0,100 ${vPoints} 100,100`} fill="url(#chartFillVisitors)" />
+                        <polyline points={vPoints} fill="none" stroke="#06B6D4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 uppercase overflow-hidden">
+                      {viewsData.length === 0
+                        ? <span className="text-slate-400 text-xs w-full text-center">{t('dashboard.noData') || 'No data yet'}</span>
+                        : xLabels.map(idx => {
+                            const raw = viewsData[idx]?.date || '';
+                            try {
+                              const d = new Date(raw);
+                              if (!isNaN(d.getTime())) return <span key={idx}>{d.toLocaleDateString('en', { day: '2-digit', month: 'short' })}</span>;
+                            } catch {}
+                            return <span key={idx}>{raw}</span>;
+                          })
+                      }
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 uppercase overflow-hidden">
-                  {(() => {
-                    if (chartData.length === 0) return <span className="text-slate-400 text-xs w-full text-center">{t('dashboard.noData') || 'No data yet'}</span>;
-                    const step = Math.max(1, Math.floor((chartData.length - 1) / 5));
-                    const indices = [0, step, step*2, step*3, step*4, chartData.length - 1].filter((v, i, a) => a.indexOf(v) === i && v < chartData.length);
-                    return indices.map(idx => {
-                      const raw = chartData[idx]?.date || '';
-                      try {
-                        const d = new Date(raw);
-                        if (!isNaN(d.getTime())) return <span key={idx}>{d.toLocaleDateString('en', { day: '2-digit', month: 'short' })}</span>;
-                      } catch {}
-                      return <span key={idx}>{raw}</span>;
-                    });
-                  })()}
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
           {/* Orders by Wilaya */}
@@ -611,10 +690,11 @@ export default function Dashboard() {
               ) : cityData.map((city, i) => {
                 const barWidth = Math.max((city.count / maxCityCount) * 100, 8);
                 const colors = ['bg-[#4379EE]', 'bg-[#10B981]', 'bg-[#F59E0B]', 'bg-[#8B5CF6]', 'bg-[#EC4899]', 'bg-[#06B6D4]'];
+                const displayCity = city.city === 'Not specified' ? t('dashboard.notSpecified') : city.city;
                 return (
                   <div key={i} className="flex flex-col gap-0.5">
                     <div className="flex justify-between items-center">
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[120px]">{city.city}</span>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[120px]">{displayCity}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-slate-500">{city.count}</span>
                         <span className="text-[9px] text-slate-400">{city.revenue?.toLocaleString()} DZD</span>
@@ -635,13 +715,16 @@ export default function Dashboard() {
       {/* AI Insights Row */}
       <AIInsightsCard stats={stats} analytics={analytics} dayRange={dayRange} />
 
+      {/* Mobile spacing for sidebar button */}
+      <div className="h-20 lg:hidden"></div>
+
     </div>
   );
 }
 
 // ─── AI Insights Card ────────────────────────────────────────────────────────
 function AIInsightsCard({ stats, analytics, dayRange }: { stats: any; analytics: any; dayRange: number }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [narrative, setNarrative] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const { call: callNarrate, loading: loadingNarrate } = useAI('/api/ai/analytics/narrate');
@@ -651,8 +734,8 @@ function AIInsightsCard({ stats, analytics, dayRange }: { stats: any; analytics:
   const generate = async () => {
     if (!stats) return;
     const [narrateData, forecastData] = await Promise.all([
-      callNarrate({ stats, analytics, days: dayRange }),
-      callForecast({}),
+      callNarrate({ stats, analytics, days: dayRange, locale }),
+      callForecast({ locale }),
     ]);
     if (narrateData?.narrative) setNarrative(narrateData.narrative);
     if (forecastData?.forecast) setForecast(forecastData.forecast.slice(0, 3));
@@ -664,7 +747,7 @@ function AIInsightsCard({ stats, analytics, dayRange }: { stats: any; analytics:
         const r = await fetch('/api/ai/analytics/churn-warning', {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrf) },
-          body: JSON.stringify({ revenueHistory: analytics.dailyRevenue }),
+          body: JSON.stringify({ revenueHistory: analytics.dailyRevenue, locale }),
         });
         if (r.ok) { const d = await r.json(); if (d?.warning) setWarning(d.warning); }
       } catch { /* non-critical */ }
@@ -743,7 +826,7 @@ function AIInsightsCard({ stats, analytics, dayRange }: { stats: any; analytics:
 
       {!loading && !narrative && (
         <p className="text-xs text-slate-400 text-center py-3">
-          Click "Analyze with AI" to get a plain-language summary of your store performance, demand forecasts, and trend warnings.
+          {t('dashboard.aiEmptyHint')}
         </p>
       )}
     </div>

@@ -1,0 +1,5 @@
+ id |           email           | is_blocked | blocked_reason | totp_enabled | is_locked 
+----+---------------------------+------------+----------------+--------------+-----------
+  1 | sahla4eco.admin@gmail.com | f          |                | f            | f
+(1 row)
+

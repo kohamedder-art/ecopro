@@ -532,9 +532,9 @@ export default function AdminChat() {
                           Referred by <strong>{affiliateInfo.affiliate?.name}</strong> ({affiliateInfo.affiliate?.voucher_code})
                         </p>
                         <p className="text-sm text-white">
-                          <span className="line-through text-slate-400">${affiliateInfo.pricing.standard_price.toFixed(2)}</span>
+                          <span className="line-through text-slate-400">{affiliateInfo.pricing.standard_price.toFixed(0)} دج</span>
                           <span className="mx-2">→</span>
-                          <span className="text-emerald-400 font-bold">${affiliateInfo.pricing.final_price.toFixed(2)}</span>
+                          <span className="text-emerald-400 font-bold">{affiliateInfo.pricing.final_price.toFixed(0)} دج</span>
                           <span className="text-xs text-emerald-300 ml-2">({affiliateInfo.pricing.discount_percent}% off)</span>
                         </p>
                         <p className="text-xs text-emerald-400/80 mt-1">
@@ -578,8 +578,8 @@ export default function AdminChat() {
                   <p className="text-xs text-slate-400">
                     Referred by {affiliateInfo.affiliate?.name} ({affiliateInfo.affiliate?.voucher_code}) • 
                     {affiliateInfo.discount_months_used >= (affiliateInfo.affiliate?.discount_months || 1)
-                      ? ` All ${affiliateInfo.discount_months_used} discount months used - Standard price $${affiliateInfo.pricing.standard_price.toFixed(2)}`
-                      : ` Payment #${affiliateInfo.payment_count + 1} - Standard price $${affiliateInfo.pricing.standard_price.toFixed(2)}`
+                      ? ` All ${affiliateInfo.discount_months_used} discount months used - Standard price ${affiliateInfo.pricing.standard_price.toFixed(0)} دج`
+                      : ` Payment #${affiliateInfo.payment_count + 1} - Standard price ${affiliateInfo.pricing.standard_price.toFixed(0)} دج`
                     }
                   </p>
                 </div>

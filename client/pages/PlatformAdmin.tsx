@@ -366,7 +366,7 @@ function LockedAccountsManager() {
       setAllAccounts(data.accounts || []);
     } catch (err) {
       console.error('Failed to fetch accounts:', err);
-      alert('Failed to fetch accounts');
+      alert(t('platformAdmin.alerts.failedFetchAccounts'));
     } finally {
       setLoading(false);
     }
@@ -434,7 +434,7 @@ function LockedAccountsManager() {
         alert(`Failed: ${error.error || 'Unknown error'}`);
       }
     } catch (err) {
-      alert('Error unlocking account');
+      alert(t('platformAdmin.alerts.errorUnlocking'));
     } finally {
       setQuickProcessing(null);
     }
@@ -442,7 +442,7 @@ function LockedAccountsManager() {
 
   // Quick lock single account
   async function quickLock(accountId: number) {
-    const lockReason = prompt('Enter lock reason:');
+    const lockReason = prompt(t('platformAdmin.alerts.enterLockReason'));
     if (!lockReason) return;
     
     setQuickProcessing(accountId);
@@ -464,7 +464,7 @@ function LockedAccountsManager() {
         alert(`Failed: ${error.error || 'Unknown error'}`);
       }
     } catch (err) {
-      alert('Error locking account');
+      alert(t('platformAdmin.alerts.errorLocking'));
     } finally {
       setQuickProcessing(null);
     }
@@ -472,12 +472,12 @@ function LockedAccountsManager() {
 
   async function handleProcess() {
     if (selectedAccounts.length === 0) {
-      alert('Please select accounts');
+      alert(t('platformAdmin.alerts.selectAccounts'));
       return;
     }
 
     if (!reason.trim()) {
-      alert('Please enter a reason');
+      alert(t('platformAdmin.alerts.enterReason'));
       return;
     }
 
@@ -512,14 +512,13 @@ function LockedAccountsManager() {
         }
       }
 
-      const action_text = modalMode === 'unlock' ? 'unlocked' : 'locked';
-      alert(`Successfully ${action_text} ${selectedAccounts.length} account(s)`);
+      alert(modalMode === 'unlock' ? t('platformAdmin.alerts.successUnlocked', { count: selectedAccounts.length }) : t('platformAdmin.alerts.successLocked', { count: selectedAccounts.length }));
       setSelectedAccounts([]);
       setReason('');
       setShowModal(false);
       await fetchAllAccounts();
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : 'Failed to process accounts'}`);
+      alert(t('platformAdmin.alerts.failedProcess'));
     } finally {
       setProcessing(false);
     }
@@ -567,9 +566,9 @@ function LockedAccountsManager() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5" style={{ gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-        <div className="bg-slate-800/50 rounded-lg border border-slate-700/50" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-          <div className="text-slate-400" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>{t('platformAdmin.subscription.total')}</div>
-          <div className="font-bold text-white" style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{allAccounts.length}</div>
+        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700/50" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+          <div className="text-gray-500 dark:text-slate-400" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>{t('platformAdmin.subscription.total')}</div>
+          <div className="font-bold text-gray-900 dark:text-white" style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{allAccounts.length}</div>
         </div>
         <div className="bg-red-500/10 rounded-lg border border-red-500/30" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="text-red-300" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>🔒 {t('platformAdmin.subscription.locked')}</div>
@@ -579,13 +578,13 @@ function LockedAccountsManager() {
           <div className="text-green-300" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>✅ {t('platformAdmin.subscription.active')}</div>
           <div className="font-bold text-green-400" style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{activeCount}</div>
         </div>
-        <div className={`rounded-lg border ${expiringCount > 0 ? 'bg-yellow-500/20 border-yellow-500/50' : 'bg-slate-800/50 border-slate-700/50'}`} style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+        <div className={`rounded-lg border ${expiringCount > 0 ? 'bg-yellow-500/20 border-yellow-500/50' : 'bg-white/80 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700/50'}`} style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="text-yellow-300" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>⚠️ {t('platformAdmin.subscription.expiring')}</div>
-          <div className={`font-bold ${expiringCount > 0 ? 'text-yellow-400' : 'text-slate-500'}`} style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{expiringCount}</div>
+          <div className={`font-bold ${expiringCount > 0 ? 'text-yellow-400' : 'text-gray-500 dark:text-slate-500'}`} style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{expiringCount}</div>
         </div>
-        <div className={`rounded-lg border ${hackerCount > 0 ? 'bg-orange-500/20 border-orange-500/50 animate-pulse' : 'bg-slate-800/50 border-slate-700/50'}`} style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+        <div className={`rounded-lg border ${hackerCount > 0 ? 'bg-orange-500/20 border-orange-500/50 animate-pulse' : 'bg-white/80 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700/50'}`} style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="text-orange-300" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>🚨 {t('platformAdmin.subscription.hackers')}</div>
-          <div className={`font-bold ${hackerCount > 0 ? 'text-orange-400' : 'text-slate-500'}`} style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{hackerCount}</div>
+          <div className={`font-bold ${hackerCount > 0 ? 'text-orange-400' : 'text-gray-500 dark:text-slate-500'}`} style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{hackerCount}</div>
         </div>
       </div>
 
@@ -593,13 +592,13 @@ function LockedAccountsManager() {
       <div className="flex flex-wrap items-center" style={{ gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" style={{ width: 'clamp(1rem, 2vh, 1.25rem)', height: 'clamp(1rem, 2vh, 1.25rem)' }} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400" style={{ width: 'clamp(1rem, 2vh, 1.25rem)', height: 'clamp(1rem, 2vh, 1.25rem)' }} />
           <input
             type="text"
             placeholder={t('platformAdmin.subscription.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-500"
+            className="w-full bg-white/80 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
             style={{ fontSize: 'clamp(0.875rem, 1.75vh, 1rem)', padding: 'clamp(0.5rem, 1vh, 0.75rem) clamp(0.5rem, 1vh, 0.75rem) clamp(0.5rem, 1vh, 0.75rem) clamp(2.5rem, 5vh, 3rem)' }}
           />
         </div>
@@ -618,8 +617,8 @@ function LockedAccountsManager() {
               onClick={() => setFilterStatus(f.key as any)}
               className={`rounded-lg font-medium transition-all ${
                 filterStatus === f.key
-                  ? `bg-${f.color}-600 text-white`
-                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600'
+                  ? `bg-${f.color}-600 text-gray-900 dark:text-white`
+                  : 'bg-slate-700/50 text-gray-600 dark:text-slate-300 hover:bg-slate-600'
               }`}
               style={{ fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)', padding: 'clamp(0.375rem, 0.75vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)' }}
             >
@@ -631,10 +630,10 @@ function LockedAccountsManager() {
 
       {/* Bulk Actions */}
       {selectedAccounts.length > 0 && (
-        <div className="bg-slate-800/50 backdrop-blur-md rounded-lg border border-cyan-500/30 shadow-lg" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+        <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-lg border border-cyan-500/30 shadow-lg" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="flex items-center justify-between flex-wrap" style={{ gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
             <span className="text-cyan-300 font-medium" style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1.1rem)' }}>
-              {selectedAccounts.length} selected
+              {t('platformAdmin.subscription.selected', { count: selectedAccounts.length })}
             </span>
             <div className="flex" style={{ gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
               <Button
@@ -659,11 +658,11 @@ function LockedAccountsManager() {
       )}
 
       {/* Accounts Table */}
-      <div className="bg-slate-800/50 backdrop-blur-md rounded-lg border border-slate-700/50 shadow-lg overflow-hidden">
+      <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-lg border border-gray-200 dark:border-slate-700/50 shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-700/50 bg-slate-900/50">
+              <tr className="border-b border-gray-200 dark:border-slate-700/50 bg-gray-100/50 dark:bg-slate-900/50">
                 <th style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', width: '50px' }}>
                   <input
                     type="checkbox"
@@ -673,20 +672,20 @@ function LockedAccountsManager() {
                     style={{ width: 'clamp(1rem, 2vh, 1.25rem)', height: 'clamp(1rem, 2vh, 1.25rem)' }}
                   />
                 </th>
-                <th className="text-left text-slate-300 font-semibold" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>Status</th>
-                <th className="text-left text-slate-300 font-semibold" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>Account</th>
-                <th className="text-left text-slate-300 font-semibold hidden md:table-cell" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>Subscription</th>
-                <th className="text-left text-slate-300 font-semibold hidden lg:table-cell" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>Reason</th>
-                <th className="text-right text-slate-300 font-semibold" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>Actions</th>
+                <th className="text-left text-gray-600 dark:text-slate-300 font-semibold" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>{t('platformAdmin.table.status')}</th>
+                <th className="text-left text-gray-600 dark:text-slate-300 font-semibold" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>{t('platformAdmin.table.account')}</th>
+                <th className="text-left text-gray-600 dark:text-slate-300 font-semibold hidden md:table-cell" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>{t('platformAdmin.table.subscription')}</th>
+                <th className="text-left text-gray-600 dark:text-slate-300 font-semibold hidden lg:table-cell" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>{t('platformAdmin.table.reason')}</th>
+                <th className="text-right text-gray-600 dark:text-slate-300 font-semibold" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)', fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>{t('platformAdmin.table.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filteredAccounts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center text-slate-400" style={{ padding: 'clamp(2rem, 4vh, 3rem)' }}>
+                  <td colSpan={6} className="text-center text-gray-500 dark:text-slate-400" style={{ padding: 'clamp(2rem, 4vh, 3rem)' }}>
                     <CheckCircle className="mx-auto opacity-50" style={{ width: 'clamp(2rem, 4vh, 3rem)', height: 'clamp(2rem, 4vh, 3rem)', marginBottom: 'clamp(0.5rem, 1vh, 0.75rem)' }} />
                     <p style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1.1rem)' }}>
-                      {searchQuery ? 'No matching accounts' : filterStatus === 'locked' ? 'No locked accounts' : filterStatus === 'hackers' ? '✅ No hackers' : 'No accounts found'}
+                      {searchQuery ? t('platformAdmin.subscription.noMatchingAccounts') : filterStatus === 'locked' ? t('platformAdmin.subscription.noLockedAccounts') : filterStatus === 'hackers' ? t('platformAdmin.subscription.noHackers') : t('platformAdmin.subscription.noAccountsFound')}
                     </p>
                   </td>
                 </tr>
@@ -700,7 +699,7 @@ function LockedAccountsManager() {
                   return (
                     <tr
                       key={account.id}
-                      className={`border-b border-slate-700/20 hover:bg-slate-900/30 transition-colors ${
+                      className={`border-b border-gray-200/40 dark:border-slate-700/20 hover:bg-gray-50/30 dark:bg-slate-900/30 transition-colors ${
                         isHoneypot ? 'bg-orange-500/10' : account.is_locked ? 'bg-red-500/5' : isExpiring ? 'bg-yellow-500/5' : ''
                       }`}
                     >
@@ -715,37 +714,37 @@ function LockedAccountsManager() {
                       </td>
                       <td style={{ padding: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
                         {isHoneypot ? (
-                          <Badge className="bg-orange-600 animate-pulse" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)', padding: 'clamp(0.25rem, 0.5vh, 0.375rem) clamp(0.5rem, 1vh, 0.75rem)' }}>🚨 HACKER</Badge>
+                          <Badge className="bg-orange-600 animate-pulse" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)', padding: 'clamp(0.25rem, 0.5vh, 0.375rem) clamp(0.5rem, 1vh, 0.75rem)' }}>{t('platformAdmin.subscription.hacker')}</Badge>
                         ) : account.is_locked ? (
-                          <Badge className="bg-red-600" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)', padding: 'clamp(0.25rem, 0.5vh, 0.375rem) clamp(0.5rem, 1vh, 0.75rem)' }}>🔒 Locked</Badge>
+                          <Badge className="bg-red-600" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)', padding: 'clamp(0.25rem, 0.5vh, 0.375rem) clamp(0.5rem, 1vh, 0.75rem)' }}>{t('platformAdmin.subscription.lockedBadge')}</Badge>
                         ) : isExpiring ? (
-                          <Badge className="bg-yellow-600" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)', padding: 'clamp(0.25rem, 0.5vh, 0.375rem) clamp(0.5rem, 1vh, 0.75rem)' }}>⚠️ Expiring</Badge>
+                          <Badge className="bg-yellow-600" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)', padding: 'clamp(0.25rem, 0.5vh, 0.375rem) clamp(0.5rem, 1vh, 0.75rem)' }}>{t('platformAdmin.subscription.expiringBadge')}</Badge>
                         ) : (
-                          <Badge className="bg-green-600" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)', padding: 'clamp(0.25rem, 0.5vh, 0.375rem) clamp(0.5rem, 1vh, 0.75rem)' }}>✅ Active</Badge>
+                          <Badge className="bg-green-600" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)', padding: 'clamp(0.25rem, 0.5vh, 0.375rem) clamp(0.5rem, 1vh, 0.75rem)' }}>{t('platformAdmin.subscription.activeBadge')}</Badge>
                         )}
-                        {account.is_paid_temporarily && <Badge className="bg-blue-600 ml-1" style={{ fontSize: 'clamp(0.65rem, 1.3vh, 0.75rem)', padding: 'clamp(0.125rem, 0.25vh, 0.25rem) clamp(0.375rem, 0.75vh, 0.5rem)' }}>Temp</Badge>}
+                        {account.is_paid_temporarily && <Badge className="bg-blue-600 ml-1" style={{ fontSize: 'clamp(0.65rem, 1.3vh, 0.75rem)', padding: 'clamp(0.125rem, 0.25vh, 0.25rem) clamp(0.375rem, 0.75vh, 0.5rem)' }}>{t('platformAdmin.subscription.temp')}</Badge>}
                       </td>
                       <td style={{ padding: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
-                        <div className="text-white font-medium" style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)' }}>{account.name || 'No name'}</div>
-                        <div className="text-slate-400 font-mono" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>{account.email}</div>
+                        <div className="text-gray-900 dark:text-white font-medium" style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)' }}>{account.name || t('platformAdmin.subscription.noName')}</div>
+                        <div className="text-gray-500 dark:text-slate-400 font-mono" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>{account.email}</div>
                       </td>
                       <td className="hidden md:table-cell" style={{ padding: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
                         {daysLeft !== null ? (
                           <div>
                             <div className={`font-medium ${isExpired ? 'text-red-400' : isExpiring ? 'text-yellow-400' : 'text-green-400'}`} style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)' }}>
-                              {isExpired ? `Expired ${Math.abs(daysLeft)}d ago` : `${daysLeft}d left`}
+                              {isExpired ? t('platformAdmin.subscription.expiredDaysAgo', { days: Math.abs(daysLeft) }) : t('platformAdmin.subscription.daysLeftLabel', { days: daysLeft })}
                             </div>
-                            <div className="text-slate-500" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)' }}>
+                            <div className="text-gray-500 dark:text-slate-500" style={{ fontSize: 'clamp(0.7rem, 1.4vh, 0.85rem)' }}>
                               {new Date(account.subscription_extended_until || account.subscription_ends_at || '').toLocaleDateString()}
                             </div>
                           </div>
                         ) : (
-                          <span className="text-slate-500" style={{ fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>No data</span>
+                          <span className="text-gray-500 dark:text-slate-500" style={{ fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>{t('platformAdmin.subscription.noData')}</span>
                         )}
                       </td>
                       <td className="hidden lg:table-cell" style={{ padding: 'clamp(0.5rem, 1vh, 0.75rem)', maxWidth: '180px' }}>
-                        <div className="text-slate-400 truncate" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>
-                          {account.is_locked ? account.locked_reason || 'Subscription expired' : account.unlock_reason || '—'}
+                        <div className="text-gray-500 dark:text-slate-400 truncate" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>
+                          {account.is_locked ? account.locked_reason || t('platformAdmin.subscription.subExpired') : account.unlock_reason || '—'}
                         </div>
                       </td>
                       <td className="text-right" style={{ padding: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
@@ -787,13 +786,13 @@ function LockedAccountsManager() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center" style={{ padding: 'clamp(1rem, 2vh, 1.5rem)' }}>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full" style={{ maxWidth: '480px', padding: 'clamp(1.25rem, 2.5vh, 1.75rem)' }}>
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/80 z-50 flex items-center justify-center" style={{ padding: 'clamp(1rem, 2vh, 1.5rem)' }}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-2xl w-full" style={{ maxWidth: '480px', padding: 'clamp(1.25rem, 2.5vh, 1.75rem)' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: 'clamp(1rem, 2vh, 1.25rem)' }}>
-              <h3 className="font-bold text-white" style={{ fontSize: 'clamp(1.1rem, 2.2vh, 1.35rem)' }}>
-                {modalMode === 'unlock' ? '🔓 Unlock & Extend' : '🔒 Lock Account'}
+              <h3 className="font-bold text-gray-900 dark:text-white" style={{ fontSize: 'clamp(1.1rem, 2.2vh, 1.35rem)' }}>
+                {modalMode === 'unlock' ? t('platformAdmin.modal.unlockAndExtend') : t('platformAdmin.modal.lockAccount')}
               </h3>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowModal(false)} className="text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-900 dark:text-white">
                 <X style={{ width: 'clamp(1.25rem, 2.5vh, 1.5rem)', height: 'clamp(1.25rem, 2.5vh, 1.5rem)' }} />
               </button>
             </div>
@@ -803,22 +802,22 @@ function LockedAccountsManager() {
                 <>
                   {/* Action Selection */}
                   <div>
-                    <label className="block font-medium text-slate-300" style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', marginBottom: 'clamp(0.5rem, 1vh, 0.75rem)' }}>Action</label>
+                    <label className="block font-medium text-gray-600 dark:text-slate-300" style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', marginBottom: 'clamp(0.5rem, 1vh, 0.75rem)' }}>{t('platformAdmin.modal.action')}</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
-                      <label className={`flex items-center gap-3 rounded-lg border border-slate-600 cursor-pointer hover:bg-slate-700/50 ${action === 'extend' ? 'bg-blue-500/10 border-blue-500/50' : ''}`}
+                      <label className={`flex items-center gap-3 rounded-lg border border-gray-300 dark:border-slate-600 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-200 dark:hover:bg-slate-700/50 ${action === 'extend' ? 'bg-blue-500/10 border-blue-500/50' : ''}`}
                         style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
                         <input type="radio" checked={action === 'extend'} onChange={() => setAction('extend')} name="action" style={{ width: 'clamp(1rem, 2vh, 1.25rem)', height: 'clamp(1rem, 2vh, 1.25rem)' }} />
                         <div>
-                          <div className="font-medium text-white" style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1.05rem)' }}>Extend Subscription</div>
-                          <div className="text-slate-400" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>Add days to subscription</div>
+                          <div className="font-medium text-gray-900 dark:text-white" style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1.05rem)' }}>{t('platformAdmin.modal.extendSubscription')}</div>
+                          <div className="text-gray-500 dark:text-slate-400" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>{t('platformAdmin.modal.addDays')}</div>
                         </div>
                       </label>
-                      <label className={`flex items-center gap-3 rounded-lg border border-slate-600 cursor-pointer hover:bg-slate-700/50 ${action === 'mark_paid' ? 'bg-green-500/10 border-green-500/50' : ''}`}
+                      <label className={`flex items-center gap-3 rounded-lg border border-gray-300 dark:border-slate-600 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-200 dark:hover:bg-slate-700/50 ${action === 'mark_paid' ? 'bg-green-500/10 border-green-500/50' : ''}`}
                         style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
                         <input type="radio" checked={action === 'mark_paid'} onChange={() => setAction('mark_paid')} name="action" style={{ width: 'clamp(1rem, 2vh, 1.25rem)', height: 'clamp(1rem, 2vh, 1.25rem)' }} />
                         <div>
-                          <div className="font-medium text-white" style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1.05rem)' }}>Mark as Paid</div>
-                          <div className="text-slate-400" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>Grant 30-day paid access</div>
+                          <div className="font-medium text-gray-900 dark:text-white" style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1.05rem)' }}>{t('platformAdmin.modal.markAsPaid')}</div>
+                          <div className="text-gray-500 dark:text-slate-400" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>{t('platformAdmin.modal.grant30days')}</div>
                         </div>
                       </label>
                     </div>
@@ -827,14 +826,14 @@ function LockedAccountsManager() {
                   {/* Days Input */}
                   {action === 'extend' && (
                     <div>
-                      <label className="block font-medium text-slate-300" style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', marginBottom: 'clamp(0.375rem, 0.75vh, 0.5rem)' }}>Days to Extend</label>
+                      <label className="block font-medium text-gray-600 dark:text-slate-300" style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', marginBottom: 'clamp(0.375rem, 0.75vh, 0.5rem)' }}>{t('platformAdmin.modal.daysToExtend')}</label>
                       <input
                         type="number"
                         value={extendDays}
                         onChange={(e) => setExtendDays(Math.min(365, Math.max(1, parseInt(e.target.value) || 1)))}
                         min="1"
                         max="365"
-                        className="w-full bg-slate-900/50 border border-slate-600 rounded-lg text-white"
+                        className="w-full bg-gray-100/50 dark:bg-slate-900/50 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white"
                         style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1.05rem)', padding: 'clamp(0.5rem, 1vh, 0.75rem)' }}
                       />
                     </div>
@@ -844,14 +843,14 @@ function LockedAccountsManager() {
 
               {/* Reason */}
               <div>
-                <label className="block font-medium text-slate-300" style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', marginBottom: 'clamp(0.375rem, 0.75vh, 0.5rem)' }}>
-                  {modalMode === 'unlock' ? 'Unlock Reason' : 'Lock Reason'}
+                <label className="block font-medium text-gray-600 dark:text-slate-300" style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', marginBottom: 'clamp(0.375rem, 0.75vh, 0.5rem)' }}>
+                  {modalMode === 'unlock' ? t('platformAdmin.modal.unlockReason') : t('platformAdmin.modal.lockReason')}
                 </label>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder={modalMode === 'unlock' ? 'e.g., Payment received, Trial extension...' : 'e.g., Payment overdue...'}
-                  className="w-full bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500"
+                  placeholder={modalMode === 'unlock' ? t('platformAdmin.modal.unlockPlaceholder') : t('platformAdmin.modal.lockPlaceholder')}
+                  className="w-full bg-gray-100/50 dark:bg-slate-900/50 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                   style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', padding: 'clamp(0.5rem, 1vh, 0.75rem)' }}
                   rows={2}
                 />
@@ -861,7 +860,7 @@ function LockedAccountsManager() {
               <div className="flex" style={{ gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
                 <Button onClick={() => setShowModal(false)} variant="ghost" className="flex-1" disabled={processing}
                   style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', height: 'clamp(2.5rem, 5vh, 3rem)' }}>
-                  Cancel
+                  {t('platformAdmin.modal.cancel')}
                 </Button>
                 <Button
                   onClick={handleProcess}
@@ -869,7 +868,7 @@ function LockedAccountsManager() {
                   disabled={processing || !reason.trim()}
                   style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', height: 'clamp(2.5rem, 5vh, 3rem)' }}
                 >
-                  {processing ? 'Processing...' : modalMode === 'unlock' ? `Unlock ${selectedAccounts.length}` : `Lock ${selectedAccounts.length}`}
+                  {processing ? t('platformAdmin.modal.processing') : modalMode === 'unlock' ? t('platformAdmin.modal.unlockCount', { count: selectedAccounts.length }) : t('platformAdmin.modal.lockCount', { count: selectedAccounts.length })}
                 </Button>
               </div>
             </div>
@@ -1395,7 +1394,7 @@ export default function PlatformAdmin() {
 
   const loadPlatformSettings = async () => {
     try {
-      const res = await fetch('/api/billing/admin/settings');
+      const res = await fetch('/api/billing/admin/settings', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setPlatformSettings(data);
@@ -1411,6 +1410,7 @@ export default function PlatformAdmin() {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ settings }),
     });
 
@@ -1437,7 +1437,7 @@ export default function PlatformAdmin() {
   };
 
   const handlePaymentRetry = async (codeRequestId: number | string) => {
-    if (!confirm('Issue/reissue code for this request?')) return;
+    if (!confirm(t('platformAdmin.codeRequests.confirmIssue'))) return;
     
     setRetryingPayment(codeRequestId as any);
     try {
@@ -1452,14 +1452,14 @@ export default function PlatformAdmin() {
       if (res.ok) {
         const data = await res.json();
         await loadPaymentFailures();
-        alert(`Code issued successfully!\n\nCode: ${data.newCode}\n\nExpires in 1 hour.`);
+        alert(t('platformAdmin.alerts.codeIssued', { code: data.newCode }));
       } else {
         const error = await res.json();
-        alert(error.error || 'Failed to issue code');
+        alert(error.error || t('platformAdmin.alerts.failedIssueCode'));
       }
     } catch (error) {
       console.error('Error issuing code:', error);
-      alert('Error issuing code');
+      alert(t('platformAdmin.alerts.errorIssuingCodeRequest'));
     } finally {
       setRetryingPayment(null);
     }
@@ -1525,28 +1525,28 @@ export default function PlatformAdmin() {
         setNoteForm({ title: '', content: '', color: 'yellow', is_pinned: false });
       } else {
         const error = await res.json();
-        alert(error.error || 'Failed to save note');
+        alert(error.error || t('platformAdmin.alerts.failedSaveNote'));
       }
     } catch (error) {
       console.error('Failed to save note:', error);
-      alert('Failed to save note');
+      alert(t('platformAdmin.alerts.failedSaveNote'));
     } finally {
       setSavingNote(false);
     }
   };
 
   const handleDeleteNote = async (noteId: number) => {
-    if (!confirm('Are you sure you want to delete this note?')) return;
+    if (!confirm(t('platformAdmin.alerts.confirmDeleteNote'))) return;
     try {
       const res = await fetch(`/api/admin/notes/${noteId}`, { method: 'DELETE', credentials: 'include' });
       if (res.ok) {
         await loadAdminNotes();
       } else {
-        alert('Failed to delete note');
+        alert(t('platformAdmin.alerts.failedDeleteNote'));
       }
     } catch (error) {
       console.error('Failed to delete note:', error);
-      alert('Failed to delete note');
+      alert(t('platformAdmin.alerts.failedDeleteNote'));
     }
   };
 
@@ -1576,6 +1576,7 @@ export default function PlatformAdmin() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           tier: 'gold', // Single tier for all subscriptions
           payment_method: 'admin',
@@ -1593,11 +1594,11 @@ export default function PlatformAdmin() {
         await loadPlatformData(); // Refresh stats
       } else {
         const error = await res.json();
-        alert(error.error || 'Failed to generate code');
+        alert(error.error || t('platformAdmin.alerts.failedGenerateCode'));
       }
     } catch (error) {
       console.error('Error generating code:', error);
-      alert('Error generating code');
+      alert(t('platformAdmin.alerts.errorIssuingCode'));
     } finally {
       setIssuingCode(false);
     }
@@ -1605,7 +1606,7 @@ export default function PlatformAdmin() {
 
   const handleExpireClientAccount = async () => {
     if (!expireClientEmail.trim()) {
-      alert('Please enter a client email');
+      alert(t('platformAdmin.alerts.enterClientEmail'));
       return;
     }
 
@@ -1616,7 +1617,7 @@ export default function PlatformAdmin() {
       });
 
       if (!searchRes.ok) {
-        alert('Client not found');
+        alert(t('platformAdmin.alerts.clientNotFound'));
         setExpiringClient(false);
         return;
       }
@@ -1638,15 +1639,15 @@ export default function PlatformAdmin() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(`✅ Account expired: ${data.client.email}\n\nUser can still login but will be redirected to renew subscription page.`);
+        alert(t('platformAdmin.alerts.accountExpired', { email: data.client.email }));
         setExpireClientEmail('');
       } else {
         const error = await res.json();
-        alert(`❌ ${error.error || 'Failed to expire account'}`);
+        alert(error.error || t('platformAdmin.alerts.failedExpire'));
       }
     } catch (error) {
       console.error('Error expiring account:', error);
-      alert('Error expiring account');
+      alert(t('platformAdmin.alerts.errorExpiring'));
     } finally {
       setExpiringClient(false);
     }
@@ -1655,11 +1656,11 @@ export default function PlatformAdmin() {
 
   const handleBulkRemoveProducts = async () => {
     if (selectedProducts.size === 0) {
-      alert('Please select products to remove');
+      alert(t('platformAdmin.alerts.selectProductsToRemove'));
       return;
     }
 
-    const confirmRemove = confirm(`Are you sure you want to remove ${selectedProducts.size} product(s)? This action cannot be undone.`);
+    const confirmRemove = confirm(t('platformAdmin.alerts.confirmRemoveProducts', { count: selectedProducts.size }));
     if (!confirmRemove) return;
 
     setBulkModeratingProducts(true);
@@ -1675,14 +1676,14 @@ export default function PlatformAdmin() {
       if (res.ok) {
         await loadPlatformData();
         setSelectedProducts(new Set());
-        alert('Products removed successfully');
+        alert(t('platformAdmin.alerts.productsRemoved'));
       } else {
         const error = await res.json();
-        alert(error.error || 'Failed to remove products');
+        alert(error.error || t('platformAdmin.alerts.failedRemoveProducts'));
       }
     } catch (error) {
       console.error('Error removing products:', error);
-      alert('Error removing products');
+      alert(t('platformAdmin.alerts.failedRemoveProducts'));
     } finally {
       setBulkModeratingProducts(false);
     }
@@ -1698,11 +1699,11 @@ export default function PlatformAdmin() {
     );
 
     if (storeEmails.size === 0) {
-      alert('Please select products to suspend stores');
+      alert(t('platformAdmin.alerts.selectProductsToSuspend'));
       return;
     }
 
-    const confirmSuspend = confirm(`Suspend stores owned by ${storeEmails.size} seller(s)? They will lose store access until reinstated.`);
+    const confirmSuspend = confirm(t('platformAdmin.alerts.confirmSuspendStores', { count: storeEmails.size }));
     if (!confirmSuspend) return;
 
     setBulkModeratingProducts(true);
@@ -1718,21 +1719,21 @@ export default function PlatformAdmin() {
       if (res.ok) {
         await loadPlatformData();
         setSelectedProducts(new Set());
-        alert('Stores suspended successfully');
+        alert(t('platformAdmin.alerts.storesSuspended'));
       } else {
         const error = await res.json();
-        alert(error.error || 'Failed to suspend stores');
+        alert(error.error || t('platformAdmin.alerts.failedSuspendStores'));
       }
     } catch (error) {
       console.error('Error suspending stores:', error);
-      alert('Error suspending stores');
+      alert(t('platformAdmin.alerts.failedSuspendStores'));
     } finally {
       setBulkModeratingProducts(false);
     }
   };
 
   const handlePromoteToAdmin = async (userId: number) => {
-    if (!confirm('Are you sure you want to promote this user to admin?')) return;
+    if (!confirm(t('platformAdmin.alerts.confirmPromote'))) return;
 
     try {
       const res = await fetch('/api/admin/promote', {
@@ -1745,7 +1746,7 @@ export default function PlatformAdmin() {
 
       if (res.ok) {
         await loadPlatformData();
-        alert('User promoted to admin successfully');
+        alert(t('platformAdmin.alerts.promotedSuccess'));
       }
     } catch (error) {
       console.error('Failed to promote user:', error);
@@ -1753,7 +1754,7 @@ export default function PlatformAdmin() {
   };
 
   const handleBlockUser = async (userId: number, userName: string) => {
-    const reason = prompt(`Block account for ${userName}?\nEnter reason (optional):`);
+    const reason = prompt(t('platformAdmin.alerts.blockAccount', { name: userName }));
     if (reason === null) return;
 
     try {
@@ -1762,28 +1763,28 @@ export default function PlatformAdmin() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ reason: reason || 'Account blocked by admin', lock_type: 'critical' }),
+        body: JSON.stringify({ reason: reason || t('platformAdmin.alerts.blockedByAdmin'), lock_type: 'critical' }),
       });
 
       if (res.ok) {
         await loadPlatformData();
-        alert('User account blocked successfully');
+        alert(t('platformAdmin.alerts.userBlocked'));
       } else {
         try {
           const data = await res.json();
-          alert(`Failed to block user account: ${data.error || data.message || 'Unknown error'}`);
+          alert(t('platformAdmin.alerts.failedBlock'));
         } catch {
-          alert('Failed to block user account');
+          alert(t('platformAdmin.alerts.failedBlock'));
         }
       }
     } catch (error) {
       console.error('Failed to block user:', error);
-      alert('Failed to block user account');
+      alert(t('platformAdmin.alerts.failedBlock'));
     }
   };
 
   const handleUnblockUser = async (userId: number, userName: string) => {
-    const confirm_unblock = confirm(`Unblock account for ${userName}?`);
+    const confirm_unblock = confirm(t('platformAdmin.alerts.confirmUnblock', { name: userName }));
     if (!confirm_unblock) return;
 
     try {
@@ -1793,23 +1794,23 @@ export default function PlatformAdmin() {
 
       if (res.ok) {
         await loadPlatformData();
-        alert('User account unblocked successfully');
+        alert(t('platformAdmin.alerts.userUnblocked'));
       } else {
         try {
           const data = await res.json();
-          alert(`Failed to unblock user account: ${data.error || data.message || 'Unknown error'}`);
+          alert(t('platformAdmin.alerts.failedUnblock'));
         } catch {
-          alert('Failed to unblock user account');
+          alert(t('platformAdmin.alerts.failedUnblock'));
         }
       }
     } catch (error) {
       console.error('Failed to unblock user:', error);
-      alert('Failed to unblock user account');
+      alert(t('platformAdmin.alerts.failedUnblock'));
     }
   };
 
   const handleDeleteUser = async (userId: number, userEmail?: string, userType?: string) => {
-    const confirmDelete = confirm('Are you sure you want to delete this user account? This action cannot be undone.');
+    const confirmDelete = confirm(t('platformAdmin.alerts.confirmDelete'));
     if (!confirmDelete) return;
 
     try {
@@ -1823,19 +1824,19 @@ export default function PlatformAdmin() {
 
       if (res.ok) {
         await loadPlatformData();
-        alert('User deleted successfully');
+        alert(t('platformAdmin.alerts.userDeleted'));
       } else {
         try {
           const data = await res.json();
-          alert(`Failed to delete user: ${data.error || data.message || 'Unknown error'}`);
+          alert(t('platformAdmin.alerts.failedDelete'));
         } catch {
           const txt = await res.text();
-          alert(`Failed to delete user: ${txt}`);
+          alert(t('platformAdmin.alerts.failedDelete'));
         }
       }
     } catch (error) {
       console.error('Failed to delete user:', error);
-      alert('Failed to delete user');
+      alert(t('platformAdmin.alerts.failedDelete'));
     }
   };
 
@@ -1848,21 +1849,21 @@ export default function PlatformAdmin() {
       if (res.ok) {
         const data = await res.json();
         await loadPlatformData();
-        alert(`User converted to seller. Temporary password: ${data.temp_password}`);
+        alert(t('platformAdmin.alerts.convertedToSeller', { pass: data.temp_password }));
       } else {
         const txt = await res.text();
-        alert(`Failed to convert: ${txt}`);
+        alert(t('platformAdmin.alerts.failedConvert'));
       }
     } catch (e) {
       console.error('Convert to seller failed:', e);
-      alert('Failed to convert user to seller');
+      alert(t('platformAdmin.alerts.failedConvert'));
     } finally {
       setConverting(null);
     }
   };
 
   const handleDeleteStaff = async (staffId: number) => {
-    const confirmDelete = confirm('Are you sure you want to delete this staff member? This action cannot be undone.');
+    const confirmDelete = confirm(t('platformAdmin.alerts.confirmDeleteStaff'));
     if (!confirmDelete) return;
 
     try {
@@ -1872,14 +1873,14 @@ export default function PlatformAdmin() {
 
       if (res.ok) {
         await loadPlatformData();
-        alert('Staff member deleted successfully');
+        alert(t('platformAdmin.alerts.staffDeleted'));
       } else {
         const txt = await res.text();
-        alert(`Failed to delete staff member: ${txt}`);
+        alert(t('platformAdmin.alerts.failedDeleteStaff'));
       }
     } catch (error) {
       console.error('Failed to delete staff:', error);
-      alert('Failed to delete staff member');
+      alert(t('platformAdmin.alerts.failedDeleteStaff'));
     }
   };
 
@@ -1887,8 +1888,8 @@ export default function PlatformAdmin() {
     return (
       <>
         <Header />
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-          <div className="text-white text-lg font-semibold">{t('loading') || 'Loading...'}</div>
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-slate-900 dark:to-slate-800">
+          <div className="text-gray-900 dark:text-white text-lg font-semibold">{t('loading') || 'Loading...'}</div>
         </div>
       </>
     );
@@ -1897,15 +1898,15 @@ export default function PlatformAdmin() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="container mx-auto max-w-7xl" style={{ padding: 'clamp(0.5rem, 1.2vh, 1rem) clamp(0.5rem, 1vh, 0.75rem)' }}>
         {/* Enhanced Navigation Tabs */}
-        <div className="flex bg-slate-800/50 backdrop-blur-md rounded-lg border border-slate-700/50 shadow-md overflow-x-auto"
+        <div className="flex bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-lg border border-gray-200 dark:border-slate-700/50 shadow-md overflow-x-auto"
           style={{ gap: 'clamp(0.25rem, 0.5vh, 0.5rem)', marginBottom: 'clamp(1rem, 2vh, 1.25rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem)' }}>
           <Button
             variant={activeTab === 'overview' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('overview')}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <BarChart3 style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
@@ -1915,7 +1916,7 @@ export default function PlatformAdmin() {
           <Button
             variant={activeTab === 'users' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('users')}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <Users style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
@@ -1925,7 +1926,7 @@ export default function PlatformAdmin() {
           <Button
             variant={activeTab === 'stores' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('stores')}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <Store style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
@@ -1935,7 +1936,7 @@ export default function PlatformAdmin() {
           <Button
             variant={activeTab === 'products' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('products')}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <Package style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
@@ -1945,7 +1946,7 @@ export default function PlatformAdmin() {
           <Button
             variant={activeTab === 'activity' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('activity')}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <Activity style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
@@ -1955,12 +1956,12 @@ export default function PlatformAdmin() {
           <Button
             variant={activeTab === 'errors' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('errors')}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <AlertTriangle style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
-            <span className="hidden sm:inline">Errors</span>
-            <span className="sm:hidden">E</span>
+            <span className="hidden sm:inline">{t('platformAdmin.tabs.errors')}</span>
+            <span className="sm:hidden">{t('platformAdmin.tabs.errorsShort')}</span>
           </Button>
           <Button
             variant={activeTab === 'billing' ? 'default' : 'ghost'}
@@ -1969,7 +1970,7 @@ export default function PlatformAdmin() {
               loadBillingMetrics();
               loadPlatformSettings();
             }}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <CreditCard style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
@@ -1982,7 +1983,7 @@ export default function PlatformAdmin() {
               setActiveTab('health');
               loadServerHealth();
             }}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <HeartPulse style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
@@ -1995,7 +1996,7 @@ export default function PlatformAdmin() {
               setActiveTab('codes');
               loadCodes();
             }}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <Gift style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
@@ -2005,17 +2006,17 @@ export default function PlatformAdmin() {
           <Button
             variant={activeTab === 'affiliates' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('affiliates')}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <TrendingUp style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
-            <span className="hidden md:inline">Affiliates</span>
-            <span className="md:hidden">AF</span>
+            <span className="hidden md:inline">{t('platformAdmin.tabs.affiliates')}</span>
+            <span className="md:hidden">{t('platformAdmin.tabs.affiliatesShort')}</span>
           </Button>
           <Button
             variant={activeTab === 'ai' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('ai')}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <Brain style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
@@ -2025,12 +2026,12 @@ export default function PlatformAdmin() {
           <Button
             variant={activeTab === 'tools' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('tools')}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <Zap style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
-            <span className="hidden sm:inline">Tools</span>
-            <span className="sm:hidden">T</span>
+            <span className="hidden sm:inline">{t('platformAdmin.tabs.tools')}</span>
+            <span className="sm:hidden">{t('platformAdmin.tabs.toolsShort')}</span>
           </Button>
           <Button
             variant={activeTab === 'notes' ? 'default' : 'ghost'}
@@ -2038,22 +2039,22 @@ export default function PlatformAdmin() {
               setActiveTab('notes');
               loadAdminNotes();
             }}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <StickyNote style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
-            <span className="hidden sm:inline">Notes</span>
-            <span className="sm:hidden">N</span>
+            <span className="hidden sm:inline">{t('platformAdmin.tabs.notes')}</span>
+            <span className="sm:hidden">{t('platformAdmin.tabs.notesShort')}</span>
           </Button>
           <Button
             variant={activeTab === 'settings' ? 'default' : 'ghost'}
             onClick={() => { setActiveTab('settings'); loadPlatformSettings(); }}
-            className="whitespace-nowrap text-slate-200"
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
             style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
           >
             <Settings style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
-            <span className="hidden sm:inline">Settings</span>
-            <span className="sm:hidden">ST</span>
+            <span className="hidden sm:inline">{t('platformAdmin.tabs.settings')}</span>
+            <span className="sm:hidden">{t('platformAdmin.tabs.settingsShort')}</span>
           </Button>
         </div>
 
@@ -2095,7 +2096,7 @@ export default function PlatformAdmin() {
               <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 backdrop-blur-md rounded-2xl border border-yellow-500/30 p-6 shadow-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-400 mb-1">Pending Code Requests</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">{t('platformAdmin.codeRequests.pending')}</p>
                     <p className="text-3xl font-bold text-yellow-400">
                       {paymentFailures.filter(p => p.status === 'pending').length}
                     </p>
@@ -2107,7 +2108,7 @@ export default function PlatformAdmin() {
               <div className="bg-gradient-to-br from-red-500/10 to-red-500/5 backdrop-blur-md rounded-2xl border border-red-500/30 p-6 shadow-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-400 mb-1">Expired Codes</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">{t('platformAdmin.codeRequests.expired')}</p>
                     <p className="text-3xl font-bold text-red-400">
                       {billingMetrics?.codes_expired || 0}
                     </p>
@@ -2119,7 +2120,7 @@ export default function PlatformAdmin() {
               <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 backdrop-blur-md rounded-2xl border border-blue-500/30 p-6 shadow-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-400 mb-1">Total Requests</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">{t('platformAdmin.codeRequests.totalRequests')}</p>
                     <p className="text-3xl font-bold text-blue-400">
                       {paymentFailures.length}
                     </p>
@@ -2130,73 +2131,73 @@ export default function PlatformAdmin() {
             </div>
 
             {/* Code Requests List */}
-            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700/50 shadow-lg overflow-hidden">
-              <div className="p-6 border-b border-slate-700/50 bg-slate-900/80">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-slate-700/50 shadow-lg overflow-hidden">
+              <div className="p-6 border-b border-gray-200 dark:border-slate-700/50 bg-gray-50/80 dark:bg-slate-900/80">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-cyan-400" />
-                  Pending & Expired Code Requests
+                  {t('platformAdmin.codeRequests.title')}
                 </h3>
-                <p className="text-sm text-slate-400 mt-2">Review code requests that need attention - issue new codes or reissue expired ones</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400 mt-2">{t('platformAdmin.codeRequests.subtitle')}</p>
               </div>
 
               {failuresLoading ? (
                 <div className="p-8 text-center">
-                  <p className="text-slate-400">Loading code requests...</p>
+                  <p className="text-gray-500 dark:text-slate-400">{t('platformAdmin.codeRequests.loading')}</p>
                 </div>
               ) : paymentFailures.length === 0 ? (
                 <div className="p-8 text-center">
                   <CheckCircle className="w-12 h-12 text-emerald-500/40 mx-auto mb-3" />
-                  <p className="text-slate-400">No pending code requests</p>
-                  <p className="text-xs text-slate-500 mt-1">All code requests have been processed</p>
+                  <p className="text-gray-500 dark:text-slate-400">{t('platformAdmin.codeRequests.noPending')}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">{t('platformAdmin.codeRequests.allProcessed')}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-slate-700/50 bg-slate-900/50">
-                        <th className="p-4 text-left text-xs font-semibold text-slate-300">ID</th>
-                        <th className="p-4 text-left text-xs font-semibold text-slate-300">Client</th>
-                        <th className="p-4 text-left text-xs font-semibold text-slate-300">Tier</th>
-                        <th className="p-4 text-left text-xs font-semibold text-slate-300">Issue</th>
-                        <th className="p-4 text-left text-xs font-semibold text-slate-300">Status</th>
-                        <th className="p-4 text-left text-xs font-semibold text-slate-300">Requested</th>
-                        <th className="p-4 text-left text-xs font-semibold text-slate-300">Actions</th>
+                      <tr className="border-b border-gray-200 dark:border-slate-700/50 bg-gray-100/50 dark:bg-slate-900/50">
+                        <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.codeRequests.id')}</th>
+                        <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.codeRequests.client')}</th>
+                        <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.codeRequests.tier')}</th>
+                        <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.codeRequests.issue')}</th>
+                        <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.table.status')}</th>
+                        <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.codeRequests.requested')}</th>
+                        <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.table.actions')}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700/30">
+                    <tbody className="divide-y divide-gray-200 dark:divide-slate-700/30">
                       {paymentFailures.map((failure) => (
-                        <tr key={failure.id} className="hover:bg-slate-700/20 transition-colors">
-                          <td className="p-4 text-slate-300 text-sm font-mono">#{failure.id}</td>
+                        <tr key={failure.id} className="hover:bg-gray-200 dark:hover:bg-slate-700/20 transition-colors">
+                          <td className="p-4 text-gray-600 dark:text-slate-300 text-sm font-mono">#{failure.id}</td>
                           <td className="p-4 text-sm">
-                            <p className="text-slate-300">{failure.store_owner_name || 'Unknown'}</p>
-                            <p className="text-xs text-slate-500">{failure.store_owner_email}</p>
+                            <p className="text-gray-600 dark:text-slate-300">{failure.store_owner_name || t('platformAdmin.codeRequests.unknown')}</p>
+                            <p className="text-xs text-gray-500 dark:text-slate-500">{failure.store_owner_email}</p>
                           </td>
                           <td className="p-4 text-sm">
                             <Badge className={`${
                               failure.tier === 'gold' ? 'bg-yellow-600' :
                               failure.tier === 'silver' ? 'bg-slate-500' :
                               'bg-amber-700'
-                            } text-white capitalize`}>
-                              {failure.tier || 'Standard'}
+                            } text-gray-900 dark:text-white capitalize`}>
+                              {failure.tier || t('platformAdmin.codeRequests.standard')}
                             </Badge>
                           </td>
-                          <td className="p-4 text-slate-400 text-sm">
+                          <td className="p-4 text-gray-500 dark:text-slate-400 text-sm">
                             <span className={`px-2 py-1 rounded text-xs ${
                               failure.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
                               'bg-red-500/20 text-red-300'
                             }`}>
-                              {failure.failure_reason || 'Needs attention'}
+                              {failure.failure_reason || t('platformAdmin.codeRequests.needsAttention')}
                             </span>
                           </td>
                           <td className="p-4 text-sm">
                             {failure.status === 'pending' && (
-                              <Badge className="bg-yellow-600 text-white">Pending</Badge>
+                              <Badge className="bg-yellow-600 text-white">{t('platformAdmin.codeRequests.pendingStatus')}</Badge>
                             )}
                             {(failure.status === 'failed' || failure.status === 'expired') && (
-                              <Badge className="bg-red-600 text-white">Expired</Badge>
+                              <Badge className="bg-red-600 text-white">{t('platformAdmin.codeRequests.expiredStatus')}</Badge>
                             )}
                           </td>
-                          <td className="p-4 text-slate-400 text-sm">{new Date(failure.created_at).toLocaleDateString()}</td>
+                          <td className="p-4 text-gray-500 dark:text-slate-400 text-sm">{new Date(failure.created_at).toLocaleDateString()}</td>
                           <td className="p-4 text-sm flex gap-2">
                             <Button
                               size="sm"
@@ -2204,16 +2205,16 @@ export default function PlatformAdmin() {
                               disabled={retryingPayment === failure.id}
                               className="bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
-                              {retryingPayment === failure.id ? '...' : failure.status === 'pending' ? 'Issue Code' : 'Reissue'}
+                              {retryingPayment === failure.id ? '...' : failure.status === 'pending' ? t('platformAdmin.codeRequests.issueCode') : t('platformAdmin.codeRequests.reissue')}
                             </Button>
                             {failure.chat_id && (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-slate-300 border-slate-600 hover:border-slate-500"
+                                className="text-gray-600 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:border-slate-500"
                                 onClick={() => navigate('/platform-admin/chat')}
                               >
-                                Chat
+                                {t('platformAdmin.codeRequests.chat')}
                               </Button>
                             )}
                           </td>
@@ -2226,27 +2227,27 @@ export default function PlatformAdmin() {
             </div>
 
             {/* Info Box */}
-            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700/50 shadow-lg p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-slate-700/50 shadow-lg p-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <Zap className="w-5 h-5 text-blue-400" />
-                Code Issuance Flow
+                {t('platformAdmin.codeFlow.title')}
               </h3>
-              <div className="space-y-3 text-sm text-slate-400">
+              <div className="space-y-3 text-sm text-gray-500 dark:text-slate-400">
                 <div className="flex items-center gap-3 p-3 bg-slate-700/20 rounded-lg">
                   <span className="w-6 h-6 rounded-full bg-blue-500/30 flex items-center justify-center text-blue-400 text-xs">1</span>
-                  <span>Client requests a code via chat or Codes Store page</span>
+                  <span>{t('platformAdmin.codeFlow.step1')}</span>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-slate-700/20 rounded-lg">
                   <span className="w-6 h-6 rounded-full bg-blue-500/30 flex items-center justify-center text-blue-400 text-xs">2</span>
-                  <span>Admin reviews request and verifies payment (if applicable)</span>
+                  <span>{t('platformAdmin.codeFlow.step2')}</span>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-slate-700/20 rounded-lg">
                   <span className="w-6 h-6 rounded-full bg-blue-500/30 flex items-center justify-center text-blue-400 text-xs">3</span>
-                  <span>Admin issues code (valid for 1 hour) via chat or this page</span>
+                  <span>{t('platformAdmin.codeFlow.step3')}</span>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-slate-700/20 rounded-lg">
                   <span className="w-6 h-6 rounded-full bg-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs">4</span>
-                  <span>Client redeems code at /codes-store → Subscription activated!</span>
+                  <span>{t('platformAdmin.codeFlow.step4')}</span>
                 </div>
               </div>
             </div>
@@ -2260,7 +2261,7 @@ export default function PlatformAdmin() {
             loading={loading}
             onFlag={(id) => { setFlaggedProductId(id); setShowFlagModal(true); }}
             onDelete={async (id) => {
-              if (!confirm('Delete this product?')) return;
+              if (!confirm(t('platformAdmin.alerts.confirmDeleteProduct'))) return;
               try {
                 const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE', credentials: 'include' });
                 if (res.ok) { setProducts(products.filter(p => p.id !== id)); }
@@ -2285,21 +2286,21 @@ export default function PlatformAdmin() {
         {/* Health Tab */}
         {activeTab === 'health' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.875rem, 1.75vh, 1.25rem)' }}>
-            <div className="bg-slate-800/50 backdrop-blur-md rounded-lg border border-slate-700/50 shadow-md"
+            <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-lg border border-gray-200 dark:border-slate-700/50 shadow-md"
               style={{ padding: 'clamp(0.875rem, 1.75vh, 1.25rem)' }}>
               <div className="flex items-start justify-between" style={{ gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
                 <div className="min-w-0">
-                  <h3 className="font-bold text-white flex items-center"
+                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center"
                     style={{ fontSize: 'clamp(1rem, 2vh, 1.15rem)', gap: 'clamp(0.5rem, 1vh, 0.625rem)' }}>
                     <HeartPulse className="text-red-400" style={{ width: 'clamp(1.125rem, 2.25vh, 1.375rem)', height: 'clamp(1.125rem, 2.25vh, 1.375rem)' }} />
                     {t('platformAdmin.health.title')}
                   </h3>
-                  <p className="text-slate-400" style={{ fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>{t('platformAdmin.health.desc')}</p>
+                  <p className="text-gray-500 dark:text-slate-400" style={{ fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>{t('platformAdmin.health.desc')}</p>
                 </div>
                 <Button
                   onClick={loadServerHealth}
                   disabled={healthLoading}
-                  className="bg-white/10 hover:bg-white/20 border border-white/10 text-white"
+                  className="bg-white/10 hover:bg-white/20 border border-white/10 text-gray-900 dark:text-white"
                 >
                   {healthLoading ? '...' : t('platformAdmin.health.refresh')}
                 </Button>
@@ -2327,12 +2328,12 @@ export default function PlatformAdmin() {
                       return (
                         <>
                           <BigCarGauge
-                            title="🖥️ Server"
+                            title={t('platformAdmin.health.serverTitle')}
                             mainValue={cpuPct}
-                            mainLabel="CPU Usage"
+                            mainLabel={t('platformAdmin.health.cpuUsage')}
                             mainUnit="%"
                             secondaryValue={memPct}
-                            secondaryLabel="RAM"
+                            secondaryLabel={t('platformAdmin.health.ram')}
                             secondaryUnit="%"
                             goodThreshold={50}
                             warnThreshold={80}
@@ -2340,12 +2341,12 @@ export default function PlatformAdmin() {
                             icon={<Cpu className="w-5 h-5" />}
                           />
                           <BigCarGauge
-                            title="🗄️ Database"
+                            title={t('platformAdmin.health.dbTitle')}
                             mainValue={dbMs !== null ? Math.min(100, (dbMs / (dbSlowMs * 2)) * 100) : null}
-                            mainLabel={dbMs !== null ? `Latency: ${dbMs.toFixed(0)}ms` : "Latency"}
+                            mainLabel={dbMs !== null ? t('platformAdmin.health.latency', { ms: dbMs.toFixed(0) }) : t('platformAdmin.health.latency', { ms: '-' })}
                             mainUnit="%"
                             secondaryValue={dbPoolPct}
-                            secondaryLabel="Pool Load"
+                            secondaryLabel={t('platformAdmin.health.poolLoad')}
                             secondaryUnit="%"
                             goodThreshold={50}
                             warnThreshold={75}
@@ -2358,10 +2359,10 @@ export default function PlatformAdmin() {
                   </div>
 
                   {/* Smaller Speedometer Gauges */}
-                  <div className="bg-slate-950/60 rounded-lg border border-slate-700/50" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+                  <div className="bg-slate-950/60 rounded-lg border border-gray-200 dark:border-slate-700/50" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
                     <div className="flex items-center justify-between mb-3">
-                      <div className="text-slate-400 text-xs">Other Metrics (live)</div>
-                      <div className="text-slate-500 text-[10px]">💡 Server Disk = Render ephemeral, NOT Cloudinary (20GB)</div>
+                      <div className="text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.otherMetrics')}</div>
+                      <div className="text-gray-500 dark:text-slate-500 text-[10px]">{t('platformAdmin.health.serverDiskNote')}</div>
                     </div>
                     {(() => {
                       const eluPct = serverHealth.eventLoop?.utilization != null ? serverHealth.eventLoop.utilization * 100 : null;
@@ -2391,8 +2392,8 @@ export default function PlatformAdmin() {
                       return (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
                           <SpeedometerGauge
-                            title="Runtime"
-                            subtitle="Event loop utilization"
+                            title={t('platformAdmin.health.runtime')}
+                            subtitle={t('platformAdmin.health.eventLoop')}
                             value={eluPct}
                             min={0}
                             max={100}
@@ -2404,8 +2405,8 @@ export default function PlatformAdmin() {
                             tone="emerald"
                           />
                           <SpeedometerGauge
-                            title="Server Disk"
-                            subtitle="Render ephemeral (not Cloudinary)"
+                            title={t('platformAdmin.health.serverDisk')}
+                            subtitle={t('platformAdmin.health.renderEphemeral')}
                             value={uploadsUsedPct}
                             min={0}
                             max={100}
@@ -2417,8 +2418,8 @@ export default function PlatformAdmin() {
                             tone="cyan"
                           />
                           <SpeedometerGauge
-                            title="Network"
-                            subtitle="Server RX+TX"
+                            title={t('platformAdmin.health.network')}
+                            subtitle={t('platformAdmin.health.serverRxTx')}
                             value={totalMbps}
                             min={0}
                             max={200}
@@ -2428,8 +2429,8 @@ export default function PlatformAdmin() {
                             tone="violet"
                           />
                           <SpeedometerGauge
-                            title="Internet"
-                            subtitle="Browser downlink"
+                            title={t('platformAdmin.health.internet')}
+                            subtitle={t('platformAdmin.health.browserDownlink') || 'Browser downlink'}
                             value={browserDownlinkMbps}
                             min={0}
                             max={200}
@@ -2441,8 +2442,8 @@ export default function PlatformAdmin() {
                             tone="emerald"
                           />
                           <SpeedometerGauge
-                            title="Browser Storage"
-                            subtitle={browserStorage?.usage != null && browserStorage?.quota != null ? `${formatBytesShort(browserStorage.usage)}/${formatBytesShort(browserStorage.quota)}` : 'Local storage usage'}
+                            title={t('platformAdmin.health.browserStorage')}
+                            subtitle={browserStorage?.usage != null && browserStorage?.quota != null ? `${formatBytesShort(browserStorage.usage)}/${formatBytesShort(browserStorage.quota)}` : t('platformAdmin.health.browserStorage')}
                             value={browserStoragePct}
                             min={0}
                             max={100}
@@ -2454,8 +2455,8 @@ export default function PlatformAdmin() {
                             tone="amber"
                           />
                           <SpeedometerGauge
-                            title="Active Users"
-                            subtitle={capacityMax != null ? `Capacity ~${Math.round(capacityMax)}` : 'Current sessions'}
+                            title={t('platformAdmin.health.activeUsers')}
+                            subtitle={capacityMax != null ? t('platformAdmin.health.capacity', { max: Math.round(capacityMax) }) : t('platformAdmin.health.activeUsers')}
                             value={activeNow}
                             min={0}
                             max={capacityMax != null && Number.isFinite(capacityMax) && capacityMax > 0 ? capacityMax : 200}
@@ -2470,118 +2471,118 @@ export default function PlatformAdmin() {
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-4" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                  <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                  <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-slate-300 font-medium text-sm">{t('platformAdmin.health.status')}</div>
+                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.status')}</div>
                       <Badge className={serverHealth.ok ? 'bg-emerald-600/20 text-emerald-200 border border-emerald-500/30' : 'bg-amber-600/20 text-amber-200 border border-amber-500/30'}>
                         {serverHealth.ok ? t('platformAdmin.health.status.ok') : t('platformAdmin.health.status.degraded')}
                       </Badge>
                     </div>
-                    <div className="mt-2 text-slate-200 text-sm">
+                    <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">
                       {t('platformAdmin.health.uptime')}: <span className="font-semibold">{formatDuration(serverHealth.uptimeSec)}</span>
                     </div>
-                    <div className="mt-1 text-slate-400 text-xs">
+                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
                       {t('platformAdmin.health.updated')}: {new Date(serverHealth.timestamp).toLocaleString()}
                     </div>
                   </div>
 
                   <div className="bg-gradient-to-br from-violet-900/40 to-fuchsia-900/40 rounded-lg border border-violet-500/30 p-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-violet-200 font-medium text-sm">👥 Active Users</div>
+                      <div className="text-violet-200 font-medium text-sm">👥 {t('platformAdmin.health.activeUsers')}</div>
                       <Badge className="bg-violet-600/20 text-violet-200 border border-violet-500/30">
-                        Live
+                        {t('platformAdmin.health.live')}
                       </Badge>
                     </div>
-                    <div className="mt-2 text-slate-200 text-2xl font-bold">{serverHealth.users?.total ?? 0}</div>
-                    <div className="mt-1 text-slate-400 text-xs">Total registered users</div>
+                    <div className="mt-2 text-gray-700 dark:text-slate-200 text-2xl font-bold">{serverHealth.users?.total ?? 0}</div>
+                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.totalRegistered')}</div>
                     <div className="mt-2 flex items-center gap-2">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                       </span>
                       <span className="text-emerald-300 text-sm font-semibold">{serverHealth.users?.recent15m ?? 0}</span>
-                      <span className="text-slate-400 text-xs">active in last 15m</span>
+                      <span className="text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.activeIn15m')}</span>
                     </div>
                   </div>
 
-                  <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                    <div className="text-slate-300 font-medium text-sm">{t('platformAdmin.health.memory')}</div>
-                    <div className="mt-2 text-slate-200 text-sm">
+                  <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                    <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.memory')}</div>
+                    <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">
                       {t('platformAdmin.health.memory.processRss')}: <span className="font-semibold">{formatBytes(serverHealth.process.memory.rss)}</span>
                     </div>
-                    <div className="mt-1 text-slate-400 text-xs">
-                      RSS %: {formatPercent(serverHealth.derived?.rssPctOfLimit)}
+                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
+                      RSS: {formatPercent(serverHealth.derived?.rssPctOfLimit)}
                     </div>
-                    <div className="mt-1 text-slate-200 text-sm">
+                    <div className="mt-1 text-gray-700 dark:text-slate-200 text-sm">
                       {t('platformAdmin.health.memory.heapUsed')}: <span className="font-semibold">{formatBytes(serverHealth.process.memory.heapUsed)}</span>
                     </div>
-                    <div className="mt-1 text-slate-400 text-xs">
-                      Heap %: {formatPercent(serverHealth.derived?.heapPctOfHeapTotal)}
+                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
+                      Heap: {formatPercent(serverHealth.derived?.heapPctOfHeapTotal)}
                     </div>
-                    <div className="mt-1 text-slate-400 text-xs">
+                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
                       {t('platformAdmin.health.memory.limit')}: {formatBytes(serverHealth.derived?.memoryLimitBytes ?? serverHealth.cgroup?.memoryLimitBytes ?? serverHealth.os.totalmem)}
                     </div>
                   </div>
 
-                  <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                    <div className="text-slate-300 font-medium text-sm">{t('platformAdmin.health.db')}</div>
-                    <div className="mt-2 text-slate-200 text-sm">
+                  <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                    <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.db')}</div>
+                    <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">
                       {serverHealth.db.ok ? t('platformAdmin.health.db.connected') : t('platformAdmin.health.db.disconnected')}
                     </div>
-                    <div className="mt-1 text-slate-200 text-sm">
+                    <div className="mt-1 text-gray-700 dark:text-slate-200 text-sm">
                       {t('platformAdmin.health.db.ping')}: <span className="font-semibold">{serverHealth.db.latencyMs != null ? `${serverHealth.db.latencyMs.toFixed(0)} ms` : '-'}</span>
                     </div>
-                    <div className="mt-1 text-slate-400 text-xs">
-                      Pool: {serverHealth.db.pool?.totalCount ?? '-'} total / {serverHealth.db.pool?.idleCount ?? '-'} idle / {serverHealth.db.pool?.waitingCount ?? '-'} waiting
+                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
+                      {t('platformAdmin.health.poolInfo', { total: serverHealth.db.pool?.totalCount ?? '-', idle: serverHealth.db.pool?.idleCount ?? '-', waiting: serverHealth.db.pool?.waitingCount ?? '-' })}
                     </div>
-                    <div className="mt-1 text-slate-400 text-xs">
-                      Event loop: {formatPercent((serverHealth.eventLoop?.utilization ?? 0) * 100)}
+                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
+                      {t('platformAdmin.health.eventLoop')}: {formatPercent((serverHealth.eventLoop?.utilization ?? 0) * 100)}
                     </div>
-                    <div className="mt-1 text-slate-400 text-xs">
+                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
                       {t('platformAdmin.health.loadAvg')}: {Array.isArray(serverHealth.os.loadavg) ? serverHealth.os.loadavg.map((n) => n.toFixed(2)).join(' / ') : '-'}
                     </div>
-                    <div className="mt-1 text-slate-400 text-xs">
-                      Load/CPU: {Array.isArray(serverHealth.derived?.loadPerCpu) ? serverHealth.derived!.loadPerCpu!.map((n) => n.toFixed(2)).join(' / ') : '-'}
+                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
+                      {t('platformAdmin.health.loadAvg')}/CPU: {Array.isArray(serverHealth.derived?.loadPerCpu) ? serverHealth.derived!.loadPerCpu!.map((n) => n.toFixed(2)).join(' / ') : '-'}
                     </div>
                   </div>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                    <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-slate-300 font-medium text-sm">Node</div>
-                      <div className="mt-2 text-slate-200 text-sm">v{serverHealth.node.version}</div>
-                      <div className="mt-1 text-slate-400 text-xs">PID: {serverHealth.node.pid} / PPID: {serverHealth.node.ppid}</div>
-                      <div className="mt-1 text-slate-400 text-xs">ENV: {serverHealth.node.env ?? '-'}</div>
-                      <div className="mt-2 text-slate-400 text-xs">
+                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.node')}</div>
+                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">v{serverHealth.node.version}</div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">PID: {serverHealth.node.pid} / PPID: {serverHealth.node.ppid}</div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">ENV: {serverHealth.node.env ?? '-'}</div>
+                      <div className="mt-2 text-gray-500 dark:text-slate-400 text-xs">
                         v8: {serverHealth.node.versions?.v8 ?? '-'} / openssl: {serverHealth.node.versions?.openssl ?? '-'}
                       </div>
                     </div>
 
-                    <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-slate-300 font-medium text-sm">System</div>
-                      <div className="mt-2 text-slate-200 text-sm">{serverHealth.os.platform} / {serverHealth.os.arch}</div>
-                      <div className="mt-1 text-slate-400 text-xs">Host: {serverHealth.os.hostname ?? '-'}</div>
-                      <div className="mt-1 text-slate-400 text-xs">CPU: {serverHealth.os.cpuModel ?? '-'} ({serverHealth.os.cpuCount ?? '-'} cores)</div>
-                      <div className="mt-1 text-slate-400 text-xs">CPU limit: {serverHealth.cgroup?.cpu?.cpus != null ? serverHealth.cgroup.cpu.cpus.toFixed(2) : '-'} cores</div>
+                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.system')}</div>
+                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">{serverHealth.os.platform} / {serverHealth.os.arch}</div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">المضيف: {serverHealth.os.hostname ?? '-'}</div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">المعالج: {serverHealth.os.cpuModel ?? '-'} ({serverHealth.os.cpuCount ?? '-'} أنوية)</div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">حد المعالج: {serverHealth.cgroup?.cpu?.cpus != null ? serverHealth.cgroup.cpu.cpus.toFixed(2) : '-'} أنوية</div>
                     </div>
 
-                    <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-slate-300 font-medium text-sm">Disk</div>
-                      <div className="mt-2 text-slate-200 text-sm">CWD free: <span className="font-semibold">{formatBytes(serverHealth.disk?.cwd?.available)}</span></div>
-                      <div className="mt-1 text-slate-400 text-xs">CWD total: {formatBytes(serverHealth.disk?.cwd?.total)}</div>
-                      <div className="mt-2 text-slate-200 text-sm">Uploads free: <span className="font-semibold">{formatBytes(serverHealth.disk?.uploads?.available)}</span></div>
-                      <div className="mt-1 text-slate-400 text-xs">Uploads total: {formatBytes(serverHealth.disk?.uploads?.total)}</div>
+                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.disk')}</div>
+                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">{t('platformAdmin.health.cwdFree')} <span className="font-semibold">{formatBytes(serverHealth.disk?.cwd?.available)}</span></div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.cwdTotal')} {formatBytes(serverHealth.disk?.cwd?.total)}</div>
+                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">{t('platformAdmin.health.uploadsFree')} <span className="font-semibold">{formatBytes(serverHealth.disk?.uploads?.available)}</span></div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.uploadsTotal')} {formatBytes(serverHealth.disk?.uploads?.total)}</div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                    <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-slate-300 font-medium text-sm">Network</div>
-                      <div className="mt-2 text-slate-200 text-sm">Interfaces: <span className="font-semibold">{serverHealth.network?.interfaces?.length ?? '-'}</span></div>
-                      <div className="mt-1 text-slate-400 text-xs">
-                        Speed (RX/TX){serverHealth.network?.totals?.intervalSec != null ? ` over ${serverHealth.network.totals.intervalSec.toFixed(1)}s` : ''}: <span className="font-semibold">{formatBps(serverHealth.network?.totals?.rxBps)}</span> / <span className="font-semibold">{formatBps(serverHealth.network?.totals?.txBps)}</span>
+                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.network')}</div>
+                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">{t('platformAdmin.health.interfaces')} <span className="font-semibold">{serverHealth.network?.interfaces?.length ?? '-'}</span></div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
+                        {t('platformAdmin.health.speedRxTx')}{serverHealth.network?.totals?.intervalSec != null ? ` (${serverHealth.network.totals.intervalSec.toFixed(1)}s)` : ''}: <span className="font-semibold">{formatBps(serverHealth.network?.totals?.rxBps)}</span> / <span className="font-semibold">{formatBps(serverHealth.network?.totals?.txBps)}</span>
                       </div>
-                      <div className="mt-1 text-slate-400 text-xs">
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
                         {Array.isArray(serverHealth.network?.interfaces)
                           ? serverHealth.network!.interfaces!
                               .slice(0, 6)
@@ -2591,17 +2592,17 @@ export default function PlatformAdmin() {
                       </div>
                     </div>
 
-                    <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-slate-300 font-medium text-sm">Runtime</div>
-                      <div className="mt-2 text-slate-200 text-sm">ELU: <span className="font-semibold">{formatPercent((serverHealth.eventLoop?.utilization ?? 0) * 100)}</span></div>
-                      <div className="mt-1 text-slate-400 text-xs">Active: {serverHealth.eventLoop?.active != null ? `${serverHealth.eventLoop.active.toFixed(0)}ms` : '-'}</div>
-                      <div className="mt-1 text-slate-400 text-xs">Idle: {serverHealth.eventLoop?.idle != null ? `${serverHealth.eventLoop.idle.toFixed(0)}ms` : '-'}</div>
+                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.runtime')}</div>
+                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">ELU: <span className="font-semibold">{formatPercent((serverHealth.eventLoop?.utilization ?? 0) * 100)}</span></div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">نشط: {serverHealth.eventLoop?.active != null ? `${serverHealth.eventLoop.active.toFixed(0)}ms` : '-'}</div>
+                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">خامل: {serverHealth.eventLoop?.idle != null ? `${serverHealth.eventLoop.idle.toFixed(0)}ms` : '-'}</div>
                     </div>
 
-                    <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-slate-300 font-medium text-sm">Alerts</div>
-                      <div className="mt-2 text-slate-200 text-sm">
-                        {serverHealth.alerts && serverHealth.alerts.length > 0 ? serverHealth.alerts.join(' · ') : 'None'}
+                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.alerts')}</div>
+                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">
+                        {serverHealth.alerts && serverHealth.alerts.length > 0 ? serverHealth.alerts.join(' · ') : t('platformAdmin.health.none')}
                       </div>
                       {Array.isArray(serverHealth.recommendations) && serverHealth.recommendations.length > 0 && (
                         <div className="mt-3 space-y-1">
@@ -2613,74 +2614,74 @@ export default function PlatformAdmin() {
                                   ? 'text-red-200 text-xs'
                                   : r.severity === 'warn'
                                     ? 'text-amber-200 text-xs'
-                                    : 'text-slate-300 text-xs'
+                                    : 'text-gray-600 dark:text-slate-300 text-xs'
                               }
                             >
-                              <span className="text-slate-500">[{r.code}]</span> {r.message}
+                              <span className="text-gray-500 dark:text-slate-500">[{r.code}]</span> {r.message}
                             </div>
                           ))}
                         </div>
                       )}
                       {serverHealth.thresholds && (
-                        <div className="mt-3 text-slate-400 text-xs">
-                          Thresholds: DB slow &gt; {serverHealth.thresholds.dbSlowMs}ms · Memory high &gt; {serverHealth.thresholds.memoryHighPct}% · ELU high &gt; {(serverHealth.thresholds.eventLoopHighUtil * 100).toFixed(0)}% · CPU pressure &gt; {serverHealth.thresholds.cpuPressureLoadPerCpu}
+                        <div className="mt-3 text-gray-500 dark:text-slate-400 text-xs">
+                          {t('platformAdmin.health.thresholdsLabel')} DB &gt; {serverHealth.thresholds.dbSlowMs}ms · {t('platformAdmin.health.memHighLabel')} {serverHealth.thresholds.memoryHighPct}% · ELU &gt; {(serverHealth.thresholds.eventLoopHighUtil * 100).toFixed(0)}% · CPU &gt; {serverHealth.thresholds.cpuPressureLoadPerCpu}
                         </div>
                       )}
                       {!serverHealth.ok && serverHealth.db.error && (
-                        <div className="mt-1 text-slate-400 text-xs">DB error: {serverHealth.db.error}</div>
+                        <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.dbError')} {serverHealth.db.error}</div>
                       )}
                     </div>
                   </div>
 
                   {serverHealth.trend && (
-                    <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
+                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
                       <div className="flex items-start justify-between" style={{ gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
                         <div className="min-w-0">
-                          <div className="text-slate-300 font-medium text-sm">{t('platformAdmin.health.trends.title')}</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.desc')}</div>
+                          <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.trends.title')}</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.desc')}</div>
                         </div>
-                        <div className="text-slate-400 text-xs">
+                        <div className="text-gray-500 dark:text-slate-400 text-xs">
                           {t('platformAdmin.health.trends.points')}: {serverHealth.trend.points}
                         </div>
                       </div>
 
                       <div className="mt-3 grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                        <div className="bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-slate-300 text-sm font-medium">DB Ping (ms)</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.dbLatencyMs.min, 0)} / {formatNumber(serverHealth.trend.summary.dbLatencyMs.avg, 0)} / {formatNumber(serverHealth.trend.summary.dbLatencyMs.max, 0)}</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.dbLatencyMs != null ? `${serverHealth.trend.delta.dbLatencyMs.toFixed(0)} ms` : '-'}</div>
+                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
+                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">DB Ping (ms)</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.dbLatencyMs.min, 0)} / {formatNumber(serverHealth.trend.summary.dbLatencyMs.avg, 0)} / {formatNumber(serverHealth.trend.summary.dbLatencyMs.max, 0)}</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.dbLatencyMs != null ? `${serverHealth.trend.delta.dbLatencyMs.toFixed(0)} ms` : '-'}</div>
                         </div>
 
-                        <div className="bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-slate-300 text-sm font-medium">Memory RSS (%)</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.rssPct.min, 1)} / {formatNumber(serverHealth.trend.summary.rssPct.avg, 1)} / {formatNumber(serverHealth.trend.summary.rssPct.max, 1)}</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.rssPct != null ? `${serverHealth.trend.delta.rssPct.toFixed(1)}%` : '-'}</div>
+                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
+                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">Memory RSS (%)</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.rssPct.min, 1)} / {formatNumber(serverHealth.trend.summary.rssPct.avg, 1)} / {formatNumber(serverHealth.trend.summary.rssPct.max, 1)}</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.rssPct != null ? `${serverHealth.trend.delta.rssPct.toFixed(1)}%` : '-'}</div>
                         </div>
 
-                        <div className="bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-slate-300 text-sm font-medium">Event Loop Utilization</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {serverHealth.trend.summary.elu.min != null ? formatPercent(serverHealth.trend.summary.elu.min * 100) : '-'} / {serverHealth.trend.summary.elu.avg != null ? formatPercent(serverHealth.trend.summary.elu.avg * 100) : '-'} / {serverHealth.trend.summary.elu.max != null ? formatPercent(serverHealth.trend.summary.elu.max * 100) : '-'}</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.elu != null ? `${(serverHealth.trend.delta.elu * 100).toFixed(1)}%` : '-'}</div>
+                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
+                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">Event Loop Utilization</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {serverHealth.trend.summary.elu.min != null ? formatPercent(serverHealth.trend.summary.elu.min * 100) : '-'} / {serverHealth.trend.summary.elu.avg != null ? formatPercent(serverHealth.trend.summary.elu.avg * 100) : '-'} / {serverHealth.trend.summary.elu.max != null ? formatPercent(serverHealth.trend.summary.elu.max * 100) : '-'}</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.elu != null ? `${(serverHealth.trend.delta.elu * 100).toFixed(1)}%` : '-'}</div>
                         </div>
                       </div>
 
                       <div className="mt-3 grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                        <div className="bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-slate-300 text-sm font-medium">Load / CPU (1m)</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.load1PerCpu.min)} / {formatNumber(serverHealth.trend.summary.load1PerCpu.avg)} / {formatNumber(serverHealth.trend.summary.load1PerCpu.max)}</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {formatNumber(serverHealth.trend.delta.load1PerCpu)}</div>
+                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
+                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">Load / CPU (1m)</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.load1PerCpu.min)} / {formatNumber(serverHealth.trend.summary.load1PerCpu.avg)} / {formatNumber(serverHealth.trend.summary.load1PerCpu.max)}</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {formatNumber(serverHealth.trend.delta.load1PerCpu)}</div>
                         </div>
 
-                        <div className="bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-slate-300 text-sm font-medium">DB Pool Waiting</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.dbPoolWaiting.min, 0)} / {formatNumber(serverHealth.trend.summary.dbPoolWaiting.avg, 1)} / {formatNumber(serverHealth.trend.summary.dbPoolWaiting.max, 0)}</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {formatNumber(serverHealth.trend.delta.dbPoolWaiting, 0)}</div>
+                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
+                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">DB Pool Waiting</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.dbPoolWaiting.min, 0)} / {formatNumber(serverHealth.trend.summary.dbPoolWaiting.avg, 1)} / {formatNumber(serverHealth.trend.summary.dbPoolWaiting.max, 0)}</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {formatNumber(serverHealth.trend.delta.dbPoolWaiting, 0)}</div>
                         </div>
 
-                        <div className="bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-slate-300 text-sm font-medium">Heap Used (%)</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.heapPct.min, 1)} / {formatNumber(serverHealth.trend.summary.heapPct.avg, 1)} / {formatNumber(serverHealth.trend.summary.heapPct.max, 1)}</div>
-                          <div className="text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.heapPct != null ? `${serverHealth.trend.delta.heapPct.toFixed(1)}%` : '-'}</div>
+                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
+                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">Heap Used (%)</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.heapPct.min, 1)} / {formatNumber(serverHealth.trend.summary.heapPct.avg, 1)} / {formatNumber(serverHealth.trend.summary.heapPct.max, 1)}</div>
+                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.heapPct != null ? `${serverHealth.trend.delta.heapPct.toFixed(1)}%` : '-'}</div>
                         </div>
                       </div>
                     </div>
@@ -2688,12 +2689,12 @@ export default function PlatformAdmin() {
                 </div>
               )}
 
-              {/* Real-Time Active Users */}
+              {/* {t('platformAdmin.health.activeUsersTitle')} */}
               <div className="bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 backdrop-blur-md rounded-xl border border-emerald-500/30 shadow-lg" style={{ padding: 'clamp(1rem, 2vh, 1.25rem)' }}>
                 <div className="flex items-center justify-between" style={{ marginBottom: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-                  <h3 className="font-bold text-white flex items-center" style={{ fontSize: 'clamp(1rem, 2vh, 1.15rem)', gap: 'clamp(0.5rem, 1vh, 0.625rem)' }}>
+                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center" style={{ fontSize: 'clamp(1rem, 2vh, 1.15rem)', gap: 'clamp(0.5rem, 1vh, 0.625rem)' }}>
                     <Users className="text-emerald-400" style={{ width: 'clamp(1.125rem, 2.25vh, 1.375rem)', height: 'clamp(1.125rem, 2.25vh, 1.375rem)' }} />
-                    Real-Time Active Users
+                    {t('platformAdmin.health.activeUsersTitle')}
                     <span className="ml-2 flex items-center gap-1">
                       <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
                       <span className="text-emerald-400 text-xs font-normal">Live</span>
@@ -2704,7 +2705,7 @@ export default function PlatformAdmin() {
                     size="sm"
                     onClick={loadActiveUsers}
                     disabled={activeUsersLoading}
-                    className="text-slate-400 hover:text-white"
+                    className="text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-900 dark:text-white"
                   >
                     {activeUsersLoading ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -2717,57 +2718,57 @@ export default function PlatformAdmin() {
                 {activeUsersLoading && !activeUsers ? (
                   <div className="flex items-center justify-center py-8">
                     <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
-                    <span className="ml-2 text-slate-400">Tracking active users...</span>
+                    <span className="ml-2 text-gray-500 dark:text-slate-400">{t('platformAdmin.health.trackingUsers')}</span>
                   </div>
                 ) : activeUsers ? (
                   <div className="space-y-4">
                     {/* Main Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="bg-slate-900/50 rounded-lg p-4 text-center border border-emerald-500/20">
+                      <div className="bg-gray-100/50 dark:bg-slate-900/50 rounded-lg p-4 text-center border border-emerald-500/20">
                         <div className="text-3xl font-bold text-emerald-400">{activeUsers.active?.total || 0}</div>
-                        <div className="text-slate-400 text-xs mt-1">Active Now</div>
-                        <div className="text-slate-500 text-xs">Last {activeUsers.windowSeconds}s</div>
+                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.activeNow')}</div>
+                        <div className="text-gray-500 dark:text-slate-500 text-xs">{t('platformAdmin.health.lastSeconds', { seconds: activeUsers.windowSeconds })}</div>
                       </div>
-                      <div className="bg-slate-900/50 rounded-lg p-4 text-center border border-blue-500/20">
+                      <div className="bg-gray-100/50 dark:bg-slate-900/50 rounded-lg p-4 text-center border border-blue-500/20">
                         <div className="text-2xl font-bold text-blue-400">{activeUsers.active?.authenticated || 0}</div>
-                        <div className="text-slate-400 text-xs mt-1">Logged In</div>
+                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.loggedIn')}</div>
                       </div>
-                      <div className="bg-slate-900/50 rounded-lg p-4 text-center border border-slate-500/20">
-                        <div className="text-2xl font-bold text-slate-300">{activeUsers.active?.anonymous || 0}</div>
-                        <div className="text-slate-400 text-xs mt-1">Visitors</div>
+                      <div className="bg-gray-100/50 dark:bg-slate-900/50 rounded-lg p-4 text-center border border-slate-500/20">
+                        <div className="text-2xl font-bold text-gray-600 dark:text-slate-300">{activeUsers.active?.anonymous || 0}</div>
+                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.visitors')}</div>
                       </div>
-                      <div className="bg-slate-900/50 rounded-lg p-4 text-center border border-amber-500/20">
+                      <div className="bg-gray-100/50 dark:bg-slate-900/50 rounded-lg p-4 text-center border border-amber-500/20">
                         <div className="text-2xl font-bold text-amber-400">{activeUsers.traffic?.requestsPerSecond || 0}</div>
-                        <div className="text-slate-400 text-xs mt-1">Req/s</div>
+                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.reqPerSec')}</div>
                       </div>
                     </div>
 
                     {/* User Breakdown */}
                     {activeUsers.active?.breakdown && (
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-2 text-center">
                           <div className="text-purple-400 font-semibold">{activeUsers.active.breakdown.admins || 0}</div>
-                          <div className="text-slate-500 text-xs">Admins</div>
+                          <div className="text-gray-500 dark:text-slate-500 text-xs">{t('platformAdmin.health.admins')}</div>
                         </div>
-                        <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-2 text-center">
                           <div className="text-cyan-400 font-semibold">{activeUsers.active.breakdown.clients || 0}</div>
-                          <div className="text-slate-500 text-xs">Clients</div>
+                          <div className="text-gray-500 dark:text-slate-500 text-xs">{t('platformAdmin.health.clients')}</div>
                         </div>
-                        <div className="bg-slate-800/50 rounded-lg p-2 text-center">
-                          <div className="text-slate-300 font-semibold">{activeUsers.active.breakdown.visitors || 0}</div>
-                          <div className="text-slate-500 text-xs">Other</div>
+                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-2 text-center">
+                          <div className="text-gray-600 dark:text-slate-300 font-semibold">{activeUsers.active.breakdown.visitors || 0}</div>
+                          <div className="text-gray-500 dark:text-slate-500 text-xs">{t('platformAdmin.health.other')}</div>
                         </div>
                       </div>
                     )}
 
                     {/* Top Active Pages */}
                     {activeUsers.topPages && activeUsers.topPages.length > 0 && (
-                      <div className="bg-slate-900/30 rounded-lg p-3">
-                        <div className="text-slate-400 text-xs font-medium mb-2">Active Pages</div>
+                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg p-3">
+                        <div className="text-gray-500 dark:text-slate-400 text-xs font-medium mb-2">{t('platformAdmin.health.activePages')}</div>
                         <div className="space-y-1">
                           {activeUsers.topPages.slice(0, 5).map((page: any, idx: number) => (
                             <div key={idx} className="flex items-center justify-between text-xs">
-                              <span className="text-slate-300 truncate max-w-[70%]">{page.path}</span>
+                              <span className="text-gray-600 dark:text-slate-300 truncate max-w-[70%]">{page.path}</span>
                               <span className="text-emerald-400 font-mono">{page.count}</span>
                             </div>
                           ))}
@@ -2777,18 +2778,18 @@ export default function PlatformAdmin() {
 
                     {/* Active Visitors List */}
                     {activeUsers.visitors && activeUsers.visitors.length > 0 && (
-                      <div className="bg-slate-900/30 rounded-lg p-3">
-                        <div className="text-slate-400 text-xs font-medium mb-2">Active Sessions ({activeUsers.visitors.length})</div>
+                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg p-3">
+                        <div className="text-gray-500 dark:text-slate-400 text-xs font-medium mb-2">{t('platformAdmin.health.activeSessions', { count: activeUsers.visitors.length })}</div>
                         <div className="max-h-40 overflow-y-auto space-y-1">
                           {activeUsers.visitors.slice(0, 10).map((v: any, idx: number) => (
-                            <div key={idx} className="flex items-center justify-between text-xs bg-slate-800/50 rounded px-2 py-1">
+                            <div key={idx} className="flex items-center justify-between text-xs bg-white/80 dark:bg-slate-800/50 rounded px-2 py-1">
                               <div className="flex items-center gap-2">
                                 <span className={`w-2 h-2 rounded-full ${v.userId ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                                <span className="text-slate-400 font-mono">{v.fingerprint}</span>
-                                {v.countryCode && <span className="text-slate-500">{v.countryCode}</span>}
+                                <span className="text-gray-500 dark:text-slate-400 font-mono">{v.fingerprint}</span>
+                                {v.countryCode && <span className="text-gray-500 dark:text-slate-500">{v.countryCode}</span>}
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-slate-500">{v.requestCount} req</span>
+                                <span className="text-gray-500 dark:text-slate-500">{v.requestCount} req</span>
                                 <span className="text-slate-600">{v.activeFor}s</span>
                               </div>
                             </div>
@@ -2799,13 +2800,13 @@ export default function PlatformAdmin() {
 
                     {/* Capacity vs Current */}
                     {systemCapacity && (
-                      <div className="bg-slate-900/30 rounded-lg p-3 border border-slate-600/20">
+                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg p-3 border border-slate-600/20">
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-400 text-xs">Current Load vs Capacity</span>
+                          <span className="text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.currentLoadVsCapacity')}</span>
                           <span className="text-xs font-mono">
                             <span className="text-emerald-400">{activeUsers.active?.total || 0}</span>
-                            <span className="text-slate-500"> / </span>
-                            <span className="text-slate-300">{systemCapacity.capacity?.estimated?.toLocaleString() || '?'}</span>
+                            <span className="text-gray-500 dark:text-slate-500"> / </span>
+                            <span className="text-gray-600 dark:text-slate-300">{systemCapacity.capacity?.estimated?.toLocaleString() || '?'}</span>
                           </span>
                         </div>
                         <div className="mt-2 h-2 bg-slate-700 rounded-full overflow-hidden">
@@ -2816,54 +2817,54 @@ export default function PlatformAdmin() {
                             }}
                           />
                         </div>
-                        <div className="text-slate-500 text-xs mt-1 text-right">
-                          {((activeUsers.active?.total || 0) / (systemCapacity.capacity?.estimated || 1) * 100).toFixed(1)}% of capacity
+                        <div className="text-gray-500 dark:text-slate-500 text-xs mt-1 text-right">
+                          {((activeUsers.active?.total || 0) / (systemCapacity.capacity?.estimated || 1) * 100).toFixed(1)}{t('platformAdmin.health.ofCapacity')}
                         </div>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-500">
+                  <div className="text-center py-8 text-gray-500 dark:text-slate-500">
                     <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No active users data</p>
+                    <p>{t('platformAdmin.health.noActiveData')}</p>
                   </div>
                 )}
               </div>
 
-              {/* System Capacity Analysis */}
-              <div className="bg-slate-800/50 backdrop-blur-md rounded-xl border border-slate-700/50 shadow-lg" style={{ padding: 'clamp(1rem, 2vh, 1.25rem)' }}>
+              {/* {t('platformAdmin.health.systemCapacity')} */}
+              <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-xl border border-gray-200 dark:border-slate-700/50 shadow-lg" style={{ padding: 'clamp(1rem, 2vh, 1.25rem)' }}>
                 <div className="flex items-center justify-between" style={{ marginBottom: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-                  <h3 className="font-bold text-white flex items-center" style={{ fontSize: 'clamp(1rem, 2vh, 1.15rem)', gap: 'clamp(0.5rem, 1vh, 0.625rem)' }}>
+                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center" style={{ fontSize: 'clamp(1rem, 2vh, 1.15rem)', gap: 'clamp(0.5rem, 1vh, 0.625rem)' }}>
                     <Gauge className="text-purple-400" style={{ width: 'clamp(1.125rem, 2.25vh, 1.375rem)', height: 'clamp(1.125rem, 2.25vh, 1.375rem)' }} />
-                    System Capacity Analysis
+                    {t('platformAdmin.health.systemCapacity')}
                   </h3>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={loadSystemCapacity}
                     disabled={capacityLoading}
-                    className="text-xs border-slate-600 text-slate-300 hover:bg-slate-700"
+                    className="text-xs border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
                   >
                     {capacityLoading ? (
                       <Loader2 className="w-3 h-3 animate-spin mr-1" />
                     ) : (
                       <RefreshCw className="w-3 h-3 mr-1" />
                     )}
-                    Refresh
+                    {t('platformAdmin.health.refresh')}
                   </Button>
                 </div>
 
                 {capacityLoading && !systemCapacity ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
-                    <span className="ml-2 text-slate-400">Analyzing system capacity...</span>
+                    <span className="ml-2 text-gray-500 dark:text-slate-400">{t('platformAdmin.health.analyzingCapacity')}</span>
                   </div>
                 ) : systemCapacity ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
                     {/* Health Score Gauge */}
                     <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
                       {/* Health Score */}
-                      <div className={`bg-slate-900/30 rounded-lg border p-4 text-center ${
+                      <div className={`bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border p-4 text-center ${
                         systemCapacity.health.status === 'healthy' ? 'border-emerald-500/50' :
                         systemCapacity.health.status === 'degraded' ? 'border-yellow-500/50' :
                         'border-red-500/50'
@@ -2875,7 +2876,7 @@ export default function PlatformAdmin() {
                         }`}>
                           {systemCapacity.health.score}
                         </div>
-                        <div className="text-slate-400 text-xs mt-1">Health Score</div>
+                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.healthScore')}</div>
                         <div className={`text-xs mt-2 px-2 py-1 rounded-full inline-block ${
                           systemCapacity.health.status === 'healthy' ? 'bg-emerald-500/20 text-emerald-300' :
                           systemCapacity.health.status === 'degraded' ? 'bg-yellow-500/20 text-yellow-300' :
@@ -2886,57 +2887,57 @@ export default function PlatformAdmin() {
                       </div>
 
                       {/* Capacity Estimate */}
-                      <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-4 text-center">
+                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-4 text-center">
                         <div className="text-3xl font-bold text-blue-400">
                           {systemCapacity.capacity.estimated.toLocaleString()}
                         </div>
-                        <div className="text-slate-400 text-xs mt-1">Estimated Max Users</div>
-                        <div className="text-slate-500 text-xs mt-2">
-                          Current: {systemCapacity.current.users} ({systemCapacity.capacity.utilizationPct.toFixed(1)}%)
+                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.estimatedMaxUsers')}</div>
+                        <div className="text-gray-500 dark:text-slate-500 text-xs mt-2">
+                          {t('platformAdmin.health.current', { users: systemCapacity.current.users, pct: systemCapacity.capacity.utilizationPct.toFixed(1) })}
                         </div>
                       </div>
 
                       {/* Current Tier */}
-                      <div className="bg-slate-900/30 rounded-lg border border-slate-600/30 p-4 text-center">
+                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-4 text-center">
                         <div className={`text-2xl font-bold ${
-                          systemCapacity.scaling.currentTier === 'starter' ? 'text-slate-400' :
+                          systemCapacity.scaling.currentTier === 'starter' ? 'text-gray-500 dark:text-slate-400' :
                           systemCapacity.scaling.currentTier === 'growth' ? 'text-blue-400' :
                           systemCapacity.scaling.currentTier === 'business' ? 'text-purple-400' :
                           'text-amber-400'
                         }`}>
                           {String(systemCapacity.scaling.currentTier || '').charAt(0).toUpperCase() + String(systemCapacity.scaling.currentTier || '').slice(1)}
                         </div>
-                        <div className="text-slate-400 text-xs mt-1">Current Tier</div>
+                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.currentTier')}</div>
                         {systemCapacity.scaling.nextTier && (
-                          <div className="text-slate-500 text-xs mt-2">
-                            Upgrade at {systemCapacity.scaling.upgradeAt}+ users
+                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-2">
+                            {t('platformAdmin.health.upgradeAt', { count: systemCapacity.scaling.upgradeAt })}
                           </div>
                         )}
                       </div>
                     </div>
 
                     {/* Resource Capacity Breakdown */}
-                    <div className="bg-slate-900/20 rounded-lg border border-slate-600/20 p-4">
-                      <h4 className="text-slate-300 text-sm font-medium mb-3">Resource Capacity Limits</h4>
+                    <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-4">
+                      <h4 className="text-gray-600 dark:text-slate-300 text-sm font-medium mb-3">{t('platformAdmin.health.resourceLimits')}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
-                        <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
+                        <div className="flex items-center justify-between bg-white/80 dark:bg-slate-800/50 rounded-lg p-3">
                           <div className="flex items-center gap-2">
                             <MemoryStick className="w-4 h-4 text-green-400" />
-                            <span className="text-slate-300 text-sm">RAM</span>
+                            <span className="text-gray-600 dark:text-slate-300 text-sm">{t('platformAdmin.health.ram')}</span>
                           </div>
                           <span className="text-green-400 font-mono text-sm">{systemCapacity.capacity.byResource.ram.toLocaleString()} users</span>
                         </div>
-                        <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
+                        <div className="flex items-center justify-between bg-white/80 dark:bg-slate-800/50 rounded-lg p-3">
                           <div className="flex items-center gap-2">
                             <Cpu className="w-4 h-4 text-blue-400" />
-                            <span className="text-slate-300 text-sm">CPU</span>
+                            <span className="text-gray-600 dark:text-slate-300 text-sm">{t('platformAdmin.health.cpuCores')}</span>
                           </div>
                           <span className="text-blue-400 font-mono text-sm">{systemCapacity.capacity.byResource.cpu.toLocaleString()} users</span>
                         </div>
-                        <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
+                        <div className="flex items-center justify-between bg-white/80 dark:bg-slate-800/50 rounded-lg p-3">
                           <div className="flex items-center gap-2">
                             <Database className="w-4 h-4 text-purple-400" />
-                            <span className="text-slate-300 text-sm">Database</span>
+                            <span className="text-gray-600 dark:text-slate-300 text-sm">{t('platformAdmin.health.db')}</span>
                           </div>
                           <span className="text-purple-400 font-mono text-sm">{systemCapacity.capacity.byResource.db.toLocaleString()} users</span>
                         </div>
@@ -2945,10 +2946,10 @@ export default function PlatformAdmin() {
 
                     {/* Bottlenecks */}
                     {systemCapacity.health.bottlenecks.length > 0 && (
-                      <div className="bg-slate-900/20 rounded-lg border border-slate-600/20 p-4">
-                        <h4 className="text-slate-300 text-sm font-medium mb-3 flex items-center gap-2">
+                      <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-4">
+                        <h4 className="text-gray-600 dark:text-slate-300 text-sm font-medium mb-3 flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                          Bottlenecks Detected ({systemCapacity.health.bottlenecks.length})
+                          {t('platformAdmin.health.bottlenecksDetected', { count: systemCapacity.health.bottlenecks.length })}
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
                           {systemCapacity.health.bottlenecks.map((bottleneck: any, idx: number) => (
@@ -2971,13 +2972,13 @@ export default function PlatformAdmin() {
                                   }`}>
                                     {bottleneck.severity.toUpperCase()}
                                   </span>
-                                  <span className="text-white font-medium text-sm">{bottleneck.resource}</span>
+                                  <span className="text-gray-900 dark:text-white font-medium text-sm">{bottleneck.resource}</span>
                                 </div>
-                                <span className="text-slate-400 text-xs font-mono">
+                                <span className="text-gray-500 dark:text-slate-400 text-xs font-mono">
                                   {bottleneck.current}{bottleneck.unit} / {bottleneck.threshold}{bottleneck.unit}
                                 </span>
                               </div>
-                              <div className="text-slate-300 text-xs">{bottleneck.recommendation}</div>
+                              <div className="text-gray-600 dark:text-slate-300 text-xs">{bottleneck.recommendation}</div>
                               {bottleneck.upgradeSpec && (
                                 <div className="text-emerald-400 text-xs mt-1">
                                   ↑ Upgrade to: {bottleneck.upgradeSpec}
@@ -2991,32 +2992,32 @@ export default function PlatformAdmin() {
 
                     {/* Recommended Specs */}
                     <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-lg border border-purple-500/30 p-4">
-                      <h4 className="text-slate-300 text-sm font-medium mb-3 flex items-center gap-2">
+                      <h4 className="text-gray-600 dark:text-slate-300 text-sm font-medium mb-3 flex items-center gap-2">
                         <Zap className="w-4 h-4 text-purple-400" />
-                        Recommended Specs for Smooth Operation
+                        {t('platformAdmin.health.recommendedSpecs')}
                       </h4>
                       <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
-                        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-3 text-center">
                           <div className="text-purple-400 font-bold">{systemCapacity.scaling.recommended.ram}</div>
-                          <div className="text-slate-500 text-xs mt-1">RAM</div>
+                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-1">{t('platformAdmin.health.ram')}</div>
                         </div>
-                        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-3 text-center">
                           <div className="text-blue-400 font-bold">{systemCapacity.scaling.recommended.cpu}</div>
-                          <div className="text-slate-500 text-xs mt-1">CPU Cores</div>
+                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-1">{t('platformAdmin.health.cpuCores')}</div>
                         </div>
-                        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-3 text-center">
                           <div className="text-emerald-400 font-bold">{systemCapacity.scaling.recommended.db}</div>
-                          <div className="text-slate-500 text-xs mt-1">DB Connections</div>
+                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-1">{t('platformAdmin.health.dbConnections')}</div>
                         </div>
-                        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-3 text-center">
                           <div className="text-amber-400 font-bold">{systemCapacity.scaling.recommended.users.toLocaleString()}</div>
-                          <div className="text-slate-500 text-xs mt-1">Target Users</div>
+                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-1">{t('platformAdmin.health.targetUsers')}</div>
                         </div>
                       </div>
                       {systemCapacity.scaling.nextTier && (
                         <div className="mt-3 text-center">
-                          <span className="text-slate-400 text-xs">
-                            Next tier: <span className="text-purple-300 font-medium">{String(systemCapacity.scaling.nextTier || '').charAt(0).toUpperCase() + String(systemCapacity.scaling.nextTier || '').slice(1)}</span>
+                          <span className="text-gray-500 dark:text-slate-400 text-xs">
+                            {t('platformAdmin.health.nextTier')}<span className="text-purple-300 font-medium">{String(systemCapacity.scaling.nextTier || '').charAt(0).toUpperCase() + String(systemCapacity.scaling.nextTier || '').slice(1)}</span>
                           </span>
                         </div>
                       )}
@@ -3030,9 +3031,9 @@ export default function PlatformAdmin() {
                             <AlertTriangle className="w-5 h-5 text-red-400" />
                           </div>
                           <div>
-                            <div className="text-white font-medium text-sm">Primary Bottleneck: {systemCapacity.health.primaryBottleneck.resource}</div>
-                            <div className="text-slate-400 text-xs mt-1">
-                              This is the main limiting factor. {systemCapacity.health.primaryBottleneck.recommendation}
+                            <div className="text-gray-900 dark:text-white font-medium text-sm">{t('platformAdmin.health.primaryBottleneckLabel', { resource: systemCapacity.health.primaryBottleneck.resource })}</div>
+                            <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">
+                              {t('platformAdmin.health.mainLimitingFactor', { rec: systemCapacity.health.primaryBottleneck.recommendation })}
                             </div>
                           </div>
                         </div>
@@ -3047,9 +3048,9 @@ export default function PlatformAdmin() {
                             <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                           </div>
                           <div>
-                            <div className="text-white font-medium text-sm">System Running Optimally</div>
-                            <div className="text-slate-400 text-xs mt-1">
-                              No bottlenecks detected. Your platform can handle up to {systemCapacity.capacity.estimated.toLocaleString()} concurrent users.
+                            <div className="text-gray-900 dark:text-white font-medium text-sm">{t('platformAdmin.health.systemOptimal')}</div>
+                            <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">
+                              {t('platformAdmin.health.noBottlenecks', { count: systemCapacity.capacity.estimated.toLocaleString() })}
                             </div>
                           </div>
                         </div>
@@ -3057,9 +3058,9 @@ export default function PlatformAdmin() {
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-400">
+                  <div className="text-center py-8 text-gray-500 dark:text-slate-400">
                     <Gauge className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">Click refresh to analyze system capacity</p>
+                    <p className="text-sm">{t('platformAdmin.health.clickRefreshCapacity')}</p>
                   </div>
                 )}
               </div>
@@ -3077,38 +3078,23 @@ export default function PlatformAdmin() {
             onSaveLimits={async () => {
               setSavingLimits(true);
               try {
-                const res = await fetch('/api/admin/settings/limits', {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({
-                    maxProductsPerStore: settingsForm.maxProductsPerStore,
-                    maxImageSizeMB: settingsForm.maxImageSizeMB,
-                    maxImagesPerProduct: settingsForm.maxImagesPerProduct,
-                  }),
+                await updatePlatformSettings({
+                  max_users: settingsForm.max_users,
+                  max_stores: settingsForm.max_stores,
                 });
-                if (res.ok) {
-                  loadPlatformSettings();
-                  alert('Platform limits updated!');
-                }
+                loadPlatformSettings();
+                alert(t('platformAdmin.alerts.platformLimitsUpdated'));
               } catch (e) { console.error(e); } finally { setSavingLimits(false); }
             }}
             onSaveSubscription={async () => {
               setSavingSubscription(true);
               try {
-                const res = await fetch('/api/admin/settings/subscription', {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({
-                    subscriptionPrice: settingsForm.subscriptionPrice,
-                    trialDays: settingsForm.trialDays,
-                  }),
+                await updatePlatformSettings({
+                  subscription_price: settingsForm.subscription_price,
+                  trial_days: settingsForm.trial_days,
                 });
-                if (res.ok) {
-                  loadPlatformSettings();
-                  alert('Subscription settings updated!');
-                }
+                loadPlatformSettings();
+                alert(t('platformAdmin.alerts.subscriptionSettingsUpdated'));
               } catch (e) { console.error(e); } finally { setSavingSubscription(false); }
             }}
             savingLimits={savingLimits}
@@ -3123,43 +3109,43 @@ export default function PlatformAdmin() {
 
         {/* Flag Product Modal */}
         {showFlagModal && flaggedProductId && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <div className="fixed inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <AlertCircle className="w-6 h-6 text-red-400" />
-                Flag Product for Review
+                {t('platformAdmin.flag.title')}
               </h3>
-              <p className="text-slate-300 text-sm mb-4">
+              <p className="text-gray-600 dark:text-slate-300 text-sm mb-4">
                 {products.find(p => p.id === flaggedProductId)?.title}
               </p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Reason for Flagging</label>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-slate-300 mb-2">{t('platformAdmin.flag.reason')}</label>
                   <select 
                     value={flagReason} 
                     onChange={(e) => setFlagReason(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 text-white rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
+                    className="w-full px-4 py-2 bg-slate-700/50 border border-gray-300/60 dark:border-slate-600/50 text-gray-900 dark:text-white rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
                   >
-                    <option value="">Select a reason...</option>
-                    <option value="inappropriate_content">Inappropriate Content</option>
-                    <option value="illegal_item">Illegal Item (Weapons, Drugs, etc)</option>
-                    <option value="counterfeit">Counterfeit/Fake Product</option>
-                    <option value="stolen_goods">Stolen Goods</option>
-                    <option value="hate_speech">Hate Speech/Offensive Content</option>
-                    <option value="scam">Possible Scam</option>
-                    <option value="sexual_content">Sexual/Adult Content</option>
-                    <option value="violence">Violence/Harm</option>
-                    <option value="other">Other</option>
+                    <option value="">{t('platformAdmin.flag.selectReason')}</option>
+                    <option value="inappropriate_content">{t('platformAdmin.flag.inappropriate')}</option>
+                    <option value="illegal_item">{t('platformAdmin.flag.illegal')}</option>
+                    <option value="counterfeit">{t('platformAdmin.flag.counterfeit')}</option>
+                    <option value="stolen_goods">{t('platformAdmin.flag.stolen')}</option>
+                    <option value="hate_speech">{t('platformAdmin.flag.hateSpeech')}</option>
+                    <option value="scam">{t('platformAdmin.flag.scam')}</option>
+                    <option value="sexual_content">{t('platformAdmin.flag.adult')}</option>
+                    <option value="violence">{t('platformAdmin.flag.violence')}</option>
+                    <option value="other">{t('platformAdmin.flag.other')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Additional Notes</label>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-slate-300 mb-2">{t('platformAdmin.flag.additionalNotes')}</label>
                   <textarea 
                     value={flagNotes}
                     onChange={(e) => setFlagNotes(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 text-white rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all resize-none"
+                    className="w-full px-4 py-2 bg-slate-700/50 border border-gray-300/60 dark:border-slate-600/50 text-gray-900 dark:text-white rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all resize-none"
                     rows={3}
-                    placeholder="Provide details about why this product should be reviewed..."
+                    placeholder={t('platformAdmin.flag.notesPlaceholder')}
                   />
                 </div>
                 <div className="flex gap-3">
@@ -3169,15 +3155,15 @@ export default function PlatformAdmin() {
                       setFlagReason('');
                       setFlagNotes('');
                     }}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white"
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-gray-900 dark:text-white"
                     disabled={flagging}
                   >
-                    Cancel
+                    {t('platformAdmin.flag.cancel')}
                   </Button>
                   <Button
                     onClick={async () => {
                       if (!flagReason) {
-                        alert('Please select a reason');
+                        alert(t('platformAdmin.flag.selectReasonAlert'));
                         return;
                       }
 
@@ -3206,14 +3192,14 @@ export default function PlatformAdmin() {
                           setShowFlagModal(false);
                           setFlagReason('');
                           setFlagNotes('');
-                          alert('Product flagged for review. Admin team will review shortly.');
+                          alert(t('platformAdmin.flag.success'));
                         } else {
                           const error = await response.json();
-                          alert(error.error || 'Failed to flag product');
+                          alert(error.error || t('platformAdmin.alerts.errorFlagging'));
                         }
                       } catch (err) {
                         console.error('Error flagging product:', err);
-                        alert('Error flagging product');
+                        alert(t('platformAdmin.alerts.errorFlagging'));
                       } finally {
                         setFlagging(false);
                       }
@@ -3221,7 +3207,7 @@ export default function PlatformAdmin() {
                     className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
                     disabled={flagging}
                   >
-                    {flagging ? 'Flagging...' : 'Flag Product'}
+                    {flagging ? t('platformAdmin.flag.flagging') : t('platformAdmin.flag.flagProduct')}
                   </Button>
                 </div>
               </div>
@@ -3244,7 +3230,7 @@ export default function PlatformAdmin() {
 
         {/* Affiliates Tab */}
         {activeTab === 'affiliates' && (
-          <div className="bg-slate-900/40 border border-slate-700/60 rounded-xl p-4">
+          <div className="bg-gray-50/40 dark:bg-slate-900/40 border border-slate-700/60 rounded-xl p-4">
             <AdminAffiliatesPage />
           </div>
         )}

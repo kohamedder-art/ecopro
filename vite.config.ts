@@ -7,10 +7,27 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 5173,
+    allowedHosts: true,
+    watch: {
+      ignored: ['**/.env.local', '**/.env.*'],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        cookieDomainRewrite: { '*': '' },
+        secure: false,
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            const cookies = proxyRes.headers['set-cookie'];
+            if (cookies) {
+              proxyRes.headers['set-cookie'] = cookies.map((c: string) =>
+                c.replace(/;\s*SameSite=None/gi, '; SameSite=Lax')
+                 .replace(/;\s*Secure/gi, '')
+              );
+            }
+          });
+        },
       },
       '/robots.txt': {
         target: 'http://localhost:8080',

@@ -75,7 +75,7 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     };
 
     const flushSessionSummary = (ended: boolean) => {
-      if (!storeSlug || !config || (!config.is_facebook_enabled && !config.is_tiktok_enabled)) return;
+      if (!storeSlug) return;
 
       const flushKey = `${location.pathname}|${pageEnterAtRef.current}`;
       if (lastFlushRef.current === flushKey) return;
@@ -125,10 +125,11 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       window.removeEventListener('scroll', updateScrollDepth);
       window.removeEventListener('pagehide', onPageHide);
     };
-  }, [config, location.pathname, location.search, storeSlug]);
+  }, [location.pathname, location.search, storeSlug]);
 
+  // Always track PageView to backend (independent of pixel config)
   useEffect(() => {
-    if (!config || (!config.is_facebook_enabled && !config.is_tiktok_enabled)) return;
+    if (!storeSlug) return;
 
     const lastPageViewKey = sessionStorage.getItem('last_pageview_key');
     const currentKey = `${storeSlug}|${location.pathname}`;
@@ -136,7 +137,46 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       sessionStorage.setItem('last_pageview_key', currentKey);
       trackPageView(storeSlug);
     }
-  }, [config, location.pathname, storeSlug]);
+  }, [location.pathname, storeSlug]);
+
+  // Auto-track Purchase events by intercepting order creation API calls.
+  // This runs globally so ALL templates get tracking without individual changes.
+  useEffect(() => {
+    if (!storeSlug) return;
+
+    const originalFetch = window.fetch;
+    window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
+      const response = await originalFetch.call(window, input, init);
+
+      try {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+        if (url.includes('/api/orders/create') && init?.method?.toUpperCase() === 'POST' && response.ok) {
+          const body = typeof init.body === 'string' ? JSON.parse(init.body) : null;
+          if (body) {
+            // Clone to read response without consuming it
+            const cloned = response.clone();
+            cloned.json().then((data: any) => {
+              trackAllPixels(PixelEvents.PURCHASE, {
+                content_ids: [body.product_id],
+                content_name: body.product_name || '',
+                value: body.total_price,
+                currency: 'DZD',
+                order_id: data?.orderId || data?.order_id || '',
+              });
+            }).catch(() => {});
+          }
+        }
+      } catch {
+        // Non-critical: don't break order flow if tracking fails
+      }
+
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [storeSlug]);
 
   // Inject Facebook Pixel (supports multiple comma-separated IDs)
   useEffect(() => {
@@ -286,7 +326,7 @@ export function trackTikTokEvent(eventName: string, params?: Record<string, any>
 function trackToBackend(storeSlug: string, eventName: string, params?: Record<string, any>) {
   if (!storeSlug) return;
 
-  const pixelType = backendPixelTypePreference || 'facebook';
+  const pixelType = backendPixelTypePreference || 'platform';
 
   const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
   const utm_source = url?.searchParams.get('utm_source') || '';

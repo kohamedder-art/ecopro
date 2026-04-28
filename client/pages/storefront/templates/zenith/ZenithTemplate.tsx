@@ -1,27 +1,89 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { ChevronDown, Phone, ShoppingCart, ShieldCheck } from 'lucide-react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useImageClassifier } from '@/hooks/useImageClassifier';
+import { useOrderFields } from '@/hooks/useOrderFields';
+import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
+import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 
-export default function ZenithTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
-  const accentColor = settings?.template_accent_color || settings?.primary_color || '#000000';
+export default function ZenithTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView, initialProductSlug }: TemplateProps) {
+  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#000000';
+  const bgColor = settings?.template_bg_color || '#f3f4f6';
+  const primaryColor = settings?.primary_color || '#111827';
+
+  const isDark = useMemo(() => {
+    const hex = bgColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, [bgColor]);
+
+  const headerColor = settings?.iyco_header_color || (isDark ? '#1e293b' : '#ffffff');
+
+  const isHeaderDark = useMemo(() => {
+    const hex = headerColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, [headerColor]);
+
+  const isLight = (hex: string) => {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.substring(0, 2), 16);
+    const g = parseInt(h.substring(2, 4), 16);
+    const b = parseInt(h.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 >= 128;
+  };
+
+  const textColor = isDark ? (isLight(primaryColor) ? primaryColor : '#f1f5f9') : primaryColor;
+  const textMuted = isDark ? (isLight(primaryColor) ? primaryColor + 'aa' : '#94a3b8') : '#6b7280';
+  const borderColor = isDark ? '#334155' : '#e5e7eb';
+  const surfaceMuted = isDark ? '#0f172a' : '#f3f4f6';
+  const surfaceColor = headerColor;
+  const surfaceTextColor = isHeaderDark ? (isLight(primaryColor) ? primaryColor : '#f1f5f9') : primaryColor;
+  const surfaceTextMuted = isHeaderDark ? (isLight(primaryColor) ? primaryColor + 'aa' : '#94a3b8') : '#6b7280';
+  const surfaceBorderColor = isHeaderDark ? '#334155' : '#e5e7eb';
+  const inputBg = isHeaderDark ? 'rgba(255,255,255,0.06)' : '#ffffff';
+
   const formRef = useRef<HTMLDivElement>(null);
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
+  const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+  // Countdown timer
+  const [timeLeft, setTimeLeft] = useState({ h: 1, m: 59, s: 59 });
+  useEffect(() => {
+    const t = setInterval(() => setTimeLeft(prev => {
+      if (prev.s > 0) return { ...prev, s: prev.s - 1 };
+      if (prev.m > 0) return { ...prev, m: prev.m - 1, s: 59 };
+      if (prev.h > 0) return { h: prev.h - 1, m: 59, s: 59 };
+      return prev;
+    }), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
+  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
+  useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const deliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [commune, setCommune] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerNotes, setCustomerNotes] = useState('');
 
-  // Main product
-  const mainProduct = (settings?.dzp_main_product_id
+  const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug) : null)
+    || (settings?.dzp_main_product_id
     ? products?.find((p: any) => String(p.id) === String(settings?.dzp_main_product_id))
     : null) || products?.[0] || {
     id: 0,
@@ -31,21 +93,39 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     images: [],
   };
 
+  useEffect(() => { if (mainProduct?.id && onProductView) onProductView(mainProduct as any); }, [mainProduct?.id]);
+
+  // Variant system
+  const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
+
+  // Offers system
+  const { offers } = useProductOffers(storeSlug, mainProduct?.id);
+  const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
+  useEffect(() => { if (offers.length > 0 && !selectedOffer) { const f = offers[0]; setSelectedOffer({ offer_id: f.id, quantity: f.quantity, bundle_price: f.bundle_price, free_delivery: f.free_delivery }); setQuantity(f.quantity); } }, [offers]);
+  const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); if (o) setQuantity(o.quantity); else setQuantity(1); };
+  const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
+
   const productPrice = mainProduct?.price ?? 3900;
   const productImages = mainProduct?.images && mainProduct.images.length > 0 ? mainProduct.images : [];
+
+  const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
+  const videoEmbed = useMemo(() => {
+    if (!videoUrl) return null;
+    const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (yt) return { type: 'youtube' as const, id: yt[1] };
+    if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
+    return { type: 'iframe' as const, url: videoUrl };
+  }, [videoUrl]);
   const currency = settings?.currency_code || 'د.ج';
 
-  // Editable text fields
   const storeName = settings?.zenith_store_name || settings?.store_name || 'STORE';
   const ctaText = settings?.zenith_cta_text || settings?.template_button_text || 'اطلب الان';
   const formTitle = settings?.zenith_form_title || 'معلومات الطلب';
   const submitText = settings?.zenith_submit_text || 'تأكيد الطلب';
 
-  // Smart image classification: prefers tall images for landing strips
   const { getSlotImages } = useImageClassifier(productImages, 'zenith');
   const classifiedLanding = getSlotImages('landing');
 
-  // Landing images (stacked Canva slices)
   const landingImages: string[] = (() => {
     if (settings?.zenith_landing_images && Array.isArray(settings.zenith_landing_images) && settings.zenith_landing_images.length > 0) {
       return settings.zenith_landing_images;
@@ -73,7 +153,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
     try {
       setIsSubmitting(true);
-      const address = `${selectedWilaya?.labelAR || ''} - ${commune}`;
+      const address = [selectedWilaya?.labelAR || '', commune, customerAddress, customerNotes].filter(Boolean).join(' - ');
 
       const res = await fetch('/api/orders/create', {
         method: 'POST',
@@ -81,17 +161,22 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         body: JSON.stringify({
           store_slug: storeSlug,
           product_id: mainProduct.id,
-          quantity,
-          total_price: productPrice * quantity,
+          ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
+          quantity: selectedOffer?.quantity || quantity,
+          ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
+          total_price: selectedOffer ? selectedOffer.bundle_price : productPrice * quantity,
           delivery_fee: deliveryFee,
           delivery_type: 'desk',
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_address: address,
+          shipping_wilaya_id: selectedWilayaId,
         }),
       });
 
       const data = await res.json();
+      setLastOrderId(data.order?.id || null);
+      setLastTelegramUrl(data.telegramStartUrl || null);
       if (res.ok) {
         setOrderSuccess(true);
       } else {
@@ -104,22 +189,22 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     }
   };
 
-  // Order success screen
   if (orderSuccess) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6" dir="rtl">
-        <div className="max-w-md mx-auto bg-white rounded-2xl p-8 shadow-xl text-center w-full">
-          <div className="w-20 h-20 rounded-full bg-green-50 mx-auto mb-4 flex items-center justify-center">
-            <ShieldCheck size={36} className="text-green-600" />
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: surfaceMuted, color: textColor }} dir="rtl">
+        <div className="max-w-md mx-auto rounded-2xl p-8 shadow-xl text-center w-full" style={{ backgroundColor: surfaceColor }}>
+          <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: accentColor + '15' }}>
+            <ShieldCheck size={36} style={{ color: accentColor }} />
           </div>
-          <h2 className="text-2xl font-black text-gray-900 mb-2">تم تسجيل طلبك بنجاح! 🎉</h2>
-          <p className="text-gray-500 text-sm mb-6">سنتصل بك قريباً لتأكيد الطلب</p>
-          <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 text-right">
-            <div className="flex justify-between"><span className="text-gray-500">المنتج</span><span className="font-bold">{mainProduct.title}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">الكمية</span><span className="font-bold">{quantity}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">التوصيل</span><span className="font-bold">{deliveryFee} {currency}</span></div>
-            <div className="h-px bg-gray-200 my-1" />
-            <div className="flex justify-between"><span className="font-black">المجموع</span><span className="font-black text-lg">{totalCost} {currency}</span></div>
+          <h2 className="text-2xl font-black mb-2" style={{ color: surfaceTextColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
+          <p className="text-sm mb-6" style={{ color: surfaceTextMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+          <div className="rounded-xl p-4 text-sm space-y-2 text-right" style={{ backgroundColor: surfaceMuted }}>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>المنتج</span><span className="font-bold" style={{ color: textColor }}>{mainProduct.title}</span></div>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>الكمية</span><span className="font-bold" style={{ color: textColor }}>{quantity}</span></div>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>التوصيل</span><span className="font-bold" style={{ color: textColor }}>{Math.round(deliveryFee ?? 0).toLocaleString()} {currency}</span></div>
+            <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
+            <div className="flex justify-between"><span className="font-black" style={{ color: textColor }}>المجموع</span><span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(totalCost ?? 0).toLocaleString()} {currency}</span></div>
           </div>
         </div>
       </div>
@@ -127,207 +212,257 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   }
 
   return (
-    <div className="min-h-screen font-sans text-gray-900" style={{ backgroundColor: settings?.template_bg_color || '#f3f4f6' }} dir="rtl">
-
-      {/* Mobile Container */}
-      <div className="max-w-md mx-auto bg-white min-h-screen relative shadow-2xl">
+    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
+      <div className="w-full lg:max-w-6xl lg:mx-auto lg:grid lg:grid-cols-2 lg:shadow-2xl min-h-screen relative" style={{ backgroundColor: surfaceColor }}>
 
         {/* ── STICKY HEADER ── */}
-        <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div className="sticky top-0 z-50 backdrop-blur-md px-4 py-3 flex items-center justify-between lg:col-span-2" style={{ backgroundColor: surfaceColor + 'f2', borderBottom: `1px solid ${surfaceBorderColor}` }}>
           <div className="flex items-center gap-2">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover" />}
-            <div
-              className="font-black text-xl tracking-wider text-black"
-              contentEditable={canManage}
-              suppressContentEditableWarning
-              onBlur={handleTextEdit('zenith_store_name')}
-            >
+            <div className="font-black text-xl tracking-wider" style={{ color: surfaceTextColor }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('zenith_store_name')}>
               {storeName}
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-left flex flex-col">
-              <span className="text-xs text-gray-500 font-bold">السعر</span>
-              <span className="font-black text-lg leading-none" dir="ltr">
-                {productPrice} {currency}
-              </span>
+              <span className="text-xs font-bold" style={{ color: surfaceTextMuted }}>السعر</span>
+              <span className="font-black text-lg leading-none" style={{ color: surfaceTextColor }} dir="ltr">{Math.round(productPrice ?? 0).toLocaleString()} {currency}</span>
             </div>
-            <button
-              onClick={scrollToForm}
-              className="text-white px-5 py-2 rounded-full font-bold text-sm shadow-md active:scale-95 transition-transform"
-              style={{ backgroundColor: accentColor }}
-              contentEditable={canManage}
-              suppressContentEditableWarning
-              onBlur={handleTextEdit('zenith_cta_text')}
-            >
+            <button onClick={scrollToForm} className="text-white px-5 py-2 rounded-full font-bold text-sm shadow-md active:scale-95 transition-transform" style={{ backgroundColor: accentColor }}>
               {ctaText}
             </button>
           </div>
         </div>
 
-        {/* ── LONG IMAGE STACK ── */}
-        <div className="w-full flex flex-col">
-          {landingImages.length > 0 ? (
-            landingImages.map((imgUrl, index) => (
-              <img
-                key={index}
-                src={imgUrl}
-                alt={`Landing slice ${index + 1}`}
-                className="w-full h-auto block"
-                loading={index === 0 ? 'eager' : 'lazy'}
-              />
-            ))
-          ) : (
-            <div className="w-full aspect-[3/4] bg-gradient-to-b from-gray-200 to-gray-300 flex items-center justify-center">
-              <p className="text-gray-500 text-sm">أضف صور المنتج من لوحة التحكم</p>
+        {/* ── LEFT COL: images ── */}
+        <div className="lg:sticky lg:top-12 lg:h-[calc(100vh-48px)] lg:overflow-y-auto">
+          {/* Discount badge */}
+          <div className="relative">
+            {(mainProduct as any)?.original_price && (mainProduct as any).original_price > productPrice && (
+              <div className="absolute top-3 right-3 z-10 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg" style={{ backgroundColor: accentColor }}>
+                وفّر {Math.round((1 - productPrice / (mainProduct as any).original_price) * 100)}%
+              </div>
+            )}
+            <div className="w-full flex flex-col">
+              {videoEmbed && (
+                <div className="w-full aspect-video">
+                  {videoEmbed.type === 'youtube' ? (
+                    <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                  ) : videoEmbed.type === 'video' ? (
+                    <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                  ) : (
+                    <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
+                  )}
+                </div>
+              )}
+              {landingImages.length > 0 ? (
+                landingImages.map((imgUrl, index) => (
+                  <img key={index} src={imgUrl} alt={`Landing slice ${index + 1}`} className="w-full h-auto block cursor-pointer" loading={index === 0 ? 'eager' : 'lazy'} onClick={() => setZoomImage(imgUrl)} />
+                ))
+              ) : (
+                <div className="w-full aspect-[3/4] flex items-center justify-center" style={{ background: `linear-gradient(to bottom, ${borderColor}, ${surfaceMuted})` }}>
+                  <p className="text-sm" style={{ color: textMuted }}>أضف صور المنتج من لوحة التحكم</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          {/* Social proof */}
+          <div className="px-4 py-3 flex items-center gap-3" style={{ borderTop: `1px solid ${surfaceBorderColor}` }}>
+            <div className="flex -space-x-1.5 rtl:space-x-reverse">
+              {['#f97316','#e11d48','#8b5cf6','#0ea5e9'].map((c, i) => (
+                <div key={i} className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-white text-[9px] font-bold" style={{ backgroundColor: c, borderColor: surfaceColor }}>
+                  {['أ','م','ي','س'][i]}
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="flex gap-0.5">{[1,2,3,4,5].map(s => <span key={s} className="text-xs" style={{ color: '#fbbf24' }}>★</span>)}</div>
+              <p className="text-xs font-bold" style={{ color: surfaceTextMuted }}>+240 عميل سعيد هذا الشهر</p>
+            </div>
+          </div>
+
+          {/* Trust badges */}
+          <div className="grid grid-cols-3 gap-2 px-4 py-3" style={{ borderTop: `1px solid ${surfaceBorderColor}` }}>
+            {[{icon: '📦', text: 'توصيل 58 ولاية'}, {icon: '💳', text: 'دفع عند الاستلام'}, {icon: '✅', text: 'ضمان الجودة'}].map((b, i) => (
+              <div key={i} className="text-center p-2 rounded-xl" style={{ backgroundColor: surfaceMuted }}>
+                <div className="text-xl mb-1">{b.icon}</div>
+                <p className="text-[10px] font-bold" style={{ color: surfaceTextMuted }}>{b.text}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
+        {/* ── RIGHT COL: form ── */}
+        <div className="lg:overflow-y-auto lg:h-[calc(100vh-48px)]">
+
         {/* ── ORDER FORM ── */}
-        <div ref={formRef} className="p-5 bg-gray-50 pb-24" id="checkout-form">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h2
-              className="text-xl font-black text-center mb-6"
-              contentEditable={canManage}
-              suppressContentEditableWarning
-              onBlur={handleTextEdit('zenith_form_title')}
-            >
+        <div ref={formRef} className="p-5 pb-24 lg:pb-6" style={{ backgroundColor: surfaceMuted }} id="checkout-form">
+
+          {/* Countdown */}
+          <div className="flex items-center justify-center gap-2 mb-4 p-3 rounded-xl" style={{ backgroundColor: accentColor + '15', border: `1px solid ${accentColor}30` }}>
+            <span className="text-xs font-bold" style={{ color: accentColor }}>ينتهي العرض خلال:</span>
+            {[{ v: timeLeft.h, l: 'سا' }, { v: timeLeft.m, l: 'د' }, { v: timeLeft.s, l: 'ث' }].map(({ v, l }) => (
+              <div key={l} className="flex items-center gap-0.5">
+                <span className="text-white text-sm font-black w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                  {String(v).padStart(2, '0')}
+                </span>
+                <span className="text-xs font-bold" style={{ color: accentColor }}>{l}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl p-5 shadow-sm" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
+            <h2 className="text-xl font-black text-center mb-6" style={{ color: surfaceTextColor }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('zenith_form_title')}>
               {formTitle}
             </h2>
 
             <form onSubmit={handleOrder} className="space-y-4">
-
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">الاسم و اللقب</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="أدخل اسمك الكامل"
-                  className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-black focus:border-black outline-none transition-all"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
+              {(mainProduct as any)?.variants && (mainProduct as any).variants.length > 0 && (
+                <VariantSelector
+                  variants={(mainProduct as any).variants}
+                  selected={selectedVariant}
+                  onSelect={setSelectedVariant}
+                  accentColor={accentColor}
+                  currency={currency}
+                  basePrice={mainProduct.price}
                 />
+              )}
+              {offers.length > 0 && (
+                <OfferSelector
+                  offers={offers}
+                  unitPrice={productPrice}
+                  currency={currency}
+                  selectedOfferId={selectedOffer?.offer_id ?? null}
+                  onSelect={handleOfferSelect}
+                  accentColor={accentColor}
+                  textColor={surfaceTextColor}
+                  borderColor={surfaceBorderColor}
+                />
+              )}
+              <div>
+                <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الاسم و اللقب</label>
+                <input type="text" required placeholder="أدخل اسمك الكامل"
+                  className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-all"
+                  style={{ backgroundColor: inputBg, border: `1px solid ${surfaceBorderColor}`, color: surfaceTextColor }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = accentColor}
+                  onBlur={(e) => e.currentTarget.style.borderColor = surfaceBorderColor}
+                  value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
               </div>
 
-              {/* Phone */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">رقم الهاتف</label>
+                <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>رقم الهاتف</label>
                 <div className="relative">
-                  <input
-                    type="tel"
-                    required
-                    dir="ltr"
-                    placeholder="05 55 55 55 55"
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-right text-sm focus:ring-2 focus:ring-black focus:border-black outline-none transition-all"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                  />
-                  <Phone size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                  <input type="tel" required dir="ltr" placeholder="05 55 55 55 55"
+                    className="w-full rounded-lg px-4 py-3 text-right text-sm outline-none transition-all"
+                    style={{ backgroundColor: inputBg, border: `1px solid ${surfaceBorderColor}`, color: surfaceTextColor }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = accentColor}
+                    onBlur={(e) => e.currentTarget.style.borderColor = surfaceBorderColor}
+                    value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                  <Phone size={18} className="absolute left-3 top-3.5" style={{ color: surfaceTextMuted }} />
                 </div>
               </div>
 
-              {/* Wilaya */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">الولاية</label>
+                <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الولاية</label>
                 <div className="relative">
-                  <select
-                    required
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 focus:ring-black focus:border-black outline-none transition-all"
-                    value={selectedWilayaId ?? ''}
-                    onChange={(e) => setSelectedWilayaId(e.target.value ? Number(e.target.value) : null)}
-                  >
+                  <select required
+                    className="w-full rounded-lg px-4 py-3 text-sm appearance-none outline-none transition-all"
+                    style={{ backgroundColor: inputBg, border: `1px solid ${surfaceBorderColor}`, color: surfaceTextColor }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = accentColor}
+                    onBlur={(e) => e.currentTarget.style.borderColor = surfaceBorderColor}
+                    value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(e.target.value ? Number(e.target.value) : null)}>
                     <option value="">اختر الولاية</option>
                     {wilayas.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {String(w.id).padStart(2, '0')} - {w.labelAR}
-                        {w.homePrice ? ` (${w.homePrice} ${currency})` : ''}
-                      </option>
+                      <option key={w.id} value={w.id}>{String(w.id).padStart(2, '0')} - {w.labelAR}{w.homePrice ? ` (${w.homePrice} ${currency})` : ''}</option>
                     ))}
                   </select>
-                  <ChevronDown size={18} className="absolute left-3 top-3.5 text-gray-500 pointer-events-none" />
+                  <ChevronDown size={18} className="absolute left-3 top-3.5 pointer-events-none" style={{ color: surfaceTextMuted }} />
                 </div>
               </div>
 
-              {/* Commune */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">البلدية</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="أدخل بلديتك"
-                  className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-black focus:border-black outline-none transition-all"
-                  value={commune}
-                  onChange={(e) => setCommune(e.target.value)}
-                />
-              </div>
+              {showCommune && <div>
+                <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>البلدية</label>
+                <input type="text" placeholder="أدخل بلديتك"
+                  className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-all"
+                  style={{ backgroundColor: inputBg, border: `1px solid ${surfaceBorderColor}`, color: surfaceTextColor }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = accentColor}
+                  onBlur={(e) => e.currentTarget.style.borderColor = surfaceBorderColor}
+                  value={commune} onChange={(e) => setCommune(e.target.value)} />
+              </div>}
+              {showAddress && <div>
+                <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>العنوان</label>
+                <input type="text" placeholder="عنوان التوصيل" className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-all" style={{ backgroundColor: inputBg, border: `1px solid ${surfaceBorderColor}`, color: surfaceTextColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />
+              </div>}
+              {showNotes && <div>
+                <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>ملاحظات</label>
+                <textarea placeholder="ملاحظات إضافية" rows={2} className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-all resize-none" style={{ backgroundColor: inputBg, border: `1px solid ${surfaceBorderColor}`, color: surfaceTextColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />
+              </div>}
 
-              {/* Quantity */}
               <div className="pt-2">
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">الكمية</label>
-                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-1">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
-                  >-</button>
-                  <span className="font-black text-lg">{quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
-                  >+</button>
+                <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الكمية</label>
+                <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${surfaceBorderColor}` }}>
+                  <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="w-10 h-10 rounded-md font-bold text-xl flex items-center justify-center active:opacity-70"
+                    style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}`, color: surfaceTextColor }}>-</button>
+                  <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
+                  <button type="button" onClick={() => setQuantity(quantity + 1)}
+                    className="w-10 h-10 rounded-md font-bold text-xl flex items-center justify-center active:opacity-70"
+                    style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}`, color: surfaceTextColor }}>+</button>
                 </div>
               </div>
 
-              {/* Order Summary */}
-              <div className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <div className="mt-6 rounded-xl p-4" style={{ backgroundColor: surfaceMuted, border: `1px solid ${surfaceBorderColor}` }}>
+                <div className="flex justify-between text-sm mb-2" style={{ color: textMuted }}>
                   <span>سعر المنتج ({quantity})</span>
-                  <span className="font-bold" dir="ltr">{productPrice * quantity} {currency}</span>
+                  <span className="font-bold" style={{ color: textColor }} dir="ltr">{Math.round(productPrice * quantity).toLocaleString()} {currency}</span>
                 </div>
-                <div className="flex justify-between text-sm text-gray-600 mb-3">
+                <div className="flex justify-between text-sm mb-3" style={{ color: textMuted }}>
                   <span>سعر التوصيل</span>
-                  <span className="font-bold" dir="ltr">{deliveryFee} {currency}</span>
+                  <span className="font-bold" style={{ color: textColor }} dir="ltr">{Math.round(deliveryFee ?? 0).toLocaleString()} {currency}</span>
                 </div>
-                <div className="h-px w-full bg-gray-200 mb-3" />
+                <div className="h-px w-full mb-3" style={{ backgroundColor: borderColor }} />
                 <div className="flex justify-between items-center">
-                  <span className="font-black text-lg">المجموع:</span>
-                  <span className="font-black text-xl text-black" dir="ltr">
-                    {totalCost} {currency}
-                  </span>
+                  <span className="font-black text-lg" style={{ color: textColor }}>المجموع:</span>
+                  <span className="font-black text-xl" style={{ color: accentColor }} dir="ltr">{Math.round(totalCost ?? 0).toLocaleString()} {currency}</span>
                 </div>
               </div>
 
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
+              <button type="submit" disabled={isSubmitting}
                 className="w-full mt-2 text-white text-lg font-black py-4 rounded-xl shadow-lg active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-60"
-                style={{ backgroundColor: accentColor }}
-              >
+                style={{ backgroundColor: accentColor }}>
                 {isSubmitting ? 'جاري الإرسال...' : (
                   <>
-                    <span
-                      contentEditable={canManage}
-                      suppressContentEditableWarning
-                      onBlur={handleTextEdit('zenith_submit_text')}
-                    >{submitText}</span>
+                    <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('zenith_submit_text')}>{submitText}</span>
                     <ShoppingCart size={20} />
                   </>
                 )}
               </button>
 
-              <div className="flex items-center justify-center gap-1 mt-3 text-xs text-gray-500 font-bold">
-                <ShieldCheck size={14} className="text-green-600" />
+              <div className="flex items-center justify-center gap-1 mt-3 text-xs font-bold" style={{ color: textMuted }}>
+                <ShieldCheck size={14} style={{ color: accentColor }} />
                 الدفع يكون بعد استلام المنتج
               </div>
             </form>
           </div>
         </div>
 
+        {/* Platform Footer */}
+        <footer className="py-6 text-center text-xs" style={{ borderTop: `1px solid ${borderColor}`, color: textMuted }}>
+          © {new Date().getFullYear()} {storeName}. جميع الحقوق محفوظة · صنع بواسطة <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor, textDecoration: 'none' }}>Sahla4Eco</a>
+        </footer>
+        </div>{/* end right col */}
       </div>
+
+      {/* Image Zoom Modal */}
+      {zoomImage && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+            ✕
+          </button>
+          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }

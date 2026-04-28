@@ -38,8 +38,8 @@ CREATE TABLE chat_messages (
 -- Create code_requests table for code issuance tracking
 CREATE TABLE code_requests (
   id BIGSERIAL PRIMARY KEY,
-  chat_id BIGINT NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
-  client_id BIGINT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  chat_id BIGINT REFERENCES chats(id) ON DELETE CASCADE,
+  client_id BIGINT REFERENCES clients(id) ON DELETE CASCADE,
   code_tier VARCHAR(50) NOT NULL, -- bronze, silver, gold, etc.
   generated_code VARCHAR(255),
   expiry_date TIMESTAMP,

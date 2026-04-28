@@ -380,7 +380,7 @@ export default function FloatingChatBubble() {
   return (
     <>
       {/* ── Floating trigger button ── */}
-      <div className={`fixed bottom-6 z-[9999] ${isEditorPage ? 'left-6' : 'right-6'}`}>
+      <div className={`fixed bottom-4 z-[9999] ${isEditorPage ? 'left-4' : 'right-4'}`}>
         <div className="relative">
           {unreadMessagesCount > 0 && (
             <div className="absolute inset-0 rounded-full border-2 border-indigo-400 animate-ping opacity-60 pointer-events-none" />
@@ -388,7 +388,7 @@ export default function FloatingChatBubble() {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="relative w-14 h-14 rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-fuchsia-500 flex items-center justify-center text-white border border-white/20 transition-all duration-300 hover:scale-105 active:scale-95"
+            className="relative w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-fuchsia-500 flex items-center justify-center text-white border border-white/20 transition-all duration-300 hover:scale-105 active:scale-95"
             style={{
               boxShadow: unreadMessagesCount > 0
                 ? '0 0 0 4px rgba(99,102,241,0.25), 0 8px 32px rgba(99,102,241,0.55)'

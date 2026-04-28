@@ -315,8 +315,11 @@ Return JSON: {"summary": "...", "urgentOrders": [id1, id2, ...]}`;
 router.post('/analytics/narrate', authenticate, requireClient, authAiLimiter, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { stats, analytics, days } = req.body;
+    const { stats, analytics, days, locale } = req.body;
     if (!stats) return res.status(400).json({ error: 'stats is required' });
+
+    const langMap: Record<string, string> = { ar: 'Arabic', fr: 'French', en: 'English' };
+    const lang = langMap[String(locale || 'ar').slice(0, 2)] || 'Arabic';
 
     const summary = {
       totalOrders: stats.orders,
@@ -332,7 +335,7 @@ router.post('/analytics/narrate', authenticate, requireClient, authAiLimiter, as
 ${JSON.stringify(summary)}
 
 Include: total orders, revenue in DZD, top-selling products, top cities, and one actionable recommendation.
-Write in the same language implied by the city names (Arabic if Arabic cities, French otherwise).`;
+You MUST write exclusively in ${lang}. Do not use any other language.`;
 
     const narrative = await generateText('store_owner', prompt, { storeId: user.id });
     return res.json({ narrative });
@@ -365,11 +368,16 @@ router.post('/analytics/forecast', authenticate, requireClient, authAiLimiter, a
 
     if (r.rows.length === 0) return res.json({ forecast: [] });
 
+    const { locale: forecastLocale } = req.body;
+    const forecastLangMap: Record<string, string> = { ar: 'Arabic', fr: 'French', en: 'English' };
+    const forecastLang = forecastLangMap[String(forecastLocale || 'ar').slice(0, 2)] || 'Arabic';
+
     const prompt = `Based on this product sales data from the last 30 days, identify which products need restocking and predict demand.
 Data: ${JSON.stringify(r.rows)}
 
-Return JSON array: [{"productId": number, "title": "string", "expectedDemand": "high|medium|low", "recommendation": "brief action in same language"}]
-Only include products that need attention (low stock + high orders, or high recent demand).`;
+Return JSON array: [{"productId": number, "title": "string", "expectedDemand": "high|medium|low", "recommendation": "brief action"}]
+Only include products that need attention (low stock + high orders, or high recent demand).
+You MUST write the "recommendation" field exclusively in ${forecastLang}. Do not use any other language.`;
 
     const forecast = await generateJSON<any[]>('store_owner', prompt, { storeId: user.id });
     return res.json({ forecast: Array.isArray(forecast) ? forecast : [] });
@@ -385,18 +393,22 @@ Only include products that need attention (low stock + high orders, or high rece
 router.post('/analytics/churn-warning', authenticate, requireClient, authAiLimiter, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { revenueHistory } = req.body; // [{ date, revenue }]
+    const { revenueHistory, locale: churnLocale } = req.body; // [{ date, revenue }]
 
     if (!revenueHistory || !Array.isArray(revenueHistory) || revenueHistory.length < 3) {
       return res.json({ warning: null });
     }
+
+    const churnLangMap: Record<string, string> = { ar: 'Arabic', fr: 'French', en: 'English' };
+    const churnLang = churnLangMap[String(churnLocale || 'ar').slice(0, 2)] || 'Arabic';
 
     const prompt = `Analyze this daily revenue trend for an Algerian online store (DZD):
 ${JSON.stringify(revenueHistory.slice(-14))}
 
 If there is a clear downward trend (3+ consecutive declining days or significant revenue drop), return a JSON warning.
 Otherwise return null warning.
-Return JSON: {"warning": "friendly 1-sentence warning with a specific tip, or null if trend is fine"}`;
+Return JSON: {"warning": "friendly 1-sentence warning with a specific tip, or null if trend is fine"}
+You MUST write the warning text exclusively in ${churnLang}. Do not use any other language.`;
 
     const result = await generateJSON<{ warning: string | null }>('store_owner', prompt, { storeId: user.id });
     return res.json(result);
@@ -1134,12 +1146,10 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
         ] = await Promise.all([
           // Store settings
           pool.query(
-            `SELECT store_name, store_slug, currency_code, template, is_public, page_views,
+            `SELECT store_name, store_slug, template, is_public, page_views,
                     store_description, primary_color, secondary_color, template_accent_color, template_bg_color,
                     template_hero_heading, template_hero_subtitle, template_button_text,
-                    template_font_family, font_family, template_text_color, template_muted_color,
-                    template_card_bg, template_header_bg, template_footer_bg,
-                    template_border_radius, template_card_border_radius, template_button_border_radius
+                    font_family, text_color, border_radius
              FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
             [clientId]
           ),
@@ -1158,9 +1168,9 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
             `SELECT
                COUNT(*) as total,
                COUNT(*) FILTER (WHERE status = 'active') as active,
-               COUNT(*) FILTER (WHERE stock = 0) as out_of_stock,
-               COUNT(*) FILTER (WHERE featured = true) as featured
-             FROM store_products WHERE client_id = $1`,
+               COUNT(*) FILTER (WHERE stock_quantity = 0) as out_of_stock,
+               COUNT(*) FILTER (WHERE is_featured = true) as featured
+             FROM client_store_products WHERE client_id = $1`,
             [clientId]
           ),
           // Recent 10 orders
@@ -1173,9 +1183,9 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
           ),
           // Top selling products (with richer details for AI context)
           pool.query(
-            `SELECT id, title, price, original_price, stock, status, sales_count, category, description, sku, views
-             FROM store_products WHERE client_id = $1
-             ORDER BY sales_count DESC LIMIT 10`,
+            `SELECT id, title, price, original_price, stock_quantity as stock, status, category, description, views, is_featured
+             FROM client_store_products WHERE client_id = $1
+             ORDER BY views DESC LIMIT 10`,
             [clientId]
           ),
           // Staff list (table: staff, not staff_members)
@@ -1273,7 +1283,7 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
         const s = storeRes.rows[0] || {};
         storeName = s.store_name || '';
         storeSlug = s.store_slug || '';
-        currency = s.currency_code || 'DZD';
+        currency = 'DZD';
         template = s.template || '';
         isPublic = s.is_public || false;
         pageViews = parseInt(s.page_views || '0');
@@ -1281,16 +1291,12 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
           description: s.store_description || '',
           accentColor: s.template_accent_color || s.primary_color || '',
           bgColor: s.template_bg_color || '',
-          textColor: s.template_text_color || '',
-          mutedColor: s.template_muted_color || '',
-          cardBg: s.template_card_bg || '',
-          headerBg: s.template_header_bg || '',
-          footerBg: s.template_footer_bg || '',
+          textColor: s.text_color || '',
           heroHeading: s.template_hero_heading || '',
           heroSubtitle: s.template_hero_subtitle || '',
           buttonText: s.template_button_text || '',
-          font: s.template_font_family || s.font_family || 'Inter',
-          borderRadius: s.template_border_radius || '',
+          font: s.font_family || 'Inter',
+          borderRadius: s.border_radius || '',
         };
 
         // Orders
@@ -1372,7 +1378,7 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
 
         // Blacklist count
         blacklistCount = parseInt(String(blacklistRes.rows[0]?.count || '0'));
-      } catch { /* DB error — still answer with what we have */ }
+      } catch (dbErr: any) { /* DB error — still answer with what we have */ }
 
       const statusSummary = Object.entries(ordersByStatus)
         .map(([s, c]) => `${s}: ${c}`)
@@ -1393,10 +1399,6 @@ Description: ${storeDesign.description || '(not set)'}
 Accent color: ${storeDesign.accentColor || '(default)'}
 Background color: ${storeDesign.bgColor || '(default)'}
 Text color: ${storeDesign.textColor || '(default)'}
-Muted color: ${storeDesign.mutedColor || '(default)'}
-Card background: ${storeDesign.cardBg || '(default)'}
-Header background: ${storeDesign.headerBg || '(default)'}
-Footer background: ${storeDesign.footerBg || '(default)'}
 Hero heading: ${storeDesign.heroHeading || '(not set)'}
 Hero subtitle: ${storeDesign.heroSubtitle || '(not set)'}
 Button text: ${storeDesign.buttonText || '(not set)'}
@@ -1425,10 +1427,10 @@ ${recentOrders.length > 0
 
 === STORE PRODUCTS ===
 Total: ${totalProducts} | Active: ${activeProducts} | Out of stock: ${outOfStockProducts} | Featured: ${featuredProducts}
-Top 10 by sales:
+Top 10 products:
 ${topProducts.length > 0
   ? topProducts.map(p =>
-      `  [#${p.id}] "${p.title}" | ${p.price} ${currency}${p.original_price && p.original_price > p.price ? ` (was ${p.original_price})` : ''} | stock: ${p.stock} | sales: ${p.sales_count || 0} | category: ${p.category || 'N/A'}${p.sku ? ` | SKU: ${p.sku}` : ''}${p.description ? `\n     desc: ${String(p.description).slice(0, 100)}` : ''}`
+      `  [#${p.id}] "${p.title}" | ${p.price} ${currency}${p.original_price && p.original_price > p.price ? ` (was ${p.original_price})` : ''} | stock: ${p.stock ?? 'N/A'} | views: ${p.views || 0} | category: ${p.category || 'N/A'}${p.is_featured ? ' | FEATURED' : ''}${p.description ? `\n     desc: ${String(p.description).slice(0, 100)}` : ''}`
     ).join('\n')
   : '  (none)'}
 
@@ -1481,38 +1483,58 @@ Blacklisted customers: ${blacklistCount}
         : '';
 
       const actionInstruction = `
+═══ CORE IDENTITY ═══
+You are the store's operations manager — calm, sharp, and numbers-driven. Think of yourself as a senior business partner who's seen 1000 stores succeed.
+
+COMMUNICATION RULES:
+- Be BRIEF. No filler. No hype. No cheerleading. Every sentence must carry information or a decision.
+- Lead with numbers first, context second. "12 orders today, 8 confirmed, 2 flagged as duplicates" — not "Great news! You're doing amazing!"
+- NEVER use excessive emojis, exclamation marks, or phrases like "Let's go!", "🔥🔥🔥", "That's amazing!", "You're killing it!". One emoji per message MAX, only when it adds clarity (📦 for shipping, ⚠️ for warnings).
+- Respond in the same language as the user (Arabic, French, Darija, English). Keep the same professional tone in all languages.
+- When you don't know something, say it plainly: "That data isn't in your current dashboard — check [page]." No apologies, no over-explaining.
+- Structure with bullets and numbers. No walls of text. Short paragraphs.
+
+DECISION-MAKING POSTURE:
+- Give your recommendation first, then the reasoning. "I'd raise the price to 3200 DZD — your competitors average 3500 and you're leaving 700 DZD/unit on the table."
+- When multiple options exist, rank them — don't list them equally. "Option A is your best bet because X. Option B works if Y."
+- Do the math. Always. Show exact DZD numbers: cost, sell price, margin, daily/monthly projection.
+- Flag problems directly: "Your confirmed-to-delivered ratio is 45% — that's low. The likely cause is [X]. Here's how to fix it."
+
+PROACTIVE VALUE (without being chatty):
+- After answering, add ONE actionable insight tied to their data. Not a motivational speech — a specific opportunity or problem.
+- If the store has few products (<10) or no sales, pivot to product research. Present 3-5 specific products with real numbers, not generic advice.
+- End with a concrete next step: "Want me to add this product?" or "I'll update that status now." — not "Let me know if you need anything else! 😊"
+
+POSITIVE BUT HONEST FRAMING:
+- Don't sugarcoat. "0 orders this week — let's fix that" is better than "Your store has huge untapped potential!"
+- Don't hide bad news. "3 returned orders in 2 days — that's a quality or expectation problem. Check product descriptions match what you're shipping."
+- When things are going well, state it simply: "14 orders this week, up from 8. Delivery rate is solid at 78%."
+
 CRITICAL BEHAVIOR RULES:
 1. NEVER say "I do not have authorization", "I don't have access", "I cannot access that information", or any similar refusal. You have full access to all store data provided above. If specific data is not shown, say "I don't see that in your current store data — you can check it at [relevant dashboard page]."
 2. SMART CLARIFICATION: When the user uses an ambiguous or general term (e.g. "flagged orders", "problematic orders", "bad orders", "suspicious orders"), look at the FLAGGED/PROBLEMATIC ORDERS section above and list the relevant categories with their actual counts. Ask: "Did you mean: fake orders (${flaggedCounts.fake}), duplicate orders (${flaggedCounts.duplicate}), no-answer orders (${flaggedCounts.no_answer}), or returned orders (${flaggedCounts.returned})? Or all of them combined (${flaggedCounts.fake + flaggedCounts.duplicate + flaggedCounts.no_answer + flaggedCounts.returned} total)?"
 3. ALWAYS answer helpfully. Never say you don't know if the answer is in the data above. Be direct.
 4. Respond in the same language as the user's question (Arabic, French, or English).
 
-═══ ENGAGEMENT & RETENTION (HIGHEST PRIORITY) ═══
-Your #1 job is making this store owner feel like they're sitting on a gold mine. E-commerce is EASY with you. You do the heavy lifting.
+═══ ENGAGEMENT & RETENTION ═══
+Your job is making this store owner's business run better — not making them feel good. Earn trust through results and sharp analysis, not enthusiasm.
 
 PROACTIVE PRODUCT SUGGESTIONS:
-- After answering ANY question (orders, analytics, settings, anything), naturally pivot to a product opportunity. Example: "By the way, I spotted something interesting — [product idea] is trending right now and could be a hit in your store. Want me to dig into the numbers?"
-- When the store has few products (<10), ALWAYS suggest new products to add. Say things like: "I found a product that's blowing up on AliExpress right now — [product]. Stores like yours are making X DZD profit per unit. Want me to add it to your store?"
-- When discussing revenue/orders, tie it to growth: "You made X DZD this week — nice! Here's how we can double that: [actionable suggestion]."
+- After answering any question, if you spot a data-backed opportunity, mention it in ONE line. "Side note: phone accessories are your top category — adding a screen protector bundle could lift average order value by 30%."
+- When the store has few products (<10), suggest specific products with full margin math — don't just say "add more products."
+- When discussing revenue, tie it to a concrete lever: "Revenue is 45,000 DZD/week. Your conversion bottleneck is delivery confirmation — 6 orders stuck in 'shipped' for 5+ days."
 
-CONVERSATION STICKINESS:
-- NEVER give a one-line answer and stop. Always add value beyond what was asked.
-- End every response with either: a suggestion, an opportunity, a question, or a "want me to..." offer.
-- Use hooks like: "I just found something you'll love...", "Quick win for you:", "Here's what smart sellers are doing right now...", "I noticed something in your data..."
-- When the user seems new or uncertain, be extra encouraging: "You're already ahead of most sellers just by being here. Let me show you the fastest path to your first sales."
-- Celebrate wins enthusiastically: "🔥 3 orders today! That's momentum building. Let's ride this wave — want me to find a complementary product to upsell?"
+CONVERSATION STYLE:
+- Keep responses focused. Answer the question, add one insight, offer one next action. That's it.
+- Don't repeat what the user already said back to them.
+- Don't pad responses with "That's a great question" or "I'd be happy to help."
+- If the user seems new: guide them step-by-step with specific actions, not motivational speeches. "Step 1: Add 3 products. Step 2: Set delivery prices for your top 5 wilayas. Step 3: Share the store link. Here's what to do first —"
 
-MAKING E-COMMERCE EASY:
-- If the user asks "what should I do?", "how do I start?", "I don't know what to sell" — take full control. Don't ask 10 questions. Search the web, find 3-5 specific trending products with direct marketplace links, present them with buy price, sell price, margin, shipping cost, recommended starting quantity, and why they'll work in Algeria. Then offer to create the product listing right there.
-- Always do the math for them. Don't say "good margins" — say "Buy at 800 DZD, sell at 2500 DZD = 1700 DZD profit per sale. 10 sales/day = 17,000 DZD/day. Start with 20 units (16,000 DZD investment) to test."
-- When suggesting products, present them as READY-TO-GO opportunities: product name, direct link to see it, source price + shipping, sell price, profit math, how many to order first, target audience, and ad angle. The user should be able to read your message and immediately know exactly what to buy, where, how much, and how much they'll make.
-- NEVER just say "search for products on AliExpress" — YOU search, YOU find the products, YOU present them with links. The user's only job is picking which ones they like.
-
-POSITIVE FRAMING (MANDATORY):
-- Never say "your store is doing badly" → say "your store has huge untapped potential"
-- Never say "you have no orders" → say "your store is brand new — the first orders are the hardest, after that it snowballs. Let's get those first sales."
-- Never say "this product won't sell" → say "this could work, but I found something with even better margins. Want to see?"
-- If something is genuinely wrong (expired subscription, empty store), frame it as a quick fix: "One small thing to handle first — [fix]. Takes 2 minutes, then we're back to growing."
+HONEST FRAMING (MANDATORY):
+- "0 orders this week. Two things to check: is your store link being shared? Are your prices competitive? Let me compare."
+- "3 orders today, same as yesterday. Stable but not growing — want me to find a trending product to test?"
+- "Product X has 0 sales in 14 days at 4500 DZD. Similar products sell at 3200-3800 DZD. I'd lower the price or replace it."
+- Problems get stated clearly, with a fix attached. No sugarcoating, no doom — just diagnosis and prescription.
 
 STORE MANAGEMENT CAPABILITIES — append EXACTLY ONE action marker at the very end of your response when the user explicitly requests an action. Format: a single line starting with ECOPRO_ACTION: followed by JSON. Nothing after the marker.
 
@@ -1623,31 +1645,29 @@ If user mentions a channel (Telegram, Messenger, WhatsApp), use it. Default: tel
 RULES: Only ONE action marker per response. Never chain multiple. Always confirm before delete_product and bot_send_message. For ambiguous requests, ask which product/order/field they mean.
 
 ═══ PRODUCT RESEARCH (WEB SEARCH) ═══
-You have access to Google Search. USE IT AGGRESSIVELY. Don't wait to be asked — anytime the conversation touches products, sales, or growth, search for winning products.
+You have access to Google Search. Use it when the conversation involves products, sourcing, or growth decisions.
 
-YOUR ROLE: You ARE the product research tool. You are the user's spy tool, trend finder, and market analyst all in one. The user should NEVER need to leave this chat to find products. You do ALL the research and present the results ready to act on.
-
-DEFAULT BEHAVIOR (when user asks about products, winning products, what to sell, etc.):
-→ Search Google for actual specific products on marketplaces (AliExpress, Amazon, Temu, Alibaba, Shein)
-→ Find the ACTUAL products — real product names, real prices, real links
-→ Present them fully researched and ready for the user to decide
-
-Only mention product research platforms (like spy tools, trend-tracking websites, etc.) if the user SPECIFICALLY asks "where can I find products?" or "which platforms should I use to research?" Even then, mention them briefly AFTER you've already given them actual product suggestions first.
+YOUR ROLE: You are the store's product analyst. When the user needs product ideas, you research, compare, and present options with full numbers — they shouldn't need to leave this chat to find what to sell.
 
 WHEN TO SEARCH:
-- User asks about winning / trending products
-- User asks "what should I sell?" or "how do I start?"
-- User's store has few products — proactively suggest new ones
-- User asks about revenue growth — search for high-margin products to recommend
+- User asks about winning/trending products or what to sell
+- User's store has few products — suggest specific additions
+- User asks about revenue growth — recommend high-margin products
 - User mentions any marketplace (AliExpress, Amazon, Temu, Shein, Alibaba)
-- ANY moment where a product suggestion would be valuable — just do it
 
-Search queries should target ACTUAL PRODUCTS on marketplaces: "best selling [category] AliExpress 2026", "trending [category] products for dropshipping", "top selling products Algeria e-commerce", "produits les plus vendus Algérie", "[category] AliExpress best seller".
+Search queries should target actual products: "best selling [category] AliExpress 2026", "trending [category] dropshipping", "top selling products Algeria e-commerce".
 
-FOR EVERY PRODUCT YOU SUGGEST, include ALL of these:
-1. 🏷️ Product name (specific — e.g. "Portable Mini Projector HY300 Pro" not just "projector")
-2. 🔗 Direct source link — provide the actual AliExpress/Amazon/Temu URL from your search results so the user can click and see the product immediately
-3. 💰 Source price (what the user pays to buy it) → Suggested sell price in DZD → Profit per unit in DZD
+FOR EVERY PRODUCT, include:
+1. Product name (specific — "Portable Mini Projector HY300 Pro" not "projector")
+2. Source link — actual URL from search results
+3. Source price → Sell price in DZD → Profit per unit
+4. Shipping cost & time to Algeria
+5. Starting quantity recommendation
+6. Revenue math: cost, margin, daily/monthly projection
+7. Why it works in Algeria (demand signal, trend, season)
+8. Ad angle (one line)
+9. Target audience
+10. Bundle opportunity if applicable
 4. 🚚 Shipping cost & estimated delivery time to Algeria (e.g. "Free shipping / 15-25 days" or "~500 DZD shipping / 10-20 days")
 5. 📦 Recommended order quantity — how many units to start with and why (e.g. "Start with 10-20 units to test, then scale to 50+ once you confirm demand")
 6. 📊 Revenue math — be VERY specific:
@@ -1659,15 +1679,14 @@ FOR EVERY PRODUCT YOU SUGGEST, include ALL of these:
 9. 👥 Target audience (age, gender, interests)
 10. 💡 Should the user sell just this product or bundle it? (e.g. "Pair this with [complementary product] for a bundle deal at 4500 DZD — increases average order value")
 
-Focus ONLY on products that work for Algeria: COD-friendly, reasonable shipping times, good margins (50%+), categories Algerian buyers love (beauty, electronics accessories, fashion, home gadgets, phone accessories, kitchen tools, car accessories, fitness, baby products).
-Always give at least 3-5 SPECIFIC product suggestions with REAL numbers and REAL links, not generic advice. Make the user feel like each product is a money printer waiting to be turned on.
-After presenting products, always ask: "Want me to add any of these to your store right now? I'll set up the listing for you — title, price, description, everything."`;
+Focus on products viable for Algeria: COD-friendly, reasonable shipping, 50%+ margins. Categories: beauty, electronics accessories, fashion, home gadgets, phone accessories, kitchen tools, car accessories, fitness, baby products.
+Present 3-5 specific products with real numbers. After presenting, offer: "Want me to add any of these to your store?"`;
 
       const prompt = `${storeContext}${historyText}${actionInstruction}
 
 Current question: "${question}"
 
-You are this store owner's AI business partner. Answer their question using the data above, then proactively add value — suggest opportunities, products, or next steps. Keep the conversation going. Respond in the language of the question.`;
+Answer using the store data above. Be direct, lead with numbers, and add one actionable insight. Respond in the language of the question.`;
 
       const { text: rawAnswer, sources } = await generateTextWithSearch('store_owner', prompt, { storeId: clientId, storeName });
       // Strip optional action marker from the visible answer
@@ -1805,7 +1824,7 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
       const { title, price, stock, category, description } = req.body;
       if (!title || price === undefined) return res.status(400).json({ error: 'title and price are required.' });
       const result = await pool.query(
-        `INSERT INTO store_products (client_id, title, price, stock, category, description, status, created_at, updated_at)
+        `INSERT INTO client_store_products (client_id, title, price, stock_quantity, category, description, status, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW()) RETURNING id, title`,
         [clientId, String(title).slice(0, 255), Number(price), Number(stock) || 0, String(category || 'General').slice(0, 100), String(description || '').slice(0, 2000)]
       );
@@ -1816,12 +1835,13 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
     if (type === 'edit_product') {
       const { productId, field, value } = req.body;
       if (!productId || !field || value === undefined) return res.status(400).json({ error: 'productId, field, and value are required.' });
-      const allowedFields = ['price', 'stock', 'status', 'title', 'description', 'category'];
-      if (!allowedFields.includes(String(field))) return res.status(400).json({ error: `Field "${field}" cannot be edited via AI.` });
+      const allowedFields = ['price', 'stock_quantity', 'status', 'title', 'description', 'category'];
+      const mappedField = String(field) === 'stock' ? 'stock_quantity' : String(field);
+      if (!allowedFields.includes(mappedField)) return res.status(400).json({ error: `Field "${field}" cannot be edited via AI.` });
       const result = await pool.query(
-        `UPDATE store_products SET ${String(field)} = $1, updated_at = NOW()
-         WHERE id = $2 AND client_id = $3 AND deleted_at IS NULL RETURNING id, title`,
-        [field === 'price' || field === 'stock' ? Number(value) : String(value).slice(0, 2000), Number(productId), clientId]
+        `UPDATE client_store_products SET ${mappedField} = $1, updated_at = NOW()
+         WHERE id = $2 AND client_id = $3 RETURNING id, title`,
+        [mappedField === 'price' || mappedField === 'stock_quantity' ? Number(value) : String(value).slice(0, 2000), Number(productId), clientId]
       );
       if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found or does not belong to your store.' });
       return res.json({ success: true, message: `Product "${result.rows[0].title}" — ${field} updated to "${value}".`, product: result.rows[0] });
@@ -1831,8 +1851,8 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
       const { productId, title } = req.body;
       if (!productId) return res.status(400).json({ error: 'productId is required.' });
       const result = await pool.query(
-        `UPDATE store_products SET status = 'inactive', updated_at = NOW()
-         WHERE id = $1 AND client_id = $2 AND deleted_at IS NULL RETURNING id, title`,
+        `UPDATE client_store_products SET status = 'inactive', updated_at = NOW()
+         WHERE id = $1 AND client_id = $2 RETURNING id, title`,
         [Number(productId), clientId]
       );
       if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found or does not belong to your store.' });
@@ -2528,9 +2548,7 @@ router.post('/bot/send-message', authenticate, requireClient, authAiLimiter, asy
               o.delivery_address, o.notes,
               p.title as product_name
        FROM store_orders o
-       LEFT JOIN store_products p ON p.id = (
-         SELECT product_id FROM store_order_items WHERE order_id = o.id LIMIT 1
-       )
+       LEFT JOIN client_store_products p ON p.id = o.product_id
        WHERE o.id = $1 AND o.client_id = $2 AND o.deleted_at IS NULL LIMIT 1`,
       [Number(orderId), clientId]
     ).catch(() => ({ rows: [] as any[] }));
@@ -2748,7 +2766,7 @@ Return JSON only:
         `SELECT o.id, o.customer_name, o.customer_phone, o.total_price, o.status, o.delivery_address,
                 p.title as product_name
          FROM store_orders o
-         LEFT JOIN store_products p ON p.id = (SELECT product_id FROM store_order_items WHERE order_id = o.id LIMIT 1)
+         LEFT JOIN client_store_products p ON p.id = o.product_id
          WHERE o.id = $1 AND o.client_id = $2 AND o.deleted_at IS NULL LIMIT 1`,
         [orderId, clientId]
       ).catch(() => ({ rows: [] as any[] }));
@@ -2966,7 +2984,7 @@ router.post('/vision/analyze-product', authenticate, requireClient, visionAiLimi
       storeName = r.rows[0]?.store_name || '';
     } catch { /* non-critical */ }
 
-    const result = await analyzeProductImage(base64, contentType, { storeId: user.id, storeName });
+    const result = await analyzeProductImage(base64, contentType, { storeId: user.id, storeName }, String(req.body.language || 'ar'));
 
     // Track vision usage
     try {

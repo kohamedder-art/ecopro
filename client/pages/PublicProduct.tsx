@@ -171,9 +171,9 @@ const PublicProduct: React.FC = () => {
               <span className="text-green-600 ml-2">· 135 views</span>
             </div>
             <div className="flex items-end gap-3 mt-2">
-              <span className="text-2xl md:text-xl md:text-2xl lg:text-lg md:text-xl md:text-2xl font-bold text-green-600">${Math.round(Number(product.price) || 0)}</span>
+              <span className="text-2xl md:text-xl md:text-2xl lg:text-lg md:text-xl md:text-2xl font-bold text-green-600">{Math.round(Number(product.price) || 0)} دج</span>
               {hasDiscount && (
-                <span className="text-2xl text-gray-400 dark:text-gray-500 line-through">${Math.round(Number(product.original_price) || 0)}</span>
+                <span className="text-2xl text-gray-400 dark:text-gray-500 line-through">{Math.round(Number(product.original_price) || 0)} دج</span>
               )}
             </div>
             <div className="flex gap-2 mt-2">

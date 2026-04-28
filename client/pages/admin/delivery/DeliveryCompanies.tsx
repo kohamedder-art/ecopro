@@ -1,10 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Truck, Key, CheckCircle2, X, ExternalLink, Zap, Globe } from "lucide-react";
+import { Truck, Key, CheckCircle2, X, ExternalLink, Zap, Wifi, WifiOff, Settings2, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "@/lib/i18n";
 import { DELIVERY_LOGO_FALLBACK_SRC, getDeliveryCompanyLogoSrc } from "@/lib/deliveryLogos";
@@ -15,6 +15,7 @@ interface DeliveryCompany {
   name: string;
   logo: string;
   description: string;
+  descriptionKey?: string;
   apiFields: {
     label: string;
     placeholder: string;
@@ -61,7 +62,7 @@ export default function DeliveryCompanies() {
 
   // Only allow providers with working integrations to be configured.
   const isComingSoon = (company: DeliveryCompany) => {
-    const openIds = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd'];
+    const openIds = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'ecotrack', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro'];
     return !openIds.includes(company.id);
   };
   
@@ -70,7 +71,8 @@ export default function DeliveryCompanies() {
   // Based on research: Only companies with verified public APIs
   // ========================================
   // List of company IDs that should appear first (working ones)
-  const workingCompanyOrder = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd'];
+  // Order here is authoritative for the UI — keeps MDM before Maystro.
+  const workingCompanyOrder = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'ecotrack', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro'];
 
   const [companies, setCompanies] = useState<DeliveryCompany[]>(() => [
     // ⭐ TIER 1: Best API - Yalidine (Most documented, npm packages available)
@@ -79,6 +81,7 @@ export default function DeliveryCompanies() {
       name: "Yalidine Express",
       logo: getDeliveryCompanyLogoSrc("Yalidine Express"),
       description: "#1 delivery in Algeria - Full REST API with npm SDK. Covers all 58 wilayas.",
+      descriptionKey: "delivery.desc.yalidine",
       apiFields: [
         { label: "API Token", placeholder: "Your Yalidine API Token", field: "apiToken" },
         { label: "API ID", placeholder: "Your API ID", field: "apiId" },
@@ -95,6 +98,7 @@ export default function DeliveryCompanies() {
       name: "Guepex",
       logo: getDeliveryCompanyLogoSrc("Guepex"),
       description: "160+ bureaus across 58 wilayas. Express (24h) & Economic (48h) delivery.",
+      descriptionKey: "delivery.desc.guepex",
       apiFields: [
         { label: "API Token", placeholder: "Your Guepex API Token", field: "apiToken" },
         { label: "API Key", placeholder: "Your API Key", field: "apiKey" },
@@ -111,6 +115,7 @@ export default function DeliveryCompanies() {
       name: "ZR Express",
       logo: getDeliveryCompanyLogoSrc("ZR Express"),
       description: "Official ZR Express API. Requires API Key + Tenant ID for full parcel management.",
+      descriptionKey: "delivery.desc.zrexpress",
       apiFields: [
         { label: "API Key", placeholder: "Your ZR Express API Key", field: "apiKey" },
         { label: "Tenant ID", placeholder: "Your Tenant ID (X-Tenant)", field: "apiId" },
@@ -126,14 +131,15 @@ export default function DeliveryCompanies() {
       id: "ecotrack",
       name: "Ecotrack",
       logo: getDeliveryCompanyLogoSrc("Ecotrack"),
-      description: "Logistics SaaS platform. Aggregates multiple carriers (DHD, Conexlog/UPS).",
+      description: "API officielle Ecotrack. Création de commandes, suivi en temps réel, retours et liste des wilayas actives.",
+      descriptionKey: "delivery.desc.ecotrack",
       apiFields: [
-        { label: "API Token", placeholder: "Your Ecotrack API Token", field: "apiToken" },
-        { label: "Account ID", placeholder: "Your Account ID", field: "accountId" },
+        { label: "API Token", placeholder: "Votre token Ecotrack (Bearer)", field: "apiToken" },
+        { label: "API URL", placeholder: "https://mono2.ecotrack.dz/api/v1", field: "apiUrl" },
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: true },
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
       docsUrl: "https://ecotrack.dz",
       apiRating: 4,
     },
@@ -143,6 +149,7 @@ export default function DeliveryCompanies() {
       name: "Maystro Delivery",
       logo: getDeliveryCompanyLogoSrc("Maystro Delivery"),
       description: "3K+ stores, 600+ drivers. Warehousing, packaging & call center included.",
+      descriptionKey: "delivery.desc.maystro",
       apiFields: [
         { label: "API Token", placeholder: "Your Maystro API Token", field: "apiToken" },
         { label: "Store ID", placeholder: "Your Store ID", field: "storeId" },
@@ -159,6 +166,7 @@ export default function DeliveryCompanies() {
       name: "Dolivroo",
       logo: getDeliveryCompanyLogoSrc("Dolivroo"),
       description: "Unified delivery API for Yalidine, ZR Express, Ecotrack and Maystro through one integration.",
+      descriptionKey: "delivery.desc.dolivroo",
       apiFields: [
         { label: "API Key", placeholder: "dol_live_sk_...", field: "apiKey" },
         { label: "Connection Label (optional)", placeholder: "primary or client_store_1", field: "connectionLabel" },
@@ -176,6 +184,7 @@ export default function DeliveryCompanies() {
       name: "Noest",
       logo: getDeliveryCompanyLogoSrc("Noest"),
       description: "Noest uses an Ecotrack-powered API. Use your Noest Token + GUID to create shipments and generate labels.",
+      descriptionKey: "delivery.desc.noest",
       apiFields: [
         { label: "API Token", placeholder: "Your Noest API Token", field: "apiToken" },
         { label: "GUID", placeholder: "Your Noest GUID", field: "apiKey" },
@@ -191,6 +200,7 @@ export default function DeliveryCompanies() {
       name: "Zimou Express",
       logo: getDeliveryCompanyLogoSrc("Zimou Express"),
       description: "Fast delivery across Algeria. Express & standard shipping options.",
+      descriptionKey: "delivery.desc.zimou",
       apiFields: [
         { label: "API Token", placeholder: "Your Zimou API Token (Bearer)", field: "apiToken" },
       ],
@@ -206,6 +216,7 @@ export default function DeliveryCompanies() {
       name: "Anderson Ecommerce",
       logo: getDeliveryCompanyLogoSrc("Anderson Ecommerce"),
       description: "Ecotrack-powered delivery. Full API for shipments, tracking & labels.",
+      descriptionKey: "delivery.desc.anderson",
       apiFields: [
         { label: "API Token", placeholder: "Your Anderson API Token", field: "apiToken" },
         { label: "Account ID", placeholder: "Your Account ID (optional)", field: "accountId" },
@@ -225,6 +236,7 @@ export default function DeliveryCompanies() {
       name: "DHD Livraison",
       logo: getDeliveryCompanyLogoSrc("DHD"),
       description: "DHD Livraison Express — 55 wilayas across Algeria. COD, tracking & labels via Ecotrack platform.",
+      descriptionKey: "delivery.desc.dhd",
       apiFields: [
         { label: "API Token", placeholder: "Your DHD API Token", field: "apiToken" },
         { label: "GUID", placeholder: "Your DHD User GUID", field: "apiKey" },
@@ -236,10 +248,27 @@ export default function DeliveryCompanies() {
       apiRating: 3,
     },
     {
+      id: "ecom-delivery",
+      name: "Ecom Delivery",
+      logo: getDeliveryCompanyLogoSrc("Ecom Delivery"),
+      description: "Ecom Delivery — 58 wilayas. COD, tracking & labels.",
+      descriptionKey: "delivery.desc.ecom",
+      apiFields: [
+        { label: "API Key", placeholder: "Your Ecom Delivery API Key", field: "apiKey" },
+        { label: "API Token", placeholder: "Your Ecom Delivery Token", field: "apiToken" },
+      ],
+      enabled: false,
+      hasApi: true,
+      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
+      docsUrl: "https://ecom-dz.net",
+      apiRating: 3,
+    },
+    {
       id: "procolis",
       name: "ProColis",
       logo: getDeliveryCompanyLogoSrc("ProColis"),
       description: "ProColis account integration (manual assignment-ready).",
+      descriptionKey: "delivery.desc.procolis",
       apiFields: [
         { label: "API Key / Client Code", placeholder: "Your ProColis API Key (or client code)", field: "apiKey" },
         { label: "API Secret (optional)", placeholder: "Optional secret", field: "apiId" },
@@ -250,36 +279,25 @@ export default function DeliveryCompanies() {
       apiRating: 1,
     },
     {
-      id: "nord-et-ouest",
-      name: "Nord Et Ouest",
-      logo: getDeliveryCompanyLogoSrc("Nord Et Ouest"),
-      description: "Nord Et Ouest integration (manual assignment-ready).",
-      apiFields: [
-        { label: "Account Code", placeholder: "Your account/client code", field: "apiKey" },
-      ],
-      enabled: false,
-      hasApi: true,
-      features: { createShipment: false, tracking: false, labels: false, cod: false, webhooks: false },
-      apiRating: 1,
-    },
-    {
       id: "elogistia",
       name: "Elogistia",
       logo: getDeliveryCompanyLogoSrc("Elogistia"),
-      description: "Elogistia integration (manual assignment-ready).",
+      description: "Elogistia delivery integration with automatic shipment creation and tracking.",
+      descriptionKey: "delivery.desc.elogistia",
       apiFields: [
-        { label: "Account Code", placeholder: "Your account/client code", field: "apiKey" },
+        { label: "API Key", placeholder: "Your Elogistia API key", field: "apiKey" },
       ],
-      enabled: false,
+      enabled: true,
       hasApi: true,
-      features: { createShipment: false, tracking: false, labels: false, cod: false, webhooks: false },
-      apiRating: 1,
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
+      apiRating: 3,
     },
     {
       id: "colivraison-express",
       name: "Colivraison Express",
       logo: getDeliveryCompanyLogoSrc("Colivraison Express"),
       description: "Colivraison Express integration (manual assignment-ready).",
+      descriptionKey: "delivery.desc.colivraison",
       apiFields: [
         { label: "Account Code", placeholder: "Your account/client code", field: "apiKey" },
       ],
@@ -292,20 +310,25 @@ export default function DeliveryCompanies() {
       id: "mdm-express",
       name: "MDM Express",
       logo: getDeliveryCompanyLogoSrc("MDM Express"),
-      description: "MDM Express integration (manual assignment-ready).",
+      description: "MDM Express — Full REST API. Create shipments, track orders, COD support.",
+      descriptionKey: "delivery.desc.mdm",
       apiFields: [
-        { label: "Account Code", placeholder: "Your account/client code", field: "apiKey" },
+        { label: "API Key", placeholder: "Your MDM x-api-key", field: "apiToken" },
+        { label: "Store ID", placeholder: "e.g. STR-CB25F3", field: "storeId" },
+        { label: "Product Tracking ID", placeholder: "e.g. PRD-XXXXX", field: "productId" },
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: false, tracking: false, labels: false, cod: false, webhooks: false },
-      apiRating: 1,
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
+      docsUrl: "https://api.mdm.express",
+      apiRating: 3,
     },
     {
       id: "yalitec",
       name: "Yalitec",
       logo: getDeliveryCompanyLogoSrc("Yalitec"),
       description: "Yalitec integration (manual assignment-ready).",
+      descriptionKey: "delivery.desc.yalitec",
       apiFields: [
         { label: "Account Code", placeholder: "Your account/client code", field: "apiKey" },
       ],
@@ -319,19 +342,7 @@ export default function DeliveryCompanies() {
       name: "Mylerz Algérie",
       logo: getDeliveryCompanyLogoSrc("Mylerz Algérie"),
       description: "Mylerz Algérie integration (manual assignment-ready).",
-      apiFields: [
-        { label: "Account Code", placeholder: "Your account/client code", field: "apiKey" },
-      ],
-      enabled: false,
-      hasApi: true,
-      features: { createShipment: false, tracking: false, labels: false, cod: false, webhooks: false },
-      apiRating: 1,
-    },
-    {
-      id: "ecom-delivery",
-      name: "Ecom Delivery",
-      logo: getDeliveryCompanyLogoSrc("Ecom Delivery"),
-      description: "Ecom Delivery integration (manual assignment-ready).",
+      descriptionKey: "delivery.desc.mylerz",
       apiFields: [
         { label: "Account Code", placeholder: "Your account/client code", field: "apiKey" },
       ],
@@ -345,6 +356,7 @@ export default function DeliveryCompanies() {
       name: "Flash Delivery",
       logo: getDeliveryCompanyLogoSrc("Flash Delivery"),
       description: "Flash Delivery integration (manual assignment-ready).",
+      descriptionKey: "delivery.desc.flash",
       apiFields: [
         { label: "Account Code", placeholder: "Your account/client code", field: "apiKey" },
       ],
@@ -355,10 +367,11 @@ export default function DeliveryCompanies() {
     },
   ]);
 
-  // Sort companies so working ones come first
-  const sortedCompanies = [
-    ...companies.filter(c => workingCompanyOrder.includes(c.id)),
-    ...companies.filter(c => !workingCompanyOrder.includes(c.id)),
+  // Sort companies so working ones come first, following the explicit order
+  // defined in `workingCompanyOrder` (preserves desired ordering like MDM → Maystro).
+  const sortedCompanies: DeliveryCompany[] = [
+    ...workingCompanyOrder.map((id) => companies.find((c) => c.id === id)).filter(Boolean) as DeliveryCompany[],
+    ...companies.filter((c) => !workingCompanyOrder.includes(c.id)),
   ];
 
   useEffect(() => {
@@ -429,6 +442,7 @@ export default function DeliveryCompanies() {
       'zimou-express': 'apiToken',
       anderson: 'apiToken',
       dhd: 'apiToken',
+      'mdm-express': 'apiToken',
     };
 
     return primaryFieldByCompanyId[company.id] === fieldName;
@@ -462,7 +476,7 @@ export default function DeliveryCompanies() {
       // Map UI credentials → backend schema
       // - api_key: primary token
       // - api_secret: secondary credential (e.g., GUID / API ID / Account ID / Store ID / Secret Key)
-      const { apiKey, apiSecret } = (() => {
+      const { apiKey, apiSecret, merchantId } = (() => {
         const id = selectedCompany.id;
         if (id === 'yalidine') {
           return {
@@ -485,7 +499,8 @@ export default function DeliveryCompanies() {
         if (id === 'ecotrack') {
           return {
             apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: (credentials.accountId || '').trim() || undefined,
+            apiSecret: undefined,
+            merchantId: (credentials.apiUrl || '').trim() || undefined,
           };
         }
         if (id === 'maystro') {
@@ -525,11 +540,25 @@ export default function DeliveryCompanies() {
           };
         }
 
+        if (id === 'ecom-delivery') {
+          return {
+            apiKey: (credentials.apiKey || '').trim(),
+            apiSecret: (credentials.apiToken || '').trim() || undefined,
+            merchantId: undefined,
+          };
+        }
+        if (id === 'mdm-express') {
+          return {
+            apiKey: (credentials.apiToken || '').trim(),
+            apiSecret: (credentials.productId || '').trim() || undefined,
+            merchantId: (credentials.storeId || '').trim() || undefined,
+          };
+        }
         // Generic fallback
         const primary = (credentials.apiToken || credentials.apiKey || '').trim();
         const secondary =
           (credentials.apiId || credentials.accountId || credentials.storeId || credentials.secretKey || '').trim() || undefined;
-        return { apiKey: primary, apiSecret: secondary };
+        return { apiKey: primary, apiSecret: secondary, merchantId: undefined };
       })();
 
       // If already configured, don't force re-entry. Secrets are intentionally not shown.
@@ -545,11 +574,19 @@ export default function DeliveryCompanies() {
       // Noest and DHD require GUID/user_guid.
       const isNoest = selectedCompany.id === 'noest' || selectedCompany.name.trim().toLowerCase() === 'noest';
       const isDhd = selectedCompany.id === 'dhd' || selectedCompany.name.trim().toLowerCase().includes('dhd');
+      const isMdm = selectedCompany.id === 'mdm-express' || selectedCompany.name.trim().toLowerCase().includes('mdm');
       if ((isNoest || isDhd) && !apiSecret) {
         if (existing?.is_enabled && existing?.has_api_secret) {
           // Allow keeping the saved GUID if user isn't changing it.
         } else {
           throw new Error('GUID is required');
+        }
+      }
+      if (isMdm && !apiSecret) {
+        if (existing?.is_enabled && existing?.has_api_secret) {
+          // Allow keeping saved Product Tracking ID if user is not updating it.
+        } else {
+          throw new Error('MDM Product Tracking ID is required');
         }
       }
 
@@ -560,6 +597,7 @@ export default function DeliveryCompanies() {
           delivery_company_id: dbId,
           api_key: apiKey,
           api_secret: apiSecret || undefined,
+          merchant_id: merchantId || undefined,
         }),
       });
 
@@ -626,114 +664,135 @@ export default function DeliveryCompanies() {
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg">
-            <Truck className="w-6 h-6 text-primary" />
+
+      {/* ── Header ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-slate-900/45 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/70 ring-1 ring-black/5 dark:ring-white/10 shadow-lg shadow-slate-200/60 dark:shadow-black/40 px-5 py-4">
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center border border-white/50 dark:border-white/10 shadow-md">
+              <Truck className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">{t('delivery.title')}</h1>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 max-w-sm">{t('delivery.subtitle')}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              {t('delivery.title')}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {t('delivery.subtitle')}
-            </p>
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/30 rounded-full px-2.5 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                {sortedCompanies.filter(c => { const id = companyIdByName[toCompanyLookupKey(c.name)]; return c.enabled || Boolean(id && integrationMetaByCompanyId[id]?.is_enabled); }).length} {t('delivery.connected')}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/20 border border-blue-200/50 dark:border-blue-800/50 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-              {t('delivery.recommended')}
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-300">
-              {t('delivery.recommendedDesc')}
-            </p>
-          </div>
-        </div>
+      {/* ── Tip banner ── */}
+      <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40 rounded-lg px-3 py-2">
+        <Zap className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+        <p className="text-xs text-amber-800 dark:text-amber-300">
+          <span className="font-semibold">{t('delivery.recommended')}</span>{' — '}{t('delivery.recommendedDesc')}
+        </p>
       </div>
 
-      {/* Grid of delivery company cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sortedCompanies.map((company) => (
-          <Card
-            key={company.id}
-            className={`relative transition-all duration-300 border-2 overflow-hidden group ${
-              isComingSoon(company)
-                ? 'cursor-not-allowed border-border/50 bg-card opacity-70'
-                : 'cursor-pointer hover:shadow-xl hover:border-primary/60 hover:bg-primary/5 dark:hover:bg-primary/10'
-            }`}
-            onClick={() => handleCardClick(company)}
-          >
-            {isComingSoon(company) && (
-              <div className="absolute top-2 left-2 z-10">
-                <Badge variant="secondary" className="text-xs">
-                  {t('delivery.comingSoon')}
-                </Badge>
-              </div>
-            )}
-            <CardContent className="p-4 space-y-3">
-              {/* Header: Logo + Name + Rating */}
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 flex items-center justify-center overflow-hidden border border-border/60 flex-shrink-0">
-                  {company.logo.startsWith('/') ? (
-                    <DeliveryCompanyLogo
-                      name={company.name}
-                      alt={company.name}
-                      className="w-full h-full object-contain p-1.5"
-                    />
-                  ) : (
-                    <Truck className="w-6 h-6 text-primary" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {sortedCompanies.map((company) => {
+          const dbId = companyIdByName[toCompanyLookupKey(String(company.name || ''))];
+          const meta = dbId ? integrationMetaByCompanyId[dbId] : undefined;
+          const isConnected = company.enabled || Boolean(meta?.is_enabled && meta?.has_api_key);
+          const comingSoon = isComingSoon(company);
+          const desc = company.descriptionKey ? (t(company.descriptionKey) || company.description) : company.description;
+          return (
+            <div
+              key={company.id}
+              onClick={() => handleCardClick(company)}
+              className={`relative rounded-xl border-2 overflow-hidden transition-all duration-200 ${
+                comingSoon
+                  ? 'cursor-not-allowed opacity-55 border-border/40 bg-muted/30'
+                  : isConnected
+                    ? 'cursor-pointer border-emerald-400 dark:border-emerald-600 bg-white dark:bg-slate-900 shadow-md shadow-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/15 hover:-translate-y-0.5'
+                    : 'cursor-pointer border-border bg-white dark:bg-slate-900 hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5'
+              }`}
+            >
+              {/* top accent line */}
+              <div className={`h-0.5 w-full ${
+                isConnected ? 'bg-gradient-to-r from-emerald-400 to-green-500' : comingSoon ? 'bg-border/40' : 'bg-gradient-to-r from-primary/40 to-accent/40'
+              }`} />
+
+              <div className="p-3 space-y-2.5">
+                {/* Logo + name row */}
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden border flex-shrink-0 ${
+                    isConnected ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40' : 'border-border/60 bg-muted/40'
+                  }`}>
+                    {company.logo.startsWith('/') ? (
+                      <DeliveryCompanyLogo name={company.name} alt={company.name} className="w-full h-full object-contain p-1" />
+                    ) : (
+                      <Truck className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-bold text-sm truncate">{company.name}</h3>
+                      {isConnected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 animate-pulse" />}
+                    </div>
+                    <div className="flex gap-0.5 mt-0.5">
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} className={`w-2 h-2 ${ s <= company.apiRating ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted'}`} />
+                      ))}
+                    </div>
+                  </div>
+                  {comingSoon && (
+                    <Badge variant="secondary" className="text-[10px] flex-shrink-0 px-1.5 py-0">{t('delivery.comingSoon')}</Badge>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm leading-tight text-foreground truncate">
-                    {company.name}
-                  </h3>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    {renderStars(company.apiRating)}
-                    <span className="text-xs text-muted-foreground ml-1">API</span>
-                  </div>
+
+                {/* Description */}
+                <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{desc}</p>
+
+                {/* Feature chips */}
+                <div className="flex flex-wrap gap-1">
+                  {company.features.createShipment && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40 font-medium">{t('delivery.shipments')}</span>}
+                  {company.features.tracking && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/60 dark:border-violet-800/40 font-medium">{t('delivery.tracking')}</span>}
+                  {company.features.labels && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-800/40 font-medium">{t('delivery.labels')}</span>}
+                  {company.features.cod && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40 font-medium">{t('delivery.cod')}</span>}
+                  {company.features.webhooks && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40 font-medium">{t('delivery.webhooks')}</span>}
+                </div>
+
+                {/* Status footer */}
+                <div className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 ${
+                  isConnected
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50'
+                    : comingSoon
+                      ? 'bg-muted/40 border border-border/40'
+                      : 'bg-primary/5 dark:bg-primary/10 border border-primary/20'
+                }`}>
+                  {isConnected ? (
+                    <>
+                      <Wifi className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{t('delivery.connected')}</span>
+                      {meta?.updated_at && (
+                        <span className="text-[10px] text-emerald-500/60 ms-auto">{new Date(meta.updated_at).toLocaleDateString()}</span>
+                      )}
+                      <Settings2 className="w-3 h-3 text-emerald-500/60 ms-auto" />
+                    </>
+                  ) : comingSoon ? (
+                    <>
+                      <WifiOff className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                      <span className="text-[11px] text-muted-foreground">{t('delivery.comingSoon')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/50 flex-shrink-0" />
+                      <span className="text-[11px] font-semibold text-primary">{t('delivery.clickToConfigure')}</span>
+                    </>
+                  )}
                 </div>
               </div>
-              {/* Description */}
-              <p className="text-xs text-muted-foreground line-clamp-2">
-                {company.description}
-              </p>
-              {/* Feature badges */}
-              <div className="flex flex-wrap gap-1">
-                {company.features.createShipment && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">Shipments</Badge>
-                )}
-                {company.features.tracking && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">Tracking</Badge>
-                )}
-                {company.features.labels && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">Labels</Badge>
-                )}
-                {company.features.cod && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">COD</Badge>
-                )}
-                {company.features.webhooks && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-300">Webhooks</Badge>
-                )}
-              </div>
-              {/* Status */}
-              <div className={`text-xs px-2 py-1 rounded-md text-center ${
-                isComingSoon(company)
-                  ? 'text-muted-foreground bg-muted/50'
-                  : 'text-primary bg-primary/10 dark:bg-primary/20 font-semibold'
-              }`}>
-                {isComingSoon(company) ? t('delivery.comingSoon') : t('delivery.clickToConfigure')}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       {/* Configuration Dialog - Professional Styling */}

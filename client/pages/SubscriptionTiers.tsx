@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, Crown, Zap, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +28,20 @@ interface Tier {
 export default function SubscriptionTiers() {
   const navigate = useNavigate();
   const [isAnnual, setIsAnnual] = useState(false);
+  const [subscriptionPrice, setSubscriptionPrice] = useState(7);
+  const [trialDays, setTrialDays] = useState(30);
+
+  useEffect(() => {
+    fetch('/api/billing/public/settings')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          if (data.subscription_price) setSubscriptionPrice(Number(data.subscription_price));
+          if (data.trial_days) setTrialDays(Number(data.trial_days));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const tiers: Tier[] = [
     {
@@ -62,7 +76,7 @@ export default function SubscriptionTiers() {
       id: 'gold',
       name: 'Gold',
       description: 'For growing businesses',
-      price: 8,
+      price: subscriptionPrice,
       period: isAnnual ? '/year' : '/month',
       badge: 'Most Popular',
       highlighted: true,
@@ -94,7 +108,7 @@ export default function SubscriptionTiers() {
       id: 'platinum',
       name: 'Platinum',
       description: 'For enterprises',
-      price: 17,
+      price: subscriptionPrice * 2,
       period: isAnnual ? '/year' : '/month',
       badge: 'Enterprise',
       color: {
@@ -203,7 +217,7 @@ export default function SubscriptionTiers() {
                       {tier.price !== null ? (
                         <>
                           <span className={`text-5xl font-bold ${tier.color.text}`}>
-                            ${tier.price}
+                            {tier.price} دج
                           </span>
                           <span className="text-slate-600 dark:text-slate-400">
                             {tier.period}
@@ -263,7 +277,7 @@ export default function SubscriptionTiers() {
               },
               {
                 q: 'Is there a free trial for paid plans?',
-                a: 'Yes! Bronze starts with a 30-day free trial. No credit card required to get started.',
+                a: `Yes! Bronze starts with a ${trialDays}-day free trial. No credit card required to get started.`,
               },
               {
                 q: 'What happens if I cancel?',

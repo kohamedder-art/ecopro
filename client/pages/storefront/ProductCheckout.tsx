@@ -163,22 +163,7 @@ export default function ProductCheckout() {
   const [haiSuggestions, setHaiSuggestions] = useState<string[]>([]);
   const [haiSuggestionsSupported, setHaiSuggestionsSupported] = useState(true);
 
-  // Get template and settings
-  const template = readStorefrontTemplate('fashion');
-  const settings: StoreSettings = readStorefrontSettings<StoreSettings>({} as StoreSettings);
-  const accentColor = settings.template_accent_color || settings.primary_color || '#3b82f6';
-  const primaryColor = settings.primary_color || accentColor;
-  const secondaryColor = settings.secondary_color || '#a855f7';
-
-  const checkoutBgStyle: React.CSSProperties = {
-    backgroundImage: [
-      `radial-gradient(900px 500px at 10% -10%, ${withAlpha(primaryColor, 0.28)} 0%, transparent 60%)`,
-      `radial-gradient(700px 450px at 110% 15%, ${withAlpha(secondaryColor, 0.22)} 0%, transparent 60%)`,
-      `radial-gradient(700px 450px at 50% 115%, ${withAlpha(primaryColor, 0.14)} 0%, transparent 55%)`,
-      'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-    ].join(', '),
-  };
-
+  // Get template and settings — prefer store_template from API, fall back to localStorage
   const dzWilayas = getAlgeriaWilayas();
   const dzCommunes = getAlgeriaCommunesByWilayaId(formData.wilayaId);
 
@@ -287,6 +272,21 @@ export default function ProductCheckout() {
       throw new Error('Failed to fetch product');
     },
   });
+
+  const template = (product as any)?.store_template || readStorefrontTemplate('books');
+  const settings: StoreSettings = readStorefrontSettings<StoreSettings>({} as StoreSettings);
+  const accentColor = settings.template_accent_color || settings.primary_color || (product as any)?.primary_color || '#3b82f6';
+  const primaryColor = settings.primary_color || (product as any)?.primary_color || accentColor;
+  const secondaryColor = settings.secondary_color || (product as any)?.secondary_color || '#a855f7';
+
+  const checkoutBgStyle: React.CSSProperties = {
+    backgroundImage: [
+      `radial-gradient(900px 500px at 10% -10%, ${withAlpha(primaryColor, 0.28)} 0%, transparent 60%)`,
+      `radial-gradient(700px 450px at 110% 15%, ${withAlpha(secondaryColor, 0.22)} 0%, transparent 60%)`,
+      `radial-gradient(700px 450px at 50% 115%, ${withAlpha(primaryColor, 0.14)} 0%, transparent 55%)`,
+      'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+    ].join(', '),
+  };
 
   // Track ViewContent when product loads
   useEffect(() => {

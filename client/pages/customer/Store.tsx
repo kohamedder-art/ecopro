@@ -60,10 +60,37 @@ interface StoreProduct {
   stock_quantity: number;
   status: 'active' | 'draft' | 'archived';
   is_featured: boolean;
+  metadata?: {
+    shipping?: {
+      mode?: 'delivery_pricing' | 'flat' | 'free';
+      flat_fee?: number | null;
+    };
+    notes?: string | null;
+    [key: string]: any;
+  };
   slug: string;
   views: number;
   created_at: string;
 }
+
+type ProductShippingMode = 'delivery_pricing' | 'flat' | 'free';
+
+type StoreProductFormData = Partial<StoreProduct> & {
+  shipping_mode?: ProductShippingMode;
+  shipping_flat_fee?: number | null;
+  notes?: string;
+  video_url?: string;
+};
+
+const DEFAULT_PRODUCT_FORM: StoreProductFormData = {
+  status: 'active',
+  is_featured: false,
+  stock_quantity: 1,
+  shipping_mode: 'delivery_pricing',
+  shipping_flat_fee: null,
+  notes: '',
+  video_url: '',
+};
 
 // ─── AI Helper Components (store owner only, never shown to customers) ───────
 
@@ -154,8 +181,10 @@ function AISuggestTitles({
 function AIVisionSuggest({
   imageUrl,
   onApply,
+  locale = 'ar',
 }: {
   imageUrl: string;
+  locale?: string;
   onApply: (data: { title?: string; description?: string; category?: string; price?: number }) => void;
 }) {
   const [loading, setLoading] = useState(false);
@@ -172,7 +201,7 @@ function AIVisionSuggest({
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
         credentials: 'include',
-        body: JSON.stringify({ imageUrl }),
+        body: JSON.stringify({ imageUrl, language: locale }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -276,11 +305,34 @@ function AIVisionSuggest({
   );
 }
 
+const PROMO_PLATFORMS = [
+  { id: 'facebook', emoji: '📘', medium: 'social', color: 'bg-[#1877F2]' },
+  { id: 'instagram', emoji: '📸', medium: 'social', color: 'bg-gradient-to-br from-[#833AB4] via-[#FD1D1D] to-[#F77737]' },
+  { id: 'tiktok', emoji: '🎵', medium: 'social', color: 'bg-[#010101]' },
+  { id: 'youtube', emoji: '▶️', medium: 'video', color: 'bg-[#FF0000]' },
+  { id: 'snapchat', emoji: '👻', medium: 'social', color: 'bg-[#FFFC00] text-black' },
+  { id: 'whatsapp', emoji: '💬', medium: 'messaging', color: 'bg-[#25D366]' },
+  { id: 'telegram', emoji: '✈️', medium: 'messaging', color: 'bg-[#0088cc]' },
+  { id: 'other', emoji: '🔗', medium: 'referral', color: 'bg-gray-500' },
+] as const;
+
+function buildUtmLink(base: string, source: string, medium: string) {
+  try {
+    const url = new URL(base);
+    url.searchParams.set('utm_source', source);
+    url.searchParams.set('utm_medium', medium);
+    url.searchParams.set('utm_campaign', 'product_promo');
+    return url.toString();
+  } catch {
+    return `${base}${base.includes('?') ? '&' : '?'}utm_source=${source}&utm_medium=${medium}&utm_campaign=product_promo`;
+  }
+}
+
 export default function Store() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { toast } = useToast();
   // Products Management was duplicated with Overview; keep a single Store page.
 
@@ -315,10 +367,10 @@ export default function Store() {
   };
 
   const getStorefrontPath = (settings: any) => {
+    const slug = settings?.store_slug;
+    if (slug) return `/store/${encodeURIComponent(slug)}`;
     const name = settings?.store_name;
     if (name) return generateStoreUrl(name, false);
-    const slug = settings?.store_slug;
-    if (slug) return `/store/${slug}`;
     return '';
   };
 
@@ -372,7 +424,9 @@ export default function Store() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [creatingSampleProducts, setCreatingSampleProducts] = useState(false);
 
   type ProductVariantDraft = {
@@ -391,6 +445,62 @@ export default function Store() {
   const [variantsDirty, setVariantsDirty] = useState(false);
   const [loadingVariants, setLoadingVariants] = useState(false);
   const [inventoryImageErrors, setInventoryImageErrors] = useState<Record<string, boolean>>({});
+
+  type ProductOfferDraft = {
+    id?: number;
+    quantity: number;
+    bundle_price: number;
+    compare_price?: number;
+    free_delivery: boolean;
+    sort_order?: number;
+  };
+
+  const [offersDraft, setOffersDraft] = useState<ProductOfferDraft[]>([]);
+  const [offersLoaded, setOffersLoaded] = useState(false);
+  const [offersDirty, setOffersDirty] = useState(false);
+  const [loadingOffers, setLoadingOffers] = useState(false);
+
+  const loadProductOffers = async (productId: number) => {
+    setLoadingOffers(true);
+    try {
+      const res = await fetch(`/api/client/store/products/${productId}/offers`);
+      if (!res.ok) throw new Error('Failed to load offers');
+      const data = await res.json();
+      const offers = Array.isArray(data?.offers) ? data.offers : [];
+      setOffersDraft(offers.map((o: any, idx: number) => ({
+        id: o.id,
+        quantity: Number(o.quantity),
+        bundle_price: Number(o.bundle_price),
+        compare_price: o.compare_price == null ? undefined : Number(o.compare_price),
+        free_delivery: Boolean(o.free_delivery),
+        sort_order: o.sort_order == null ? idx : Number(o.sort_order),
+      })));
+      setOffersLoaded(true);
+      setOffersDirty(false);
+    } catch {
+      setOffersDraft([]);
+      setOffersLoaded(true);
+    } finally {
+      setLoadingOffers(false);
+    }
+  };
+
+  const saveProductOffers = async (productId: number) => {
+    await fetch(`/api/client/store/products/${productId}/offers`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        offers: offersDraft.map((o, idx) => ({
+          ...(o.id ? { id: o.id } : {}),
+          quantity: Number(o.quantity),
+          bundle_price: Number(o.bundle_price),
+          compare_price: o.compare_price === undefined ? undefined : Number(o.compare_price),
+          free_delivery: o.free_delivery,
+          sort_order: o.sort_order == null ? idx : Number(o.sort_order),
+        })),
+      }),
+    });
+  };
 
   const loadProductVariants = async (productId: number) => {
     setLoadingVariants(true);
@@ -519,12 +629,26 @@ export default function Store() {
                 });
                 return;
               }
+              const baseMetadata = (formData.metadata && typeof formData.metadata === 'object') ? formData.metadata : {};
+              const shippingMode = (formData.shipping_mode || 'delivery_pricing') as ProductShippingMode;
+              const metadata = {
+                ...baseMetadata,
+                shipping: {
+                  mode: shippingMode,
+                  flat_fee: shippingMode === 'flat' ? Number(formData.shipping_flat_fee ?? 0) : null,
+                },
+                notes: (formData.notes || '').trim() || null,
+                video_url: (formData.video_url || '').trim() || null,
+              };
+              const { shipping_mode, shipping_flat_fee, notes, video_url: _vu1, ...restFormData } = formData;
+              const payload = { ...restFormData, metadata };
+
               const res = await fetch('/api/client/store/products', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
               });
               if (res.ok) {
                 const created = await res.json().catch(() => null);
@@ -532,13 +656,19 @@ export default function Store() {
                 if (createdId && variantsDraft.length > 0) {
                   await saveProductVariants(createdId);
                 }
+                if (createdId && offersDraft.length > 0) {
+                  await saveProductOffers(createdId);
+                }
                 // reload products
                 await reloadProducts();
                 setShowAddModal(false);
-                setFormData({ status: 'active', is_featured: false, stock_quantity: 1 });
+                setFormData({ ...DEFAULT_PRODUCT_FORM });
                 setVariantsDraft([]);
                 setVariantsLoaded(false);
                 setVariantsDirty(false);
+                setOffersDraft([]);
+                setOffersLoaded(false);
+                setOffersDirty(false);
                 setProductFormSubmitAttempted(false);
                 setProductFormServerError(null);
                 toast({ title: 'Product created', description: 'Your product is now in your store.' });
@@ -569,25 +699,45 @@ export default function Store() {
                 });
                 return;
               }
+              const baseMetadata = (formData.metadata && typeof formData.metadata === 'object') ? formData.metadata : {};
+              const shippingMode = (formData.shipping_mode || 'delivery_pricing') as ProductShippingMode;
+              const metadata = {
+                ...baseMetadata,
+                shipping: {
+                  mode: shippingMode,
+                  flat_fee: shippingMode === 'flat' ? Number(formData.shipping_flat_fee ?? 0) : null,
+                },
+                notes: (formData.notes || '').trim() || null,
+                video_url: (formData.video_url || '').trim() || null,
+              };
+              const { shipping_mode, shipping_flat_fee, notes, video_url: _vu2, ...restFormData } = formData;
+              const payload = { ...restFormData, metadata };
+
               const res = await fetch(`/api/client/store/products/${selectedProduct.id}`, {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
               });
               if (res.ok) {
                 if (variantsDirty) {
                   await saveProductVariants(Number(selectedProduct.id));
                 }
+                if (offersDirty) {
+                  await saveProductOffers(Number(selectedProduct.id));
+                }
                 // reload products
                 await reloadProducts();
                 setShowEditModal(false);
                 setSelectedProduct(null);
-                setFormData({ status: 'active', is_featured: false, stock_quantity: 1 });
+                setFormData({ ...DEFAULT_PRODUCT_FORM });
                 setVariantsDraft([]);
                 setVariantsLoaded(false);
                 setVariantsDirty(false);
+                setOffersDraft([]);
+                setOffersLoaded(false);
+                setOffersDirty(false);
                 setProductFormSubmitAttempted(false);
                 setProductFormServerError(null);
                 toast({ title: 'Saved', description: 'Product updated successfully.' });
@@ -632,20 +782,20 @@ export default function Store() {
               const res = await fetch(`/api/client/store/products/${product.id}/share-link`);
               if (res.ok) {
                 const data = await res.json();
-                setShareLink(data.shareLink);
+                const link = `${window.location.origin}/store/${data.store_slug}/${data.slug}`;
+                setShareLink(link);
                 setSelectedProduct(product);
                 setShowShareModal(true);
                 setLinkCopied(false);
+                setSelectedPlatform(null);
               }
             } catch (error) {
               console.error('Get share link error:', error);
             }
           };
   // Product form state
-  const [formData, setFormData] = useState<Partial<StoreProduct>>({
-    status: 'active',
-    is_featured: false,
-    stock_quantity: 1,
+  const [formData, setFormData] = useState<StoreProductFormData>({
+    ...DEFAULT_PRODUCT_FORM,
   });
   const [productFormSubmitAttempted, setProductFormSubmitAttempted] = useState(false);
   const [productFormServerError, setProductFormServerError] = useState<string | null>(null);
@@ -764,7 +914,7 @@ export default function Store() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSelectInventory, setShowSelectInventory] = useState(false);
   const [productFormSection, setProductFormSection] = useState<
-    'product' | 'price' | 'variants' | 'status' | 'images'
+    'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'video' | 'notes'
   >('product');
   // Selected product
   const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
@@ -849,7 +999,7 @@ export default function Store() {
 
     if (action === 'create-product' || action === 'add-product' || action === 'createProduct') {
       setSelectedProduct(null);
-      setFormData({ status: 'active', is_featured: false, stock_quantity: 1 });
+      setFormData({ ...DEFAULT_PRODUCT_FORM });
       setVariantsDraft([]);
       setVariantsLoaded(true);
       setVariantsDirty(false);
@@ -1189,13 +1339,25 @@ export default function Store() {
   };
 
   const openEditModal = (product: StoreProduct) => {
+    const metadata = product?.metadata && typeof product.metadata === 'object' ? product.metadata : {};
+    const shippingMeta = metadata?.shipping && typeof metadata.shipping === 'object' ? metadata.shipping : {};
     setSelectedProduct(product);
-    setFormData(product);
+    setFormData({
+      ...product,
+      shipping_mode: (shippingMeta.mode as ProductShippingMode) || 'delivery_pricing',
+      shipping_flat_fee: shippingMeta.flat_fee == null ? null : Number(shippingMeta.flat_fee),
+      notes: typeof metadata.notes === 'string' ? metadata.notes : '',
+      video_url: typeof metadata.video_url === 'string' ? metadata.video_url : '',
+    });
     setShowEditModal(true);
     setVariantsDraft([]);
     setVariantsLoaded(false);
     setVariantsDirty(false);
     loadProductVariants(Number(product.id));
+    setOffersDraft([]);
+    setOffersLoaded(false);
+    setOffersDirty(false);
+    loadProductOffers(Number(product.id));
   };
 
   const openDeleteDialog = (product: StoreProduct) => {
@@ -1263,7 +1425,7 @@ export default function Store() {
             <Button
               onClick={() => {
                 setSelectedProduct(null);
-                setFormData({ status: 'active', is_featured: false, stock_quantity: 1 });
+                setFormData({ ...DEFAULT_PRODUCT_FORM });
                 setVariantsDraft([]);
                 setVariantsLoaded(true);
                 setVariantsDirty(false);
@@ -1471,7 +1633,7 @@ export default function Store() {
               <Button
                 onClick={() => {
                   setSelectedProduct(null);
-                  setFormData({ status: 'active', is_featured: false, stock_quantity: 1 });
+                  setFormData({ ...DEFAULT_PRODUCT_FORM });
                   setVariantsDraft([]);
                   setVariantsLoaded(true);
                   setVariantsDirty(false);
@@ -1587,11 +1749,11 @@ export default function Store() {
                 <div className="p-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-primary">
-                      ${Math.round(Number(product.price) || 0)}
+                      {Math.round(Number(product.price) || 0)} دج
                     </span>
                     {product.original_price && (
                       <span className="text-xs text-muted-foreground line-through">
-                        ${Math.round(Number(product.original_price) || 0)}
+                        {Math.round(Number(product.original_price) || 0)} دج
                       </span>
                     )}
                   </div>
@@ -1642,7 +1804,7 @@ export default function Store() {
                     </div>
                     <div className="flex items-center gap-4 mt-2">
                       <span className="text-lg font-bold text-primary">
-                        ${Math.round(Number(product.price) || 0)}
+                        {Math.round(Number(product.price) || 0)} دج
                       </span>
                       <Badge variant="outline" className="text-xs text-foreground">
                         <Eye className="w-3 h-3 mr-1 text-foreground" />
@@ -1973,7 +2135,7 @@ export default function Store() {
         if (!open) {
           setShowAddModal(false);
           setShowEditModal(false);
-          setFormData({ status: 'active', is_featured: false, stock_quantity: 1 });
+          setFormData({ ...DEFAULT_PRODUCT_FORM });
           setSelectedProduct(null);
           setProductFormSection('product');
           setVariantsDraft([]);
@@ -2006,8 +2168,12 @@ export default function Store() {
                   { key: 'product', label: t('store.productForm.sections.product') },
                   { key: 'price', label: t('store.productForm.sections.price') },
                   { key: 'variants', label: t('store.productForm.sections.variants') },
+                  { key: 'offers', label: t('store.productForm.offersTitle') },
                   { key: 'status', label: t('store.productForm.sections.status') },
+                  { key: 'shipping', label: t('store.productForm.sections.shipping') },
                   { key: 'images', label: t('store.productForm.sections.images') },
+                  { key: 'video', label: '🎬 فيديو' },
+                  { key: 'notes', label: t('store.productForm.sections.notes') },
                 ] as const
               ).map((sec) => (
                 <Button
@@ -2026,6 +2192,20 @@ export default function Store() {
             {productFormSection === 'product' && (
               <div className="space-y-2 bg-primary/5 dark:bg-slate-800/30 p-2 md:p-3 rounded border border-primary/20">
                 <h3 className="text-lg font-bold text-primary">{t('store.productForm.basicInfo')}</h3>
+
+                {(formData.images?.length || 0) > 0 && (
+                  <AIVisionSuggest
+                    imageUrl={formData.images![0]}
+                    locale={locale}
+                    onApply={(data) => setFormData(prev => ({
+                      ...prev,
+                      ...(data.title ? { title: data.title } : {}),
+                      ...(data.description ? { description: data.description } : {}),
+                      ...(data.category ? { category: data.category } : {}),
+                      ...(data.price ? { price: data.price } : {}),
+                    }))}
+                  />
+                )}
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
@@ -2287,6 +2467,137 @@ export default function Store() {
               </div>
             )}
 
+            {productFormSection === 'offers' && (
+              <div className="space-y-2 bg-orange-500/5 dark:bg-orange-900/10 p-2 md:p-3 rounded border border-orange-500/20">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400">{t('store.productForm.offersTitle')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('store.productForm.offersDesc')}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setOffersDraft((prev) => [
+                        ...prev,
+                        {
+                          quantity: 1,
+                          bundle_price: Number(formData.price) || 0,
+                          free_delivery: false,
+                          sort_order: prev.length,
+                        },
+                      ]);
+                      setOffersDirty(true);
+                      setOffersLoaded(true);
+                    }}
+                    className="border-orange-500/30 hover:bg-orange-500/10"
+                  >
+                    {t('store.productForm.addOffer')}
+                  </Button>
+                </div>
+
+                {loadingOffers && (
+                  <div className="text-sm text-muted-foreground">{t('store.productForm.loadingOffers')}</div>
+                )}
+
+                {!loadingOffers && offersLoaded && offersDraft.length === 0 && (
+                  <div className="text-sm text-muted-foreground">{t('store.productForm.noOffers')}</div>
+                )}
+
+                {!loadingOffers && offersDraft.length > 0 && (
+                  <div className="space-y-2">
+                    {offersDraft.map((o, idx) => (
+                      <div key={o.id ?? idx} className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end">
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t('store.productForm.offerQuantity')}</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={Number(o.quantity)}
+                            onChange={(e) => {
+                              const next = Math.max(1, Number(e.target.value || 1));
+                              setOffersDraft((prev) =>
+                                prev.map((row, i) => (i === idx ? { ...row, quantity: next } : row))
+                              );
+                              setOffersDirty(true);
+                            }}
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t('store.productForm.offerBundlePrice')}</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={String(o.bundle_price)}
+                            onChange={(e) => {
+                              const next = Number(e.target.value || 0);
+                              setOffersDraft((prev) =>
+                                prev.map((row, i) => (i === idx ? { ...row, bundle_price: next } : row))
+                              );
+                              setOffersDirty(true);
+                            }}
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t('store.productForm.offerComparePrice')}</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={o.compare_price === undefined ? '' : String(o.compare_price)}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              const next = raw === '' ? undefined : Number(raw);
+                              setOffersDraft((prev) =>
+                                prev.map((row, i) => (i === idx ? { ...row, compare_price: next } : row))
+                              );
+                              setOffersDirty(true);
+                            }}
+                            placeholder="—"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2 h-10">
+                          <input
+                            type="checkbox"
+                            checked={o.free_delivery}
+                            onChange={(e) => {
+                              const next = e.target.checked;
+                              setOffersDraft((prev) =>
+                                prev.map((row, i) => (i === idx ? { ...row, free_delivery: next } : row))
+                              );
+                              setOffersDirty(true);
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <Label className="text-xs">{t('store.productForm.offerFreeDelivery')}</Label>
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setOffersDraft((prev) => prev.filter((_, i) => i !== idx));
+                              setOffersDirty(true);
+                              setOffersLoaded(true);
+                            }}
+                          >
+                            {t('store.productForm.removeOffer')}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {productFormSection === 'status' && (
               <div className="space-y-2 bg-amber-500/5 dark:bg-amber-900/10 p-2 md:p-3 rounded border border-amber-500/20">
                 <h3 className="text-lg font-bold text-amber-700 dark:text-amber-300">{t('store.productForm.statusTitle')}</h3>
@@ -2328,6 +2639,56 @@ export default function Store() {
               </div>
             )}
 
+            {productFormSection === 'shipping' && (
+              <div className="space-y-2 bg-indigo-500/5 dark:bg-indigo-900/10 p-2 md:p-3 rounded border border-indigo-500/20">
+                <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{t('store.productForm.shippingTitle')}</h3>
+
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-base font-bold">{t('store.productForm.shippingMode')}</Label>
+                    <Select
+                      value={(formData.shipping_mode as ProductShippingMode) || 'delivery_pricing'}
+                      onValueChange={(value: ProductShippingMode) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          shipping_mode: value,
+                          shipping_flat_fee: value === 'flat' ? (prev.shipping_flat_fee ?? 0) : null,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="border-indigo-500/30 focus:border-indigo-500/60 h-9 text-base font-semibold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="delivery_pricing">{t('store.productForm.shippingMode.delivery_pricing')}</SelectItem>
+                        <SelectItem value="flat">{t('store.productForm.shippingMode.flat')}</SelectItem>
+                        <SelectItem value="free">{t('store.productForm.shippingMode.free')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {((formData.shipping_mode as ProductShippingMode) || 'delivery_pricing') === 'flat' && (
+                    <div className="space-y-1">
+                      <Label className="text-base font-bold">{t('store.productForm.shippingFlatFee')}</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.shipping_flat_fee ?? 0}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            shipping_flat_fee: parseFloat(e.target.value) || 0,
+                          }))
+                        }
+                        className="border-indigo-500/30 focus:border-indigo-500/60 h-9 text-base"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {productFormSection === 'images' && (
               <div className="space-y-2 bg-sky-500/5 dark:bg-sky-900/10 p-2 md:p-3 rounded border border-sky-500/20">
                 <div className="flex items-center justify-between">
@@ -2335,6 +2696,7 @@ export default function Store() {
                   {(formData.images?.length || 0) > 0 && (
                     <AIVisionSuggest
                       imageUrl={formData.images![0]}
+                      locale={locale}
                       onApply={(data) => setFormData(prev => ({
                         ...prev,
                         ...(data.title ? { title: data.title } : {}),
@@ -2418,13 +2780,121 @@ export default function Store() {
                 </div>
               </div>
             )}
+
+            {productFormSection === 'video' && (
+              <div className="space-y-3 bg-rose-500/5 dark:bg-rose-900/10 p-2 md:p-3 rounded border border-rose-500/20">
+                <div>
+                  <h3 className="text-lg font-bold text-rose-600 dark:text-rose-400">🎬 فيديو المنتج</h3>
+                  <p className="text-sm text-muted-foreground">الفيديو يظهر أولاً في معرض الصور — العميل يرى الفيديو ثم يتنقل للصور</p>
+                </div>
+                {/* Upload video file directly */}
+                <div className="flex items-center gap-2">
+                  <label className={`flex items-center gap-2 px-3 py-2 rounded-md border border-dashed cursor-pointer text-sm transition-colors ${uploadingVideo ? 'opacity-50 pointer-events-none' : 'hover:bg-rose-500/10 border-rose-400/40'}`}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                    {uploadingVideo ? 'جارٍ الرفع...' : 'رفع فيديو من جهازك (mp4)'}
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/ogg"
+                      className="hidden"
+                      disabled={uploadingVideo}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (!file.type.startsWith('video/')) {
+                          toast({ variant: 'destructive', title: 'خطأ', description: 'الرجاء اختيار ملف فيديو (mp4, webm...)' });
+                          return;
+                        }
+                        if (file.size > 100 * 1024 * 1024) {
+                          toast({ variant: 'destructive', title: 'الملف كبير جداً', description: 'الحد الأقصى لحجم الفيديو هو 100MB' });
+                          e.target.value = '';
+                          return;
+                        }
+                        setUploadingVideo(true);
+                        try {
+                          const fd = new FormData();
+                          fd.append('image', file);
+                          const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                          if (!res.ok) throw new Error('فشل الرفع');
+                          const data = await res.json();
+                          setFormData((prev) => ({ ...prev, video_url: data.url }));
+                          toast({ title: 'تم رفع الفيديو ✓' });
+                        } catch {
+                          toast({ variant: 'destructive', title: 'فشل رفع الفيديو', description: 'حاول مرة أخرى' });
+                        } finally {
+                          setUploadingVideo(false);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                  </label>
+                  <span className="text-xs text-muted-foreground">أو الصق رابطاً أدناه</span>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="video_url" className="text-base font-bold">رابط الفيديو</Label>
+                  <input
+                    id="video_url"
+                    type="url"
+                    dir="ltr"
+                    value={formData.video_url || ''}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, video_url: e.target.value }))}
+                    placeholder="https://www.youtube.com/watch?v=... أو رابط mp4"
+                    className={`w-full px-3 py-2 rounded-md border bg-background text-sm outline-none focus:ring-2 focus:ring-rose-500/40 ${/tiktok\.com|instagram\.com/i.test(formData.video_url || '') ? 'border-destructive' : 'border-input'}`}
+                  />
+                  <p className="text-xs text-muted-foreground">يدعم: YouTube، Vimeo، أو رابط مباشر لملف mp4/webm</p>
+                </div>
+                {/* TikTok / Instagram blocked warning */}
+                {/tiktok\.com|instagram\.com/i.test(formData.video_url || '') && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-3 space-y-1">
+                    <p className="text-sm font-bold text-destructive">⛔ TikTok و Instagram لا يسمحان بتضمين الفيديو في المتاجر</p>
+                    <p className="text-xs text-muted-foreground">الحلول المتاحة:</p>
+                    <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5">
+                      <li>حمّل الفيديو من TikTok ثم ارفعه على متجرك كملف <strong>mp4</strong></li>
+                      <li>انشر الفيديو على <strong>YouTube</strong> والصق رابطه هنا</li>
+                    </ul>
+                  </div>
+                )}
+                {/* Preview — only if not blocked */}
+                {formData.video_url && !/tiktok\.com|instagram\.com/i.test(formData.video_url) && (
+                  <div className="rounded-lg overflow-hidden border" style={{ aspectRatio: '16/9' }}>
+                    {/youtube\.com|youtu\.be/.test(formData.video_url) ? (
+                      <iframe
+                        className="w-full h-full"
+                        src={`https://www.youtube.com/embed/${formData.video_url.match(/(?:watch\?v=|embed\/|shorts\/|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?mute=1`}
+                        allowFullScreen
+                      />
+                    ) : /\.(mp4|webm|ogg)/i.test(formData.video_url) ? (
+                      <video className="w-full h-full object-cover" src={formData.video_url} controls muted />
+                    ) : (
+                      <iframe className="w-full h-full" src={formData.video_url} allowFullScreen />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {productFormSection === 'notes' && (
+              <div className="space-y-2 bg-slate-500/5 dark:bg-slate-900/10 p-2 md:p-3 rounded border border-slate-500/20">
+                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">{t('store.productForm.notesTitle')}</h3>
+                <div className="space-y-1">
+                  <Label htmlFor="product_notes" className="text-base font-bold">{t('store.productForm.notesLabel')}</Label>
+                  <Textarea
+                    id="product_notes"
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder={t('store.productForm.notesPlaceholder')}
+                    rows={4}
+                    className="border-slate-500/30 focus:border-slate-500/60 transition-colors resize-none text-base"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setShowAddModal(false);
               setShowEditModal(false);
-              setFormData({ status: 'active', is_featured: false, stock_quantity: 1 });
+              setFormData({ ...DEFAULT_PRODUCT_FORM });
               setProductFormSection('product');
               setVariantsDraft([]);
               setVariantsLoaded(false);
@@ -2444,44 +2914,89 @@ export default function Store() {
         </DialogContent>
       </Dialog>
 
-      {/* Share Link Modal */}
-      <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
-        <DialogContent>
+      {/* Share Link Modal — Platform Picker with UTM */}
+      <Dialog open={showShareModal} onOpenChange={(open) => {
+        setShowShareModal(open);
+        if (!open) setSelectedPlatform(null);
+      }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{t('store.shareProduct')}</DialogTitle>
             <DialogDescription>
-              {t('store.shareProductDesc')}
+              {t('store.shareModal.choosePlatform')}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="flex gap-2">
-              <Input
-                value={shareLink}
-                readOnly
-                className="font-mono text-sm"
-              />
-              <Button onClick={copyToClipboard} variant="outline">
-                {linkCopied ? (
-                  <Check className="w-4 h-4 text-green-500" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </Button>
+          <div className="space-y-4 py-2">
+            {/* Platform grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {PROMO_PLATFORMS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedPlatform(p.id);
+                    setLinkCopied(false);
+                  }}
+                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                    selectedPlatform === p.id
+                      ? 'border-primary bg-primary/10 shadow-md scale-[1.02]'
+                      : 'border-transparent bg-muted/50 hover:bg-muted hover:border-border'
+                  }`}
+                >
+                  <span className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-lg ${p.color}`}>
+                    {p.emoji}
+                  </span>
+                  <span className="text-xs font-medium">{t(`store.shareModal.platform.${p.id}`)}</span>
+                </button>
+              ))}
             </div>
 
-            {linkCopied && (
-              <p className="text-sm text-green-600 flex items-center gap-2">
-                <Check className="w-4 h-4" />
-                {t('store.linkCopied')}
-              </p>
-            )}
+            {/* Generated UTM link */}
+            {selectedPlatform && (() => {
+              const platform = PROMO_PLATFORMS.find((p) => p.id === selectedPlatform)!;
+              const utmLink = buildUtmLink(shareLink, platform.id, platform.medium);
+              return (
+                <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-200">
+                  <Label className="text-sm font-medium">
+                    {t('store.shareModal.yourLink')}
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={utmLink}
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(utmLink);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2000);
+                      }}
+                    >
+                      {linkCopied ? (
+                        <Check className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {linkCopied && (
+                    <p className="text-sm text-green-600 flex items-center gap-2">
+                      <Check className="w-4 h-4" />
+                      {t('store.linkCopied')}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
-            <div className="bg-muted rounded-lg p-4 space-y-2">
+            {/* UTM tracking tip */}
+            <div className="bg-muted rounded-lg p-3 space-y-1.5">
               <p className="text-sm font-medium">{t('store.shareModal.tipTitle')}</p>
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>{t('store.shareModal.tip.share')}</li>
-                <li>{t('store.shareModal.tip.private')}</li>
+                <li>{t('store.shareModal.tip.utmExplain')}</li>
                 <li>{t('store.shareModal.tip.track')}</li>
               </ul>
             </div>
@@ -2491,10 +3006,15 @@ export default function Store() {
             <Button variant="outline" onClick={() => setShowShareModal(false)}>
               {t('store.shareModal.close')}
             </Button>
-            <Button onClick={() => window.open(shareLink, '_blank')}>
-              <ExternalLink className="w-4 h-4 mr-2" />
-              {t('store.shareModal.openLink')}
-            </Button>
+            {selectedPlatform && (
+              <Button onClick={() => {
+                const platform = PROMO_PLATFORMS.find((p) => p.id === selectedPlatform)!;
+                window.open(buildUtmLink(shareLink, platform.id, platform.medium), '_blank');
+              }}>
+                <ExternalLink className="w-4 h-4 mr-2" />
+                {t('store.shareModal.openLink')}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

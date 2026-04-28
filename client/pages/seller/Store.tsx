@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/lib/i18n';
+import { StoreSlugEditor } from '@/components/store/StoreSlugEditor';
 
 export default function SellerStore() {
   const { t } = useTranslation();
@@ -13,7 +14,7 @@ export default function SellerStore() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('/api/seller/store/settings');
+        const res = await fetch('/api/client/store/settings');
         if (res.ok) {
           const data = await res.json();
           setSettings(data);
@@ -28,7 +29,7 @@ export default function SellerStore() {
   const save = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/seller/store/settings', {
+      const res = await fetch('/api/client/store/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -70,6 +71,10 @@ export default function SellerStore() {
       </div>
       <div className="flex gap-2">
         <Button onClick={save} disabled={saving}>{saving ? t('loading') : t('save')}</Button>
+      </div>
+
+      <div className="mt-8">
+        <StoreSlugEditor />
       </div>
     </div>
   );

@@ -46,7 +46,7 @@ const AccountLocked = () => {
                 {t("accountLocked.trialEnded") || "Your free trial or subscription has ended."}
               </p>
               <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                {t("accountLocked.renewMessage") || "To continue using your store, please renew your subscription for $8/month."}
+                {t("accountLocked.renewMessage") || "To continue using your store, please renew your subscription for 800 دج/month."}
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ const AccountLocked = () => {
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-8 border border-blue-200 dark:border-blue-800">
           <div className="text-center">
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              $8<span className="text-lg text-gray-600 dark:text-gray-400">/{t("billing.month") || "month"}</span>
+              800 دج<span className="text-lg text-gray-600 dark:text-gray-400">/{t("billing.month") || "month"}</span>
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               {t("accountLocked.billingInfo") || "Billed monthly • Cancel anytime"}

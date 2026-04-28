@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "concurrently \"pnpm:dev:*\"",
     "dev:client": "vite --port 5173",
-    "dev:server": "node run-migrations.js && nodemon --watch server --ignore logs/** --ignore server/logs/** --ignore **/*.log --exec tsx server/dev.ts",
+    "dev:server": "node run-migrations.js && nodemon",
     "build": "npm run build:client && npm run build:server",
     "prisma:generate": "prisma generate",
     "build:client": "vite build",
@@ -30,6 +30,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "argon2": "^0.44.0",
+    "axios": "^1.7.7",
     "bcrypt": "^6.0.0",
     "chart.js": "^4.5.1",
     "cloudinary": "^2.8.0",

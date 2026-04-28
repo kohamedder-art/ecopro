@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload, ChevronRight, Search, Copy, Check, StickyNote, AlertTriangle, Bell, Calendar } from "lucide-react";
+import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload, ChevronRight, Search, Copy, Check, StickyNote, AlertTriangle, Bell, Calendar, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "@/lib/i18n";
 import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
@@ -55,7 +55,7 @@ export default function OrdersAdmin() {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [deliveryCompanies, setDeliveryCompanies] = useState<DeliveryCompany[]>([]);
   const [selectedDeliveryCompany, setSelectedDeliveryCompany] = useState<number | null>(null);
-  const [generateLabels, setGenerateLabels] = useState(true);
+  const [generateLabels, setGenerateLabels] = useState(false);
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkUploadResult, setBulkUploadResult] = useState<{ successCount: number; failCount: number; results: any[] } | null>(null);
 
@@ -320,6 +320,30 @@ export default function OrdersAdmin() {
     setSelectedOrders(new Set());
   };
 
+  // Translate structured server error codes into the current locale
+  const translateDeliveryError = (error: any): string => {
+    if (!error) return '';
+    // Handle object errors (e.g. MDM API returns {code, message, payload})
+    if (typeof error === 'object') {
+      return error.message || error.code || JSON.stringify(error);
+    }
+    try {
+      const parsed = JSON.parse(error);
+      if (parsed?.errorCode === 'VALIDATION_ERROR' && Array.isArray(parsed.fieldErrors)) {
+        const parts = parsed.fieldErrors.map((fe: { field: string; code: string; value?: string }) => {
+          const key = `orders.err.field.${fe.field}.${fe.code}`;
+          return t(key) || `${fe.field}: ${fe.code}`;
+        });
+        return parts.join(' ، ');
+      }
+      if (parsed?.message) return parsed.message;
+    } catch {
+      // not JSON — fall through
+    }
+    if (error === 'Network error - failed to connect to server') return t('orders.err.network');
+    return String(error);
+  };
+
   // Bulk upload to delivery company
   const handleBulkUpload = async () => {
     if (selectedOrders.size === 0 || !selectedDeliveryCompany) return;
@@ -526,7 +550,9 @@ export default function OrdersAdmin() {
       }
       setError(null);
       const isStaff = localStorage.getItem('isStaff') === 'true';
-      const res = await fetch(isStaff ? '/api/staff/orders' : '/api/client/orders?limit=100', {});
+      const authToken = localStorage.getItem('auth_token');
+      const authHeaders = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+      const res = await fetch(isStaff ? '/api/staff/orders' : '/api/client/orders?limit=100', { headers: authHeaders });
 
       if (res.status === 401) {
         setError('Authentication failed. Please log in again.');
@@ -773,56 +799,53 @@ export default function OrdersAdmin() {
       {/* New orders notification banner */}
       {newOrderCount > 0 && (
         <div
-          className="mb-2 flex items-center gap-3 rounded-lg bg-green-500/10 border border-green-500/30 px-3 py-2 cursor-pointer hover:bg-green-500/20 transition-colors"
+          className="mb-3 flex items-center gap-3 rounded-xl bg-gradient-to-r from-green-500/15 to-emerald-500/10 border border-green-500/30 px-4 py-3 cursor-pointer hover:from-green-500/25 hover:to-emerald-500/20 transition-all duration-300 shadow-sm shadow-green-500/10"
           onClick={() => { setNewOrderCount(0); loadOrders(); setFilterTab('all'); setCurrentPage(1); }}
         >
-          <Bell className="h-4 w-4 text-green-600 animate-bounce" />
-          <span className="text-sm font-bold text-green-700 dark:text-green-400">
-            {newOrderCount} new order{newOrderCount > 1 ? 's' : ''} arrived — click to refresh
-          </span>
-          <button className="ml-auto text-green-600 hover:text-green-800"><X className="h-4 w-4" /></button>
+          <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+            <Bell className="h-4 w-4 text-green-600 animate-bounce" />
+          </div>
+          <div>
+            <span className="text-sm font-bold text-green-700 dark:text-green-400 block">
+              🎉 {newOrderCount} طلب جديد وصل!
+            </span>
+            <span className="text-xs text-green-600/70">انقر للتحديث</span>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs font-bold bg-green-500 text-white px-2.5 py-1 rounded-full animate-pulse">{newOrderCount}</span>
+            <button className="text-green-600 hover:text-green-800 p-1 rounded-full hover:bg-green-500/20"><X className="h-3.5 w-3.5" /></button>
+          </div>
         </div>
       )}
       
       {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-2 mb-2 md:mb-3">
-        <div className="rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 p-2 md:p-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded bg-primary/20">
-              <ShoppingBag className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-muted-foreground">{t('orders.totalOrders')}</div>
-              <div className="text-2xl font-bold">{orders.length}</div>
-            </div>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-primary/50 transition-all duration-200 shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow">
+            <ShoppingBag className="h-3.5 w-3.5 text-white" />
+          </div>
+          <div>
+            <div className="text-xl font-black tabular-nums leading-none">{orders.length}</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('orders.totalOrders')}</div>
           </div>
         </div>
-        <div className="rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 p-2 md:p-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded bg-accent/20">
-              <TrendingUp className="h-4 w-4 text-accent" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-muted-foreground">{t('orders.confirmedOrders')}</div>
-              <div className="text-2xl font-bold">{orders.filter(o => o.status === 'confirmed').length}</div>
-            </div>
+        <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-emerald-500/50 transition-all duration-200 shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0 shadow">
+            <TrendingUp className="h-3.5 w-3.5 text-white" />
+          </div>
+          <div>
+            <div className="text-xl font-black tabular-nums leading-none text-emerald-500">{orders.filter(o => o.status === 'confirmed').length}</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('orders.confirmedOrders')}</div>
           </div>
         </div>
-        <div className="rounded-lg bg-gradient-to-br from-orange-500/20 to-orange-500/5 border border-orange-500/30 p-2 md:p-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded bg-orange-500/20">
-              <span className="text-lg">💰</span>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-muted-foreground">{t('orders.revenue')}</div>
-              <div className="text-xl font-bold bg-gradient-to-r from-accent to-orange-500 bg-clip-text text-transparent">
-                {Math.round(orders
+        <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-amber-500/50 transition-all duration-200 shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center shrink-0 shadow text-sm leading-none">💰</div>
+          <div>
+            <div className="text-xl font-black tabular-nums leading-none text-amber-500">{Math.round(orders
                   .filter(o => {
-                    // Get statuses that count as revenue
                     const revenueStatuses = customStatuses
                       .filter(s => s.counts_as_revenue)
                       .map(s => s.key || s.name);
-                    // Also include built-in 'completed' status (مكتملة)
                     revenueStatuses.push('completed');
                     return revenueStatuses.includes(o.status);
                   })
@@ -831,71 +854,72 @@ export default function OrdersAdmin() {
                     const qty = Number(o.quantity ?? 0);
                     if (!Number.isFinite(unit) || !Number.isFinite(qty)) return sum;
                     return sum + (unit * qty);
-                  }, 0))} DZD
-              </div>
-            </div>
+                  }, 0)).toLocaleString()}</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('orders.revenue')} · DZD</div>
           </div>
         </div>
       </div>
 
       {/* Orders Table */}
-      <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-card/90 to-card/70 backdrop-blur-sm shadow overflow-hidden">
-        <div className="p-2 md:p-3 border-b border-primary/10">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base md:text-lg font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+      <div className="rounded-2xl border border-border/40 bg-card shadow-md overflow-hidden">
+        {/* Toolbar */}
+        <div className="p-3 border-b border-border/40 bg-gradient-to-r from-muted/20 to-transparent">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-base md:text-lg font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent flex items-center gap-2">
+              <span className="inline-block w-1 h-5 rounded-full bg-gradient-to-b from-primary to-accent"></span>
               {t('orders.title')}
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
               <button 
                 onClick={() => loadOrders()}
-                className="inline-flex items-center gap-1 rounded border border-primary/30 bg-background px-3 py-2 text-sm font-bold hover:bg-primary/10 transition-colors disabled:opacity-50 h-9"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 disabled:opacity-50 h-8 shadow-sm"
                 disabled={isRefreshing}
               >
-                {isRefreshing ? t('orders.refreshing') : t('orders.refresh')}
+                {isRefreshing ? <><span className="w-3 h-3 border-2 border-primary/40 border-t-primary rounded-full animate-spin"></span> {t('orders.refreshing')}</> : t('orders.refresh')}
               </button>
               <button 
                 onClick={() => setShowAddOrder(true)}
-                className="inline-flex items-center gap-1 rounded bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-2 text-sm font-bold hover:from-green-600 hover:to-green-700 transition-colors shadow h-9"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1.5 text-xs font-bold hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-md shadow-green-500/25 h-8"
               >
-                <Plus className="h-4 w-4"/> {t('orders.addOrder')}
+                <Plus className="h-3.5 w-3.5"/> {t('orders.addOrder')}
               </button>
               <button 
                 onClick={() => setShowStatusManager(true)}
-                className="inline-flex items-center gap-1 rounded border border-purple-500/30 bg-purple-500/10 text-purple-600 px-3 py-2 text-sm font-bold hover:bg-purple-500/20 transition-colors h-9"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-600 px-3 py-1.5 text-xs font-bold hover:bg-purple-500/20 transition-all duration-200 h-8"
               >
-                <Settings className="h-4 w-4"/> {t('orders.statuses')}
+                <Settings className="h-3.5 w-3.5"/> <span className="hidden sm:inline">{t('orders.statuses')}</span>
               </button>
-              <button onClick={exportCSV} className="inline-flex items-center gap-1 rounded border border-primary/30 bg-background px-3 py-2 text-sm font-bold hover:bg-primary/10 transition-colors h-9">
-                <Download className="h-4 w-4"/> {t('orders.download')}
+              <button onClick={exportCSV} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
+                <Download className="h-3.5 w-3.5"/> <span className="hidden sm:inline">{t('orders.download')}</span>
               </button>
             </div>
           </div>
 
           {/* Search + Date Range */}
-          <div className="flex flex-col sm:flex-row gap-2 mt-2">
+          <div className="flex flex-col sm:flex-row gap-2 mt-3">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 placeholder="Search by customer, phone, order ID, product..."
-                className="w-full h-9 pl-8 pr-3 rounded border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border/60 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 focus:bg-background transition-all duration-200"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <X className="h-3.5 w-3.5" />
+                <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground w-5 h-5 flex items-center justify-center rounded-full hover:bg-muted transition-colors">
+                  <X className="h-3 w-3" />
                 </button>
               )}
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 bg-muted/40 p-1 rounded-lg border border-border/40">
               {(['all','today','week','month'] as const).map(r => (
                 <button
                   key={r}
                   onClick={() => { setDateRange(r); setCurrentPage(1); }}
-                  className={`px-2.5 h-9 rounded text-xs font-bold border transition-colors ${dateRange === r ? 'bg-primary text-white border-primary' : 'bg-background border-border hover:bg-primary/10'}`}
+                  className={`px-2.5 h-7 rounded-md text-xs font-bold transition-all duration-200 flex-1 sm:flex-none ${dateRange === r ? 'bg-primary text-white shadow-sm shadow-primary/30' : 'text-muted-foreground hover:text-foreground hover:bg-background'}`}
                 >
-                  {r === 'all' ? 'All' : r === 'today' ? 'Today' : r === 'week' ? '7d' : '30d'}
+                  {r === 'all' ? 'الكل' : r === 'today' ? 'اليوم' : r === 'week' ? '7 أيام' : '30 يوم'}
                 </button>
               ))}
             </div>
@@ -903,13 +927,14 @@ export default function OrdersAdmin() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="border-b border-primary/10 bg-gradient-to-r from-muted/30 to-muted/10 p-2 flex gap-1 flex-wrap">
+        <div className="border-b border-border/40 bg-muted/10 px-3 py-2">
+          <div className="flex gap-1.5 flex-wrap">
           <button
             onClick={() => setFilterTab('all')}
-            className={`px-4 py-2 rounded text-sm font-bold transition-colors h-9 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
               filterTab === 'all'
-                ? 'bg-primary text-white'
-                : 'bg-background text-foreground hover:bg-primary/10'
+                ? 'bg-primary text-white shadow-md shadow-primary/30'
+                : 'bg-background text-muted-foreground border border-border hover:border-primary/40 hover:text-foreground'
             }`}
           >
             {t('orders.status.all')} ({orders.length})
@@ -922,14 +947,12 @@ export default function OrdersAdmin() {
                 key={status.id}
                 onClick={() => setFilterTab(status.key)}
                 style={{ 
-                  backgroundColor: filterTab === status.key ? status.color : undefined,
-                  borderColor: status.color 
+                  backgroundColor: filterTab === status.key ? status.color : `${status.color}15`,
+                  borderColor: filterTab === status.key ? status.color : `${status.color}40`,
+                  color: filterTab === status.key ? '#fff' : status.color,
+                  boxShadow: filterTab === status.key ? `0 4px 12px ${status.color}40` : 'none'
                 }}
-                className={`px-4 py-2 rounded text-sm font-bold transition-colors h-9 border ${
-                  filterTab === status.key
-                    ? 'text-white'
-                    : 'bg-background text-foreground hover:opacity-80'
-                }`}
+                className="px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border"
               >
                 {status.icon} {translatedName} ({statusCount})
               </button>
@@ -937,14 +960,15 @@ export default function OrdersAdmin() {
           })}
           <button
             onClick={() => setFilterTab('archived')}
-            className={`px-3 py-1 rounded text-xs font-medium transition-colors h-7 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${
               filterTab === 'archived'
-                ? 'bg-gray-500 text-white'
-                : 'bg-background text-foreground hover:bg-gray-500/10'
+                ? 'bg-gray-500 text-white border-gray-500 shadow-md shadow-gray-500/30'
+                : 'bg-gray-500/10 text-foreground/50 border-gray-500/30 hover:bg-gray-500/20 hover:text-foreground'
             }`}
           >
-            {t('orders.status.archived')} ({orders.filter(o => o.status === 'failed' || o.status === 'cancelled' || o.status === 'fake' || o.status === 'duplicate').length})
+            🗃️ {t('orders.status.archived')} ({orders.filter(o => o.status === 'failed' || o.status === 'cancelled' || o.status === 'fake' || o.status === 'duplicate').length})
           </button>
+          </div>
         </div>
 
         {/* Bulk Selection Toolbar */}
@@ -972,7 +996,7 @@ export default function OrdersAdmin() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="md:overflow-x-auto overflow-x-hidden">
           {/* Loading State */}
           {isLoading && (
             <div className="p-3 md:p-3 text-center">
@@ -1033,30 +1057,30 @@ export default function OrdersAdmin() {
 
           {/* Orders Table */}
           {!isLoading && !error && orders.length > 0 && getFilteredOrders().length > 0 && (
-          <table className="w-full text-sm font-semibold">
-            <thead>
-              <tr className="border-b border-primary/10 bg-gradient-to-r from-muted/50 to-muted/30">
-                <th className="whitespace-nowrap p-2 text-center font-bold text-sm w-10">
+          <table className="w-full text-sm font-semibold md:table hidden">
+            <thead className="hidden md:table-header-group">
+              <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
+                <th className="whitespace-nowrap px-3 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider w-10">
                   <button 
                     onClick={selectAllFiltered}
-                    className="p-1 hover:bg-primary/10 rounded"
+                    className="p-1 hover:bg-primary/10 rounded transition-colors"
                     title={getFilteredOrders().every(o => selectedOrders.has(o.raw_id)) ? "Deselect all" : "Select all"}
                   >
                     {getFilteredOrders().length > 0 && getFilteredOrders().every(o => selectedOrders.has(o.raw_id)) ? (
-                      <CheckSquare className="h-4 w-4 text-blue-500" />
+                      <CheckSquare className="h-4 w-4 text-primary" />
                     ) : (
-                      <Square className="h-4 w-4 text-muted-foreground" />
+                      <Square className="h-4 w-4 text-muted-foreground/50" />
                     )}
                   </button>
                 </th>
-                <th className="whitespace-nowrap p-2 text-right font-bold text-sm">{t('orders.image')}</th>
-                <th className="whitespace-nowrap p-2 text-right font-bold text-sm">{t('orders.orderNumber')}</th>
-                <th className="whitespace-nowrap p-2 text-right font-bold text-sm">{t('orders.product')}</th>
-                <th className="whitespace-nowrap p-2 text-right font-bold text-sm">{t('orders.customer')}</th>
-                <th className="whitespace-nowrap p-2 text-right font-bold text-sm">{t('orders.amount')}</th>
-                <th className="whitespace-nowrap p-2 text-right font-bold text-sm">{t('orders.status')}</th>
-                <th className="whitespace-nowrap p-2 text-right font-bold text-sm">{t('orders.time')}</th>
-                <th className="whitespace-nowrap p-2 text-right font-bold text-sm w-8"></th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.image')}</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.orderNumber')}</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.product')}</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.customer')}</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.amount')}</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.status')}</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.time')}</th>
+                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-8"></th>
               </tr>
             </thead>
             <tbody>
@@ -1064,23 +1088,23 @@ export default function OrdersAdmin() {
                 <React.Fragment key={o.id}>
                   <tr 
                     onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
-                    className={`group border-b border-primary/5 transition-all cursor-pointer hover:bg-primary/10 ${duplicatePhones.has(o.phone) ? 'bg-red-500/5 border-l-[3px] border-l-red-500' : ''}`}
+                    className={`group border-b border-border/30 transition-all duration-150 cursor-pointer hover:bg-primary/5 hidden md:table-row ${expandedOrderId === o.id ? 'bg-primary/5' : ''} ${duplicatePhones.has(o.phone) ? 'bg-red-500/5 border-l-[3px] border-l-red-500' : ''}`}
                   >
-                    <td className="whitespace-nowrap p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                       <button 
                         onClick={() => toggleOrderSelection(o.raw_id)}
-                        className="p-1 hover:bg-primary/10 rounded"
+                        className="p-1 hover:bg-primary/10 rounded transition-colors"
                       >
                         {selectedOrders.has(o.raw_id) ? (
-                          <CheckSquare className="h-4 w-4 text-blue-500" />
+                          <CheckSquare className="h-4 w-4 text-primary" />
                         ) : (
-                          <Square className="h-4 w-4 text-muted-foreground" />
+                          <Square className="h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground/60" />
                         )}
                       </button>
                     </td>
-                    <td className="whitespace-nowrap p-2 text-right">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right">
                       {o.product_image ? (
-                        <div className="w-10 h-10 rounded overflow-hidden border border-border/50 ml-auto">
+                        <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-border/40 ml-auto shadow-sm group-hover:border-primary/30 transition-all duration-200">
                           <img 
                             src={o.product_image} 
                             alt={o.product_title || 'Product'} 
@@ -1088,95 +1112,99 @@ export default function OrdersAdmin() {
                           />
                         </div>
                       ) : (
-                        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center border border-border/50 ml-auto">
-                          <ShoppingBag className="w-5 h-5 text-muted-foreground" />
+                        <div className="w-11 h-11 rounded-xl bg-muted/80 flex items-center justify-center border-2 border-border/30 ml-auto">
+                          <ShoppingBag className="w-4 h-4 text-muted-foreground/50" />
                         </div>
                       )}
                     </td>
-                    <td className="whitespace-nowrap p-2 text-right font-bold text-sm" onClick={e => e.stopPropagation()}>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => copyToClipboard(o.id, `id-${o.id}`)}
-                        className="inline-flex items-center gap-1 group/copy hover:text-primary transition-colors"
+                        className="inline-flex items-center gap-1.5 group/copy hover:text-primary transition-colors font-mono text-xs font-bold bg-muted/50 hover:bg-primary/10 px-2 py-1 rounded-md"
                         title="Copy order ID"
                       >
                         {o.id}
-                        {copiedKey === `id-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/copy:opacity-60" />}
+                        {copiedKey === `id-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/copy:opacity-70" />}
                       </button>
                     </td>
-                    <td className="whitespace-nowrap p-2 text-right">
-                      <span className="text-sm font-semibold max-w-[150px] truncate block" title={o.product_title}>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                      <span className="text-sm font-semibold max-w-[160px] truncate block" title={o.product_title}>
                         {o.product_title || t('orders.noProduct')}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap p-2 text-right" onClick={e => e.stopPropagation()}>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex flex-col items-end gap-0.5">
-                        <span className="text-sm font-semibold">{o.customer}</span>
+                        <span className="text-sm font-bold">{o.customer}</span>
                         {o.phone && (
                           <button
                             onClick={() => copyToClipboard(o.phone, `phone-${o.id}`)}
                             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors group/phone"
                             title="Copy phone"
                           >
-                            {duplicatePhones.has(o.phone) && <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />}
+                            {duplicatePhones.has(o.phone) && <AlertTriangle className="h-3.5 w-3.5 text-red-500 animate-pulse" />}
                             {o.phone}
                             {copiedKey === `phone-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/phone:opacity-60" />}
                           </button>
                         )}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap p-2 text-right">
-                      <span className="font-bold bg-gradient-to-r from-accent to-orange-500 bg-clip-text text-transparent text-sm">
-                        {Math.round(Number(o.total) || 0)} DZD
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                      <span className="font-black text-sm tabular-nums text-amber-500 dark:text-amber-400">
+                        {Math.round(Number(o.total) || 0).toLocaleString()} <span className="text-muted-foreground/70 font-medium text-xs">DZD</span>
                       </span>
                     </td>
-                    <td className="whitespace-nowrap p-2 text-right">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right">
                       {(() => {
                         const statusInfo = getStatusDisplay(o.status);
                         return (
                           <span 
-                            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-bold border"
+                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border whitespace-nowrap"
                             style={{ 
-                              backgroundColor: `${statusInfo.color}20`,
-                              borderColor: `${statusInfo.color}50`,
-                              color: statusInfo.color 
+                              backgroundColor: `${statusInfo.color}25`,
+                              borderColor: `${statusInfo.color}60`,
+                              color: statusInfo.color,
                             }}
                           >
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusInfo.color }} />
                             {statusInfo.icon} {statusInfo.name}
                           </span>
                         );
                       })()}
                     </td>
-                    <td className="whitespace-nowrap p-2 text-right text-muted-foreground text-sm" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
-                    <td className="p-2 text-right">
-                      <ChevronRight className={`h-4 w-4 text-muted-foreground ml-auto transition-transform duration-200 ${expandedOrderId === o.id ? 'rotate-90' : 'group-hover:translate-x-0.5'}`} />
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right text-foreground/50 text-xs font-medium" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
+                    <td className="px-3 py-2.5 text-right">
+                      <ChevronRight className={`h-4 w-4 text-muted-foreground/40 ml-auto transition-all duration-200 ${expandedOrderId === o.id ? 'rotate-90 text-primary' : 'group-hover:translate-x-0.5 group-hover:text-muted-foreground'}`} />
                     </td>
                   </tr>
+
+                  {/* Mobile card - rendered separately below table */}
+
                   {expandedOrderId === o.id && (
-                    <tr className="bg-muted/30 border-b border-primary/10">
-                      <td colSpan={9} className="p-3">
+                    <tr className="bg-gradient-to-r from-primary/5 to-transparent border-b border-border/30">
+                      <td colSpan={9} className="p-4">
                         <div className="space-y-2">
                           {/* Order Details Grid - Compact */}
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                            <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.orderNumber')}</div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="text-xs font-semibold text-foreground/60">{t('orders.orderNumber')}</div>
                               <div className="font-bold text-sm">{o.id}</div>
                             </div>
-                            <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.customerName')}</div>
+                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="text-xs font-semibold text-foreground/60">{t('orders.customerName')}</div>
                               <div className="font-bold text-sm">{o.customer}</div>
                             </div>
-                            <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.phoneNumber')}</div>
+                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="text-xs font-semibold text-foreground/60">{t('orders.phoneNumber')}</div>
                               <div className="font-bold text-sm">{o.phone || t('orders.notAvailable')}</div>
                             </div>
-                            <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.address')}</div>
+                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="text-xs font-semibold text-foreground/60">{t('orders.address')}</div>
                               <div className="font-bold text-sm truncate">{o.address || t('orders.notAvailable')}</div>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                            <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-xs font-semibold text-muted-foreground">{t('orders.product')}</div>
+                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="text-xs font-semibold text-foreground/60">{t('orders.product')}</div>
                               <div className="flex items-center gap-2">
                                 {o.product_image ? (
                                   <img 
@@ -1192,33 +1220,33 @@ export default function OrdersAdmin() {
                                 <div className="font-bold text-sm truncate">{o.product_title || t('orders.notAvailable')}</div>
                               </div>
                             </div>
-                            <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-xs font-semibold text-muted-foreground">Variant</div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="text-xs font-semibold text-foreground/60">{t('orders.variant')}</div>
                               <div className="font-bold text-sm">
                                 {o.variant_name || [o.variant_color, o.variant_size].filter(Boolean).join(' / ') || '—'}
                               </div>
                             </div>
-                            <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-xs font-semibold text-muted-foreground">Quantity</div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="text-xs font-semibold text-foreground/60">{t('orders.quantity')}</div>
                               <div className="font-bold text-sm">{Number(o.quantity || 0)}</div>
                             </div>
-                            <div className="bg-background rounded p-2 border border-border/50">
-                              <div className="text-xs font-semibold text-muted-foreground">Unit Price</div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="text-xs font-semibold text-foreground/60">{t('orders.unitPrice')}</div>
                               <div className="font-bold text-sm">{Math.round(Number(o.unit_price || 0))} DZD</div>
                             </div>
                           </div>
 
                           {/* Notes + Edit inline */}
                           <div className="flex items-start gap-2">
-                            <div className="flex-1 bg-background rounded p-2 border border-border/50">
-                              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1">
-                                <StickyNote className="h-3 w-3" /> Internal Note
+                            <div className="flex-1 bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/60 mb-1">
+                                <StickyNote className="h-3 w-3" /> {t('orders.internalNote')}
                               </div>
                               <textarea
                                 value={orderNotes[o.raw_id] || ''}
                                 onChange={e => setOrderNotes(prev => ({ ...prev, [o.raw_id]: e.target.value }))}
                                 onClick={e => e.stopPropagation()}
-                                placeholder="Add a private note about this order..."
+                                placeholder={t('orders.addNotePlaceholder')}
                                 rows={1}
                                 className="w-full text-xs rounded border border-border bg-muted/30 px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
                               />
@@ -1231,7 +1259,7 @@ export default function OrdersAdmin() {
                                 }}
                                 className="inline-flex items-center rounded bg-primary/10 px-3 py-2 text-sm font-bold hover:bg-primary/20 transition-colors self-end"
                               >
-                                ✎ Edit Order
+                                {t('orders.editOrder')}
                               </button>
                             )}
                           </div>
@@ -1265,13 +1293,13 @@ export default function OrdersAdmin() {
                               onClick={() => handleDeleteOrder(o.raw_id)}
                               className="inline-flex items-center rounded bg-gradient-to-r from-gray-700 to-red-700 px-3 py-2 text-sm font-bold text-white hover:from-red-800 hover:to-gray-800 transition-colors shadow h-9"
                             >
-                              <Trash2 className="h-4 w-4 mr-1" /> Delete
+                              <Trash2 className="h-4 w-4 mr-1" /> {t('orders.delete')}
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); setDeliveryOrder(o); }}
                               className="inline-flex items-center rounded bg-gradient-to-r from-indigo-500 to-blue-600 px-3 py-2 text-sm font-bold text-white hover:from-indigo-600 hover:to-blue-700 transition-colors shadow h-9"
                             >
-                              <Truck className="h-4 w-4 mr-1" /> Delivery
+                              <Truck className="h-4 w-4 mr-1" /> {t('orders.delivery')}
                             </button>
                           </div>
                         </div>
@@ -1285,28 +1313,167 @@ export default function OrdersAdmin() {
           )}
         </div>
 
+        {/* Mobile cards list - outside table */}
+        <div className="md:hidden divide-y divide-border/40 px-3 py-2 space-y-2">
+          {isLoading ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">...</div>
+          ) : getPaginatedOrders().length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">{t('orders.noOrders')}</div>
+          ) : getPaginatedOrders().map((o: any) => {
+            const s = getStatusDisplay(o.status);
+            return (
+              <div key={o.id}>
+                <div className="rounded-2xl bg-card border border-border/60 shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-3 p-3">
+                    <div onClick={e => e.stopPropagation()}>
+                      <button onClick={() => toggleOrderSelection(o.raw_id)}>
+                        {selectedOrders.has(o.raw_id)
+                          ? <CheckSquare className="h-4 w-4 text-primary" />
+                          : <Square className="h-4 w-4 text-muted-foreground/30" />}
+                      </button>
+                    </div>
+                    {o.product_image ? (
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0">
+                        <img src={o.product_image} alt={o.product_title || ''} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl shrink-0 flex items-center justify-center bg-muted">
+                        <ShoppingBag className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{o.product_title || t('orders.noProduct')}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {o.customer}{duplicatePhones.has(o.phone) && <AlertTriangle className="h-3 w-3 text-red-500 inline ml-1" />}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-black">{Math.round(Number(o.total) || 0)}</div>
+                      <div className="text-xs text-muted-foreground">DZD</div>
+                    </div>
+                  </div>
+                  <div className="h-px bg-border/50 mx-3" />
+                  <div className="flex items-center justify-between px-3 py-2 gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                          style={{ backgroundColor: `${s.color}25`, borderColor: `${s.color}60`, color: s.color }}>
+                      {s.icon} {s.name}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground/50 mr-1">{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</span>
+                      {o.phone && (
+                        <a href={`tel:${o.phone}`}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors"
+                        >
+                          <Phone className="h-3 w-3" /> {t('orders.call')}
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
+                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        {expandedOrderId === o.id ? t('orders.less') : t('orders.details')}
+                        <ChevronRight className={`h-3 w-3 transition-transform ${expandedOrderId === o.id ? 'rotate-90' : ''}`} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {expandedOrderId === o.id && (
+                  <div className="mt-1 rounded-2xl bg-muted/40 border border-border/40 p-3 space-y-3 text-sm">
+                    {/* Order info grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-card rounded-xl p-2 border border-border/50">
+                        <div className="text-xs text-muted-foreground">{t('orders.orderNumber')}</div>
+                        <div className="font-bold text-sm">{o.id}</div>
+                      </div>
+                      <div className="bg-card rounded-xl p-2 border border-border/50">
+                        <div className="text-xs text-muted-foreground">{t('orders.phoneNumber')}</div>
+                        <div className="font-bold text-sm">{o.phone || '-'}</div>
+                      </div>
+                      <div className="bg-card rounded-xl p-2 border border-border/50">
+                        <div className="text-xs text-muted-foreground">{t('orders.amount')}</div>
+                        <div className="font-bold text-sm">{Math.round(Number(o.total) || 0)} DZD</div>
+                      </div>
+                      <div className="bg-card rounded-xl p-2 border border-border/50">
+                        <div className="text-xs text-muted-foreground">{t('orders.address')}</div>
+                        <div className="font-bold text-sm truncate">{o.address || '-'}</div>
+                      </div>
+                    </div>
+
+                    {/* Status actions */}
+                    <div>
+                      <div className="text-xs font-semibold text-foreground/60 mb-2">{t('orders.changeStatus')}</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {customStatuses.map(status => {
+                          const translatedName = t(`orders.status.${status.key}`) || status.name;
+                          return (
+                            <button
+                              key={status.id}
+                              onClick={() => setStatus(o.id, status.key)}
+                              disabled={o.status === status.key}
+                              className="inline-flex items-center rounded-xl px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-30"
+                              style={{ backgroundColor: status.color, color: 'white' }}
+                            >
+                              {status.icon} {translatedName}
+                            </button>
+                          );
+                        })}
+                        <button
+                          onClick={() => setStatus(o.id, 'cancelled')}
+                          className="inline-flex items-center rounded-xl px-3 py-1.5 text-xs font-bold bg-red-500 text-white"
+                        >
+                          ✕ {t('orders.action.cancel')}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-2 pt-1 border-t border-border/40">
+                      <button
+                        onClick={() => { setDeliveryOrder(o); }}
+                        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-indigo-500 text-white flex-1 justify-center"
+                      >
+                        <Truck className="h-3.5 w-3.5" /> {t('orders.delivery')}
+                      </button>
+                      <button
+                        onClick={() => openEditModal(o)}
+                        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-primary/10 text-primary flex-1 justify-center"
+                      >
+                        ✎ {t('orders.editOrder')}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteOrder(o.raw_id)}
+                        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-red-500/10 text-red-500 flex-1 justify-center"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> {t('orders.delete')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
         {/* Pagination */}
-        <div className="p-4 border-t-2 border-primary/10 flex items-center justify-between bg-muted/30">
-          <div className="text-sm text-muted-foreground">
+        <div className="p-3 border-t border-border/40 flex items-center justify-between bg-muted/10">
+          <div className="text-xs text-muted-foreground">
             {totalFilteredOrders === 0 ? t('orders.showingZero') : t('orders.showing').replace('{start}', startOrder.toString()).replace('{end}', endOrder.toString()).replace('{total}', totalFilteredOrders.toString())}
           </div>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              className="rounded-lg border-2 border-primary/30 bg-background px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-8 h-8 rounded-xl border border-border/60 flex items-center justify-center text-sm font-bold hover:bg-muted hover:border-primary/30 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
               disabled={currentPage === 1}
             >
-              {t('orders.prev')}
+              ‹
             </button>
-            <span className="text-sm font-medium px-2">
-              {currentPage} / {Math.max(totalPages, 1)}
-            </span>
+            <span className="text-xs font-bold px-2 py-1 bg-muted/60 rounded-lg border border-border/40">{currentPage} / {Math.max(totalPages, 1)}</span>
             <button 
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              className="rounded-lg bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-medium text-white hover:from-primary/90 hover:to-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-bold hover:bg-primary/90 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-md shadow-primary/25"
               disabled={currentPage >= totalPages}
             >
-              {t('orders.next')}
+              ›
             </button>
           </div>
         </div>
@@ -1318,7 +1485,7 @@ export default function OrdersAdmin() {
           <div className="bg-card rounded-lg border border-primary/20 shadow-xl max-w-lg w-full p-4 space-y-3 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold">✎ Edit Order</h2>
+                <h2 className="text-lg font-bold">✎ {t('orders.editOrder')}</h2>
                 {editOrder?.id && <div className="text-xs text-muted-foreground">{editOrder.id}</div>}
               </div>
               <button
@@ -1336,7 +1503,7 @@ export default function OrdersAdmin() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
-                <label className="text-sm font-bold">Customer Name *</label>
+                <label className="text-sm font-bold">{t('orders.customerNameRequired')}</label>
                 <input
                   type="text"
                   value={editForm.customer_name}
@@ -1346,7 +1513,7 @@ export default function OrdersAdmin() {
               </div>
 
               <div>
-                <label className="text-sm font-bold">Phone</label>
+                <label className="text-sm font-bold">{t('orders.phoneNumber')}</label>
                 <input
                   type="tel"
                   value={editForm.customer_phone}
@@ -1357,7 +1524,7 @@ export default function OrdersAdmin() {
               </div>
 
               <div>
-                <label className="text-sm font-bold">Email</label>
+                <label className="text-sm font-bold">{t('orders.email')}</label>
                 <input
                   type="email"
                   value={editForm.customer_email}
@@ -1367,7 +1534,7 @@ export default function OrdersAdmin() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="text-sm font-bold">Shipping Address</label>
+                <label className="text-sm font-bold">{t('orders.shippingAddress')}</label>
                 <input
                   type="text"
                   value={editForm.shipping_address}
@@ -1377,7 +1544,7 @@ export default function OrdersAdmin() {
               </div>
 
               <div>
-                <label className="text-sm font-bold">Wilaya</label>
+                <label className="text-sm font-bold">{t('orders.wilaya')}</label>
                 <select
                   value={editForm.shipping_wilaya_id}
                   onChange={(e) =>
@@ -1389,7 +1556,7 @@ export default function OrdersAdmin() {
                   }
                   className="w-full mt-0.5 px-3 py-2 rounded border border-border/50 bg-background text-sm"
                 >
-                  <option value="">Select wilaya</option>
+                  <option value="">{t('orders.selectWilaya')}</option>
                   {dzWilayas.map((w) => (
                     <option key={String(w.id)} value={String(w.id)}>
                       {String(w.code).padStart(2, '0')} - {w.name}
@@ -1399,14 +1566,14 @@ export default function OrdersAdmin() {
               </div>
 
               <div>
-                <label className="text-sm font-bold">Commune</label>
+                <label className="text-sm font-bold">{t('orders.commune')}</label>
                 <select
                   value={editForm.shipping_commune_id}
                   onChange={(e) => setEditForm({ ...editForm, shipping_commune_id: e.target.value })}
                   className="w-full mt-0.5 px-3 py-2 rounded border border-border/50 bg-background text-sm"
                   disabled={!editForm.shipping_wilaya_id}
                 >
-                  <option value="">Select commune</option>
+                  <option value="">{t('orders.selectCommune')}</option>
                   {dzCommunesForEdit.map((c) => (
                     <option key={String(c.id)} value={String(c.id)}>
                       {c.name}
@@ -1416,7 +1583,7 @@ export default function OrdersAdmin() {
               </div>
 
               <div>
-                <label className="text-sm font-bold">Hai (optional)</label>
+                <label className="text-sm font-bold">{t('orders.hai')}</label>
                 <input
                   type="text"
                   value={editForm.shipping_hai}
@@ -1426,19 +1593,19 @@ export default function OrdersAdmin() {
               </div>
 
               <div>
-                <label className="text-sm font-bold">Delivery Type</label>
+                <label className="text-sm font-bold">{t('orders.deliveryType')}</label>
                 <select
                   value={editForm.delivery_type}
                   onChange={(e) => setEditForm({ ...editForm, delivery_type: e.target.value as any })}
                   className="w-full mt-0.5 px-3 py-2 rounded border border-border/50 bg-background text-sm"
                 >
-                  <option value="home">Home</option>
-                  <option value="desk">Desk</option>
+                  <option value="home">{t('orders.deliveryHome')}</option>
+                  <option value="desk">{t('orders.deliveryDesk')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-sm font-bold">Quantity</label>
+                <label className="text-sm font-bold">{t('orders.quantity')}</label>
                 <input
                   type="number"
                   min={1}
@@ -1450,9 +1617,9 @@ export default function OrdersAdmin() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="text-sm font-bold">Variant</label>
+                <label className="text-sm font-bold">{t('orders.variant')}</label>
                 <div className="text-xs text-muted-foreground mb-1">
-                  {loadingEditVariants ? 'Loading variants…' : editVariants.length ? 'Select the exact color/size for this order.' : 'No variants for this product.'}
+                  {loadingEditVariants ? t('orders.loadingVariants') : editVariants.length ? t('orders.variantHint') : t('orders.noVariantsForProduct')}
                 </div>
                 <select
                   value={editForm.variant_id}
@@ -1460,7 +1627,7 @@ export default function OrdersAdmin() {
                   className="w-full px-3 py-2 rounded border border-border/50 bg-background text-sm"
                   disabled={loadingEditVariants || editVariants.length === 0}
                 >
-                  <option value="">{editVariants.length ? 'Select variant' : 'No variants'}</option>
+                  <option value="">{editVariants.length ? t('orders.selectVariant') : t('orders.noVariants')}</option>
                   {editVariants
                     .filter((v: any) => v?.is_active !== false)
                     .map((v: any) => {
@@ -1504,7 +1671,7 @@ export default function OrdersAdmin() {
                     className="flex-1 px-3 py-2 rounded bg-gradient-to-r from-primary to-accent text-white text-sm font-bold hover:from-primary/90 hover:to-accent/90 transition-colors shadow disabled:opacity-50"
                     disabled={savingEditOrder || !canSave}
                   >
-                    {savingEditOrder ? 'Saving…' : 'Save Changes'}
+                    {savingEditOrder ? t('common.saving') : t('orders.saveChanges')}
                   </button>
                 </div>
               );
@@ -1647,8 +1814,8 @@ export default function OrdersAdmin() {
                         {status.icon}
                       </div>
                       <span className="font-semibold text-sm">{t(`orders.status.${status.key}`) || status.name}</span>
-                      {status.is_system && CORE_LOCKED_KEYS.has(status.key) && <span className="text-[10px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded-md">🔒 Core</span>}
-                      {status.counts_as_revenue && <span className="text-[10px] bg-green-500/15 text-green-400 px-1.5 py-0.5 rounded-md">💰 Revenue</span>}
+                      {status.is_system && CORE_LOCKED_KEYS.has(status.key) && <span className="text-[10px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded-md">{t('orders.core')}</span>}
+                      {status.counts_as_revenue && <span className="text-[10px] bg-green-500/15 text-green-400 px-1.5 py-0.5 rounded-md">{t('orders.revenue')}</span>}
                     </div>
                     {onDelete && (
                       <button onClick={onDelete} className="p-1 rounded-lg hover:bg-red-500/15 text-red-400 transition-colors">
@@ -1680,7 +1847,7 @@ export default function OrdersAdmin() {
 
                     {customOnly.length > 0 && (
                       <div className="space-y-1.5">
-                        <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">Custom</p>
+                        <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">{t('orders.custom')}</p>
                         {customOnly.map(s => <StatusRow key={s.id} status={s} onDelete={() => handleDeleteStatus(s.id)} />)}
                       </div>
                     )}
@@ -1691,7 +1858,7 @@ export default function OrdersAdmin() {
                       if (!available.length) return null;
                       return (
                         <div className="space-y-1.5 pt-1 border-t border-border/40">
-                          <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">Add Preset</p>
+                          <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">{t('orders.addPreset')}</p>
                           {available.map(([k, p]) => (
                             <button
                               key={k}
@@ -1702,7 +1869,7 @@ export default function OrdersAdmin() {
                                 <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: p.color }}>
                                   {p.icon}
                                 </div>
-                                <span className="font-semibold text-sm text-muted-foreground group-hover:text-foreground transition-colors">{p.name}</span>
+                                <span className="font-semibold text-sm text-muted-foreground group-hover:text-foreground transition-colors">{t(`orders.status.${k}`) || p.name}</span>
                               </div>
                               <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                             </button>
@@ -1724,7 +1891,7 @@ export default function OrdersAdmin() {
                   value={newStatusName}
                   onChange={(e) => setNewStatusName(e.target.value)}
                   className="flex-1 px-3 h-9 rounded-xl border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm"
-                  placeholder="Status name"
+                  placeholder={t('orders.statusNamePlaceholder')}
                 />
                 <input
                   type="color"
@@ -1757,14 +1924,14 @@ export default function OrdersAdmin() {
                     onChange={(e) => setNewStatusCountsAsRevenue(e.target.checked)}
                     className="w-4 h-4 rounded border-border accent-green-500"
                   />
-                  <span className="text-sm text-muted-foreground">💰 Count as revenue</span>
+                  <span className="text-sm text-muted-foreground">{t('orders.countAsRevenue')}</span>
                 </label>
                 <button
                   onClick={handleAddStatus}
                   disabled={!newStatusName.trim()}
                   className="px-4 h-9 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-bold hover:from-purple-600 hover:to-purple-700 transition-colors shadow disabled:opacity-40 flex items-center gap-1.5"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Add Status
+                  <Plus className="h-3.5 w-3.5" /> {t('orders.addStatus')}
                 </button>
               </div>
             </div>
@@ -1786,8 +1953,8 @@ export default function OrdersAdmin() {
                   <Truck className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white tracking-tight">Upload to Delivery</h2>
-                  <p className="text-xs text-white/70">{selectedOrders.size} orders &middot; {orders.filter(o => selectedOrders.has(o.raw_id)).reduce((sum, o) => sum + (Number(o.total) || 0), 0).toLocaleString()} DZD</p>
+                  <h2 className="text-base font-bold text-white tracking-tight">{t('orders.uploadToDelivery')}</h2>
+                  <p className="text-xs text-white/70">{t('orders.ordersMiddot').replace('{count}', String(selectedOrders.size)).replace('{amount}', orders.filter(o => selectedOrders.has(o.raw_id)).reduce((sum, o) => sum + (Number(o.total) || 0), 0).toLocaleString())}</p>
                 </div>
               </div>
               <button 
@@ -1807,12 +1974,12 @@ export default function OrdersAdmin() {
                   <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mx-auto mb-2">
                     <AlertTriangle className="h-5 w-5 text-amber-600" />
                   </div>
-                  <p className="text-sm font-bold text-amber-700 dark:text-amber-400">No delivery companies configured</p>
-                  <p className="text-xs text-muted-foreground mt-1">Go to Settings → Delivery Companies to connect one</p>
+                  <p className="text-sm font-bold text-amber-700 dark:text-amber-400">{t('orders.noDeliveryConfigured')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('orders.goToSettings')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Select Company</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('orders.selectCompany')}</p>
                   <div className="grid gap-2">
                     {deliveryCompanies.filter(c => c.is_configured && c.has_api_key).map(company => {
                       const isSelected = selectedDeliveryCompany === company.id;
@@ -1838,9 +2005,9 @@ export default function OrdersAdmin() {
                               <span className="font-bold text-sm">{company.name}</span>
                               {company.features && (
                                 <div className="flex gap-2 mt-0.5">
-                                  {company.features.tracking && <span className="text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded-md font-medium">Tracking</span>}
-                                  {company.features.cod && <span className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded-md font-medium">COD</span>}
-                                  {company.features.labels && <span className="text-[11px] text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 px-1.5 py-0.5 rounded-md font-medium">Labels</span>}
+                                  {company.features.tracking && <span className="text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded-md font-medium">{t('orders.featureTracking')}</span>}
+                                  {company.features.cod && <span className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded-md font-medium">{t('orders.featureCod')}</span>}
+                                  {company.features.labels && <span className="text-[11px] text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 px-1.5 py-0.5 rounded-md font-medium">{t('orders.featureLabels')}</span>}
                                 </div>
                               )}
                             </div>
@@ -1857,9 +2024,7 @@ export default function OrdersAdmin() {
               {selectedDeliveryCompany && (
                 <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 p-3 space-y-3">
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    {isNoestSelected
-                      ? 'Noest uses an Ecotrack-powered API. Configure your Noest Token + GUID in Settings → Delivery Companies, then enable "Generate labels".'
-                      : '"Assign only" marks orders locally. Enable "Generate labels" to call the courier API and get tracking numbers.'}
+                    {isNoestSelected ? t('orders.noestHint') : t('orders.assignOnlyHint')}
                   </p>
                   <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700/40 transition-colors">
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
@@ -1876,7 +2041,7 @@ export default function OrdersAdmin() {
                       disabled={!canGenerateLabels}
                       className="sr-only"
                     />
-                    <span className="text-sm font-medium">Generate shipping labels</span>
+                    <span className="text-sm font-medium">{t('orders.generateLabels')}</span>
                   </label>
                 </div>
               )}
@@ -1894,20 +2059,20 @@ export default function OrdersAdmin() {
                       : <AlertTriangle className="h-5 w-5 text-amber-600" />
                     }
                     <span className="font-bold text-sm">
-                      {bulkUploadResult.failCount === 0 ? 'All orders uploaded!' : 'Some orders failed'}
+                      {bulkUploadResult.failCount === 0 ? t('orders.allUploaded') : t('orders.someOrdersFailed')}
                     </span>
                   </div>
                   <div className="flex gap-3 text-sm">
-                    <span className="text-emerald-600 font-medium">{bulkUploadResult.successCount} successful</span>
+                    <span className="text-emerald-600 font-medium">{t('orders.countSuccessful').replace('{count}', String(bulkUploadResult.successCount))}</span>
                     {bulkUploadResult.failCount > 0 && (
-                      <span className="text-red-500 font-medium">{bulkUploadResult.failCount} failed</span>
+                      <span className="text-red-500 font-medium">{t('orders.countFailed').replace('{count}', String(bulkUploadResult.failCount))}</span>
                     )}
                   </div>
                   {bulkUploadResult.failCount > 0 && (
                     <div className="mt-2 max-h-28 overflow-y-auto space-y-1">
                       {bulkUploadResult.results.filter(r => !r.success).map((r, i) => (
                         <div key={i} className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded">
-                          Order #{r.orderId}: {r.error}
+                          {t('orders.orderPrefix')} #{r.orderId}: {translateDeliveryError(r.error)}
                         </div>
                       ))}
                     </div>
@@ -1922,7 +2087,7 @@ export default function OrdersAdmin() {
                 onClick={() => { setShowBulkUpload(false); setBulkUploadResult(null); }}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                {bulkUploadResult ? 'Close' : 'Cancel'}
+                {bulkUploadResult ? t('orders.close') : t('orders.cancel')}
               </button>
               {!bulkUploadResult && (
                 <button
@@ -1933,12 +2098,12 @@ export default function OrdersAdmin() {
                   {bulkUploading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
-                      Uploading...
+                      {t('orders.uploading')}
                     </>
                   ) : (
                     <>
                       <Upload className="h-4 w-4" />
-                      Upload {selectedOrders.size} Orders
+                      {t('orders.uploadCount').replace('{count}', String(selectedOrders.size))}
                     </>
                   )}
                 </button>
@@ -1953,7 +2118,7 @@ export default function OrdersAdmin() {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Truck className="h-5 w-5" /> Delivery Management
+              <Truck className="h-5 w-5" /> {t('orders.deliveryManagement')}
             </DialogTitle>
           </DialogHeader>
           {deliveryOrder && (

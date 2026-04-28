@@ -22,34 +22,48 @@ const ALL_WILAYAS = getAlgeriaWilayas();
 
 export function useStoreDeliveryPrices(storeSlug: string) {
   const [prices, setPrices] = useState<DeliveryPriceEntry[]>([]);
+  const [defaultPrice, setDefaultPrice] = useState<number>(500);
+  const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!storeSlug) { setLoading(false); return; }
+    if (!storeSlug) { setLoading(false); setLoaded(true); return; }
+    setLoading(true);
+    setLoaded(false);
     fetch(`/api/storefront/${encodeURIComponent(storeSlug)}/delivery-prices`)
       .then(res => res.ok ? res.json() : { prices: [] })
-      .then(data => setPrices(data.prices || []))
-      .catch(() => setPrices([]))
+      .then(data => {
+        setPrices(data.prices || []);
+        if (data.default_price != null) setDefaultPrice(Number(data.default_price) || 500);
+        setLoaded(true);
+      })
+      .catch(() => { setPrices([]); setLoaded(true); })
       .finally(() => setLoading(false));
   }, [storeSlug]);
 
   const wilayas: WilayaOption[] = useMemo(() => {
+    if (!loaded) {
+      return [];
+    }
     if (prices.length === 0) {
-      // No delivery prices configured — show all wilayas with 0 fee
+      // No delivery prices configured — show all wilayas with the default fallback price
       return ALL_WILAYAS.map(w => ({
         id: w.code,
         labelAR: `${String(w.code).padStart(2, '0')} - ${w.arabic_name ?? w.name}`,
         labelFR: `${String(w.code).padStart(2, '0')} - ${w.name}`,
-        homePrice: 0,
+        homePrice: defaultPrice,
         deskPrice: null,
         days: 3,
       }));
     }
-    const priceMap = new Map(prices.map(p => [p.wilaya_id, p]));
+    const priceMap = new Map(prices.map(p => [Number(p.wilaya_id), p]));
     return ALL_WILAYAS
-      .filter(w => priceMap.get(w.code)?.is_active)
+      .filter(w => {
+        const p = priceMap.get(w.code) ?? priceMap.get(w.id);
+        return p?.is_active;
+      })
       .map(w => {
-        const p = priceMap.get(w.code)!;
+        const p = (priceMap.get(w.code) ?? priceMap.get(w.id))!;
         return {
           id: w.code,
           labelAR: `${String(w.code).padStart(2, '0')} - ${w.arabic_name ?? w.name}`,
@@ -59,7 +73,26 @@ export function useStoreDeliveryPrices(storeSlug: string) {
           days: p.estimated_days,
         };
       });
-  }, [prices]);
+  }, [prices, loaded, defaultPrice]);
 
   return { wilayas, loading };
+}
+
+/**
+ * Resolves the final delivery fee shown to the customer, respecting:
+ * 1. Product-level shipping mode (free / flat / delivery_pricing)
+ * 2. Offer-level free_delivery override (only when mode = delivery_pricing)
+ * 3. The wilaya-based base fee
+ */
+export function resolveDeliveryFee(
+  product: any,
+  selectedOffer: { free_delivery?: boolean } | null | undefined,
+  baseDeliveryFee: number
+): number {
+  const shippingMeta = product?.metadata?.shipping;
+  const mode: string = shippingMeta?.mode || 'delivery_pricing';
+  if (mode === 'free') return 0;
+  if (mode === 'flat') return Number(shippingMeta?.flat_fee) || 0;
+  // delivery_pricing mode: offer free_delivery overrides wilaya price
+  return selectedOffer?.free_delivery ? 0 : baseDeliveryFee;
 }

@@ -10,7 +10,7 @@ const TONE: Record<GaugeTone, { stroke: string; glow: string; text: string }> = 
   amber: { stroke: '#fbbf24', glow: 'rgba(251, 191, 36, 0.35)', text: 'text-amber-200' },
   red: { stroke: '#f87171', glow: 'rgba(248, 113, 113, 0.35)', text: 'text-red-200' },
   violet: { stroke: '#a78bfa', glow: 'rgba(167, 139, 250, 0.35)', text: 'text-violet-200' },
-  slate: { stroke: '#94a3b8', glow: 'rgba(148, 163, 184, 0.25)', text: 'text-slate-200' },
+  slate: { stroke: '#94a3b8', glow: 'rgba(148, 163, 184, 0.25)', text: 'text-gray-700 dark:text-slate-200' },
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -190,15 +190,15 @@ export default function SpeedometerGauge({
   };
 
   return (
-    <div className="bg-slate-900/40 rounded-xl border border-slate-700/40 p-3 shadow-sm">
+    <div className="bg-gray-50/40 dark:bg-slate-900/40 rounded-xl border border-slate-700/40 p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-slate-300 font-medium text-sm truncate">{title}</div>
-          {subtitle && <div className="text-slate-500 text-xs truncate mt-0.5">{subtitle}</div>}
+          <div className="text-gray-600 dark:text-slate-300 font-medium text-sm truncate">{title}</div>
+          {subtitle && <div className="text-gray-500 dark:text-slate-500 text-xs truncate mt-0.5">{subtitle}</div>}
         </div>
         <div className={`font-mono tabular-nums text-sm ${palette.text} shrink-0`}>
           {renderValue()}
-          {unit ? <span className="text-slate-400"> {unit}</span> : null}
+          {unit ? <span className="text-gray-500 dark:text-slate-400"> {unit}</span> : null}
         </div>
       </div>
 
@@ -282,7 +282,7 @@ export default function SpeedometerGauge({
       </div>
 
       <div className="mt-1 flex items-center justify-between gap-2">
-        <div className="text-xs text-slate-400 truncate" title={zoneReason}>
+        <div className="text-xs text-gray-500 dark:text-slate-400 truncate" title={zoneReason}>
           {zoneReason}
         </div>
         <div className="shrink-0 text-xs font-semibold" style={{ color: zoneColor }} title={zoneLabel}>

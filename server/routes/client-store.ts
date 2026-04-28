@@ -3,7 +3,8 @@ import { randomBytes } from "crypto";
 import { pool, ensureConnection, getPool } from "../utils/database";
 import type { Pool } from "pg";
 import { logStoreSettings } from "../utils/logger";
-import { invalidateStorefrontSettingsCache, invalidateAllStorefrontSettingsCache } from "./public-store";
+import { invalidateStorefrontSettingsCache, invalidateAllStorefrontSettingsCache, invalidateStorefrontProductsCache } from "./public-store";
+import { getPublicBaseUrl } from "../utils/public-url";
 
 const router = Router();
 
@@ -81,7 +82,7 @@ export const getStoreProducts: RequestHandler = async (req, res) => {
 
     let query = `
       SELECT id, title, description, price, original_price, images, 
-             category, stock_quantity, status, is_featured, slug, views,
+             category, stock_quantity, status, is_featured, metadata, slug, views,
              created_at, updated_at
       FROM client_store_products
       WHERE client_id = $1
@@ -609,6 +610,7 @@ export const updateStoreProduct: RequestHandler = async (req, res) => {
     
     // Invalidate products cache after update
     invalidateProductsCache(clientId);
+    invalidateStorefrontProductsCache(); // clear public storefront cache for all stores (we don't have slug here)
     
     res.json(result.rows[0]);
   } catch (error) {
@@ -1274,6 +1276,14 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
 
     const updatedRow = result.rows[0];
     
+    // Sync store_name to clients.business_name
+    if (columnUpdates.store_name) {
+      await pool.query(
+        `UPDATE clients SET business_name = $1, updated_at = NOW() WHERE id = $2`,
+        [columnUpdates.store_name, clientId]
+      );
+    }
+    
     // Verify template was saved correctly
     if (updatedRow) {
       logStoreSettings('updateStoreSettings:dbResult', { 
@@ -1651,7 +1661,7 @@ export const getProductShareLink: RequestHandler = async (req, res) => {
       [clientId]
     );
     const storeSlug = settingsRes.rows[0]?.store_slug || clientId;
-    const baseUrl = process.env.BASE_URL || "https://sahla4eco.com";
+    const baseUrl = getPublicBaseUrl(req);
     const shareLink = `${baseUrl}/store/${storeSlug}/${result.rows[0].slug}`;
 
     res.json({ shareLink, slug: result.rows[0].slug, store_slug: storeSlug });

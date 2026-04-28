@@ -180,8 +180,10 @@ async function saveSessionTouch(sessionDbId: string | number, clientId: number, 
     creativeName: data.creativeName,
   });
 
-  const hasTouchData = [data.pixelType, data.source, data.medium, data.campaignName, data.creativeName, data.fbclid, data.ttclid, data.gclid].some(Boolean);
-  if (!hasTouchData) return;
+  // Only create a touch record when there's real marketing attribution (UTM params, ad click IDs, or campaign data).
+  // pixelType alone (internal tracker) and source='direct' are NOT marketing attribution.
+  const hasMarketingData = [data.campaignName, data.adsetName, data.creativeName, data.fbclid, data.ttclid, data.gclid].some(Boolean);
+  if (!hasMarketingData) return;
 
   const db = await ensureConnection();
   await db.query(
@@ -240,8 +242,8 @@ export async function upsertAnalyticSessionFromEvent(input: AnalyticEventInput) 
 
   const eventData = input.eventData && typeof input.eventData === 'object' ? input.eventData : {};
   const pagePath = parsePagePath(input.pageUrl, eventData.page_path);
-  const source = toOptionalText(eventData.source) || toOptionalText(eventData.utm_source) || normalizePlatform(input.pixelType) || 'direct';
-  const medium = toOptionalText(eventData.utm_medium) || (normalizePlatform(input.pixelType) ? 'paid_social' : null);
+  const source = toOptionalText(eventData.source) || toOptionalText(eventData.utm_source) || 'direct';
+  const medium = toOptionalText(eventData.utm_medium) || null;
   const campaignName = toOptionalText(eventData.utm_campaign || eventData.campaign_name);
   const adsetName = toOptionalText(eventData.adset_name);
   const creativeName = toOptionalText(eventData.creative_name || eventData.ad_name);
@@ -603,11 +605,13 @@ export async function getOmniInputs(clientId: number) {
       [clientId]
     ),
     db.query(
-      `SELECT id, entry_date, platform, campaign_name, adset_name, creative_name, creative_key,
-              spend, impressions, clicks, link_clicks, notes, created_at
-       FROM creative_spend_entries
-       WHERE client_id = $1
-       ORDER BY entry_date DESC, created_at DESC
+      `SELECT cse.id, cse.entry_date, cse.platform, cse.product_id, cse.campaign_name, cse.adset_name, cse.creative_name, cse.creative_key,
+              cse.spend, cse.impressions, cse.clicks, cse.link_clicks, cse.notes, cse.created_at,
+              p.title AS product_title
+       FROM creative_spend_entries cse
+       LEFT JOIN client_store_products p ON p.id = cse.product_id
+       WHERE cse.client_id = $1
+       ORDER BY cse.entry_date DESC, cse.created_at DESC
        LIMIT 120`,
       [clientId]
     ),
@@ -731,6 +735,7 @@ export async function deleteCreativeCatalogEntry(clientId: number, entryId: numb
 export async function upsertCreativeSpendEntry(clientId: number, input: {
   entryDate: string;
   platform: string;
+  productId?: number | null;
   campaignName?: string | null;
   adsetName?: string | null;
   creativeName?: string | null;
@@ -750,14 +755,15 @@ export async function upsertCreativeSpendEntry(clientId: number, input: {
 
   const result = await db.query(
     `INSERT INTO creative_spend_entries (
-       client_id, entry_date, platform, campaign_name, adset_name, creative_name,
+       client_id, entry_date, platform, product_id, campaign_name, adset_name, creative_name,
        creative_key, spend, impressions, clicks, link_clicks, notes, created_at, updated_at
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
      RETURNING *`,
     [
       clientId,
       input.entryDate,
       normalizePlatform(input.platform),
+      input.productId || null,
       toOptionalText(input.campaignName),
       toOptionalText(input.adsetName),
       toOptionalText(input.creativeName),
@@ -1279,6 +1285,11 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
   }
 
   const creativeComparison = Array.from(creativeMap.values())
+    // Only include entries with actual marketing attribution (campaign, adset, creative, or ad spend).
+    // Organic/direct visits without UTM params should not appear as "ads".
+    .filter(creative =>
+      creative.campaignName || creative.adsetName || creative.creativeName || creative.spend > 0
+    )
     .map(creative => {
       creative.netProfit = creative.grossProfit - creative.spend;
       const totalOutcomeOrders = creative.deliveredOrders + creative.returnedOrders;
@@ -1432,4 +1443,375 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
 
   snapshot.recommendations = buildOverviewRecommendations(snapshot);
   return snapshot;
+}
+
+// ─── Customer Analytics ─────────────────────────────────────────
+
+export interface CustomerAnalytics {
+  totalCustomers: number;
+  repeatCustomers: number;
+  repeatRate: number;
+  averageOrderValue: number;
+  averageOrdersPerCustomer: number;
+  totalRevenue: number;
+  topCustomers: { name: string; phone: string; orders: number; totalSpent: number; lastOrder: string }[];
+  wilayaBreakdown: { wilayaId: number; wilayaName: string; orders: number; revenue: number; customers: number }[];
+  deviceBreakdown: { device: string; sessions: number; share: number }[];
+  ordersByDay: { date: string; orders: number; revenue: number }[];
+  newVsReturning: { newCustomers: number; returningCustomers: number; newRevenue: number; returningRevenue: number };
+  conversionRate: number;
+  cartAbandonmentRate: number;
+}
+
+export async function getCustomerAnalytics(clientId: number, days: number): Promise<CustomerAnalytics> {
+  const safeDays = Math.min(3650, Math.max(1, Math.round(days || 30)));
+  const db = await ensureConnection();
+  const { getAlgeriaWilayaNameById } = await import('../utils/algeria-geo');
+
+  const cutoff = `NOW() - INTERVAL '${safeDays} days'`;
+
+  const [
+    customerStatsResult,
+    topCustomersResult,
+    wilayaResult,
+    deviceResult,
+    dailyOrdersResult,
+    newVsReturningResult,
+    funnelResult,
+  ] = await Promise.all([
+    // 1. Customer aggregate stats
+    db.query(`
+      WITH customer_orders AS (
+        SELECT
+          customer_phone,
+          COUNT(*) AS order_count,
+          SUM(total_price) AS total_spent
+        FROM store_orders
+        WHERE client_id = $1
+          AND deleted_at IS NULL
+          AND status NOT IN ('cancelled', 'declined', 'fake')
+          AND created_at >= ${cutoff}
+        GROUP BY customer_phone
+      )
+      SELECT
+        COUNT(*) AS total_customers,
+        COUNT(*) FILTER (WHERE order_count > 1) AS repeat_customers,
+        COALESCE(AVG(total_spent / order_count), 0) AS avg_order_value,
+        COALESCE(AVG(order_count), 0) AS avg_orders_per_customer,
+        COALESCE(SUM(total_spent), 0) AS total_revenue
+      FROM customer_orders
+    `, [clientId]),
+
+    // 2. Top 10 customers
+    db.query(`
+      SELECT
+        customer_name AS name,
+        customer_phone AS phone,
+        COUNT(*) AS orders,
+        SUM(total_price) AS total_spent,
+        MAX(created_at) AS last_order
+      FROM store_orders
+      WHERE client_id = $1
+        AND deleted_at IS NULL
+        AND status NOT IN ('cancelled', 'declined', 'fake')
+        AND created_at >= ${cutoff}
+      GROUP BY customer_phone, customer_name
+      ORDER BY total_spent DESC
+      LIMIT 10
+    `, [clientId]),
+
+    // 3. Wilaya breakdown
+    db.query(`
+      SELECT
+        shipping_wilaya_id AS wilaya_id,
+        COUNT(*) AS orders,
+        SUM(total_price) AS revenue,
+        COUNT(DISTINCT customer_phone) AS customers
+      FROM store_orders
+      WHERE client_id = $1
+        AND deleted_at IS NULL
+        AND status NOT IN ('cancelled', 'declined', 'fake')
+        AND shipping_wilaya_id IS NOT NULL
+        AND created_at >= ${cutoff}
+      GROUP BY shipping_wilaya_id
+      ORDER BY orders DESC
+    `, [clientId]),
+
+    // 4. Device breakdown from sessions
+    db.query(`
+      SELECT
+        COALESCE(device_type, 'unknown') AS device,
+        COUNT(*) AS sessions
+      FROM analytic_sessions
+      WHERE client_id = $1
+        AND first_seen_at >= ${cutoff}
+      GROUP BY COALESCE(device_type, 'unknown')
+      ORDER BY sessions DESC
+    `, [clientId]),
+
+    // 5. Daily orders + revenue (last N days)
+    db.query(`
+      SELECT
+        DATE(created_at) AS date,
+        COUNT(*) AS orders,
+        COALESCE(SUM(total_price), 0) AS revenue
+      FROM store_orders
+      WHERE client_id = $1
+        AND deleted_at IS NULL
+        AND status NOT IN ('cancelled', 'declined', 'fake')
+        AND created_at >= ${cutoff}
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
+    `, [clientId]),
+
+    // 6. New vs returning customers
+    db.query(`
+      WITH first_orders AS (
+        SELECT customer_phone, MIN(created_at) AS first_order_date
+        FROM store_orders
+        WHERE client_id = $1 AND deleted_at IS NULL AND status NOT IN ('cancelled', 'declined', 'fake')
+        GROUP BY customer_phone
+      ),
+      period_orders AS (
+        SELECT
+          o.customer_phone,
+          o.total_price,
+          CASE WHEN fo.first_order_date >= ${cutoff} THEN 'new' ELSE 'returning' END AS customer_type
+        FROM store_orders o
+        JOIN first_orders fo ON fo.customer_phone = o.customer_phone
+        WHERE o.client_id = $1
+          AND o.deleted_at IS NULL
+          AND o.status NOT IN ('cancelled', 'declined', 'fake')
+          AND o.created_at >= ${cutoff}
+      )
+      SELECT
+        COUNT(DISTINCT customer_phone) FILTER (WHERE customer_type = 'new') AS new_customers,
+        COUNT(DISTINCT customer_phone) FILTER (WHERE customer_type = 'returning') AS returning_customers,
+        COALESCE(SUM(total_price) FILTER (WHERE customer_type = 'new'), 0) AS new_revenue,
+        COALESCE(SUM(total_price) FILTER (WHERE customer_type = 'returning'), 0) AS returning_revenue
+      FROM period_orders
+    `, [clientId]),
+
+    // 7. Funnel for conversion & cart abandonment
+    db.query(`
+      SELECT
+        COUNT(*) AS total_sessions,
+        COUNT(*) FILTER (WHERE add_to_cart_count > 0) AS cart_sessions,
+        COUNT(*) FILTER (WHERE purchase_count > 0) AS purchase_sessions
+      FROM analytic_sessions
+      WHERE client_id = $1
+        AND first_seen_at >= ${cutoff}
+    `, [clientId]),
+  ]);
+
+  const cs = customerStatsResult.rows[0] || {};
+  const totalSessions = Number(funnelResult.rows[0]?.total_sessions || 0);
+  const cartSessions = Number(funnelResult.rows[0]?.cart_sessions || 0);
+  const purchaseSessions = Number(funnelResult.rows[0]?.purchase_sessions || 0);
+
+  const deviceRows = deviceResult.rows;
+  const totalDeviceSessions = deviceRows.reduce((sum: number, r: any) => sum + Number(r.sessions), 0);
+
+  const nvr = newVsReturningResult.rows[0] || {};
+
+  return {
+    totalCustomers: Number(cs.total_customers || 0),
+    repeatCustomers: Number(cs.repeat_customers || 0),
+    repeatRate: Number(cs.total_customers) > 0 ? (Number(cs.repeat_customers) / Number(cs.total_customers)) * 100 : 0,
+    averageOrderValue: Number(cs.avg_order_value || 0),
+    averageOrdersPerCustomer: Number(cs.avg_orders_per_customer || 0),
+    totalRevenue: Number(cs.total_revenue || 0),
+    topCustomers: topCustomersResult.rows.map((r: any) => ({
+      name: r.name || 'Unknown',
+      phone: r.phone,
+      orders: Number(r.orders),
+      totalSpent: Number(r.total_spent),
+      lastOrder: r.last_order,
+    })),
+    wilayaBreakdown: wilayaResult.rows.map((r: any) => ({
+      wilayaId: Number(r.wilaya_id),
+      wilayaName: getAlgeriaWilayaNameById(r.wilaya_id) || `Wilaya ${r.wilaya_id}`,
+      orders: Number(r.orders),
+      revenue: Number(r.revenue),
+      customers: Number(r.customers),
+    })),
+    deviceBreakdown: deviceRows.map((r: any) => ({
+      device: r.device,
+      sessions: Number(r.sessions),
+      share: totalDeviceSessions > 0 ? (Number(r.sessions) / totalDeviceSessions) * 100 : 0,
+    })),
+    ordersByDay: dailyOrdersResult.rows.map((r: any) => ({
+      date: r.date,
+      orders: Number(r.orders),
+      revenue: Number(r.revenue),
+    })),
+    newVsReturning: {
+      newCustomers: Number(nvr.new_customers || 0),
+      returningCustomers: Number(nvr.returning_customers || 0),
+      newRevenue: Number(nvr.new_revenue || 0),
+      returningRevenue: Number(nvr.returning_revenue || 0),
+    },
+    conversionRate: totalSessions > 0 ? (purchaseSessions / totalSessions) * 100 : 0,
+    cartAbandonmentRate: cartSessions > 0 ? ((cartSessions - purchaseSessions) / cartSessions) * 100 : 0,
+  };
+}
+
+// ─── Gender Detection ─────────────────────────────────────────────────────────
+
+const MALE_NAMES = new Set([
+  // Arabic/Algerian male names
+  'محمد','ahmed','ahmad','محمداحمد','ali','علي','omar','عمر','youssef','يوسف','karim','كريم',
+  'said','سعيد','samir','سامر','samير','hicham','هشام','hamid','حميد','abdelkader','عبد القادر',
+  'abderrahmane','عبد الرحمن','abdelmalek','عبد المالك','abdelhamid','عبد الحميد',
+  'abdelhak','عبد الحق','abdelouahab','عبد الوهاب','abdelaziz','عبد العزيز',
+  'abdelkrim','عبد الكريم','abdelwahid','عبد الواحد','abdeljalil','عبد الجليل',
+  'abdelghani','عبد الغني','abdelatif','عبد اللطيف','abdelbaki','عبد الباقي',
+  'abdelali','عبد العلي','abdallah','عبد الله','abdellah','رياض',
+  'riad','رياض','riyad','riyadh','bilal','بلال','nabil','نبيل',
+  'farid','فريد','mehdi','مهدي','walid','وليد','khaled','خالد',
+  'khalid','tariq','طارق','tarek','مراد','mourad','murad','nour','نور الدين',
+  'younes','يونس','youness','nassim','نسيم','nassim','wassim','وسيم',
+  'sami','سامي','sofiane','سفيان','soufiane','islam','إسلام','islamدين',
+  'lamine','أمين','amine','امين','amin','الامين','el amine','anis','أنيس',
+  'naim','نعيم','badr','بدر','bader','hakim','حكيم','hossam','حسام',
+  'houssem','توفيق','tawfiq','taoufiq','ramzi','رامزي','rami','رامي',
+  'djamel','جمال','jamal','gamal','mustapha','مصطفى','mustafa','mokhtar','مختار',
+  'rachid','رشيد','rashid','salim','سليم','slim','adel','عادل','adil',
+  'mondher','منذر','mounir','منير','yacine','ياسين','yassin','yazid','يزيد',
+  'ismail','إسماعيل','ibrahim','إبراهيم','idris','إدريس','ilyes','إلياس',
+  'ilias','elias','tayeb','الطيب','tijani','التيجاني','madjid','ماجد',
+  'majid','hamza','حمزة','hassan','حسن','hussein','حسين','hasan','حسين',
+  'fares','فارس','aymen','أيمن','ayman','lotfi','لطفي','latif','لطيف',
+  'ridha','رضا','reda','رضا','zine','زين','zinedine','زين الدين',
+  'saad','سعد','sad','fouad','فؤاد','fuad','mouad','مؤيد','fathi','فتحي',
+  'belgacem','البلقاسم','brahim','براهيم','mimoun','ميمون','mouloud','مولود',
+  'taha','طه','tahar','طاهر','slimane','سليمان','suleiman','sulaiman',
+  'maher','ماهر','moussa','موسى','musa','massinissa','ماسينيسا','yidir','يدير',
+  'aghiles','أغيلاس','takfarinas','تاقفاريناس','idir','إيدير','jugurtha','يوغرطة',
+]);
+
+const FEMALE_NAMES = new Set([
+  // Arabic/Algerian female names
+  'فاطمة','fatima','fatma','سارة','sara','sarah','أميرة','amira','amirat',
+  'نادية','nadia','nadya','سامية','samia','samiya','كريمة','karima','karime',
+  'سهيلة','souhila','suheila','وردة','warda','وردية','wardia',
+  'زهرة','zahra','zohra','نوال','nawal','nawel','رحمة','rahma',
+  'حنان','hanan','hanane','هناء','hanaa','هيام','hiyam',
+  'مليكة','malika','ملاك','malak','ليلى','leila','layla','laila',
+  'نسرين','nesrin','nissrine','منى','mona','muna','سلمى','salma',
+  'ياسمين','yasmine','jasmine','إيمان','imane','iman','أسماء','asma','asmaa',
+  'رجاء','raja','rajaa','شيماء','shayma','chaima','يمنى','yomna',
+  'أريج','arij','عائشة','aisha','aicha','خديجة','khadija','khedidja',
+  'مريم','meryem','mariam','مريمة','meriem','زينب','zeinab','zaynab',
+  'هدى','houda','hoda','hadda','حدة','سعاد','souad','soad',
+  'رنا','rana','رانيا','rania','رانية','بسمة','bassma','basma',
+  'حورية','houria','horia','وفاء','wafaa','wafa','أماني','amani',
+  'حياة','hayat','هيفاء','haifa','سناء','sanaa','sana',
+  'دليلة','dalila','ديلة','دنيا','dounia','duniya',
+  'ربيعة','rabiaa','rabia','حسيبة','hassiba','hasiba','نجمة','najma',
+  'تقى','taqwa','nabila','نبيلة','nabilat','إكرام','ikram','وسيلة','wassila',
+  'فيروز','fairouz','fayrouz','فريدة','farida','جميلة','djamila','jamila',
+  'نزيهة','nazha','naziha','خولة','khawla','عزيزة','aziza','صبرينة','sabrina',
+  'سيرين','sirin','sirine','سيلين','selene','أميمة','omeima','حفصة','hafsa',
+  'صفية','safia','safiya','كوثر','kawtar','kaouther','لبنى','lobna','lubna',
+  'لينة','lina','lynا','لمى','lama','loma','شهد','shahd','شهرزاد','shahrazad',
+  'وئام','wiam','وسن','wassan','نهى','noha','ندى','nada','sonia','سونيا',
+]);
+
+/**
+ * Detect likely gender from a customer name.
+ * Returns 'male', 'female', or 'unknown'.
+ */
+export function detectGenderFromName(name: string | null | undefined): 'male' | 'female' | 'unknown' {
+  if (!name) return 'unknown';
+  const normalized = name.trim().toLowerCase();
+  // Try the first word of the name (given name)
+  const firstWord = normalized.split(/[\s,]+/)[0];
+
+  if (MALE_NAMES.has(firstWord) || MALE_NAMES.has(normalized)) return 'male';
+  if (FEMALE_NAMES.has(firstWord) || FEMALE_NAMES.has(normalized)) return 'female';
+
+  // Arabic prefix detection
+  if (/^(عبد|أبو|ابو)/.test(firstWord)) return 'male';
+  if (/^(أم |ام )/.test(normalized)) return 'female';
+
+  // Suffix heuristics for Arabic (ة = female marker)
+  if (firstWord.endsWith('ة') || firstWord.endsWith('ات') || firstWord.endsWith('ة ')) return 'female';
+
+  return 'unknown';
+}
+
+export interface GenderAnalytics {
+  male: number;
+  female: number;
+  unknown: number;
+  total: number;
+  malePercent: number;
+  femalePercent: number;
+  unknownPercent: number;
+  // By product breakdown
+  byProduct: { productId: number; productTitle: string; male: number; female: number; unknown: number }[];
+}
+
+export async function getGenderAnalytics(clientId: number, days: number): Promise<GenderAnalytics> {
+  const safeDays = Math.min(3650, Math.max(1, Math.round(days || 30)));
+  const db = await ensureConnection();
+  const cutoff = `NOW() - INTERVAL '${safeDays} days'`;
+
+  const [ordersResult, byProductResult] = await Promise.all([
+    db.query(`
+      SELECT customer_name
+      FROM store_orders
+      WHERE client_id = $1
+        AND deleted_at IS NULL
+        AND status NOT IN ('cancelled', 'declined', 'fake', 'duplicate')
+        AND created_at >= ${cutoff}
+    `, [clientId]),
+
+    db.query(`
+      SELECT
+        so.product_id,
+        csp.title AS product_title,
+        so.customer_name
+      FROM store_orders so
+      LEFT JOIN client_store_products csp ON csp.id = so.product_id
+      WHERE so.client_id = $1
+        AND so.deleted_at IS NULL
+        AND so.status NOT IN ('cancelled', 'declined', 'fake', 'duplicate')
+        AND so.created_at >= ${cutoff}
+      ORDER BY so.product_id
+    `, [clientId]),
+  ]);
+
+  let male = 0, female = 0, unknown = 0;
+  for (const row of ordersResult.rows) {
+    const g = detectGenderFromName(row.customer_name);
+    if (g === 'male') male++;
+    else if (g === 'female') female++;
+    else unknown++;
+  }
+  const total = male + female + unknown;
+
+  // By product
+  const productMap: Record<number, { productId: number; productTitle: string; male: number; female: number; unknown: number }> = {};
+  for (const row of byProductResult.rows) {
+    const pid = Number(row.product_id) || 0;
+    if (!productMap[pid]) {
+      productMap[pid] = { productId: pid, productTitle: row.product_title || 'Unknown', male: 0, female: 0, unknown: 0 };
+    }
+    const g = detectGenderFromName(row.customer_name);
+    productMap[pid][g]++;
+  }
+
+  const byProduct = Object.values(productMap)
+    .sort((a, b) => (b.male + b.female + b.unknown) - (a.male + a.female + a.unknown))
+    .slice(0, 10);
+
+  return {
+    male, female, unknown, total,
+    malePercent: total > 0 ? Math.round((male / total) * 100) : 0,
+    femalePercent: total > 0 ? Math.round((female / total) * 100) : 0,
+    unknownPercent: total > 0 ? Math.round((unknown / total) * 100) : 0,
+    byProduct,
+  };
 }

@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { 
   Loader2, Save, Truck, MapPin, Search, Check, X, 
-  DollarSign, Clock, RefreshCw, Upload, Download 
+  DollarSign, Clock, RefreshCw, Upload, Download,
+  Home, Building2, ChevronDown, ChevronUp, Settings2
 } from "lucide-react";
 
 interface DeliveryPrice {
@@ -158,210 +159,330 @@ export default function DeliveryPricing() {
     );
   }, [searchQuery]);
 
+  const activeCount = Object.values(prices).filter(p => p.is_active).length;
+  const inactiveCount = WILAYAS.length - activeCount;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500 mx-auto mb-4" />
-          <p className="text-slate-600 dark:text-slate-400">{t('loading') || 'Loading...'}</p>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          </div>
+          <p className="text-sm text-muted-foreground">{t('loading') || 'Loading...'}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-50 dark:from-black dark:via-slate-900 dark:to-black p-4 sm:p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-1 flex items-center gap-2">
-                <Truck className="h-7 w-7 text-emerald-500" />
-                {t('delivery.pricingTitle') || 'Delivery Pricing'}
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {t('delivery.pricingDesc') || 'Set delivery prices for each wilaya. Customers will see these prices at checkout.'}
-              </p>
-            </div>
-            <Button
-              onClick={saveAllPrices}
-              disabled={saving}
-              className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-lg"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              {t('save') || 'Save All'}
-            </Button>
-          </div>
-        </div>
+    <div className="py-4 sm:py-6 space-y-4">
 
-        {/* Default Price Settings */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-lg mb-6">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-emerald-500" />
-            {t('delivery.defaultSettings') || 'Default Settings'}
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{t('delivery.homePrice') || 'Home Delivery (DZD)'}</Label>
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg md:text-xl font-bold tracking-tight flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 text-primary flex-shrink-0">
+              <Truck className="w-4 h-4" />
+            </span>
+            {t('delivery.pricingTitle') || 'أسعار التوصيل'}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
+            {t('delivery.pricingDesc') || 'حدد أسعار التوصيل لكل ولاية — يراها العميل عند الدفع'}
+          </p>
+        </div>
+        <Button
+          onClick={saveAllPrices}
+          disabled={saving}
+          size="sm"
+          className="h-8 gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90 text-white px-3 flex-shrink-0"
+        >
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          <span className="hidden sm:inline">{t('delivery.saveAllPrices') || 'حفظ الكل'}</span>
+          <span className="sm:hidden">{t('save') || 'حفظ'}</span>
+        </Button>
+      </div>
+
+      {/* ── Stats row ── */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t('delivery.totalWilayas') || 'إجمالي الولايات'}</p>
+          <p className="text-xl font-bold tabular-nums mt-0.5">{WILAYAS.length}</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 p-3">
+          <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">{t('delivery.active') || 'مفعّل'}</p>
+          <p className="text-xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400 mt-0.5">{activeCount}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t('delivery.inactive') || 'معطّل'}</p>
+          <p className="text-xl font-bold tabular-nums text-muted-foreground mt-0.5">{inactiveCount}</p>
+        </div>
+      </div>
+
+      {/* ── Default settings card ── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30">
+          <Settings2 className="w-4 h-4 text-primary" />
+          <span className="text-sm font-semibold">{t('delivery.defaultSettings') || 'الإعدادات الافتراضية'}</span>
+          <span className="text-xs text-muted-foreground mr-1">{t('delivery.defaultSettingsHint') || '— تطبّق على جميع الولايات دفعة واحدة'}</span>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium flex items-center gap-1.5">
+                <Home className="w-3 h-3 text-primary" />
+                {t('delivery.homePrice') || 'توصيل للمنزل (د.ج)'}
+              </Label>
               <Input
                 type="number"
                 min={0}
                 value={defaultPrice}
                 onChange={(e) => setDefaultPrice(Number(e.target.value) || 0)}
-                className="bg-slate-50 dark:bg-slate-700"
+                className="h-8 text-sm text-center"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{t('delivery.deskPrice') || 'Stop-Desk (DZD)'}</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium flex items-center gap-1.5">
+                <Building2 className="w-3 h-3 text-amber-500" />
+                {t('delivery.deskPrice') || 'توصيل للمكتب (د.ج)'}
+              </Label>
               <Input
                 type="number"
                 min={0}
                 value={defaultDeskPrice ?? ''}
                 onChange={(e) => setDefaultDeskPrice(e.target.value ? Number(e.target.value) : null)}
-                placeholder="Optional"
-                className="bg-slate-50 dark:bg-slate-700"
+                placeholder="—"
+                className="h-8 text-sm text-center"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{t('delivery.estimatedDays') || 'Estimated Days'}</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium flex items-center gap-1.5">
+                <Clock className="w-3 h-3 text-muted-foreground" />
+                {t('delivery.estimatedDays') || 'مدة التوصيل (أيام)'}
+              </Label>
               <Input
                 type="number"
                 min={1}
                 max={30}
                 value={defaultDays}
                 onChange={(e) => setDefaultDays(Number(e.target.value) || 3)}
-                className="bg-slate-50 dark:bg-slate-700"
+                className="h-8 text-sm text-center"
               />
             </div>
             <div className="flex items-end">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={applyDefaultToAll}
-                className="w-full"
+                className="w-full h-8 text-xs gap-1.5"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                {t('delivery.applyToAll') || 'Apply to All'}
+                <RefreshCw className="h-3.5 w-3.5" />
+                {t('delivery.applyToAll') || 'تطبيق على الكل'}
               </Button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Search */}
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+      {/* ── Wilayas table card ── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder={t('delivery.searchWilaya') || "Search wilaya..."}
+              placeholder={t('delivery.searchWilaya') || "بحث عن ولاية..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-white dark:bg-slate-800"
+              className="pl-8 h-7 text-xs border-border bg-background focus-visible:ring-1"
             />
           </div>
+          <span className="text-[11px] text-muted-foreground ml-auto tabular-nums">
+            {filteredWilayas.length}/{WILAYAS.length}
+          </span>
         </div>
 
-        {/* Prices Table */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
-          {/* Table Header */}
-          <div className="grid grid-cols-12 gap-2 p-3 bg-slate-100 dark:bg-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
-            <div className="col-span-1">#</div>
-            <div className="col-span-3">{t('delivery.wilaya') || 'Wilaya'}</div>
-            <div className="col-span-2 text-center">{t('delivery.homePrice') || 'Home (DZD)'}</div>
-            <div className="col-span-2 text-center">{t('delivery.deskPrice') || 'Desk (DZD)'}</div>
-            <div className="col-span-2 text-center">{t('delivery.days') || 'Days'}</div>
-            <div className="col-span-2 text-center">{t('delivery.active') || 'Active'}</div>
-          </div>
-
-          {/* Table Body */}
-          <div className="divide-y divide-slate-200 dark:divide-slate-700 max-h-[60vh] overflow-y-auto">
-            {filteredWilayas.map((wilaya) => {
-              const price = prices[wilaya.id] || {
-                wilaya_id: wilaya.id,
-                home_delivery_price: defaultPrice,
-                desk_delivery_price: defaultDeskPrice,
-                is_active: true,
-                estimated_days: defaultDays
-              };
-              
-              return (
-                <div 
-                  key={wilaya.id} 
-                  className={`grid grid-cols-12 gap-2 p-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${
-                    !price.is_active ? 'opacity-50 bg-slate-100/50 dark:bg-slate-800/50' : ''
-                  }`}
-                >
-                  <div className="col-span-1 text-sm font-mono text-slate-500">
-                    {String(wilaya.code).padStart(2, '0')}
-                  </div>
-                  <div className="col-span-3">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                      <div>
-                        <div className="text-sm font-medium text-slate-900 dark:text-white">{wilaya.name}</div>
-                        {wilaya.arabic_name && (
-                          <div className="text-xs text-slate-500 dark:text-slate-400">{wilaya.arabic_name}</div>
-                        )}
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-12">#</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t('delivery.wilaya') || 'الولاية'}</th>
+                <th className="text-center px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-28">
+                  <span className="flex items-center justify-center gap-1"><Home className="w-3 h-3" />{t('delivery.home') || 'منزل'}</span>
+                </th>
+                <th className="text-center px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-28">
+                  <span className="flex items-center justify-center gap-1"><Building2 className="w-3 h-3" />{t('delivery.desk') || 'مكتب'}</span>
+                </th>
+                <th className="text-center px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-24">
+                  <span className="flex items-center justify-center gap-1"><Clock className="w-3 h-3" />{t('delivery.days') || 'أيام'}</span>
+                </th>
+                <th className="text-center px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-20">{t('delivery.active') || 'مفعّل'}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {filteredWilayas.map((wilaya) => {
+                const price = prices[wilaya.id] || {
+                  wilaya_id: wilaya.id,
+                  home_delivery_price: defaultPrice,
+                  desk_delivery_price: defaultDeskPrice,
+                  is_active: true,
+                  estimated_days: defaultDays,
+                  delivery_company_id: null,
+                  notes: null,
+                };
+                return (
+                  <tr key={wilaya.id} className={`group hover:bg-muted/40 transition-colors ${!price.is_active ? 'opacity-50' : ''}`}>
+                    <td className="px-3 py-2 text-[11px] font-mono text-muted-foreground">
+                      {String(wilaya.code).padStart(2, '0')}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium leading-tight">{wilaya.name}</p>
+                          {wilaya.arabic_name && (
+                            <p className="text-[11px] text-muted-foreground leading-tight">{wilaya.arabic_name}</p>
+                          )}
+                        </div>
                       </div>
+                    </td>
+                    <td className="px-2 py-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        value={price.home_delivery_price}
+                        onChange={(e) => updatePrice(wilaya.id, 'home_delivery_price', Number(e.target.value) || 0)}
+                        className="h-7 text-xs text-center w-full"
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        value={price.desk_delivery_price ?? ''}
+                        onChange={(e) => updatePrice(wilaya.id, 'desk_delivery_price', e.target.value ? Number(e.target.value) : null)}
+                        placeholder="—"
+                        className="h-7 text-xs text-center w-full"
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={price.estimated_days}
+                        onChange={(e) => updatePrice(wilaya.id, 'estimated_days', Number(e.target.value) || 3)}
+                        className="h-7 text-xs text-center w-full"
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <Switch
+                        checked={price.is_active}
+                        onCheckedChange={(checked) => updatePrice(wilaya.id, 'is_active', checked)}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile card list */}
+        <div className="md:hidden divide-y divide-border/60">
+          {filteredWilayas.map((wilaya) => {
+            const price = prices[wilaya.id] || {
+              wilaya_id: wilaya.id,
+              home_delivery_price: defaultPrice,
+              desk_delivery_price: defaultDeskPrice,
+              is_active: true,
+              estimated_days: defaultDays,
+              delivery_company_id: null,
+              notes: null,
+            };
+            return (
+              <div key={wilaya.id} className={`px-3 py-3 ${!price.is_active ? 'opacity-50' : ''}`}>
+                {/* Row header */}
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      {String(wilaya.code).padStart(2, '0')}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold leading-tight">{wilaya.name}</p>
+                      {wilaya.arabic_name && (
+                        <p className="text-[11px] text-muted-foreground leading-tight">{wilaya.arabic_name}</p>
+                      )}
                     </div>
                   </div>
-                  <div className="col-span-2">
+                  <Switch
+                    checked={price.is_active}
+                    onCheckedChange={(checked) => updatePrice(wilaya.id, 'is_active', checked)}
+                  />
+                </div>
+                {/* Inputs */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-0.5">
+                      <Home className="w-3 h-3" /> منزل
+                    </p>
                     <Input
                       type="number"
                       min={0}
                       value={price.home_delivery_price}
                       onChange={(e) => updatePrice(wilaya.id, 'home_delivery_price', Number(e.target.value) || 0)}
-                      className="h-8 text-sm text-center bg-slate-50 dark:bg-slate-700"
+                      className="h-8 text-xs text-center"
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-0.5">
+                      <Building2 className="w-3 h-3" /> مكتب
+                    </p>
                     <Input
                       type="number"
                       min={0}
                       value={price.desk_delivery_price ?? ''}
                       onChange={(e) => updatePrice(wilaya.id, 'desk_delivery_price', e.target.value ? Number(e.target.value) : null)}
-                      placeholder="-"
-                      className="h-8 text-sm text-center bg-slate-50 dark:bg-slate-700"
+                      placeholder="—"
+                      className="h-8 text-xs text-center"
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-0.5">
+                      <Clock className="w-3 h-3" /> أيام
+                    </p>
                     <Input
                       type="number"
                       min={1}
                       max={30}
                       value={price.estimated_days}
                       onChange={(e) => updatePrice(wilaya.id, 'estimated_days', Number(e.target.value) || 3)}
-                      className="h-8 text-sm text-center bg-slate-50 dark:bg-slate-700"
-                    />
-                  </div>
-                  <div className="col-span-2 flex justify-center">
-                    <Switch
-                      checked={price.is_active}
-                      onCheckedChange={(checked) => updatePrice(wilaya.id, 'is_active', checked)}
+                      className="h-8 text-xs text-center"
                     />
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Summary */}
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-          <div>
-            {t('delivery.activeWilayas') || 'Active wilayas'}: {' '}
-            <span className="font-semibold text-emerald-600">
-              {Object.values(prices).filter(p => p.is_active).length}
-            </span> / {WILAYAS.length}
-          </div>
+        {/* Footer */}
+        <div className="px-3 py-2 border-t border-border bg-muted/20 flex items-center justify-between gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400">{activeCount}</span>
+            {' '}{t('delivery.active') || 'مفعّل'} · <span className="font-semibold text-foreground">{WILAYAS.length}</span> {t('delivery.total') || 'إجمالي'}
+          </span>
           <Button
             onClick={saveAllPrices}
             disabled={saving}
-            size="lg"
-            className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-lg"
+            size="sm"
+            className="h-7 gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90 text-white px-3"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            {t('delivery.saveAllPrices') || 'Save All Prices'}
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+            {t('delivery.saveAllPrices') || 'حفظ الكل'}
           </Button>
         </div>
       </div>

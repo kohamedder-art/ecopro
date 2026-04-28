@@ -14,16 +14,18 @@ const KERNEL_ACCESS_COOKIE = 'ecopro_kernel_at';
 
 function getKernelCookieOptions() {
   const isProduction = process.env.NODE_ENV === 'production';
-  const sameSite = (process.env.COOKIE_SAMESITE as any) || (isProduction ? 'none' : 'lax');
+  const isTunnel = !!process.env.TUNNEL_MODE;
+  const sameSite = (process.env.COOKIE_SAMESITE as any) || (isProduction || isTunnel ? 'none' : 'lax');
   const domain = process.env.COOKIE_DOMAIN || undefined;
-  return { isProduction, sameSite, domain };
+  const secure = isProduction || isTunnel;
+  return { secure, sameSite, domain };
 }
 
 function setKernelAuthCookie(res: any, token: string) {
-  const { isProduction, sameSite, domain } = getKernelCookieOptions();
+  const { secure, sameSite, domain } = getKernelCookieOptions();
   res.cookie(KERNEL_ACCESS_COOKIE, token, {
     httpOnly: true,
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
     path: '/api/kernel',
@@ -32,9 +34,9 @@ function setKernelAuthCookie(res: any, token: string) {
 }
 
 function clearKernelAuthCookie(res: any) {
-  const { isProduction, sameSite, domain } = getKernelCookieOptions();
+  const { secure, sameSite, domain } = getKernelCookieOptions();
   res.clearCookie(KERNEL_ACCESS_COOKIE, {
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
     path: '/api/kernel',

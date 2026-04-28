@@ -124,6 +124,9 @@ export const TEMPLATE_SLOTS: Record<string, TemplateImageSlot[]> = {
   zenith: [
     { name: 'landing', preferred: ['tall', 'wide'], count: Infinity },   // long landing strips
   ],
+  classicshop: [
+    { name: 'landing', preferred: ['tall', 'wide'], count: Infinity },   // long landing strips
+  ],
   boutique: [
     { name: 'hero',  preferred: ['wide'], count: 1 },                   // wide hero banner
     { name: 'cards', preferred: ['tall', 'square'], count: Infinity },   // 4:5 product cards

@@ -3,14 +3,41 @@ import { pool } from "../utils/database";
 import { registerTelegramWebhook, upsertTelegramWebhookSecret } from "../utils/telegram";
 import { getPublicBaseUrl } from '../utils/public-url';
 import { ensureBotSettingsRow } from '../utils/client-provisioning';
+import { encryptData } from '../utils/encryption';
 
-const PLATFORM_FB_PAGE_ID = String(process.env.PLATFORM_FB_PAGE_ID || '').trim();
-const PLATFORM_FB_PAGE_ACCESS_TOKEN = String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim();
-const PLATFORM_MESSENGER_AVAILABLE = !!PLATFORM_FB_PAGE_ID && !!PLATFORM_FB_PAGE_ACCESS_TOKEN;
+// Read env vars lazily so they're always current (not frozen at import time)
+function getPlatformFbPageId() { return String(process.env.PLATFORM_FB_PAGE_ID || '').trim(); }
+function getPlatformFbPageAccessToken() { return String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim(); }
+function getPlatformMessengerAvailable() { return !!getPlatformFbPageId() && !!getPlatformFbPageAccessToken(); }
 
-const PLATFORM_TELEGRAM_BOT_TOKEN = String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim();
-const PLATFORM_TELEGRAM_BOT_USERNAME = String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim();
-const PLATFORM_TELEGRAM_AVAILABLE = !!PLATFORM_TELEGRAM_BOT_TOKEN && !!PLATFORM_TELEGRAM_BOT_USERNAME;
+function getPlatformTelegramBotToken() { return String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim(); }
+function getPlatformTelegramBotUsername() { return String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim(); }
+function getPlatformTelegramAvailable() { return !!getPlatformTelegramBotToken() && !!getPlatformTelegramBotUsername(); }
+
+function getPlatformWhatsappPhoneNumberId() { return String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim(); }
+function getPlatformWhatsappAccessToken() { return String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim(); }
+function getPlatformWhatsappAvailable() { return !!getPlatformWhatsappPhoneNumberId() && !!getPlatformWhatsappAccessToken(); }
+
+function getPlatformViberAuthToken() { return String(process.env.PLATFORM_VIBER_AUTH_TOKEN || '').trim(); }
+function getPlatformViberSenderName() { return String(process.env.PLATFORM_VIBER_SENDER_NAME || '').trim(); }
+function getPlatformViberAvailable() { return !!getPlatformViberAuthToken(); }
+
+function getPlatformInstagramPageId() { return String(process.env.PLATFORM_INSTAGRAM_PAGE_ID || '').trim(); }
+function getPlatformInstagramAccessToken() { return String(process.env.PLATFORM_INSTAGRAM_ACCESS_TOKEN || '').trim(); }
+function getPlatformInstagramAvailable() { return !!getPlatformInstagramPageId() && !!getPlatformInstagramAccessToken(); }
+
+// Keep frozen constants for backward compatibility within this file
+const PLATFORM_FB_PAGE_ID = getPlatformFbPageId();
+const PLATFORM_FB_PAGE_ACCESS_TOKEN = getPlatformFbPageAccessToken();
+const PLATFORM_MESSENGER_AVAILABLE = getPlatformMessengerAvailable();
+
+const PLATFORM_TELEGRAM_BOT_TOKEN = getPlatformTelegramBotToken();
+const PLATFORM_TELEGRAM_BOT_USERNAME = getPlatformTelegramBotUsername();
+const PLATFORM_TELEGRAM_AVAILABLE = getPlatformTelegramAvailable();
+
+const PLATFORM_WHATSAPP_PHONE_NUMBER_ID = getPlatformWhatsappPhoneNumberId();
+const PLATFORM_WHATSAPP_ACCESS_TOKEN = getPlatformWhatsappAccessToken();
+const PLATFORM_WHATSAPP_AVAILABLE = getPlatformWhatsappAvailable();
 
 function normalizeTelegramUsername(username: string): string {
   return String(username || '').trim().replace(/^@/, '');
@@ -132,6 +159,9 @@ export const getBotSettings: RequestHandler = async (req, res) => {
           messengerUsingPlatform: PLATFORM_MESSENGER_AVAILABLE,
           usePlatformTelegram: PLATFORM_TELEGRAM_AVAILABLE,
           telegramUsingPlatform: PLATFORM_TELEGRAM_AVAILABLE,
+          platformWhatsappAvailable: PLATFORM_WHATSAPP_AVAILABLE,
+          usePlatformWhatsapp: PLATFORM_WHATSAPP_AVAILABLE,
+          whatsappUsingPlatform: PLATFORM_WHATSAPP_AVAILABLE,
           // Do not expose platform Page ID to store owners.
           platformMessengerPageId: '',
           templateGreeting: `شكراً لطلبك من {storeName}، {customerName}! 🎉\n\n✅ فعّل الإشعارات لتلقي تأكيد الطلب وتحديثات التتبع.`,
@@ -161,14 +191,14 @@ export const getBotSettings: RequestHandler = async (req, res) => {
 
     let storedTelegramToken = String(settings.telegram_bot_token || '').trim();
     let storedTelegramUsername = String(settings.telegram_bot_username || '').trim();
-    const telegramTokenConfigured = !!storedTelegramToken;
-    const telegramUsingPlatform = PLATFORM_TELEGRAM_AVAILABLE && (!storedTelegramToken || storedTelegramToken === PLATFORM_TELEGRAM_BOT_TOKEN);
+    const telegramTokenConfigured = !!storedTelegramToken || getPlatformTelegramAvailable();
+    const telegramUsingPlatform = getPlatformTelegramAvailable() && (!storedTelegramToken || storedTelegramToken === getPlatformTelegramBotToken());
 
     // If platform bot is configured and this client has no stored Telegram token,
     // backfill the platform token/username into bot_settings.
     // This keeps downstream SQL JOINs working without ever exposing the secret to store owners.
-    if (PLATFORM_TELEGRAM_AVAILABLE && !storedTelegramToken) {
-      const normalizedPlatformUsername = normalizeTelegramUsername(PLATFORM_TELEGRAM_BOT_USERNAME);
+    if (getPlatformTelegramAvailable() && !storedTelegramToken) {
+      const normalizedPlatformUsername = normalizeTelegramUsername(getPlatformTelegramBotUsername());
       try {
         await pool.query(
           `UPDATE bot_settings
@@ -177,9 +207,9 @@ export const getBotSettings: RequestHandler = async (req, res) => {
                updated_at = NOW()
            WHERE client_id = $1
              AND (telegram_bot_token IS NULL OR BTRIM(telegram_bot_token) = '')`,
-          [clientId, PLATFORM_TELEGRAM_BOT_TOKEN, normalizedPlatformUsername]
+          [clientId, getPlatformTelegramBotToken(), normalizedPlatformUsername]
         );
-        storedTelegramToken = PLATFORM_TELEGRAM_BOT_TOKEN;
+        storedTelegramToken = getPlatformTelegramBotToken();
         storedTelegramUsername = storedTelegramUsername || normalizedPlatformUsername;
       } catch (e) {
         console.warn('[getBotSettings] Failed to backfill platform Telegram token:', (e as any)?.message || e);
@@ -189,19 +219,43 @@ export const getBotSettings: RequestHandler = async (req, res) => {
     const storedFbPageId = String(settings.fb_page_id || '').trim();
     const storedFbPageAccessToken = String(settings.fb_page_access_token || '').trim();
     const messengerTokenConfigured = !!storedFbPageAccessToken;
-    const messengerUsingPlatform = PLATFORM_MESSENGER_AVAILABLE && (!storedFbPageId || storedFbPageId === PLATFORM_FB_PAGE_ID);
+    const _platformMessengerAvailable = getPlatformMessengerAvailable();
+    const _platformFbPageId = getPlatformFbPageId();
+    const messengerUsingPlatform = _platformMessengerAvailable && (!storedFbPageId || storedFbPageId === _platformFbPageId);
 
     const whatsappTokenConfigured = !!String(settings.whatsapp_token || '').trim();
+    const whatsappPhoneIdStored = String(settings.whatsapp_phone_id || '').trim();
+    const _platformWhatsappAvailable = getPlatformWhatsappAvailable();
+    const _platformWhatsappPhoneId = getPlatformWhatsappPhoneNumberId();
+    const whatsappUsingPlatform = _platformWhatsappAvailable && (!whatsappPhoneIdStored || whatsappPhoneIdStored === _platformWhatsappPhoneId);
+
+    // Check if manual Instagram credentials exist in facebook_tokens.
+    let instagramTokenConfigured = false;
+    let instagramAccountIdStored = '';
+    try {
+      const igRes = await pool.query(
+        `SELECT instagram_account_id, page_access_token_encrypted FROM facebook_tokens
+         WHERE client_id = $1 AND is_active = TRUE AND instagram_account_id IS NOT NULL AND instagram_account_id != ''
+         LIMIT 1`,
+        [clientId]
+      );
+      if (igRes.rows.length) {
+        instagramAccountIdStored = igRes.rows[0].instagram_account_id || '';
+        instagramTokenConfigured = !!igRes.rows[0].page_access_token_encrypted;
+      }
+    } catch {
+      // facebook_tokens may not exist yet; ignore.
+    }
 
     const response = {
       enabled: effectiveEnabled,
       updatesEnabled: !!settings.updates_enabled,
       trackingEnabled: !!settings.tracking_enabled,
       provider: settings.provider || 'telegram',
-      whatsappPhoneId: settings.whatsapp_phone_id,
+      whatsappPhoneId: whatsappUsingPlatform ? '' : settings.whatsapp_phone_id,
       // Never expose tokens/secrets to store owners.
       whatsappToken: '',
-      whatsappTokenConfigured,
+      whatsappTokenConfigured: whatsappTokenConfigured || whatsappUsingPlatform,
       telegramBotToken: '',
       telegramTokenConfigured: telegramTokenConfigured || telegramUsingPlatform,
       // Username isn't secret, but hide it when platform bot is used.
@@ -221,14 +275,29 @@ export const getBotSettings: RequestHandler = async (req, res) => {
       fbPageAccessToken: '',
       fbPageAccessTokenConfigured: messengerTokenConfigured || messengerUsingPlatform,
       messengerDelayMinutes: settings.messenger_delay_minutes || 5,
-      platformMessengerAvailable: PLATFORM_MESSENGER_AVAILABLE,
-      platformTelegramAvailable: PLATFORM_TELEGRAM_AVAILABLE,
+      delivery_notifications_enabled: settings.delivery_notifications_enabled !== false,
+      delivery_status_template: settings.delivery_status_template || null,
+      platformMessengerAvailable: getPlatformMessengerAvailable(),
+      platformTelegramAvailable: getPlatformTelegramAvailable(),
+      usePlatformTelegram: telegramUsingPlatform,
+      platformWhatsappAvailable: getPlatformWhatsappAvailable(),
       usePlatformMessenger: messengerUsingPlatform,
       messengerUsingPlatform,
-      usePlatformTelegram: telegramUsingPlatform,
       telegramUsingPlatform,
+      usePlatformWhatsapp: whatsappUsingPlatform,
+      whatsappUsingPlatform,
+      // Instagram manual credentials status (never expose token).
+      instagramAccountId: instagramAccountIdStored,
+      instagramPageAccessToken: '',
+      instagramTokenConfigured,
       // Do not expose platform Page ID to store owners.
       platformMessengerPageId: '',
+      platformViberAvailable: getPlatformViberAvailable(),
+      usePlatformViber: getPlatformViberAvailable(),
+      viberUsingPlatform: getPlatformViberAvailable(),
+      platformInstagramAvailable: getPlatformInstagramAvailable(),
+      usePlatformInstagram: getPlatformInstagramAvailable(),
+      instagramUsingPlatform: getPlatformInstagramAvailable(),
     };
 
     res.json(response);
@@ -272,6 +341,11 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
       messengerDelayMinutes,
       usePlatformMessenger,
       usePlatformTelegram,
+      usePlatformWhatsapp,
+      instagramAccountId,
+      instagramPageAccessToken,
+      deliveryNotificationsEnabled,
+      deliveryStatusTemplate,
     } = req.body;
 
     const effectiveProvider = provider ?? 'telegram';
@@ -282,38 +356,62 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     const normalizedFbPageId = typeof fbPageId === 'string' ? fbPageId.trim() : '';
     const normalizedFbPageAccessToken = typeof fbPageAccessToken === 'string' ? fbPageAccessToken.trim() : '';
 
+    const normalizedWhatsappPhoneId = typeof whatsappPhoneId === 'string' ? whatsappPhoneId.trim() : '';
+
     // Load existing secrets so we can preserve them unless explicitly replaced.
     const existingSecretsRes = await pool.query(
-      `SELECT whatsapp_token, telegram_bot_token, telegram_bot_username, fb_page_id, fb_page_access_token
+      `SELECT whatsapp_phone_id, whatsapp_token, telegram_bot_token, telegram_bot_username, fb_page_id, fb_page_access_token
        FROM bot_settings WHERE client_id = $1`,
       [clientId]
     );
     const existingSecrets = existingSecretsRes.rows[0] || {};
 
-    const existingTelegramIsPlatform = PLATFORM_TELEGRAM_AVAILABLE
-      && String(existingSecrets.telegram_bot_token || '').trim() === PLATFORM_TELEGRAM_BOT_TOKEN;
-    const existingMessengerIsPlatform = PLATFORM_MESSENGER_AVAILABLE
-      && String(existingSecrets.fb_page_id || '').trim() === PLATFORM_FB_PAGE_ID;
+    const existingTelegramIsPlatform = getPlatformTelegramAvailable()
+      && String(existingSecrets.telegram_bot_token || '').trim() === getPlatformTelegramBotToken();
+    const existingMessengerIsPlatform = getPlatformMessengerAvailable()
+      && String(existingSecrets.fb_page_id || '').trim() === getPlatformFbPageId();
+    const existingWhatsappIsPlatform = getPlatformWhatsappAvailable()
+      && String(existingSecrets.whatsapp_phone_id || '').trim() === getPlatformWhatsappPhoneNumberId();
 
     const wantsPlatformMessenger = usePlatformMessenger === true
       || (usePlatformMessenger == null && existingMessengerIsPlatform);
     const wantsPlatformTelegram = usePlatformTelegram === true
       || (usePlatformTelegram == null && existingTelegramIsPlatform);
+    const wantsPlatformWhatsapp = usePlatformWhatsapp === true
+      || (usePlatformWhatsapp == null && existingWhatsappIsPlatform);
 
+    // WhatsApp phone/token behavior.
+    let finalWhatsappPhoneId: string | null = existingSecrets.whatsapp_phone_id ?? null;
     let finalWhatsappToken: string | null = existingSecrets.whatsapp_token ?? null;
-    if (normalizedWhatsappToken) {
-      finalWhatsappToken = normalizedWhatsappToken;
+
+    if (wantsPlatformWhatsapp) {
+      if (!getPlatformWhatsappAvailable()) {
+        return res.status(400).json({ error: 'Platform WhatsApp is not configured on the server.' });
+      }
+      finalWhatsappPhoneId = getPlatformWhatsappPhoneNumberId();
+      finalWhatsappToken = null; // Use env-based token; never store platform token in DB.
+    } else {
+      const switchingFromPlatform = existingWhatsappIsPlatform;
+      if (switchingFromPlatform && (!normalizedWhatsappPhoneId || !normalizedWhatsappToken)) {
+        return res.status(400).json({ error: 'Paste your WhatsApp Phone Number ID + Access Token when switching to a custom number.' });
+      }
+      if (normalizedWhatsappPhoneId) {
+        finalWhatsappPhoneId = normalizedWhatsappPhoneId;
+      }
+      if (normalizedWhatsappToken) {
+        finalWhatsappToken = normalizedWhatsappToken;
+      }
     }
 
     let finalTelegramBotToken: string | null = existingSecrets.telegram_bot_token ?? null;
     let finalTelegramBotUsername: string | null = existingSecrets.telegram_bot_username ?? null;
 
     if (wantsPlatformTelegram) {
-      if (!PLATFORM_TELEGRAM_AVAILABLE) {
+      if (!getPlatformTelegramAvailable()) {
         return res.status(400).json({ error: 'Platform Telegram bot is not configured on the server.' });
       }
-      finalTelegramBotToken = PLATFORM_TELEGRAM_BOT_TOKEN;
-      finalTelegramBotUsername = normalizeTelegramUsername(PLATFORM_TELEGRAM_BOT_USERNAME);
+      finalTelegramBotToken = getPlatformTelegramBotToken();
+      finalTelegramBotUsername = normalizeTelegramUsername(getPlatformTelegramBotUsername());
     } else {
       const switchingFromPlatform = existingTelegramIsPlatform;
       if (switchingFromPlatform && !normalizedTelegramBotToken) {
@@ -332,10 +430,10 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     let finalFbPageAccessToken: string | null = existingSecrets.fb_page_access_token ?? null;
 
     if (wantsPlatformMessenger) {
-      if (!PLATFORM_MESSENGER_AVAILABLE) {
+      if (!getPlatformMessengerAvailable()) {
         return res.status(400).json({ error: 'Platform Messenger page is not configured on the server.' });
       }
-      finalFbPageId = PLATFORM_FB_PAGE_ID;
+      finalFbPageId = getPlatformFbPageId();
       // Use env-based token instead; never store platform token in DB.
       finalFbPageAccessToken = null;
     } else {
@@ -356,6 +454,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     let botDisabledReason: string | undefined;
 
     // Do not allow enabling the bot while subscription is ended or payment-locked.
+    // messengerEnabled is a contact channel setting and is always allowed to be saved.
     if (enabled === true) {
       const access = await getClientAccessState(clientId);
       if (!access.allowBot) {
@@ -388,7 +487,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           updatesEnabled ?? false,
           trackingEnabled ?? false,
           effectiveProvider,
-          whatsappPhoneId ?? null,
+          finalWhatsappPhoneId,
           finalWhatsappToken,
           finalTelegramBotToken,
           telegramDelayMinutes ?? 5,
@@ -435,6 +534,8 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           fb_page_id = $21,
           fb_page_access_token = $22,
           messenger_delay_minutes = $23,
+          delivery_notifications_enabled = $24,
+          delivery_status_template = $25,
           updated_at = NOW()
         WHERE client_id = $1`,
         [
@@ -443,7 +544,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           updatesEnabled ?? false,
           trackingEnabled ?? false,
           effectiveProvider,
-          whatsappPhoneId ?? null,
+          finalWhatsappPhoneId,
           finalWhatsappToken,
           finalTelegramBotToken,
           telegramDelayMinutes ?? 5,
@@ -461,8 +562,51 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           finalFbPageId,
           finalFbPageAccessToken,
           messengerDelayMinutes ?? 5,
+          deliveryNotificationsEnabled ?? true,
+          deliveryStatusTemplate ?? null,
         ]
       );
+    }
+
+    // Save manual Instagram credentials into facebook_tokens if provided.
+    const normalizedIgAccountId = typeof instagramAccountId === 'string' ? instagramAccountId.trim() : '';
+    const normalizedIgPageToken = typeof instagramPageAccessToken === 'string' ? instagramPageAccessToken.trim() : '';
+    if (normalizedIgAccountId && normalizedIgPageToken) {
+      try {
+        const encryptedToken = encryptData(normalizedIgPageToken);
+        const existing = await pool.query(
+          `SELECT id FROM facebook_tokens WHERE client_id = $1 LIMIT 1`,
+          [clientId]
+        );
+        if (existing.rows.length) {
+          // Update existing row — set Instagram fields + page token.
+          await pool.query(
+            `UPDATE facebook_tokens SET
+               instagram_account_id = $1,
+               page_access_token_encrypted = $2,
+               is_active = TRUE,
+               updated_at = NOW()
+             WHERE client_id = $3`,
+            [normalizedIgAccountId, encryptedToken, clientId]
+          );
+        } else {
+          // Insert new row — fill NOT NULL cols with manual-entry placeholders.
+          await pool.query(
+            `INSERT INTO facebook_tokens
+               (client_id, fb_user_id, user_access_token_encrypted, page_id, page_access_token_encrypted,
+                instagram_account_id, is_active, created_at, updated_at)
+             VALUES ($1, 'manual', $2, 'manual', $2, $3, TRUE, NOW(), NOW())
+             ON CONFLICT (client_id) DO UPDATE SET
+               instagram_account_id = EXCLUDED.instagram_account_id,
+               page_access_token_encrypted = EXCLUDED.page_access_token_encrypted,
+               is_active = TRUE, updated_at = NOW()`,
+            [clientId, encryptedToken, normalizedIgAccountId]
+          );
+        }
+        console.log(`[Bot] Manual Instagram credentials saved for client ${clientId}, IG Account: ${normalizedIgAccountId}`);
+      } catch (igErr) {
+        console.warn('[Bot] Failed to save manual Instagram credentials:', (igErr as any)?.message || igErr);
+      }
     }
 
     // Auto-register Telegram webhook when Telegram is enabled/configured.

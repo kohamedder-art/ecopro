@@ -8,6 +8,8 @@ import {
   deleteCreativeSpendEntry,
   getOmniInputs,
   getOmniOverview,
+  getCustomerAnalytics,
+  getGenderAnalytics,
   upsertAnalyticSessionFromEvent,
   upsertAnalyticSessionSummary,
   upsertCreativeCatalogEntry,
@@ -51,7 +53,8 @@ const creativeCatalogSchema = z.object({
 
 const creativeSpendSchema = z.object({
   entryDate: z.string().trim().min(1).max(30),
-  platform: z.enum(['facebook', 'tiktok', 'google', 'direct', 'other']),
+  platform: z.enum(['facebook', 'tiktok', 'google', 'instagram', 'snapchat', 'youtube', 'whatsapp', 'telegram', 'direct', 'other']),
+  productId: z.coerce.number().int().min(1).optional().nullable(),
   campaignName: z.string().trim().max(160).optional().nullable(),
   adsetName: z.string().trim().max(160).optional().nullable(),
   creativeName: z.string().trim().max(160).optional().nullable(),
@@ -233,7 +236,7 @@ export const trackPixelEvent: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: 'Invalid event name' });
     }
     
-    if (!['facebook', 'tiktok'].includes(pixel_type)) {
+    if (!['facebook', 'tiktok', 'platform'].includes(pixel_type)) {
       return res.status(400).json({ error: 'Invalid pixel type' });
     }
     
@@ -257,21 +260,22 @@ export const trackPixelEvent: RequestHandler = async (req, res) => {
       return res.status(404).json({ error: 'Store not found' });
     }
     
-    // Check if pixel is enabled for this store
+    // Check if pixel is enabled for this store (skip for platform-level analytics)
+    const isPlatformTracking = pixel_type === 'platform';
     const pixelSettings = await pool.query(
       `SELECT * FROM client_pixel_settings WHERE client_id = $1`,
       [clientId]
     );
     
-    if (pixelSettings.rows.length === 0) {
+    if (!isPlatformTracking && pixelSettings.rows.length === 0) {
       return res.json({ tracked: false, reason: 'No pixel configured' });
     }
     
-    const settings = pixelSettings.rows[0];
-    if (pixel_type === 'facebook' && !settings.is_facebook_enabled) {
+    const settings = pixelSettings.rows[0] || {};
+    if (!isPlatformTracking && pixel_type === 'facebook' && !settings.is_facebook_enabled) {
       return res.json({ tracked: false, reason: 'Facebook pixel disabled' });
     }
-    if (pixel_type === 'tiktok' && !settings.is_tiktok_enabled) {
+    if (!isPlatformTracking && pixel_type === 'tiktok' && !settings.is_tiktok_enabled) {
       return res.json({ tracked: false, reason: 'TikTok pixel disabled' });
     }
 
@@ -344,6 +348,14 @@ export const trackPixelEvent: RequestHandler = async (req, res) => {
     
     // Update daily stats
     await updateDailyStats(clientId, pixel_type, event_name, revenue);
+
+    // Increment product view count when a ViewContent event is recorded
+    if (event_name === 'ViewContent' && product_id) {
+      pool.query(
+        `UPDATE client_store_products SET views = views + 1 WHERE id = $1 AND client_id = $2`,
+        [product_id, clientId]
+      ).catch(() => {});
+    }
 
     try {
       await upsertAnalyticSessionFromEvent({
@@ -697,6 +709,37 @@ export const getOmniOverviewHandler: RequestHandler = async (req, res) => {
   }
 };
 
+export const getCustomerAnalyticsHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const numDays = Math.min(3650, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
+    const analytics = await getCustomerAnalytics(user.id, numDays);
+    return res.json(analytics);
+  } catch (error) {
+    console.error('Get customer analytics error:', error);
+    return res.status(500).json({ error: 'Failed to fetch customer analytics' });
+  }
+};
+
+export const getGenderAnalyticsHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const numDays = Math.min(3650, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
+    const analytics = await getGenderAnalytics(user.id, numDays);
+    return res.json(analytics);
+  } catch (error) {
+    console.error('Get gender analytics error:', error);
+    return res.status(500).json({ error: 'Failed to fetch gender analytics' });
+  }
+};
+
 export const getOmniInputsHandler: RequestHandler = async (req, res) => {
   try {
     const user = (req as any).user;
@@ -888,6 +931,8 @@ router.get('/stats', authenticate, requireClient, getPixelStats);
 router.get('/events', authenticate, requireClient, getRecentPixelEvents);
 router.get('/funnel', authenticate, requireClient, getPixelFunnel);
 router.get('/omni/overview', authenticate, requireClient, getOmniOverviewHandler);
+router.get('/omni/customers', authenticate, requireClient, getCustomerAnalyticsHandler);
+router.get('/omni/gender', authenticate, requireClient, getGenderAnalyticsHandler);
 router.get('/omni/inputs', authenticate, requireClient, getOmniInputsHandler);
 router.put('/omni/product-economics', authenticate, requireClient, saveProductEconomicsHandler);
 router.post('/omni/creative-catalog', authenticate, requireClient, saveCreativeCatalogHandler);

@@ -23,7 +23,9 @@ import { handleDemo } from "./routes/demo";
 import * as authRoutes from "./routes/auth";
 import * as stockRoutes from "./routes/stock";
 import * as clientStoreRoutes from "./routes/client-store";
+import storeSlugRouter from "./routes/store-slug";
 import * as productVariantsRoutes from "./routes/product-variants";
+import * as productOffersRoutes from "./routes/product-offers";
 import * as publicStoreRoutes from "./routes/public-store";
 import * as templateRoutes from "./routes/templates";
 import { createProduct as createStorefrontProduct, updateProduct as updateStorefrontProduct, deleteProduct as deleteStorefrontProduct, handleUploadImages as uploadStorefrontImages } from "./routes/storefront";
@@ -35,6 +37,7 @@ import { requireActiveSubscription } from "./middleware/subscription-check";
 import * as adminRoutes from "./routes/admin";
 import * as dashboardRoutes from "./routes/dashboard";
 import * as botRoutes from "./routes/bot";
+import * as aiSettingsRoutes from "./routes/ai-settings";
 import * as telegramRoutes from "./routes/telegram";
 import { trafficMiddleware } from './utils/traffic';
 import * as staffRoutes from "./routes/staff";
@@ -54,6 +57,7 @@ import codesRouter from "./routes/codes";
 import customerBotRouter from "./routes/customer-bot";
 import pixelsRouter from "./routes/pixels";
 import affiliatesRouter from "./routes/affiliates";
+import colorIntelligenceRouter from "./routes/color-intelligence";
 import { authenticateStaff, requireStaffPermission, requireStaffClientAccess } from "./utils/staff-middleware";
 import { initializeDatabase, createDefaultAdmin, runPendingMigrations } from "./utils/database";
 import { handleHealth } from "./routes/health";
@@ -62,9 +66,12 @@ import { hashPassword } from "./utils/auth";
 import { purgeOldSecurityEvents, securityMiddleware } from "./utils/security";
 import { startScheduledMessageWorker } from "./utils/scheduled-messages";
 import { startBotMessageWorker } from "./utils/bot-messaging";
+import { startTelegramUpdatePoller } from "./utils/telegram-poller";
 import { startGuardianWorker, stopGuardianWorker } from "./utils/guardian-worker";
 import oauthRouter from "./routes/oauth";
 import messengerRouter from "./routes/messenger";
+import facebookOAuthRouter from "./routes/facebook-oauth";
+import whatsappCloudRouter from "./routes/whatsapp-cloud";
 import legalRouter from "./routes/legal";
 import deliveryPricesRouter, { getStorefrontDeliveryPrices } from "./routes/delivery-prices";
 import {
@@ -106,7 +113,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
       limit: '50mb',
       verify: (req: any, _res, buf) => {
         const url = String(req.originalUrl || req.url || '');
-        if (url.startsWith('/api/messenger/webhook')) {
+        if (url.startsWith('/api/messenger/webhook') || url.startsWith('/api/whatsapp/webhook')) {
           req.rawBody = buf;
         }
       },
@@ -133,14 +140,19 @@ export function createServer(options?: { skipDbInit?: boolean }) {
           await initKernel().catch((e) => console.error('Kernel init failed:', e));
           startScheduledMessageWorker();
           startBotMessageWorker({ intervalMs: 30 * 1000 });
+          startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
           startGuardianWorker();
           return;
         }
         await runPendingMigrations();
+        // Backfill platform bot credentials for all existing accounts
+        const { backfillPlatformBotCredentials } = await import('./utils/client-provisioning');
+        await backfillPlatformBotCredentials().catch(e => console.warn('[Startup] backfillPlatformBotCredentials failed:', e));
         await initKernel().catch((e) => console.error('Kernel init failed:', e));
         // Start the scheduled message worker (for bot confirmations)
         startScheduledMessageWorker();
         startBotMessageWorker({ intervalMs: 30 * 1000 });
+        startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
         startGuardianWorker();
       })
       .catch((err) => {
@@ -371,8 +383,9 @@ export function createServer(options?: { skipDbInit?: boolean }) {
       }
 
       // Allow any localhost port for dev convenience
-      const isLocalhost = /^http:\/\/localhost:\d+$/.test(origin);
-      if (!isProduction && (isLocalhost || allowedOrigins.includes(origin))) {
+      const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+):\d+$/.test(origin);
+      const isTunnel = /^https:\/\/.*\.trycloudflare\.com$/.test(origin);
+      if (!isProduction && (isLocalhost || isTunnel || allowedOrigins.includes(origin))) {
         return callback(null, {
           origin: true,
           credentials: true,
@@ -425,8 +438,8 @@ export function createServer(options?: { skipDbInit?: boolean }) {
   const KERNEL_ACCESS_COOKIE = 'ecopro_kernel_at';
   const csrfCookieOptions = {
     httpOnly: false,
-    secure: isProduction,
-    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    secure: isProduction || !!process.env.TUNNEL_MODE,
+    sameSite: (isProduction || !!process.env.TUNNEL_MODE ? 'none' : 'lax') as 'none' | 'lax',
     path: '/',
   };
 
@@ -654,6 +667,10 @@ export function createServer(options?: { skipDbInit?: boolean }) {
 
   // Facebook Messenger webhook (public for FB verification)
   app.use('/api/messenger', messengerRouter);
+  
+  // WhatsApp Cloud API webhook (public for Meta verification)
+  app.use('/api/whatsapp', whatsappCloudRouter);
+  
   app.use('/api/telemetry', telemetryRouter);
 
   // Kernel (root-only) APIs
@@ -796,6 +813,23 @@ export function createServer(options?: { skipDbInit?: boolean }) {
     requireClient,
     apiLimiter,
     botRoutes.updateBotSettings
+  );
+
+  // AI autopilot settings
+  app.get(
+    "/api/ai-settings",
+    authenticate,
+    requireClient,
+    apiLimiter,
+    aiSettingsRoutes.getAISettings
+  );
+
+  app.put(
+    "/api/ai-settings",
+    authenticate,
+    requireClient,
+    apiLimiter,
+    aiSettingsRoutes.updateAISettings
   );
 
   // Admin management routes (platform admin only)
@@ -1049,6 +1083,11 @@ export function createServer(options?: { skipDbInit?: boolean }) {
     billingRoutes.getPlatformSettings
   );
 
+  app.get(
+    "/api/billing/public/settings",
+    billingRoutes.getPublicSettings
+  );
+
   app.post(
     "/api/billing/admin/settings",
     authenticate,
@@ -1267,6 +1306,21 @@ export function createServer(options?: { skipDbInit?: boolean }) {
     productVariantsRoutes.putClientProductVariants
   );
   
+  // Product offer routes (quantity bundles)
+  app.get(
+    "/api/client/store/products/:id/offers",
+    authenticate,
+    requireClient,
+    productOffersRoutes.getClientProductOffers
+  );
+  app.put(
+    "/api/client/store/products/:id/offers",
+    authenticate,
+    requireClient,
+    apiLimiter,
+    productOffersRoutes.putClientProductOffers
+  );
+
   // Media Library routes
   app.get(
     "/api/client/media-library",
@@ -1342,6 +1396,10 @@ export function createServer(options?: { skipDbInit?: boolean }) {
   app.post("/api/storefront/:storeSlug/track-view", publicStoreRoutes.trackStorefrontPageView);
   app.get("/api/store/:storeSlug/:productSlug", publicStoreRoutes.getPublicProduct);
   app.get("/api/product-info/:productId", publicStoreRoutes.getProductWithStoreInfo);
+  app.get(
+    "/api/storefront/:storeSlug/products/:productId/offers",
+    productOffersRoutes.getPublicProductOffers
+  );
   app.post(
     "/api/storefront/:storeSlug/orders",
     storefrontOrderLimiter,
@@ -1388,6 +1446,11 @@ export function createServer(options?: { skipDbInit?: boolean }) {
   // Delivery pricing routes (authenticated for sellers, public endpoint for storefront)
   app.use('/api/delivery-prices', authenticate, deliveryPricesRouter);
   app.get('/api/storefront/:storeSlug/delivery-prices', getStorefrontDeliveryPrices);
+  app.get('/api/storefront/:storeSlug/contact-channels', publicStoreRoutes.getStorefrontContactChannels);
+
+  // Facebook/Instagram OAuth routes
+  // The callback route must work during redirects (cookie-based auth may not be available)
+  app.use('/api/facebook', facebookOAuthRouter);
 
   // Google Sheets integration routes (authenticated)
   app.use('/api/google', authenticate, googleSheetsRouter);
@@ -1409,6 +1472,12 @@ export function createServer(options?: { skipDbInit?: boolean }) {
 
   // Affiliate/Influencer marketing routes (mixed auth - public validate, affiliate auth, admin auth)
   app.use('/api/affiliates', affiliatesRouter);
+
+  // AI Color Intelligence routes (authenticated store owners)
+  app.use('/api/color-intelligence', authenticate, colorIntelligenceRouter);
+
+  // Store Slug Management (authenticated store owners)
+  app.use('/api/store/slug', authenticate, requireClient, storeSlugRouter);
 
   // Checkout session routes (database-backed, not localStorage)
   app.post("/api/checkout/save-product", orderRoutes.saveProductForCheckout); // Public - save product for checkout

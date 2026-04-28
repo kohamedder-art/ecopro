@@ -5,7 +5,7 @@ import { processPendingMessages, cleanupOldOrders } from "./utils/bot-messaging"
 import { cleanupExpiredCodes } from "./utils/code-utils";
 import { initWebSocket } from "./utils/websocket";
 
-const PORT = process.env.PORT || 8080;
+const PORT = Number(process.env.PORT || 8080);
 
 async function startServer() {
   // Warm up DB connection before starting server to avoid first-request timeout
@@ -24,7 +24,7 @@ async function startServer() {
   // Initialize WebSocket server for real-time chat
   initWebSocket(server);
   
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 API Server running on http://localhost:${PORT}`);
     console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
     console.log(`🔌 WebSocket available at ws://localhost:${PORT}/ws/chat`);
@@ -38,7 +38,15 @@ async function startServer() {
       const shouldInitDb = devDbInit === '1' || devDbInit === 'true' || devDbInit === 'yes';
 
       if (!shouldInitDb) {
-        console.log('⏭️ DEV_DB_INIT disabled — skipping database init/migrations/background jobs in dev');
+        console.log('⏭️ DEV_DB_INIT disabled — skipping database init/migrations in dev');
+        // Still start background workers — they need to run in dev too
+        const { startScheduledMessageWorker } = await import('./utils/scheduled-messages');
+        const { startBotMessageWorker } = await import('./utils/bot-messaging');
+        const { startTelegramUpdatePoller } = await import('./utils/telegram-poller');
+        startScheduledMessageWorker();
+        startBotMessageWorker({ intervalMs: 30 * 1000 });
+        startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
+        console.log('✅ Background workers started (dev mode)');
         return;
       }
 

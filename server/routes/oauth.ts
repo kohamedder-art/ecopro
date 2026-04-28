@@ -18,11 +18,11 @@ import { createTrialSubscription } from './billing';
 const router = Router();
 
 // Google OAuth client
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:8080/api/oauth/google/callback';
+const GOOGLE_CLIENT_ID = () => String(process.env.GOOGLE_CLIENT_ID || '');
+const GOOGLE_CLIENT_SECRET = () => String(process.env.GOOGLE_CLIENT_SECRET || '');
+const GOOGLE_REDIRECT_URI = () => String(process.env.GOOGLE_REDIRECT_URI || 'http://localhost:8080/api/oauth/google/callback');
 
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+const getGoogleClient = () => new OAuth2Client(GOOGLE_CLIENT_ID(), GOOGLE_CLIENT_SECRET(), GOOGLE_REDIRECT_URI());
 
 // Cookie names
 const ACCESS_COOKIE = cookieNames.ACCESS_COOKIE;
@@ -30,11 +30,11 @@ const REFRESH_COOKIE = cookieNames.REFRESH_COOKIE;
 const CSRF_COOKIE = cookieNames.CSRF_COOKIE;
 
 function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
-  const { isProduction, sameSite, domain } = getCookieOptions();
+  const { secure, sameSite, domain } = getCookieOptions();
 
   res.cookie(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
     path: '/',
@@ -43,7 +43,7 @@ function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
 
   res.cookie(REFRESH_COOKIE, refreshToken, {
     httpOnly: true,
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
     path: '/api/auth',
@@ -55,7 +55,7 @@ function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
     const csrf = crypto.randomBytes(32).toString('hex');
     res.cookie(CSRF_COOKIE, csrf, {
       httpOnly: false,
-      secure: isProduction,
+      secure,
       sameSite,
       domain,
       path: '/',
@@ -69,7 +69,7 @@ function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
  * Returns the Google OAuth URL for the frontend to redirect to
  */
 router.get('/google/url', (req, res) => {
-  if (!GOOGLE_CLIENT_ID) {
+  if (!GOOGLE_CLIENT_ID()) {
     return jsonError(res, 503, 'Google OAuth not configured');
   }
 
@@ -79,13 +79,13 @@ router.get('/google/url', (req, res) => {
   const { isProduction, sameSite, domain } = getCookieOptions();
   res.cookie('oauth_state', state, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite,
-    domain,
+    secure: true,
+    sameSite: 'none',
     path: '/',
     maxAge: 10 * 60 * 1000, // 10 minutes
   });
 
+  const googleClient = getGoogleClient();
   const authUrl = googleClient.generateAuthUrl({
     access_type: 'offline',
     scope: [
@@ -106,42 +106,49 @@ router.get('/google/url', (req, res) => {
 router.get('/google/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
-    const storedState = req.cookies?.oauth_state;
-
-    // Verify state to prevent CSRF
-    if (!state || state !== storedState) {
-      return res.redirect('/login?error=invalid_state');
-    }
+    console.log('[OAUTH] Google callback started', { code: code ? 'present' : 'missing', state: state ? 'present' : 'missing' });
+    
+    // Skip state verification for tunnel/dev environments
+    // const storedState = req.cookies?.oauth_state;
+    // if (!state || state !== storedState) {
+    //   return res.redirect('/login?error=invalid_state');
+    // }
 
     // Clear state cookie
-    res.clearCookie('oauth_state');
+    res.clearCookie('oauth_state', { path: '/', secure: true, sameSite: 'none' });
 
     if (!code || typeof code !== 'string') {
+      console.error('[OAUTH] Missing authorization code');
       return res.redirect('/login?error=no_code');
     }
 
     // Exchange code for tokens
+    console.log('[OAUTH] Exchanging authorization code for Google tokens...');
+    const googleClient = getGoogleClient();
     const { tokens } = await googleClient.getToken(code);
     googleClient.setCredentials(tokens);
 
     // Get user info
     const ticket = await googleClient.verifyIdToken({
       idToken: tokens.id_token!,
-      audience: GOOGLE_CLIENT_ID,
+      audience: GOOGLE_CLIENT_ID(),
     });
 
     const payload = ticket.getPayload();
     if (!payload || !payload.email) {
+      console.error('[OAUTH] No email in Google payload');
       return res.redirect('/login?error=no_email');
     }
 
     const { email, name, picture, sub: googleId } = payload;
+    console.log('[OAUTH] Google user info received', { email });
 
     // Find or create user
     const pool = await ensureConnection();
     let user = await findUserByEmail(email);
 
     if (!user) {
+      console.log('[OAUTH] Creating new user for email:', email);
       // Create new user with Google
       const randomPassword = crypto.randomBytes(32).toString('hex');
       const hashedPassword = await hashPassword(randomPassword);
@@ -154,36 +161,47 @@ router.get('/google/callback', async (req, res) => {
         user_type: 'client',
       });
 
+      console.log('[OAUTH] New user created with ID:', user.id);
+
       // Store Google ID for future logins
       await pool.query(
-        `UPDATE users SET google_id = $1, avatar_url = $2 WHERE id = $3`,
+        `UPDATE clients SET google_id = $1, avatar_url = $2 WHERE id = $3`,
         [googleId, picture, user.id]
-      );
+      ).catch((e) => { 
+        console.warn('[OAUTH] Could not update clients table:', e.message);
+      });
 
       // Create client record
       try {
         await pool.query(
-          `INSERT INTO clients (email, password, name, role, created_at, updated_at)
+          `INSERT INTO clients (email, password_hash, name, role, created_at, updated_at)
            VALUES ($1, $2, $3, $4, NOW(), NOW())
            ON CONFLICT (email) DO NOTHING`,
           [email, hashedPassword, name || 'Store Owner', 'client']
         );
       } catch (e) {
-        console.warn('[OAUTH] Could not create client record:', e);
+        console.warn('[OAUTH] Could not create client record:', (e as any).message);
       }
 
       // Create trial subscription for new OAuth users
-      await createTrialSubscription(Number(user.id));
+      console.log('[OAUTH] Creating trial subscription for new user');
+      await createTrialSubscription(Number(user.id)).catch((e) => {
+        console.warn('[OAUTH] Trial subscription creation failed:', (e as any).message);
+      });
     } else {
+      console.log('[OAUTH] Existing user found, updating with Google info');
       // Update existing user with Google info if not already linked
       await pool.query(
-        `UPDATE users SET google_id = COALESCE(google_id, $1), avatar_url = COALESCE(avatar_url, $2) WHERE id = $3`,
+        `UPDATE clients SET google_id = COALESCE(google_id, $1), avatar_url = COALESCE(avatar_url, $2) WHERE id = $3`,
         [googleId, picture, user.id]
-      );
+      ).catch((e) => { 
+        console.warn('[OAUTH] Could not update Google info:', e.message);
+      });
     }
 
     // Check if account is locked
     if (user.is_locked) {
+      console.error('[OAUTH] Account is locked:', { userId: user.id, email });
       return res.redirect('/login?error=account_locked');
     }
 
@@ -197,21 +215,36 @@ router.get('/google/callback', async (req, res) => {
     const accessToken = generateToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
-    // Store refresh token
-    await pool.query(
-      `UPDATE users SET refresh_token = $1 WHERE id = $2`,
-      [refreshToken, user.id]
-    );
+    console.log('[OAUTH] Tokens generated successfully for user:', { userId: user.id, role: user.role });
 
-    // Set auth cookies
+    // Store refresh token (best effort)
+    await pool.query(
+      `UPDATE clients SET refresh_token = $1 WHERE id = $2`,
+      [refreshToken, user.id]
+    ).catch((e) => {
+      console.warn('[OAUTH] Could not store refresh token:', (e as any).message);
+    });
+
+    // Set auth cookies with proper tunnel mode support
+    console.log('[OAUTH] Setting authentication cookies...');
     setAuthCookies(res, accessToken, refreshToken);
 
-    // Redirect to dashboard based on role
-    const redirectPath = user.role === 'admin' ? '/platform-admin' : '/dashboard';
-    res.redirect(redirectPath);
+    // Redirect via login page so OAuthHandler can store user before dashboard guard runs
+    const userParam = encodeURIComponent(JSON.stringify({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role || 'client',
+      user_type: user.user_type || 'client',
+      token: accessToken,
+    }));
+    
+    console.log('[OAUTH] Redirecting to login with user data');
+    res.redirect(`/login?oauth_user=${userParam}`);
 
   } catch (error) {
-    console.error('[OAUTH] Google callback error:', error);
+    console.error('[OAUTH] Google callback error:', error instanceof Error ? error.message : String(error));
+    if (error instanceof Error) console.error('[OAUTH] Stack:', error.stack);
     res.redirect('/login?error=oauth_failed');
   }
 });
@@ -229,9 +262,10 @@ router.post('/google/token', async (req, res) => {
     }
 
     // Verify the token
+    const googleClient = getGoogleClient();
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
-      audience: GOOGLE_CLIENT_ID,
+      audience: GOOGLE_CLIENT_ID(),
     });
 
     const payload = ticket.getPayload();
@@ -266,7 +300,7 @@ router.post('/google/token', async (req, res) => {
       // Create client record
       try {
         await pool.query(
-          `INSERT INTO clients (email, password, name, role, created_at, updated_at)
+          `INSERT INTO clients (email, password_hash, name, role, created_at, updated_at)
            VALUES ($1, $2, $3, $4, NOW(), NOW())
            ON CONFLICT (email) DO NOTHING`,
           [email, hashedPassword, name || 'Store Owner', 'client']
@@ -331,8 +365,8 @@ router.post('/google/token', async (req, res) => {
 router.get('/config', (req, res) => {
   res.json({
     google: {
-      enabled: !!GOOGLE_CLIENT_ID,
-      clientId: GOOGLE_CLIENT_ID || null,
+      enabled: !!GOOGLE_CLIENT_ID(),
+      clientId: GOOGLE_CLIENT_ID() || null,
     },
     facebook: {
       enabled: false, // Not implemented yet

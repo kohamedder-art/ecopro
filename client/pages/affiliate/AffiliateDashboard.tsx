@@ -358,7 +358,7 @@ export default function AffiliateDashboard() {
                               <ArrowUpRight className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <div>
-                              <p className="font-medium text-xs">${parseFloat(c.commission_amount).toFixed(2)}</p>
+                              <p className="font-medium text-xs">{parseFloat(c.commission_amount).toFixed(0)} دج</p>
                               <p className="text-[10px] text-gray-500">
                                 Month {c.payment_month} • {c.user_name || c.user_email}
                               </p>
@@ -422,7 +422,7 @@ export default function AffiliateDashboard() {
                               </Badge>
                             </td>
                             <td className="py-2 px-1 text-right">
-                              <span className="font-medium">${parseFloat(r.total_commission || '0').toFixed(2)}</span>
+                              <span className="font-medium">{parseFloat(r.total_commission || '0').toFixed(0)} دج</span>
                             </td>
                           </tr>
                         ))}

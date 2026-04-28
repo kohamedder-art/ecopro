@@ -1,6 +1,19 @@
 import { Dispatch, SetStateAction } from 'react';
 import type { UniversalStoreSchema } from '@/../../shared/universal-store-schema';
 
+export interface ProductVariant {
+  id: number;
+  product_id: number;
+  color: string | null;
+  size: string | null;
+  variant_name: string | null;
+  price: number | null;
+  stock_quantity: number;
+  images: string[] | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
 export interface StoreProduct {
   id: number;
   title: string;
@@ -16,6 +29,7 @@ export interface StoreProduct {
   views: number;
   seller_name?: string;
   short_spec?: string;
+  variants?: ProductVariant[];
 }
 
 export interface StoreSettings {
@@ -68,6 +82,10 @@ export interface TemplateProps {
   forcedBreakpoint?: 'mobile' | 'tablet' | 'desktop';
   /** Optional editor hook: called when a user selects an editable element */
   onSelect?: (editPath: string) => void;
+  /** Called when a visitor views/selects a product (for analytics tracking) */
+  onProductView?: (product: StoreProduct) => void;
+  /** When navigating directly to a product URL (/store/:storeSlug/:productSlug), pre-select this product */
+  initialProductSlug?: string;
 }
 
 /**

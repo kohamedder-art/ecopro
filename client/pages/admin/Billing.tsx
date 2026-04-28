@@ -9,7 +9,6 @@ import {
   Clock,
   Download,
   RefreshCw,
-  Zap,
   MessageCircle,
   Crown,
   Shield,
@@ -26,6 +25,11 @@ import {
   Receipt,
   HelpCircle,
   ChevronDown,
+  ShoppingCart,
+  Brain,
+  Tag,
+  Image,
+  Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -103,18 +107,21 @@ function PaymentStatusDot({ status }: { status: string }) {
 
 // ─── Feature list ───────────────────────────────────────────────
 const FEATURES: { icon: React.ReactNode; label: string }[] = [
-  { icon: <Package className="h-3.5 w-3.5" />,    label: 'admin.billing.unlimitedProducts' },
-  { icon: <Layers className="h-3.5 w-3.5" />,     label: 'admin.billing.unlimitedOrders' },
-  { icon: <CreditCard className="h-3.5 w-3.5" />, label: 'admin.billing.orderManagement' },
-  { icon: <Bot className="h-3.5 w-3.5" />,        label: 'admin.billing.whatsappSmsBot' },
-  { icon: <Zap className="h-3.5 w-3.5" />,        label: 'admin.billing.automatedNotifications' },
-  { icon: <BarChart3 className="h-3.5 w-3.5" />,  label: 'admin.billing.advancedAnalytics' },
-  { icon: <Layers className="h-3.5 w-3.5" />,     label: 'admin.billing.productVariants' },
-  { icon: <Package className="h-3.5 w-3.5" />,    label: 'admin.billing.stockManagement' },
-  { icon: <Truck className="h-3.5 w-3.5" />,      label: 'admin.billing.deliveryZoneSetup' },
-  { icon: <Users className="h-3.5 w-3.5" />,      label: 'admin.billing.staffManagement' },
-  { icon: <Palette className="h-3.5 w-3.5" />,    label: 'admin.billing.storeCustomization' },
-  { icon: <Headphones className="h-3.5 w-3.5" />, label: 'admin.billing.prioritySupport' },
+  { icon: <Package className="h-3.5 w-3.5" />,      label: 'admin.billing.unlimitedProducts' },
+  { icon: <ShoppingCart className="h-3.5 w-3.5" />,  label: 'admin.billing.unlimitedOrders' },
+  { icon: <Layers className="h-3.5 w-3.5" />,       label: 'admin.billing.orderManagement' },
+  { icon: <Bot className="h-3.5 w-3.5" />,          label: 'admin.billing.whatsappSmsBot' },
+  { icon: <Truck className="h-3.5 w-3.5" />,        label: 'admin.billing.deliveryZoneSetup' },
+  { icon: <Users className="h-3.5 w-3.5" />,        label: 'admin.billing.staffManagement' },
+  { icon: <Palette className="h-3.5 w-3.5" />,      label: 'admin.billing.storeCustomization' },
+  { icon: <BarChart3 className="h-3.5 w-3.5" />,    label: 'admin.billing.advancedAnalytics' },
+  { icon: <Brain className="h-3.5 w-3.5" />,        label: 'admin.billing.aiFeatures' },
+  { icon: <Tag className="h-3.5 w-3.5" />,          label: 'admin.billing.vouchersDiscounts' },
+  { icon: <Image className="h-3.5 w-3.5" />,        label: 'admin.billing.imageGallery' },
+  { icon: <Globe className="h-3.5 w-3.5" />,        label: 'admin.billing.customDomain' },
+  { icon: <CreditCard className="h-3.5 w-3.5" />,   label: 'admin.billing.codZeroCommissions' },
+  { icon: <Shield className="h-3.5 w-3.5" />,       label: 'admin.billing.automatedNotifications' },
+  { icon: <Headphones className="h-3.5 w-3.5" />,   label: 'admin.billing.prioritySupport' },
 ];
 
 // ─── Main Component ─────────────────────────────────────────────
@@ -155,11 +162,11 @@ const AdminBilling = () => {
 
   const periodEnd = subscription
     ? new Date(subscription.status === 'trial' ? subscription.trial_ends_at : subscription.current_period_end)
-        .toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+        .toLocaleDateString(isRTL ? 'ar-DZ' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : '—';
 
   return (
-    <div className={`space-y-4 pb-8 ${isRTL ? 'text-right' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`space-y-4 pb-8 max-w-6xl mx-auto ${isRTL ? 'text-right' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* ─── Header ───────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -172,7 +179,7 @@ const AdminBilling = () => {
           </div>
         </div>
         <Button variant="outline" size="sm" className="h-10 rounded-xl gap-1.5" onClick={() => refetchSub()}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          <RefreshCw className="h-3.5 w-3.5" /> {t('admin.billing.refresh')}
         </Button>
       </div>
 
@@ -275,7 +282,7 @@ const AdminBilling = () => {
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">{t('admin.billing.monthlyPrice')}</p>
-            <p className="text-4xl font-black bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">$8</p>
+            <p className="text-4xl font-black bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">2900 <span className="text-lg">{t('pricing.currency')}</span></p>
             <p className="text-sm text-muted-foreground mt-0.5">{t('admin.billing.billedMonthly')}</p>
           </div>
           <div className="flex-1 p-3 space-y-1.5 overflow-y-auto">
@@ -320,7 +327,7 @@ const AdminBilling = () => {
                   {payments.map((p) => (
                     <tr key={p.id} className="border-b border-slate-100/80 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-2.5 px-2 font-medium">
-                        {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(p.created_at).toLocaleDateString(isRTL ? 'ar-DZ' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td className="py-2.5 px-2 font-extrabold">{Math.round(p.amount)} {p.currency}</td>
                       <td className="py-2.5 px-2">

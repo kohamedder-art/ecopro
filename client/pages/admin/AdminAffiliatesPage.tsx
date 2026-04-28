@@ -327,7 +327,7 @@ export default function AdminAffiliatesPage() {
 
       toast({
         title: 'Success',
-        description: `Paid ${data.paidCount} commissions totaling $${data.totalAmount.toFixed(2)}`,
+        description: `Paid ${data.paidCount} commissions totaling ${data.totalAmount.toFixed(0)} دج`,
       });
 
       setShowPayDialog(false);
@@ -559,7 +559,7 @@ export default function AdminAffiliatesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500">Total Earned</p>
-                  <p className="text-2xl font-bold">${parseFloat(programStats.total_commission_earned || '0').toFixed(2)}</p>
+                  <p className="text-2xl font-bold">{parseFloat(programStats.total_commission_earned || '0').toFixed(0)} دج</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-yellow-500 opacity-50" />
               </div>
@@ -571,7 +571,7 @@ export default function AdminAffiliatesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500">Pending Payout</p>
-                  <p className="text-2xl font-bold text-orange-600">${parseFloat(programStats.total_commission_pending || '0').toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-orange-600">{parseFloat(programStats.total_commission_pending || '0').toFixed(0)} دج</p>
                 </div>
                 <CreditCard className="h-8 w-8 text-orange-500 opacity-50" />
               </div>
@@ -673,7 +673,7 @@ export default function AdminAffiliatesPage() {
                     </div>
                     <div>
                       <span className="text-gray-500">Earned</span>
-                      <p className="font-semibold">${parseFloat(a.total_commission_earned || '0').toFixed(2)}</p>
+                      <p className="font-semibold">{parseFloat(a.total_commission_earned || '0').toFixed(0)} دج</p>
                     </div>
                   </div>
                 </div>
@@ -741,7 +741,7 @@ export default function AdminAffiliatesPage() {
                         <span className="text-gray-400 text-xs ml-1">({a.total_paid_referrals} paid)</span>
                       </td>
                       <td className="py-4 px-4 text-right font-medium">
-                        ${parseFloat(a.total_commission_earned || '0').toFixed(2)}
+                        {parseFloat(a.total_commission_earned || '0').toFixed(0)} دج
                       </td>
                       <td className="py-4 px-4 text-right">
                         {a.pending_commissions > 0 ? (
@@ -945,13 +945,13 @@ export default function AdminAffiliatesPage() {
                   <div>
                     <Label className="text-gray-500">Total Earned</Label>
                     <p className="text-lg font-bold text-emerald-600">
-                      ${parseFloat(affiliateDetails.affiliate.total_commission || '0').toFixed(2)}
+                      {parseFloat(affiliateDetails.affiliate.total_commission || '0').toFixed(0)} دج
                     </p>
                   </div>
                   <div>
                     <Label className="text-gray-500">Pending</Label>
                     <p className="text-lg font-bold text-orange-600">
-                      ${parseFloat(affiliateDetails.affiliate.pending_commission || '0').toFixed(2)}
+                      {parseFloat(affiliateDetails.affiliate.pending_commission || '0').toFixed(0)} دج
                     </p>
                   </div>
                 </div>
@@ -989,7 +989,7 @@ export default function AdminAffiliatesPage() {
                         <p className="text-xs text-gray-500">Month {c.payment_month}</p>
                       </div>
                       <p className="font-bold text-emerald-600">
-                        ${parseFloat(c.commission_amount).toFixed(2)}
+                        {parseFloat(c.commission_amount).toFixed(0)} دج
                       </p>
                     </div>
                   ))}

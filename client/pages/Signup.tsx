@@ -58,7 +58,7 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(true);
 
   // Check for OAuth errors
   useEffect(() => {
@@ -72,8 +72,8 @@ export default function Signup() {
   useEffect(() => {
     fetch('/api/oauth/config')
       .then(res => res.json())
-      .then(data => setGoogleEnabled(data.google?.enabled || false))
-      .catch(() => setGoogleEnabled(false));
+      .then(data => { if (data.google?.enabled) setGoogleEnabled(true); })
+      .catch(() => {});
   }, []);
 
   // Validate voucher code when it changes
@@ -154,6 +154,13 @@ export default function Signup() {
         throw new Error(data.error || 'فشل إنشاء الحساب. تأكد من صحة البيانات.');
       }
 
+      // Clear any stale auth state from previous sessions
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAdmin');
+      localStorage.removeItem('isStaff');
+      localStorage.removeItem('staffId');
+
       if (data.token) {
         localStorage.setItem('token', data.token);
       }
@@ -162,6 +169,8 @@ export default function Signup() {
         localStorage.setItem('user', JSON.stringify(data.user));
         if (data.user.role === 'admin' || data.user.user_type === 'admin') {
           localStorage.setItem('isAdmin', 'true');
+        } else {
+          localStorage.removeItem('isAdmin');
         }
       }
       
@@ -291,7 +300,7 @@ export default function Signup() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-indigo-600 transition-colors"
+                  className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-indigo-600 transition-colors z-10"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>

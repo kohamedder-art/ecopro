@@ -1,12 +1,13 @@
 import { randomBytes } from 'crypto';
+import https from 'https';
 import { ensureConnection } from "./database";
 import { ensureBotSettingsRow } from './client-provisioning';
 
-const PLATFORM_FB_PAGE_ACCESS_TOKEN = String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim();
+function getPlatformFbPageAccessToken() { return String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim(); }
 
-const PLATFORM_TELEGRAM_BOT_TOKEN = String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim();
-const PLATFORM_TELEGRAM_BOT_USERNAME = String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim();
-const PLATFORM_TELEGRAM_AVAILABLE = !!PLATFORM_TELEGRAM_BOT_TOKEN && !!PLATFORM_TELEGRAM_BOT_USERNAME;
+function getPlatformTelegramBotToken() { return String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim(); }
+function getPlatformTelegramBotUsername() { return String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim(); }
+function isPlatformTelegramAvailable() { return !!getPlatformTelegramBotToken() && !!getPlatformTelegramBotUsername(); }
 
 type SendResult = { success: boolean; messageId?: string; error?: string };
 
@@ -57,33 +58,41 @@ export async function sendTelegramMessage(
   message: string,
   opts?: { reply_markup?: any; parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' }
 ): Promise<SendResult> {
-  try {
-    if (!botToken) return { success: false, error: 'Telegram bot token missing' };
-    if (!chatId) return { success: false, error: 'Telegram chat_id missing' };
+  return new Promise((resolve) => {
+    if (!botToken) return resolve({ success: false, error: 'Telegram bot token missing' });
+    if (!chatId) return resolve({ success: false, error: 'Telegram chat_id missing' });
 
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        ...(opts?.parse_mode ? { parse_mode: opts.parse_mode } : {}),
-        ...(opts?.reply_markup ? { reply_markup: opts.reply_markup } : {}),
-      }),
+    const payload = JSON.stringify({
+      chat_id: chatId,
+      text: message,
+      ...(opts?.parse_mode ? { parse_mode: opts.parse_mode } : {}),
+      ...(opts?.reply_markup ? { reply_markup: opts.reply_markup } : {}),
     });
 
-    const data: any = await resp.json().catch(() => null);
-    if (!resp.ok || !data?.ok) {
-      return { success: false, error: data?.description || `Telegram send failed (${resp.status})` };
-    }
-
-    return { success: true, messageId: String(data.result?.message_id || '') };
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[Telegram] Failed to send message: ${errorMsg}`);
-    return { success: false, error: errorMsg };
-  }
+    const req = https.request(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed?.ok) {
+              resolve({ success: true, messageId: String(parsed.result?.message_id || '') });
+            } else {
+              resolve({ success: false, error: parsed?.description || `Telegram send failed (${res.statusCode})` });
+            }
+          } catch {
+            resolve({ success: false, error: 'Failed to parse Telegram response' });
+          }
+        });
+      }
+    );
+    req.on('error', (err) => resolve({ success: false, error: err.message }));
+    req.write(payload);
+    req.end();
+  });
 }
 
 /**
@@ -289,6 +298,95 @@ export function replaceTemplateVariables(
   return result;
 }
 
+/* ─── Delivery event labels (Arabic) ─────────────────────────── */
+const DELIVERY_EVENT_LABELS: Record<string, string> = {
+  pickup:            'تم استلام الطرد من البائع',
+  in_transit:        'الطرد في الطريق إليك',
+  out_for_delivery:  'الطرد خرج للتوصيل اليوم',
+  delivered:         'تم التسليم بنجاح ✅',
+  failed:            'محاولة توصيل فاشلة ❌',
+  returned:          'تم إرجاع الطرد',
+};
+
+const DEFAULT_DELIVERY_STATUS_TEMPLATE = `🚚 تحديث حالة طلبك
+
+مرحباً {customer_name}،
+طلبك رقم *{order_id}* - {event_label}
+
+{description}
+{location_line}
+رقم التتبع: {tracking_number}
+
+شكراً لثقتك بنا 🙏`;
+
+/**
+ * Send a delivery status update notification to the customer via all enabled channels.
+ * Called automatically when a courier webhook arrives.
+ */
+export async function sendDeliveryStatusNotification(params: {
+  orderId: number;
+  clientId: number;
+  customerPhone: string;
+  customerName: string;
+  trackingNumber: string;
+  eventType: string;
+  description?: string;
+  location?: string;
+}): Promise<void> {
+  const { orderId, clientId, customerPhone, customerName, trackingNumber, eventType, description, location } = params;
+
+  try {
+    const pool = await ensureConnection();
+
+    // Check bot settings
+    const settingsRes = await pool.query(
+      `SELECT enabled, delivery_notifications_enabled, delivery_status_template,
+              whatsapp_enabled, telegram_enabled, viber_enabled, messenger_enabled
+       FROM bot_settings WHERE client_id = $1`,
+      [clientId]
+    );
+    if (!settingsRes.rows.length) return;
+    const bs = settingsRes.rows[0];
+    if (!bs.enabled || bs.delivery_notifications_enabled === false) return;
+
+    const template: string = bs.delivery_status_template || DEFAULT_DELIVERY_STATUS_TEMPLATE;
+    const eventLabel = DELIVERY_EVENT_LABELS[eventType] || eventType;
+    const locationLine = location ? `📍 الموقع: ${location}` : '';
+
+    const message = replaceTemplateVariables(template, {
+      customer_name: customerName || 'العميل',
+      order_id: String(orderId),
+      event_label: eventLabel,
+      description: description || '',
+      location_line: locationLine,
+      tracking_number: trackingNumber,
+      event_type: eventType,
+    });
+
+    const channels: Array<'whatsapp' | 'telegram' | 'viber' | 'messenger'> = [];
+    if (bs.whatsapp_enabled) channels.push('whatsapp');
+    if (bs.telegram_enabled) channels.push('telegram');
+    if (bs.viber_enabled) channels.push('viber');
+    if (bs.messenger_enabled) channels.push('messenger');
+
+    if (channels.length === 0) return;
+
+    // Queue messages via bot_messages table (reuses existing worker)
+    for (const ch of channels) {
+      await pool.query(
+        `INSERT INTO bot_messages
+         (order_id, client_id, customer_phone, message_type, message_content, send_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [orderId, clientId, customerPhone, ch, message]
+      );
+    }
+
+    console.log(`[DeliveryBot] Queued ${channels.length} notification(s) for order ${orderId} event=${eventType}`);
+  } catch (err: any) {
+    console.error('[DeliveryBot] sendDeliveryStatusNotification failed:', err?.message || err);
+  }
+}
+
 /**
  * Send bot messages (WhatsApp + SMS) for an order
  */
@@ -402,65 +500,121 @@ export async function sendOrderConfirmationMessages(
       confirmationLink
     };
 
-    // Telegram: schedule message if we have a token (either from bot_settings or platform-level)
+    // Telegram: schedule message if we have a token AND customer has connected to Telegram
     // Note: We no longer require provider === 'telegram' since stores may have both channels configured
     const provider = settings.provider || 'telegram';
-    const effectiveTelegramToken = String(settings.telegram_bot_token || '').trim() || (PLATFORM_TELEGRAM_AVAILABLE ? PLATFORM_TELEGRAM_BOT_TOKEN : '');
+    const effectiveTelegramToken = String(settings.telegram_bot_token || '').trim() || (isPlatformTelegramAvailable() ? getPlatformTelegramBotToken() : '');
     if (!options?.skipTelegram && effectiveTelegramToken) {
-      const telegramMessage = replaceTemplateVariables(
-        settings.template_order_confirmation || defaultWhatsAppTemplate(),
-        templateVariables
+      // Check if customer has connected Telegram (has telegram_chat_id)
+      const telegramConnectionRes = await pool.query(
+        `SELECT telegram_chat_id FROM customer_messaging_ids 
+         WHERE client_id = $1 AND customer_phone = $2 AND telegram_chat_id IS NOT NULL
+         LIMIT 1`,
+        [clientId, customerPhone]
       );
-      const delayMinutes = settings.telegram_delay_minutes || 5;
-      const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
-      await pool.query(
-        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-         VALUES ($1, $2, $3, 'telegram', $4, $5, $6)`,
-        [orderId, clientId, customerPhone, telegramMessage, confirmationLink, sendAt]
-      );
-      console.log(`[Bot] Telegram scheduled for ${customerPhone} at ${sendAt}`);
+      
+      if (telegramConnectionRes.rows.length > 0) {
+        // Customer is connected to Telegram - schedule confirmation message
+        const telegramMessage = replaceTemplateVariables(
+          settings.template_order_confirmation || defaultWhatsAppTemplate(),
+          templateVariables
+        );
+        const delayMinutes = settings.telegram_delay_minutes || 5;
+        const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+           VALUES ($1, $2, $3, 'telegram', $4, $5, $6)`,
+          [orderId, clientId, customerPhone, telegramMessage, confirmationLink, sendAt]
+        );
+        console.log(`[Bot] Telegram scheduled for ${customerPhone} at ${sendAt}`);
+      } else {
+        console.log(`[Bot] Telegram enabled but customer ${customerPhone} hasn't connected - skipping Telegram messages`);
+      }
     }
 
-    // Facebook Messenger: schedule message if enabled (provider 'facebook' or 'messenger', or messenger_enabled flag)
-    const effectiveMessengerToken = String(settings.fb_page_access_token || '').trim() || PLATFORM_FB_PAGE_ACCESS_TOKEN;
+    // Facebook Messenger: only schedule message if:
+    // 1. Messenger is enabled for this store owner
+    // 2. We have a valid page access token
+    // 3. Customer has actually connected their Messenger account (has a messenger_psid)
+    const effectiveMessengerToken = String(settings.fb_page_access_token || '').trim() || getPlatformFbPageAccessToken();
     if ((provider === 'facebook' || provider === 'messenger' || settings.messenger_enabled) && effectiveMessengerToken) {
-      const defaultInstant = `✅ تم استلام الطلب!\n\nطلب #${orderId}\nالمنتج: {productName}\nالمجموع: {totalPrice} دج\n\nسنطلب منك التأكيد قريباً.`;
-      const defaultPin = `📌 نصيحة: قم بتثبيت هذه المحادثة حتى لا تفوتك التحديثات.`;
-      const defaultConfirmation = `مرحباً {customerName}!\n\nهل تؤكد طلبك من {storeName}؟\n\n📦 {productName}\n💰 {totalPrice} دج\n\nاستخدم الأزرار أدناه:`;
+      // Check if customer has connected Messenger (has messenger_psid)
+      const messengerConnectionRes = await pool.query(
+        `SELECT messenger_psid FROM customer_messaging_ids 
+         WHERE client_id = $1 AND customer_phone = $2 AND messenger_psid IS NOT NULL
+         LIMIT 1`,
+        [clientId, customerPhone]
+      );
+      
+      if (messengerConnectionRes.rows.length > 0) {
+        // Customer is connected to Messenger - safe to create messages
+        const defaultInstant = `✅ تم استلام الطلب!\n\nطلب #${orderId}\nالمنتج: {productName}\nالمجموع: {totalPrice} دج\n\nسنطلب منك التأكيد قريباً.`;
+        const defaultPin = `📌 نصيحة: قم بتثبيت هذه المحادثة حتى لا تفوتك التحديثات.`;
+        const defaultConfirmation = `مرحباً {customerName}!\n\nهل تؤكد طلبك من {storeName}؟\n\n📦 {productName}\n💰 {totalPrice} دج\n\nاستخدم الأزرار أدناه:`;
 
-      const instantMessage = replaceTemplateVariables(
-        String(settings.template_instant_order || defaultInstant),
-        templateVariables
-      );
-      const pinMessage = replaceTemplateVariables(
-        String(settings.template_pin_instructions || defaultPin),
-        templateVariables
-      );
-      const confirmationMessage = replaceTemplateVariables(
-        String(settings.template_order_confirmation || defaultConfirmation),
-        templateVariables
-      );
+        const instantMessage = replaceTemplateVariables(
+          String(settings.template_instant_order || defaultInstant),
+          templateVariables
+        );
+        const pinMessage = replaceTemplateVariables(
+          String(settings.template_pin_instructions || defaultPin),
+          templateVariables
+        );
+        const confirmationMessage = replaceTemplateVariables(
+          String(settings.template_order_confirmation || defaultConfirmation),
+          templateVariables
+        );
 
-      const now = new Date();
-      await pool.query(
-        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
-         VALUES ($1, $2, $3, 'messenger', $4, $5)`,
-        [orderId, clientId, customerPhone, instantMessage, now]
-      );
-      await pool.query(
-        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
-         VALUES ($1, $2, $3, 'messenger', $4, $5)`,
-        [orderId, clientId, customerPhone, pinMessage, now]
-      );
+        const now = new Date();
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
+           VALUES ($1, $2, $3, 'messenger', $4, $5)`,
+          [orderId, clientId, customerPhone, instantMessage, now]
+        );
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
+           VALUES ($1, $2, $3, 'messenger', $4, $5)`,
+          [orderId, clientId, customerPhone, pinMessage, now]
+        );
 
-      const delayMinutes = settings.messenger_delay_minutes || 5;
-      const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
-      await pool.query(
-        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-         VALUES ($1, $2, $3, 'messenger', $4, $5, $6)`,
-        [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
-      );
-      console.log(`[Bot] Messenger scheduled for order ${orderId} at ${sendAt}`);
+        const delayMinutes = settings.messenger_delay_minutes || 5;
+        const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+           VALUES ($1, $2, $3, 'messenger', $4, $5, $6)`,
+          [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
+        );
+        console.log(`[Bot] Messenger scheduled for order ${orderId} at ${sendAt}`);
+      } else {
+        console.log(`[Bot] Messenger enabled but customer ${customerPhone} hasn't connected - queuing for later`);
+        const defaultInstant = `✅ تم استلام الطلب!\n\nطلب #${orderId}\nالمنتج: {productName}\nالمجموع: {totalPrice} دج\n\nسنطلب منك التأكيد قريباً.`;
+        const defaultPin = `📌 نصيحة: قم بتثبيت هذه المحادثة حتى لا تفوتك التحديثات.`;
+        const defaultConfirmation = `مرحباً {customerName}!\n\nهل تؤكد طلبك من {storeName}؟\n\n📦 {productName}\n💰 {totalPrice} دج\n\nاستخدم الأزرار أدناه:`;
+
+        const instantMessage = replaceTemplateVariables(String(settings.template_instant_order || defaultInstant), templateVariables);
+        const pinMessage = replaceTemplateVariables(String(settings.template_pin_instructions || defaultPin), templateVariables);
+        const confirmationMessage = replaceTemplateVariables(String(settings.template_order_confirmation || defaultConfirmation), templateVariables);
+
+        const now = new Date();
+        const delayMinutes = settings.messenger_delay_minutes || 5;
+        const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at, error_message)
+           VALUES ($1, $2, $3, 'messenger', $4, $5, 'WAITING_FOR_MESSENGER_PSID')`,
+          [orderId, clientId, customerPhone, instantMessage, now]
+        );
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at, error_message)
+           VALUES ($1, $2, $3, 'messenger', $4, $5, 'WAITING_FOR_MESSENGER_PSID')`,
+          [orderId, clientId, customerPhone, pinMessage, now]
+        );
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at, error_message)
+           VALUES ($1, $2, $3, 'messenger', $4, $5, $6, 'WAITING_FOR_MESSENGER_PSID')`,
+          [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
+        );
+        console.log(`[Bot] Messenger messages queued with WAITING_FOR_MESSENGER_PSID for order ${orderId}`);
+      }
     }
   } catch (error) {
     console.error("Error scheduling bot messages:", error);
@@ -537,7 +691,7 @@ export async function processPendingMessages(): Promise<void> {
             `SELECT telegram_bot_token FROM bot_settings WHERE client_id = $1`,
             [message.client_id]
           );
-          const token = String(settingsResult.rows[0]?.telegram_bot_token || '').trim() || (PLATFORM_TELEGRAM_AVAILABLE ? PLATFORM_TELEGRAM_BOT_TOKEN : '');
+          const token = String(settingsResult.rows[0]?.telegram_bot_token || '').trim() || (isPlatformTelegramAvailable() ? getPlatformTelegramBotToken() : '');
           const chatRes = await pool.query(
             `SELECT telegram_chat_id FROM order_telegram_chats WHERE order_id = $1 AND client_id = $2 LIMIT 1`,
             [message.order_id, message.client_id]
@@ -602,7 +756,7 @@ export async function processPendingMessages(): Promise<void> {
             `SELECT fb_page_access_token FROM bot_settings WHERE client_id = $1`,
             [message.client_id]
           );
-          const pageAccessToken = String(settingsResult.rows[0]?.fb_page_access_token || '').trim() || PLATFORM_FB_PAGE_ACCESS_TOKEN;
+          const pageAccessToken = String(settingsResult.rows[0]?.fb_page_access_token || '').trim() || getPlatformFbPageAccessToken();
 
           if (!pageAccessToken) {
             await pool.query(

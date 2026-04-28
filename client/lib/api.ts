@@ -50,8 +50,11 @@ export async function createPublicProduct(): Promise<never> {
 export async function uploadImage(file: File): Promise<{ url: string }> {
   const formData = new FormData();
   formData.append('image', file);
+  // Read CSRF token from cookie (required for authenticated POST requests)
+  const csrfToken = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/)?.[1] || '';
   const res = await fetch(`${API_URL}/upload`, {
     method: 'POST',
+    headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
     body: formData,
     credentials: 'include',
   });
@@ -102,9 +105,15 @@ export async function deleteProduct(id: string): Promise<void> {
   });
 }
 
+export function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('auth_token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...getAuthHeaders(),
   };
 
   if (init?.headers) {

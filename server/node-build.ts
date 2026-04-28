@@ -2,6 +2,7 @@ import { createServer } from "./index";
 import http from "http";
 import { startScheduledMessageWorker, stopScheduledMessageWorker } from "./utils/scheduled-messages";
 import { startBotMessageWorker, stopBotMessageWorker } from "./utils/bot-messaging";
+import { startTelegramUpdatePoller, stopTelegramUpdatePoller } from "./utils/telegram-poller";
 import { startGuardianWorker, stopGuardianWorker } from "./utils/guardian-worker";
 import { initWebSocket } from "./utils/websocket";
 
@@ -26,6 +27,8 @@ async function startServer() {
       startScheduledMessageWorker();
       // Process bot_messages (Messenger instant/pin/confirmations, etc.)
       startBotMessageWorker({ intervalMs: 30 * 1000 });
+      // Poll Telegram for updates (fallback when webhooks fail)
+      startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
       // Start the Guardian AI alert worker
       startGuardianWorker();
     });
@@ -35,6 +38,7 @@ async function startServer() {
       console.log("🛑 Received SIGTERM, shutting down gracefully");
       stopScheduledMessageWorker();
       stopBotMessageWorker();
+      stopTelegramUpdatePoller();
       stopGuardianWorker();
       process.exit(0);
     });
@@ -43,6 +47,7 @@ async function startServer() {
       console.log("🛑 Received SIGINT, shutting down gracefully");
       stopScheduledMessageWorker();
       stopBotMessageWorker();
+      stopTelegramUpdatePoller();
       stopGuardianWorker();
       process.exit(0);
     });

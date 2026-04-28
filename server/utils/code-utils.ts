@@ -364,7 +364,7 @@ export async function redeemSubscriptionCode(
         // Create new subscription with 30-day trial-to-active conversion
         const newSub = await client.query(
           `INSERT INTO subscriptions (user_id, tier, status, trial_started_at, trial_ends_at, current_period_start, current_period_end)
-           VALUES ($1, $2, 'active', NOW() - INTERVAL '1 day', NOW(), NOW(), NOW(), NOW() + INTERVAL '30 days')
+           VALUES ($1, $2, 'active', NOW() - INTERVAL '1 day', NOW(), NOW(), NOW() + INTERVAL '30 days')
            RETURNING *`,
           [userId, requestedTier || 'free']
         );
@@ -384,7 +384,7 @@ export async function redeemSubscriptionCode(
           `UPDATE subscriptions 
            SET status = 'active', 
                tier = $1,
-               current_period_end = to_timestamp($1 / 1000.0),
+               current_period_end = to_timestamp($2 / 1000.0),
                updated_at = NOW()
            WHERE id = $3
            RETURNING *`,

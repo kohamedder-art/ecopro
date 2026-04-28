@@ -65,7 +65,7 @@ const statusColors = {
   neutral: {
     needle: "#6b7280",
     glow: "rgba(107, 114, 128, 0.3)",
-    text: "text-slate-400",
+    text: "text-gray-500 dark:text-slate-400",
     bg: "from-slate-500/20 to-slate-600/5",
     border: "border-slate-500/30",
     arcActive: "#6b7280",
@@ -158,7 +158,7 @@ export function BigCarGauge({
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">
           {icon && <div className={`${colors.text}`}>{icon}</div>}
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
         </div>
         
         {/* Main Gauge */}
@@ -314,10 +314,10 @@ export function BigCarGauge({
         
         {/* Secondary metric */}
         {secondaryValue !== undefined && secondaryLabel && (
-          <div className="flex items-center justify-center gap-4 mt-2 pt-3 border-t border-slate-700/50">
+          <div className="flex items-center justify-center gap-4 mt-2 pt-3 border-t border-gray-200 dark:border-slate-700/50">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-violet-500" />
-              <span className="text-slate-400 text-sm">{secondaryLabel}:</span>
+              <span className="text-gray-500 dark:text-slate-400 text-sm">{secondaryLabel}:</span>
               <span className={`font-semibold ${colors.text}`}>
                 {secondaryValue !== null ? secondaryValue.toFixed(1) : "--"}{secondaryUnit}
               </span>

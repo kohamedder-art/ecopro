@@ -49,14 +49,14 @@ async function getTrialDaysFromSettings(): Promise<number> {
  */
 export const getPublicBillingInfo: RequestHandler = async (_req, res) => {
   const trialDaysRaw = await getNumberSetting('trial_days', 30);
-  const subscriptionPriceRaw = await getNumberSetting('subscription_price', 7);
+  const subscriptionPriceRaw = await getNumberSetting('subscription_price', 2900);
 
   const trialDays = Math.max(1, Math.min(365, Math.floor(trialDaysRaw)));
-  const subscriptionPriceUsd = Math.max(0, Math.min(999999, subscriptionPriceRaw));
+  const subscriptionPrice = Math.max(0, Math.min(999999, subscriptionPriceRaw));
 
   return res.json({
     trialDays,
-    subscriptionPriceUsd,
+    subscriptionPrice,
   });
 };
 
@@ -378,6 +378,31 @@ export const getPlatformSettings: RequestHandler = async (req, res) => {
     res.json({ ...settings, updated_at: lastUpdated });
   } catch (error) {
     console.error("Error getting settings:", error);
+    return jsonError(res, 500, "Failed to get settings");
+  }
+};
+
+/**
+ * Get public pricing settings (no auth required)
+ * GET /api/billing/public/settings
+ */
+export const getPublicSettings: RequestHandler = async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT setting_key, setting_value, data_type FROM platform_settings WHERE setting_key IN ('subscription_price', 'trial_days')`
+    );
+    const settings = result.rows.reduce((acc: any, row: any) => {
+      if (row.data_type === 'number') {
+        const n = Number(row.setting_value);
+        acc[row.setting_key] = Number.isFinite(n) ? n : 0;
+      } else {
+        acc[row.setting_key] = row.setting_value;
+      }
+      return acc;
+    }, {});
+    res.json(settings);
+  } catch (error) {
+    console.error("Error getting public settings:", error);
     return jsonError(res, 500, "Failed to get settings");
   }
 };

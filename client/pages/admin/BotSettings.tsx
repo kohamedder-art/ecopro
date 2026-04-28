@@ -1,12 +1,30 @@
-import { useState, useEffect } from "react";
-import { Bot, Save, Loader2, Phone, MessageSquare, Globe, Check, Users, Code2, Truck, CreditCard, MapPin, Package, Navigation } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Bot, Save, Loader2, Phone, MessageSquare, Globe, Check, Users, Code2, Truck, CreditCard, MapPin, Package, Navigation, ChevronDown, ExternalLink, Unplug, CheckCircle, Instagram, Send, Smartphone } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api";
 import CustomerBot from "../CustomerBot";
+
+interface FbOAuthStatus {
+  connected: boolean;
+  pageId?: string;
+  pageName?: string;
+  instagramConnected?: boolean;
+  instagramUsername?: string;
+  tokenExpiresAt?: string;
+}
+
+interface FbPage {
+  id: string;
+  name: string;
+  hasInstagram: boolean;
+}
 
 interface BotSettings {
   enabled: boolean;
@@ -38,6 +56,21 @@ interface BotSettings {
   messengerUsingPlatform?: boolean;
   usePlatformTelegram?: boolean;
   telegramUsingPlatform?: boolean;
+  platformWhatsappAvailable?: boolean;
+  usePlatformWhatsapp?: boolean;
+  whatsappUsingPlatform?: boolean;
+  // Platform Viber
+  platformViberAvailable?: boolean;
+  usePlatformViber?: boolean;
+  viberUsingPlatform?: boolean;
+  // Platform Instagram
+  platformInstagramAvailable?: boolean;
+  usePlatformInstagram?: boolean;
+  instagramUsingPlatform?: boolean;
+  // Manual Instagram fields
+  instagramAccountId?: string;
+  instagramPageAccessToken?: string;
+  instagramTokenConfigured?: boolean;
   templateGreeting?: string;
   templateInstantOrder?: string;
   templatePinInstructions?: string;
@@ -50,13 +83,39 @@ export default function AdminBotSettings() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
+  const [params, setParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settingUpMessenger, setSettingUpMessenger] = useState(false);
   const [showMessengerAdvanced, setShowMessengerAdvanced] = useState(false);
   const [showTelegramAdvanced, setShowTelegramAdvanced] = useState(false);
+  const [showWhatsappAdvanced, setShowWhatsappAdvanced] = useState(false);
+  const [showInstagramManual, setShowInstagramManual] = useState(false);
+  const [showFacebookManual, setShowFacebookManual] = useState(false);
+  const [showViberAdvanced, setShowViberAdvanced] = useState(false);
+  const [showInstagramAdvanced, setShowInstagramAdvanced] = useState(false);
   const [storeSlug, setStoreSlug] = useState<string>('');
   const [activeBot, setActiveBot] = useState<'confirmation' | 'updates' | 'tracking' | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['provider']));
+
+  // Facebook OAuth state
+  const [fbStatus, setFbStatus] = useState<FbOAuthStatus | null>(null);
+  const [fbLoading, setFbLoading] = useState(true);
+  const [fbConnecting, setFbConnecting] = useState(false);
+  const [fbDisconnecting, setFbDisconnecting] = useState(false);
+  const [fbPages, setFbPages] = useState<FbPage[]>([]);
+  const [showPagePicker, setShowPagePicker] = useState(false);
+  const [selectedPageId, setSelectedPageId] = useState<string>('');
+  const [savingPage, setSavingPage] = useState(false);
+
+  const toggleSection = useCallback((key: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
   const [settings, setSettings] = useState<BotSettings>({
     enabled: true,
     updatesEnabled: false,
@@ -86,6 +145,12 @@ export default function AdminBotSettings() {
     messengerUsingPlatform: false,
     usePlatformTelegram: false,
     telegramUsingPlatform: false,
+    platformViberAvailable: false,
+    usePlatformViber: false,
+    viberUsingPlatform: false,
+    platformInstagramAvailable: false,
+    usePlatformInstagram: false,
+    instagramUsingPlatform: false,
     templateGreeting: `شكراً لطلبك من {storeName}، {customerName}! 🎉\n\n✅ فعّل الإشعارات لتلقي تأكيد الطلب وتحديثات التتبع.`,
     templateInstantOrder: `🎉 شكراً لك {customerName}!\n\nتم استلام طلبك بنجاح ✅\n\n━━━━━━━━━━━━━━━━\n📦 تفاصيل الطلب\n━━━━━━━━━━━━━━━━\n🔢 رقم الطلب: #{orderId}\n📱 المنتج: {productName}\n💰 السعر: {totalPrice} دج\n📍 الكمية: {quantity}\n\n━━━━━━━━━━━━━━━━\n👤 معلومات التوصيل\n━━━━━━━━━━━━━━━━\n📛 الاسم: {customerName}\n📞 الهاتف: {customerPhone}\n🏠 العنوان: {address}\n\n━━━━━━━━━━━━━━━━\n🚚 حالة الطلب: قيد المعالجة\n━━━━━━━━━━━━━━━━\n\nسنتصل بك قريباً للتأكيد 📞\n\n⭐ من {storeName}`,
     templatePinInstructions: `📌 نصيحة مهمة:\n\nاضغط مطولاً على الرسالة السابقة واختر "تثبيت" لتتبع طلبك بسهولة!\n\n🔔 تأكد من:\n• تفعيل الإشعارات\n• عدم كتم المحادثة\n• ستتلقى تحديثات حالة الطلب هنا مباشرة`,
@@ -96,7 +161,97 @@ export default function AdminBotSettings() {
 
   useEffect(() => {
     loadSettings();
+    loadFbStatus();
   }, []);
+
+  // Handle Facebook OAuth callback params
+  useEffect(() => {
+    const fb = params.get('fb');
+    if (fb === 'connected') {
+      toast({ title: t('platforms.facebook.connectedToast'), description: t('platforms.facebook.connectedDesc') });
+      loadFbStatus();
+      params.delete('fb');
+      setParams(params, { replace: true });
+    } else if (fb === 'select-page') {
+      loadFbPages();
+      params.delete('fb');
+      setParams(params, { replace: true });
+    } else if (fb === 'error') {
+      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
+      params.delete('fb');
+      setParams(params, { replace: true });
+    }
+  }, [params]);
+
+  // ── Facebook OAuth helpers ─────────────────────────────────
+  async function loadFbStatus() {
+    try {
+      setFbLoading(true);
+      const data = await apiFetch<FbOAuthStatus>('/api/facebook/status');
+      setFbStatus(data);
+    } catch {
+      setFbStatus({ connected: false });
+    } finally {
+      setFbLoading(false);
+    }
+  }
+
+  async function loadFbPages() {
+    try {
+      const data = await apiFetch<{ pages: FbPage[] }>('/api/facebook/pages');
+      if (data?.pages?.length) {
+        setFbPages(data.pages);
+        setShowPagePicker(true);
+      }
+    } catch {
+      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
+    }
+  }
+
+  async function connectFacebook() {
+    try {
+      setFbConnecting(true);
+      const data = await apiFetch<{ url: string }>('/api/facebook/auth-url');
+      if (data?.url) window.location.href = data.url;
+    } catch {
+      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
+      setFbConnecting(false);
+    }
+  }
+
+  async function disconnectFacebook() {
+    try {
+      setFbDisconnecting(true);
+      await apiFetch('/api/facebook/disconnect', { method: 'POST' });
+      setFbStatus({ connected: false });
+      toast({ title: t('platforms.facebook.disconnectedToast') });
+    } catch {
+      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
+    } finally {
+      setFbDisconnecting(false);
+    }
+  }
+
+  async function selectFbPage() {
+    if (!selectedPageId) return;
+    try {
+      setSavingPage(true);
+      const data = await apiFetch<{ success: boolean; pageName: string; instagramConnected: boolean }>(
+        '/api/facebook/select-page',
+        { method: 'POST', body: JSON.stringify({ pageId: selectedPageId }) }
+      );
+      if (data?.success) {
+        setShowPagePicker(false);
+        setFbPages([]);
+        toast({ title: t('platforms.facebook.connectedToast'), description: data.pageName });
+        loadFbStatus();
+      }
+    } catch {
+      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
+    } finally {
+      setSavingPage(false);
+    }
+  }
 
   const loadSettings = async () => {
     setLoading(true);
@@ -118,6 +273,16 @@ export default function AdminBotSettings() {
 
       if (data?.platformTelegramAvailable) {
         setShowTelegramAdvanced(!(data?.usePlatformTelegram ?? data?.telegramUsingPlatform ?? true));
+      }
+
+      if (data?.platformWhatsappAvailable) {
+        setShowWhatsappAdvanced(!(data?.usePlatformWhatsapp ?? data?.whatsappUsingPlatform ?? true));
+      }
+      if (data?.platformViberAvailable) {
+        setShowViberAdvanced(!(data?.usePlatformViber ?? data?.viberUsingPlatform ?? true));
+      }
+      if (data?.platformInstagramAvailable) {
+        setShowInstagramAdvanced(!(data?.usePlatformInstagram ?? data?.instagramUsingPlatform ?? true));
       }
 
       // Also load store settings so we can call Messenger setup endpoints without asking for slug.
@@ -150,6 +315,9 @@ export default function AdminBotSettings() {
       // Derive platform-mode flags from UI state (never trust hidden fields).
       payload.usePlatformMessenger = Boolean(settings.platformMessengerAvailable) && !showMessengerAdvanced;
       payload.usePlatformTelegram = Boolean(settings.platformTelegramAvailable) && !showTelegramAdvanced;
+      payload.usePlatformWhatsapp = Boolean(settings.platformWhatsappAvailable) && !showWhatsappAdvanced;
+      payload.usePlatformViber = Boolean(settings.platformViberAvailable) && !showViberAdvanced;
+      payload.usePlatformInstagram = Boolean(settings.platformInstagramAvailable) && !showInstagramAdvanced;
 
       // Never send empty secrets; server preserves existing secrets unless replaced.
       const maybeDeleteEmpty = (key: string) => {
@@ -165,6 +333,8 @@ export default function AdminBotSettings() {
       maybeDeleteEmpty('facebookAccessToken');
       maybeDeleteEmpty('fbPageId');
       maybeDeleteEmpty('facebookPageId');
+      maybeDeleteEmpty('instagramAccountId');
+      maybeDeleteEmpty('instagramPageAccessToken');
 
       // In platform mode, do not send any page/token/username; server will apply env-based config.
       if (payload.usePlatformMessenger) {
@@ -176,6 +346,10 @@ export default function AdminBotSettings() {
       if (payload.usePlatformTelegram) {
         delete payload.telegramBotToken;
         delete payload.telegramBotUsername;
+      }
+      if (payload.usePlatformWhatsapp) {
+        delete payload.whatsappPhoneId;
+        delete payload.whatsappToken;
       }
 
       const response = await fetch('/api/bot/settings', {
@@ -285,847 +459,891 @@ export default function AdminBotSettings() {
     { key: '{customerPhone}', desc: t('bot.customerPhone') },
   ];
 
+  // Reusable collapsible section header
+  const SectionHeader = ({ id, icon, iconBg, title, subtitle, trailing }: {
+    id: string;
+    icon: React.ReactNode;
+    iconBg: string;
+    title: string;
+    subtitle?: string;
+    trailing?: React.ReactNode;
+  }) => (
+    <button
+      type="button"
+      onClick={() => toggleSection(id)}
+      className="w-full flex items-center gap-2.5 text-left"
+    >
+      <div className={`w-7 h-7 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{title}</span>
+        {subtitle && <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>}
+      </div>
+      {trailing && <div onClick={(e) => e.stopPropagation()}>{trailing}</div>}
+      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${expandedSections.has(id) ? 'rotate-180' : ''}`} />
+    </button>
+  );
+
+  const cardCls = "bg-white dark:bg-[#0f1623] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 dark:from-black dark:via-slate-900 dark:to-black p-3 sm:p-4">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-transparent text-slate-900 dark:text-gray-100 p-3 sm:p-4 transition-colors duration-300">
+      <div className="max-w-6xl mx-auto flex flex-col gap-3">
+
         {/* Header */}
-        <div className="mb-4">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div>
-              <h1 className="text-2xl md:text-xl md:text-2xl lg:text-lg md:text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">
-                {t('wasselni.settings')}
-              </h1>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                {t('wasselni.desc')}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Three Bot Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          {/* Bot Confirmation Card */}
-          <div 
-            className={`relative overflow-hidden rounded-xl p-3 cursor-pointer transition-all duration-300 ${
-              activeBot === 'confirmation' 
-                ? 'bg-gradient-to-br from-emerald-500 to-green-600 shadow-xl shadow-emerald-500/25 scale-[1.02]' 
-                : settings.enabled
-                  ? 'bg-gradient-to-br from-emerald-500/90 to-green-600/90 shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.01]'
-                  : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 shadow-lg hover:shadow-xl border border-slate-300 dark:border-slate-700'
-            }`}
-            onClick={() => setActiveBot(activeBot === 'confirmation' ? null : 'confirmation')}
-          >
-            {/* Decorative circles */}
-            <div className="absolute -top-5 -right-5 w-16 h-16 bg-white/10 rounded-full" />
-            <div className="absolute -bottom-7 -left-7 w-24 h-24 bg-white/5 rounded-full" />
-            
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`p-2 rounded-lg ${settings.enabled || activeBot === 'confirmation' ? 'bg-white/20' : 'bg-slate-300/50 dark:bg-slate-700'}`}>
-                  <MessageSquare className={`h-4 w-4 ${settings.enabled || activeBot === 'confirmation' ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-                </div>
-                <div>
-                  <p className={`text-sm font-bold ${settings.enabled || activeBot === 'confirmation' ? 'text-white' : 'text-slate-800 dark:text-white'}`}>{t('bot.confirmation')}</p>
-                  <p className={`text-xs ${settings.enabled || activeBot === 'confirmation' ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>{t('bot.confirmationDesc')}</p>
-                </div>
+        <div className={`${cardCls} p-4`}>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center shrink-0">
+                <Bot className="w-5 h-5 text-white" />
               </div>
-              <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${settings.enabled ? 'bg-white/25 text-white' : 'bg-slate-300 text-slate-600 dark:bg-slate-600 dark:text-slate-300'}`}>
-                  {settings.enabled ? `● ${t('bot.active')}` : `○ ${t('bot.off')}`}
-                </span>
-                <Switch
-                  dir={isRTL ? 'rtl' : 'ltr'}
-                  checked={settings.enabled}
-                  onCheckedChange={(checked) => {
-                    updateSetting('enabled', checked);
-                  }}
-                />
+              <div>
+                <h1 className="text-sm font-bold text-slate-900 dark:text-white">{t('wasselni.settings')}</h1>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('wasselni.desc')}</p>
               </div>
             </div>
+            <button onClick={handleSave} disabled={saving}
+              className="h-9 px-5 bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors shrink-0">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {t('bot.saveChanges')}
+            </button>
           </div>
 
-          {/* Bot Updates Card */}
-          <div 
-            className={`relative overflow-hidden rounded-xl p-3 cursor-pointer transition-all duration-300 ${
-              activeBot === 'updates' 
-                ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-xl shadow-violet-500/25 scale-[1.02]' 
-                : settings.updatesEnabled
-                  ? 'bg-gradient-to-br from-violet-500/90 to-purple-600/90 shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/30 hover:scale-[1.01]'
-                  : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 shadow-lg hover:shadow-xl border border-slate-300 dark:border-slate-700'
-            }`}
-            onClick={() => setActiveBot(activeBot === 'updates' ? null : 'updates')}
-          >
-            {/* Decorative circles */}
-            <div className="absolute -top-5 -right-5 w-16 h-16 bg-white/10 rounded-full" />
-            <div className="absolute -bottom-7 -left-7 w-24 h-24 bg-white/5 rounded-full" />
-            
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`p-2 rounded-lg ${settings.updatesEnabled || activeBot === 'updates' ? 'bg-white/20' : 'bg-slate-300/50 dark:bg-slate-700'}`}>
-                  <Users className={`h-4 w-4 ${settings.updatesEnabled || activeBot === 'updates' ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+          {/* ── Bot Toggles inside header ── */}
+          <div className="grid grid-cols-3 gap-2">
+            {/* Confirmation bot */}
+            <div onClick={() => setActiveBot(activeBot === 'confirmation' ? null : 'confirmation')} className={`flex flex-col gap-2 p-3 rounded-xl border cursor-pointer transition-all ${activeBot === 'confirmation' ? 'ring-2 ring-emerald-400 dark:ring-emerald-500' : ''} ${
+              settings.enabled ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600/30'
+            }`}>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`w-7 h-7 rounded-lg ${settings.enabled ? 'bg-emerald-100 dark:bg-emerald-500/20' : 'bg-slate-200 dark:bg-slate-700'} flex items-center justify-center shrink-0`}>
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <div>
-                  <p className={`text-sm font-bold ${settings.updatesEnabled || activeBot === 'updates' ? 'text-white' : 'text-slate-800 dark:text-white'}`}>{t('bot.updates')}</p>
-                  <p className={`text-xs ${settings.updatesEnabled || activeBot === 'updates' ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>{t('bot.updatesDesc')}</p>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{t('bot.confirmation')}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{t('bot.confirmationDesc')}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${settings.updatesEnabled ? 'bg-white/25 text-white' : 'bg-slate-300 text-slate-600 dark:bg-slate-600 dark:text-slate-300'}`}>
-                  {settings.updatesEnabled ? `● ${t('bot.active')}` : `○ ${t('bot.off')}`}
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${settings.enabled ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20' : 'text-slate-500 bg-slate-200 dark:bg-slate-700'}`}>
+                  {settings.enabled ? t('bot.active') : t('bot.off')}
                 </span>
-                <Switch
-                  dir={isRTL ? 'rtl' : 'ltr'}
-                  checked={settings.updatesEnabled || false}
-                  onCheckedChange={(checked) => {
-                    updateSetting('updatesEnabled', checked);
-                  }}
-                />
+                <Switch dir={isRTL ? 'rtl' : 'ltr'} checked={settings.enabled} onCheckedChange={(v) => updateSetting('enabled', v)} />
               </div>
             </div>
-          </div>
 
-          {/* Bot Tracking Card */}
-          <div 
-            className={`relative overflow-hidden rounded-xl p-3 cursor-pointer transition-all duration-300 ${
-              activeBot === 'tracking' 
-                ? 'bg-gradient-to-br from-orange-500 to-amber-600 shadow-xl shadow-orange-500/25 scale-[1.02]' 
-                : settings.trackingEnabled
-                  ? 'bg-gradient-to-br from-orange-500/90 to-amber-600/90 shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/30 hover:scale-[1.01]'
-                  : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 shadow-lg hover:shadow-xl border border-slate-300 dark:border-slate-700'
-            }`}
-            onClick={() => setActiveBot(activeBot === 'tracking' ? null : 'tracking')}
-          >
-            {/* Decorative circles */}
-            <div className="absolute -top-5 -right-5 w-16 h-16 bg-white/10 rounded-full" />
-            <div className="absolute -bottom-7 -left-7 w-24 h-24 bg-white/5 rounded-full" />
-            
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`p-2 rounded-lg ${settings.trackingEnabled || activeBot === 'tracking' ? 'bg-white/20' : 'bg-slate-300/50 dark:bg-slate-700'}`}>
-                  <MapPin className={`h-4 w-4 ${settings.trackingEnabled || activeBot === 'tracking' ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+            {/* Updates bot */}
+            <div onClick={() => setActiveBot(activeBot === 'updates' ? null : 'updates')} className={`flex flex-col gap-2 p-3 rounded-xl border cursor-pointer transition-all ${activeBot === 'updates' ? 'ring-2 ring-violet-400 dark:ring-violet-500' : ''} ${
+              settings.updatesEnabled ? 'bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600/30'
+            }`}>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`w-7 h-7 rounded-lg ${settings.updatesEnabled ? 'bg-violet-100 dark:bg-violet-500/20' : 'bg-slate-200 dark:bg-slate-700'} flex items-center justify-center shrink-0`}>
+                  <Users className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
                 </div>
-                <div>
-                  <p className={`text-sm font-bold ${settings.trackingEnabled || activeBot === 'tracking' ? 'text-white' : 'text-slate-800 dark:text-white'}`}>{t('bot.tracking')}</p>
-                  <p className={`text-xs ${settings.trackingEnabled || activeBot === 'tracking' ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>{t('bot.trackingDesc')}</p>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{t('bot.updates')}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{t('bot.updatesDesc')}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${settings.trackingEnabled ? 'bg-white/25 text-white' : 'bg-slate-300 text-slate-600 dark:bg-slate-600 dark:text-slate-300'}`}>
-                  {settings.trackingEnabled ? `● ${t('bot.active')}` : `○ ${t('bot.off')}`}
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${settings.updatesEnabled ? 'text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-500/20' : 'text-slate-500 bg-slate-200 dark:bg-slate-700'}`}>
+                  {settings.updatesEnabled ? t('bot.active') : t('bot.off')}
                 </span>
-                <Switch
-                  dir={isRTL ? 'rtl' : 'ltr'}
-                  checked={settings.trackingEnabled || false}
-                  onCheckedChange={(checked) => {
-                    updateSetting('trackingEnabled', checked);
-                  }}
-                />
+                <Switch dir={isRTL ? 'rtl' : 'ltr'} checked={Boolean(settings.updatesEnabled)} onCheckedChange={(v) => updateSetting('updatesEnabled', v)} />
+              </div>
+            </div>
+
+            {/* Tracking bot */}
+            <div onClick={() => setActiveBot(activeBot === 'tracking' ? null : 'tracking')} className={`flex flex-col gap-2 p-3 rounded-xl border cursor-pointer transition-all ${activeBot === 'tracking' ? 'ring-2 ring-orange-400 dark:ring-orange-500' : ''} ${
+              settings.trackingEnabled ? 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600/30'
+            }`}>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`w-7 h-7 rounded-lg ${settings.trackingEnabled ? 'bg-orange-100 dark:bg-orange-500/20' : 'bg-slate-200 dark:bg-slate-700'} flex items-center justify-center shrink-0`}>
+                  <MapPin className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{t('bot.tracking')}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{t('bot.trackingDesc')}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${settings.trackingEnabled ? 'text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-500/20' : 'text-slate-500 bg-slate-200 dark:bg-slate-700'}`}>
+                  {settings.trackingEnabled ? t('bot.active') : t('bot.off')}
+                </span>
+                <Switch dir={isRTL ? 'rtl' : 'ltr'} checked={Boolean(settings.trackingEnabled)} onCheckedChange={(v) => updateSetting('trackingEnabled', v)} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Confirmation Bot Templates - Show when confirmation bot is selected */}
-        {activeBot === 'confirmation' && (
-          <div className="space-y-3 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            {/* Provider Selection */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-black/20">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
-                  <Globe className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        {/* ═══ Platform Connections (always visible below header) ═══ */}
+        <div className={`${cardCls} p-4`}>
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shrink-0">
+              <Globe className="w-3.5 h-3.5 text-indigo-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{t('platforms.title')}</span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{t('platforms.subtitle')}</p>
+            </div>
+          </div>
+
+          {/* Platform selector cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+            {([
+              { value: 'facebook', label: 'Facebook', icon: <MessageSquare className="w-5 h-5" />, color: 'text-blue-600', border: 'border-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30',
+                connected: !!fbStatus?.connected, status: fbStatus?.pageName || null, oauth: true },
+              { value: 'instagram', label: 'Instagram', icon: <Instagram className="w-5 h-5" />, color: 'text-pink-600', border: 'border-pink-500', bg: 'bg-pink-50 dark:bg-pink-950/30',
+                connected: !!fbStatus?.instagramConnected, status: fbStatus?.instagramUsername ? `@${fbStatus.instagramUsername}` : null, oauth: true },
+              { value: 'telegram', label: 'Telegram', icon: <Send className="w-5 h-5" />, color: 'text-sky-600', border: 'border-sky-500', bg: 'bg-sky-50 dark:bg-sky-950/30',
+                connected: !!(settings.telegramTokenConfigured || settings.telegramUsingPlatform), status: settings.telegramBotUsername ? `@${settings.telegramBotUsername}` : null, oauth: false },
+              { value: 'whatsapp_cloud', label: 'WhatsApp', icon: <Phone className="w-5 h-5" />, color: 'text-green-600', border: 'border-green-500', bg: 'bg-green-50 dark:bg-green-950/30',
+                connected: !!settings.whatsappTokenConfigured, status: null, oauth: false },
+              { value: 'viber', label: 'Viber', icon: <Smartphone className="w-5 h-5" />, color: 'text-purple-600', border: 'border-purple-500', bg: 'bg-purple-50 dark:bg-purple-950/30',
+                connected: !!(settings.viberAuthToken), status: null, oauth: false },
+            ] as const).map((p) => (
+              <button key={p.value} onClick={() => updateSetting('provider', p.value)}
+                className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                  settings.provider === p.value
+                    ? `${p.border} ${p.bg} shadow-sm`
+                    : p.connected
+                      ? `border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20`
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}>
+                {p.connected && (
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
+                    <CheckCircle className="w-3 h-3 text-white" />
+                  </div>
+                )}
+                <span className={p.color}>{p.icon}</span>
+                <span className="text-[11px] font-bold">{p.label}</span>
+                {p.connected && p.status && (
+                  <span className="text-[9px] text-slate-500 truncate max-w-full">{p.status}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Platform-specific settings below the cards */}
+
+          {/* ── Facebook ── */}
+          {settings.provider === 'facebook' && (
+            <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+              {fbLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
                 </div>
-                {t('bot.provider')}
-              </h3>
-              <div className="grid grid-cols-4 gap-2 mb-3">
-                {[
-                  { value: 'facebook', label: 'Facebook' },
-                  { value: 'telegram', label: 'Telegram' },
-                  { value: 'whatsapp_cloud', label: 'WhatsApp' },
-                  { value: 'viber', label: 'Viber' }
-                ].map(option => (
-                  <button
-                    key={option.value}
-                    onClick={() => updateSetting('provider', option.value)}
-                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                      settings.provider === option.value
-                        ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-md shadow-emerald-500/30'
-                        : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
-                    }`}
-                  >
-                    {option.label}
+              ) : fbStatus?.connected ? (
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-xs font-bold text-emerald-800 dark:text-emerald-200">
+                      {t('platforms.facebook.connectedTo')} <strong>{fbStatus.pageName}</strong>
+                    </p>
+                    {fbStatus.instagramConnected && (
+                      <p className="text-[10px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                        <Instagram className="w-3 h-3" />
+                        Instagram: {fbStatus.instagramUsername ? `@${fbStatus.instagramUsername}` : t('platforms.connected')}
+                      </p>
+                    )}
+                    {!fbStatus.instagramConnected && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <Instagram className="w-3 h-3" />
+                        {isRTL ? 'Instagram غير مربوط — تأكد أن صفحتك مربوطة بحساب Instagram Business' : 'Instagram not linked — make sure your Page is linked to an Instagram Business account'}
+                      </p>
+                    )}
+                    {fbStatus.tokenExpiresAt && (
+                      <p className="text-[10px] text-slate-500">
+                        {t('platforms.facebook.tokenExpires')}: {new Date(fbStatus.tokenExpiresAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <Button variant="outline" size="sm"
+                    className="rounded-xl text-[10px] text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30 shrink-0"
+                    onClick={disconnectFacebook} disabled={fbDisconnecting}>
+                    {fbDisconnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unplug className="h-3 w-3" />}
+                    <span className="mx-1">{t('platforms.disconnect')}</span>
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-4 space-y-3">
+                  <p className="text-xs font-semibold">{t('platforms.facebook.notConnected')}</p>
+                  <p className="text-[10px] text-slate-500 max-w-xs mx-auto">{t('platforms.facebook.connectHint')}</p>
+                  <Button
+                    className="h-9 px-6 rounded-xl font-bold text-white bg-[#1877F2] hover:bg-[#166FE5] shadow-sm gap-2 text-xs"
+                    onClick={connectFacebook} disabled={fbConnecting}>
+                    {fbConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                    {t('platforms.facebook.connectBtn')}
+                  </Button>
+                </div>
+              )}
+
+              {/* Page picker */}
+              {showPagePicker && fbPages.length > 0 && (
+                <div className="rounded-xl border-2 border-blue-300 dark:border-blue-700 overflow-hidden">
+                  <div className="p-3 border-b border-slate-200 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-950/20">
+                    <p className="text-xs font-bold">{t('platforms.facebook.selectPage')}</p>
+                    <p className="text-[10px] text-slate-500">{t('platforms.facebook.selectPageDesc')}</p>
+                  </div>
+                  <div className="p-3 space-y-2">
+                    {fbPages.map((page) => (
+                      <button key={page.id} onClick={() => setSelectedPageId(page.id)}
+                        className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl border-2 transition-all text-start ${
+                          selectedPageId === page.id
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
+                        }`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          selectedPageId === page.id ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                        }`}>
+                          <MessageSquare className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold">{page.name}</p>
+                          {page.hasInstagram && (
+                            <p className="text-[10px] text-pink-600 flex items-center gap-1">
+                              <Instagram className="w-2.5 h-2.5" /> Instagram {t('platforms.connected')}
+                            </p>
+                          )}
+                        </div>
+                        {selectedPageId === page.id && <CheckCircle className="w-4 h-4 text-blue-500 shrink-0" />}
+                      </button>
+                    ))}
+                    <Button className="w-full h-9 rounded-xl font-bold mt-2 bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2 text-xs"
+                      disabled={!selectedPageId || savingPage} onClick={selectFbPage}>
+                      {savingPage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                      {t('platforms.facebook.confirmPage')}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {settings.platformMessengerAvailable && (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    <strong>{!showMessengerAdvanced ? t('bot.platformMode') : t('bot.customMode')}</strong>{' '}
+                    {!showMessengerAdvanced ? t('bot.platformModeDesc') : t('bot.customModeDesc')}
+                  </p>
+                  <button type="button" onClick={() => setShowMessengerAdvanced(v => !v)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+                    {showMessengerAdvanced ? t('bot.usePlatformBot') : t('bot.useMyOwnBot')}
                   </button>
-                ))}
+                </div>
+              )}
+              {!showMessengerAdvanced && settings.platformMessengerAvailable && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
+                  <p className="text-xs text-emerald-800 dark:text-emerald-200">
+                    <strong>{t('bot.configuredPlatformMode')}</strong> {t('bot.configuredPlatformModeDesc')}
+                  </p>
+                </div>
+              )}
+              {(showMessengerAdvanced || !settings.platformMessengerAvailable) && (
+                <>
+                  {/* Manual credentials divider */}
+                  <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                    </div>
+                    <div className="relative flex justify-center">
+                      <button type="button" onClick={() => setShowFacebookManual(v => !v)}
+                        className="px-3 py-1 bg-white dark:bg-slate-900 text-[10px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+                        {showFacebookManual
+                          ? (isRTL ? 'إخفاء الإعدادات اليدوية' : 'Hide manual setup')
+                          : (isRTL ? 'أو أدخل البيانات يدوياً' : 'Or enter credentials manually')}
+                      </button>
+                    </div>
+                  </div>
+                  {showFacebookManual && (
+                    <div className="space-y-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                      <p className="text-[10px] text-slate-500">
+                        {isRTL
+                          ? 'أدخل معرّف صفحة فيسبوك ورمز وصول الصفحة من Meta Developer Dashboard.'
+                          : 'Enter your Facebook Page ID and Page Access Token from Meta Developer Dashboard.'}
+                      </p>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">{isRTL ? 'معرّف صفحة فيسبوك' : 'Facebook Page ID'}</Label>
+                        <Input value={settings.fbPageId || ''} onChange={(e) => updateSetting('fbPageId', e.target.value)} placeholder="e.g. 123456789012345" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">{isRTL ? 'رمز وصول الصفحة' : 'Page Access Token'}</Label>
+                        <Input type="password" value={settings.fbPageAccessToken || ''} onChange={(e) => updateSetting('fbPageAccessToken', e.target.value)} placeholder="Paste page access token" />
+                        {settings.fbPageAccessTokenConfigured && !String(settings.fbPageAccessToken || '').trim() && (
+                          <p className="text-[10px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.messengerDelay') || 'Delay (min)'}</Label>
+                  <Input type="number" min={0} max={60} value={settings.messengerDelayMinutes ?? 5}
+                    onChange={(e) => updateSetting('messengerDelayMinutes', parseInt(e.target.value, 10) || 5)} placeholder="5" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.autoExpire')}</Label>
+                  <Input type="number" min={1} max={72} value={settings.autoExpireHours ?? 24}
+                    onChange={(e) => updateSetting('autoExpireHours', parseInt(e.target.value, 10) || 24)} placeholder="24" />
+                </div>
+                <div className="flex items-end pb-0.5">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.messengerEnabled ?? false} onCheckedChange={(v) => updateSetting('messengerEnabled', v)} />
+                    <Label className="text-xs text-slate-700 dark:text-slate-300">{t('bot.messengerEnabled') || 'Messenger'}</Label>
+                  </div>
+                </div>
               </div>
-              
-              {/* Provider-specific settings */}
-              {settings.provider === 'telegram' && (
-                <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                  {settings.platformTelegramAvailable && (
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-xl border bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700">
-                      <p className="text-xs text-slate-600 dark:text-slate-300">
-                        <strong>{!showTelegramAdvanced ? t('bot.platformMode') : t('bot.customMode')}</strong>
-                        {' '}
-                        {!showTelegramAdvanced
-                          ? t('bot.platformModeDesc')
-                          : t('bot.customModeDesc')}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setShowTelegramAdvanced((v) => !v)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70"
-                      >
-                        {showTelegramAdvanced ? t('bot.usePlatformBot') : t('bot.useMyOwnBot')}
-                      </button>
-                    </div>
-                  )}
+              <button type="button" onClick={handleSetupMessengerGetStarted}
+                disabled={settingUpMessenger || !storeSlug || !(settings.messengerEnabled ?? false)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {settingUpMessenger ? 'Setting up…' : 'Setup Messenger Get Started'}
+              </button>
+              <button type="button" onClick={async () => {
+                if (!storeSlug) return;
+                const res = await fetch(`/api/messenger/owner-link/${encodeURIComponent(storeSlug)}`);
+                const data = await res.json();
+                if (data?.url) window.open(data.url, '_blank');
+              }}
+                disabled={!storeSlug || !(settings.messengerEnabled ?? false)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                Connect as Store Owner (disable AI for me)
+              </button>
+            </div>
+          )}
 
-                  {!showTelegramAdvanced && settings.platformTelegramAvailable && (
-                    <div className="p-3 rounded-xl border bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30">
-                      <p className="text-xs text-emerald-800 dark:text-emerald-200">
-                        <strong>{t('bot.configuredPlatformMode')}</strong> {t('bot.configuredPlatformModeDesc')}
-                      </p>
-                    </div>
-                  )}
-
-                  {(showTelegramAdvanced || !settings.platformTelegramAvailable) && (
-                    <>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.telegramBotToken')}</Label>
-                        <Input
-                          type="password"
-                          value={settings.telegramBotToken || ''}
-                          onChange={(e) => updateSetting('telegramBotToken', e.target.value)}
-                          placeholder="123456:ABCDEF..."
-                        />
-                        {settings.telegramTokenConfigured && !String(settings.telegramBotToken || '').trim() && (
-                          <p className="text-xs text-slate-500">
-                            {t('bot.tokenSavedHidden')}
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.telegramBotUsername')}</Label>
-                        <Input
-                          value={settings.telegramBotUsername || ''}
-                          onChange={(e) => updateSetting('telegramBotUsername', e.target.value)}
-                          placeholder="@YourBotUsername"
-                        />
-                      </div>
-                    </>
-                  )}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.messengerDelay') || 'Message Delay (minutes)'}</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={60}
-                      value={settings.telegramDelayMinutes ?? 5}
-                      onChange={(e) => {
-                        const num = parseInt(e.target.value, 10);
-                        updateSetting('telegramDelayMinutes', isNaN(num) ? 5 : num);
-                      }}
-                      placeholder="5"
-                    />
-                    <p className="text-xs text-slate-500">{t('bot.delayDescription') || 'Delay before sending confirmation message after order'}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.autoExpire')}</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={72}
-                      value={settings.autoExpireHours ?? 24}
-                      onChange={(e) => {
-                        const num = parseInt(e.target.value, 10);
-                        updateSetting('autoExpireHours', isNaN(num) ? 24 : num);
-                      }}
-                      placeholder="24"
-                    />
-                    <p className="text-xs text-slate-500">{t('bot.autoExpireDesc')}</p>
-                  </div>
+          {/* ── Instagram ── */}
+          {settings.provider === 'instagram' && (
+            <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+              {settings.platformInstagramAvailable && (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    <strong>{!showInstagramAdvanced ? t('bot.platformMode') : t('bot.customMode')}</strong>{' '}
+                    {!showInstagramAdvanced ? t('bot.platformModeDesc') : t('bot.customModeDesc')}
+                  </p>
+                  <button type="button" onClick={() => setShowInstagramAdvanced(v => !v)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70">
+                    {showInstagramAdvanced ? t('bot.usePlatformBot') : t('bot.useMyOwnBot')}
+                  </button>
                 </div>
               )}
-
-              {settings.provider === 'whatsapp_cloud' && (
-                <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.whatsappPhoneId')}</Label>
-                    <Input
-                      value={settings.whatsappPhoneId}
-                      onChange={(e) => updateSetting('whatsappPhoneId', e.target.value)}
-                      placeholder="e.g. 123456789012345"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.whatsappAccessToken')}</Label>
-                    <Input
-                      type="password"
-                      value={settings.whatsappToken}
-                      onChange={(e) => updateSetting('whatsappToken', e.target.value)}
-                      placeholder="Paste access token"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.messengerDelay') || 'Message Delay (minutes)'}</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={60}
-                      value={(settings as any).whatsappDelayMinutes ?? 5}
-                      onChange={(e) => {
-                        const num = parseInt(e.target.value, 10);
-                        updateSetting('whatsappDelayMinutes' as any, isNaN(num) ? 5 : num);
-                      }}
-                      placeholder="5"
-                    />
-                    <p className="text-xs text-slate-500">{t('bot.delayDescription') || 'Delay before sending confirmation message after order'}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.autoExpire')}</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={72}
-                      value={settings.autoExpireHours ?? 24}
-                      onChange={(e) => {
-                        const num = parseInt(e.target.value, 10);
-                        updateSetting('autoExpireHours', isNaN(num) ? 24 : num);
-                      }}
-                      placeholder="24"
-                    />
-                    <p className="text-xs text-slate-500">{t('bot.autoExpireDesc')}</p>
-                  </div>
+              {!showInstagramAdvanced && settings.platformInstagramAvailable && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
+                  <p className="text-xs text-emerald-800 dark:text-emerald-200">
+                    <strong>{t('bot.configuredPlatformMode')}</strong> {t('bot.configuredPlatformModeDesc')}
+                  </p>
                 </div>
               )}
-
-              {settings.provider === 'viber' && (
-                <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.viberAuthToken')}</Label>
-                    <Input
-                      value={settings.viberAuthToken || ''}
-                      onChange={(e) => updateSetting('viberAuthToken', e.target.value)}
-                      placeholder="viber-auth-token"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.viberSenderName')}</Label>
-                    <Input
-                      value={settings.viberSenderName || ''}
-                      onChange={(e) => updateSetting('viberSenderName', e.target.value)}
-                      placeholder="Sahla4Eco"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.messengerDelay') || 'Message Delay (minutes)'}</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={60}
-                      value={(settings as any).viberDelayMinutes ?? 5}
-                      onChange={(e) => {
-                        const num = parseInt(e.target.value, 10);
-                        updateSetting('viberDelayMinutes' as any, isNaN(num) ? 5 : num);
-                      }}
-                      placeholder="5"
-                    />
-                    <p className="text-xs text-slate-500">{t('bot.delayDescription') || 'Delay before sending confirmation message after order'}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.autoExpire')}</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={72}
-                      value={settings.autoExpireHours ?? 24}
-                      onChange={(e) => {
-                        const num = parseInt(e.target.value, 10);
-                        updateSetting('autoExpireHours', isNaN(num) ? 24 : num);
-                      }}
-                      placeholder="24"
-                    />
-                    <p className="text-xs text-slate-500">{t('bot.autoExpireDesc')}</p>
-                  </div>
+              {(showInstagramAdvanced || !settings.platformInstagramAvailable) && fbLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-pink-500" />
                 </div>
-              )}
-
-              {settings.provider === 'facebook' && (
-                <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                  <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl border border-blue-200 dark:border-blue-500/30 mb-3">
-                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                      <strong>Setup:</strong>
-                      {' '}
-                      If you have your own Facebook Page, connect it in Meta and paste the Page ID + Page Access Token.
-                      {' '}
-                      {settings.platformMessengerAvailable
-                        ? 'Or enable Messenger below to use the EcoPro platform Page (no Page/token needed).'
-                        : 'If you don’t have a Page yet, EcoPro needs a Page + token to send/receive.'}
-                    </p>
-                  </div>
-
-                  {settings.platformMessengerAvailable && (
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-xl border bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700">
-                      <p className="text-xs text-slate-600 dark:text-slate-300">
-                        <strong>Platform mode:</strong> EcoPro uses the shared platform Page automatically.
-                        {' '}
-                        <span className="text-slate-500 dark:text-slate-400">(Page ID/token are not shown.)</span>
+              ) : fbStatus?.connected && fbStatus?.instagramConnected ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
+                    <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <p className="text-xs font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-1">
+                        <Instagram className="w-3.5 h-3.5" />
+                        {fbStatus.instagramUsername ? `@${fbStatus.instagramUsername}` : 'Instagram Business'}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => setShowMessengerAdvanced((v) => !v)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70"
-                      >
-                        {showMessengerAdvanced ? 'Hide advanced' : 'Use my own Page'}
-                      </button>
+                      <p className="text-[10px] text-emerald-700 dark:text-emerald-300">
+                        {isRTL
+                          ? 'مربوط عبر فيسبوك — الرسائل المباشرة يتم الرد عليها تلقائياً بالذكاء الاصطناعي'
+                          : 'Connected via Facebook — DMs are auto-replied by AI'}
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        {isRTL ? 'الصفحة:' : 'Page:'} {fbStatus.pageName}
+                      </p>
                     </div>
-                  )}
-
-                  {(() => {
-                    const pageId = String(settings.fbPageId || settings.facebookPageId || '').trim();
-                    const token = String(settings.fbPageAccessToken || settings.facebookAccessToken || '').trim();
-                    const wantsMessenger = Boolean(settings.messengerEnabled);
-                    const platformAvailable = Boolean(settings.platformMessengerAvailable);
-                    const hasStorePageConfig = Boolean(pageId && (token || settings.fbPageAccessTokenConfigured));
-
-                    if (!wantsMessenger) {
-                      return (
-                        <div className="p-3 rounded-xl border bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700">
-                          <p className="text-xs text-slate-600 dark:text-slate-300">
-                            Messenger is currently <strong>disabled</strong>.
-                            {' '}
-                            {platformAvailable
-                              ? 'Enable it below to use the EcoPro platform Page, or paste your own Page ID + token.'
-                              : 'Enable it below after you connect a Facebook Page in Meta and paste the Page ID + Page Access Token here.'}
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    if (!hasStorePageConfig && platformAvailable) {
-                      return (
-                        <div className="p-3 rounded-xl border bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30">
-                          <p className="text-xs text-emerald-800 dark:text-emerald-200">
-                            <strong>Configured (platform mode):</strong>
-                            {' '}
-                            EcoPro will use the platform Messenger Page to send/receive messages for your store.
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    if (!hasStorePageConfig) {
-                      return (
-                        <div className="p-3 rounded-xl border bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30">
-                          <p className="text-xs text-amber-800 dark:text-amber-200">
-                            <strong>Not connected yet:</strong> Messenger is enabled, but EcoPro can’t send/receive until a Facebook Page is connected in Meta and a <strong>Page Access Token</strong> is saved.
-                            {' '}
-                            If Meta shows <strong>“No FB pages yet”</strong>, it means the app has <strong>zero Pages connected</strong>, so there is no Page token to generate.
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div className="p-3 rounded-xl border bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30">
-                        <p className="text-xs text-emerald-800 dark:text-emerald-200">
-                          <strong>Configured:</strong> Page ID + access token are set. Webhook events and customer linking should work once Meta webhooks are active.
-                        </p>
-                      </div>
-                    );
-                  })()}
-
-                  {(!settings.platformMessengerAvailable || showMessengerAdvanced) && (
-                    <>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.facebookPageId') || 'Facebook Page ID'}</Label>
-                        <Input
-                          value={settings.fbPageId || settings.facebookPageId || ''}
-                          onChange={(e) => updateSetting('fbPageId', e.target.value)}
-                          placeholder="e.g. 123456789012345"
-                        />
-                      </div>
-                      <form className="space-y-2" onSubmit={(e) => e.preventDefault()}>
-                        <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.facebookAccessToken') || 'Page Access Token'}</Label>
-                        <Input
-                          name="fbPageAccessToken"
-                          autoComplete="new-password"
-                          type="password"
-                          value={settings.fbPageAccessToken || settings.facebookAccessToken || ''}
-                          onChange={(e) => updateSetting('fbPageAccessToken', e.target.value)}
-                          placeholder="Paste Page Access Token from Facebook"
-                        />
-                        {settings.fbPageAccessTokenConfigured && !String(settings.fbPageAccessToken || settings.facebookAccessToken || '').trim() && (
-                          <p className="text-xs text-slate-500">
-                            Token is saved (hidden). Paste a new token to replace it.
-                          </p>
-                        )}
-                      </form>
-                    </>
-                  )}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.messengerDelay') || 'Message Delay (minutes)'}</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={60}
-                      value={settings.messengerDelayMinutes ?? 5}
-                      onChange={(e) => {
-                        const num = parseInt(e.target.value, 10);
-                        updateSetting('messengerDelayMinutes', isNaN(num) ? 5 : num);
-                      }}
-                      placeholder="5"
-                    />
+                    <Button variant="outline" size="sm"
+                      className="rounded-xl text-[10px] text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30 shrink-0"
+                      onClick={disconnectFacebook} disabled={fbDisconnecting}>
+                      {fbDisconnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unplug className="h-3 w-3" />}
+                      <span className="mx-1">{t('platforms.disconnect')}</span>
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.autoExpire')}</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={72}
-                      value={settings.autoExpireHours ?? 24}
-                      onChange={(e) => {
-                        const num = parseInt(e.target.value, 10);
-                        updateSetting('autoExpireHours', isNaN(num) ? 24 : num);
-                      }}
-                      placeholder="24"
-                    />
-                    <p className="text-xs text-slate-500">{t('bot.autoExpireDesc')}</p>
-                  </div>
-                  <div className="flex items-center gap-3 pt-2">
-                    <Switch
-                      checked={settings.messengerEnabled ?? false}
-                      onCheckedChange={(checked) => updateSetting('messengerEnabled', checked)}
-                    />
-                    <Label className="text-sm text-slate-700 dark:text-slate-300">
-                      {t('bot.messengerEnabled') || 'Enable Messenger notifications'}
-                    </Label>
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={handleSetupMessengerGetStarted}
-                      disabled={
-                        settingUpMessenger ||
-                        !storeSlug ||
-                        (((!String(settings.fbPageId || '').trim() || (!String(settings.fbPageAccessToken || '').trim() && !Boolean(settings.fbPageAccessTokenConfigured))) && !Boolean(settings.platformMessengerAvailable))) ||
-                        !(settings.messengerEnabled ?? false)
-                      }
-                      className="w-full px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {settingUpMessenger ? 'Setting up…' : 'Setup Messenger Get Started'}
-                    </button>
-                    <p className="text-xs text-slate-500 mt-2">
-                      This configures the Page “Get Started” button so customers can link faster after clicking Connect.
+                  <div className="p-3 rounded-xl bg-pink-50 dark:bg-pink-500/10 border border-pink-200 dark:border-pink-500/20">
+                    <p className="text-[11px] text-pink-800 dark:text-pink-200">
+                      {isRTL
+                        ? '✨ الردود التلقائية: الذكاء الاصطناعي يرد على رسائل Instagram المباشرة تلقائياً بناءً على منتجات متجرك والتعليمات في إعدادات AI.'
+                        : '✨ Auto-replies: AI responds to Instagram DMs automatically based on your store products and instructions in AI settings.'}
                     </p>
                   </div>
                 </div>
+              ) : fbStatus?.connected && !fbStatus?.instagramConnected ? (
+                <div className="text-center py-4 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mx-auto">
+                    <Instagram className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <p className="text-xs font-semibold">
+                    {isRTL ? 'فيسبوك مربوط لكن Instagram غير مربوط' : 'Facebook connected but Instagram not linked'}
+                  </p>
+                  <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
+                    {isRTL
+                      ? 'تأكد أن صفحتك على فيسبوك مربوطة بحساب Instagram Business في إعدادات الصفحة، ثم أعد الربط.'
+                      : 'Make sure your Facebook Page is linked to an Instagram Business account in Page Settings, then reconnect.'}
+                  </p>
+                  <Button
+                    className="h-9 px-6 rounded-xl font-bold text-white bg-[#1877F2] hover:bg-[#166FE5] shadow-sm gap-2 text-xs"
+                    onClick={connectFacebook} disabled={fbConnecting}>
+                    {fbConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                    {isRTL ? 'إعادة الربط' : 'Reconnect'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-4 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center mx-auto">
+                    <Instagram className="w-6 h-6 text-pink-500" />
+                  </div>
+                  <p className="text-xs font-semibold">
+                    {isRTL ? 'غير متصل بـ Instagram' : 'Not connected to Instagram'}
+                  </p>
+                  <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
+                    {isRTL
+                      ? 'اربط حسابك عبر فيسبوك — سيتم اكتشاف Instagram تلقائياً إذا كان مربوطاً بالصفحة'
+                      : 'Connect via Facebook — Instagram will be auto-detected if linked to your Page'}
+                  </p>
+                  <Button
+                    className="h-9 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 hover:opacity-90 shadow-sm gap-2 text-xs"
+                    onClick={connectFacebook} disabled={fbConnecting}>
+                    {fbConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                    {isRTL ? 'ربط بفيسبوك' : 'Connect with Facebook'}
+                  </Button>
+                </div>
+              )}
+
+              {/* Manual credentials divider */}
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                </div>
+                <div className="relative flex justify-center">
+                  <button type="button" onClick={() => setShowInstagramManual(v => !v)}
+                    className="px-3 py-1 bg-white dark:bg-slate-900 text-[10px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+                    {showInstagramManual
+                      ? (isRTL ? 'إخفاء الإعدادات اليدوية' : 'Hide manual setup')
+                      : (isRTL ? 'أو أدخل البيانات يدوياً' : 'Or enter credentials manually')}
+                  </button>
+                </div>
+              </div>
+              {showInstagramManual && (
+                <div className="space-y-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                  <p className="text-[10px] text-slate-500">
+                    {isRTL
+                      ? 'أدخل معرّف حساب Instagram Business ورمز وصول الصفحة المرتبطة من Meta Developer Dashboard.'
+                      : 'Enter your Instagram Business Account ID and the linked Page Access Token from Meta Developer Dashboard.'}
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">{isRTL ? 'معرّف حساب Instagram' : 'Instagram Account ID'}</Label>
+                    <Input value={settings.instagramAccountId || ''}
+                      onChange={(e) => updateSetting('instagramAccountId', e.target.value)}
+                      placeholder="e.g. 17841400123456789" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">{isRTL ? 'رمز وصول الصفحة' : 'Page Access Token'}</Label>
+                    <Input type="password" value={settings.instagramPageAccessToken || ''}
+                      onChange={(e) => updateSetting('instagramPageAccessToken', e.target.value)}
+                      placeholder="Paste page access token" />
+                    {settings.instagramTokenConfigured && !String(settings.instagramPageAccessToken || '').trim() && (
+                      <p className="text-[10px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
+          )}
 
-            {/* Greeting Template */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-black/20">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-500/20">
-                  <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          {/* ── Telegram ── */}
+          {settings.provider === 'telegram' && (
+            <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+              {settings.platformTelegramAvailable && (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    <strong>{!showTelegramAdvanced ? t('bot.platformMode') : t('bot.customMode')}</strong>{' '}
+                    {!showTelegramAdvanced ? t('bot.platformModeDesc') : t('bot.customModeDesc')}
+                  </p>
+                  <button type="button" onClick={() => setShowTelegramAdvanced(v => !v)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70">
+                    {showTelegramAdvanced ? t('bot.usePlatformBot') : t('bot.useMyOwnBot')}
+                  </button>
                 </div>
-                {t('bot.greetingMessage')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('bot.greetingDesc')}</p>
-              <Textarea
-                value={settings.templateGreeting || ''}
-                onChange={(e) => updateSetting('templateGreeting', e.target.value)}
-                rows={4}
-                className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-              />
+              )}
+              {!showTelegramAdvanced && settings.platformTelegramAvailable && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
+                  <p className="text-xs text-emerald-800 dark:text-emerald-200">
+                    <strong>{t('bot.configuredPlatformMode')}</strong> {t('bot.configuredPlatformModeDesc')}
+                  </p>
+                </div>
+              )}
+              {(showTelegramAdvanced || !settings.platformTelegramAvailable) && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">{t('bot.telegramBotToken')}</Label>
+                    <Input type="password" value={settings.telegramBotToken || ''} onChange={(e) => updateSetting('telegramBotToken', e.target.value)} placeholder="123456:ABCDEF..." />
+                    {settings.telegramTokenConfigured && !String(settings.telegramBotToken || '').trim() && (
+                      <p className="text-[10px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">{t('bot.telegramBotUsername')}</Label>
+                    <Input value={settings.telegramBotUsername || ''} onChange={(e) => updateSetting('telegramBotUsername', e.target.value)} placeholder="@YourBotUsername" />
+                  </div>
+                </>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.messengerDelay') || 'Delay (min)'}</Label>
+                  <Input type="number" min={0} max={60} value={settings.telegramDelayMinutes ?? 5}
+                    onChange={(e) => updateSetting('telegramDelayMinutes', parseInt(e.target.value, 10) || 5)} placeholder="5" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.autoExpire')}</Label>
+                  <Input type="number" min={1} max={72} value={settings.autoExpireHours ?? 24}
+                    onChange={(e) => updateSetting('autoExpireHours', parseInt(e.target.value, 10) || 24)} placeholder="24" />
+                </div>
+              </div>
             </div>
+          )}
 
-            {/* Instant Order Notification - NEW */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-emerald-200 dark:border-emerald-700 shadow-lg shadow-emerald-200/50 dark:shadow-black/20">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
-                  <Package className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          {/* ── WhatsApp ── */}
+          {settings.provider === 'whatsapp_cloud' && (
+            <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+              {settings.platformWhatsappAvailable && (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    <strong>{!showWhatsappAdvanced ? t('bot.platformMode') : t('bot.customMode')}</strong>{' '}
+                    {!showWhatsappAdvanced ? t('bot.platformModeDesc') : t('bot.customModeDesc')}
+                  </p>
+                  <button type="button" onClick={() => setShowWhatsappAdvanced(v => !v)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70">
+                    {showWhatsappAdvanced ? t('bot.usePlatformBot') : t('bot.useMyOwnBot')}
+                  </button>
                 </div>
-                📦 {t('bot.instantOrder')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('bot.instantOrderDesc')}</p>
-              <Textarea
-                value={settings.templateInstantOrder || ''}
-                onChange={(e) => updateSetting('templateInstantOrder', e.target.value)}
-                rows={12}
-                className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono"
-              />
+              )}
+              {!showWhatsappAdvanced && settings.platformWhatsappAvailable && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
+                  <p className="text-xs text-emerald-800 dark:text-emerald-200">
+                    <strong>{t('bot.configuredPlatformMode')}</strong> {t('bot.configuredPlatformModeDesc')}
+                  </p>
+                </div>
+              )}
+              {(showWhatsappAdvanced || !settings.platformWhatsappAvailable) && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">{t('bot.whatsappPhoneId')}</Label>
+                    <Input value={settings.whatsappPhoneId} onChange={(e) => updateSetting('whatsappPhoneId', e.target.value)} placeholder="e.g. 123456789012345" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">{t('bot.whatsappAccessToken')}</Label>
+                    <Input type="password" value={settings.whatsappToken} onChange={(e) => updateSetting('whatsappToken', e.target.value)} placeholder="Paste access token" />
+                    {settings.whatsappTokenConfigured && !String(settings.whatsappToken || '').trim() && (
+                      <p className="text-[10px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
+                    )}
+                  </div>
+                </>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.messengerDelay') || 'Delay (min)'}</Label>
+                  <Input type="number" min={0} max={60} value={(settings as any).whatsappDelayMinutes ?? 5}
+                    onChange={(e) => updateSetting('whatsappDelayMinutes' as any, parseInt(e.target.value, 10) || 5)} placeholder="5" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.autoExpire')}</Label>
+                  <Input type="number" min={1} max={72} value={settings.autoExpireHours ?? 24}
+                    onChange={(e) => updateSetting('autoExpireHours', parseInt(e.target.value, 10) || 24)} placeholder="24" />
+                </div>
+              </div>
             </div>
+          )}
 
-            {/* Pin Instructions - NEW */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-amber-200 dark:border-amber-700 shadow-lg shadow-amber-200/50 dark:shadow-black/20">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-500/20">
-                  <MapPin className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          {/* ── Viber ── */}
+          {settings.provider === 'viber' && (
+            <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+              {settings.platformViberAvailable && (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    <strong>{!showViberAdvanced ? t('bot.platformMode') : t('bot.customMode')}</strong>{' '}
+                    {!showViberAdvanced ? t('bot.platformModeDesc') : t('bot.customModeDesc')}
+                  </p>
+                  <button type="button" onClick={() => setShowViberAdvanced(v => !v)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70">
+                    {showViberAdvanced ? t('bot.usePlatformBot') : t('bot.useMyOwnBot')}
+                  </button>
                 </div>
-                📌 {t('bot.pinInstructions')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('bot.pinInstructionsDesc')}</p>
-              <Textarea
-                value={settings.templatePinInstructions || ''}
-                onChange={(e) => updateSetting('templatePinInstructions', e.target.value)}
-                rows={6}
-                className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono"
-              />
+              )}
+              {!showViberAdvanced && settings.platformViberAvailable && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
+                  <p className="text-xs text-emerald-800 dark:text-emerald-200">
+                    <strong>{t('bot.configuredPlatformMode')}</strong> {t('bot.configuredPlatformModeDesc')}
+                  </p>
+                </div>
+              )}
+              {(showViberAdvanced || !settings.platformViberAvailable) && (
+              <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">{t('bot.viberAuthToken')}</Label>
+                <Input value={settings.viberAuthToken || ''} onChange={(e) => updateSetting('viberAuthToken', e.target.value)} placeholder="viber-auth-token" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">{t('bot.viberSenderName')}</Label>
+                <Input value={settings.viberSenderName || ''} onChange={(e) => updateSetting('viberSenderName', e.target.value)} placeholder="Sahla4Eco" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.messengerDelay') || 'Delay (min)'}</Label>
+                  <Input type="number" min={0} max={60} value={(settings as any).viberDelayMinutes ?? 5}
+                    onChange={(e) => updateSetting('viberDelayMinutes' as any, parseInt(e.target.value, 10) || 5)} placeholder="5" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.autoExpire')}</Label>
+                  <Input type="number" min={1} max={72} value={settings.autoExpireHours ?? 24}
+                    onChange={(e) => updateSetting('autoExpireHours', parseInt(e.target.value, 10) || 24)} placeholder="24" />
+                </div>
+              </div>
+              </>
+              )}
             </div>
+          )}
+        </div>
 
-            {/* Order Confirmation Template */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-green-200 dark:border-green-700 shadow-lg shadow-green-200/50 dark:shadow-black/20">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-500/20">
-                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-                </div>
-                ⏱️ {t('bot.orderConfirmation')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('bot.orderConfirmationDesc')}</p>
-              
-              <Textarea
-                value={settings.templateOrderConfirmation}
-                onChange={(e) => updateSetting('templateOrderConfirmation', e.target.value)}
-                rows={6}
-                className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-              />
+
+        {/* Tracking Bot Tab */}
+        {activeBot === 'tracking' && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <div className="w-6 h-6 rounded-lg bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center">
+                <MapPin className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <span className="text-sm font-bold text-slate-900 dark:text-white">إعدادات بوت التتبع</span>
             </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+              <div className="flex flex-col gap-3">
 
-            {/* Payment Template */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-black/20">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-500/20">
-                  <CreditCard className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                {/* Tracking Status Messages */}
+                <div className={`${cardCls} p-4`}>
+                  <SectionHeader id="tracking-templates" icon={<Navigation className="w-3.5 h-3.5 text-orange-500" />}
+                    iconBg="bg-orange-50 dark:bg-orange-500/10" title={t('bot.trackingStatusMessages') || 'إشعارات التتبع التلقائية'}
+                    subtitle={t('bot.trackingStatusDesc') || 'تُرسل تلقائياً عند كل تحديث من شركة التوصيل'} />
+                  {expandedSections.has('tracking-templates') && (
+                    <div className="mt-3 space-y-3">
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
+                        <div>
+                          <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">إشعارات التتبع التلقائية</p>
+                          <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">أرسل رسالة للعميل عند كل تحديث من شركة التوصيل (Webhook)</p>
+                        </div>
+                        <Switch
+                          checked={(settings as any).delivery_notifications_enabled !== false}
+                          onCheckedChange={(v) => updateSetting('delivery_notifications_enabled' as any, v)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-orange-500" />
+                          قالب رسالة التتبع (يُرسل تلقائياً عند كل تحديث)
+                        </Label>
+                        <Textarea
+                          value={(settings as any).delivery_status_template || '🚚 تحديث حالة طلبك\n\nمرحباً {customer_name}،\nطلبك رقم *{order_id}* - {event_label}\n\n{description}\n{location_line}\nرقم التتبع: {tracking_number}\n\nشكراً لثقتك بنا 🙏'}
+                          onChange={(e) => updateSetting('delivery_status_template' as any, e.target.value)}
+                          rows={7}
+                          className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono"
+                          dir="rtl"
+                        />
+                        <p className="text-[10px] text-slate-400">المتغيرات: {'{customer_name}'} {'{order_id}'} {'{event_label}'} {'{tracking_number}'} {'{description}'} {'{location_line}'}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {t('bot.paymentConfirmation')}
-              </h3>
-              <Textarea
-                value={settings.templatePayment}
-                onChange={(e) => updateSetting('templatePayment', e.target.value)}
-                rows={4}
-                className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-              />
+
+              </div>
+              <div className="flex flex-col gap-3">
+
+                {/* Variables Reference */}
+                <div className={`${cardCls} p-4`}>
+                  <SectionHeader id="variables-tracking" icon={<Code2 className="w-3.5 h-3.5 text-indigo-500" />}
+                    iconBg="bg-indigo-50 dark:bg-indigo-500/10" title={t('bot.availableVariables') || 'المتغيرات المتاحة'} />
+                  {expandedSections.has('variables-tracking') && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {[
+                        { key: '{customer_name}', desc: 'اسم العميل' },
+                        { key: '{order_id}', desc: 'رقم الطلب' },
+                        { key: '{event_label}', desc: 'حالة التوصيل (عربي)' },
+                        { key: '{tracking_number}', desc: 'رقم التتبع' },
+                        { key: '{description}', desc: 'وصف الحدث' },
+                        { key: '{location_line}', desc: 'الموقع (إن وُجد)' },
+                        { key: '{event_type}', desc: 'نوع الحدث (إنجليزي)' },
+                      ].map((v) => (
+                        <div key={v.key} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.06]">
+                          <code className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0">{v.key}</code>
+                          <span className="text-slate-500 dark:text-slate-400 text-[10px] truncate">{v.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
             </div>
+          </div>
+        )}
 
-            {/* Shipping Template */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-black/20">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-500/20">
-                  <Truck className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+        {/* Two-column layout — Confirmation + Updates tabs */}
+        {(activeBot === 'confirmation' || activeBot === 'updates' || activeBot === null) && (<div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+
+          {/* ═══ LEFT COLUMN ═══ */}
+          <div className="flex flex-col gap-3">
+
+            {/* Tracking Status Messages (legacy templates kept in Updates tab for manual sends) */}
+            <div className={`${cardCls} p-4`}>
+              <SectionHeader id="tracking-templates" icon={<Navigation className="w-3.5 h-3.5 text-orange-500" />}
+                iconBg="bg-orange-50 dark:bg-orange-500/10" title={t('bot.trackingStatusMessages') || 'رسائل حالة التتبع'}
+                subtitle="قوالب الرسائل اليدوية لتحديثات الشحن" />
+              {expandedSections.has('tracking-templates') && (
+                <div className="mt-3 space-y-3">
+                  {[
+                    { key: 'templateTrackingShipped', label: t('bot.orderShipped'), color: 'blue',
+                      fallback: `📦 مرحباً {customerName}!\n\nتم شحن طلبك #{orderId}.\n🚚 شركة التوصيل: {deliveryCompany}\n📍 رقم التتبع: {trackingNumber}\n\nيمكنك تتبع طلبك من هنا: {trackingUrl}` },
+                    { key: 'templateTrackingOutForDelivery', label: t('bot.outForDelivery'), color: 'amber',
+                      fallback: `🚛 {customerName}، طلبك في الطريق!\n\nطلبك #{orderId} خرج للتوصيل.\n📍 الوصول المتوقع: {estimatedTime}\n📞 السائق سيتصل بك قريباً.` },
+                    { key: 'templateTrackingDelivered', label: t('bot.delivered'), color: 'green',
+                      fallback: `✅ تم التوصيل بنجاح!\n\nمرحباً {customerName}،\nتم توصيل طلبك #{orderId} بنجاح.\n\n🙏 شكراً لتسوقك معنا!` },
+                    { key: 'templateTrackingFailed', label: t('bot.deliveryFailed'), color: 'red',
+                      fallback: `⚠️ فشل التوصيل\n\nمرحباً {customerName}،\nلم نتمكن من توصيل طلبك #{orderId}.\n\nالسبب: {failureReason}\n📞 تواصل معنا: {supportPhone}` },
+                  ].map(tmpl => (
+                    <div key={tmpl.key} className="space-y-1.5">
+                      <Label className="text-xs font-semibold flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full bg-${tmpl.color}-500`} />
+                        {tmpl.label}
+                      </Label>
+                      <Textarea value={(settings as any)[tmpl.key] || tmpl.fallback}
+                        onChange={(e) => updateSetting(tmpl.key as any, e.target.value)} rows={3}
+                        className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
+                    </div>
+                  ))}
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">{t('bot.defaultDeliveryCompany')}</Label>
+                      <Input value={(settings as any).defaultDeliveryCompany || ''}
+                        onChange={(e) => updateSetting('defaultDeliveryCompany' as any, e.target.value)} placeholder="Yalidine, ZR Express..." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">{t('bot.trackingUrlTemplate')}</Label>
+                      <Input value={(settings as any).trackingUrlTemplate || ''}
+                        onChange={(e) => updateSetting('trackingUrlTemplate' as any, e.target.value)} placeholder="https://track.example.com/{trackingNumber}" />
+                    </div>
+                  </div>
                 </div>
-                {t('bot.shippingNotification')}
-              </h3>
-              <Textarea
-                value={settings.templateShipping}
-                onChange={(e) => updateSetting('templateShipping', e.target.value)}
-                rows={4}
-                className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-              />
+              )}
             </div>
 
             {/* Variables Reference */}
-            <div className="bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-black/20">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-500/20">
-                  <Code2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <div className={`${cardCls} p-4`}>
+              <SectionHeader id="variables" icon={<Code2 className="w-3.5 h-3.5 text-indigo-500" />}
+                iconBg="bg-indigo-50 dark:bg-indigo-500/10" title={t('bot.availableVariables')} />
+              {expandedSections.has('variables') && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {[...variables,
+                    { key: '{deliveryCompany}', desc: t('bot.deliveryCompany') },
+                    { key: '{trackingUrl}', desc: t('bot.trackingUrl') },
+                    { key: '{estimatedTime}', desc: t('bot.estimatedTime') },
+                    { key: '{failureReason}', desc: t('bot.failureReason') },
+                  ].map((v) => (
+                    <div key={v.key} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.06]">
+                      <code className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0">
+                        {v.key}
+                      </code>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] truncate">{v.desc}</span>
+                    </div>
+                  ))}
                 </div>
-                <h4 className="font-bold text-base text-slate-900 dark:text-white">{t('bot.availableVariables')}</h4>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {variables.map((v) => (
-                  <div key={v.key} className="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <code className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-md font-mono text-xs font-semibold">
-                      {v.key}
-                    </code>
-                    <span className="text-slate-600 dark:text-slate-400 text-xs">{v.desc}</span>
+              )}
+            </div>
+          </div>
+
+          {/* ═══ RIGHT COLUMN ═══ */}
+          <div className="flex flex-col gap-3">
+
+            {/* Confirmation Templates */}
+            <div className={`${cardCls} p-4`}>
+              <SectionHeader id="confirmation-templates" icon={<Check className="w-3.5 h-3.5 text-emerald-500" />}
+                iconBg="bg-emerald-50 dark:bg-emerald-500/10" title={t('bot.confirmation') + ' ' + (t('bot.templates') || 'Templates')} />
+              {expandedSections.has('confirmation-templates') && (
+                <div className="mt-3 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <MessageSquare className="w-3 h-3 text-blue-500" /> {t('bot.greetingMessage')}
+                    </Label>
+                    <p className="text-[10px] text-slate-500">{t('bot.greetingDesc')}</p>
+                    <Textarea value={settings.templateGreeting || ''} onChange={(e) => updateSetting('templateGreeting', e.target.value)}
+                      rows={3} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Bot Updates - Show when updates bot is selected */}
-        {activeBot === 'updates' && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg shadow-violet-200/30 dark:shadow-black/20 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <CustomerBot embedded={true} />
-          </div>
-        )}
-
-        {/* Bot Tracking - Show when tracking bot is selected */}
-        {activeBot === 'tracking' && (
-          <div className="space-y-3 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            {/* Tracking Overview */}
-            <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800/50 shadow-lg">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-500/20">
-                  <Navigation className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{t('bot.realTimeTracking')}</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {t('bot.realTimeTrackingDesc')}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tracking Status Messages */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-lg">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-orange-100 dark:bg-orange-500/20">
-                  <Package className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                </div>
-                {t('bot.trackingStatusMessages')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                {t('bot.trackingStatusDesc')}
-              </p>
-              
-              <div className="space-y-3">
-                {/* Order Shipped */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    {t('bot.orderShipped')}
-                  </Label>
-                  <Textarea
-                    value={(settings as any).templateTrackingShipped || `📦 مرحباً {customerName}!\n\nتم شحن طلبك #{orderId}.\n🚚 شركة التوصيل: {deliveryCompany}\n📍 رقم التتبع: {trackingNumber}\n\nيمكنك تتبع طلبك من هنا: {trackingUrl}`}
-                    onChange={(e) => updateSetting('templateTrackingShipped' as any, e.target.value)}
-                    rows={4}
-                    className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                  />
-                </div>
-
-                {/* Out for Delivery */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    {t('bot.outForDelivery')}
-                  </Label>
-                  <Textarea
-                    value={(settings as any).templateTrackingOutForDelivery || `🚛 {customerName}، طلبك في الطريق!\n\nطلبك #{orderId} خرج للتوصيل.\n📍 الوصول المتوقع: {estimatedTime}\n📞 السائق سيتصل بك قريباً.\n\nتأكد من تواجدك لاستلام الطلب!`}
-                    onChange={(e) => updateSetting('templateTrackingOutForDelivery' as any, e.target.value)}
-                    rows={4}
-                    className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                  />
-                </div>
-
-                {/* Delivered */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                    {t('bot.delivered')}
-                  </Label>
-                  <Textarea
-                    value={(settings as any).templateTrackingDelivered || `✅ تم التوصيل بنجاح!\n\nمرحباً {customerName}،\nتم توصيل طلبك #{orderId} بنجاح.\n\n🙏 شكراً لتسوقك معنا!\n⭐ نتمنى أن تستمتع بمنتجاتك.\n\nللاستفسارات: {supportPhone}`}
-                    onChange={(e) => updateSetting('templateTrackingDelivered' as any, e.target.value)}
-                    rows={4}
-                    className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                  />
-                </div>
-
-                {/* Delivery Failed */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                    {t('bot.deliveryFailed')}
-                  </Label>
-                  <Textarea
-                    value={(settings as any).templateTrackingFailed || `⚠️ فشل التوصيل\n\nمرحباً {customerName}،\nلم نتمكن من توصيل طلبك #{orderId}.\n\nالسبب: {failureReason}\n\n📞 يرجى التواصل معنا لإعادة جدولة التوصيل: {supportPhone}`}
-                    onChange={(e) => updateSetting('templateTrackingFailed' as any, e.target.value)}
-                    rows={4}
-                    className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Delivery Company Integration */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-lg">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-500/20">
-                  <Truck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                </div>
-                {t('bot.deliveryCompanySettings')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                {t('bot.deliveryCompanyDesc')}
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.defaultDeliveryCompany')}</Label>
-                  <Input
-                    value={(settings as any).defaultDeliveryCompany || ''}
-                    onChange={(e) => updateSetting('defaultDeliveryCompany' as any, e.target.value)}
-                    placeholder="Yalidine, ZR Express..."
-                    className="bg-slate-50 dark:bg-slate-800/50"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-slate-900 dark:text-white">{t('bot.trackingUrlTemplate')}</Label>
-                  <Input
-                    value={(settings as any).trackingUrlTemplate || ''}
-                    onChange={(e) => updateSetting('trackingUrlTemplate' as any, e.target.value)}
-                    placeholder="https://track.example.com/{trackingNumber}"
-                    className="bg-slate-50 dark:bg-slate-800/50"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Tracking Variables */}
-            <div className="bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-lg">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-1.5 rounded-lg bg-orange-100 dark:bg-orange-500/20">
-                  <Code2 className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                </div>
-                <h4 className="font-bold text-base text-slate-900 dark:text-white">{t('bot.trackingVariables')}</h4>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {[
-                  { key: '{customerName}', desc: t('bot.customerName') },
-                  { key: '{orderId}', desc: t('bot.orderId') },
-                  { key: '{trackingNumber}', desc: t('bot.trackingNumber') },
-                  { key: '{deliveryCompany}', desc: t('bot.deliveryCompany') },
-                  { key: '{trackingUrl}', desc: t('bot.trackingUrl') },
-                  { key: '{estimatedTime}', desc: t('bot.estimatedTime') },
-                  { key: '{failureReason}', desc: t('bot.failureReason') },
-                  { key: '{supportPhone}', desc: t('bot.supportPhone') },
-                ].map((v) => (
-                  <div key={v.key} className="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <code className="bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 px-2 py-1 rounded-md font-mono text-xs font-semibold">
-                      {v.key}
-                    </code>
-                    <span className="text-slate-600 dark:text-slate-400 text-xs">{v.desc}</span>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <Package className="w-3 h-3 text-emerald-500" /> {t('bot.instantOrder')}
+                    </Label>
+                    <p className="text-[10px] text-slate-500">{t('bot.instantOrderDesc')}</p>
+                    <Textarea value={settings.templateInstantOrder || ''} onChange={(e) => updateSetting('templateInstantOrder', e.target.value)}
+                      rows={8} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono" />
                   </div>
-                ))}
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <MapPin className="w-3 h-3 text-amber-500" /> {t('bot.pinInstructions')}
+                    </Label>
+                    <p className="text-[10px] text-slate-500">{t('bot.pinInstructionsDesc')}</p>
+                    <Textarea value={settings.templatePinInstructions || ''} onChange={(e) => updateSetting('templatePinInstructions', e.target.value)}
+                      rows={4} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <Check className="w-3 h-3 text-green-500" /> {t('bot.orderConfirmation')}
+                    </Label>
+                    <p className="text-[10px] text-slate-500">{t('bot.orderConfirmationDesc')}</p>
+                    <Textarea value={settings.templateOrderConfirmation} onChange={(e) => updateSetting('templateOrderConfirmation', e.target.value)}
+                      rows={4} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <CreditCard className="w-3 h-3 text-purple-500" /> {t('bot.paymentConfirmation')}
+                    </Label>
+                    <Textarea value={settings.templatePayment} onChange={(e) => updateSetting('templatePayment', e.target.value)}
+                      rows={3} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <Truck className="w-3 h-3 text-orange-500" /> {t('bot.shippingNotification')}
+                    </Label>
+                    <Textarea value={settings.templateShipping} onChange={(e) => updateSetting('templateShipping', e.target.value)}
+                      rows={3} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Customer Bot / Campaigns */}
+            <div className={`${cardCls} overflow-hidden`}>
+              <div className="p-4">
+                <SectionHeader id="campaigns" icon={<Users className="w-3.5 h-3.5 text-violet-500" />}
+                  iconBg="bg-violet-50 dark:bg-violet-500/10" title={t('bot.updates') || 'Customer Campaigns'} />
               </div>
+              {expandedSections.has('campaigns') && (
+                <CustomerBot embedded={true} />
+              )}
             </div>
           </div>
-        )}
+        </div>)}
 
-
-        {/* Save Button */}
+        {/* Floating Save */}
         <div className={`fixed bottom-4 ${isRTL ? 'left-4' : 'right-4'}`}>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t('bot.saving')}
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                {t('bot.saveChanges')}
-              </>
-            )}
+          <button onClick={handleSave} disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg transition-all disabled:opacity-60">
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin" />{t('bot.saving')}</> : <><Save className="h-4 w-4" />{t('bot.saveChanges')}</>}
           </button>
         </div>
       </div>

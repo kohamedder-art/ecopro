@@ -17,26 +17,33 @@ const DEFAULT_TEMPLATE_ID = 'dzshop';
 
 // Templates that are considered 100% editable + verified against TEMPLATE_EDITS_CONTRACT.
 // These are the only templates shown by default in the picker.
-const READY_TEMPLATE_IDS = new Set(['dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery']);
+const READY_TEMPLATE_IDS = new Set(['dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery', 'iyco', 'bassem28', 'classicshop', 'jewelheart', 'dz3shop', 'spiriluxe', 'leroishop']);
 
 // Template preview data with categories
 const TEMPLATE_PREVIEWS = [
-  { id: 'dzshop', name: 'DZ Shop (Algerian)', image: '', categories: ['popular', 'industry'] },
-  { id: 'dzpremium', name: 'DZ Premium (Green Fast)', image: '', categories: ['popular', 'landing'] },
-  { id: 'luxedrop', name: 'Luxe Drop (Dark Edition)', image: '', categories: ['dark', 'landing'] },
+  { id: 'dzshop', name: 'متجر DZ — كلاسيكي جزائري', image: '', categories: ['popular', 'industry'] },
+  { id: 'dzpremium', name: 'DZ بريميوم — صفحة هبوط سريعة', image: '', categories: ['popular', 'landing'] },
+  { id: 'luxedrop', name: 'لوكس دروب — الوضع الداكن', image: '', categories: ['dark', 'landing'] },
 
-  { id: 'needdz', name: 'NeedDZ Mobile App', image: '', categories: ['mobile', 'popular'] },
-  { id: 'novadz', name: 'Nova DZ (Modern Convert)', image: '', categories: ['popular', 'landing'] },
-  { id: 'minimalist', name: "L'Atelier (Minimalist)", image: '', categories: ['minimal', 'elegant'] },
-  { id: 'lumina', name: 'Lumina (Landing Page)', image: '', categories: ['landing', 'popular'] },
-  { id: 'zenith', name: 'Zenith (Clean Landing)', image: '', categories: ['landing', 'minimal'] },
-  { id: 'boutique', name: 'Boutique (Collection Store)', image: '', categories: ['popular', 'elegant'] },
-  { id: 'aurora', name: 'Aurora (Premium Dark)', image: '', categories: ['dark', 'elegant'] },
-  { id: 'sculptor', name: 'Sculptor (Product Detail)', image: '', categories: ['dark', 'elegant'] },
-  { id: 'artisan', name: 'Artisan (Earthy Collection)', image: '', categories: ['elegant', 'popular'] },
-  { id: 'vera', name: 'Véra (Cinematic Luxury)', image: '', categories: ['dark', 'elegant'] },
-  { id: 'streetwear', name: 'Streetwear (Grid Store)', image: '', categories: ['dark', 'popular'] },
-  { id: 'gallery', name: 'Gallery (Minimal Grid)', image: '', categories: ['minimal', 'popular'] }
+  { id: 'needdz', name: 'NeedDZ — تطبيق موبايل', image: '', categories: ['mobile', 'popular'] },
+  { id: 'novadz', name: 'نوفا DZ — عصري متحول', image: '', categories: ['popular', 'landing'] },
+  { id: 'minimalist', name: "لاتيليي — بسيط و أنيق", image: '', categories: ['minimal', 'elegant'] },
+  { id: 'lumina', name: 'لومينا — صفحة هبوط', image: '', categories: ['landing', 'popular'] },
+  { id: 'zenith', name: 'زينيث — هبوط نظيف', image: '', categories: ['landing', 'minimal'] },
+  { id: 'boutique', name: 'بوتيك — متجر تشكيلة', image: '', categories: ['popular', 'elegant'] },
+  { id: 'aurora', name: 'أورورا — داكن فاخر', image: '', categories: ['dark', 'elegant'] },
+  { id: 'sculptor', name: 'سكلبتور — تفاصيل المنتج', image: '', categories: ['dark', 'elegant'] },
+  { id: 'artisan', name: 'أرتيزان — تشكيلة طبيعية', image: '', categories: ['elegant', 'popular'] },
+  { id: 'vera', name: 'فيرا — سينمائي فاخر', image: '', categories: ['dark', 'elegant'] },
+  { id: 'streetwear', name: 'ستريت وير — شبكة داكنة', image: '', categories: ['dark', 'popular'] },
+  { id: 'gallery', name: 'غاليري — شبكة بسيطة', image: '', categories: ['minimal', 'popular'] },
+  { id: 'iyco', name: 'IYCO — ملابس عصرية', image: '', categories: ['popular', 'landing'], isNew: true },
+  { id: 'bassem28', name: 'بريمو — منتج احترافي', image: '', categories: ['popular', 'landing', 'elegant'], isNew: true },
+  { id: 'classicshop', name: 'كلاسيك شوب — منتج نظيف', image: '', categories: ['minimal', 'popular'], isNew: true },
+  { id: 'jewelheart', name: 'جوهرة — مجوهرات أنيقة', image: '', categories: ['elegant', 'landing'], isNew: true },
+  { id: 'dz3shop', name: 'Dz3 شوب — كتالوج المنتجات', image: '', categories: ['popular', 'industry'], isNew: true },
+  { id: 'spiriluxe', name: 'سبيريلوكس — هبوط + صور + فيديو', image: '', categories: ['landing', 'popular'], isNew: true },
+  { id: 'leroishop', name: 'لوروا شوب — كتالوج متعدد المنتجات', image: '', categories: ['popular', 'industry'], isNew: true }
 ];
 
 const TEMPLATE_CATEGORIES = [
@@ -54,10 +61,6 @@ const TEMPLATE_CATEGORIES = [
 // Default settings for each template - used for reset functionality
 // Keys that should be reset when switching/resetting templates
 const TEMPLATE_SETTING_KEYS = [
-  'template_bg_color',
-  'template_text_color', 
-  'template_muted_color',
-  'template_accent_color',
   'template_hero_heading',
   'template_hero_subtitle',
   'template_button_text',
@@ -182,6 +185,20 @@ export default function GoldTemplateEditor() {
   });
   const [selectedEditPath, setSelectedEditPath] = useState<string | null>(null);
   const [mobileEditPanelOpen, setMobileEditPanelOpen] = useState(false);
+
+  // Mobile responsive editor
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setMobilePanelOpen(false);
+    };
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Auto-open mobile edit panel when element is selected (only on mobile)
   useEffect(() => {
@@ -429,8 +446,17 @@ export default function GoldTemplateEditor() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return reject(new Error('Canvas context failed'));
         ctx.drawImage(img, 0, 0, width, height);
+        // Try webp first, fallback to jpeg if browser doesn't support webp encoding
         canvas.toBlob(
-          (blob) => blob ? resolve(blob) : reject(new Error('Blob conversion failed')),
+          (blob) => {
+            if (blob) return resolve(blob);
+            // Fallback to jpeg
+            canvas.toBlob(
+              (jpegBlob) => jpegBlob ? resolve(jpegBlob) : reject(new Error('Blob conversion failed')),
+              'image/jpeg',
+              quality
+            );
+          },
           'image/webp',
           quality
         );
@@ -446,7 +472,8 @@ export default function GoldTemplateEditor() {
 
     const uploadBase64 = async (b64DataUri: string): Promise<string> => {
       const blob = await compressImage(b64DataUri);
-      const file = new File([blob], `upload.webp`, { type: 'image/webp' });
+      const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+      const file = new File([blob], `upload-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`, { type: blob.type });
       const result = await uploadImage(file);
       return result.url;
     };
@@ -463,12 +490,18 @@ export default function GoldTemplateEditor() {
         }
         let result = val;
         for (const dataUri of matches) {
-          const url = await uploadBase64(dataUri);
-          result = result.replace(dataUri, url);
+          try {
+            const url = await uploadBase64(dataUri);
+            result = result.replace(dataUri, url);
+          } catch (uploadErr) {
+            console.error('[sanitizeSettingsImages] Upload failed for data URI, keeping original:', uploadErr);
+            // Keep the base64 data URI rather than stripping it — the image won't be lost
+          }
         }
         return result;
-      } catch {
-        return val.replace(dataUriRegex, '').replace(/,,+/g, ',').replace(/^,|,$/g, '');
+      } catch (outerErr) {
+        console.error('[sanitizeSettingsImages] processString failed, keeping original value:', outerErr);
+        return val;
       }
     };
 
@@ -713,7 +746,7 @@ export default function GoldTemplateEditor() {
   const formatPrice = useCallback(
     (price: number) => {
       const currency = settings.currency_code || 'DZD';
-      return `${price.toLocaleString()} ${currency}`;
+      return `${Math.round(price).toLocaleString()} ${currency}`;
     },
     [settings.currency_code]
   );
@@ -827,16 +860,52 @@ export default function GoldTemplateEditor() {
       handleSelectEditPath(path);
     };
 
+    // Check if the target is inside a contentEditable element — if so,
+    // let the event through so the user can tap-to-focus and edit text.
+    const isContentEditable = (target: HTMLElement | null): boolean => {
+      if (!target) return false;
+      let el: HTMLElement | null = target;
+      while (el) {
+        if (el.isContentEditable) return true;
+        el = el.parentElement;
+      }
+      return false;
+    };
+
+    // Check if the click is on or inside an interactive element (file upload, button, select, input, etc.)
+    const isInteractiveElement = (target: HTMLElement | null): boolean => {
+      if (!target) return false;
+      let el: HTMLElement | null = target;
+      while (el) {
+        const tag = el.tagName;
+        if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'LABEL') return true;
+        if (el.getAttribute('data-upload-trigger') !== null) return true;
+        el = el.parentElement;
+      }
+      return false;
+    };
+
     const onClickCapture = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (isContentEditable(target) || isInteractiveElement(target)) {
+        // Allow contentEditable focus and interactive elements — still track the edit path
+        handleEditPath(target);
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
-      handleEditPath(e.target as HTMLElement | null);
+      handleEditPath(target);
     };
 
     const onTouchEnd = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (isContentEditable(target) || isInteractiveElement(target)) {
+        handleEditPath(target);
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
-      handleEditPath(e.target as HTMLElement | null);
+      handleEditPath(target);
     };
 
     doc.addEventListener('click', onClickCapture, true);
@@ -1353,18 +1422,18 @@ export default function GoldTemplateEditor() {
           </div>
         );
       } else if (path === 'layout.urgency.pricing.original') {
-        body = bindText('Original Price', 'template_original_price' as any, '$199.99');
+        body = bindText('Original Price', 'template_original_price' as any, '19,999 دج');
       } else if (path === 'layout.urgency.pricing.sale') {
-        body = bindText('Sale Price', 'template_sale_price' as any, '$59.99');
+        body = bindText('Sale Price', 'template_sale_price' as any, '5,999 دج');
       } else if (path === 'layout.urgency.pricing.save') {
-        body = bindText('Save Amount Text', 'template_save_amount' as any, 'You Save $140!');
+        body = bindText('Save Amount Text', 'template_save_amount' as any, 'وفر 14,000 دج!');
       } else if (path === 'layout.urgency.pricing') {
         body = (
           <div className="space-y-4">
             <div className="font-medium text-sm">Pricing</div>
-            {bindText('Original Price', 'template_original_price' as any, '$199.99')}
-            {bindText('Sale Price', 'template_sale_price' as any, '$59.99')}
-            {bindText('Save Amount Text', 'template_save_amount' as any, 'You Save $140!')}
+            {bindText('Original Price', 'template_original_price' as any, '19,999 دج')}
+            {bindText('Sale Price', 'template_sale_price' as any, '5,999 دج')}
+            {bindText('Save Amount Text', 'template_save_amount' as any, 'وفر 14,000 دج!')}
           </div>
         );
       } else if (path === 'layout.urgency.benefits.item1') {
@@ -1548,6 +1617,362 @@ export default function GoldTemplateEditor() {
     );
   }
 
+  // ===== MOBILE LAYOUT =====
+  if (isMobile) {
+    return (
+      <div dir="ltr" className="h-dvh flex flex-col overflow-hidden bg-slate-50 dark:bg-[#0A0D14] font-sans text-slate-800 dark:text-slate-200" style={{ isolation: 'isolate' }}>
+        {/* Toast Notifications */}
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none">
+          {error && <div className="bg-red-500/90 text-white px-4 py-2 rounded-xl backdrop-blur-md shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-4">{error}</div>}
+          {success && <div className="bg-green-500/90 text-white px-4 py-2 rounded-xl backdrop-blur-md shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-4">{success}</div>}
+        </div>
+
+        {/* MOBILE TOP BAR */}
+        <div className="shrink-0 h-12 bg-white/90 dark:bg-[#04060b]/90 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-3 z-50">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 rounded-lg h-8 px-2">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <span className="font-bold text-xs tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400 uppercase">STORE ENGINE</span>
+          <Button onClick={handleSave} disabled={saving} size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 h-8 text-xs font-bold shadow-[0_0_15px_-5px_rgba(79,70,229,0.4)]">
+            {saving ? <div className="w-3 h-3 rounded-full border-2 border-white/20 border-t-white animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          </Button>
+        </div>
+
+        {/* FULL-SCREEN PREVIEW */}
+        <div className="flex-1 relative overflow-hidden bg-white">
+          <iframe
+            ref={previewIframeRef}
+            title="Storefront Preview"
+            srcDoc={IFRAME_SRC_DOC}
+            onLoad={() => setIframeReady(true)}
+            style={{ border: 0, width: '100%', height: '100%', display: 'block', background: '#ffffff' }}
+          />
+        </div>
+
+        {/* BOTTOM SHEET OVERLAY */}
+        {mobilePanelOpen && (
+          <>
+            <div className="fixed inset-0 bg-black/40 z-[60] animate-in fade-in duration-200" onClick={() => setMobilePanelOpen(false)} />
+            <div dir="auto" className="fixed bottom-14 left-0 right-0 z-[70] bg-white dark:bg-[#0B0F19] rounded-t-3xl shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.3)] max-h-[70vh] flex flex-col animate-in slide-in-from-bottom-8 duration-300">
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1 cursor-pointer" onClick={() => setMobilePanelOpen(false)}>
+                <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+              </div>
+              {/* Panel content */}
+              <div className="flex-1 overflow-y-auto px-5 pb-6 custom-scrollbar">
+
+                {/* ===== THEME SETTINGS ===== */}
+                {(activeTab === 'theme' as any || activeTab === 'settings') && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('editor.globalStyles')}</h3>
+
+                    {/* Colors */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Zap className="w-3 h-3 text-indigo-500"/> {t('editor.coreColors')}</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
+                        {/* Primary */}
+                        <div className="flex items-center gap-3">
+                          <input type="color" value={settings.primary_color || '#2563eb'} onChange={(e) => handleSettingChange('primary_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 block">{t('editor.primaryColor')}</span>
+                            <div className="flex gap-1.5 mt-1.5">
+                              {['#2563eb', '#f97316', '#10b981', '#6366f1', '#ec4899', '#0f172a'].map(c => (
+                                <button key={c} onClick={() => handleSettingChange('primary_color', c)} className="w-6 h-6 rounded-lg border border-white/10 active:scale-95 transition-transform" style={{backgroundColor: c}} />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Accent */}
+                        <div className="flex items-center gap-3">
+                          <input type="color" value={settings.template_accent_color || '#f97316'} onChange={(e) => handleSettingChange('template_accent_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 block">لون الزر / Accent</span>
+                            <div className="flex gap-1.5 mt-1.5">
+                              {['#f97316', '#ef4444', '#22c55e', '#a855f7', '#06b6d4', '#fbbf24'].map(c => (
+                                <button key={c} onClick={() => handleSettingChange('template_accent_color', c)} className="w-6 h-6 rounded-lg border border-white/10 active:scale-95 transition-transform" style={{backgroundColor: c}} />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Background */}
+                        <div className="flex items-center gap-3">
+                          <input type="color" value={settings.template_bg_color || '#ffffff'} onChange={(e) => handleSettingChange('template_bg_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 block">لون الخلفية</span>
+                            <div className="flex gap-1.5 mt-1.5">
+                              {['#ffffff', '#f8fafc', '#f9f8f6', '#0a0a0a', '#080808', '#0f172a'].map(c => (
+                                <button key={c} onClick={() => handleSettingChange('template_bg_color', c)} className="w-6 h-6 rounded-lg border border-slate-300 dark:border-white/10 active:scale-95 transition-transform" style={{backgroundColor: c}} />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Header */}
+                        <div className="flex items-center gap-3">
+                          <input type="color" value={settings.iyco_header_color || '#ffffff'} onChange={(e) => handleSettingChange('iyco_header_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 block">لون الهيدر</span>
+                            <div className="flex gap-1.5 mt-1.5">
+                              {['#ffffff', '#f8fafc', '#1e293b', '#0f172a', '#0a0a0a', '#111827'].map(c => (
+                                <button key={c} onClick={() => handleSettingChange('iyco_header_color', c)} className="w-6 h-6 rounded-lg border border-slate-300 dark:border-white/10 active:scale-95 transition-transform" style={{backgroundColor: c}} />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Typography & Copy */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Type className="w-3 h-3 text-indigo-500"/> Typography</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.mainProduct')}</label>
+                          <select value={settings.dzp_main_product_id || ''} onChange={(e) => handleSettingChange('dzp_main_product_id', e.target.value)} className="w-full bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl px-3 py-2.5 text-sm outline-none">
+                            <option value="">{t('editor.latestProduct')}</option>
+                            {products.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.storeName')}</label>
+                          <Input value={settings.store_name || ''} onChange={(e) => handleSettingChange('store_name', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 rounded-xl h-10" placeholder="My Awesome Store" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.heroTitle')}</label>
+                          <Input value={settings.template_hero_heading || ''} onChange={(e) => handleSettingChange('template_hero_heading', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 rounded-xl h-10" placeholder="توصيل 58 ولاية" dir="rtl" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">نص فرعي / Subtitle</label>
+                          <Input value={settings.template_hero_subtitle || ''} onChange={(e) => handleSettingChange('template_hero_subtitle', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 rounded-xl h-10" placeholder="🔥 عرض محدود..." dir="rtl" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">نص زر الطلب / CTA Button</label>
+                          <Input value={settings.template_button_text || ''} onChange={(e) => handleSettingChange('template_button_text', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 rounded-xl h-10" placeholder="أطلب الآن" dir="rtl" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">خط الواجهة / Font</label>
+                          <select value={(settings as any).template_font_family || 'cairo'} onChange={(e) => handleSettingChange('template_font_family', e.target.value)} className="w-full bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl px-3 py-2.5 text-sm outline-none">
+                            <option value="cairo">Cairo — كايرو</option>
+                            <option value="tajawal">Tajawal — تجوال</option>
+                            <option value="almarai">Almarai — المرعي</option>
+                            <option value="ibm-plex-arabic">IBM Plex Arabic</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Order Fields */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-3 h-3 text-indigo-500"/> حقول نموذج الطلب</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">الاسم، الهاتف، والولاية مطلوبين دائمًا.</p>
+                        {([['order_field_address', 'العنوان'], ['order_field_commune', 'البلدية'], ['order_field_notes', 'ملاحظات']] as const).map(([field, label]) => (
+                          <label key={field} className="flex items-center justify-between cursor-pointer py-1">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                            <button onClick={() => handleSettingChange(field, !(settings as any)[field])} className={`w-10 h-6 rounded-full transition-colors relative ${(settings as any)[field] ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${(settings as any)[field] ? 'translate-x-5' : 'translate-x-1'}`} />
+                            </button>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Template-specific sections (NeedDZ) */}
+                    {activeTemplateId === 'needdz' && (
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Eye className="w-3 h-3 text-indigo-500"/> أقسام NeedDZ</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
+                        {([
+                          ['needdz_show_urgent_bar', 'شريط العجلة (countdown)'],
+                          ['needdz_show_social_proof', 'قسم آراء العملاء'],
+                          ['needdz_show_card_proof', 'إحصائية بطاقة المنتج'],
+                        ] as const).map(([field, label]) => (
+                          <label key={field} className="flex items-center justify-between cursor-pointer py-1">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                            <button onClick={() => handleSettingChange(field, (settings as any)[field] === false ? true : false)} className={`w-10 h-6 rounded-full transition-colors relative ${ (settings as any)[field] !== false ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${ (settings as any)[field] !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+                            </button>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    )}
+
+                    {/* Template-specific sections (NovaDZ) */}
+                    {activeTemplateId === 'novadz' && (
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Eye className="w-3 h-3 text-indigo-500"/> أقسام NovaDZ</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
+                        {([
+                          ['nova_show_features', 'مميزات المنتج (بطاقات ✓)'],
+                          ['nova_show_trust', 'قسم "لماذا نحن"'],
+                        ] as const).map(([field, label]) => (
+                          <label key={field} className="flex items-center justify-between cursor-pointer py-1">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                            <button onClick={() => handleSettingChange(field, (settings as any)[field] === false ? true : false)} className={`w-10 h-6 rounded-full transition-colors relative ${ (settings as any)[field] !== false ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                              <span className={`absolute top-1 left-0 w-4 h-4 rounded-full bg-white shadow transition-transform ${ (settings as any)[field] !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+                            </button>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    )}
+
+                    {/* Template-specific sections (Lumina) */}
+                    {activeTemplateId === 'lumina' && (
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Eye className="w-3 h-3 text-indigo-500"/> أقسام Lumina</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
+                        {([
+                          ['lumina_show_countdown', 'عداد تنازلي (countdown)'],
+                        ] as const).map(([field, label]) => (
+                          <label key={field} className="flex items-center justify-between cursor-pointer py-1">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                            <button onClick={() => handleSettingChange(field, (settings as any)[field] === false ? true : false)} className={`w-10 h-6 rounded-full transition-colors relative ${ (settings as any)[field] !== false ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${ (settings as any)[field] !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+                            </button>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    )}
+
+                    {/* Chat Bubble */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><MousePointerClick className="w-3 h-3 text-indigo-500"/> فقاعة التواصل</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
+                        <label className="flex items-center justify-between cursor-pointer py-1">
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">تفعيل فقاعة التواصل</span>
+                          <button onClick={() => handleSettingChange('chat_bubble_enabled', !settings.chat_bubble_enabled)} className={`w-10 h-6 rounded-full transition-colors relative ${settings.chat_bubble_enabled ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${settings.chat_bubble_enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </button>
+                        </label>
+                        {settings.chat_bubble_enabled && (
+                          <p className="text-[10px] text-indigo-400 bg-indigo-500/10 px-3 py-2 rounded-xl">قم بإعداد قنوات التواصل من صفحة إعدادات البوت</p>
+                        )}
+                        {settings.chat_bubble_enabled && (
+                          <>
+                            <label className="flex items-center justify-between cursor-pointer py-1">
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">زر الاتصال المباشر</span>
+                              <button onClick={() => handleSettingChange('phone_call_enabled', !settings.phone_call_enabled)} className={`w-10 h-6 rounded-full transition-colors relative ${settings.phone_call_enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${settings.phone_call_enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                              </button>
+                            </label>
+                            {settings.phone_call_enabled && (
+                              <input
+                                type="tel"
+                                dir="ltr"
+                                value={settings.contact_phone || ''}
+                                onChange={(e) => handleSettingChange('contact_phone', e.target.value)}
+                                placeholder="+213 555 123 456"
+                                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0D14] text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
+                              />
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === ('media' as any) && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('editor.storeAssets')}</h3>
+                    <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block">{t('editor.storeLogo')}</label>
+                      {settings.store_logo ? (
+                        <div className="relative group rounded-xl overflow-hidden bg-slate-200 dark:bg-[#0A0D14] aspect-video flex items-center justify-center border border-slate-300 dark:border-white/5 p-4">
+                          <img src={settings.store_logo} alt="Logo" className="max-h-full w-auto object-contain" />
+                          <button onClick={() => handleSettingChange('store_logo', '')} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 active:opacity-100 transition-opacity">
+                            <span className="text-white text-sm font-medium bg-red-500 px-4 py-2 rounded-xl">{t('editor.removeLogo')}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/10 active:border-indigo-500/50 active:bg-indigo-500/5 transition-all cursor-pointer">
+                          <UploadCloud className="w-8 h-8 text-slate-400 mb-2" />
+                          <span className="text-xs font-medium text-slate-500">{t('editor.uploadLogo')}</span>
+                          <Input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleImageUpload('store_logo', f); }} />
+                        </label>
+                      )}
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block pt-2">صورة البانر / Banner</label>
+                      {settings.banner_url ? (
+                        <div className="relative group rounded-xl overflow-hidden bg-slate-200 dark:bg-[#0A0D14] aspect-video border border-slate-300 dark:border-white/5">
+                          <img src={settings.banner_url} alt="Banner" className="w-full h-full object-cover" />
+                          <button onClick={() => handleSettingChange('banner_url', '')} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 active:opacity-100 transition-opacity">
+                            <span className="text-white text-sm font-medium bg-red-500 px-4 py-2 rounded-xl">إزالة</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/10 active:border-indigo-500/50 active:bg-indigo-500/5 transition-all cursor-pointer">
+                          <UploadCloud className="w-8 h-8 text-slate-400 mb-2" />
+                          <span className="text-xs font-medium text-slate-500">رفع صورة البانر</span>
+                          <Input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleImageUpload('banner_url', f); }} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ===== TEMPLATES / LAYOUT ===== */}
+                {(activeTab === 'layout' as any || activeTab === 'preview') && (
+                  <div className="space-y-5 animate-in fade-in duration-200">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('editor.architecture')}</h3>
+                    {isPreviewingDifferentTemplate && (
+                      <button
+                        onClick={() => handleTemplateChange(previewTemplateId!)}
+                        disabled={saving}
+                        className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all shadow-[0_0_20px_-5px_rgba(79,70,229,0.4)] disabled:opacity-60 flex items-center justify-center gap-2"
+                      >
+                        {saving ? <div className="w-3.5 h-3.5 rounded-full border-2 border-white/20 border-t-white animate-spin" /> : <Check className="w-4 h-4" />}
+                        {t('editor.applyFramework')} — {TEMPLATE_PREVIEWS.find(tp => tp.id === normalizeTemplateId(previewTemplateId!))?.name || previewTemplateId}
+                      </button>
+                    )}
+                    <div className="grid gap-3">
+                      {TEMPLATE_PREVIEWS.map((template) => (
+                        <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden rounded-2xl border transition-all text-left p-4 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5' : previewTemplateId === template.id ? 'border-violet-400 bg-violet-500/5 dark:bg-violet-500/10' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825]'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : previewTemplateId === template.id ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500'}`}>
+                              <LayoutTemplate className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className={`font-bold text-sm truncate ${effectiveTemplateId === template.id ? 'text-indigo-400' : previewTemplateId === template.id ? 'text-violet-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
+                              <p className="text-[10px] text-slate-500 mt-0.5">{effectiveTemplateId === template.id ? t('editor.activeFramework') : previewTemplateId === template.id ? t('editor.previewingTemplate') : t('editor.applyFramework')}</p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* BOTTOM TAB BAR */}
+        <div className="shrink-0 h-14 bg-white/95 dark:bg-[#04060b]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/5 flex items-center justify-around z-[80]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <button onClick={() => setMobilePanelOpen(false)} className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all min-w-[56px] ${!mobilePanelOpen ? 'text-indigo-500' : 'text-slate-400 dark:text-slate-500'}`}>
+            <Eye className="w-5 h-5" />
+            <span className="text-[10px] font-medium">معاينة</span>
+          </button>
+          <button onClick={() => { setActiveTab('theme' as any); setMobilePanelOpen(true); }} className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all min-w-[56px] ${mobilePanelOpen && (activeTab === 'theme' as any || activeTab === 'settings') ? 'text-indigo-500' : 'text-slate-400 dark:text-slate-500'}`}>
+            <Wand2 className="w-5 h-5" />
+            <span className="text-[10px] font-medium">{t('editor.theme')}</span>
+          </button>
+          <button onClick={() => { setActiveTab('media' as any); setMobilePanelOpen(true); }} className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all min-w-[56px] ${mobilePanelOpen && activeTab === ('media' as any) ? 'text-indigo-500' : 'text-slate-400 dark:text-slate-500'}`}>
+            <ImageIcon className="w-5 h-5" />
+            <span className="text-[10px] font-medium">{t('editor.assets')}</span>
+          </button>
+          <button onClick={() => { setActiveTab('layout' as any); setMobilePanelOpen(true); }} className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all min-w-[56px] ${mobilePanelOpen && (activeTab === 'layout' as any || activeTab === 'preview') ? 'text-indigo-500' : 'text-slate-400 dark:text-slate-500'}`}>
+            <LayoutTemplate className="w-5 h-5" />
+            <span className="text-[10px] font-medium">{t('editor.layout')}</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== DESKTOP LAYOUT =====
   return (
     <div dir="ltr" className="h-dvh flex overflow-hidden bg-slate-50 dark:bg-[#0A0D14] font-sans text-slate-800 dark:text-slate-200" style={{ isolation: 'isolate' }}>
       {/* GLOW EFFECTS */}
@@ -1677,6 +2102,22 @@ export default function GoldTemplateEditor() {
                             </div>
                          </div>
                        </div>
+
+                       {/* Header / Surface color (for templates that support it) */}
+                       <div className="flex flex-col gap-3">
+                         <div className="flex items-center justify-between">
+                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">لون الهيدر / Header</span>
+                           <span className="text-xs font-mono text-slate-500">{settings.iyco_header_color || '#ffffff'}</span>
+                         </div>
+                         <div className="flex gap-2">
+                            <input type="color" value={settings.iyco_header_color || '#ffffff'} onChange={(e) => handleSettingChange('iyco_header_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
+                            <div className="flex-1 flex gap-1">
+                               {['#ffffff', '#f8fafc', '#1e293b', '#0f172a', '#0a0a0a', '#111827'].map(color => (
+                                  <button key={color} onClick={() => handleSettingChange('iyco_header_color', color)} className="flex-1 rounded-lg border border-slate-300 dark:border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
+                               ))}
+                            </div>
+                         </div>
+                       </div>
                     </div>
                  </div>
 
@@ -1707,6 +2148,14 @@ export default function GoldTemplateEditor() {
                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.heroTitle')}</label>
                            <Input value={settings.template_hero_heading || ''} onChange={(e) => handleSettingChange('template_hero_heading', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl focus-visible:ring-indigo-500" placeholder="توصيل 58 ولاية" dir="rtl" />
                         </div>
+                        <div className="space-y-2">
+                           <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">نص فرعي / Subtitle</label>
+                           <Input value={settings.template_hero_subtitle || ''} onChange={(e) => handleSettingChange('template_hero_subtitle', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl focus-visible:ring-indigo-500" placeholder="🔥 عرض محدود..." dir="rtl" />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">نص زر الطلب / CTA Button</label>
+                           <Input value={settings.template_button_text || ''} onChange={(e) => handleSettingChange('template_button_text', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl focus-visible:ring-indigo-500" placeholder="أطلب الآن" dir="rtl" />
+                        </div>
                         {/* Font family */}
                         <div className="space-y-2">
                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">خط الواجهة / Font</label>
@@ -1721,6 +2170,156 @@ export default function GoldTemplateEditor() {
                               <option value="ibm-plex-arabic">IBM Plex Arabic</option>
                            </select>
                         </div>
+                    </div>
+                 </div>
+
+                 {/* Order Form Fields */}
+                 <div className="space-y-4">
+                    <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-3 h-3 text-indigo-500"/> حقول نموذج الطلب</h4>
+                    <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
+                       <p className="text-[11px] text-slate-500 dark:text-slate-400">الاسم، الهاتف، والولاية مطلوبين دائمًا. فعّل الحقول الإضافية حسب الحاجة.</p>
+                       <div className="space-y-3">
+                          <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">العنوان</span>
+                            <button
+                              onClick={() => handleSettingChange('order_field_address', !settings.order_field_address)}
+                              className={`w-10 h-6 rounded-full transition-colors relative ${settings.order_field_address ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                            >
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${settings.order_field_address ? 'translate-x-5' : 'translate-x-1'}`} />
+                            </button>
+                          </label>
+                          <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">البلدية</span>
+                            <button
+                              onClick={() => handleSettingChange('order_field_commune', !settings.order_field_commune)}
+                              className={`w-10 h-6 rounded-full transition-colors relative ${settings.order_field_commune ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                            >
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${settings.order_field_commune ? 'translate-x-5' : 'translate-x-1'}`} />
+                            </button>
+                          </label>
+                          <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">ملاحظات</span>
+                            <button
+                              onClick={() => handleSettingChange('order_field_notes', !settings.order_field_notes)}
+                              className={`w-10 h-6 rounded-full transition-colors relative ${settings.order_field_notes ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                            >
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${settings.order_field_notes ? 'translate-x-5' : 'translate-x-1'}`} />
+                            </button>
+                          </label>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Template-specific sections (NovaDZ) */}
+                 {activeTemplateId === 'novadz' && (
+                 <div className="space-y-4">
+                    <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Eye className="w-4 h-4 text-indigo-500"/> أقسام NovaDZ</h4>
+                    <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
+                      {([
+                        ['nova_show_features', 'مميزات المنتج (بطاقات ✓)'],
+                        ['nova_show_trust', 'قسم "لماذا نحن"'],
+                      ] as const).map(([field, label]) => (
+                        <label key={field} className="flex items-center justify-between cursor-pointer py-1">
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                          <button onClick={() => handleSettingChange(field, (settings as any)[field] === false ? true : false)} className={`w-10 h-6 rounded-full transition-colors relative ${ (settings as any)[field] !== false ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                            <span className={`absolute top-1 left-0 w-4 h-4 rounded-full bg-white shadow transition-transform ${ (settings as any)[field] !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </button>
+                        </label>
+                      ))}
+                    </div>
+                 </div>
+                 )}
+
+                 {/* Template-specific sections (NeedDZ) */}
+                 {activeTemplateId === 'needdz' && (
+                 <div className="space-y-4">
+                    <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Eye className="w-4 h-4 text-indigo-500"/> أقسام NeedDZ</h4>
+                    <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
+                       <div className="space-y-3">
+                         {([
+                           ['needdz_show_urgent_bar', 'شريط العجلة (countdown)'],
+                           ['needdz_show_social_proof', 'قسم آراء العملاء'],
+                           ['needdz_show_card_proof', 'إحصائية بطاقة المنتج'],
+                         ] as const).map(([field, label]) => (
+                           <label key={field} className="flex items-center justify-between cursor-pointer group">
+                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                             <button
+                               onClick={() => handleSettingChange(field, (settings as any)[field] === false ? true : false)}
+                               className={`w-10 h-6 rounded-full transition-colors relative ${ (settings as any)[field] !== false ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                             >
+                               <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${ (settings as any)[field] !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+                             </button>
+                           </label>
+                         ))}
+                       </div>
+                    </div>
+                 </div>
+                 )}
+
+                 {/* Template-specific sections (Lumina) */}
+                 {activeTemplateId === 'lumina' && (
+                 <div className="space-y-4">
+                    <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Eye className="w-4 h-4 text-indigo-500"/> أقسام Lumina</h4>
+                    <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
+                       <div className="space-y-3">
+                         {([
+                           ['lumina_show_countdown', 'عداد تنازلي (countdown)'],
+                         ] as const).map(([field, label]) => (
+                           <label key={field} className="flex items-center justify-between cursor-pointer group">
+                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                             <button
+                               onClick={() => handleSettingChange(field, (settings as any)[field] === false ? true : false)}
+                               className={`w-10 h-6 rounded-full transition-colors relative ${ (settings as any)[field] !== false ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                             >
+                               <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${ (settings as any)[field] !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+                             </button>
+                           </label>
+                         ))}
+                       </div>
+                    </div>
+                 </div>
+                 )}
+
+                 {/* Chat Bubble */}
+                 <div className="space-y-4">
+                    <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><MousePointerClick className="w-3 h-3 text-indigo-500"/> فقاعة التواصل</h4>
+                    <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
+                       <p className="text-[11px] text-slate-500 dark:text-slate-400">تظهر زر عائم على الواجهة يسمح للزبائن بالتواصل معك عبر المنصات المتصلة (واتساب، تليغرام...)</p>
+                       <label className="flex items-center justify-between cursor-pointer group">
+                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">تفعيل فقاعة التواصل</span>
+                         <button
+                           onClick={() => handleSettingChange('chat_bubble_enabled', !settings.chat_bubble_enabled)}
+                           className={`w-10 h-6 rounded-full transition-colors relative ${settings.chat_bubble_enabled ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                         >
+                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${settings.chat_bubble_enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                         </button>
+                       </label>
+                       {settings.chat_bubble_enabled && (
+                         <p className="text-[10px] text-indigo-400 bg-indigo-500/10 px-3 py-2 rounded-xl">قم بإعداد قنوات التواصل من صفحة إعدادات البوت</p>
+                       )}
+                       {settings.chat_bubble_enabled && (
+                         <>
+                           <label className="flex items-center justify-between cursor-pointer group">
+                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">زر الاتصال المباشر</span>
+                             <button
+                               onClick={() => handleSettingChange('phone_call_enabled', !settings.phone_call_enabled)}
+                               className={`w-10 h-6 rounded-full transition-colors relative ${settings.phone_call_enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                             >
+                               <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${settings.phone_call_enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                             </button>
+                           </label>
+                           {settings.phone_call_enabled && (
+                             <input
+                               type="tel"
+                               dir="ltr"
+                               value={settings.contact_phone || ''}
+                               onChange={(e) => handleSettingChange('contact_phone', e.target.value)}
+                               placeholder="+213 555 123 456"
+                               className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0D14] text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
+                             />
+                           )}
+                         </>
+                       )}
                     </div>
                  </div>
               </div>
@@ -1747,6 +2346,23 @@ export default function GoldTemplateEditor() {
                            <UploadCloud className="w-8 h-8 text-slate-400 dark:text-slate-500 mb-2 group-hover:scale-110 transition-transform group-hover:text-indigo-400" />
                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('editor.uploadLogo')}</span>
                            <Input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleImageUpload('store_logo', f); }} />
+                        </label>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-3">صورة البانر / Banner</label>
+                      {settings.banner_url ? (
+                        <div className="relative group rounded-xl overflow-hidden bg-slate-200 dark:bg-[#0A0D14] aspect-video border border-slate-300 dark:border-white/5">
+                           <img src={settings.banner_url} alt="Banner" className="w-full h-full object-cover" />
+                           <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                              <Button variant="destructive" size="sm" onClick={() => handleSettingChange('banner_url', '')} className="rounded-xl">إزالة</Button>
+                           </div>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all cursor-pointer group">
+                           <UploadCloud className="w-8 h-8 text-slate-400 dark:text-slate-500 mb-2 group-hover:scale-110 transition-transform group-hover:text-indigo-400" />
+                           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">رفع صورة البانر</span>
+                           <Input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleImageUpload('banner_url', f); }} />
                         </label>
                       )}
                     </div>

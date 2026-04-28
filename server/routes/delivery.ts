@@ -271,6 +271,8 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
       'dhd livraison',
       'dhd livraison express',
       'dolivroo',
+      'maystro',
+      'maystro delivery',
     ];
     if (!supportedLabelCouriers.includes(companyName)) {
       res.status(400).json({ error: 'Label download not supported for this courier' });
@@ -308,11 +310,22 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
       ? String(order.courier_response?.company_code || order.courier_response?.provider || '').trim() || 'auto'
       : undefined;
 
+    const maystroDisplayId = companyName.includes('maystro')
+      ? String(
+          order.courier_response?.display_id_order ||
+          order.courier_response?.display_id ||
+          order.courier_response?.displayId ||
+          order.courier_response?.tracking ||
+          order.tracking_number ||
+          ''
+        ).trim() || undefined
+      : undefined;
+
     const labelResult = await (service as any).getLabelPdf(
       tracking,
       token,
       secondaryCredential,
-      dolivrooCompanyCode
+      dolivrooCompanyCode || maystroDisplayId
     );
     if (!labelResult?.ok) {
       res.status(400).json({ error: labelResult?.error || 'Failed to fetch label' });
@@ -486,21 +499,7 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
           if (apiSuccess) {
             results.push({ orderId, success: true, tracking_number, label_url });
           } else {
-            // API call failed — revert order status back to what it was before assignment
-            try {
-              await pool.query(
-                `UPDATE store_orders 
-                 SET status = $1, 
-                     delivery_company_id = $2, 
-                     delivery_status = $3, 
-                     cod_amount = $4, 
-                     updated_at = NOW()
-                 WHERE id = $5 AND client_id = $6`,
-                [previousStatus, previousDeliveryCompanyId || null, previousDeliveryStatus || null, previousCodAmount || null, orderId, clientId]
-              );
-            } catch (revertErr) {
-              console.error(`[Delivery] Failed to revert order ${orderId} status:`, revertErr);
-            }
+            // API call failed — keep the assignment but report the upload error
             results.push({ orderId, success: false, error: apiError });
           }
         } else {

@@ -72,11 +72,11 @@ function inferLockType(dbLockType: unknown, lockedReason: unknown): 'payment' | 
 // getCookieOptions is provided by utils/auth-cookies
 
 function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
-  const { isProduction, sameSite, domain } = getCookieOptions();
+  const { secure, sameSite, domain } = getCookieOptions();
 
   res.cookie(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
     path: '/',
@@ -85,7 +85,7 @@ function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
 
   res.cookie(REFRESH_COOKIE, refreshToken, {
     httpOnly: true,
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
     path: '/api/auth',
@@ -97,7 +97,7 @@ function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
     const csrf = crypto.randomBytes(32).toString('hex');
     res.cookie(CSRF_COOKIE, csrf, {
       httpOnly: false,
-      secure: isProduction,
+      secure,
       sameSite,
       domain,
       path: '/',
@@ -228,8 +228,11 @@ export const register: RequestHandler = async (req, res) => {
     // If user_type is 'client', also create a client record (for store owners)
     if (user.user_type === 'client') {
       try {
-        await pool.query(
-          `INSERT INTO clients (email, password, name, role, referred_by_affiliate_id, referral_voucher_code, created_at, updated_at)
+        const db = await ensureConnection();
+        const colRes = await db.query(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='clients' AND column_name IN ('password','password_hash')`);
+        const pwCol = colRes.rows.some((r: any) => r.column_name === 'password_hash') ? 'password_hash' : 'password';
+        await db.query(
+          `INSERT INTO clients (email, ${pwCol}, name, role, referred_by_affiliate_id, referral_voucher_code, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
            ON CONFLICT (email) DO UPDATE SET referred_by_affiliate_id = COALESCE(EXCLUDED.referred_by_affiliate_id, clients.referred_by_affiliate_id), referral_voucher_code = COALESCE(EXCLUDED.referral_voucher_code, clients.referral_voucher_code)`,
           [user.email, user.password, user.name || 'Store Owner', 'client', affiliateId, validatedVoucherCode]
@@ -478,14 +481,6 @@ export const login: RequestHandler = async (req, res) => {
 
     // Record successful login (clears failed attempt counters)
     recordSuccessfulLogin(ip, email);
-
-    // Update last_login timestamp in users table
-    try {
-      const pool = await ensureConnection();
-      await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
-    } catch (e) {
-      console.error('[LOGIN] Failed to update last_login:', e);
-    }
 
     res.json({
       message: "Login successful",
@@ -919,8 +914,11 @@ export const verifyAndRegister: RequestHandler = async (req, res) => {
 
     // Create client record
     try {
-      await pool.query(
-        `INSERT INTO clients (email, password, name, role, created_at, updated_at)
+      const db2 = await ensureConnection();
+      const colRes2 = await db2.query(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='clients' AND column_name IN ('password','password_hash')`);
+      const pwCol2 = colRes2.rows.some((r: any) => r.column_name === 'password_hash') ? 'password_hash' : 'password';
+      await db2.query(
+        `INSERT INTO clients (email, ${pwCol2}, name, role, created_at, updated_at)
          VALUES ($1, $2, $3, $4, NOW(), NOW())
          ON CONFLICT (email) DO NOTHING`,
         [user.email, user.password, user.name || 'Store Owner', 'client']

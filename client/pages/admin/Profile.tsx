@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
-import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, Sparkles } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
+import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, ShieldCheck, BadgeCheck, Mail, Phone, Building2, MapPin, Globe, CheckCircle2, AlertCircle, Sparkles, Tag } from 'lucide-react';
 
 type SubscriptionRow = {
   tier?: string | null;
@@ -36,56 +35,42 @@ function formatDate(input?: string | null): string {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium text-muted-foreground">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls = "w-full h-9 bg-background border border-border rounded-lg px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all";
+
 export default function Profile() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { theme } = useTheme();
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
-
   const [profile, setProfile] = React.useState<ProfileResponse | null>(null);
-  const [access, setAccess] = React.useState<{
-    status: string;
-    hasAccess: boolean;
-    daysLeft?: number;
-    message?: string;
-  } | null>(null);
+  const [access, setAccess] = React.useState<{ status: string; hasAccess: boolean; daysLeft?: number } | null>(null);
 
-  const [form, setForm] = React.useState({
-    name: '',
-    email: '',
-    phone: '',
-    business_name: '',
-    country: '',
-    city: '',
-  });
+  const [form, setForm] = React.useState({ name: '', email: '', phone: '', business_name: '', country: '', city: '' });
 
-  // Voucher code redemption state
   const [voucherCode, setVoucherCode] = useState('');
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState(false);
-  const [attemptsRemaining, setAttemptsRemaining] = useState(3);
 
-  // Affiliate voucher code state
   const [affiliateCode, setAffiliateCode] = useState('');
   const [affiliateLoading, setAffiliateLoading] = useState(false);
   const [affiliateError, setAffiliateError] = useState<string | null>(null);
   const [affiliateInfo, setAffiliateInfo] = useState<{
-    has_referral: boolean;
-    affiliate_name?: string;
-    voucher_code?: string;
-    discount_percent?: number;
-    discount_applied?: boolean;
+    has_referral: boolean; affiliate_name?: string; voucher_code?: string;
+    discount_percent?: number; discount_applied?: boolean;
   } | null>(null);
 
-  // Password change state
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
@@ -93,10 +78,8 @@ export default function Profile() {
   const [showNewPassword, setShowNewPassword] = useState(false);
 
   const handleFormatVoucherCode = (value: string) => {
-    // Normalize input (supports pasting with spaces/dashes) into XXXX-XXXX-XXXX-XXXX.
     const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
-    const formatted = cleaned.match(/.{1,4}/g)?.join('-') || cleaned;
-    setVoucherCode(formatted);
+    setVoucherCode(cleaned.match(/.{1,4}/g)?.join('-') || cleaned);
   };
 
   const handleRedeemVoucher = async (e: React.FormEvent) => {
@@ -104,212 +87,95 @@ export default function Profile() {
     setVoucherError(null);
     setVoucherSuccess(false);
     setVoucherLoading(true);
-
     try {
-      if (!voucherCode.trim()) {
-        throw new Error(t('profile.error.enterCode'));
-      }
+      if (!voucherCode.trim()) throw new Error(t('profile.error.enterCode'));
       const res = await fetch('/api/codes/redeem', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: voucherCode.trim().toUpperCase() }),
       });
-
       const data = await res.json().catch(() => ({} as any));
-
       if (!res.ok || data?.error) {
-        const msg = data?.error || data?.message || 'Failed to redeem code';
-        setVoucherError(msg);
-        setAttemptsRemaining(typeof data?.attemptsRemaining === 'number' ? data.attemptsRemaining : 3);
+        setVoucherError(data?.error || data?.message || 'Failed to redeem code');
       } else {
         setVoucherSuccess(true);
         setVoucherCode('');
-        setAttemptsRemaining(3);
-        
         toast({ title: t('common.success'), description: t('admin.profile.subscriptionActivated') });
-        
-        // Refresh user data
-        try {
-          const meRes = await fetch('/api/auth/me');
-          if (meRes.ok) {
-            const userData = await meRes.json();
-            localStorage.setItem('user', JSON.stringify(userData));
-          }
-        } catch (e) {
-          console.error('Failed to refresh user data:', e);
-        }
-
-        // Reload data and page after 2 seconds
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        setTimeout(() => window.location.reload(), 2000);
       }
     } catch (err: any) {
-      setVoucherError(err.message || 'Failed to redeem code');
+      setVoucherError(err.message);
     } finally {
       setVoucherLoading(false);
     }
   };
 
-  // Handle password change
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
     setPasswordSuccess(false);
-
     const { currentPassword, newPassword, confirmPassword } = passwordForm;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError(t('profile.error.allFieldsRequired'));
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setPasswordError(t('profile.error.passwordMinLength'));
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError(t('profile.error.passwordMismatch'));
-      return;
-    }
-
+    if (!currentPassword || !newPassword || !confirmPassword) { setPasswordError(t('profile.error.allFieldsRequired')); return; }
+    if (newPassword.length < 8) { setPasswordError(t('profile.error.passwordMinLength')); return; }
+    if (newPassword !== confirmPassword) { setPasswordError(t('profile.error.passwordMismatch')); return; }
     setPasswordLoading(true);
-
     try {
       const res = await fetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-
       const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data?.error || data?.message || 'Failed to change password');
-      }
-
+      if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to change password');
       setPasswordSuccess(true);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      toast({ title: t('common.success'), description: t('auth.passwordChanged') || 'Password changed successfully!' });
-
-      // Hide success message after 3 seconds
+      toast({ title: t('common.success'), description: t('profile.passwordUpdated') });
       setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err: any) {
-      setPasswordError(err.message || 'Failed to change password');
+      setPasswordError(err.message);
     } finally {
       setPasswordLoading(false);
     }
   };
 
-  // Load affiliate referral info
   const loadAffiliateInfo = async () => {
     try {
       const res = await fetch('/api/affiliates/my-referral', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setAffiliateInfo(data);
-      }
-    } catch (err) {
-      console.error('Failed to load affiliate info:', err);
-    }
+      if (res.ok) setAffiliateInfo(await res.json());
+    } catch {}
   };
 
-  // Apply affiliate code
   const handleApplyAffiliateCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setAffiliateError(null);
     setAffiliateLoading(true);
-
     try {
-      if (!affiliateCode.trim()) {
-        throw new Error(t('profile.error.enterVoucher'));
-      }
-
+      if (!affiliateCode.trim()) throw new Error(t('profile.error.enterVoucher'));
       const res = await fetch('/api/affiliates/apply-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ code: affiliateCode.trim().toUpperCase() }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to apply code');
-      }
-
-      toast({ 
-        title: 'Success!', 
-        description: `Code applied! You'll get ${data.affiliate.discount_percent}% off your first payment.` 
-      });
-      
+      if (!res.ok) throw new Error(data.error || 'Failed to apply code');
+      toast({ title: 'Success!', description: `Code applied! You'll get ${data.affiliate.discount_percent}% off.` });
       setAffiliateCode('');
       await loadAffiliateInfo();
     } catch (err: any) {
-      setAffiliateError(err.message || 'Failed to apply code');
+      setAffiliateError(err.message);
     } finally {
       setAffiliateLoading(false);
     }
   };
 
-  // Make main content area and sidebar transparent so wallpaper shows through
-  useEffect(() => {
-    // Load affiliate info on mount
-    loadAffiliateInfo();
-    
-    // Add data attribute to body for CSS targeting
-    document.body.setAttribute('data-profile-wallpaper', 'true');
-    
-    // Make main content transparent
-    const mainEl = document.querySelector('main');
-    if (mainEl) {
-      mainEl.style.background = 'transparent';
-    }
-
-    return () => {
-      document.body.removeAttribute('data-profile-wallpaper');
-      if (mainEl) {
-        mainEl.style.background = '';
-      }
-    };
-  }, []);
-
-  React.useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const load = async () => {
     try {
       setLoading(true);
-      const [pRes, aRes] = await Promise.all([
-        fetch('/api/users/me'),
-        fetch('/api/billing/check-access'),
-      ]);
-
+      const [pRes, aRes] = await Promise.all([fetch('/api/users/me'), fetch('/api/billing/check-access')]);
       if (pRes.ok) {
         const p = (await pRes.json()) as ProfileResponse;
         setProfile(p);
-        setForm({
-          name: p.name || '',
-          email: p.email || '',
-          phone: p.phone || '',
-          business_name: p.business_name || '',
-          country: p.country || '',
-          city: p.city || '',
-        });
+        setForm({ name: p.name || '', email: p.email || '', phone: p.phone || '', business_name: p.business_name || '', country: p.country || '', city: p.city || '' });
       }
-
-      if (aRes.ok) {
-        const a = await aRes.json();
-        setAccess(a);
-      }
-    } catch (e) {
-      console.error('Profile load error:', e);
+      if (aRes.ok) setAccess(await aRes.json());
+    } catch {
       toast({ variant: 'destructive', title: t('common.error'), description: t('admin.profile.loadError') });
     } finally {
       setLoading(false);
@@ -319,23 +185,10 @@ export default function Profile() {
   const onSave = async () => {
     try {
       setSaving(true);
-      const res = await fetch('/api/users/me', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(form),
-      });
-
+      const res = await fetch('/api/users/me', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.error || data?.message || 'Failed to update profile');
-      }
-
-      if (data?.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-
+      if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to update profile');
+      if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
       toast({ title: t('common.saved'), description: t('admin.profile.updateSuccess') });
       await load();
     } catch (e) {
@@ -345,242 +198,330 @@ export default function Profile() {
     }
   };
 
-  const subStatus = access?.status || profile?.subscription?.status || 'unknown';
-  const hasAccess = access?.hasAccess ?? true;
+  useEffect(() => { load(); loadAffiliateInfo(); }, []);
 
+  const subStatus = access?.status || profile?.subscription?.status || 'unknown';
   const trialEnds = profile?.subscription?.trial_ends_at || null;
   const periodEnds = profile?.subscription?.current_period_end || null;
 
-  const isLight = theme !== 'dark';
+  const initials = form.name
+    ? form.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    : (form.email?.[0] || '?').toUpperCase();
 
-  // Theming variables mapping based on context
-  const bgDeep = 'bg-transparent';
-  const textMain = isLight ? 'text-gray-800' : 'text-[#e2e8f0]';
-  const cardBg = isLight ? 'bg-white' : 'bg-[#0b111a]';
-  const borderColor = isLight ? 'border-gray-200' : 'border-[#1e293b]';
-  const textMuted = isLight ? 'text-gray-500' : 'text-gray-400';
-  const inputBg = isLight ? 'bg-white' : 'bg-[#050a11]';
-  const inputBorder = isLight ? 'border-gray-300' : borderColor;
-  const gradientCard = isLight ? 'bg-white' : 'bg-gradient-to-br from-[#0b111a] to-[#111827]';
-  const cardShadow = isLight ? 'shadow-[0_2px_12px_rgba(0,0,0,0.08)]' : '';
-  const inputShadow = isLight ? 'shadow-sm' : '';
+  const statusColor = subStatus === 'active'
+    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+    : subStatus === 'trial'
+    ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 border-blue-200 dark:border-blue-500/20'
+    : 'bg-muted text-muted-foreground border-border';
 
   return (
-    <div className={`min-h-screen ${bgDeep} ${textMain} p-3 sm:p-4 font-[Inter] transition-colors duration-300`}>
-      <div className="max-w-6xl mx-auto flex flex-col gap-3">
+    <div className="space-y-4 max-w-5xl mx-auto">
 
-        {/* ── Page Header ── */}
-        <div className={`${isLight ? 'bg-gradient-to-r from-blue-600 to-indigo-600' : 'bg-gradient-to-r from-blue-900/60 to-indigo-900/60 border border-white/5'} rounded-[20px] p-3.5 flex items-center gap-3 shadow-lg shadow-blue-500/20`}>
-          <div className="w-10 h-10 rounded-[14px] bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
-            <User className="w-5 h-5 text-white" />
+      {/* ── Hero card ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-slate-900/45 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/70 ring-1 ring-black/5 dark:ring-white/10 shadow-lg shadow-slate-200/60 dark:shadow-black/40 p-4">
+        <div className="relative flex items-center justify-between gap-4">
+          {/* Left section - Avatar + Info */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Avatar */}
+            <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-purple-500 to-violet-600 border border-white/50 dark:border-white/10 flex items-center justify-center shrink-0 text-lg font-bold text-white shadow-md">
+              {loading ? <Loader className="w-5 h-5 animate-spin opacity-70" /> : initials}
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <h1 className="text-sm font-semibold text-slate-900 dark:text-white truncate">{loading ? '—' : (form.name || t('profile.yourAccount'))}</h1>
+              <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{form.email}</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-bold text-white truncate">
-              {loading ? '—' : (form.name || t('profile.yourAccount'))}
-            </h1>
-            <p className="text-xs text-blue-100/70 truncate">{form.email}</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className={`text-[11px] px-2.5 py-1 rounded-xl font-bold border uppercase ${
-              subStatus === 'active' ? 'bg-emerald-400/20 border-emerald-300/40 text-emerald-200'
-              : subStatus === 'trial' ? 'bg-blue-300/20 border-blue-200/40 text-blue-100'
-              : 'bg-white/10 border-white/20 text-white/60'
-            }`}>{subStatus}</span>
-            <span className={`text-[11px] px-2.5 py-1 rounded-xl font-bold border uppercase ${
-              hasAccess ? 'bg-yellow-400/20 border-yellow-300/40 text-yellow-200' : 'bg-white/10 border-white/20 text-white/60'
-            }`}>
-              {hasAccess ? t('profile.goldTier') : t('profile.freePlan')}
+
+          {/* Right section - Status badge */}
+          <div className="shrink-0 text-end">
+            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm ${statusColor}`}>
+              {subStatus === 'active' && <BadgeCheck className="w-3 h-3" />}
+              <span>{subStatus.toUpperCase()}</span>
             </span>
+            {(trialEnds || periodEnds) && (
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                {subStatus === 'active' && periodEnds
+                  ? `${t('profile.renews')} ${formatDate(periodEnds)}`
+                  : trialEnds ? `${t('profile.trialEnds')} ${formatDate(trialEnds)}`
+                  : `${t('profile.renews')} ${formatDate(periodEnds)}`}
+              </p>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* ── Main Grid: 3 columns ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+      {/* ── Three columns ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
-          {/* Col 1 — Account Info */}
-          <div className={`lg:col-span-5 ${gradientCard} border ${isLight ? 'border-blue-100' : 'border-blue-900/40'} rounded-[20px] p-4 flex flex-col gap-3 ${cardShadow}`}>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                <User className="w-3.5 h-3.5 text-blue-500" />
+        {/* COL 1 — Account info */}
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          {/* Card header */}
+          <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-blue-50/50 dark:bg-blue-950/20">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
+              <User className="w-4 h-4 text-blue-500" />
+            </div>
+            <span className="text-sm font-bold">{t('profile.accountInfo')}</span>
+          </div>
+
+          <div className="p-5 space-y-3">
+            {/* Name */}
+            <Field label={t('profile.fullName')}>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+                  className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.fullName')} />
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-500">{t('profile.accountInfo')}</span>
+            </Field>
+
+            {/* Email */}
+            <Field label={t('profile.emailAddress')}>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+                  className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.email')} />
+              </div>
+            </Field>
+
+            {/* Phone + Store side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t('profile.phoneNumber')}>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                  <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
+                    className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.phone')} />
+                </div>
+              </Field>
+              <Field label={t('profile.storeName')}>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                  <input type="text" value={form.business_name} onChange={e => setForm({ ...form, business_name: e.target.value })}
+                    className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.storeName')} />
+                </div>
+              </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
-              <div>
-                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.fullName')}</label>
-                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
-                  placeholder={t('profile.placeholder.fullName')} />
-              </div>
-              <div>
-                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.emailAddress')}</label>
-                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
-                  placeholder={t('profile.placeholder.email')} />
-              </div>
-              <div>
-                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.phoneNumber')}</label>
-                <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
-                  placeholder={t('profile.placeholder.phone')} />
-              </div>
-              <div>
-                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.storeName')}</label>
-                <input type="text" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })}
-                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
-                  placeholder={t('profile.placeholder.storeName')} />
-              </div>
-              <div>
-                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.cityWilaya')}</label>
-                <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
-                  placeholder={t('profile.placeholder.city')} />
-              </div>
-              <div>
-                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.country')}</label>
-                <input type="text" value={form.country} readOnly
-                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMuted} ${inputShadow} cursor-not-allowed opacity-60`}
-                  placeholder={t('profile.placeholder.country')} />
-              </div>
+            {/* City + Country side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t('profile.cityWilaya')}>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                  <input type="text" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })}
+                    className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.city')} />
+                </div>
+              </Field>
+              <Field label={t('profile.country')}>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
+                  {form.country ? (
+                    <div className={`${inputCls} pl-8 flex items-center opacity-60 cursor-not-allowed`}>
+                      <span className="text-sm">{form.country}</span>
+                    </div>
+                  ) : (
+                    <input type="text" value="" readOnly
+                      className={`${inputCls} pl-8 opacity-50 cursor-not-allowed`} placeholder={t('profile.placeholder.country')} />
+                  )}
+                </div>
+              </Field>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-1">
               <button onClick={onSave} disabled={saving}
-                className="h-9 px-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition-all shadow-md shadow-blue-500/20">
+                className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-blue-600/20">
                 {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {t('profile.saveChanges')}
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Col 2 — Security */}
-          <div className={`lg:col-span-4 ${gradientCard} border ${isLight ? 'border-orange-100' : 'border-orange-900/30'} rounded-[20px] p-4 flex flex-col gap-2.5 ${cardShadow}`}>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-orange-500/15 flex items-center justify-center">
-                <Lock className="w-3.5 h-3.5 text-orange-500" />
-              </div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-orange-500">{t('profile.security')}</span>
+        {/* COL 2 — Security */}
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-orange-50/50 dark:bg-orange-950/20">
+            <div className="w-7 h-7 rounded-lg bg-orange-500/15 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 text-orange-500" />
             </div>
-            <form onSubmit={handleChangePassword} className="flex flex-col gap-2.5">
+            <span className="text-sm font-bold">{t('profile.security')}</span>
+          </div>
+
+          <form onSubmit={handleChangePassword} className="p-5 space-y-3">
+            <Field label={t('profile.currentPassword')}>
               <div className="relative">
-                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.currentPassword')}</label>
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
                 <input type={showCurrentPassword ? 'text' : 'password'} value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 pr-10 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all`}
-                  placeholder={t('profile.placeholder.currentPassword')} />
+                  onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  className={`${inputCls} pl-8 pr-9`} placeholder={t('profile.placeholder.currentPassword')} />
                 <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className={`absolute right-3 bottom-2 ${textMuted} hover:text-orange-400 transition-colors`}>
+                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors">
                   {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </Field>
+
+            <Field label={t('profile.newPassword')}>
               <div className="relative">
-                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.newPassword')}</label>
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
                 <input type={showNewPassword ? 'text' : 'password'} value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 pr-10 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all`}
-                  placeholder={t('profile.placeholder.minChars')} />
+                  onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  className={`${inputCls} pl-8 pr-9`} placeholder={t('profile.placeholder.minChars')} />
                 <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                  className={`absolute right-3 bottom-2 ${textMuted} hover:text-orange-400 transition-colors`}>
+                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors">
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <div>
-                <label className={`block text-[10px] uppercase tracking-wider ${textMuted} mb-1 font-bold`}>{t('profile.confirmNewPassword')}</label>
+              {/* Password strength bar */}
+              {passwordForm.newPassword.length > 0 && (() => {
+                const p = passwordForm.newPassword;
+                const score = [p.length >= 8, /[A-Z]/.test(p), /[0-9]/.test(p), /[^A-Za-z0-9]/.test(p)].filter(Boolean).length;
+                const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+                const colors = ['', 'bg-red-500', 'bg-amber-500', 'bg-blue-500', 'bg-emerald-500'];
+                const textColors = ['', 'text-red-500', 'text-amber-500', 'text-blue-500', 'text-emerald-500'];
+                return (
+                  <div className="mt-1.5 space-y-1">
+                    <div className="flex gap-1">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= score ? colors[score] : 'bg-muted'}`} />
+                      ))}
+                    </div>
+                    <p className={`text-[10px] font-semibold ${textColors[score]}`}>{labels[score]}</p>
+                  </div>
+                );
+              })()}
+            </Field>
+
+            <Field label={t('profile.confirmNewPassword')}>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
                 <input type="password" value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                  className={`w-full h-9 ${inputBg} border ${inputBorder} rounded-xl px-3 text-sm ${textMain} ${inputShadow} focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all`}
-                  placeholder={t('profile.placeholder.repeatPassword')} />
+                  onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.repeatPassword')} />
+                {passwordForm.confirmPassword.length > 0 && (
+                  <span className="absolute inset-y-0 right-3 flex items-center">
+                    {passwordForm.confirmPassword === passwordForm.newPassword
+                      ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      : <AlertCircle className="w-4 h-4 text-red-400" />}
+                  </span>
+                )}
               </div>
-              {passwordError && <p className="text-red-400 text-xs">{passwordError}</p>}
-              {passwordSuccess && <p className="text-emerald-400 text-xs">{t('profile.passwordUpdated')}</p>}
+            </Field>
+
+            {passwordError && (
+              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />{passwordError}
+              </div>
+            )}
+            {passwordSuccess && (
+              <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{t('profile.passwordUpdated')}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-1">
               <button type="submit"
                 disabled={passwordLoading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
-                className="h-9 w-full bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all">
+                className="h-9 px-5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-orange-600/20">
                 {passwordLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
                 {t('profile.updatePassword')}
               </button>
-            </form>
-          </div>
+            </div>
+          </form>
+        </div>
 
-          {/* Col 3 — Plan, Codes */}
-          <div className="lg:col-span-3 flex flex-col gap-3">
+        {/* COL 3 — Voucher + Referral */}
+        <div className="space-y-4">
 
-            {/* Active Plan */}
-            <div className={`${isLight ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200' : 'bg-gradient-to-br from-yellow-900/20 to-amber-900/10 border-yellow-700/20'} border rounded-[20px] p-3.5 ${cardShadow}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-yellow-400/20 flex items-center justify-center">
-                    <Sparkles className="w-3.5 h-3.5 text-yellow-500" />
-                  </div>
-                  <span className={`text-sm font-bold ${isLight ? 'text-yellow-700' : 'text-yellow-300'}`}>
-                    {profile?.subscription?.tier || 'Free Plan'}
-                  </span>
-                </div>
-                <span className={`text-[11px] px-2 py-0.5 rounded-lg font-bold border uppercase ${
-                  subStatus === 'active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-gray-500/10 border-gray-500/20 text-gray-400'
-                }`}>{subStatus}</span>
+          {/* Redeem voucher — ticket style */}
+          <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800/50 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 dark:from-indigo-950/30 dark:to-violet-950/20 overflow-hidden">
+            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-indigo-200/60 dark:border-indigo-800/40">
+              <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+                <Ticket className="w-4 h-4 text-indigo-500" />
               </div>
-              {(trialEnds || periodEnds) && (
-                <p className={`text-xs ${textMuted} mt-1.5`}>
-                  {trialEnds ? `${t('profile.trialEnds')} ${formatDate(trialEnds)}` : `${t('profile.renews')} ${formatDate(periodEnds)}`}
-                </p>
-              )}
+              <span className="text-sm font-bold">{t('profile.redeemCode')}</span>
             </div>
 
-            {/* Redeem Voucher */}
-            <div className={`${isLight ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200' : 'bg-gradient-to-br from-blue-900/20 to-indigo-900/10 border-blue-700/20'} border-l-2 border-l-blue-500 border rounded-[20px] p-3.5 ${cardShadow}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <Ticket className="w-4 h-4 text-blue-400" />
-                <span className={`text-[11px] font-bold uppercase tracking-wider ${textMuted}`}>{t('profile.redeemCode')}</span>
+            <div className="p-5 space-y-3">
+              {/* Dashed ticket input area */}
+              <div className="rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700/60 bg-white/60 dark:bg-black/20 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 dark:text-indigo-500 mb-2 text-center">
+                  {t('profile.redeemCode')}
+                </p>
+                <input
+                  type="text" value={voucherCode}
+                  onChange={e => handleFormatVoucherCode(e.target.value)}
+                  className="w-full bg-transparent text-center font-mono text-lg font-bold tracking-[0.25em] text-indigo-700 dark:text-indigo-300 placeholder:text-indigo-300 dark:placeholder:text-indigo-700 border-none outline-none"
+                  placeholder="XXXX-XXXX-XXXX"
+                />
               </div>
-              <form onSubmit={handleRedeemVoucher} className="flex gap-2">
-                <input type="text" value={voucherCode} onChange={(e) => handleFormatVoucherCode(e.target.value)}
-                  className={`flex-1 h-9 ${inputBg} border ${inputBorder} rounded-xl px-2 font-mono text-xs text-center ${textMain} ${inputShadow} focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
-                  placeholder={t('profile.placeholder.voucherCode')} />
+
+              <form onSubmit={handleRedeemVoucher}>
                 <button type="submit" disabled={voucherLoading || !voucherCode}
-                  className="h-9 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-all whitespace-nowrap">
-                  {voucherLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : t('profile.apply')}
+                  className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-indigo-600/20">
+                  {voucherLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {t('profile.apply')}
                 </button>
               </form>
-              {voucherError && <p className="text-red-400 text-xs mt-1.5">{voucherError}</p>}
-              {voucherSuccess && <p className="text-emerald-400 text-xs mt-1.5">{t('profile.redeemed')}</p>}
+
+              {voucherError && (
+                <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />{voucherError}
+                </div>
+              )}
+              {voucherSuccess && (
+                <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{t('profile.redeemed')}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Referral */}
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                <Gift className="w-4 h-4 text-emerald-500" />
+              </div>
+              <span className="text-sm font-bold">{t('profile.referral')}</span>
             </div>
 
-            {/* Referral Program */}
-            <div className={`${isLight ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200' : 'bg-gradient-to-br from-emerald-900/20 to-teal-900/10 border-emerald-700/20'} border-l-2 border-l-emerald-500 border rounded-[20px] p-3.5 ${cardShadow}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <Gift className="w-4 h-4 text-emerald-400" />
-                <span className={`text-[11px] font-bold uppercase tracking-wider ${textMuted}`}>{t('profile.referral')}</span>
-              </div>
+            <div className="p-5 space-y-3">
               {affiliateInfo?.discount_applied ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-[12px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                    <Percent className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800/50 p-4 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
+                    <Percent className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <div>
-                    <p className={`text-sm font-bold ${isLight ? 'text-gray-800' : 'text-white'}`}>{affiliateInfo.discount_percent}{t('profile.percentOff')}</p>
-                    <p className={`text-xs ${textMuted}`}>{affiliateInfo.voucher_code}</p>
+                  <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300">
+                    {affiliateInfo.discount_percent}% <span className="text-sm font-semibold">{t('profile.percentOff')}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground font-mono">{affiliateInfo.voucher_code}</p>
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <BadgeCheck className="w-3.5 h-3.5" /> Discount active on your account
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleApplyAffiliateCode} className="flex gap-2">
-                  <input type="text" value={affiliateCode} onChange={(e) => setAffiliateCode(e.target.value)}
-                    className={`flex-1 h-9 ${inputBg} border ${inputBorder} rounded-xl px-2 text-xs uppercase text-center ${textMain} ${inputShadow} focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all`}
-                    placeholder={t('profile.placeholder.partnerCode')} />
+                <form onSubmit={handleApplyAffiliateCode} className="space-y-2">
+                  <div className="relative">
+                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                    <input type="text" value={affiliateCode} onChange={e => setAffiliateCode(e.target.value)}
+                      className={`${inputCls} pl-8 uppercase tracking-widest text-center font-mono`}
+                      placeholder="PARTNER-CODE" />
+                  </div>
                   <button type="submit" disabled={affiliateLoading || !affiliateCode}
-                    className="h-9 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-all">
-                    {affiliateLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : t('profile.apply')}
+                    className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-emerald-600/20">
+                    {affiliateLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
+                    {t('profile.apply')}
                   </button>
                 </form>
               )}
-              {affiliateError && <p className="text-red-400 text-xs mt-1.5">{affiliateError}</p>}
+              {affiliateError && (
+                <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />{affiliateError}
+                </div>
+              )}
             </div>
-
           </div>
-        </div>
 
+        </div>
       </div>
     </div>
   );
-};
+}

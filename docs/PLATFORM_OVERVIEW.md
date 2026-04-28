@@ -40,7 +40,7 @@ Database: PostgreSQL
 
 ## How Orders Work (The ONLY Thing That Matters)
 1. Customer finds product on public storefront
-2. Customer fills checkout form (name, email, phone, address)
+2. Customer fills checkout form (name, phone, address)
 3. Customer submits order
 4. Order saved to `store_orders` table with `client_id = store_owner_id`
 5. Store owner logs in to dashboard → Orders page

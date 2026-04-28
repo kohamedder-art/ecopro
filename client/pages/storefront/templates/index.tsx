@@ -15,12 +15,19 @@ import ArtisanTemplate from './artisan/ArtisanTemplate';
 import VeraTemplate from './vera/VeraTemplate';
 import StreetwearTemplate from './streetwear/StreetwearTemplate';
 import GalleryTemplate from './gallery/GalleryTemplate';
+import IycoTemplate from './iyco/IycoTemplate';
+import Bassem28Template from './bassem28/Bassem28Template';
+import ClassicShopTemplate from './classicshop/ClassicShopTemplate';
+import JewelHeartTemplate from './jewelheart/JewelHeartTemplate';
+import Dz3ShopTemplate from './dz3shop/Dz3ShopTemplate';
+import SpiriluxeTemplate from './spiriluxe/SpiriluxeTemplate';
+import LeRoiShopTemplate from './leroishop/LeRoiShopTemplate';
 
 export type TemplateId = 'dzshop' | 'dzpremium' | 'luxedrop' | string;
 
 export function normalizeTemplateId(id: string): string {
     if (id === 'luxedark') return 'luxedrop'; // Removed template, redirect to closest
-    const validIds = ['dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery'];
+    const validIds = ['dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery', 'iyco', 'bassem28', 'classicshop', 'jewelheart', 'dz3shop', 'spiriluxe', 'leroishop'];
     if (validIds.includes(id)) return id;
     return 'dzshop'; // Fallback
 }
@@ -72,6 +79,20 @@ export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
           return <StreetwearTemplate {...sanitizedProps} />;
       case 'gallery':
           return <GalleryTemplate {...sanitizedProps} />;
+      case 'iyco':
+          return <IycoTemplate {...sanitizedProps} />;
+      case 'bassem28':
+          return <Bassem28Template {...sanitizedProps} />;
+      case 'classicshop':
+          return <ClassicShopTemplate {...sanitizedProps} />;
+      case 'jewelheart':
+          return <JewelHeartTemplate {...sanitizedProps} />;
+      case 'dz3shop':
+          return <Dz3ShopTemplate {...sanitizedProps} />;
+      case 'spiriluxe':
+          return <SpiriluxeTemplate {...sanitizedProps} />;
+      case 'leroishop':
+          return <LeRoiShopTemplate {...sanitizedProps} />;
       case 'minimalist':
           return <MinimalistTemplate {...sanitizedProps} />;
       case 'dzpremium':
@@ -86,4 +107,4 @@ export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
   }
 }
 
-export { DZShopTemplate, DZPremiumTemplate, LuxeDropTemplate, NeedDZTemplate, NovaDzTemplate, MinimalistTemplate, LuminaTemplate, ZenithTemplate, BoutiqueTemplate, AuroraTemplate, SculptorTemplate, ArtisanTemplate, VeraTemplate, StreetwearTemplate, GalleryTemplate };
+export { DZShopTemplate, DZPremiumTemplate, LuxeDropTemplate, NeedDZTemplate, NovaDzTemplate, MinimalistTemplate, LuminaTemplate, ZenithTemplate, BoutiqueTemplate, AuroraTemplate, SculptorTemplate, ArtisanTemplate, VeraTemplate, StreetwearTemplate, GalleryTemplate, IycoTemplate, Bassem28Template, ClassicShopTemplate, JewelHeartTemplate, Dz3ShopTemplate, SpiriluxeTemplate, LeRoiShopTemplate };

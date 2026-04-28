@@ -639,8 +639,8 @@ export const staffLogin: RequestHandler = async (req, res) => {
     // Set HttpOnly cookie for staff auth (kept separate from client/owner cookies)
     res.cookie('ecopro_staff_at', token, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+      secure: isProduction || !!process.env.TUNNEL_MODE,
+      sameSite: (isProduction || !!process.env.TUNNEL_MODE ? 'none' : 'lax') as 'none' | 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -747,10 +747,11 @@ export const getStaffMe: RequestHandler = async (req, res) => {
 // STAFF LOGOUT - clears staff auth cookie
 export const staffLogout: RequestHandler = async (_req, res) => {
   const isProduction = process.env.NODE_ENV === 'production';
+  const isTunnel = !!process.env.TUNNEL_MODE;
   res.clearCookie('ecopro_staff_at', {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    secure: isProduction || isTunnel,
+    sameSite: (isProduction || isTunnel ? 'none' : 'lax') as 'none' | 'lax',
     path: '/',
   });
   res.json({ ok: true });

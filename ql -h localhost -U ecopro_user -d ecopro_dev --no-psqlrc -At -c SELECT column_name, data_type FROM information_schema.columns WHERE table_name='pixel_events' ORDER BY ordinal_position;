@@ -1,0 +1,28 @@
+                                       Table "public.pixel_events"
+   Column   |           Type           | Collation | Nullable |                 Default                  
+------------+--------------------------+-----------+----------+------------------------------------------
+ id         | integer                  |           | not null | nextval('pixel_events_id_seq'::regclass)
+ client_id  | integer                  |           | not null | 
+ pixel_type | character varying(20)    |           | not null | 
+ event_name | character varying(50)    |           | not null | 
+ event_data | jsonb                    |           |          | '{}'::jsonb
+ page_url   | text                     |           |          | 
+ user_agent | text                     |           |          | 
+ ip_address | inet                     |           |          | 
+ session_id | character varying(100)   |           |          | 
+ visitor_id | character varying(100)   |           |          | 
+ product_id | integer                  |           |          | 
+ order_id   | integer                  |           |          | 
+ revenue    | numeric(12,2)            |           |          | 
+ currency   | character varying(10)    |           |          | 'DZD'::character varying
+ created_at | timestamp with time zone |           |          | now()
+Indexes:
+    "pixel_events_pkey" PRIMARY KEY, btree (id)
+    "idx_pixel_events_client_date" btree (client_id, created_at DESC)
+    "idx_pixel_events_event_name" btree (event_name)
+    "idx_pixel_events_type" btree (pixel_type)
+Check constraints:
+    "pixel_events_pixel_type_check" CHECK (pixel_type::text = ANY (ARRAY['facebook'::character varying, 'tiktok'::character varying]::text[]))
+Foreign-key constraints:
+    "pixel_events_client_id_fkey" FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+

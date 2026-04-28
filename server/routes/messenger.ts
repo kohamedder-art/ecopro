@@ -13,44 +13,50 @@ import crypto from 'crypto';
 import { replaceTemplateVariables } from '../utils/bot-messaging';
 import { getPublicBaseUrl } from '../utils/public-url';
 import { logSecurityEvent } from '../utils/security';
+import { handleCustomerMessage } from '../services/ai-customer';
+import { decryptData } from '../utils/encryption';
 
 const router = Router();
 
-// Environment variables
-const FB_VERIFY_TOKEN = process.env.FB_MESSENGER_VERIFY_TOKEN || 'ecopro_messenger_verify';
-const FB_APP_SECRET = process.env.FB_APP_SECRET || '';
+// Environment variables – read lazily so dotenv has loaded by the time they're accessed
+function getFbVerifyToken() { return process.env.FB_MESSENGER_VERIFY_TOKEN || 'ecopro_messenger_verify'; }
+function getFbAppSecret() { return process.env.FB_APP_SECRET || ''; }
 
 // Optional platform-wide fallback page (shared) for stores without their own Page.
 // NOTE: Page Access Token is secret; never expose it via public endpoints.
-const PLATFORM_FB_PAGE_ID = String(process.env.PLATFORM_FB_PAGE_ID || '').trim();
-const PLATFORM_FB_PAGE_ACCESS_TOKEN = String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim();
-const PLATFORM_MESSENGER_ENABLED =
-  String(process.env.PLATFORM_MESSENGER_ENABLED || '').toLowerCase() === 'true' ||
-  (!!PLATFORM_FB_PAGE_ID && !!PLATFORM_FB_PAGE_ACCESS_TOKEN);
-
-function isPlatformPage(pageId: string): boolean {
-  return !!PLATFORM_FB_PAGE_ID && String(pageId) === PLATFORM_FB_PAGE_ID;
+function getPlatformFbPageId() { return String(process.env.PLATFORM_FB_PAGE_ID || '').trim(); }
+function getPlatformFbPageAccessToken() { return String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim(); }
+function getPlatformMessengerEnabled() {
+  return String(process.env.PLATFORM_MESSENGER_ENABLED || '').toLowerCase() === 'true' ||
+    (!!getPlatformFbPageId() && !!getPlatformFbPageAccessToken());
 }
 
-function resolveEffectivePageConfig(botRow: any): { enabled: boolean; pageId: string; pageAccessToken: string; usingPlatform: boolean; reason?: string } {
-  const enabled = Boolean(botRow?.messenger_enabled);
-  if (!enabled) return { enabled: false, pageId: '', pageAccessToken: '', usingPlatform: false };
+function isPlatformPage(pageId: string): boolean {
+  return !!getPlatformFbPageId() && String(pageId) === getPlatformFbPageId();
+}
 
+function resolveEffectivePageConfig(botRow: any, oauthToken?: string): { enabled: boolean; pageId: string; pageAccessToken: string; usingPlatform: boolean; reason?: string } {
   const storePageId = botRow?.fb_page_id ? String(botRow.fb_page_id).trim() : '';
   const storeToken = botRow?.fb_page_access_token ? String(botRow.fb_page_access_token).trim() : '';
 
+  // Priority 1: OAuth token from facebook_tokens table (encrypted, auto-refreshable)
+  if (storePageId && oauthToken) {
+    return { enabled: true, pageId: storePageId, pageAccessToken: oauthToken, usingPlatform: false };
+  }
+
+  // Priority 2: Platform shared Page
   // If the store is configured to use the platform shared Page, always use the platform env token.
   // This ensures one token is used for all stores and avoids stale per-store tokens causing OAuth 190.
-  if (storePageId && PLATFORM_MESSENGER_ENABLED && storePageId === PLATFORM_FB_PAGE_ID && PLATFORM_FB_PAGE_ACCESS_TOKEN) {
-    return { enabled: true, pageId: PLATFORM_FB_PAGE_ID, pageAccessToken: PLATFORM_FB_PAGE_ACCESS_TOKEN, usingPlatform: true };
+  if (storePageId && getPlatformMessengerEnabled() && storePageId === getPlatformFbPageId() && getPlatformFbPageAccessToken()) {
+    return { enabled: true, pageId: getPlatformFbPageId(), pageAccessToken: getPlatformFbPageAccessToken(), usingPlatform: true };
   }
 
   if (storePageId && storeToken) {
     return { enabled: true, pageId: storePageId, pageAccessToken: storeToken, usingPlatform: false };
   }
 
-  if (PLATFORM_MESSENGER_ENABLED && PLATFORM_FB_PAGE_ID && PLATFORM_FB_PAGE_ACCESS_TOKEN) {
-    return { enabled: true, pageId: PLATFORM_FB_PAGE_ID, pageAccessToken: PLATFORM_FB_PAGE_ACCESS_TOKEN, usingPlatform: true };
+  if (getPlatformMessengerEnabled() && getPlatformFbPageId() && getPlatformFbPageAccessToken()) {
+    return { enabled: true, pageId: getPlatformFbPageId(), pageAccessToken: getPlatformFbPageAccessToken(), usingPlatform: true };
   }
 
   return {
@@ -167,7 +173,19 @@ export const getMessengerPageLink: RequestHandler = async (req, res) => {
       return res.json({ enabled: false });
     }
 
-    const effective = resolveEffectivePageConfig(botRes.rows[0]);
+    // Check for OAuth token from facebook_tokens (higher priority)
+    let oauthPageToken: string | undefined;
+    try {
+      const oauthRes = await pool.query(
+        `SELECT page_access_token_encrypted FROM facebook_tokens WHERE client_id = $1 AND is_active = TRUE`,
+        [clientId]
+      );
+      if (oauthRes.rows.length && oauthRes.rows[0].page_access_token_encrypted) {
+        oauthPageToken = decryptData(oauthRes.rows[0].page_access_token_encrypted);
+      }
+    } catch { /* OAuth lookup is best-effort */ }
+
+    const effective = resolveEffectivePageConfig(botRes.rows[0], oauthPageToken);
     if (!effective.enabled || !effective.pageId || !effective.pageAccessToken) {
       return res.json({
         enabled: false,
@@ -277,7 +295,7 @@ export const checkMessengerConnection: RequestHandler = async (req, res) => {
  * Verify request signature from Facebook
  */
 function verifyFBSignature(req: any): boolean {
-  if (!FB_APP_SECRET) return true; // Skip verification if not configured
+  if (!getFbAppSecret()) return true; // Skip verification if not configured
   
   const signature = req.headers['x-hub-signature-256'];
   if (!signature) return false;
@@ -290,7 +308,7 @@ function verifyFBSignature(req: any): boolean {
     : Buffer.from(JSON.stringify(req.body ?? {}));
   
   const expectedSignature = 'sha256=' + crypto
-    .createHmac('sha256', FB_APP_SECRET)
+    .createHmac('sha256', getFbAppSecret())
     .update(rawBody)
     .digest('hex');
 
@@ -497,7 +515,7 @@ const verifyWebhook: RequestHandler = (req, res) => {
   console.log('[Messenger] Webhook verification attempt:', { mode, token: token ? '***' : 'missing', challenge: challenge ? 'present' : 'missing' });
 
   const tokenStr = typeof token === 'string' ? token : Array.isArray(token) ? token[0] : '';
-  const tokenOk = tokenStr === FB_VERIFY_TOKEN || tokenStr === '';
+  const tokenOk = tokenStr === getFbVerifyToken() || tokenStr === '';
 
   if (mode === 'subscribe' && tokenOk) {
     console.log('[Messenger] Webhook verified successfully');
@@ -515,12 +533,25 @@ const verifyWebhook: RequestHandler = (req, res) => {
  */
 const handleWebhook: RequestHandler = async (req, res) => {
   // Verify signature
-  if (FB_APP_SECRET && !verifyFBSignature(req)) {
+  if (getFbAppSecret() && !verifyFBSignature(req)) {
     console.warn('[Messenger] Invalid signature');
     return res.sendStatus(403);
   }
 
   const body = req.body;
+
+  // Handle Instagram DMs (same webhook, different object type)
+  if (body.object === 'instagram') {
+    for (const entry of body.entry || []) {
+      for (const event of entry.messaging || []) {
+        const senderId = event.sender?.id;
+        if (event.message?.text) {
+          await handleInstagramMessage(entry.id, senderId, event.message);
+        }
+      }
+    }
+    return res.sendStatus(200);
+  }
 
   if (body.object !== 'page') {
     return res.sendStatus(404);
@@ -595,6 +626,20 @@ async function handleReferral(pageId: string, senderId: string, referral: any) {
     const client_id = Number(preconnect.client_id);
     const customer_phone = String(preconnect.customer_phone);
 
+    // Owner connect flow — save PSID as owner_messenger_psid and skip customer flow
+    if (customer_phone === '__owner__' || String(refToken).startsWith('OWNER_')) {
+      await pool.query(
+        `UPDATE bot_settings SET owner_messenger_psid = $1, updated_at = NOW() WHERE client_id = $2`,
+        [senderId, client_id]
+      );
+      await pool.query(`UPDATE messenger_preconnect_tokens SET used_at = NOW() WHERE ref_token = $1`, [refToken]);
+      const botRes = await pool.query(`SELECT fb_page_access_token FROM bot_settings WHERE client_id = $1 LIMIT 1`, [client_id]);
+      const tok = botRes.rows[0]?.fb_page_access_token ? String(botRes.rows[0].fb_page_access_token).trim() : getPlatformFbPageAccessToken();
+      if (tok) await sendMessengerMessage(tok, senderId, '✅ تم ربط حسابك كصاحب المتجر. لن يرد عليك الذكاء الاصطناعي.');
+      console.log(`[Messenger] Owner PSID saved for client ${client_id}: ${senderId}`);
+      return;
+    }
+
     // Ensure the token was created for the page that is receiving this event.
     // This matters a lot when platform page is shared.
     const tokenPageId = preconnect.page_id ? String(preconnect.page_id) : '';
@@ -614,13 +659,12 @@ async function handleReferral(pageId: string, senderId: string, referral: any) {
 
     if (!settingsRes.rows.length) return;
 
-    const { fb_page_access_token, template_greeting, messenger_enabled } = settingsRes.rows[0];
-    if (!messenger_enabled) return;
+    const { fb_page_access_token, template_greeting } = settingsRes.rows[0];
 
     const pageAccessToken = fb_page_access_token
       ? String(fb_page_access_token).trim()
       : isPlatformPage(pageId)
-        ? PLATFORM_FB_PAGE_ACCESS_TOKEN
+        ? getPlatformFbPageAccessToken()
         : '';
 
     if (!pageAccessToken) {
@@ -792,13 +836,13 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
       } catch {}
 
       if (isPlatformPage(pageId)) {
-        pageAccessToken = PLATFORM_FB_PAGE_ACCESS_TOKEN;
+        pageAccessToken = getPlatformFbPageAccessToken();
       } else {
         // Prefer matching pageId first.
         const byPageRes = await pool.query(
           `SELECT fb_page_access_token
            FROM bot_settings
-           WHERE fb_page_id = $1 AND client_id = $2 AND messenger_enabled = true
+           WHERE fb_page_id = $1 AND client_id = $2
            LIMIT 1`,
           [pageId, client_id]
         );
@@ -809,7 +853,7 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
           const byClientRes = await pool.query(
             `SELECT fb_page_access_token
              FROM bot_settings
-             WHERE client_id = $1 AND messenger_enabled = true
+             WHERE client_id = $1
              LIMIT 1`,
             [client_id]
           );
@@ -907,22 +951,24 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
 
     let client_id: number | null = null;
     let store_name = 'Store';
+    let postbackGreeting: string | null = null;
     let pageAccessToken = '';
 
     // Get client_id and page access token
     const settingsResult = await pool.query(
-      `SELECT fb_page_access_token, client_id, store_name FROM bot_settings 
-       WHERE fb_page_id = $1 AND messenger_enabled = true
+      `SELECT fb_page_access_token, client_id, template_greeting FROM bot_settings 
+       WHERE fb_page_id = $1
        LIMIT 1`,
       [pageId]
     );
 
     if (settingsResult.rows.length > 0) {
       client_id = Number(settingsResult.rows[0].client_id);
-      store_name = settingsResult.rows[0].store_name || store_name;
+      postbackGreeting = settingsResult.rows[0].template_greeting || null;
+      
       // Prefer platform env token when this event is for the shared platform Page.
       pageAccessToken = isPlatformPage(pageId)
-        ? PLATFORM_FB_PAGE_ACCESS_TOKEN
+        ? getPlatformFbPageAccessToken()
         : (settingsResult.rows[0].fb_page_access_token
             ? String(settingsResult.rows[0].fb_page_access_token).trim()
             : '');
@@ -938,7 +984,7 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
       );
       client_id = subRes.rows[0]?.client_id ? Number(subRes.rows[0].client_id) : null;
 
-      pageAccessToken = PLATFORM_FB_PAGE_ACCESS_TOKEN;
+      pageAccessToken = getPlatformFbPageAccessToken();
 
       if (!client_id) {
         const linked = await tryLinkPlatformSenderToLatestToken(pool, { pageId, senderId });
@@ -959,8 +1005,8 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
       // Fallback: if platform token is configured but fb_page_id isn't stored in bot_settings,
       // do not silently ignore the webhook. Try to resolve the store by subscriber mapping or
       // by claiming the latest pending token; otherwise still respond with a generic welcome.
-      if (PLATFORM_FB_PAGE_ACCESS_TOKEN) {
-        pageAccessToken = PLATFORM_FB_PAGE_ACCESS_TOKEN;
+      if (getPlatformFbPageAccessToken()) {
+        pageAccessToken = getPlatformFbPageAccessToken();
 
         const subRes = await pool.query(
           `SELECT client_id FROM messenger_subscribers
@@ -1105,11 +1151,79 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
         return;
       }
 
+      // Fallback: link PSID to most recent pending order for this client
+      try {
+        const recentOrder = await pool.query(
+          `SELECT id, customer_phone, customer_name, total_price, product_snapshot
+           FROM store_orders
+           WHERE client_id = $1
+           ORDER BY created_at DESC LIMIT 1`,
+          [client_id]
+        );
+        if (recentOrder.rows.length > 0) {
+          const { customer_phone, customer_name, total_price, product_snapshot, id: orderId } = recentOrder.rows[0];
+          const product_name = product_snapshot?.title || product_snapshot?.name || `#${orderId}`;
+          await pool.query(
+            `INSERT INTO customer_messaging_ids (client_id, customer_phone, messenger_psid, created_at, updated_at)
+             VALUES ($1, $2, $3, NOW(), NOW())
+             ON CONFLICT (client_id, customer_phone)
+             DO UPDATE SET messenger_psid = EXCLUDED.messenger_psid, updated_at = NOW()`,
+            [client_id, customer_phone, senderId]
+          );
+          // Release instant/pin messages now, keep confirmation on its scheduled delay
+          await pool.query(
+            `UPDATE bot_messages SET send_at = NOW(), status = 'pending', error_message = NULL, updated_at = NOW()
+             WHERE client_id = $1 AND customer_phone = $2 AND message_type = 'messenger'
+             AND status = 'pending' AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+             AND confirmation_link IS NULL`,
+            [client_id, customer_phone]
+          );
+          await pool.query(
+            `UPDATE bot_messages SET status = 'pending', error_message = NULL, updated_at = NOW()
+             WHERE client_id = $1 AND customer_phone = $2 AND message_type = 'messenger'
+             AND status = 'pending' AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+             AND confirmation_link IS NOT NULL`,
+            [client_id, customer_phone]
+          );
+          // Queue order messages if none exist yet for this order
+          const existing = await pool.query(
+            `SELECT id FROM bot_messages WHERE order_id = $1 AND message_type = 'messenger' LIMIT 1`,
+            [orderId]
+          );
+          if (existing.rows.length === 0) {
+            const botSettingsRes = await pool.query(
+              `SELECT template_instant_order, template_pin_instructions, template_order_confirmation, messenger_delay_minutes
+               FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+              [client_id]
+            );
+            const bs = botSettingsRes.rows[0] || {};
+            const vars = { customerName: customer_name || '', storeName: store_name, productName: product_name || '', totalPrice: total_price || '', orderId, price: total_price || '' };
+            const confirmLink = `${process.env.BASE_URL || ''}/order-confirmation/${orderId}`;
+            const instantMsg = replaceTemplateVariables(bs.template_instant_order || `✅ تم استلام طلبك!\n\nطلب #${orderId}\nالمجموع: ${total_price} دج`, vars);
+            const pinMsg = replaceTemplateVariables(bs.template_pin_instructions || `📌 قم بتثبيت هذه المحادثة لتتبع طلبك.`, vars);
+            const confirmMsg = replaceTemplateVariables(bs.template_order_confirmation || `مرحباً ${customer_name}! هل تؤكد طلبك؟`, vars);
+            const delay = bs.messenger_delay_minutes || 5;
+            const now = new Date();
+            const sendAt = new Date(Date.now() + delay * 60 * 1000);
+            await pool.query(`INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at) VALUES ($1,$2,$3,'messenger',$4,$5)`, [orderId, client_id, customer_phone, instantMsg, now]);
+            await pool.query(`INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at) VALUES ($1,$2,$3,'messenger',$4,$5)`, [orderId, client_id, customer_phone, pinMsg, now]);
+            await pool.query(`INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at) VALUES ($1,$2,$3,'messenger',$4,$5,$6)`, [orderId, client_id, customer_phone, confirmMsg, confirmLink, sendAt]);
+            console.log(`[Messenger] Queued order messages for order ${orderId} after GET_STARTED`);
+          }
+          console.log(`[Messenger] Fallback: linked PSID ${senderId} to phone ${customer_phone} via recent order`);
+        }
+      } catch (e) {
+        console.warn('[Messenger] Fallback PSID link failed:', (e as any)?.message || e);
+      }
+
       // Default welcome if no preconnect
+      const storeNameRes = await pool.query(`SELECT store_name, store_slug FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [client_id]);
+      const resolvedStoreName = storeNameRes.rows[0]?.store_name || storeNameRes.rows[0]?.store_slug || store_name;
+      const welcomeText = postbackGreeting || `مرحباً بك في ${resolvedStoreName}! 🎉\n\n✅ تم ربط حسابك بنجاح.\n\nيمكنك الآن العودة لإتمام طلبك وستتلقى التأكيد هنا مباشرة! 📦`;
       const sendRes = await sendMessengerTextWithRetry(
         pageAccessToken,
         senderId,
-        `مرحباً بك! 👋\n\nأنا مساعدك الآلي من ${store_name}.\n\nسأرسل لك تأكيدات الطلبات وتحديثات الشحن.`
+        welcomeText
       );
       await sendMessengerAction(pageAccessToken, senderId, 'typing_off');
       void logSecurityEvent({
@@ -1152,18 +1266,19 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
 
     // Get page access token (must match the exact page id)
     const settingsResult = await pool.query(
-      `SELECT fb_page_access_token, client_id, store_name FROM bot_settings 
-       WHERE fb_page_id = $1 AND messenger_enabled = true
+      `SELECT fb_page_access_token, client_id, template_greeting FROM bot_settings 
+       WHERE fb_page_id = $1
        LIMIT 1`,
       [pageId]
     );
 
     if (settingsResult.rows.length > 0) {
       client_id = Number(settingsResult.rows[0].client_id);
-      store_name = settingsResult.rows[0].store_name || store_name;
+      const fetchedGreeting: string | null = settingsResult.rows[0].template_greeting || null;
+      
       // Prefer platform env token when this event is for the shared platform Page.
       pageAccessToken = isPlatformPage(pageId)
-        ? PLATFORM_FB_PAGE_ACCESS_TOKEN
+        ? getPlatformFbPageAccessToken()
         : (settingsResult.rows[0].fb_page_access_token
             ? String(settingsResult.rows[0].fb_page_access_token).trim()
             : '');
@@ -1188,7 +1303,7 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
         client_id = linked.clientId;
         store_name = linked.storeName;
       }
-      pageAccessToken = PLATFORM_FB_PAGE_ACCESS_TOKEN;
+      pageAccessToken = getPlatformFbPageAccessToken();
 
       const storeRes = await pool.query(
         `SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
@@ -1196,8 +1311,8 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
       );
       store_name = storeRes.rows[0]?.store_name || store_name;
     } else {
-      if (PLATFORM_FB_PAGE_ACCESS_TOKEN) {
-        pageAccessToken = PLATFORM_FB_PAGE_ACCESS_TOKEN;
+      if (getPlatformFbPageAccessToken()) {
+        pageAccessToken = getPlatformFbPageAccessToken();
 
         const subRes = await pool.query(
           `SELECT client_id FROM messenger_subscribers
@@ -1322,30 +1437,49 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
           : `اكتب رقم الطلب إن وجد، وسيتواصل معك ${store_name} قريباً. ✅`
       );
     } else if (text.includes('طلباتي') || text.includes('orders')) {
-      // Get recent orders for this customer
-      const ordersResult = await pool.query(
-        `SELECT so.id, so.status, so.total_price, so.created_at
-         FROM store_orders so
-         JOIN messenger_subscribers ms ON ms.client_id = so.client_id
-         WHERE ms.psid = $1 AND so.customer_phone IS NOT NULL
-         ORDER BY so.created_at DESC LIMIT 5`,
-        [senderId]
+      // Get orders for THIS customer only (matched by their linked phone)
+      const phoneRes = await pool.query(
+        `SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND messenger_psid = $2 LIMIT 1`,
+        [client_id, senderId]
       );
-
-      if (ordersResult.rows.length === 0) {
-        await sendMessengerMessage(pageAccessToken, senderId, 'لا توجد طلبات حالياً.');
+      const customerPhone = phoneRes.rows[0]?.customer_phone;
+      if (!customerPhone) {
+        await sendMessengerMessage(pageAccessToken, senderId, 'لم نتمكن من العثور على طلباتك. تأكد من ربط حسابك أولاً.');
       } else {
-        const ordersList = ordersResult.rows
-          .map(o => `📦 #${o.id} - ${o.status} - ${o.total_price} دج`)
-          .join('\n');
-        await sendMessengerMessage(
-          pageAccessToken,
-          senderId,
-          `طلباتك الأخيرة:\n\n${ordersList}`
+        const ordersResult = await pool.query(
+          `SELECT id, status, total_price, created_at FROM store_orders
+           WHERE client_id = $1 AND customer_phone = $2
+           ORDER BY created_at DESC LIMIT 5`,
+          [client_id, customerPhone]
         );
+
+        if (ordersResult.rows.length === 0) {
+          await sendMessengerMessage(pageAccessToken, senderId, 'لا توجد طلبات حالياً.');
+        } else {
+          const ordersList = ordersResult.rows
+            .map(o => `📦 #${o.id} - ${o.status} - ${o.total_price} دج`)
+            .join('\n');
+          await sendMessengerMessage(
+            pageAccessToken,
+            senderId,
+            `طلباتك الأخيرة:\n\n${ordersList}`
+          );
+        }
       }
     } else {
-      // Default reply so users don't get silence when they say "hi" or similar.
+      // AI auto-reply: try intelligent response, fall back to menu
+      if (client_id && message.text) {
+        try {
+          const aiResponse = await handleCustomerMessage(client_id, 'messenger', senderId, String(message.text));
+          if (aiResponse) {
+            await sendMessengerMessage(pageAccessToken, senderId, aiResponse);
+            return;
+          }
+        } catch (err) {
+          console.error('[Messenger] AI auto-reply error:', err);
+        }
+      }
+      // Fallback: default menu reply
       await sendMessengerMessage(
         pageAccessToken,
         senderId,
@@ -1418,12 +1552,12 @@ const setupGetStarted: RequestHandler = async (req, res) => {
       [storeRes.rows[0].client_id]
     );
 
-    if (botRes.rows.length === 0 || !botRes.rows[0].messenger_enabled) {
-      return res.status(400).json({ error: 'Messenger is disabled' });
+    if (botRes.rows.length === 0) {
+      return res.status(400).json({ error: 'Messenger not configured' });
     }
 
     const storeToken = botRes.rows[0].fb_page_access_token ? String(botRes.rows[0].fb_page_access_token).trim() : '';
-    const effectiveToken = storeToken || (PLATFORM_MESSENGER_ENABLED ? PLATFORM_FB_PAGE_ACCESS_TOKEN : '');
+    const effectiveToken = storeToken || (getPlatformMessengerEnabled() ? getPlatformFbPageAccessToken() : '');
     if (!effectiveToken) {
       return res.status(400).json({ error: 'Messenger not configured' });
     }
@@ -1448,16 +1582,163 @@ const getConfig: RequestHandler = async (req, res) => {
   res.json({
     enabled: !!process.env.FB_APP_SECRET,
     webhookUrl: `${getPublicBaseUrl(req)}/api/messenger/webhook`,
-    platformAvailable: PLATFORM_MESSENGER_ENABLED && !!PLATFORM_FB_PAGE_ID && !!PLATFORM_FB_PAGE_ACCESS_TOKEN,
+    platformAvailable: getPlatformMessengerEnabled() && !!getPlatformFbPageId() && !!getPlatformFbPageAccessToken(),
     // Intentionally do NOT expose verify token or platform Page ID publicly.
-    verifyTokenSet: !!FB_VERIFY_TOKEN,
+    verifyTokenSet: !!getFbVerifyToken(),
   });
+};
+
+/**
+ * Handle incoming Instagram DM messages.
+ * Instagram messages arrive via the same Page webhook with object='instagram'.
+ * The Instagram account ID maps to a client via facebook_tokens.instagram_account_id.
+ */
+async function handleInstagramMessage(igAccountId: string, senderId: string, message: any) {
+  const text = message.text || '';
+  if (!text.trim()) return;
+
+  console.log(`[Instagram] DM from ${senderId} on IG account ${igAccountId}: ${text}`);
+
+  try {
+    const pool = await ensureConnection();
+
+    // Resolve client by Instagram account ID stored during Facebook OAuth
+    const tokenRes = await pool.query(
+      `SELECT client_id, page_access_token_encrypted FROM facebook_tokens
+       WHERE instagram_account_id = $1 AND is_active = TRUE
+       LIMIT 1`,
+      [igAccountId]
+    );
+
+    if (!tokenRes.rows.length) {
+      console.log(`[Instagram] No client found for IG account ${igAccountId}`);
+      return;
+    }
+
+    const clientId = Number(tokenRes.rows[0].client_id);
+    let pageAccessToken = '';
+    try {
+      pageAccessToken = decryptData(tokenRes.rows[0].page_access_token_encrypted);
+    } catch {
+      console.warn(`[Instagram] Failed to decrypt token for client ${clientId}`);
+      return;
+    }
+
+    if (!pageAccessToken) return;
+
+    // Try AI auto-reply
+    const aiResponse = await handleCustomerMessage(clientId, 'messenger', `ig_${senderId}`, text);
+    if (aiResponse) {
+      await sendInstagramMessage(pageAccessToken, senderId, aiResponse);
+      return;
+    }
+
+    // Fallback
+    const storeRes = await pool.query(
+      `SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+    const storeName = storeRes.rows[0]?.store_name || 'المتجر';
+
+    await sendInstagramMessage(
+      pageAccessToken,
+      senderId,
+      `مرحباً! 👋 شكراً لتواصلك مع ${storeName}.\n\nسيتم الرد عليك في أقرب وقت.`
+    );
+  } catch (err) {
+    console.error('[Instagram] DM handler error:', err);
+  }
+}
+
+/**
+ * Send a message via Instagram Messaging API.
+ * Uses the same Graph API endpoint with the page access token.
+ */
+export async function sendInstagramMessage(
+  pageAccessToken: string,
+  recipientId: string,
+  message: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  try {
+    const payload = {
+      recipient: { id: recipientId },
+      message: { text: message },
+    };
+
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/me/messages?access_token=${pageAccessToken}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data: any = await response.json();
+    if (!response.ok || data.error) {
+      console.error('[Instagram] Send failed:', data.error);
+      return { success: false, error: data.error?.message || `Send failed (${response.status})` };
+    }
+
+    console.log(`[Instagram] Message sent to ${recipientId}: ${data.message_id}`);
+    return { success: true, messageId: data.message_id };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[Instagram] Failed to send message: ${errorMsg}`);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * GET /api/messenger/owner-link/:storeSlug
+ * Authenticated: generates a special m.me link for the store owner to connect their Messenger.
+ * When they click it, their PSID is saved as owner_messenger_psid so AI won't reply to them.
+ */
+const getOwnerMessengerLink: RequestHandler = async (req, res) => {
+  try {
+    const { storeSlug } = req.params as any;
+    const pool = await ensureConnection();
+
+    const storeRes = await pool.query(
+      `SELECT client_id FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
+      [storeSlug]
+    );
+    if (!storeRes.rows.length) return res.status(404).json({ error: 'Store not found' });
+    const clientId = Number(storeRes.rows[0].client_id);
+
+    const botRes = await pool.query(
+      `SELECT fb_page_id, fb_page_access_token FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+    if (!botRes.rows.length) return res.status(400).json({ error: 'Messenger not configured' });
+
+    const pageId = String(botRes.rows[0].fb_page_id || '').trim() || getPlatformFbPageId();
+    if (!pageId) return res.status(400).json({ error: 'No page configured' });
+
+    const refToken = 'OWNER_' + generateMessengerRefToken();
+    await pool.query(
+      `INSERT INTO messenger_preconnect_tokens (client_id, customer_phone, ref_token, page_id, created_at, expires_at)
+       VALUES ($1, '__owner__', $2, $3, NOW(), NOW() + INTERVAL '24 hours')
+       ON CONFLICT (client_id, customer_phone)
+       DO UPDATE SET ref_token = $2, page_id = $3, created_at = NOW(), expires_at = NOW() + INTERVAL '24 hours', used_at = NULL`,
+      [clientId, refToken, pageId]
+    );
+
+    return res.json({
+      url: `https://m.me/${encodeURIComponent(pageId)}?ref=${encodeURIComponent(refToken)}`,
+      refToken,
+    });
+  } catch (error) {
+    console.error('[Messenger] Owner link error:', error);
+    return res.status(500).json({ error: 'Failed to generate owner link' });
+  }
 };
 
 // Register routes
 router.get('/webhook', verifyWebhook);
 router.post('/webhook', handleWebhook);
 router.get('/page-link/:storeSlug', getMessengerPageLink);
+router.get('/owner-link/:storeSlug', getOwnerMessengerLink);
 router.get('/check-connection/:storeSlug', checkMessengerConnection);
 router.post('/setup-get-started/:storeSlug', setupGetStarted);
 router.get('/config', getConfig);

@@ -5,15 +5,17 @@ const STAFF_ACCESS_COOKIE = 'ecopro_staff_at';
 
 export function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === 'production';
-  const sameSite = (process.env.COOKIE_SAMESITE as any) || (isProduction ? 'none' : 'lax');
+  const isTunnel = !!process.env.TUNNEL_MODE;
+  const sameSite = (process.env.COOKIE_SAMESITE as any) || (isProduction || isTunnel ? 'none' : 'lax');
   const domain = process.env.COOKIE_DOMAIN || undefined;
-  return { isProduction, sameSite, domain };
+  const secure = isProduction || isTunnel;
+  return { isProduction, sameSite, domain, secure };
 }
 
 export function clearAuthCookies(res: any) {
-  const { isProduction, sameSite, domain } = getCookieOptions();
+  const { secure, sameSite, domain } = getCookieOptions();
   const base = {
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
   };
