@@ -299,7 +299,7 @@ export default function IycoTemplate({
           </div>
           <h2 className="text-2xl font-bold mb-2" style={{ color: textColor }}>تم تأكيد طلبك!</h2>
           <p className="mb-6" style={{ color: textMuted }}>سنتواصل معك قريباً لتأكيد الطلب</p>
-        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
           <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: surfaceMuted }}>
             {cart.map(item => (
               <div key={item.id} className="flex justify-between" style={{ color: textColor }}>

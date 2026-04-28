@@ -223,7 +223,7 @@ export default function SculptorTemplate({ settings, products, canManage, storeS
           </div>
           <h2 className="text-2xl font-black mb-2" style={{ color: surfaceTextColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
           <p className="text-sm mb-6" style={{ color: surfaceTextMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
-        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
           <div className="rounded-xl p-4 text-sm space-y-2 text-right border" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
             {cart.map((item, i) => (
               <div key={i} className="flex justify-between">

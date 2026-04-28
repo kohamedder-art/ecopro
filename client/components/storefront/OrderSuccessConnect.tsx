@@ -66,6 +66,7 @@ export default function OrderSuccessConnect({
   telegramStartUrl,
 }: OrderSuccessConnectProps) {
   const [channels, setChannels] = useState<ContactChannel[]>([]);
+  const [messengerPreconnectUrl, setMessengerPreconnectUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!storeSlug) return;
@@ -77,6 +78,19 @@ export default function OrderSuccessConnect({
       .catch(() => {});
   }, [storeSlug]);
 
+  // Fetch Messenger preconnect URL with ref token when customerPhone is available
+  useEffect(() => {
+    if (!storeSlug || !customerPhone) return;
+    const normalizedPhone = customerPhone.replace(/\D/g, '');
+    if (normalizedPhone.length < 9) return;
+    fetch(`/api/messenger/page-link/${encodeURIComponent(storeSlug)}?phone=${normalizedPhone}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.enabled && data?.url) setMessengerPreconnectUrl(data.url);
+      })
+      .catch(() => {});
+  }, [storeSlug, customerPhone]);
+
   // Filter out phone — only messaging platforms
   const messagingChannels = channels.filter(ch => ch.platform !== 'phone');
   if (messagingChannels.length === 0) return null;
@@ -85,6 +99,10 @@ export default function OrderSuccessConnect({
     // If we have a Telegram deep link with start token, use it
     if (ch.platform === 'telegram' && telegramStartUrl) {
       return telegramStartUrl;
+    }
+    // For Messenger, use preconnect URL with ref token if available
+    if (ch.platform === 'facebook' && messengerPreconnectUrl) {
+      return messengerPreconnectUrl;
     }
     // For WhatsApp, add pre-filled message with order info
     if (ch.platform === 'whatsapp' && orderId) {

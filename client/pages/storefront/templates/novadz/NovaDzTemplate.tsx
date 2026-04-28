@@ -72,6 +72,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
+  const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const { showAddress, showCommune, showNotes } = useOrderFields(settings);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
@@ -165,6 +166,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
           const data = await res.json();
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
+      setLastCustomerPhone(phone);
           if (res.ok) {
               setOrderSuccess(true);
           } else {
@@ -378,7 +380,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
                     <div>
                         <h3 className="text-2xl font-black" style={{ color: textColor }}>تم استلام طلبك!</h3>
                         <p className="mt-2" style={{ color: textMuted }}>سنتصل بك لتأكيد الطلب.</p>
-                        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+                        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
                     </div>
                 </div>
               ) : (

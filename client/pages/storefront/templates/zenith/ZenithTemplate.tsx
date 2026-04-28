@@ -198,7 +198,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           </div>
           <h2 className="text-2xl font-black mb-2" style={{ color: surfaceTextColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
           <p className="text-sm mb-6" style={{ color: surfaceTextMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
-        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
           <div className="rounded-xl p-4 text-sm space-y-2 text-right" style={{ backgroundColor: surfaceMuted }}>
             <div className="flex justify-between"><span style={{ color: textMuted }}>المنتج</span><span className="font-bold" style={{ color: textColor }}>{mainProduct.title}</span></div>
             <div className="flex justify-between"><span style={{ color: textMuted }}>الكمية</span><span className="font-bold" style={{ color: textColor }}>{quantity}</span></div>

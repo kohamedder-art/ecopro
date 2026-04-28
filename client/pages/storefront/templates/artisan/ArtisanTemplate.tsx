@@ -417,7 +417,7 @@ export default function ArtisanTemplate(props: TemplateProps) {
                 </div>
                 <h3 className="text-2xl font-serif">تم تأكيد طلبك بنجاح!</h3>
                 <p className="text-sm" style={{ color: textMuted }}>سنتواصل معك قريباً</p>
-        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={formData.phone} />
                 <button
                   onClick={() => { setShowCheckout(false); setOrderSuccess(false); }}
                   className="mt-4 px-6 py-3 rounded-2xl text-white font-bold"

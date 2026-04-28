@@ -210,6 +210,7 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
     const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
+  const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
@@ -264,6 +265,7 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
             const data = await res.json();
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
+      setLastCustomerPhone(phone);
             if (res.ok) {
                 setOrderSuccess(true);
             } else {
@@ -304,7 +306,7 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
                 </div>
                 <h4 className="text-xl font-bold font-serif italic">تم تأكيد طلبك</h4>
                 <p className="text-sm" style={{ color: surfaceTextMuted }}>سنتواصل معك قريباً لترتيب التوصيل.</p>
-                <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+                <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
                 <button onClick={onClose} className="mt-8 text-sm font-bold tracking-widest uppercase border-b pb-1 hover:opacity-70" style={{ borderColor: surfaceBorderColor }}>إغلاق</button>
               </div>
             ) : (

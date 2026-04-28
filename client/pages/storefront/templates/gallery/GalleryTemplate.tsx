@@ -420,7 +420,7 @@ export default function GalleryTemplate(props: TemplateProps) {
           </div>
           <h2 className="text-3xl font-black mb-2">تم استلام طلبك!</h2>
           <p className="text-sm" style={{ color: textMuted }}>سنتصل بك في أقرب وقت لتأكيد العنوان والشحن.</p>
-          <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+          <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={formData.phone} />
           <button
             onClick={() => { setIsOrderComplete(false); setCart([]); }}
             className="mt-10 border-2 px-8 py-3 rounded-2xl font-black" style={{ borderColor: textColor, color: textColor }}

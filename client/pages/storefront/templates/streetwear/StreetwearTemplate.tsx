@@ -357,7 +357,7 @@ export default function StreetwearTemplate(props: TemplateProps) {
                       </div>
                       <h3 className="text-2xl font-black">تم تأكيد طلبك!</h3>
                       <p className="text-white/50 text-sm">سنتواصل معك قريباً</p>
-        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={formData.phone} />
                       <button onClick={() => { setIsCartOpen(false); setOrderSuccess(false); }} className="mt-4 px-6 py-3 rounded-2xl font-bold border" style={{ borderColor: accentColor, color: accentColor }}>
                         متابعة التسوق
                       </button>

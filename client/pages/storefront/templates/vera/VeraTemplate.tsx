@@ -461,7 +461,7 @@ export default function VeraTemplate(props: TemplateProps) {
           </div>
           <h2 className="text-3xl font-black italic mb-2">تم تأكيد طلبك!</h2>
           <p className="text-white/50 text-sm">سنتواصل معك قريباً للتأكيد</p>
-        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={formData.phone} />
           <button onClick={() => setOrderSuccess(false)} className="mt-8 px-8 py-3 border-2 rounded-full font-bold" style={{ borderColor: accentColor, color: accentColor }}>
             متابعة التسوق
           </button>

@@ -75,6 +75,7 @@ export default function LeRoiShopTemplate({
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
+  const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const { showAddress, showCommune, showNotes } = useOrderFields(settings);
@@ -250,6 +251,7 @@ export default function LeRoiShopTemplate({
       const data = await res.json();
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
+      setLastCustomerPhone(phone);
       if (res.ok) setOrderSuccess(true);
       else alert(data.error || 'حدث خطأ أثناء إرسال الطلب');
     } catch {
@@ -493,7 +495,7 @@ export default function LeRoiShopTemplate({
                       </div>
                       <h3 className="text-xl font-black mb-1" style={{ color: textColor }}>تم تسجيل طلبك بنجاح!</h3>
                       <p className="text-sm" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب.</p>
-        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
                       <button onClick={goToCatalog} className="mt-4 px-6 py-2 rounded-lg text-white text-sm font-bold" style={{ backgroundColor: accentColor }}>
                         تسوق مرة أخرى
                       </button>

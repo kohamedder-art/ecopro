@@ -12,6 +12,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const [orderSuccess, setOrderSuccess] = React.useState(false);
     const [lastOrderId, setLastOrderId] = React.useState<number | string | null>(null);
     const [lastTelegramUrl, setLastTelegramUrl] = React.useState<string | null>(null);
+    const [lastCustomerPhone, setLastCustomerPhone] = React.useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
     const { showAddress, showCommune, showNotes } = useOrderFields(settings);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
@@ -49,6 +50,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             const data = await res.json();
             setLastOrderId(data.order?.id || null);
             setLastTelegramUrl(data.telegramStartUrl || null);
+            setLastCustomerPhone(String(fd.get('phone') || ''));
             setOrderSuccess(true);
         } catch(err) {
             console.error(err);
@@ -439,7 +441,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         </div>
         <h3 className="text-xl font-bold mb-2" style={{ color: accentColor }}>تم تسجيل طلبك بنجاح!</h3>
         <p style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب وترتيب التوصيل.</p>
-        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
     </div>
 ) : (
 <div className="dz-checkout-card rounded-2xl p-6 border-2 relative" style={{ borderColor: accentColor, backgroundColor: surfaceColor }}>

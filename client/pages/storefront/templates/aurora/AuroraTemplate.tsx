@@ -240,7 +240,7 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
           </div>
           <h2 className="text-2xl font-black mb-2">تم تسجيل طلبك بنجاح! 🎉</h2>
           <p className="text-white/50 text-sm mb-6">سنتصل بك قريباً لتأكيد الطلب</p>
-        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+        <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
           <div className="rounded-xl p-4 text-sm space-y-2 text-right bg-white/5 border border-white/10">
             {cart.map((item, i) => (
               <div key={i} className="flex justify-between">

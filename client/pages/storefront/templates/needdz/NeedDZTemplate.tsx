@@ -142,6 +142,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [orderStatus, setOrderStatus] = useState('idle');
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
+  const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState({ hours: 0, mins: 45, secs: 12 });
   const [currentImgIdx, setCurrentImgIdx] = useState<Record<number, number>>({});
   const [zoomImage, setZoomImage] = useState<string | null>(null);
@@ -233,6 +234,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
       const resData = await res.json().catch(() => ({}));
       setLastOrderId(resData.order?.id || null);
       setLastTelegramUrl(resData.telegramStartUrl || null);
+      setLastCustomerPhone(String(fd.get('phone') || ''));
       setOrderStatus('success');
     } catch(err) {
       console.error(err);
@@ -431,7 +433,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
                   <div>
                     <h2 className="text-3xl font-black">مبروك!</h2>
                     <p className="text-slate-500 mt-2 px-6">تم تسجيل طلبك. سنتصل بك على <span className="font-bold text-slate-900">رقم هاتفك</span> للتأكيد.</p>
-                    <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+                    <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
                   </div>
                   <button 
                     onClick={() => setIsCheckoutOpen(false)}

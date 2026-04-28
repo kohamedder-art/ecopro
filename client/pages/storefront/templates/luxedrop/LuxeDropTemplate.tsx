@@ -98,6 +98,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
     const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
+  const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
     const { showAddress, showCommune, showNotes } = useOrderFields(settings);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
@@ -154,6 +155,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
             const data = await res.json();
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
+      setLastCustomerPhone(phone);
             if (res.ok) {
                 setOrderSuccess(true);
             } else {
@@ -416,7 +418,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                         <div className="p-6 rounded-3xl border text-center" style={{ backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : '#f0fdf4', borderColor: isDark ? 'rgba(34,197,94,0.3)' : '#bbf7d0' }}>
                             <h3 className="text-2xl font-black mb-2" style={{ color: isDark ? '#4ade80' : '#15803d' }}>تم الشراء بنجاح!</h3>
                             <p className="font-bold" style={{ color: surfaceTextMuted }}>سنتصل بك لتأكيد طلبك في أقرب وقت.</p>
-                            <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} />
+                            <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
                         </div>
                     ) : (
                     <form className="space-y-4" onSubmit={handleOrder}>

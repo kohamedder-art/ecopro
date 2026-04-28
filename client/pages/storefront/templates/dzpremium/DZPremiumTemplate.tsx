@@ -12,6 +12,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
     const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
+    const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
     const { showAddress, showCommune, showNotes } = useOrderFields(settings);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
@@ -96,6 +97,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
             if (!res.ok) throw new Error(data.error || 'Order error');
             setLastOrderId(data.order?.id || null);
             setLastTelegramUrl(data.telegramStartUrl || null);
+            setLastCustomerPhone(String(fd.get('phone') || ''));
             setOrderSuccess(true);
         } catch (err) { console.error(err); alert('حدث خطأ أثناء تقديم الطلب.'); }
         finally { setIsSubmitting(false); }
@@ -257,7 +259,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                                 offers={offers} selectedOffer={selectedOffer} setSelectedOffer={setSelectedOffer}
                                 showAddress={showAddress} showCommune={showCommune} showNotes={showNotes}
                                 isSubmitting={isSubmitting} orderSuccess={orderSuccess}
-                                lastOrderId={lastOrderId} lastTelegramUrl={lastTelegramUrl}
+                                lastOrderId={lastOrderId} lastTelegramUrl={lastTelegramUrl} lastCustomerPhone={lastCustomerPhone}
                                 accentColor={accentColor} storeSlug={storeSlug} onSubmit={handleOrder}
                                 canManage={canManage} handleTextEdit={handleTextEdit}
                             />
@@ -336,7 +338,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                             offers={offers} selectedOffer={selectedOffer} setSelectedOffer={setSelectedOffer}
                             showAddress={showAddress} showCommune={showCommune} showNotes={showNotes}
                             isSubmitting={isSubmitting} orderSuccess={orderSuccess}
-                            lastOrderId={lastOrderId} lastTelegramUrl={lastTelegramUrl}
+                            lastOrderId={lastOrderId} lastTelegramUrl={lastTelegramUrl} lastCustomerPhone={lastCustomerPhone}
                             accentColor={accentColor} storeSlug={storeSlug} onSubmit={handleOrder}
                             canManage={canManage} handleTextEdit={handleTextEdit}
                         />
@@ -358,7 +360,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
 }
 
 /* ─── Extracted Order Form ─── */
-function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, deliveryFee, productTotal, grandTotal, selectedVariant, setSelectedVariant, offers, selectedOffer, setSelectedOffer, showAddress, showCommune, showNotes, isSubmitting, orderSuccess, lastOrderId, lastTelegramUrl, accentColor, storeSlug, onSubmit, canManage, handleTextEdit }: any) {
+function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, deliveryFee, productTotal, grandTotal, selectedVariant, setSelectedVariant, offers, selectedOffer, setSelectedOffer, showAddress, showCommune, showNotes, isSubmitting, orderSuccess, lastOrderId, lastTelegramUrl, lastCustomerPhone, accentColor, storeSlug, onSubmit, canManage, handleTextEdit }: any) {
     if (orderSuccess) {
         return (
             <div className="rounded-2xl p-6 text-center border" style={{ backgroundColor: accentColor + '15', borderColor: accentColor + '40' }}>
@@ -367,7 +369,7 @@ function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, de
                 </div>
                 <h3 className="font-black text-white text-xl mb-1">تم تسجيل طلبك!</h3>
                 <p className="text-white/50 text-sm mb-4">سنتصل بك قريباً لتأكيد الطلب.</p>
-                <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId} telegramStartUrl={lastTelegramUrl} />
+                <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
             </div>
         );
     }
