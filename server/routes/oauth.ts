@@ -18,9 +18,9 @@ import { createTrialSubscription } from './billing';
 const router = Router();
 
 // Google OAuth client
-const GOOGLE_CLIENT_ID = () => String(process.env.GOOGLE_CLIENT_ID || '');
-const GOOGLE_CLIENT_SECRET = () => String(process.env.GOOGLE_CLIENT_SECRET || '');
-const GOOGLE_REDIRECT_URI = () => String(process.env.GOOGLE_REDIRECT_URI || 'http://localhost:8080/api/oauth/google/callback');
+const GOOGLE_CLIENT_ID = () => String(process.env.GOOGLE_CLIENT_ID || '').trim();
+const GOOGLE_CLIENT_SECRET = () => String(process.env.GOOGLE_CLIENT_SECRET || '').trim();
+const GOOGLE_REDIRECT_URI = () => String(process.env.GOOGLE_REDIRECT_URI || 'http://localhost:8080/api/oauth/google/callback').trim();
 
 const getGoogleClient = () => new OAuth2Client(GOOGLE_CLIENT_ID(), GOOGLE_CLIENT_SECRET(), GOOGLE_REDIRECT_URI());
 
