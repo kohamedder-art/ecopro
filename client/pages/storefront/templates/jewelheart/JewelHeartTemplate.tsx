@@ -118,7 +118,7 @@ export default function JewelHeartTemplate({
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
+  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
 
   // ── Variant & Pricing ──
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);

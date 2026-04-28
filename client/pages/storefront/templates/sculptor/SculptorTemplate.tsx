@@ -101,7 +101,7 @@ export default function SculptorTemplate({ settings, products, canManage, storeS
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
+  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
 
   // Body scroll lock
   useEffect(() => {

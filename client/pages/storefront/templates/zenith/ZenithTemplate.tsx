@@ -103,7 +103,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   useEffect(() => { if (offers.length > 0 && !selectedOffer) { const f = offers[0]; setSelectedOffer({ offer_id: f.id, quantity: f.quantity, bundle_price: f.bundle_price, free_delivery: f.free_delivery }); setQuantity(f.quantity); } }, [offers]);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); if (o) setQuantity(o.quantity); else setQuantity(1); };
-  const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
+  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
 
   const productPrice = mainProduct?.price ?? 3900;
   const productImages = mainProduct?.images && mainProduct.images.length > 0 ? mainProduct.images : [];

@@ -137,7 +137,7 @@ export default function LeRoiShopTemplate({
   }, [offers]);
   const comparePrice = (activeProduct as any)?.compare_at_price;
   const unitPrice = activeProduct?.price || 0;
-  const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
+  const deliveryFee = resolveDeliveryFee(activeProduct, selectedOffer, baseDeliveryFee);
   const productTotal = selectedOffer ? selectedOffer.bundle_price : unitPrice * quantity;
   const grandTotal = productTotal + deliveryFee;
 

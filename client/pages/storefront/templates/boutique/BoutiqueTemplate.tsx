@@ -172,7 +172,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const { offers } = useProductOffers(storeSlug, heroProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
+  const deliveryFee = resolveDeliveryFee(heroProduct, selectedOffer, baseDeliveryFee);
 
   // Collection = rest of products (excluding the hero)
   const collectionProducts = useMemo(() => {

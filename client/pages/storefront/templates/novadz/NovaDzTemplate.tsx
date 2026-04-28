@@ -116,7 +116,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   useEffect(() => { if (offers.length > 0 && !selectedOffer) { const f = offers[0]; setSelectedOffer({ offer_id: f.id, quantity: f.quantity, bundle_price: f.bundle_price, free_delivery: f.free_delivery }); setQuantity(f.quantity); } }, [offers]);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); if (o) setQuantity(o.quantity); else setQuantity(1); };
-  const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
+  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
   const productTotal = selectedOffer ? selectedOffer.bundle_price : ((selectedVariant?.price ?? mainProduct?.price ?? 0) * quantity);
   const grandTotal = productTotal + deliveryFee;
 

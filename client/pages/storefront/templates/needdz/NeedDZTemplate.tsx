@@ -170,8 +170,8 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     return () => { document.body.style.overflow = ''; };
   }, [detailProduct, isCheckoutOpen]);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
-  const productTotal = selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? product?.price ?? 0);
+  const deliveryFee = resolveDeliveryFee(selectedProduct, selectedOffer, baseDeliveryFee);
+  const productTotal = selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? selectedProduct?.price ?? 0);
   const grandTotal = productTotal + deliveryFee;
 
   // Map backend products or fallback
