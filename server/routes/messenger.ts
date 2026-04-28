@@ -1590,7 +1590,13 @@ export async function setupGetStartedButton(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          get_started: { payload: 'GET_STARTED' }
+          get_started: { payload: 'GET_STARTED' },
+          greeting: [
+            {
+              locale: 'default',
+              text: '👋 مرحباً! أرسل أي رسالة لتفعيل إشعارات طلبك 📦',
+            },
+          ],
         }),
       }
     );
