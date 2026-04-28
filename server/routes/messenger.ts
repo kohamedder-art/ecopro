@@ -1797,6 +1797,6 @@ router.get('/owner-link/:storeSlug', getOwnerMessengerLink);
 router.get('/check-connection/:storeSlug', checkMessengerConnection);
 router.post('/setup-get-started/:storeSlug', setupGetStarted);
 router.get('/config', getConfig);
-router.get('/version', (_req, res) => res.json({ v: '2026-04-28-v4-trylink-fix' }));
+router.get('/version', (_req, res) => res.json({ v: '2026-04-28-v5-platform-page-fix' }));
 
 export default router;
