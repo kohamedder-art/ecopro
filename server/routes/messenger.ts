@@ -1393,11 +1393,38 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
 
       console.log(`[Messenger] Linked PSID ${senderId} to phone ${customer_phone} via message`);
 
+      // Also store in messenger_subscribers
+      await pool.query(
+        `INSERT INTO messenger_subscribers (client_id, psid, page_id, customer_phone, subscribed_at, last_interaction)
+         VALUES ($1, $2, $3, $4, NOW(), NOW())
+         ON CONFLICT (client_id, psid) DO UPDATE SET customer_phone = $4, last_interaction = NOW()`,
+        [client_id, senderId, pageId, customer_phone]
+      );
+
+      // Release queued bot_messages that were waiting for PSID
+      try {
+        await pool.query(
+          `UPDATE bot_messages
+           SET send_at = NOW(),
+               status = 'pending',
+               error_message = NULL,
+               updated_at = NOW()
+           WHERE client_id = $1
+             AND customer_phone = $2
+             AND message_type = 'messenger'
+             AND status = 'pending'
+             AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
+          [client_id, customer_phone]
+        );
+      } catch (e) {
+        console.warn('[Messenger] Failed to release queued bot_messages after message link:', (e as any)?.message || e);
+      }
+
       // Send welcome/confirmation
       await sendMessengerMessage(
         pageAccessToken,
         senderId,
-        `✅ تم ربط حسابك بنجاح!\n\nيمكنك الآن العودة لإتمام طلبك. ستتلقى تأكيدات الطلبات هنا مباشرة! 📦`
+        `✅ تم ربط حسابك بنجاح!\n\nستتلقى تأكيدات الطلبات هنا مباشرة! 📦`
       );
 
       linkedViaToken = true;
