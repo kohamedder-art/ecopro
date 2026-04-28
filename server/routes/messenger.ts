@@ -70,7 +70,7 @@ function resolveEffectivePageConfig(botRow: any, oauthToken?: string): { enabled
 
 async function tryLinkPlatformSenderToLatestToken(
   pool: any,
-  params: { pageId: string; senderId: string }
+  params: { pageId: string; senderId: string; pageAccessToken?: string }
 ): Promise<{ clientId: number; storeName: string; customerPhone: string } | null> {
   // Find the most recent pending preconnect token for this platform page.
   const candidateRes = await pool.query(
@@ -140,6 +140,12 @@ async function tryLinkPlatformSenderToLatestToken(
   );
 
   console.log(`[Messenger] tryLink: linked PSID ${params.senderId} to phone ${customerPhone} for client ${clientId}`);
+
+  // Send confirmation message if we have a token
+  const tok = params.pageAccessToken || getPlatformFbPageAccessToken();
+  if (tok) {
+    sendMessengerMessage(tok, params.senderId, `✅ تم ربط حسابك بنجاح!\n\nستتلقى تأكيدات الطلبات هنا مباشرة! 📦`).catch(() => {});
+  }
 
   return {
     clientId,
