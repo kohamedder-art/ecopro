@@ -154,7 +154,7 @@ export default function VeraTemplate(props: TemplateProps) {
   useEffect(() => { if (offers.length > 0 && !selectedOffer) { const f = offers[0]; setSelectedOffer({ offer_id: f.id, quantity: f.quantity, bundle_price: f.bundle_price, free_delivery: f.free_delivery }); } }, [offers]);
   useEffect(() => { setSelectedOffer(null); }, [selectedProduct?.id]);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const shipping = resolveDeliveryFee(mainProduct, selectedOffer, baseShipping);
+  const shipping = resolveDeliveryFee(selectedProduct, selectedOffer, baseShipping);
 
   /* ---------- order ---------- */
   const handleOrder = async (product: any) => {
