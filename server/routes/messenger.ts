@@ -72,19 +72,22 @@ async function tryLinkPlatformSenderToLatestToken(
   pool: any,
   params: { pageId: string; senderId: string; pageAccessToken?: string }
 ): Promise<{ clientId: number; storeName: string; customerPhone: string } | null> {
-  // Find the most recent pending preconnect token for this platform page.
+  // Safety: only auto-claim if there is exactly ONE recent pending token for this page
+  // within a short window. This prevents cross-store mis-linking on shared pages.
   const candidateRes = await pool.query(
     `SELECT client_id, customer_phone, ref_token
      FROM messenger_preconnect_tokens
      WHERE page_id = $1
        AND used_at IS NULL
        AND expires_at > NOW()
+       AND created_at > NOW() - INTERVAL '5 minutes'
      ORDER BY created_at DESC
-     LIMIT 1`,
+     LIMIT 2`,
     [String(params.pageId)]
   );
 
-  if (candidateRes.rows.length === 0) return null;
+  // If 0 or 2+ tokens exist, we can't safely determine which customer this is
+  if (candidateRes.rows.length !== 1) return null;
 
   const row = candidateRes.rows[0];
   const clientId = Number(row.client_id);
@@ -1396,14 +1399,27 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
 
     let linkedViaToken = false;
 
-    // Check if there's a pending preconnect token for this page (search ALL clients,
-    // because on a shared platform page bot_settings may resolve to the wrong client_id).
-    const pendingToken = await pool.query(
+    // Check if there's a pending preconnect token.
+    // First: try exact match by client_id (safe, no cross-store risk).
+    // Fallback: search by page_id only but require exactly 1 recent token (safety).
+    let pendingToken = await pool.query(
       `SELECT client_id AS token_client_id, customer_phone, ref_token FROM messenger_preconnect_tokens 
-       WHERE page_id = $1 AND used_at IS NULL AND expires_at > NOW()
+       WHERE client_id = $1 AND page_id = $2 AND used_at IS NULL AND expires_at > NOW()
        ORDER BY created_at DESC LIMIT 1`,
-        [String(pageId)]
+        [client_id, String(pageId)]
     );
+
+    if (pendingToken.rows.length === 0 && isPlatformPage(pageId)) {
+      // Fallback for shared page: search ALL clients but only if exactly 1 recent token
+      const fallback = await pool.query(
+        `SELECT client_id AS token_client_id, customer_phone, ref_token FROM messenger_preconnect_tokens 
+         WHERE page_id = $1 AND used_at IS NULL AND expires_at > NOW()
+           AND created_at > NOW() - INTERVAL '5 minutes'
+         ORDER BY created_at DESC LIMIT 2`,
+          [String(pageId)]
+      );
+      if (fallback.rows.length === 1) pendingToken = fallback;
+    }
 
     if (pendingToken.rows.length > 0) {
       const { token_client_id, customer_phone, ref_token } = pendingToken.rows[0];
