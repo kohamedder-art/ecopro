@@ -2862,8 +2862,8 @@ export default function Store() {
                         src={`https://www.youtube.com/embed/${formData.video_url.match(/(?:watch\?v=|embed\/|shorts\/|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?mute=1`}
                         allowFullScreen
                       />
-                    ) : /\.(mp4|webm|ogg)/i.test(formData.video_url) ? (
-                      <video className="w-full h-full object-cover" src={formData.video_url} controls muted />
+                    ) : /\.(mp4|webm|ogg)/i.test(formData.video_url) || /cloudinary\.com\/.*\/video\/upload\//i.test(formData.video_url) ? (
+                      <video className="w-full h-full object-cover" src={formData.video_url} controls muted autoPlay loop />
                     ) : (
                       <iframe className="w-full h-full" src={formData.video_url} allowFullScreen />
                     )}
