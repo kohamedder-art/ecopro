@@ -27,7 +27,7 @@ const TEMPLATE_PREVIEWS = [
 
   { id: 'needdz', name: 'NeedDZ — تطبيق موبايل', image: '', categories: ['mobile', 'popular'] },
   { id: 'novadz', name: 'نوفا DZ — عصري متحول', image: '', categories: ['popular', 'landing'] },
-  { id: 'minimalist', name: "لاتيليي — بسيط و أنيق", image: '', categories: ['minimal', 'elegant'] },
+  { id: 'minimalist', name: 'مينيماليست — بسيط و أنيق', image: '', categories: ['minimal', 'elegant'] },
   { id: 'lumina', name: 'لومينا — صفحة هبوط', image: '', categories: ['landing', 'popular'] },
   { id: 'zenith', name: 'زينيث — هبوط نظيف', image: '', categories: ['landing', 'minimal'] },
   { id: 'boutique', name: 'بوتيك — متجر تشكيلة', image: '', categories: ['popular', 'elegant'] },
