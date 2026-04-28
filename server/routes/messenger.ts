@@ -1383,17 +1383,19 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
 
     let linkedViaToken = false;
 
-    // Check if there's a pending preconnect token for this PSID (user just clicked m.me link)
-    // First check if we have any unexpired token for this client where the user might be connecting
+    // Check if there's a pending preconnect token for this page (search ALL clients,
+    // because on a shared platform page bot_settings may resolve to the wrong client_id).
     const pendingToken = await pool.query(
-      `SELECT customer_phone, ref_token FROM messenger_preconnect_tokens 
-       WHERE client_id = $1 AND page_id = $2 AND used_at IS NULL AND expires_at > NOW()
+      `SELECT client_id AS token_client_id, customer_phone, ref_token FROM messenger_preconnect_tokens 
+       WHERE page_id = $1 AND used_at IS NULL AND expires_at > NOW()
        ORDER BY created_at DESC LIMIT 1`,
-        [client_id, String(pageId)]
+        [String(pageId)]
     );
 
     if (pendingToken.rows.length > 0) {
-      const { customer_phone, ref_token } = pendingToken.rows[0];
+      const { token_client_id, customer_phone, ref_token } = pendingToken.rows[0];
+      // Use the token's client_id — it's the store that actually created the preconnect token
+      const linkClientId = Number(token_client_id) || client_id;
       
       // Link this PSID to the phone
       await pool.query(
@@ -1401,7 +1403,7 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
          VALUES ($1, $2, $3, NOW(), NOW())
          ON CONFLICT (client_id, customer_phone)
          DO UPDATE SET messenger_psid = EXCLUDED.messenger_psid, updated_at = NOW()`,
-        [client_id, customer_phone, senderId]
+        [linkClientId, customer_phone, senderId]
       );
 
       // Mark token as used
@@ -1410,14 +1412,17 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
         [ref_token]
       );
 
-      console.log(`[Messenger] Linked PSID ${senderId} to phone ${customer_phone} via message`);
+      // Override client_id to the correct store
+      client_id = linkClientId;
+
+      console.log(`[Messenger] Linked PSID ${senderId} to phone ${customer_phone} for client ${linkClientId} via message`);
 
       // Also store in messenger_subscribers
       await pool.query(
         `INSERT INTO messenger_subscribers (client_id, psid, page_id, customer_phone, subscribed_at, last_interaction)
          VALUES ($1, $2, $3, $4, NOW(), NOW())
          ON CONFLICT (client_id, psid) DO UPDATE SET customer_phone = $4, last_interaction = NOW()`,
-        [client_id, senderId, pageId, customer_phone]
+        [linkClientId, senderId, pageId, customer_phone]
       );
 
       // Release queued bot_messages that were waiting for PSID
@@ -1433,7 +1438,7 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
              AND message_type = 'messenger'
              AND status = 'pending'
              AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
-          [client_id, customer_phone]
+          [linkClientId, customer_phone]
         );
       } catch (e) {
         console.warn('[Messenger] Failed to release queued bot_messages after message link:', (e as any)?.message || e);
