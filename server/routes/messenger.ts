@@ -72,21 +72,19 @@ async function tryLinkPlatformSenderToLatestToken(
   pool: any,
   params: { pageId: string; senderId: string }
 ): Promise<{ clientId: number; storeName: string; customerPhone: string } | null> {
-  // Safety: only auto-claim if there is exactly one recent pending token for this platform page.
-  // This prevents cross-store mis-linking when multiple customers are connecting at once.
+  // Find the most recent pending preconnect token for this platform page.
   const candidateRes = await pool.query(
     `SELECT client_id, customer_phone, ref_token
      FROM messenger_preconnect_tokens
      WHERE page_id = $1
        AND used_at IS NULL
        AND expires_at > NOW()
-       AND created_at > NOW() - INTERVAL '30 minutes'
      ORDER BY created_at DESC
-     LIMIT 2`,
+     LIMIT 1`,
     [String(params.pageId)]
   );
 
-  if (candidateRes.rows.length !== 1) return null;
+  if (candidateRes.rows.length === 0) return null;
 
   const row = candidateRes.rows[0];
   const clientId = Number(row.client_id);
@@ -115,10 +113,31 @@ async function tryLinkPlatformSenderToLatestToken(
     [refToken]
   );
 
+  // Release queued bot_messages that were waiting for PSID
+  try {
+    await pool.query(
+      `UPDATE bot_messages
+       SET send_at = NOW(),
+           status = 'pending',
+           error_message = NULL,
+           updated_at = NOW()
+       WHERE client_id = $1
+         AND customer_phone = $2
+         AND message_type = 'messenger'
+         AND status = 'pending'
+         AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
+      [clientId, customerPhone]
+    );
+  } catch (e) {
+    console.warn('[Messenger] Failed to release queued bot_messages in tryLink:', (e as any)?.message || e);
+  }
+
   const storeRes = await pool.query(
     `SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
     [clientId]
   );
+
+  console.log(`[Messenger] tryLink: linked PSID ${params.senderId} to phone ${customerPhone} for client ${clientId}`);
 
   return {
     clientId,
