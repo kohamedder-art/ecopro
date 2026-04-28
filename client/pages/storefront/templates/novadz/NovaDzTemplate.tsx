@@ -68,17 +68,6 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
   const [imgIdx, setImgIdx] = useState(0);
   const [showVideo, setShowVideo] = useState(true);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
-
-  const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
-  const videoEmbed = useMemo(() => {
-    if (!videoUrl) return null;
-    const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-    if (yt) return { type: 'youtube' as const, id: yt[1] };
-    if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
-    return { type: 'iframe' as const, url: videoUrl };
-  }, [videoUrl]);
-
-  useEffect(() => { setImgIdx(0); setShowVideo(!!videoEmbed); }, [mainProduct?.id]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
@@ -100,6 +89,17 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
     original_price: 8500,
     images: ["https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&q=80&w=1200"]
   };
+
+  const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
+  const videoEmbed = useMemo(() => {
+    if (!videoUrl) return null;
+    const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (yt) return { type: 'youtube' as const, id: yt[1] };
+    if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
+    return { type: 'iframe' as const, url: videoUrl };
+  }, [videoUrl]);
+
+  useEffect(() => { setImgIdx(0); setShowVideo(!!videoEmbed); }, [mainProduct?.id]);
 
   const images = mainProduct?.images && mainProduct.images.length > 0 ? mainProduct.images : [
     "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&q=80&w=1200",
