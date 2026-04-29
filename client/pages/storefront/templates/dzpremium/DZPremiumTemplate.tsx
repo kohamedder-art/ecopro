@@ -52,7 +52,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
         if (Math.abs(diff) > 40) setSelectedImageIndex(i => diff > 0 ? Math.min(i + 1, productImages.length - 1) : Math.max(i - 1, 0));
         swipeTouchStartX.current = null;
     };
-    const [zoomImage, setZoomImage] = useState<string | null>(null);
+    const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
     const [showForm, setShowForm] = useState(false);
 
     const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
@@ -175,7 +175,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                               )}
                             </div>
                           ) : heroImage ? (
-                            <div className="w-full h-full cursor-zoom-in" onClick={() => setZoomImage(heroImage)}>
+                            <div className="w-full h-full cursor-zoom-in" onClick={() => setZoomState({ images: productImages, idx: selectedImageIndex })}>
                               <img src={heroImage} alt={product?.title} className="w-full h-full object-cover pointer-events-none" />
                             </div>
                           ) : (
@@ -347,12 +347,23 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
             )}
 
             {/* ── IMAGE ZOOM MODAL ── */}
-            {zoomImage && (
-                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-                    <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+            {zoomState && (
+                <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
+                    <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
                         <i className="ph ph-x text-xl"></i>
                     </button>
-                    <img src={zoomImage} alt="" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={e => e.stopPropagation()} />
+                    <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+                        <img src={zoomState.images[zoomState.idx]} alt="" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+                    </div>
+                    {productImages.length > 1 && (
+                        <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
+                            {productImages.map((img, i) => (
+                                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
+                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

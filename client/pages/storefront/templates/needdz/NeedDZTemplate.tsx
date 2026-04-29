@@ -51,7 +51,7 @@ const FALLBACK_PRODUCTS = [
   }
 ];
 
-function ProductImageGallery({ product: p, accentColor }: { product: any; accentColor: string }) {
+function ProductImageGallery({ product: p, accentColor, onZoom }: { product: any; accentColor: string; onZoom?: (src: string) => void }) {
   const [idx, setIdx] = useState(0);
   const [showVideo, setShowVideo] = useState(true);
   const imgs: string[] = p.images?.filter(Boolean) || [];
@@ -93,7 +93,9 @@ function ProductImageGallery({ product: p, accentColor }: { product: any; accent
             )}
           </div>
         ) : imgs.length > 0 ? (
-          <img src={imgs[idx] || imgs[0]} alt="" className="w-full h-full object-cover transition-all duration-300 pointer-events-none" />
+          <div className="w-full h-full cursor-pointer" onClick={() => onZoom?.(imgs[idx] || imgs[0])}>
+            <img src={imgs[idx] || imgs[0]} alt="" className="w-full h-full object-cover transition-all duration-300" />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-300"><ShoppingBag size={48} strokeWidth={1} /></div>
         )}
@@ -145,7 +147,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState({ hours: 0, mins: 45, secs: 12 });
   const [currentImgIdx, setCurrentImgIdx] = useState<Record<number, number>>({});
-  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const [detailProduct, setDetailProduct] = useState<any>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) setDetailProduct(p); } }, [initialProductSlug, products]);
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
@@ -597,7 +599,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
             <button onClick={() => setDetailProduct(null)} className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md text-white"><X size={18} /></button>
             <div className="w-full md:w-[55%] md:shrink-0 md:h-full overflow-hidden">
               <div className="h-full">
-              <ProductImageGallery product={detailProduct} accentColor={accentColor} />
+              <ProductImageGallery product={detailProduct} accentColor={accentColor} onZoom={(src) => { const imgs = detailProduct?.images?.filter(Boolean) || []; const idx = imgs.indexOf(src); setZoomState({ images: imgs.length ? imgs : [src], idx: idx >= 0 ? idx : 0 }); }} />
               </div>
             </div>
             <div className="flex-1 flex flex-col overflow-hidden" dir="rtl">
@@ -623,12 +625,23 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
       )}
 
       {/* Image Zoom Modal */}
-      {zoomImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+      {zoomState && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
+          <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
             <X size={20} />
           </button>
-          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+          </div>
+          {zoomState.images.length > 1 && (
+            <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
+              {zoomState.images.map((img, i) => (
+                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

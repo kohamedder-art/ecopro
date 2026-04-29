@@ -242,7 +242,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
         if (imgSrc) setMainImage(imgSrc);
     };
 
-    const [zoomImage, setZoomImage] = useState<string | null>(null);
+    const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
     const allImages = product?.images && product.images.length > 0 ? product.images : [mainImage, t1Image, t2Image, t3Image, t4Image].filter(Boolean);
     const extraImages = product?.images && product.images.length > 5 ? product.images.slice(5) : [];
     const thumbBase = [t1Image, t2Image, t3Image, t4Image];
@@ -300,7 +300,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                 <div className="lux-img-slot rounded-3xl mb-3 select-none" style={{ aspectRatio: '4/5', maxHeight: '560px' }}
                     onTouchStart={handleSwipeStart}
                     onTouchEnd={e => handleSwipeEnd(e, allImages)}
-                    onClick={() => { if (videoEmbed && showVideo) return; canManage ? fileMainRef.current?.click() : mainImage && setZoomImage(mainImage); }}>
+                    onClick={() => { if (videoEmbed && showVideo) return; canManage ? fileMainRef.current?.click() : mainImage && setZoomState({ images: allImages, idx: selectedMainImage }); }}>
                     {videoEmbed && showVideo ? (
                       <div className="w-full h-full">
                         {videoEmbed.type === 'youtube' ? (
@@ -512,23 +512,20 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
             </div>
 
             {/* Image Zoom Modal */}
-            {zoomImage && (
-                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-                    <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
-                        ✕
+            {zoomState && (
+                <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
+                    <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
+                        <X size={20} />
                     </button>
-                    <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
-                    {allImages.length > 1 && (
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                            {allImages.map((img, i) => (
-                                <div
-                                    key={i}
-                                    className="w-14 h-14 rounded-lg overflow-hidden cursor-pointer transition-all"
-                                    style={{ border: zoomImage === img ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
-                                    onClick={(e) => { e.stopPropagation(); setZoomImage(img); }}
-                                >
-                                    <img src={img} className="w-full h-full object-cover" alt="" />
-                                </div>
+                    <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+                        <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+                    </div>
+                    {zoomState.images.length > 1 && (
+                        <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
+                            {zoomState.images.map((img, i) => (
+                                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
+                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                </button>
                             ))}
                         </div>
                     )}

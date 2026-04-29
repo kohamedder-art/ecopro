@@ -67,7 +67,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
 
   const [imgIdx, setImgIdx] = useState(0);
   const [showVideo, setShowVideo] = useState(true);
-  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
@@ -244,22 +244,12 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
                 const diff = startX - e.changedTouches[0].clientX;
                 (e.currentTarget as any)._tsx = null;
                 if (videoEmbed && showVideo) return;
-                if (Math.abs(diff) < 40) { setZoomImage(images[imgIdx]); return; }
+                if (Math.abs(diff) < 40) { setZoomState({ images: images, idx: imgIdx }); return; }
                 setImgIdx(i => diff > 0 ? Math.min(i + 1, images.length - 1) : Math.max(i - 1, 0));
               }}
-              onClick={e => { if (!(e.target as HTMLElement).closest('button') && !(videoEmbed && showVideo)) setZoomImage(images[imgIdx]); }}
+              onClick={e => { if (!(e.target as HTMLElement).closest('button') && !(videoEmbed && showVideo)) setZoomState({ images: images, idx: imgIdx }); }}
             >
-              {videoEmbed && showVideo ? (
-                <div className="w-full h-full">
-                  {videoEmbed.type === 'youtube' ? (
-                    <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                  ) : videoEmbed.type === 'video' ? (
                     <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                  ) : (
-                    <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                  )}
-                </div>
-              ) : (
                 <>
                   <img 
                     src={images[imgIdx]} 
@@ -553,23 +543,20 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
       </footer>
 
       {/* Image Zoom Modal */}
-      {zoomImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
-            ✕
+      {zoomState && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
+          <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
+            <X size={20} />
           </button>
-          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+          </div>
           {images.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
               {images.map((img: string, i: number) => (
-                <div
-                  key={i}
-                  className="w-14 h-14 rounded-lg overflow-hidden cursor-pointer transition-all"
-                  style={{ border: zoomImage === img ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
-                  onClick={(e) => { e.stopPropagation(); setZoomImage(img); }}
-                >
-                  <img src={img} className="w-full h-full object-cover" alt="" />
-                </div>
+                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
               ))}
             </div>
           )}
