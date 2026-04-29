@@ -1,7 +1,8 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   ShoppingCart, Truck, ShieldCheck, Star,
-  ChevronDown, Phone, ArrowDownCircle, Settings, X
+  ChevronDown, Phone, ArrowDownCircle, Settings, X,
+  Home, Building2
 } from 'lucide-react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
@@ -33,11 +34,12 @@ export default function LuminaTemplate({ settings, products, canManage, storeSlu
   }, []);
 
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -190,7 +192,7 @@ export default function LuminaTemplate({ settings, products, canManage, storeSlu
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: selectedOffer ? selectedOffer.bundle_price : productPrice * quantity,
           delivery_fee: deliveryFee,
-          delivery_type: 'desk',
+          delivery_type: selectedDeliveryType,
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_address: address,
@@ -515,6 +517,39 @@ export default function LuminaTemplate({ settings, products, canManage, storeSlu
                 <label className="block text-sm font-bold mb-1" style={{ color: surfaceTextColor }}>ملاحظات</label>
                 <textarea placeholder="ملاحظات إضافية" rows={2} className="w-full border rounded-xl px-4 py-3 focus:ring-2 outline-none resize-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor, '--tw-ring-color': accentColor } as React.CSSProperties} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />
               </div>}
+              {(showHomeDelivery && showDeskDelivery) && (
+                <div>
+                  <label className="block text-sm font-bold mb-1" style={{ color: surfaceTextColor }}>نوع التوصيل</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDeliveryType('home')}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all"
+                      style={{
+                        backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
+                        border: `1px solid ${surfaceBorderColor}`,
+                        color: selectedDeliveryType === 'home' ? '#ffffff' : surfaceTextColor,
+                      }}
+                    >
+                      <Home size={16} />
+                      <span className="text-sm font-bold">التوصيل للمنزل</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDeliveryType('desk')}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all"
+                      style={{
+                        backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
+                        border: `1px solid ${surfaceBorderColor}`,
+                        color: selectedDeliveryType === 'desk' ? '#ffffff' : surfaceTextColor,
+                      }}
+                    >
+                      <Building2 size={16} />
+                      <span className="text-sm font-bold">الاستلام من المكتب</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Quantity */}
               <div className="pt-2">
