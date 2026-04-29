@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ShoppingCart, Plus, Minus, X, Truck, ShieldCheck, Star,
-  Phone, Trash2, CheckCircle2, ArrowRight, ShoppingBag
+  Phone, Trash2, CheckCircle2, ArrowRight, ShoppingBag,
+  Home, Building2
 } from 'lucide-react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
@@ -90,7 +91,8 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
 
 export default function BoutiqueTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView, initialProductSlug }: TemplateProps) {
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,7 +103,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -253,7 +255,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           ...(isOfferItem ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: isOfferItem ? selectedOffer.bundle_price : itemPrice * orderQty,
           delivery_fee: deliveryFee,
-          delivery_type: 'desk',
+          delivery_type: selectedDeliveryType,
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_address: address,
@@ -548,6 +550,39 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                         />}
                         {showAddress && <input type="text" placeholder="العنوان" className="w-full border rounded-xl px-4 py-3 text-sm outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />}
                         {showNotes && <textarea placeholder="ملاحظات" rows={2} className="w-full border rounded-xl px-4 py-3 text-sm outline-none resize-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />}
+                        {(showHomeDelivery && showDeskDelivery) && (
+                          <div>
+                            <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>نوع التوصيل</label>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDeliveryType('home')}
+                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all"
+                                style={{
+                                  backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
+                                  border: `1px solid ${surfaceBorderColor}`,
+                                  color: selectedDeliveryType === 'home' ? '#ffffff' : surfaceTextColor,
+                                }}
+                              >
+                                <Home size={16} />
+                                <span className="text-sm font-bold">التوصيل للمنزل</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDeliveryType('desk')}
+                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all"
+                                style={{
+                                  backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
+                                  border: `1px solid ${surfaceBorderColor}`,
+                                  color: selectedDeliveryType === 'desk' ? '#ffffff' : surfaceTextColor,
+                                }}
+                              >
+                                <Building2 size={16} />
+                                <span className="text-sm font-bold">الاستلام من المكتب</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                   </div>
               </div>
