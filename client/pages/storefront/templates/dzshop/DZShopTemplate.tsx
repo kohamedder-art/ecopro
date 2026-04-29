@@ -222,7 +222,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
       if (Math.abs(diff) > 40) setSelectedImageIndex(i => diff > 0 ? Math.min(i + 1, images.length - 1) : Math.max(i - 1, 0));
       swipeTouchStartX.current = null;
     };
-    const [zoomImage, setZoomImage] = useState<string | null>(null);
+    const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
 
     return (
         <div className="min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: bgColor, color: textColor }} dir="rtl">
@@ -625,9 +625,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                             {galleryImages.map((img, i) => (
                                 <button
                                     key={i}
-                                    onClick={(e) => { e.stopPropagation(); setZoomImage(img); }}
+                                    ${onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
                                     className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden cursor-pointer transition-all"
-                                    style={{ border: zoomImage === img ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
+                                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
                                 >
                                     <img src={img} className="w-full h-full object-cover" alt="" />
                                 </button>

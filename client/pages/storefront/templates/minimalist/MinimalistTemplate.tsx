@@ -54,7 +54,7 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
   const [detailProduct, setDetailProduct] = useState<any>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) setDetailProduct(p); } }, [initialProductSlug, products]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const [activeScroll, setActiveScroll] = useState(0);
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
     const { showAddress, showCommune, showNotes } = useOrderFields(settings);
@@ -119,10 +119,11 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
 
           {/* Image column — left on desktop */}
           <div className="w-full md:w-[55%] md:shrink-0 md:h-full flex flex-col">
-          <div className="relative flex-1 min-h-0 overflow-hidden select-none" style={{ backgroundColor: surfaceMuted, aspectRatio: '1/1' }}
+          <div className="relative flex-1 min-h-0 overflow-hidden select-none cursor-pointer" style={{ backgroundColor: surfaceMuted, aspectRatio: '1/1' }}
             onTouchStart={e => { e.stopPropagation(); tsRef.current = e.touches[0].clientX; }}
             onTouchMove={e => e.stopPropagation()}
             onTouchEnd={e => { e.stopPropagation(); handleSwipe(e); }}
+            onClick={() => { const imgs = images.filter(Boolean); if (imgs.length) setZoomState({ images: imgs, idx: activeImg }); }}
           >
             {videoEmbed && showVideo ? (
               <div className="w-full h-full">
@@ -138,7 +139,7 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
               <img 
                 src={images[activeImg] || images[0]} 
                 alt={product.title} 
-                className="w-full h-full object-cover transition-all duration-300 pointer-events-none"
+                className="w-full h-full object-cover transition-all duration-300"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center" style={{ color: surfaceTextMuted }}>
@@ -541,12 +542,23 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
       </footer>
 
       {/* Image Zoom Modal */}
-      {zoomImage && (
-        <div className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+      {zoomState && (
+        <div className="fixed inset-0 z-[300] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
+          <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
             <X size={20} />
           </button>
-          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+          </div>
+          {zoomState.images.length > 1 && (
+            <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
+              {zoomState.images.map((img, i) => (
+                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

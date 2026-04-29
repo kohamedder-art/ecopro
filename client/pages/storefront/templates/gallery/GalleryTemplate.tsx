@@ -85,7 +85,7 @@ export default function GalleryTemplate(props: TemplateProps) {
 
   /* ---------- state ---------- */
   const [cart, setCart] = useState<any[]>([]);
-  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const [activeProduct, setActiveProduct] = useState<any>(null);
   const [isOrderComplete, setIsOrderComplete] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
@@ -144,7 +144,7 @@ export default function GalleryTemplate(props: TemplateProps) {
               )}
             </div>
           ) : imgs.length > 0 ? (
-            <img src={imgs[idx] || imgs[0]} alt="" className="w-full h-full object-cover transition-all duration-300" onClick={() => setZoomImage(imgs[idx] || imgs[0])} />
+            <img src={imgs[idx] || imgs[0]} alt="" className="w-full h-full object-cover transition-all duration-300" onClick={() => { const p = activeProduct; const imgs2 = p?.images?.filter(Boolean) || []; setZoomState({ images: imgs2.length ? imgs2 : [imgs[idx] || imgs[0]], idx }); }} />
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ color: surfaceTextMuted }}><ShoppingBag size={48} strokeWidth={1} /></div>
           )}
@@ -456,12 +456,23 @@ export default function GalleryTemplate(props: TemplateProps) {
       </footer>
 
       {/* Image Zoom Modal */}
-      {zoomImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+      {zoomState && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
+          <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
             <X size={20} />
           </button>
-          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+          </div>
+          {zoomState.images.length > 1 && (
+            <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
+              {zoomState.images.map((img, i) => (
+                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

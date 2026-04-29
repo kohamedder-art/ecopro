@@ -91,7 +91,7 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
   const { showAddress, showCommune, showNotes } = useOrderFields(settings);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const [detailProduct, setDetailProduct] = useState<any>(null);
   const [detailVariant, setDetailVariant] = useState<SelectedVariant | null>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) setDetailProduct(p); } }, [initialProductSlug, products]);
@@ -586,7 +586,7 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
           <div className="aurora-modal-card relative z-10 w-full md:max-w-4xl md:mx-auto md:rounded-[32px] overflow-hidden flex flex-col md:flex-row" dir="ltr" style={{ backgroundColor: surfaceColor, color: '#fff', height: '100dvh', maxHeight: '100dvh' }}>
             <button onClick={() => setDetailProduct(null)} className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff' }}><X size={18} /></button>
             <div className="w-full md:w-[55%] md:shrink-0 md:h-full overflow-hidden">
-              <AuroraImageGallery product={detailProduct} surfaceColor={surfaceColor} accentColor={accentColor} onZoom={setZoomImage} />
+              <AuroraImageGallery product={detailProduct} surfaceColor={surfaceColor} accentColor={accentColor} onZoom={(src) => { const imgs = detailProduct?.images?.filter(Boolean) || []; const idx = imgs.indexOf(src); setZoomState({ images: imgs.length ? imgs : [src], idx: idx >= 0 ? idx : 0 }); }} />
             </div>
             <div className="flex-1 flex flex-col overflow-hidden" dir="rtl">
               <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
@@ -611,12 +611,23 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
       )}
 
       {/* Image Zoom Modal */}
-      {zoomImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
-            ✕
+      {zoomState && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
+          <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
+            <X size={20} />
           </button>
-          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+          </div>
+          {zoomState.images.length > 1 && (
+            <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
+              {zoomState.images.map((img, i) => (
+                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

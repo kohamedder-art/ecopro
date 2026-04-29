@@ -148,7 +148,7 @@ export default function ArtisanTemplate(props: TemplateProps) {
 
   /* ---------- cart ---------- */
   const [cart, setCart] = useState<any[]>([]);
-  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const [detailProduct, setDetailProduct] = useState<any>(null);
   const [detailVariant, setDetailVariant] = useState<SelectedVariant | null>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) setDetailProduct(p); } }, [initialProductSlug, products]);
@@ -596,7 +596,7 @@ export default function ArtisanTemplate(props: TemplateProps) {
               accentColor={accentColor}
               surfaceMuted={surfaceMuted}
               surfaceTextMuted={surfaceTextMuted}
-              onZoom={setZoomImage}
+              onZoom={(src) => { const imgs = detailProduct?.images?.filter(Boolean) || []; const idx = imgs.indexOf(src); setZoomState({ images: imgs.length ? imgs : [src], idx: idx >= 0 ? idx : 0 }); }}
               videoUrl={detailProduct?.metadata?.video_url || ''}
             />
             </div>
@@ -631,12 +631,32 @@ export default function ArtisanTemplate(props: TemplateProps) {
       )}
 
       {/* Image Zoom Modal */}
-      {zoomImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+      {zoomState && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
+          {/* Close button */}
+          <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
             <X size={20} />
           </button>
-          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+          
+          {/* Main image */}
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+          </div>
+          
+          {/* Thumbnails strip */}
+          {zoomState.images.length > 1 && (
+            <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
+              {zoomState.images.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setZoomState({ ...zoomState, idx: i })}
+                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

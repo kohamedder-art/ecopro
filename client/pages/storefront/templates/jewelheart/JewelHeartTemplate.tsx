@@ -128,7 +128,7 @@ export default function JewelHeartTemplate({
   // ── Image Gallery State ──
   const [selectedMainImage, setSelectedMainImage] = useState(0);
   const [showVideo, setShowVideo] = useState(true);
-  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
 
   // ── Order State ──
   const [customerName, setCustomerName] = useState('');
@@ -491,8 +491,8 @@ export default function JewelHeartTemplate({
                 <div
                   key={i}
                   className="w-14 h-14 rounded-lg overflow-hidden cursor-pointer transition-all"
-                  style={{ border: zoomImage === img ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
-                  onClick={(e) => { e.stopPropagation(); setZoomImage(img); }}
+                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
+                  ${onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
                 >
                   <img src={img} className="w-full h-full object-cover" alt="" />
                 </div>
