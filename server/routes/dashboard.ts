@@ -153,7 +153,7 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
         `SELECT 
           DATE(created_at) as date,
           COUNT(*)::int as orders,
-          COALESCE(SUM(total_price), 0)::float as total_value,
+          COALESCE(SUM(${revenueExpr}), 0)::float as total_value,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
          WHERE client_id = $1 ${dateFilter}

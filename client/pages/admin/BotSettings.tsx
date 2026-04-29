@@ -57,9 +57,6 @@ interface BotSettings {
   usePlatformTelegram?: boolean;
   telegramUsingPlatform?: boolean;
   platformWhatsappAvailable?: boolean;
-  usePlatformWhatsapp?: boolean;
-  whatsappUsingPlatform?: boolean;
-  // Platform Viber
   platformViberAvailable?: boolean;
   usePlatformViber?: boolean;
   viberUsingPlatform?: boolean;
@@ -67,13 +64,9 @@ interface BotSettings {
   platformInstagramAvailable?: boolean;
   usePlatformInstagram?: boolean;
   instagramUsingPlatform?: boolean;
-  // Manual Instagram fields
   instagramAccountId?: string;
   instagramPageAccessToken?: string;
   instagramTokenConfigured?: boolean;
-  templateGreeting?: string;
-  templateInstantOrder?: string;
-  templatePinInstructions?: string;
   templateOrderConfirmation: string;
   templatePayment: string;
   templateShipping: string;
@@ -86,11 +79,9 @@ export default function AdminBotSettings() {
   const [params, setParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [settingUpMessenger, setSettingUpMessenger] = useState(false);
   const [showMessengerAdvanced, setShowMessengerAdvanced] = useState(false);
   const [showTelegramAdvanced, setShowTelegramAdvanced] = useState(false);
   const [showWhatsappAdvanced, setShowWhatsappAdvanced] = useState(false);
-  const [showInstagramManual, setShowInstagramManual] = useState(false);
   const [showFacebookManual, setShowFacebookManual] = useState(false);
   const [showViberAdvanced, setShowViberAdvanced] = useState(false);
   const [showInstagramAdvanced, setShowInstagramAdvanced] = useState(false);
@@ -151,9 +142,9 @@ export default function AdminBotSettings() {
     platformInstagramAvailable: false,
     usePlatformInstagram: false,
     instagramUsingPlatform: false,
-    templateGreeting: `شكراً لطلبك من {storeName}، {customerName}! 🎉\n\n✅ فعّل الإشعارات لتلقي تأكيد الطلب وتحديثات التتبع.`,
-    templateInstantOrder: `🎉 شكراً لك {customerName}!\n\nتم استلام طلبك بنجاح ✅\n\n━━━━━━━━━━━━━━━━\n📦 تفاصيل الطلب\n━━━━━━━━━━━━━━━━\n🔢 رقم الطلب: #{orderId}\n📱 المنتج: {productName}\n💰 السعر: {totalPrice} دج\n📍 الكمية: {quantity}\n\n━━━━━━━━━━━━━━━━\n👤 معلومات التوصيل\n━━━━━━━━━━━━━━━━\n📛 الاسم: {customerName}\n📞 الهاتف: {customerPhone}\n🏠 العنوان: {address}\n\n━━━━━━━━━━━━━━━━\n🚚 حالة الطلب: قيد المعالجة\n━━━━━━━━━━━━━━━━\n\nسنتصل بك قريباً للتأكيد 📞\n\n⭐ من {storeName}`,
-    templatePinInstructions: `📌 نصيحة مهمة:\n\nاضغط مطولاً على الرسالة السابقة واختر "تثبيت" لتتبع طلبك بسهولة!\n\n🔔 تأكد من:\n• تفعيل الإشعارات\n• عدم كتم المحادثة\n• ستتلقى تحديثات حالة الطلب هنا مباشرة`,
+    instagramAccountId: '',
+    instagramPageAccessToken: '',
+    instagramTokenConfigured: false,
     templateOrderConfirmation: `مرحباً {customerName}! 🌟\n\nشكراً لطلبك من {companyName}!\n\n📦 تفاصيل الطلب:\n• المنتج: {productName}\n• السعر: {totalPrice} دج\n• العنوان: {address}\n\nهل تؤكد الطلب؟ اضغط ✅ للتأكيد أو ❌ للإلغاء.`,
     templatePayment: `تم تأكيد طلبك #{orderId}. المبلغ المطلوب: {totalPrice} دج.`,
     templateShipping: `تم شحن طلبك #{orderId}. رقم التتبع: {trackingNumber}.`
@@ -284,7 +275,6 @@ export default function AdminBotSettings() {
       if (data?.platformInstagramAvailable) {
         setShowInstagramAdvanced(!(data?.usePlatformInstagram ?? data?.instagramUsingPlatform ?? true));
       }
-
       // Also load store settings so we can call Messenger setup endpoints without asking for slug.
       try {
         const storeRes = await fetch('/api/client/store/settings');
@@ -335,7 +325,6 @@ export default function AdminBotSettings() {
       maybeDeleteEmpty('facebookPageId');
       maybeDeleteEmpty('instagramAccountId');
       maybeDeleteEmpty('instagramPageAccessToken');
-
       // In platform mode, do not send any page/token/username; server will apply env-based config.
       if (payload.usePlatformMessenger) {
         delete payload.fbPageId;
@@ -346,6 +335,14 @@ export default function AdminBotSettings() {
       if (payload.usePlatformTelegram) {
         delete payload.telegramBotToken;
         delete payload.telegramBotUsername;
+      }
+      if (payload.usePlatformViber) {
+        delete payload.viberAuthToken;
+        delete payload.viberSenderName;
+      }
+      if (payload.usePlatformInstagram) {
+        delete payload.instagramAccountId;
+        delete payload.instagramPageAccessToken;
       }
       if (payload.usePlatformWhatsapp) {
         delete payload.whatsappPhoneId;
@@ -395,43 +392,6 @@ export default function AdminBotSettings() {
   };
 
 
-
-  const handleSetupMessengerGetStarted = async () => {
-    // Requires store slug + saved page token
-    const slug = String(storeSlug || '').trim();
-    if (!slug) {
-      toast({
-        title: 'Error',
-        description: 'Store slug not available yet. Please refresh this page.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setSettingUpMessenger(true);
-    try {
-      const res = await fetch(`/api/messenger/setup-get-started/${encodeURIComponent(slug)}`, {
-        method: 'POST',
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || 'Failed to setup Get Started');
-      }
-      toast({
-        title: 'Success',
-        description: 'Messenger Get Started button configured.',
-      });
-    } catch (error) {
-      console.error('Failed to setup Messenger Get Started:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to setup Messenger Get Started',
-        variant: 'destructive',
-      });
-    } finally {
-      setSettingUpMessenger(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -777,7 +737,7 @@ export default function AdminBotSettings() {
                 </>
               )}
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">{t('bot.messengerDelay') || 'Delay (min)'}</Label>
                   <Input type="number" min={0} max={60} value={settings.messengerDelayMinutes ?? 5}
@@ -788,54 +748,31 @@ export default function AdminBotSettings() {
                   <Input type="number" min={1} max={72} value={settings.autoExpireHours ?? 24}
                     onChange={(e) => updateSetting('autoExpireHours', parseInt(e.target.value, 10) || 24)} placeholder="24" />
                 </div>
-                <div className="flex items-end pb-0.5">
-                  <div className="flex items-center gap-2">
-                    <Switch checked={settings.messengerEnabled ?? false} onCheckedChange={(v) => updateSetting('messengerEnabled', v)} />
-                    <Label className="text-xs text-slate-700 dark:text-slate-300">{t('bot.messengerEnabled') || 'Messenger'}</Label>
-                  </div>
-                </div>
               </div>
-              <button type="button" onClick={handleSetupMessengerGetStarted}
-                disabled={settingUpMessenger || !storeSlug || !(settings.messengerEnabled ?? false)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {settingUpMessenger ? 'Setting up…' : 'Setup Messenger Get Started'}
-              </button>
-              <button type="button" onClick={async () => {
-                if (!storeSlug) return;
-                const res = await fetch(`/api/messenger/owner-link/${encodeURIComponent(storeSlug)}`);
-                const data = await res.json();
-                if (data?.url) window.open(data.url, '_blank');
-              }}
-                disabled={!storeSlug || !(settings.messengerEnabled ?? false)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-                Connect as Store Owner (disable AI for me)
-              </button>
             </div>
           )}
 
           {/* ── Instagram ── */}
           {settings.provider === 'instagram' && (
             <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-              {settings.platformInstagramAvailable && (
-                <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
-                  <p className="text-xs text-slate-600 dark:text-slate-300">
-                    <strong>{!showInstagramAdvanced ? t('bot.platformMode') : t('bot.customMode')}</strong>{' '}
-                    {!showInstagramAdvanced ? t('bot.platformModeDesc') : t('bot.customModeDesc')}
-                  </p>
-                  <button type="button" onClick={() => setShowInstagramAdvanced(v => !v)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70">
-                    {showInstagramAdvanced ? t('bot.usePlatformBot') : t('bot.useMyOwnBot')}
-                  </button>
-                </div>
-              )}
-              {!showInstagramAdvanced && settings.platformInstagramAvailable && (
+              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  <strong>{!showInstagramAdvanced ? t('bot.platformMode') : t('bot.customMode')}</strong>{' '}
+                  {!showInstagramAdvanced ? t('bot.platformModeDesc') : t('bot.customModeDesc')}
+                </p>
+                <button type="button" onClick={() => setShowInstagramAdvanced(v => !v)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70">
+                  {showInstagramAdvanced ? t('bot.usePlatformBot') : t('bot.useMyOwnBot')}
+                </button>
+              </div>
+              {!showInstagramAdvanced && (
                 <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
                   <p className="text-xs text-emerald-800 dark:text-emerald-200">
                     <strong>{t('bot.configuredPlatformMode')}</strong> {t('bot.configuredPlatformModeDesc')}
                   </p>
                 </div>
               )}
-              {(showInstagramAdvanced || !settings.platformInstagramAvailable) && fbLoading ? (
+              {showInstagramAdvanced && fbLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-4 w-4 animate-spin text-pink-500" />
                 </div>
@@ -872,63 +809,24 @@ export default function AdminBotSettings() {
                     </p>
                   </div>
                 </div>
-              ) : fbStatus?.connected && !fbStatus?.instagramConnected ? (
-                <div className="text-center py-4 space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mx-auto">
-                    <Instagram className="w-6 h-6 text-amber-500" />
-                  </div>
-                  <p className="text-xs font-semibold">
-                    {isRTL ? 'فيسبوك مربوط لكن Instagram غير مربوط' : 'Facebook connected but Instagram not linked'}
-                  </p>
-                  <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
-                    {isRTL
-                      ? 'تأكد أن صفحتك على فيسبوك مربوطة بحساب Instagram Business في إعدادات الصفحة، ثم أعد الربط.'
-                      : 'Make sure your Facebook Page is linked to an Instagram Business account in Page Settings, then reconnect.'}
-                  </p>
-                  <Button
-                    className="h-9 px-6 rounded-xl font-bold text-white bg-[#1877F2] hover:bg-[#166FE5] shadow-sm gap-2 text-xs"
-                    onClick={connectFacebook} disabled={fbConnecting}>
-                    {fbConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
-                    {isRTL ? 'إعادة الربط' : 'Reconnect'}
-                  </Button>
-                </div>
               ) : (
-                <div className="text-center py-4 space-y-3">
+                <div className="text-center py-6 space-y-3">
                   <div className="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center mx-auto">
                     <Instagram className="w-6 h-6 text-pink-500" />
                   </div>
-                  <p className="text-xs font-semibold">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     {isRTL ? 'غير متصل بـ Instagram' : 'Not connected to Instagram'}
                   </p>
                   <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
                     {isRTL
-                      ? 'اربط حسابك عبر فيسبوك — سيتم اكتشاف Instagram تلقائياً إذا كان مربوطاً بالصفحة'
-                      : 'Connect via Facebook — Instagram will be auto-detected if linked to your Page'}
+                      ? 'يرجى الاتصال أولاً بحساب فيسبوك من علامة التبويب "فيسبوك" أعلاه. سيتم اكتشاف Instagram تلقائياً إذا كان مربوطاً بالصفحة.'
+                      : 'Please connect your Facebook account from the "Facebook" tab above. Instagram will be auto-detected if linked to your Page.'}
                   </p>
-                  <Button
-                    className="h-9 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 hover:opacity-90 shadow-sm gap-2 text-xs"
-                    onClick={connectFacebook} disabled={fbConnecting}>
-                    {fbConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
-                    {isRTL ? 'ربط بفيسبوك' : 'Connect with Facebook'}
-                  </Button>
                 </div>
               )}
 
-              {/* Manual credentials divider */}
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-                </div>
-                <div className="relative flex justify-center">
-                  <button type="button" onClick={() => setShowInstagramManual(v => !v)}
-                    className="px-3 py-1 bg-white dark:bg-slate-900 text-[10px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
-                    {showInstagramManual
-                      ? (isRTL ? 'إخفاء الإعدادات اليدوية' : 'Hide manual setup')
-                      : (isRTL ? 'أو أدخل البيانات يدوياً' : 'Or enter credentials manually')}
-                  </button>
-                </div>
-              </div>
-              {showInstagramManual && (
+              {/* Manual credentials for custom mode - only show when useMyOwnBot selected */}
+              {showInstagramAdvanced && (
                 <div className="space-y-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
                   <p className="text-[10px] text-slate-500">
                     {isRTL
@@ -952,6 +850,20 @@ export default function AdminBotSettings() {
                   </div>
                 </div>
               )}
+
+              {/* Settings */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.messengerDelay') || 'Delay (min)'}</Label>
+                  <Input type="number" min={0} max={60} value={settings.messengerDelayMinutes ?? 5}
+                    onChange={(e) => updateSetting('messengerDelayMinutes', parseInt(e.target.value, 10) || 5)} placeholder="5" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">{t('bot.autoExpire')}</Label>
+                  <Input type="number" min={1} max={72} value={settings.autoExpireHours ?? 24}
+                    onChange={(e) => updateSetting('autoExpireHours', parseInt(e.target.value, 10) || 24)} placeholder="24" />
+                </div>
+              </div>
             </div>
           )}
 

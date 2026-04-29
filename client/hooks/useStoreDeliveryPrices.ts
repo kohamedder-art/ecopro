@@ -33,11 +33,12 @@ export function useStoreDeliveryPrices(storeSlug: string) {
     fetch(`/api/storefront/${encodeURIComponent(storeSlug)}/delivery-prices`)
       .then(res => res.ok ? res.json() : { prices: [] })
       .then(data => {
+        console.log('[DeliveryPrices] API response:', data);
         setPrices(data.prices || []);
         if (data.default_price != null) setDefaultPrice(Number(data.default_price) || 500);
         setLoaded(true);
       })
-      .catch(() => { setPrices([]); setLoaded(true); })
+      .catch((err) => { console.error('[DeliveryPrices] Fetch error:', err); setPrices([]); setLoaded(true); })
       .finally(() => setLoading(false));
   }, [storeSlug]);
 
@@ -57,22 +58,30 @@ export function useStoreDeliveryPrices(storeSlug: string) {
       }));
     }
     const priceMap = new Map(prices.map(p => [Number(p.wilaya_id), p]));
-    return ALL_WILAYAS
+    const mapped = ALL_WILAYAS
       .filter(w => {
         const p = priceMap.get(w.code) ?? priceMap.get(w.id);
         return p?.is_active;
       })
       .map(w => {
         const p = (priceMap.get(w.code) ?? priceMap.get(w.id))!;
+        // Properly parse prices - handle both string and number types from API
+        const homePrice = typeof p.home_delivery_price === 'string' ? parseFloat(p.home_delivery_price) : Number(p.home_delivery_price);
+        const deskPriceRaw = p.desk_delivery_price;
+        const deskPrice = deskPriceRaw != null 
+          ? (typeof deskPriceRaw === 'string' ? parseFloat(deskPriceRaw) : Number(deskPriceRaw))
+          : null;
         return {
           id: w.code,
           labelAR: `${String(w.code).padStart(2, '0')} - ${w.arabic_name ?? w.name}`,
           labelFR: `${String(w.code).padStart(2, '0')} - ${w.name}`,
-          homePrice: Number(p.home_delivery_price) || 0,
-          deskPrice: p.desk_delivery_price != null ? Number(p.desk_delivery_price) : null,
+          homePrice: isNaN(homePrice) ? 0 : homePrice,
+          deskPrice: deskPrice != null && !isNaN(deskPrice) && deskPrice > 0 ? deskPrice : null,
           days: p.estimated_days,
         };
       });
+    console.log('[DeliveryPrices] Mapped wilayas:', mapped.slice(0, 3));
+    return mapped;
   }, [prices, loaded, defaultPrice]);
 
   return { wilayas, loading };

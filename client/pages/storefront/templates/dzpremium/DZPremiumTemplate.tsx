@@ -42,6 +42,22 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
     const productTotal = selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? product?.price ?? 0);
     const grandTotal = productTotal + deliveryFee;
 
+    // Debug delivery fee calculation
+    useEffect(() => {
+      console.log('[DZPremium] Delivery debug:', {
+        selectedWilayaId,
+        selectedDeliveryType,
+        selectedWilaya: selectedWilaya ? { 
+          id: selectedWilaya.id, 
+          homePrice: selectedWilaya.homePrice, 
+          deskPrice: selectedWilaya.deskPrice,
+          deskPriceType: typeof selectedWilaya.deskPrice
+        } : null,
+        baseDeliveryFee,
+        deliveryFee,
+      });
+    }, [selectedWilayaId, selectedDeliveryType, selectedWilaya, baseDeliveryFee, deliveryFee]);
+
     // Image gallery
     const productImages = product?.images || [];
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -117,20 +133,36 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
     const heroImage = productImages[selectedImageIndex] || productImages[0] || null;
     const heroBg = settings?.template_bg_color || '#0a0a0a';
 
+    // Dark/Light mode detection
+    const isDark = useMemo(() => {
+        const hex = heroBg.replace('#', '');
+        if (hex.length < 6) return true;
+        const r = parseInt(hex.substring(0, 2), 16), g = parseInt(hex.substring(2, 4), 16), b = parseInt(hex.substring(4, 6), 16);
+        return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+    }, [heroBg]);
+
+    const textColor = isDark ? '#fff' : '#111827';
+    const textMuted = isDark ? 'rgba(255,255,255,0.6)' : '#6b7280';
+    const inputBg = isDark ? 'rgba(255,255,255,0.08)' : '#ffffff';
+    const inputBorder = isDark ? 'rgba(255,255,255,0.15)' : '#d1d5db';
+    const formInputBg = isDark ? '#0f2d22' : '#f9fafb';
+    const formInputBorder = isDark ? '#2d4a3e' : '#e5e7eb';
+    const formInputPlaceholder = isDark ? '#4a7a62' : '#9ca3af';
+
     return (
-        <div style={{ fontFamily: "'Cairo', sans-serif", '--dzp-accent': rawAccent } as React.CSSProperties} className="min-h-screen" dir="rtl">
+        <div style={{ fontFamily: "'Cairo', sans-serif", '--dzp-accent': rawAccent, color: textColor } as React.CSSProperties} className="min-h-screen" dir="rtl">
             <style>{`
-                .dzp-input { width:100%; padding:12px 16px; border-radius:12px; border:1.5px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.08); color:#fff; font-family:inherit; font-weight:600; outline:none; transition:border-color 0.2s; }
-                .dzp-input::placeholder { color:rgba(255,255,255,0.35); }
+                .dzp-input { width:100%; padding:12px 16px; border-radius:12px; border:1.5px solid ${inputBorder}; background:${inputBg}; color:${textColor}; font-family:inherit; font-weight:600; outline:none; transition:border-color 0.2s; }
+                .dzp-input::placeholder { color:${isDark ? 'rgba(255,255,255,0.35)' : '#9ca3af'}; }
                 .dzp-input:focus { border-color:${accentColor}; }
                 .dzp-input option { color:#000; background:#fff; }
                 .dzp-pulse { animation: dzp-pulse-anim 2s infinite; }
                 @keyframes dzp-pulse-anim { 0%,100%{box-shadow:0 0 0 0 ${accentColor}88;} 50%{box-shadow:0 0 0 12px ${accentColor}00;} }
-                [contenteditable="true"]:focus { outline:2px solid ${accentColor}; border-radius:4px; background:rgba(255,255,255,0.1); }
-                .dzp-form-input { width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid #2d4a3e; background:#0f2d22; color:#fff; font-family:inherit; font-weight:600; outline:none; transition:border-color 0.2s; font-size:15px; }
-                .dzp-form-input::placeholder { color:#4a7a62; }
+                [contenteditable="true"]:focus { outline:2px solid ${accentColor}; border-radius:4px; background:${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}; }
+                .dzp-form-input { width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid ${formInputBorder}; background:${formInputBg}; color:${textColor}; font-family:inherit; font-weight:600; outline:none; transition:border-color 0.2s; font-size:15px; }
+                .dzp-form-input::placeholder { color:${formInputPlaceholder}; }
                 .dzp-form-input:focus { border-color:${accentColor}; }
-                .dzp-form-input option { background:#0f2d22; color:#fff; }
+                .dzp-form-input option { background:${formInputBg}; color:${textColor}; }
             `}</style>
 
             {/* ── TOP NOTICE BAR ── */}
@@ -140,8 +172,8 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                 </span>
             </div>
 
-            {/* ── HERO SECTION ── dark split layout ── */}
-            <section className="relative min-h-screen lg:min-h-[90vh]" style={{ backgroundColor: heroBg }}>
+            {/* ── HERO SECTION ── */}
+            <section className={`relative min-h-screen lg:min-h-[90vh] ${isDark ? '' : 'text-gray-900'}`} style={{ backgroundColor: heroBg }}>
 
                 {/* Background glow */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -150,20 +182,20 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                 </div>
 
                 {/* Header inside hero */}
-                <header className="relative z-10 px-6 py-4 flex justify-between items-center border-b border-white/5">
+                <header className="relative z-10 px-6 py-4 flex justify-between items-center border-b" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
                     <div className="flex items-center gap-3">
                         {settings?.store_logo ? (
                             <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover" />
                         ) : (
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white" style={{ backgroundColor: accentColor }}>
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm" style={{ backgroundColor: accentColor, color: '#fff' }}>
                                 {(settings?.store_name || 'م').charAt(0)}
                             </div>
                         )}
-                        <span className="font-extrabold text-white">{settings?.store_name || 'متجري'}</span>
+                        <span className="font-extrabold" style={{ color: textColor }}>{settings?.store_name || 'متجري'}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span className="text-xs text-white/50 hidden md:inline">متاح للطلب الآن</span>
+                        <span className="text-xs hidden md:inline" style={{ color: textMuted }}>متاح للطلب الآن</span>
                     </div>
                 </header>
 
@@ -190,7 +222,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                               <img src={heroImage} alt={product?.title} className="w-full h-full object-cover pointer-events-none" />
                             </div>
                           ) : (
-                            <div className="flex items-center justify-center border-2 border-dashed border-white/20 text-white/30 w-full h-full">
+                            <div className="flex items-center justify-center border-2 border-dashed w-full h-full" style={{ borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)', color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)' }}>
                               <div className="text-center">
                                 <i className="ph ph-image text-5xl block mb-2"></i>
                                 <p className="text-sm">أضف منتجاً من لوحة التحكم</p>
@@ -218,7 +250,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                     </div>
 
                     {/* RIGHT: info + CTA / form */}
-                    <div className="text-white space-y-5">
+                    <div className="space-y-5" style={{ color: textColor }}>
                         {/* Badge */}
                         <span className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-full border" style={{ backgroundColor: accentColor + '20', borderColor: accentColor + '50', color: accentColor }}>
                             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: accentColor }}></span>
@@ -228,12 +260,12 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                         </span>
 
                         {/* Title */}
-                        <h1 className="text-2xl md:text-3xl lg:text-4xl font-black leading-tight text-white" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('dzp_hero_title')}>
+                        <h1 className="text-2xl md:text-3xl lg:text-4xl font-black leading-tight" style={{ color: textColor }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('dzp_hero_title')}>
                             {settings?.dzp_hero_title || product?.title || "اكتشف السر وراء الراحة التامة مع منتجنا الجديد"}
                         </h1>
 
                         {/* Subtitle */}
-                        <p className="text-white/60 leading-relaxed text-sm" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('dzp_hero_sub')}>
+                        <p className="leading-relaxed text-sm" style={{ color: textMuted }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('dzp_hero_sub')}>
                             {settings?.dzp_hero_sub || "جودة عالية، شحن سريع، دفع عند الاستلام — اطلب الآن قبل نفاذ الكمية"}
                         </p>
 
@@ -243,12 +275,12 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                                 {Math.round(product?.price ?? 3900).toLocaleString()} دج
                             </span>
                             {(product as any)?.compare_at_price && (
-                                <span className="text-lg line-through text-white/30">
+                                <span className="text-lg line-through" style={{ color: textMuted }}>
                                     {Math.round((product as any).compare_at_price ?? 0).toLocaleString()} دج
                                 </span>
                             )}
                             {(product as any)?.compare_at_price && product?.price && (
-                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                                <span className="text-xs font-bold px-2 py-1 rounded-full border" style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: isDark ? '#f87171' : '#dc2626', borderColor: isDark ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.3)' }}>
                                     -{Math.round((1 - product.price / (product as any).compare_at_price) * 100)}%
                                 </span>
                             )}
@@ -257,7 +289,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                         {/* Trust pills */}
                         <div className="flex flex-wrap gap-2">
                             {['🚚 توصيل سريع', '💵 الدفع عند الاستلام', '🛡️ ضمان الجودة'].map(t => (
-                                <span key={t} className="text-xs px-3 py-1 rounded-full bg-white/8 border border-white/10 text-white/70">{t}</span>
+                                <span key={t} className="text-xs px-3 py-1 rounded-full border" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>{t}</span>
                             ))}
                         </div>
 
@@ -275,12 +307,13 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                                 lastOrderId={lastOrderId} lastTelegramUrl={lastTelegramUrl} lastCustomerPhone={lastCustomerPhone}
                                 accentColor={accentColor} storeSlug={storeSlug} onSubmit={handleOrder}
                                 canManage={canManage} handleTextEdit={handleTextEdit}
+                                isDark={isDark} textColor={textColor} textMuted={textMuted}
                             />
                         </div>
 
                         {/* Mobile CTA button */}
                         <button
-                            className="lg:hidden w-full py-4 rounded-2xl text-white font-black text-lg dzp-pulse shadow-xl"
+                            className="lg:hidden w-full py-4 rounded-2xl font-black text-lg dzp-pulse shadow-xl"
                             style={{ backgroundColor: accentColor }}
                             onClick={() => setShowForm(true)}
                         >
@@ -293,22 +326,22 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
             </section>
 
             {/* ── BENEFITS STRIP ── */}
-            <section className="py-12 px-4" style={{ backgroundColor: '#0f1a14' }}>
+            <section className="py-12 px-4" style={{ backgroundColor: isDark ? '#0f1a14' : '#f3f4f6' }}>
                 <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
                         { icon: 'ph-truck', titleKey: 'dzp_benefit1_title', descKey: 'dzp_benefit1_desc', def_title: 'توصيل سريع', def_desc: 'نوصل طلبك في وقت قياسي لجميع الولايات' },
                         { icon: 'ph-hand-coins', titleKey: 'dzp_benefit2_title', descKey: 'dzp_benefit2_desc', def_title: 'دفع آمن', def_desc: 'لا تدفع شيئاً حتى تستلم منتجك وتتأكد' },
                         { icon: 'ph-shield-check', titleKey: 'dzp_benefit3_title', descKey: 'dzp_benefit3_desc', def_title: 'ضمان 100%', def_desc: 'إذا لم يعجبك المنتج يمكنك الاستبدال' },
                     ].map((b) => (
-                        <div key={b.icon} className="flex items-start gap-4 p-4 rounded-2xl border border-white/5 bg-white/3">
+                        <div key={b.icon} className="flex items-start gap-4 p-4 rounded-2xl border" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}>
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: accentColor + '20' }}>
                                 <i className={`ph ${b.icon} text-xl`} style={{ color: accentColor }}></i>
                             </div>
                             <div>
-                                <p className="font-bold text-white text-sm" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit(b.titleKey)}>
+                                <p className="font-bold text-sm" style={{ color: textColor }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit(b.titleKey)}>
                                     {(settings as any)?.[b.titleKey] || b.def_title}
                                 </p>
-                                <p className="text-white/40 text-xs mt-0.5" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit(b.descKey)}>
+                                <p className="text-xs mt-0.5" style={{ color: textMuted }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit(b.descKey)}>
                                     {(settings as any)?.[b.descKey] || b.def_desc}
                                 </p>
                             </div>
@@ -319,16 +352,16 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
 
             {/* ── PRODUCT DESCRIPTION ── */}
             {product?.description && (
-                <section className="py-12 px-4" style={{ backgroundColor: '#080f0b' }}>
+                <section className="py-12 px-4" style={{ backgroundColor: isDark ? '#080f0b' : '#f9fafb' }}>
                     <div className="max-w-3xl mx-auto">
-                        <h2 className="text-xl font-black text-white mb-6 border-b border-white/10 pb-4">وصف المنتج</h2>
-                        <div className="prose prose-invert max-w-none text-white/70" dangerouslySetInnerHTML={{ __html: product.description }} />
+                        <h2 className="text-xl font-black mb-6 border-b pb-4" style={{ color: textColor, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>وصف المنتج</h2>
+                        <div className="prose max-w-none" style={{ color: textMuted }} dangerouslySetInnerHTML={{ __html: product.description }} />
                     </div>
                 </section>
             )}
 
             {/* ── FOOTER ── */}
-            <footer className="py-6 text-center text-xs border-t" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: heroBg, color: 'rgba(255,255,255,0.3)' }}>
+            <footer className="py-6 text-center text-xs border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', backgroundColor: heroBg, color: textMuted }}>
                 © {new Date().getFullYear()} {settings?.store_name || 'متجري'} · صنع بواسطة{' '}
                 <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor }}>Sahla4Eco</a>
             </footer>
@@ -337,10 +370,10 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
             {showForm && (
                 <div className="lg:hidden fixed inset-0 z-50 flex items-end">
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowForm(false)} />
-                    <div className="relative w-full rounded-t-3xl overflow-y-auto max-h-[90vh] p-6" style={{ backgroundColor: '#0a1a11' }}>
+                    <div className="relative w-full rounded-t-3xl overflow-y-auto max-h-[90vh] p-6" style={{ backgroundColor: isDark ? '#0a1a11' : '#ffffff' }}>
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-black text-white text-lg">تفاصيل الطلب</h3>
-                            <button onClick={() => setShowForm(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-white/50 bg-white/10">
+                            <h3 className="font-black text-lg" style={{ color: textColor }}>تفاصيل الطلب</h3>
+                            <button onClick={() => setShowForm(false)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ color: textMuted, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }}>
                                 <i className="ph ph-x"></i>
                             </button>
                         </div>
@@ -350,10 +383,13 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                             selectedVariant={selectedVariant} setSelectedVariant={setSelectedVariant}
                             offers={offers} selectedOffer={selectedOffer} setSelectedOffer={setSelectedOffer}
                             showAddress={showAddress} showCommune={showCommune} showNotes={showNotes}
+                            showHomeDelivery={showHomeDelivery} showDeskDelivery={showDeskDelivery}
+                            selectedDeliveryType={selectedDeliveryType} setSelectedDeliveryType={setSelectedDeliveryType}
                             isSubmitting={isSubmitting} orderSuccess={orderSuccess}
                             lastOrderId={lastOrderId} lastTelegramUrl={lastTelegramUrl} lastCustomerPhone={lastCustomerPhone}
                             accentColor={accentColor} storeSlug={storeSlug} onSubmit={handleOrder}
                             canManage={canManage} handleTextEdit={handleTextEdit}
+                            isDark={isDark} textColor={textColor} textMuted={textMuted}
                         />
                     </div>
                 </div>
@@ -384,15 +420,15 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
 }
 
 /* ─── Extracted Order Form ─── */
-function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, deliveryFee, productTotal, grandTotal, selectedVariant, setSelectedVariant, offers, selectedOffer, setSelectedOffer, showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery, selectedDeliveryType, setSelectedDeliveryType, isSubmitting, orderSuccess, lastOrderId, lastTelegramUrl, lastCustomerPhone, accentColor, storeSlug, onSubmit, canManage, handleTextEdit }: any) {
+function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, deliveryFee, productTotal, grandTotal, selectedVariant, setSelectedVariant, offers, selectedOffer, setSelectedOffer, showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery, selectedDeliveryType, setSelectedDeliveryType, isSubmitting, orderSuccess, lastOrderId, lastTelegramUrl, lastCustomerPhone, accentColor, storeSlug, onSubmit, canManage, handleTextEdit, isDark, textColor, textMuted }: any) {
     if (orderSuccess) {
         return (
-            <div className="rounded-2xl p-6 text-center border" style={{ backgroundColor: accentColor + '15', borderColor: accentColor + '40' }}>
+            <div className="rounded-2xl p-6 text-center border" style={{ backgroundColor: isDark ? accentColor + '15' : accentColor + '10', borderColor: accentColor + '40' }}>
                 <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: accentColor }}>
-                    <i className="ph ph-check text-2xl text-white"></i>
+                    <i className="ph ph-check text-2xl" style={{ color: '#fff' }}></i>
                 </div>
-                <h3 className="font-black text-white text-xl mb-1">تم تسجيل طلبك!</h3>
-                <p className="text-white/50 text-sm mb-4">سنتصل بك قريباً لتأكيد الطلب.</p>
+                <h3 className="font-black text-xl mb-1" style={{ color: textColor }}>تم تسجيل طلبك!</h3>
+                <p className="text-sm mb-4" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب.</p>
                 <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
             </div>
         );
@@ -418,9 +454,9 @@ function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, de
                         onClick={() => setSelectedDeliveryType('home')}
                         className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs transition-all"
                         style={{
-                            backgroundColor: selectedDeliveryType === 'home' ? accentColor : 'rgba(255,255,255,0.06)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            color: selectedDeliveryType === 'home' ? '#ffffff' : 'rgba(255,255,255,0.7)',
+                            backgroundColor: selectedDeliveryType === 'home' ? accentColor : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                            color: selectedDeliveryType === 'home' ? '#ffffff' : textMuted,
                         }}
                     >
                         <i className="ph ph-house"></i>
@@ -431,9 +467,9 @@ function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, de
                         onClick={() => setSelectedDeliveryType('desk')}
                         className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs transition-all"
                         style={{
-                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor : 'rgba(255,255,255,0.06)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            color: selectedDeliveryType === 'desk' ? '#ffffff' : 'rgba(255,255,255,0.7)',
+                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                            color: selectedDeliveryType === 'desk' ? '#ffffff' : textMuted,
                         }}
                     >
                         <i className="ph ph-building-office"></i>
@@ -442,17 +478,17 @@ function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, de
                 </div>
             )}
             {selectedWilayaId && (
-                <div className="rounded-xl p-3 text-sm space-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <div className="flex justify-between text-white/50">
+                <div className="rounded-xl p-3 text-sm space-y-2" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)', border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)' }}>
+                    <div className="flex justify-between" style={{ color: textMuted }}>
                         <span>سعر المنتجات</span>
-                        <span className="font-bold text-white">{Math.round(productTotal ?? 0).toLocaleString()} دج</span>
+                        <span className="font-bold" style={{ color: textColor }}>{Math.round(productTotal ?? 0).toLocaleString()} دج</span>
                     </div>
-                    <div className="flex justify-between text-white/50">
+                    <div className="flex justify-between" style={{ color: textMuted }}>
                         <span>سعر التوصيل</span>
                         <span className="font-bold" style={{ color: accentColor }}>{Math.round(deliveryFee ?? 0).toLocaleString()} دج</span>
                     </div>
-                    <div className="flex justify-between pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-                        <span className="font-bold text-white">التكلفة الإجمالية</span>
+                    <div className="flex justify-between pt-2" style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(0,0,0,0.1)' }}>
+                        <span className="font-bold" style={{ color: textColor }}>التكلفة الإجمالية</span>
                         <span className="font-black" style={{ color: accentColor }}>{Math.round(grandTotal ?? 0).toLocaleString()} دج</span>
                     </div>
                 </div>
@@ -461,13 +497,13 @@ function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, de
             {showAddress && <input name="address" type="text" placeholder="العنوان" className="dzp-form-input" />}
             {showNotes && <textarea name="notes" placeholder="ملاحظات" rows={2} className="dzp-form-input resize-none" />}
             <button disabled={isSubmitting} type="submit"
-                className="w-full py-4 rounded-xl text-white font-black text-lg shadow-xl transition-all active:scale-95 disabled:opacity-50 dzp-pulse"
-                style={{ backgroundColor: accentColor }}>
+                className="w-full py-4 rounded-xl font-black text-lg shadow-xl transition-all active:scale-95 disabled:opacity-50 dzp-pulse"
+                style={{ backgroundColor: accentColor, color: '#fff' }}>
                 <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('dzp_form_btn')}>
                     {isSubmitting ? 'جاري الطلب...' : (/* settings handled by parent */ 'تأكيد الطلب الآن')}
                 </span>
             </button>
-            <p className="text-center text-xs text-white/30 flex items-center justify-center gap-1">
+            <p className="text-center text-xs flex items-center justify-center gap-1" style={{ color: textMuted }}>
                 <i className="ph ph-lock-key"></i> الدفع عند الاستلام بعد معاينة المنتج
             </p>
         </form>

@@ -55,6 +55,15 @@ async function scanClient(
   clientId: number,
   storeName: string
 ): Promise<void> {
+  // Check if guardian is enabled for this client
+  const settingsRes = await pool.query(
+    `SELECT guardian_enabled FROM ai_settings WHERE client_id = $1 LIMIT 1`,
+    [clientId]
+  ).catch(() => ({ rows: [{ guardian_enabled: true }] }));
+  if (settingsRes.rows[0]?.guardian_enabled === false) {
+    return; // Guardian disabled for this client
+  }
+
   // Seed default thresholds if this client has never been scanned before
   await ensureDefaultThresholds(pool, clientId).catch(() => {});
   const thresholds = await getThresholds(pool, clientId).catch(() => ({

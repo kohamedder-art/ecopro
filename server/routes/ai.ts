@@ -3154,4 +3154,86 @@ router.get('/vision/usage-stats', authenticate, requireClient, async (req: Reque
   }
 });
 
+/**
+ * POST /api/ai/marketing/broadcast-compose
+ * AI composes a broadcast marketing message for all platforms.
+ * Checks broadcast_composer toggle. Requires subscription.
+ * Body: { segment: 'all'|'customers'|'abandoned', campaignType: 'promo'|'new_product'|'restock', tone?: 'friendly'|'urgent'|'professional', language?: 'ar'|'fr'|'en' }
+ */
+router.post('/marketing/broadcast-compose', authenticate, requireClient, authAiLimiter, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const clientId = user?.id;
+    const { segment, campaignType, tone, language, productName, discount } = req.body;
+
+    // Check if broadcast composer is enabled
+    const aiSettingsRes = await pool.query(
+      `SELECT broadcast_composer, omni_intelligence FROM ai_settings WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+    if (aiSettingsRes.rows[0]?.broadcast_composer === false) {
+      return res.status(403).json({ error: 'Broadcast composer is disabled. Enable it in AI Settings.' });
+    }
+
+    // Verify subscription
+    const subRes = await pool.query(
+      `SELECT status FROM client_subscriptions WHERE client_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [clientId]
+    );
+    const subStatus = subRes.rows[0]?.status;
+    if (subStatus === 'expired' || subStatus === 'cancelled') {
+      return res.status(403).json({ error: 'Subscription required to use AI broadcast composer.' });
+    }
+
+    // Get store info
+    const storeRes = await pool.query(
+      `SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+    const storeName = storeRes.rows[0]?.store_name || 'متجرنا';
+
+    const segmentDesc: Record<string, string> = {
+      all: 'جميع العملاء',
+      customers: 'العملاء السابقين',
+      abandoned: 'عملاء سلة التسوق المتروكة',
+    };
+
+    const campaignDesc: Record<string, string> = {
+      promo: 'عرض ترويجي خاص',
+      new_product: 'منتج جديد وصل للتو',
+      restock: 'عودة المنتجات المنتهية للمخزون',
+    };
+
+    const langMap: Record<string, string> = { ar: 'Arabic', fr: 'French', en: 'English' };
+    const lang = langMap[String(language || 'ar').slice(0, 2)] || 'Arabic';
+
+    const toneDesc: Record<string, string> = {
+      friendly: 'ودي ومحادث',
+      urgent: 'عاجل ومحفز للعمل الآن',
+      professional: 'مهني ورسمي',
+    };
+
+    const prompt = `Write a compelling broadcast marketing message for an Algerian online store.
+Store: "${storeName}"
+Target: ${segmentDesc[segment] || segment}
+Campaign: ${campaignDesc[campaignType] || campaignType}${productName ? ` featuring "${productName}"` : ''}${discount ? ` with discount "${discount}"` : ''}
+Tone: ${toneDesc[tone] || 'friendly'}
+Language: ${lang}
+
+Requirements:
+- 2-4 sentences maximum
+- Include a clear call-to-action
+- Algerian market context (cash on delivery, local appeal)
+- Make it irresistible to click
+- No emojis unless appropriate for the tone
+
+Write only the message text, no explanations.`;
+
+    const message = await generateText('store_owner', prompt, { storeId: clientId, storeName });
+    return res.json({ message: message.trim(), segment, campaignType, language: lang });
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
 export default router;

@@ -5,6 +5,7 @@ import type { Pool } from "pg";
 import { logStoreSettings } from "../utils/logger";
 import { invalidateStorefrontSettingsCache, invalidateAllStorefrontSettingsCache, invalidateStorefrontProductsCache } from "./public-store";
 import { getPublicBaseUrl } from "../utils/public-url";
+import { generateText } from "../services/gemini";
 
 const router = Router();
 
@@ -244,8 +245,79 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
       ]
     );
 
-    const product = result.rows[0];
+    let product = result.rows[0];
     console.log('[createStoreProduct] Created product images:', product.images);
+
+    // Auto-generate description if enabled and description is empty
+    let finalDescription = description || '';
+    if ((!finalDescription || finalDescription.trim().length < 10) && title) {
+      try {
+        const aiSettingsRes = await pool.query(
+          `SELECT auto_descriptions FROM ai_settings WHERE client_id = $1 LIMIT 1`,
+          [clientId]
+        );
+        if (aiSettingsRes.rows[0]?.auto_descriptions === true) {
+          const storeRes = await pool.query(
+            `SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
+            [clientId]
+          );
+          const storeName = storeRes.rows[0]?.store_name || 'متجرنا';
+          const prompt = `Write a compelling product description (2-3 sentences, max 150 words) for "${title}"${category ? ` in category "${category}"` : ''} for an Algerian online store called "${storeName}". Write in Arabic (Darija/Modern Standard Arabic mix). Focus on quality, value, and local appeal. Do NOT include prices or specific numbers.`;
+          const generatedDesc = await generateText('store_owner', prompt, { storeName });
+          if (generatedDesc && generatedDesc.length > 10) {
+            finalDescription = generatedDesc;
+            // Update the product with generated description
+            await client.query(
+              `UPDATE client_store_products SET description = $1 WHERE id = $2 AND client_id = $3`,
+              [finalDescription, product.id, clientId]
+            );
+            product = { ...product, description: finalDescription };
+          }
+        }
+      } catch (aiErr) {
+        console.error('[createStoreProduct] Auto-description generation failed:', aiErr);
+        // Non-fatal, continue without description
+      }
+    }
+
+    // Auto-generate alt text for images if enabled
+    if (imagesArray.length > 0) {
+      try {
+        const aiSettingsRes = await pool.query(
+          `SELECT auto_alt_text FROM ai_settings WHERE client_id = $1 LIMIT 1`,
+          [clientId]
+        );
+        if (aiSettingsRes.rows[0]?.auto_alt_text === true) {
+          const altTexts: string[] = [];
+          for (let i = 0; i < imagesArray.length; i++) {
+            const altPrompt = `Write a short, descriptive alt text (5-8 words max) for a product image of "${title}"${category ? ` (${category})` : ''}. Describe what a customer would see in the image. Write in Arabic.`;
+            try {
+              const altText = await generateText('store_owner', altPrompt, {});
+              if (altText && altText.length > 3) {
+                altTexts.push(altText.trim());
+              } else {
+                altTexts.push(`${title} - صورة ${i + 1}`);
+              }
+            } catch {
+              altTexts.push(`${title} - صورة ${i + 1}`);
+            }
+          }
+          // Store alt texts in metadata
+          if (altTexts.length > 0) {
+            const updatedMeta = { ...(product.metadata || {}), alt_texts: altTexts };
+            await client.query(
+              `UPDATE client_store_products SET metadata = $1 WHERE id = $2 AND client_id = $3`,
+              [updatedMeta, product.id, clientId]
+            );
+            product = { ...product, metadata: updatedMeta };
+          }
+        }
+      } catch (aiErr) {
+        console.error('[createStoreProduct] Auto-alt-text generation failed:', aiErr);
+        // Non-fatal
+      }
+    }
+
     const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${product.id}`;
 
     await client.query(

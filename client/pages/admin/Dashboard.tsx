@@ -132,15 +132,19 @@ export default function Dashboard() {
     ? analytics.dailyRevenue.slice(-10)
     : [];
 
-  // Reverse data for RTL so time flows right-to-left
-  const chartData = isRTL ? [...rawChartData].reverse() : rawChartData;
+  // Sort chronologically (oldest date first) so chart flows left-to-right
+  const chartData = [...rawChartData].sort((a, b) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    return dateA - dateB;
+  });
 
-  const maxRevenue = Math.max(...chartData.map(d => Number(d.revenue) || Number((d as any).total_value) || 1), 1);
+  const maxRevenue = Math.max(...chartData.map(d => Number(d.revenue) || 0), 1);
   const maxOrders = Math.max(...chartData.map(d => Number(d.orders) || 1), 1);
 
   const points = chartData.map((d, i) => {
     const x = (i / Math.max(chartData.length - 1, 1)) * 100;
-    const y = 100 - ((Number(d.revenue) || Number((d as any).total_value) || 0) / maxRevenue) * 100;
+    const y = 100 - ((Number(d.revenue) || 0) / maxRevenue) * 100;
     return `${x},${y}`;
   }).join(' ');
 
@@ -150,12 +154,17 @@ export default function Dashboard() {
     return `${x},${y}`;
   }).join(' ');
 
-  const totalRevenuePeriod = chartData.reduce((s, d) => s + (Number(d.revenue) || Number((d as any).total_value) || 0), 0);
+  const totalRevenuePeriod = chartData.reduce((s, d) => s + (Number(d.revenue) || 0), 0);
   const totalOrdersPeriod = chartData.reduce((s, d) => s + (Number(d.orders) || 0), 0);
 
   const visitorsPoints = (() => {
     const rawViewsData = analytics?.dailyViews && analytics.dailyViews.length > 0 ? analytics.dailyViews : [];
-    const viewsData = isRTL ? [...rawViewsData].reverse() : rawViewsData;
+    // Sort chronologically (oldest date first)
+    const viewsData = [...rawViewsData].sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateA - dateB;
+    });
     if (viewsData.length === 0) return chartData.map((d, i) => {
       const x = (i / Math.max(chartData.length - 1, 1)) * 100;
       return `${x},50`;
@@ -408,7 +417,7 @@ export default function Dashboard() {
                     })}
                   </svg>
                 </div>
-                <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 uppercase">
+                <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 uppercase" dir="ltr">
                   {(() => {
                     const step = Math.max(1, Math.floor((chartData.length - 1) / 5));
                     const indices = [0, step, step*2, step*3, step*4, chartData.length - 1].filter((v, i, a) => a.indexOf(v) === i && v < chartData.length);
@@ -601,7 +610,9 @@ export default function Dashboard() {
               </div>
             </div>
             {(() => {
-              const viewsData: {date: string; views: number}[] = analytics?.dailyViews ?? [];
+              const rawViewsData: {date: string; views: number}[] = analytics?.dailyViews ?? [];
+              // Sort chronologically (oldest first)
+              const viewsData = [...rawViewsData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
               const cumulativeViews = viewsData.reduce((acc, item) => {
                 const last = acc.length > 0 ? acc[acc.length - 1].views : 0;
                 acc.push({ date: item.date, views: last + (Number(item.views) || 0) });
@@ -654,7 +665,7 @@ export default function Dashboard() {
                         <polyline points={vPoints} fill="none" stroke="#06B6D4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
-                    <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 uppercase overflow-hidden">
+                    <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 uppercase overflow-hidden" dir="ltr">
                       {viewsData.length === 0
                         ? <span className="text-slate-400 text-xs w-full text-center">{t('dashboard.noData') || 'No data yet'}</span>
                         : xLabels.map(idx => {
