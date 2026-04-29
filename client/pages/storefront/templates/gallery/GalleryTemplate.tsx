@@ -14,6 +14,8 @@ import {
   MessageCircle,
   Package,
   ShieldCheck,
+} ,
+  Home, Building2
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';

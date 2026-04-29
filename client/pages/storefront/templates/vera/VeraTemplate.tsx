@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   Globe,
   X,
+} ,
+  Home, Building2
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 

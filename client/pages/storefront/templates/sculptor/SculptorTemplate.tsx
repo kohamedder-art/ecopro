@@ -2,6 +2,8 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   ShoppingBag, Maximize2, Ruler, ShieldCheck, Truck,
   CheckCircle2, X, CreditCard, ChevronDown, ChevronLeft, Phone
+} ,
+  Home, Building2
 } from 'lucide-react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';

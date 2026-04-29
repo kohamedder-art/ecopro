@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ShoppingBag, ArrowRight, ShieldCheck, Star, X, Zap,
-  Globe, Crown, Check, Phone
+  Globe, Crown, Check, Phone,
+  Home, Building2
 } from 'lucide-react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';

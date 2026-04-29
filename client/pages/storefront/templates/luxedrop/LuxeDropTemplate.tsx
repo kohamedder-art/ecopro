@@ -5,6 +5,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
+import { Home, Building2, X } from 'lucide-react';
 
 export default function LuxeDropTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView }: TemplateProps) {
         const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#d4af37';
@@ -100,11 +101,12 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
   const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
-    const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
+    const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-    const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+    const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
     // Variant system
     const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -144,7 +146,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                     ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
                     total_price: selectedOffer ? selectedOffer.bundle_price : product.price,
                     delivery_fee: deliveryFee,
-                    delivery_type: 'desk', 
+                    delivery_type: selectedDeliveryType, 
                     customer_name: name,
                     customer_phone: phone,
                     customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address'), fd.get('notes')].filter(Boolean).join(' - '),
@@ -469,6 +471,39 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                         {showCommune && <input name="commune" type="text" placeholder="البلدية" className="w-full p-4 rounded-xl font-bold outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} onFocus={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}`} onBlur={e => e.currentTarget.style.boxShadow = 'none'} />}
                         {showAddress && <input name="address" type="text" placeholder="العنوان" className="w-full p-4 rounded-xl font-bold outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} onFocus={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}`} onBlur={e => e.currentTarget.style.boxShadow = 'none'} />}
                         {showNotes && <textarea name="notes" placeholder="ملاحظات" rows={2} className="w-full p-4 rounded-xl font-bold outline-none resize-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} onFocus={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}`} onBlur={e => e.currentTarget.style.boxShadow = 'none'} />}
+                        {(showHomeDelivery && showDeskDelivery) && (
+                          <div>
+                            <label className="block text-sm font-bold mb-2" style={{ color: surfaceTextMuted }}>نوع التوصيل</label>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDeliveryType('home')}
+                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+                                style={{
+                                  backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
+                                  border: `1px solid ${surfaceBorderColor}`,
+                                  color: selectedDeliveryType === 'home' ? '#ffffff' : surfaceTextColor,
+                                }}
+                              >
+                                <Home size={16} />
+                                <span className="text-sm font-bold">التوصيل للمنزل</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDeliveryType('desk')}
+                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+                                style={{
+                                  backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
+                                  border: `1px solid ${surfaceBorderColor}`,
+                                  color: selectedDeliveryType === 'desk' ? '#ffffff' : surfaceTextColor,
+                                }}
+                              >
+                                <Building2 size={16} />
+                                <span className="text-sm font-bold">الاستلام من المكتب</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         <button disabled={isSubmitting} type="submit" className="w-full lux-gold-bg text-black py-5 rounded-xl text-xl font-black shadow-xl uppercase disabled:opacity-50">
                             <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_form_btn')}>
                                 {isSubmitting ? "جاري الشراء..." : (settings?.luxd_form_btn || settings?.template_button_text || "تأكيد الشراء الآن")}
