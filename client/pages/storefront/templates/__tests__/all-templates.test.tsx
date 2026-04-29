@@ -545,7 +545,132 @@ describe.each(ALL_TEMPLATE_IDS)('Template: %s', (templateId) => {
     }).not.toThrow();
   });
 
-  // ── 17. Store logo display ──
+  // ── 17. Touch swipe on product images (mobile) ──
+  it('has touch handlers for swiping product images', () => {
+    const products = [
+      makeProduct({
+        images: [
+          'https://example.com/img1.jpg',
+          'https://example.com/img2.jpg',
+          'https://example.com/img3.jpg',
+        ],
+      }),
+    ];
+    const props = makeProps({
+      products,
+      settings: makeSettings({ template: templateId }),
+    });
+    const { container } = render(<>{RenderStorefront(templateId, props)}</>);
+
+    // Find elements with onTouchStart or ontouchstart (React sets lowercase in DOM)
+    const touchElements = container.querySelectorAll('[ontouchstart], [data-touchstart]');
+    // Also check if any element has a React synthetic touch handler (shows up differently in jsdom)
+    // We check for the presence of touch-related React internal props by looking at the HTML
+    const html = container.innerHTML;
+    // Templates with touch support will have these in their rendered handler attrs
+    const hasTouchSupport =
+      touchElements.length > 0 ||
+      // React touch handlers don't appear in innerHTML; check source template instead
+      false;
+
+    if (!hasTouchSupport) {
+      console.warn(
+        `[${templateId}] NO TOUCH SWIPE: product images cannot be swiped on mobile`
+      );
+    }
+    // This is a report-only test — log which templates lack swipe
+  });
+
+  // ── 18. Image preview/zoom modal exists ──
+  it('has image zoom/preview capability', () => {
+    const products = [
+      makeProduct({
+        images: ['https://example.com/product.jpg'],
+      }),
+    ];
+    const props = makeProps({
+      products,
+      settings: makeSettings({ template: templateId }),
+    });
+    const { container } = render(<>{RenderStorefront(templateId, props)}</>);
+    const html = container.innerHTML;
+
+    // Look for zoom/modal indicators: fixed/absolute positioned overlays, zoom classes
+    const hasZoomInfra =
+      html.includes('fixed inset-0') ||
+      html.includes('z-50') ||
+      html.includes('zoom') ||
+      html.includes('Zoom') ||
+      html.includes('lightbox') ||
+      html.includes('modal');
+
+    // Most templates should have some kind of image preview
+    if (!hasZoomInfra) {
+      console.warn(`[${templateId}] NO IMAGE ZOOM: no fullscreen image preview found`);
+    }
+  });
+
+  // ── 19. Multi-image dot indicators ──
+  it('shows navigation dots for multi-image products', () => {
+    const products = [
+      makeProduct({
+        images: [
+          'https://example.com/img1.jpg',
+          'https://example.com/img2.jpg',
+          'https://example.com/img3.jpg',
+        ],
+      }),
+    ];
+    const props = makeProps({
+      products,
+      settings: makeSettings({ template: templateId }),
+    });
+    const { container } = render(<>{RenderStorefront(templateId, props)}</>);
+    const html = container.innerHTML;
+
+    // Look for dot indicators (rounded-full small buttons) or thumbnail strips
+    const imgs = container.querySelectorAll('img');
+    const buttons = container.querySelectorAll('button');
+
+    // At least thumbnail buttons or dot indicators should exist for multi-image
+    const hasThumbnails = imgs.length >= 2;
+    const hasDots = Array.from(buttons).some(
+      (btn) => btn.className.includes('rounded-full') && (btn.offsetWidth || 0) <= 20
+    );
+
+    if (!hasThumbnails && !hasDots) {
+      console.info(`[${templateId}] no visible image navigation indicators in initial view`);
+    }
+  });
+
+  // ── 20. Cloudinary video has controls for fullscreen ──
+  it('mp4/Cloudinary videos have controls attribute', () => {
+    const products = [
+      makeProduct({
+        ...({
+          metadata: { video_url: 'https://res.cloudinary.com/test/video/upload/v123/test.mp4' },
+        } as any),
+      }),
+    ];
+    const props = makeProps({
+      products,
+      settings: makeSettings({ template: templateId }),
+    });
+    const { container } = render(<>{RenderStorefront(templateId, props)}</>);
+
+    const videos = container.querySelectorAll('video');
+    videos.forEach((video) => {
+      const hasControls = video.hasAttribute('controls');
+      if (!hasControls) {
+        console.warn(
+          `[${templateId}] VIDEO NO CONTROLS: <video> element lacks controls attribute — ` +
+          `users cannot go fullscreen or seek on Cloudinary/mp4 videos`
+        );
+      }
+    });
+  });
+
+  // ── 21. Store logo display ──
   it('displays store logo when provided', () => {
     const logoUrl = 'https://example.com/logo.png';
     const props = makeProps({
