@@ -81,7 +81,8 @@ export default function GalleryTemplate(props: TemplateProps) {
 
   /* ---------- delivery ---------- */
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
 
   /* ---------- state ---------- */
   const [cart, setCart] = useState<any[]>([]);
@@ -215,7 +216,7 @@ export default function GalleryTemplate(props: TemplateProps) {
             quantity: isOfferItem ? selectedOffer.quantity : item.qty,
             total_price: isOfferItem ? selectedOffer.bundle_price + shipping : (item.price ?? 0) * item.qty + shipping,
             delivery_fee: shipping,
-            delivery_type: 'desk',
+            delivery_type: selectedDeliveryType,
             customer_name: formData.name,
             customer_phone: formData.phone,
             customer_address: [formData.address, formData.commune, formData.notes].filter(Boolean).join(' - ') || selectedWilaya?.labelAR || '',

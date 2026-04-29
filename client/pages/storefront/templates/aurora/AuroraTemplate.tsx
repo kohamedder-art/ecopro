@@ -88,7 +88,8 @@ function AuroraImageGallery({ product: p, surfaceColor, accentColor, onZoom }: {
 
 export default function AuroraTemplate({ settings, products, canManage, storeSlug, onProductView, initialProductSlug }: TemplateProps) {
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCheckout, setShowCheckout] = useState(false);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
@@ -104,7 +105,7 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   // Hero product = first product
   const heroProduct = useMemo(() => {
@@ -205,7 +206,7 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
             ...(isOfferItem ? { offer_id: selectedOffer.offer_id } : {}),
             total_price: isOfferItem ? selectedOffer.bundle_price : item.price,
             delivery_fee: deliveryFee,
-            delivery_type: 'desk',
+            delivery_type: selectedDeliveryType,
             customer_name: customerName,
             customer_phone: customerPhone,
             customer_address: address,

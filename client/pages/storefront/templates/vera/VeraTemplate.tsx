@@ -52,7 +52,8 @@ export default function VeraTemplate(props: TemplateProps) {
 
   /* ---------- delivery ---------- */
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
 
   /* ---------- state ---------- */
   const [showCheckout, setShowCheckout] = useState(false);
@@ -173,7 +174,7 @@ export default function VeraTemplate(props: TemplateProps) {
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: (selectedOffer ? selectedOffer.bundle_price : product.price) + shipping,
           delivery_fee: shipping,
-          delivery_type: 'desk',
+          delivery_type: selectedDeliveryType,
           customer_name: formData.name,
           customer_phone: formData.phone,
           customer_address: [formData.address, formData.commune, formData.notes].filter(Boolean).join(' - ') || selectedWilaya?.labelAR || '',

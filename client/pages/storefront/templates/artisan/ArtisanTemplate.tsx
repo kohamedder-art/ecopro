@@ -11,7 +11,9 @@ import {
   Star,
   X,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Home,
+  Building2
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -144,7 +146,8 @@ export default function ArtisanTemplate(props: TemplateProps) {
 
   /* ---------- delivery prices from API ---------- */
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
 
   /* ---------- cart ---------- */
   const [cart, setCart] = useState<any[]>([]);
@@ -205,7 +208,7 @@ export default function ArtisanTemplate(props: TemplateProps) {
   };
 
   const selectedWilaya = wilayas.find(w => String(w.id) === formData.wilaya);
-  const baseShipping = selectedWilaya?.homePrice ?? 0;
+  const baseShipping = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   /* ---------- offers ---------- */
   const mainProduct = products[0];
@@ -244,7 +247,7 @@ export default function ArtisanTemplate(props: TemplateProps) {
             quantity: isOfferItem ? selectedOffer.quantity : 1,
             total_price: isOfferItem ? selectedOffer.bundle_price + shipping : item.price + shipping,
             delivery_fee: shipping,
-            delivery_type: 'desk',
+            delivery_type: selectedDeliveryType,
             customer_name: formData.name,
             customer_phone: formData.phone,
             customer_address: [formData.address, formData.commune, formData.notes].filter(Boolean).join(' - ') || selectedWilaya?.labelAR || '',
@@ -497,6 +500,39 @@ export default function ArtisanTemplate(props: TemplateProps) {
                         value={formData.notes}
                         onChange={e => setFormData({ ...formData, notes: e.target.value })}
                       />}
+                      {(showHomeDelivery && showDeskDelivery) && (
+                        <div>
+                          <label className="block text-sm font-bold mb-2" style={{ color: textMuted }}>نوع التوصيل</label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDeliveryType('home')}
+                              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+                              style={{
+                                backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
+                                border: `1px solid ${surfaceBorderColor}`,
+                                color: selectedDeliveryType === 'home' ? '#ffffff' : textColor,
+                              }}
+                            >
+                              <Home size={16} />
+                              <span className="text-sm font-bold">التوصيل للمنزل</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDeliveryType('desk')}
+                              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+                              style={{
+                                backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
+                                border: `1px solid ${surfaceBorderColor}`,
+                                color: selectedDeliveryType === 'desk' ? '#ffffff' : textColor,
+                              }}
+                            >
+                              <Building2 size={16} />
+                              <span className="text-sm font-bold">الاستلام من المكتب</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <select
                         className="w-full rounded-2xl p-4 text-sm border"
                         style={{ backgroundColor: inputBg, color: textColor, borderColor: surfaceBorderColor }}

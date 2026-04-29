@@ -116,11 +116,12 @@ export default function Bassem28Template({
 
   // ── Delivery System ──
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   // Offers system
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
@@ -176,7 +177,7 @@ export default function Bassem28Template({
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: selectedOffer ? selectedOffer.bundle_price : total,
           delivery_fee: deliveryFee,
-          delivery_type: 'desk',
+          delivery_type: selectedDeliveryType,
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune, customerNotes].filter(Boolean).join(' - '),
