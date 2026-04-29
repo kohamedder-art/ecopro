@@ -7,17 +7,28 @@ import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 
 export default function DZPremiumTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
-    const accentColor = settings?.template_accent_color || settings?.primary_color || '#059669';
+    const rawAccent = settings?.template_accent_color || settings?.primary_color || '#059669';
+    // Ensure accent has enough contrast on dark bg (always dark theme)
+    const accentColor = useMemo(() => {
+        const h = rawAccent.replace('#', '');
+        if (h.length < 6) return rawAccent;
+        const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+        const lum = (r * 299 + g * 587 + b * 114) / 1000;
+        if (lum >= 128) return rawAccent;
+        const f = Math.max(0.3, (128 - lum) / 200);
+        return `#${Math.min(255, Math.round(r + (255 - r) * f)).toString(16).padStart(2, '0')}${Math.min(255, Math.round(g + (255 - g) * f)).toString(16).padStart(2, '0')}${Math.min(255, Math.round(b + (255 - b) * f)).toString(16).padStart(2, '0')}`;
+    }, [rawAccent]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
     const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
     const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
-    const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
+    const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-    const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+    const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
     const productId = settings?.dzp_main_product_id;
     const product = (productId ? products?.find((p: any) => String(p.id) === String(productId)) : null) || products?.[0];
@@ -86,7 +97,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                     ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
                     total_price: selectedOffer ? selectedOffer.bundle_price : (product.price || 0),
                     delivery_fee: deliveryFee,
-                    delivery_type: 'desk',
+                    delivery_type: selectedDeliveryType,
                     customer_name: fd.get('name'),
                     customer_phone: fd.get('phone'),
                     customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address'), fd.get('notes')].filter(Boolean).join(' - '),
@@ -107,7 +118,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
     const heroBg = settings?.template_bg_color || '#0a0a0a';
 
     return (
-        <div style={{ fontFamily: "'Cairo', sans-serif" }} className="min-h-screen" dir="rtl">
+        <div style={{ fontFamily: "'Cairo', sans-serif", '--dzp-accent': rawAccent } as React.CSSProperties} className="min-h-screen" dir="rtl">
             <style>{`
                 .dzp-input { width:100%; padding:12px 16px; border-radius:12px; border:1.5px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.08); color:#fff; font-family:inherit; font-weight:600; outline:none; transition:border-color 0.2s; }
                 .dzp-input::placeholder { color:rgba(255,255,255,0.35); }
@@ -258,6 +269,8 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                                 selectedVariant={selectedVariant} setSelectedVariant={setSelectedVariant}
                                 offers={offers} selectedOffer={selectedOffer} setSelectedOffer={setSelectedOffer}
                                 showAddress={showAddress} showCommune={showCommune} showNotes={showNotes}
+                                showHomeDelivery={showHomeDelivery} showDeskDelivery={showDeskDelivery}
+                                selectedDeliveryType={selectedDeliveryType} setSelectedDeliveryType={setSelectedDeliveryType}
                                 isSubmitting={isSubmitting} orderSuccess={orderSuccess}
                                 lastOrderId={lastOrderId} lastTelegramUrl={lastTelegramUrl} lastCustomerPhone={lastCustomerPhone}
                                 accentColor={accentColor} storeSlug={storeSlug} onSubmit={handleOrder}
@@ -371,7 +384,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
 }
 
 /* ─── Extracted Order Form ─── */
-function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, deliveryFee, productTotal, grandTotal, selectedVariant, setSelectedVariant, offers, selectedOffer, setSelectedOffer, showAddress, showCommune, showNotes, isSubmitting, orderSuccess, lastOrderId, lastTelegramUrl, lastCustomerPhone, accentColor, storeSlug, onSubmit, canManage, handleTextEdit }: any) {
+function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, deliveryFee, productTotal, grandTotal, selectedVariant, setSelectedVariant, offers, selectedOffer, setSelectedOffer, showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery, selectedDeliveryType, setSelectedDeliveryType, isSubmitting, orderSuccess, lastOrderId, lastTelegramUrl, lastCustomerPhone, accentColor, storeSlug, onSubmit, canManage, handleTextEdit }: any) {
     if (orderSuccess) {
         return (
             <div className="rounded-2xl p-6 text-center border" style={{ backgroundColor: accentColor + '15', borderColor: accentColor + '40' }}>
@@ -398,6 +411,36 @@ function OrderForm({ product, wilayas, selectedWilayaId, setSelectedWilayaId, de
                 <option value="">اختر الولاية</option>
                 {wilayas.map((w: any) => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
             </select>
+            {(showHomeDelivery && showDeskDelivery) && (
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setSelectedDeliveryType('home')}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs transition-all"
+                        style={{
+                            backgroundColor: selectedDeliveryType === 'home' ? accentColor : 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: selectedDeliveryType === 'home' ? '#ffffff' : 'rgba(255,255,255,0.7)',
+                        }}
+                    >
+                        <i className="ph ph-house"></i>
+                        <span>التوصيل للمنزل</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSelectedDeliveryType('desk')}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs transition-all"
+                        style={{
+                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor : 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: selectedDeliveryType === 'desk' ? '#ffffff' : 'rgba(255,255,255,0.7)',
+                        }}
+                    >
+                        <i className="ph ph-building-office"></i>
+                        <span>الاستلام من المكتب</span>
+                    </button>
+                </div>
+            )}
             {selectedWilayaId && (
                 <div className="rounded-xl p-3 text-sm space-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <div className="flex justify-between text-white/50">

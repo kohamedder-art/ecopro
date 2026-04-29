@@ -13,8 +13,8 @@ import {
   ShieldCheck,
   Globe,
   X,
-} ,
-  Home, Building2
+  Home,
+  Building2
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 
@@ -34,7 +34,7 @@ export default function VeraTemplate(props: TemplateProps) {
   } = props;
 
   /* ---------- settings ---------- */
-  const brandName     = (settings as any)?.vera_brand_name     ?? 'VÉRA';
+  const brandName     = (settings as any)?.vera_brand_name     ?? settings?.store_name ?? 'VÉRA';
   const brandSuffix   = (settings as any)?.vera_brand_suffix   ?? 'GENÈVE • 2026';
   const heroLabel     = (settings as any)?.vera_hero_label      ?? 'Crafting the Impossible';
   const heroTitle     = (settings as any)?.vera_hero_title      ?? 'ETERNAL';
@@ -42,8 +42,18 @@ export default function VeraTemplate(props: TemplateProps) {
   const heroCta       = (settings as any)?.vera_hero_cta        ?? 'Explore Collection';
   const sectionTitle  = (settings as any)?.vera_section_title   ?? 'The Curation';
   const sectionDesc   = (settings as any)?.vera_section_desc    ?? 'Every piece is verified on the blockchain to ensure 100% ethical origin and ownership history.';
-  const accentColor   = settings?.template_accent_color ?? (settings as any)?.vera_accent_color ?? settings?.primary_color ?? '#d4af37';
+  const rawAccent     = settings?.template_accent_color ?? (settings as any)?.vera_accent_color ?? settings?.primary_color ?? '#d4af37';
   const bgColor       = settings?.template_bg_color ?? (settings as any)?.vera_bg_color ?? '#0a0a0a';
+  // Ensure accent has enough contrast on dark bg
+  const accentColor   = useMemo(() => {
+    const h = rawAccent.replace('#', '');
+    if (h.length < 6) return rawAccent;
+    const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+    const lum = (r * 299 + g * 587 + b * 114) / 1000;
+    if (lum >= 128) return rawAccent;
+    const f = Math.max(0.3, (128 - lum) / 200);
+    return `#${Math.min(255, Math.round(r + (255 - r) * f)).toString(16).padStart(2, '0')}${Math.min(255, Math.round(g + (255 - g) * f)).toString(16).padStart(2, '0')}${Math.min(255, Math.round(b + (255 - b) * f)).toString(16).padStart(2, '0')}`;
+  }, [rawAccent]);
   const trustTitle1   = (settings as any)?.vera_trust1_title    ?? 'Vault Security';
   const trustDesc1    = (settings as any)?.vera_trust1_desc     ?? 'Insured worldwide delivery with real-time biometric tracking on every shipment.';
   const trustTitle2   = (settings as any)?.vera_trust2_title    ?? 'Global Concierge';
@@ -196,7 +206,7 @@ export default function VeraTemplate(props: TemplateProps) {
   const heroProduct = products[0];
 
   return (
-    <div className="min-h-screen text-white font-sans" style={{ backgroundColor: bgColor, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="min-h-screen text-white font-sans" style={{ backgroundColor: bgColor, fontFamily: "'Plus Jakarta Sans', sans-serif", '--vera-accent': rawAccent } as React.CSSProperties}>
 
       {/* ── NAV ── */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? 'py-4 bg-black/60 backdrop-blur-xl border-b border-white/5' : 'py-8 bg-transparent'}`}>

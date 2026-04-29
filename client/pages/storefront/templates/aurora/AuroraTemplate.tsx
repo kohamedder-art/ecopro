@@ -155,13 +155,13 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
 
   // Body scroll lock
   useEffect(() => {
-    if (showCheckout || detailProduct || zoomImage) {
+    if (showCheckout || detailProduct || zoomState) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
-  }, [showCheckout, detailProduct, zoomImage]);
+  }, [showCheckout, detailProduct, zoomState]);
 
   const addToCart = (product: { id: number; title?: string; name?: string; price: number; images?: string[] }, variant?: SelectedVariant | null) => {
     onProductView?.(product as any);

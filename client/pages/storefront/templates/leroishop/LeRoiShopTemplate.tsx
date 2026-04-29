@@ -78,11 +78,12 @@ export default function LeRoiShopTemplate({
   const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   // Offers state (populated after activeProduct is known)
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
@@ -241,7 +242,7 @@ export default function LeRoiShopTemplate({
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: productTotal,
           delivery_fee: deliveryFee,
-          delivery_type: 'desk',
+          delivery_type: selectedDeliveryType,
           customer_name: name,
           customer_phone: phone,
           customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address'), fd.get('notes')].filter(Boolean).join(' - '),
@@ -512,9 +513,36 @@ export default function LeRoiShopTemplate({
                           {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                         </select>
                         {showCommune && (
-                          <input name="commune" type="text" placeholder="البلدية" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
-                        )}
+                          <input name="commune" type="text" placeholder="البلدية" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />)}
                       </div>
+                      {(showHomeDelivery && showDeskDelivery) && (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDeliveryType('home')}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs transition-all"
+                            style={{
+                              backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
+                              border: `1px solid ${inputBorderColor}`,
+                              color: selectedDeliveryType === 'home' ? '#ffffff' : textColor,
+                            }}
+                          >
+                            <span>التوصيل للمنزل</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDeliveryType('desk')}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs transition-all"
+                            style={{
+                              backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
+                              border: `1px solid ${inputBorderColor}`,
+                              color: selectedDeliveryType === 'desk' ? '#ffffff' : textColor,
+                            }}
+                          >
+                            <span>الاستلام من المكتب</span>
+                          </button>
+                        </div>
+                      )}
                       {showAddress && (
                         <input name="address" type="text" placeholder="العنوان الكامل (إختياري)" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       )}

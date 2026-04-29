@@ -1203,7 +1203,13 @@ export default function OrdersAdmin() {
                             </div>
                           </div>
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                              <div className="text-xs font-semibold text-foreground/60">{t('orders.deliveryType')}</div>
+                              <div className="font-bold text-sm">
+                                {o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}
+                              </div>
+                            </div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
                               <div className="text-xs font-semibold text-foreground/60">{t('orders.product')}</div>
                               <div className="flex items-center gap-2">
                                 {o.product_image ? (
@@ -1390,13 +1396,19 @@ export default function OrdersAdmin() {
                         <div className="font-bold text-sm">{o.phone || '-'}</div>
                       </div>
                       <div className="bg-card rounded-xl p-2 border border-border/50">
+                        <div className="text-xs text-muted-foreground">{t('orders.deliveryType')}</div>
+                        <div className="font-bold text-sm">
+                          {o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}
+                        </div>
+                      </div>
+                      <div className="bg-card rounded-xl p-2 border border-border/50">
                         <div className="text-xs text-muted-foreground">{t('orders.amount')}</div>
                         <div className="font-bold text-sm">{Math.round(Number(o.total) || 0)} DZD</div>
                       </div>
-                      <div className="bg-card rounded-xl p-2 border border-border/50">
-                        <div className="text-xs text-muted-foreground">{t('orders.address')}</div>
-                        <div className="font-bold text-sm truncate">{o.address || '-'}</div>
-                      </div>
+                    </div>
+                    <div className="bg-card rounded-xl p-2 border border-border/50">
+                      <div className="text-xs text-muted-foreground">{t('orders.address')}</div>
+                      <div className="font-bold text-sm truncate">{o.address || '-'}</div>
                     </div>
 
                     {/* Status actions */}

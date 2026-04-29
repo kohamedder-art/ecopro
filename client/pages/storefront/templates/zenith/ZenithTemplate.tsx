@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { ChevronDown, Phone, ShoppingCart, ShieldCheck, Home, Building2 } from 'lucide-react';
+import { ChevronDown, Phone, ShoppingCart, ShieldCheck, Home, Building2, X } from 'lucide-react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useImageClassifier } from '@/hooks/useImageClassifier';

@@ -119,11 +119,12 @@ export default function ClassicShopTemplate({
 
   // ── Delivery System ──
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   // Offers system
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
@@ -171,7 +172,7 @@ export default function ClassicShopTemplate({
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: selectedOffer ? selectedOffer.bundle_price : total,
           delivery_fee: deliveryFee,
-          delivery_type: 'desk',
+          delivery_type: selectedDeliveryType,
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune, customerNotes].filter(Boolean).join(' - '),
@@ -433,6 +434,37 @@ export default function ClassicShopTemplate({
                   <Truck className="absolute right-3 top-1/2 -translate-y-1/2" size={16} style={{ color: surfaceTextMuted }} />
                 </div>
               </div>
+              {(showHomeDelivery && showDeskDelivery) && (
+                <div className="text-right">
+                  <label className="text-sm font-semibold block mb-1" style={{ color: surfaceTextColor }}>نوع التوصيل</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDeliveryType('home')}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-sm transition-all"
+                      style={{
+                        backgroundColor: selectedDeliveryType === 'home' ? accentColor : (isHeaderDark ? 'rgba(255,255,255,0.06)' : surfaceMuted),
+                        border: `1px solid ${surfaceBorderColor}`,
+                        color: selectedDeliveryType === 'home' ? '#ffffff' : surfaceTextColor,
+                      }}
+                    >
+                      <span>التوصيل للمنزل</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDeliveryType('desk')}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-sm transition-all"
+                      style={{
+                        backgroundColor: selectedDeliveryType === 'desk' ? accentColor : (isHeaderDark ? 'rgba(255,255,255,0.06)' : surfaceMuted),
+                        border: `1px solid ${surfaceBorderColor}`,
+                        color: selectedDeliveryType === 'desk' ? '#ffffff' : surfaceTextColor,
+                      }}
+                    >
+                      <span>الاستلام من المكتب</span>
+                    </button>
+                  </div>
+                </div>
+              )}
               {showAddress && <div><label className="block text-sm font-bold mb-1" style={{ color: surfaceTextColor }}>العنوان</label><input type="text" placeholder="العنوان" className="w-full py-2.5 px-4 rounded transition-colors outline-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} /></div>}
               {showCommune && <div><label className="block text-sm font-bold mb-1" style={{ color: surfaceTextColor }}>البلدية</label><input type="text" placeholder="البلدية" className="w-full py-2.5 px-4 rounded transition-colors outline-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} /></div>}
               {showNotes && <div><label className="block text-sm font-bold mb-1" style={{ color: surfaceTextColor }}>ملاحظات</label><textarea placeholder="ملاحظات" rows={2} className="w-full py-2.5 px-4 rounded transition-colors outline-none resize-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} /></div>}

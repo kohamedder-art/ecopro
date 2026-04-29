@@ -108,11 +108,12 @@ export default function JewelHeartTemplate({
 
   // ── Delivery System ──
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   // Offers system
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
@@ -160,7 +161,7 @@ export default function JewelHeartTemplate({
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: selectedOffer ? selectedOffer.bundle_price : total,
           delivery_fee: deliveryFee,
-          delivery_type: 'desk',
+          delivery_type: selectedDeliveryType,
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune, customerNotes].filter(Boolean).join(' - '),
@@ -287,7 +288,7 @@ export default function JewelHeartTemplate({
                     )}
                   </div>
                 ) : (
-                  <div className="w-full h-full cursor-pointer" onClick={() => setZoomImage(mainImages[selectedMainImage] || mainImages[0])}>
+                  <div className="w-full h-full cursor-pointer" onClick={() => setZoomState({ images: mainImages, idx: selectedMainImage })}>
                     <img src={mainImages[selectedMainImage] || mainImages[0] || '/placeholder.png'} alt={mainProduct.title} className="w-full h-full rounded-2xl object-cover transition-transform hover:scale-105 duration-700" />
                   </div>
                 )}
@@ -407,6 +408,34 @@ export default function JewelHeartTemplate({
                       {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                     </select>
                   </div>
+                  {(showHomeDelivery && showDeskDelivery) && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDeliveryType('home')}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm transition-all"
+                        style={{
+                          backgroundColor: selectedDeliveryType === 'home' ? accentColor : (isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff'),
+                          border: `1px solid ${surfaceBorderColor}`,
+                          color: selectedDeliveryType === 'home' ? '#ffffff' : surfaceTextColor,
+                        }}
+                      >
+                        <span>التوصيل للمنزل</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDeliveryType('desk')}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm transition-all"
+                        style={{
+                          backgroundColor: selectedDeliveryType === 'desk' ? accentColor : (isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff'),
+                          border: `1px solid ${surfaceBorderColor}`,
+                          color: selectedDeliveryType === 'desk' ? '#ffffff' : surfaceTextColor,
+                        }}
+                      >
+                        <span>الاستلام من المكتب</span>
+                      </button>
+                    </div>
+                  )}
                   {showAddress && <input type="text" placeholder="العنوان" className="w-full py-3 px-4 rounded-xl text-right outline-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff', color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />}
                   {showCommune && <input type="text" placeholder="البلدية" className="w-full py-3 px-4 rounded-xl text-right outline-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff', color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} />}
                   {showNotes && <textarea placeholder="ملاحظات" rows={2} className="w-full py-3 px-4 rounded-xl text-right outline-none resize-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff', color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />}
@@ -479,23 +508,23 @@ export default function JewelHeartTemplate({
       </footer>
 
       {/* Image Zoom Modal */}
-      {zoomImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+      {zoomState && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomState(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomState(null)}>
             <X size={20} />
           </button>
-          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
-          {mainImages.length > 1 && (
+          <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+          {zoomState.images.length > 1 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-              {mainImages.map((img, i) => (
-                <div
+              {zoomState.images.map((img, i) => (
+                <button
                   key={i}
-                  className="w-14 h-14 rounded-lg overflow-hidden cursor-pointer transition-all"
-                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
-                  ${onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
+                  onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
+                  className="w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0"
+                  style={{ borderColor: i === zoomState.idx ? accentColor : 'rgba(255,255,255,0.3)', opacity: i === zoomState.idx ? 1 : 0.6 }}
                 >
                   <img src={img} className="w-full h-full object-cover" alt="" />
-                </div>
+                </button>
               ))}
             </div>
           )}

@@ -1,49 +1,28 @@
 #!/bin/bash
-# Quick setup script for local PostgreSQL using Docker
+# ⚠️ LOCAL DATABASE SETUP DISABLED
+# 
+# Local PostgreSQL database is no longer supported.
+# You must use the Render PostgreSQL database for all environments.
+#
+# To set up your development environment:
+# 1. Get your Render PostgreSQL Internal Database URL from:
+#    https://dashboard.render.com/databases
+# 2. Add it to your .env.local file:
+#    DATABASE_URL=postgresql://username:password@host.render.com:5432/database
+# 3. Run: pnpm dev
+#
+# The server will now exit if DATABASE_URL is not set.
 
-echo "🐘 Setting up local PostgreSQL database..."
+echo "⚠️  Local database setup is DISABLED"
+echo ""
+echo "Please use your Render PostgreSQL database instead."
+echo ""
+echo "Steps to configure:"
+echo "1. Go to https://dashboard.render.com/databases"
+echo "2. Copy the 'Internal Database URL'"
+echo "3. Add to .env.local: DATABASE_URL=your-render-db-url"
+echo "4. Run: pnpm dev"
+echo ""
+echo "The server requires DATABASE_URL to start."
 
-# Check if Docker is installed
-if ! command -v docker &> /dev/null; then
-    echo "❌ Docker is not installed. Please install Docker first:"
-    echo "   Ubuntu: sudo apt install docker.io"
-    echo "   Or visit: https://docs.docker.com/get-docker/"
-    exit 1
-fi
-
-# Check if container already exists
-if docker ps -a | grep -q ecopro-postgres; then
-    echo "📦 Existing container found. Starting..."
-    docker start ecopro-postgres
-else
-    echo "📦 Creating new PostgreSQL container..."
-    docker run --name ecopro-postgres \
-      -e POSTGRES_PASSWORD=postgres \
-      -e POSTGRES_DB=ecopro_dev \
-      -p 5432:5432 \
-      -d postgres:15
-fi
-
-# Wait for PostgreSQL to be ready
-echo "⏳ Waiting for PostgreSQL to be ready..."
-sleep 3
-
-# Check if it's running
-if docker ps | grep -q ecopro-postgres; then
-    echo "✅ PostgreSQL is running!"
-    echo ""
-    echo "📝 Update your .env file:"
-    echo "   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ecopro_dev"
-    echo ""
-    echo "🚀 You can now run: pnpm dev"
-    echo ""
-    echo "💡 Useful commands:"
-    echo "   Stop:    docker stop ecopro-postgres"
-    echo "   Start:   docker start ecopro-postgres"
-    echo "   Logs:    docker logs ecopro-postgres"
-    echo "   Shell:   docker exec -it ecopro-postgres psql -U postgres -d ecopro_dev"
-else
-    echo "❌ Failed to start PostgreSQL container"
-    docker logs ecopro-postgres
-    exit 1
-fi
+exit 1

@@ -14,11 +14,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const [lastTelegramUrl, setLastTelegramUrl] = React.useState<string | null>(null);
     const [lastCustomerPhone, setLastCustomerPhone] = React.useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
-    const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
-  useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
+    const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+    useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-    const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+    const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
     const handleDefaultOrder = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -35,7 +36,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
                 total_price: selectedOffer ? selectedOffer.bundle_price : (product.price || 0),
                 delivery_fee: deliveryFee,
-                delivery_type: 'desk',
+                delivery_type: selectedDeliveryType,
                 customer_name: fd.get('name'),
                 customer_phone: fd.get('phone'),
                 customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address'), fd.get('notes')].filter(Boolean).join(' - '),
@@ -304,7 +305,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     {isLandingMode ? (
                       <div className="flex flex-col rounded-2xl overflow-hidden shadow-sm gap-2">
                         {productImages.map((img: string, i: number) => (
-                          <img key={i} src={img} alt={product?.title} className="w-full h-auto block cursor-pointer rounded-xl" onClick={() => setZoomImage(img)} />
+                          <img key={i} src={img} alt={product?.title} className="w-full h-auto block cursor-pointer rounded-xl" onClick={() => setZoomState({ images: productImages, idx: i })} />
                         ))}
                       </div>
                     ) : (
@@ -315,7 +316,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         style={{ backgroundColor: surfaceColor, aspectRatio: '4 / 5', maxHeight: '520px' }}
                         onTouchStart={handleSwipeStart}
                         onTouchEnd={e => handleSwipeEnd(e, galleryImages)}
-                        onClick={() => { if (videoEmbed && showVideo) return; hasProductImages && setZoomImage(galleryImages[selectedImageIndex] || galleryImages[0]); }}
+                        onClick={() => { if (videoEmbed && showVideo) return; hasProductImages && setZoomState({ images: galleryImages, idx: selectedImageIndex }); }}
                     >
                         {videoEmbed && showVideo ? (
                           <div className="w-full h-full">
@@ -488,6 +489,39 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     <option value="">اختر الولاية</option>
                                     {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                                 </select>
+                                {(showHomeDelivery && showDeskDelivery) && (
+                                    <div className="mt-2">
+                                        <label className="block text-sm font-bold mb-1" style={{ color: textColor }}>نوع التوصيل</label>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedDeliveryType('home')}
+                                                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-all text-xs"
+                                                style={{
+                                                    backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
+                                                    border: `1px solid ${surfaceBorderColor}`,
+                                                    color: selectedDeliveryType === 'home' ? '#ffffff' : textColor,
+                                                }}
+                                            >
+                                                <i className="ph ph-house"></i>
+                                                <span className="font-bold">التوصيل للمنزل</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedDeliveryType('desk')}
+                                                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-all text-xs"
+                                                style={{
+                                                    backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
+                                                    border: `1px solid ${surfaceBorderColor}`,
+                                                    color: selectedDeliveryType === 'desk' ? '#ffffff' : textColor,
+                                                }}
+                                            >
+                                                <i className="ph ph-building-office"></i>
+                                                <span className="font-bold">الاستلام من المكتب</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                                 {selectedWilayaId && (
                                     <div className="mt-2 p-3 rounded-xl text-sm space-y-2" style={{ backgroundColor: accentColor + '10', border: `1px solid ${accentColor}30` }}>
                                         <div className="flex justify-between" style={{ color: textMuted }}>
@@ -614,20 +648,20 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             </footer>
 
             {/* Image Zoom Modal */}
-            {zoomImage && (
-                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-                    <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+            {zoomState && (
+                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomState(null)}>
+                    <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomState(null)}>
                         <i className="ph ph-x text-xl"></i>
                     </button>
-                    <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
-                    {galleryImages.length > 1 && (
+                    <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+                    {zoomState.images.length > 1 && (
                         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                            {galleryImages.map((img, i) => (
+                            {zoomState.images.map((img, i) => (
                                 <button
                                     key={i}
-                                    ${onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
+                                    onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
                                     className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden cursor-pointer transition-all"
-                                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
+                                    style={{ border: `2px solid ${i === zoomState.idx ? accentColor : 'rgba(255,255,255,0.3)'}`, opacity: i === zoomState.idx ? 1 : 0.6 }}
                                 >
                                     <img src={img} className="w-full h-full object-cover" alt="" />
                                 </button>

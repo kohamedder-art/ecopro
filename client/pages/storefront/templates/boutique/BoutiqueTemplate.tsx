@@ -191,13 +191,13 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
   // Body scroll lock
   useEffect(() => {
-    if (orderProduct || detailProduct || zoomImage) {
+    if (orderProduct || detailProduct || zoomState) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
-  }, [orderProduct, detailProduct, zoomImage]);
+  }, [orderProduct, detailProduct, zoomState]);
 
   // Cart logic
   const addToCart = (product: { id: number; title?: string; name?: string; price: number; images?: string[] }, variant?: SelectedVariant | null) => {

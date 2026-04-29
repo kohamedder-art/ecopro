@@ -19,8 +19,8 @@ import {
   ArrowRight,
   X,
   Check,
-} ,
-  Home, Building2
+  Home,
+  Building2
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';

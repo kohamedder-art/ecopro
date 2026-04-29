@@ -1342,15 +1342,37 @@ export default function StockManagement() {
                   <div className="text-sm text-muted-foreground">No variants added.</div>
                 )}
 
-                {variantsDraft.length > 0 && (
+                {variantsDraft.length > 0 && (() => {
+                  const hasAnyColor = variantsDraft.some(v => (v.color || '').trim());
+                  const hasAnySize = variantsDraft.some(v => (v.size || '').trim());
+                  const allHaveColor = variantsDraft.every(v => (v.color || '').trim());
+                  const allHaveSize = variantsDraft.every(v => (v.size || '').trim());
+                  const colorInconsistent = hasAnyColor && !allHaveColor;
+                  const sizeInconsistent = hasAnySize && !allHaveSize;
+                  return (
                   <div className="space-y-2">
+                    {(colorInconsistent || sizeInconsistent) && (
+                      <div className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                        <span className="text-lg leading-none">⚠️</span>
+                        <div>
+                          <span className="font-bold">{t('store.productForm.variantInconsistentTitle') || 'Warning: Incomplete variant data'}</span>
+                          <br />
+                          {colorInconsistent && <span>{t('store.productForm.variantInconsistentColor') || 'Some variants have a color and some don\'t — fill in color for all or leave empty for all.'}</span>}
+                          {colorInconsistent && sizeInconsistent && <br />}
+                          {sizeInconsistent && <span>{t('store.productForm.variantInconsistentSize') || 'Some variants have a size and some don\'t — fill in size for all or leave empty for all.'}</span>}
+                        </div>
+                      </div>
+                    )}
                     {variantsDraft
                       .slice()
                       .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
-                      .map((v, idx) => (
-                        <div key={v.id ?? `new-${idx}`} className="grid grid-cols-12 gap-2 items-end border rounded p-2 bg-background/50">
+                      .map((v, idx) => {
+                        const missingColor = colorInconsistent && !(v.color || '').trim();
+                        const missingSize = sizeInconsistent && !(v.size || '').trim();
+                        return (
+                        <div key={v.id ?? `new-${idx}`} className={`grid grid-cols-12 gap-2 items-end border rounded p-2 bg-background/50 ${(missingColor || missingSize) ? 'ring-2 ring-amber-500/50' : ''}`}>
                           <div className="col-span-4">
-                            <Label className="text-xs">Color</Label>
+                            <Label className={`text-xs ${missingColor ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}>Color{missingColor ? ' ⚠️' : ''}</Label>
                             <Input
                               value={v.color || ''}
                               onChange={(e) => {
@@ -1360,12 +1382,12 @@ export default function StockManagement() {
                                 );
                                 setVariantsDirty(true);
                               }}
-                              className="h-9"
+                              className={`h-9 ${missingColor ? 'border-amber-500 bg-amber-500/5' : ''}`}
                               placeholder="e.g. Red"
                             />
                           </div>
                           <div className="col-span-4">
-                            <Label className="text-xs">Size</Label>
+                            <Label className={`text-xs ${missingSize ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}>Size{missingSize ? ' ⚠️' : ''}</Label>
                             <Input
                               value={v.size || ''}
                               onChange={(e) => {
@@ -1375,7 +1397,7 @@ export default function StockManagement() {
                                 );
                                 setVariantsDirty(true);
                               }}
-                              className="h-9"
+                              className={`h-9 ${missingSize ? 'border-amber-500 bg-amber-500/5' : ''}`}
                               placeholder="e.g. M"
                             />
                           </div>
@@ -1424,9 +1446,11 @@ export default function StockManagement() {
                             </Button>
                           </div>
                         </div>
-                      ))}
+                      );
+                      })}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 

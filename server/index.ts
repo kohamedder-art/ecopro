@@ -157,13 +157,12 @@ export function createServer(options?: { skipDbInit?: boolean }) {
       })
       .catch((err) => {
         console.error('Failed to initialize database:', err);
-        if (isProduction) {
-          process.exit(1);
-        }
-        console.warn('⚠️ Dev mode: continuing without DB (routes that require DB will fail until DB is reachable)');
+        process.exit(1);
       });
   } else {
-    console.log('⚠️  No DATABASE_URL set; skipping database initialization');
+    console.error('❌ DATABASE_URL is not set. Please set your Render PostgreSQL database URL in .env.local');
+    console.error('   Example: DATABASE_URL=postgresql://username:password@host.render.com:5432/database');
+    process.exit(1);
   }
 
   // Default admin bootstrap

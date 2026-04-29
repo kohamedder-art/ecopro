@@ -302,7 +302,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                 <div className="lux-img-slot rounded-3xl mb-3 select-none" style={{ aspectRatio: '4/5', maxHeight: '560px' }}
                     onTouchStart={handleSwipeStart}
                     onTouchEnd={e => handleSwipeEnd(e, allImages)}
-                    onClick={() => { if (videoEmbed && showVideo) return; canManage ? fileMainRef.current?.click() : mainImage && setZoomState({ images: allImages, idx: selectedMainImage }); }}>
+                    onClick={() => { if (videoEmbed && showVideo) return; canManage ? fileMainRef.current?.click() : mainImage && setZoomState({ images: allImages, idx: Math.max(0, allImages.indexOf(mainImage)) }); }}>
                     {videoEmbed && showVideo ? (
                       <div className="w-full h-full">
                         {videoEmbed.type === 'youtube' ? (

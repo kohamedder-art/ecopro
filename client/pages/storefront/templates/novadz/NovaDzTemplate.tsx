@@ -74,11 +74,12 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
   const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
   
   const [quantity, setQuantity] = useState(1);
   const currency = settings?.currency_code || 'د.ج';
@@ -155,7 +156,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
                   ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
                   total_price: selectedOffer ? selectedOffer.bundle_price : mainProduct.price * quantity,
                   delivery_fee: deliveryFee,
-                  delivery_type: 'desk', 
+                  delivery_type: selectedDeliveryType, 
                   customer_name: name,
                   customer_phone: phone,
                   customer_address: address,
@@ -249,10 +250,12 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
               }}
               onClick={e => { if (!(e.target as HTMLElement).closest('button') && !(videoEmbed && showVideo)) setZoomState({ images: images, idx: imgIdx }); }}
             >
-                    <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+              {showVideo && videoEmbed ? (
+                <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+              ) : (
                 <>
-                  <img 
-                    src={images[imgIdx]} 
+                  <img
+                    src={images[imgIdx]}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 pointer-events-none"
                     alt={mainProduct.title}
                   />
@@ -451,6 +454,36 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
                             </div>
                         </div>
                     </div>
+
+                    {(showHomeDelivery && showDeskDelivery) && (
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold" style={{ color: surfaceTextMuted }}>نوع التوصيل</label>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedDeliveryType('home')}
+                                    className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all"
+                                    style={{
+                                        backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
+                                        color: selectedDeliveryType === 'home' ? '#ffffff' : surfaceTextColor,
+                                    }}
+                                >
+                                    التوصيل للمنزل
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedDeliveryType('desk')}
+                                    className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all"
+                                    style={{
+                                        backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
+                                        color: selectedDeliveryType === 'desk' ? '#ffffff' : surfaceTextColor,
+                                    }}
+                                >
+                                    الاستلام من المكتب
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {showCommune && <div className="space-y-1">
                         <label className="text-xs font-bold" style={{ color: surfaceTextMuted }}>البلدية</label>

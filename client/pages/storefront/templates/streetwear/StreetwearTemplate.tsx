@@ -16,8 +16,8 @@ import {
   Phone,
   CheckCircle2,
   ShieldCheck,
-} ,
-  Home, Building2
+  Home,
+  Building2
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -38,12 +38,22 @@ export default function StreetwearTemplate(props: TemplateProps) {
   } = props;
 
   /* ---------- settings ---------- */
-  const brandName     = (settings as any)?.streetwear_brand_name   ?? 'SCULPTOR';
+  const brandName     = (settings as any)?.streetwear_brand_name   ?? settings?.store_name ?? 'SCULPTOR';
   const brandSuffix   = (settings as any)?.streetwear_brand_suffix ?? 'Algiers Based';
   const heroTitle     = (settings as any)?.streetwear_hero_title   ?? 'The Full Drop';
   const heroSubtitle  = (settings as any)?.streetwear_hero_sub     ?? 'Available Now • Worldwide Shipping';
-  const accentColor   = settings?.template_accent_color ?? (settings as any)?.streetwear_accent_color ?? settings?.primary_color ?? '#D4AF37';
+  const rawAccent     = settings?.template_accent_color ?? (settings as any)?.streetwear_accent_color ?? settings?.primary_color ?? '#D4AF37';
   const bgColor       = settings?.template_bg_color ?? (settings as any)?.streetwear_bg_color ?? '#080808';
+  // Ensure accent has enough contrast on dark bg (always dark theme)
+  const accentColor   = useMemo(() => {
+    const h = rawAccent.replace('#', '');
+    if (h.length < 6) return rawAccent;
+    const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+    const lum = (r * 299 + g * 587 + b * 114) / 1000;
+    if (lum >= 128) return rawAccent;
+    const f = Math.max(0.3, (128 - lum) / 200);
+    return `#${Math.min(255, Math.round(r + (255 - r) * f)).toString(16).padStart(2, '0')}${Math.min(255, Math.round(g + (255 - g) * f)).toString(16).padStart(2, '0')}${Math.min(255, Math.round(b + (255 - b) * f)).toString(16).padStart(2, '0')}`;
+  }, [rawAccent]);
   const currency      = (settings as any)?.currency_code           ?? 'د.ج';
 
   /* ---------- delivery prices ---------- */
@@ -222,7 +232,7 @@ export default function StreetwearTemplate(props: TemplateProps) {
   };
 
   return (
-    <div className="min-h-screen text-white font-sans" style={{ backgroundColor: bgColor }} dir="rtl">
+    <div className="min-h-screen text-white font-sans" style={{ backgroundColor: bgColor, '--sw-accent': rawAccent } as React.CSSProperties} dir="rtl">
 
       {/* ── HEADER ── */}
       <header className="fixed top-0 inset-x-0 h-20 z-50 bg-black/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6">
@@ -421,6 +431,39 @@ export default function StreetwearTemplate(props: TemplateProps) {
                   {showAddress && <input type="text" placeholder="العنوان" className="h-14 bg-white/5 rounded-2xl px-4 border border-white/5 text-sm font-bold text-white/80 placeholder:text-white/20 outline-none" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />}
                   {showCommune && <input type="text" placeholder="البلدية" className="h-14 bg-white/5 rounded-2xl px-4 border border-white/5 text-sm font-bold text-white/80 placeholder:text-white/20 outline-none" value={formData.commune} onChange={e => setFormData({ ...formData, commune: e.target.value })} />}
                   {showNotes && <textarea placeholder="ملاحظات" rows={2} className="bg-white/5 rounded-2xl px-4 py-3 border border-white/5 text-sm font-bold text-white/80 placeholder:text-white/20 outline-none resize-none" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />}
+                  {(showHomeDelivery && showDeskDelivery) && (
+                    <div>
+                      <label className="block text-sm font-bold mb-2 text-white/60">نوع التوصيل</label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDeliveryType('home')}
+                          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl transition-all border"
+                          style={{
+                            backgroundColor: selectedDeliveryType === 'home' ? accentColor : 'rgba(255,255,255,0.05)',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            color: selectedDeliveryType === 'home' ? '#000000' : 'rgba(255,255,255,0.8)',
+                          }}
+                        >
+                          <Home size={16} />
+                          <span className="text-sm font-bold">التوصيل للمنزل</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDeliveryType('desk')}
+                          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl transition-all border"
+                          style={{
+                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor : 'rgba(255,255,255,0.05)',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            color: selectedDeliveryType === 'desk' ? '#000000' : 'rgba(255,255,255,0.8)',
+                          }}
+                        >
+                          <Building2 size={16} />
+                          <span className="text-sm font-bold">الاستلام من المكتب</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-between items-end pt-2">

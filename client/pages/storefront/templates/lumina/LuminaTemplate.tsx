@@ -287,7 +287,7 @@ export default function LuminaTemplate({ settings, products, canManage, storeSlu
                 alt={`Product section ${index + 1}`}
                 className="w-full h-auto object-cover cursor-pointer"
                 loading={index === 0 ? 'eager' : 'lazy'}
-                onClick={() => setZoomState({ images: mainImages, idx: index })}
+                onClick={() => setZoomState({ images: landingImages, idx: index })}
               />
             ))}
           </div>

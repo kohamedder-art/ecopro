@@ -21,8 +21,8 @@ import {
   Plus,
   Minus,
   Trash2,
-} ,
-  Home, Building2
+  Home,
+  Building2
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -391,7 +391,7 @@ export default function IycoTemplate({
                     )}
                   </div>
                 ) : (
-                  <div className="w-full h-full group cursor-pointer" onClick={() => setZoomImage(mainImages[selectedMainImage] || mainImages[0])}>
+                  <div className="w-full h-full group cursor-pointer" onClick={() => setZoomState({ images: mainImages, idx: selectedMainImage })}>
                     <img src={mainImages[selectedMainImage] || '/placeholder.png'} alt={mainProduct.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
                       {selectedMainImage + 1} / {mainImages.length}
@@ -711,23 +711,23 @@ export default function IycoTemplate({
       </footer>
 
       {/* Image Zoom Modal */}
-      {zoomImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+      {zoomState && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomState(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomState(null)}>
             <X size={20} />
           </button>
-          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
-          {mainImages.length > 1 && (
+          <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+          {zoomState.images.length > 1 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-              {mainImages.map((img, i) => (
-                <div
+              {zoomState.images.map((img, i) => (
+                <button
                   key={i}
-                  className="w-14 h-14 rounded-lg overflow-hidden cursor-pointer transition-all"
-                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
-                  ${onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
+                  onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
+                  className="w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0"
+                  style={{ borderColor: i === zoomState.idx ? accentColor : 'rgba(255,255,255,0.3)', opacity: i === zoomState.idx ? 1 : 0.6 }}
                 >
                   <img src={img} className="w-full h-full object-cover" alt="" />
-                </div>
+                </button>
               ))}
             </div>
           )}

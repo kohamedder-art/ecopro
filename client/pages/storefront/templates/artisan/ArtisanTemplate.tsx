@@ -171,13 +171,13 @@ export default function ArtisanTemplate(props: TemplateProps) {
 
   // Lock body scroll when modal/drawer open
   useEffect(() => {
-    if (showCheckout || detailProduct || zoomImage) {
+    if (showCheckout || detailProduct || zoomState) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
-  }, [showCheckout, detailProduct, zoomImage]);
+  }, [showCheckout, detailProduct, zoomState]);
 
   /* ---------- social-proof toast ---------- */
   const [recentSale, setRecentSale] = useState<string | null>(null);

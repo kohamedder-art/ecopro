@@ -2361,12 +2361,34 @@ export default function Store() {
                   <div className="text-sm text-muted-foreground">{t('store.productForm.noVariants')}</div>
                 )}
 
-                {!loadingVariants && variantsDraft.length > 0 && (
+                {!loadingVariants && variantsDraft.length > 0 && (() => {
+                  const hasAnyColor = variantsDraft.some(v => (v.color || '').trim());
+                  const hasAnySize = variantsDraft.some(v => (v.size || '').trim());
+                  const allHaveColor = variantsDraft.every(v => (v.color || '').trim());
+                  const allHaveSize = variantsDraft.every(v => (v.size || '').trim());
+                  const colorInconsistent = hasAnyColor && !allHaveColor;
+                  const sizeInconsistent = hasAnySize && !allHaveSize;
+                  return (
                   <div className="space-y-2">
-                    {variantsDraft.map((v, idx) => (
-                      <div key={v.id ?? idx} className="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
+                    {(colorInconsistent || sizeInconsistent) && (
+                      <div className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                        <span className="text-lg leading-none">⚠️</span>
+                        <div>
+                          <span className="font-bold">{t('store.productForm.variantInconsistentTitle') || 'تنبيه: بيانات الأنواع غير مكتملة'}</span>
+                          <br />
+                          {colorInconsistent && <span>{t('store.productForm.variantInconsistentColor') || 'بعض الأنواع لديها لون والبعض لا — يجب ملء اللون لجميع الأنواع أو تركه فارغاً للجميع.'}</span>}
+                          {colorInconsistent && sizeInconsistent && <br />}
+                          {sizeInconsistent && <span>{t('store.productForm.variantInconsistentSize') || 'بعض الأنواع لديها مقاس والبعض لا — يجب ملء المقاس لجميع الأنواع أو تركه فارغاً للجميع.'}</span>}
+                        </div>
+                      </div>
+                    )}
+                    {variantsDraft.map((v, idx) => {
+                      const missingColor = colorInconsistent && !(v.color || '').trim();
+                      const missingSize = sizeInconsistent && !(v.size || '').trim();
+                      return (
+                      <div key={v.id ?? idx} className={`grid grid-cols-2 md:grid-cols-6 gap-2 items-end ${(missingColor || missingSize) ? 'ring-2 ring-amber-500/50 rounded-lg p-1' : ''}`}>
                         <div className="space-y-1">
-                          <Label className="text-xs">{t('store.productForm.variantColor')}</Label>
+                          <Label className={`text-xs ${missingColor ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}>{t('store.productForm.variantColor')}{missingColor ? ' ⚠️' : ''}</Label>
                           <Input
                             value={v.color || ''}
                             onChange={(e) => {
@@ -2377,11 +2399,12 @@ export default function Store() {
                               setVariantsDirty(true);
                             }}
                             placeholder={t('store.productForm.variantColorPlaceholder')}
+                            className={missingColor ? 'border-amber-500 bg-amber-500/5' : ''}
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <Label className="text-xs">{t('store.productForm.variantSize')}</Label>
+                          <Label className={`text-xs ${missingSize ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}>{t('store.productForm.variantSize')}{missingSize ? ' ⚠️' : ''}</Label>
                           <Input
                             value={v.size || ''}
                             onChange={(e) => {
@@ -2392,6 +2415,7 @@ export default function Store() {
                               setVariantsDirty(true);
                             }}
                             placeholder={t('store.productForm.variantSizePlaceholder')}
+                            className={missingSize ? 'border-amber-500 bg-amber-500/5' : ''}
                           />
                         </div>
 
@@ -2461,9 +2485,11 @@ export default function Store() {
                           </Button>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 

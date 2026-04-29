@@ -117,7 +117,30 @@ function ProductImageGallery({ product: p, accentColor, onZoom }: { product: any
 }
 
 export default function NeedDZTemplate({ settings, products, canManage, storeSlug, onProductView, initialProductSlug }: TemplateProps) {
-  const accentColor = settings?.template_accent_color || settings?.primary_color || '#059669';
+  const rawAccent = settings?.template_accent_color || settings?.primary_color || '#059669';
+  const bgColor = settings?.template_bg_color || '#f1f5f9';
+  const isDark = useMemo(() => {
+    const hex = bgColor.replace('#', '');
+    if (hex.length < 6) return false;
+    const r = parseInt(hex.substring(0, 2), 16), g = parseInt(hex.substring(2, 4), 16), b = parseInt(hex.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, [bgColor]);
+  // Ensure accent has enough contrast on dark bg
+  const accentColor = useMemo(() => {
+    if (!isDark) return rawAccent;
+    const h = rawAccent.replace('#', '');
+    if (h.length < 6) return rawAccent;
+    const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+    const lum = (r * 299 + g * 587 + b * 114) / 1000;
+    if (lum >= 128) return rawAccent;
+    // Lighten for dark bg readability
+    const f = Math.max(0.3, (128 - lum) / 200);
+    return `#${Math.min(255, Math.round(r + (255 - r) * f)).toString(16).padStart(2, '0')}${Math.min(255, Math.round(g + (255 - g) * f)).toString(16).padStart(2, '0')}${Math.min(255, Math.round(b + (255 - b) * f)).toString(16).padStart(2, '0')}`;
+  }, [rawAccent, isDark]);
+  const textColor = isDark ? '#f1f5f9' : undefined;
+  const textMuted = isDark ? '#94a3b8' : undefined;
+  const cardBg = isDark ? '#1e293b' : 'white';
+  const cardBorder = isDark ? '#334155' : undefined;
 
   // Section visibility toggles
   const showUrgentBar = settings?.needdz_show_urgent_bar !== false;
@@ -151,11 +174,12 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [detailProduct, setDetailProduct] = useState<any>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) setDetailProduct(p); } }, [initialProductSlug, products]);
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   // Variant system
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -221,7 +245,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
         ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
         total_price: selectedOffer ? selectedOffer.bundle_price : selectedProduct.price,
         delivery_fee: deliveryFee,
-        delivery_type: 'desk',
+        delivery_type: selectedDeliveryType,
         customer_name: fd.get('name'),
         customer_phone: fd.get('phone'),
         customer_address: [selectedWilaya?.labelAR, fd.get('commune'), fd.get('address'), fd.get('notes')].filter(Boolean).join(' - '),
@@ -250,8 +274,8 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   };
 
   return (
-    <div className="min-h-screen font-sans" style={{ backgroundColor: settings?.template_bg_color || '#f1f5f9' }} dir="rtl">
-      <div className="w-full bg-white relative flex flex-col min-h-screen">
+    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
+      <div className="w-full relative flex flex-col min-h-screen" style={{ backgroundColor: isDark ? bgColor : 'white' }}>
         
         {/* Urgent Header - toggleable */}
         {showUrgentBar && (
@@ -499,6 +523,33 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
                             {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                           </select>
                         </div>
+                        {(showHomeDelivery && showDeskDelivery) && <div className="space-y-1.5">
+                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">نوع التوصيل</label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDeliveryType('home')}
+                              className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all"
+                              style={{
+                                backgroundColor: selectedDeliveryType === 'home' ? accentColor : '#f1f5f9',
+                                color: selectedDeliveryType === 'home' ? '#ffffff' : '#64748b',
+                              }}
+                            >
+                              التوصيل للمنزل
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDeliveryType('desk')}
+                              className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all"
+                              style={{
+                                backgroundColor: selectedDeliveryType === 'desk' ? accentColor : '#f1f5f9',
+                                color: selectedDeliveryType === 'desk' ? '#ffffff' : '#64748b',
+                              }}
+                            >
+                              الاستلام من المكتب
+                            </button>
+                          </div>
+                        </div>}
                         {showCommune && <div className="space-y-1.5">
                           <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">البلدية</label>
                           <input name="commune" type="text" placeholder="المدينة" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm outline-none" />

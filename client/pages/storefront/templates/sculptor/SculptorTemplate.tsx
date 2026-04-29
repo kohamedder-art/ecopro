@@ -1,8 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   ShoppingBag, Maximize2, Ruler, ShieldCheck, Truck,
-  CheckCircle2, X, CreditCard, ChevronDown, ChevronLeft, Phone
-} ,
+  CheckCircle2, X, CreditCard, ChevronDown, ChevronLeft, Phone,
   Home, Building2
 } from 'lucide-react';
 import { TemplateProps } from '../types';
@@ -108,13 +107,13 @@ export default function SculptorTemplate({ settings, products, canManage, storeS
 
   // Body scroll lock
   useEffect(() => {
-    if (showCart || zoomImage) {
+    if (showCart || zoomState) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
-  }, [showCart, zoomImage]);
+  }, [showCart, zoomState]);
 
   const productImages = mainProduct?.images && mainProduct.images.length > 0 ? mainProduct.images : [];
   const productPrice = mainProduct?.price ?? 0;
@@ -319,7 +318,7 @@ export default function SculptorTemplate({ settings, products, canManage, storeS
                       className="w-full h-full object-cover cursor-pointer"
                       alt={`Product view ${i + 1}`}
                       loading={i === 0 ? 'eager' : 'lazy'}
-                      onClick={() => setZoomImage(img)}
+                      onClick={() => setZoomState({ images: productImages, idx: i })}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60" />
                   </div>
@@ -599,23 +598,23 @@ export default function SculptorTemplate({ settings, products, canManage, storeS
       </footer>
 
       {/* Image Zoom Modal */}
-      {zoomImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+      {zoomState && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomState(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomState(null)}>
             <X size={20} />
           </button>
-          <img src={zoomImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
-          {productImages.length > 1 && (
+          <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
+          {zoomState.images.length > 1 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-              {productImages.map((img, i) => (
-                <div
+              {zoomState.images.map((img, i) => (
+                <button
                   key={i}
-                  className="w-14 h-14 rounded-lg overflow-hidden cursor-pointer transition-all"
-                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.3)', opacity: zoomImage === img ? 1 : 0.6 }}
-                  ${onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
+                  onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
+                  className="w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0"
+                  style={{ borderColor: i === zoomState.idx ? accentColor : 'rgba(255,255,255,0.3)', opacity: i === zoomState.idx ? 1 : 0.6 }}
                 >
                   <img src={img} className="w-full h-full object-cover" alt="" />
-                </div>
+                </button>
               ))}
             </div>
           )}

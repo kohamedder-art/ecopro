@@ -8,13 +8,22 @@ import { initWebSocket } from "./utils/websocket";
 const PORT = Number(process.env.PORT || 8080);
 
 async function startServer() {
+  // Require DATABASE_URL for all environments
+  if (!process.env.DATABASE_URL) {
+    console.error("❌ DATABASE_URL is not set. Please set your Render PostgreSQL database URL.");
+    console.error("   Example: DATABASE_URL=postgresql://username:password@host.render.com:5432/database");
+    process.exit(1);
+  }
+
   // Warm up DB connection before starting server to avoid first-request timeout
   console.log("🔄 Warming up database connection...");
   try {
     await ensureConnection();
     console.log("✅ Database connection ready");
   } catch (err) {
-    console.error("⚠️ Database warm-up failed (will retry on first request):", (err as any)?.message);
+    console.error("❌ Database connection failed:", (err as any)?.message);
+    console.error("   Please check your DATABASE_URL points to a valid Render PostgreSQL database.");
+    process.exit(1);
   }
 
   // Start server immediately (don't block boot on remote DB + migrations).
@@ -34,22 +43,6 @@ async function startServer() {
   // Initialize DB + migrations + background jobs asynchronously.
   (async () => {
     try {
-      const devDbInit = String(process.env.DEV_DB_INIT || '').toLowerCase();
-      const shouldInitDb = devDbInit === '1' || devDbInit === 'true' || devDbInit === 'yes';
-
-      if (!shouldInitDb) {
-        console.log('⏭️ DEV_DB_INIT disabled — skipping database init/migrations in dev');
-        // Still start background workers — they need to run in dev too
-        const { startScheduledMessageWorker } = await import('./utils/scheduled-messages');
-        const { startBotMessageWorker } = await import('./utils/bot-messaging');
-        const { startTelegramUpdatePoller } = await import('./utils/telegram-poller');
-        startScheduledMessageWorker();
-        startBotMessageWorker({ intervalMs: 30 * 1000 });
-        startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
-        console.log('✅ Background workers started (dev mode)');
-        return;
-      }
-
       if (process.env.DATABASE_URL) {
         const url = process.env.DATABASE_URL || '';
         const masked = url.replace(/:(.*?)@/, ':****@');
@@ -72,11 +65,10 @@ async function startServer() {
           cleanupExpiredCodes().catch(err => console.error("Code cleanup error:", err));
         }, 10 * 60 * 1000);
         console.log("📋 Subscription code cleanup started (runs every 10 minutes)");
-      } else {
-        console.log("⚠️  No DATABASE_URL found - skipping database initialization");
       }
     } catch (error) {
-      console.error("❌ DB init failed (server still running):", error);
+      console.error("❌ Database initialization failed:", error);
+      process.exit(1);
     }
   })();
 }
