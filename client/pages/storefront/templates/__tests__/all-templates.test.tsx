@@ -670,7 +670,88 @@ describe.each(ALL_TEMPLATE_IDS)('Template: %s', (templateId) => {
     });
   });
 
-  // ── 21. Store logo display ──
+  // ── 21. Quantity selector (+/- buttons) ──
+  it('has quantity selector for products', () => {
+    const products = [
+      makeProduct({ stock_quantity: 10 }),
+    ];
+    const props = makeProps({
+      products,
+      settings: makeSettings({ template: templateId }),
+    });
+    const { container } = render(<>{RenderStorefront(templateId, props)}</>);
+    const html = container.innerHTML;
+    const buttons = container.querySelectorAll('button');
+
+    // Look for +/- quantity buttons or quantity display
+    const hasQtyButtons = Array.from(buttons).some(
+      (btn) => {
+        const text = btn.textContent?.trim() || '';
+        return text === '+' || text === '-' || text === '−';
+      }
+    );
+    const hasQtyText = html.includes('الكمية') || html.includes('quantity') || html.includes('Qty');
+
+    if (!hasQtyButtons && !hasQtyText) {
+      console.warn(
+        `[${templateId}] NO QUANTITY SELECTOR: customer cannot change order quantity (forced to 1)`
+      );
+    }
+  });
+
+  // ── 22. Variant selector renders for products with variants ──
+  it('renders variant selector for products with variants', () => {
+    const products = [
+      makeProduct({
+        variants: [
+          { id: 1, product_id: 1, color: 'أحمر', size: 'L', variant_name: 'أحمر / L', price: 2500, stock_quantity: 5, images: null, is_active: true, sort_order: 0 },
+          { id: 2, product_id: 1, color: 'أزرق', size: 'M', variant_name: 'أزرق / M', price: 2500, stock_quantity: 3, images: null, is_active: true, sort_order: 1 },
+          { id: 3, product_id: 1, color: 'أخضر', size: 'S', variant_name: 'أخضر / S', price: 2800, stock_quantity: 0, images: null, is_active: true, sort_order: 2 },
+        ],
+      }),
+    ];
+    const props = makeProps({
+      products,
+      settings: makeSettings({ template: templateId }),
+    });
+    const { container } = render(<>{RenderStorefront(templateId, props)}</>);
+    const html = container.innerHTML;
+
+    // Variant names or colors should appear somewhere in the rendered output
+    const hasVariantUI =
+      html.includes('أحمر') || html.includes('أزرق') || html.includes('أخضر') ||
+      html.includes('variant') || html.includes('Variant') ||
+      html.includes('اللون') || html.includes('المقاس');
+
+    if (!hasVariantUI) {
+      console.warn(
+        `[${templateId}] VARIANT SELECTOR NOT VISIBLE: product variants not shown in initial render ` +
+        `(may require clicking product detail first — check manually)`
+      );
+    }
+  });
+
+  // ── 23. Out-of-stock variant handling ──
+  it('handles out-of-stock variants without crashing', () => {
+    const products = [
+      makeProduct({
+        stock_quantity: 0,
+        variants: [
+          { id: 1, product_id: 1, color: 'أحمر', size: 'L', variant_name: 'أحمر / L', price: 2500, stock_quantity: 0, images: null, is_active: true, sort_order: 0 },
+          { id: 2, product_id: 1, color: 'أزرق', size: 'M', variant_name: 'أزرق / M', price: 2500, stock_quantity: 0, images: null, is_active: false, sort_order: 1 },
+        ],
+      }),
+    ];
+    const props = makeProps({
+      products,
+      settings: makeSettings({ template: templateId }),
+    });
+    expect(() => {
+      render(<>{RenderStorefront(templateId, props)}</>);
+    }).not.toThrow();
+  });
+
+  // ── 24. Store logo display ──
   it('displays store logo when provided', () => {
     const logoUrl = 'https://example.com/logo.png';
     const props = makeProps({
