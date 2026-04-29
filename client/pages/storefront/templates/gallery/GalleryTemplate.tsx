@@ -431,6 +431,9 @@ export default function GalleryTemplate(props: TemplateProps) {
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 767px) {
+          .gallery-img-main { max-height: 50dvh !important; }
+        }
         @media (min-width: 768px) {
           .gallery-modal-card { height: 85vh !important; max-height: 85vh !important; }
           .gallery-img-wrap { height: 100%; }

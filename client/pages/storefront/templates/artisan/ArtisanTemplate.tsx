@@ -568,6 +568,9 @@ export default function ArtisanTemplate(props: TemplateProps) {
       `}} />
 
       <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 767px) {
+          .artisan-gallery-img { max-height: 50dvh !important; }
+        }
         @media (min-width: 768px) {
           .artisan-modal-card { height: 85vh !important; max-height: 85vh !important; }
           .artisan-gallery-wrap { height: 100%; }

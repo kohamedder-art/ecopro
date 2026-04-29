@@ -577,6 +577,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
 
       <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 767px) {
+          .boutique-gallery-img { max-height: 50dvh !important; }
+        }
         @media (min-width: 768px) {
           .boutique-modal-card { height: 85vh !important; max-height: 85vh !important; }
           .boutique-gallery-wrap { height: 100%; }

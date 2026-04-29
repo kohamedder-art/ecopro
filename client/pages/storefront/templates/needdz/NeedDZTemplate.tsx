@@ -69,7 +69,7 @@ function ProductImageGallery({ product: p, accentColor }: { product: any; accent
     <div className="needdz-gallery-wrap flex flex-col h-full">
       <div
         className="needdz-gallery-img relative w-full overflow-hidden bg-slate-100 shrink-0"
-        style={{ aspectRatio: '3 / 4' }}
+        style={{ aspectRatio: '3 / 4', maxHeight: '50dvh' }}
         onTouchStart={e => { e.stopPropagation(); tsRef.current = e.touches[0].clientX; }}
         onTouchMove={e => e.stopPropagation()}
         onTouchEnd={e => {
@@ -578,6 +578,9 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
         .no-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+        @media (max-width: 767px) {
+          .needdz-gallery-img { max-height: 50dvh !important; }
         }
         @media (min-width: 768px) {
           .needdz-modal-card { height: 85vh !important; max-height: 85vh !important; }

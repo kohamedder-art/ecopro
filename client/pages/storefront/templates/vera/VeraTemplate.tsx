@@ -356,6 +356,9 @@ export default function VeraTemplate(props: TemplateProps) {
       </footer>
 
       <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 767px) {
+          .vera-gallery-img { max-height: 50dvh !important; }
+        }
         @media (min-width: 768px) {
           .vera-modal-card { height: 85vh !important; max-height: 85vh !important; }
           .vera-gallery-wrap { height: 100%; }

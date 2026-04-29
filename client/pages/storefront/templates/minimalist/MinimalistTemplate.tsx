@@ -527,6 +527,9 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 767px) {
+          .minimalist-modal-card .relative.flex-1 { max-height: 50dvh !important; }
+        }
         @media (min-width: 768px) {
           .minimalist-modal-card { height: 85vh !important; max-height: 85vh !important; }
         }

@@ -564,6 +564,9 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 767px) {
+          .aurora-gallery-img { max-height: 50dvh !important; }
+        }
         @media (min-width: 768px) {
           .aurora-modal-card { height: 85vh !important; max-height: 85vh !important; }
           .aurora-gallery-wrap { height: 100%; }

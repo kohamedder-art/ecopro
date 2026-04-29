@@ -458,6 +458,9 @@ export default function StreetwearTemplate(props: TemplateProps) {
       `}} />
 
       <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 767px) {
+          .sw-gallery-img { max-height: 50dvh !important; }
+        }
         @media (min-width: 768px) {
           .sw-modal-card { height: 85vh !important; max-height: 85vh !important; }
           .sw-gallery-wrap { height: 100%; }
