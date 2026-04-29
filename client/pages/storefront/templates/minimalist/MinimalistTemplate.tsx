@@ -10,7 +10,9 @@ import {
   Instagram, 
   Menu,
   X,
-  Clock
+  Clock,
+  Home,
+  Building2
 } from 'lucide-react';
 import { TemplateProps } from '../types';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
@@ -57,7 +59,8 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const [activeScroll, setActiveScroll] = useState(0);
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-    const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   // Handle scroll tracking for background transitions
   useEffect(() => {
     const handleScroll = () => {
@@ -70,13 +73,13 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    if (detailProduct || selectedProduct || zoomImage) {
+    if (detailProduct || selectedProduct || zoomState) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
-  }, [detailProduct, selectedProduct, zoomImage]);
+  }, [detailProduct, selectedProduct, zoomState]);
 
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
     const text = e.currentTarget.textContent || '';
@@ -215,7 +218,7 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-    const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+    const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
     // Variant system
     const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -255,7 +258,7 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
                     ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
                     total_price: selectedOffer ? selectedOffer.bundle_price : product.price,
                     delivery_fee: deliveryFee,
-                    delivery_type: 'desk', 
+                    delivery_type: selectedDeliveryType, 
                     customer_name: name,
                     customer_phone: phone,
                     customer_address: [selectedWilaya?.labelFR || '', fd.get('commune'), fd.get('address'), fd.get('notes')].filter(Boolean).join(' - '),
@@ -359,6 +362,39 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
                 {showCommune && <input name="commune" type="text" placeholder="البلدية" className="w-full px-6 py-4 rounded-2xl border transition-all outline-none" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor, color: surfaceTextColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor} />}
                 {showAddress && <input name="address" type="text" placeholder="عنوان التوصيل" className="w-full px-6 py-4 rounded-2xl border transition-all outline-none" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor, color: surfaceTextColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor} />}
                 {showNotes && <textarea name="notes" placeholder="ملاحظات" rows={2} className="w-full px-6 py-4 rounded-2xl border transition-all outline-none resize-none" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor, color: surfaceTextColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor} />}
+                {(showHomeDelivery && showDeskDelivery) && (
+                  <div>
+                    <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>نوع التوصيل</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDeliveryType('home')}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all"
+                        style={{
+                          backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
+                          border: `1px solid ${surfaceBorderColor}`,
+                          color: selectedDeliveryType === 'home' ? '#ffffff' : surfaceTextColor,
+                        }}
+                      >
+                        <Home size={16} />
+                        <span className="text-sm font-bold">التوصيل للمنزل</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDeliveryType('desk')}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all"
+                        style={{
+                          backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
+                          border: `1px solid ${surfaceBorderColor}`,
+                          color: selectedDeliveryType === 'desk' ? '#ffffff' : surfaceTextColor,
+                        }}
+                      >
+                        <Building2 size={16} />
+                        <span className="text-sm font-bold">الاستلام من المكتب</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <button disabled={isSubmitting} type="submit" className="w-full text-white py-5 rounded-2xl font-bold tracking-wide transition-all shadow-xl active:scale-95 disabled:opacity-50" style={{ backgroundColor: accentColor }}>
                   {isSubmitting ? 'جاري المعالجة...' : (settings?.template_button_text || 'تأكيد الشراء')}
                 </button>

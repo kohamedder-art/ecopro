@@ -1776,6 +1776,22 @@ export default function GoldTemplateEditor() {
                       </div>
                     </div>
 
+                    {/* Delivery Type Options */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-3 h-3 text-indigo-500"/> خيارات التوصيل</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">عند تفعيل الخيارين، يمكن للعميل اختيار نوع التوصيل.</p>
+                        {([['delivery_type_home', 'التوصيل للمنزل'], ['delivery_type_desk', 'الاستلام من المكتب']] as const).map(([field, label]) => (
+                          <label key={field} className="flex items-center justify-between cursor-pointer py-1">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+                            <button onClick={() => handleSettingChange(field, (settings as any)[field] === false ? true : false)} className={`w-10 h-6 rounded-full transition-colors relative ${(settings as any)[field] !== false ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${(settings as any)[field] !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+                            </button>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Template-specific sections (NeedDZ) */}
                     {activeTemplateId === 'needdz' && (
                     <div className="space-y-3">

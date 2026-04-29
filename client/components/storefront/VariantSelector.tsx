@@ -180,6 +180,13 @@ export default function VariantSelector({
                       {c.name.slice(0, 2)}
                     </span>
                   )}
+                  {isActive && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={hex && hex.toLowerCase() === '#f9fafb' ? '#111827' : '#ffffff'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </span>
+                  )}
                 </button>
               );
             })}
