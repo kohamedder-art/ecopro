@@ -1354,6 +1354,32 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
         `UPDATE clients SET business_name = $1, updated_at = NOW() WHERE id = $2`,
         [columnUpdates.store_name, clientId]
       );
+
+      // Auto-update store_slug from new name if user hasn't set a custom slug
+      if (!updatedRow?.is_custom_slug) {
+        const baseName = String(columnUpdates.store_name).trim().toLowerCase()
+          .replace(/[^\p{L}\p{N}\s-]/gu, '')   // keep letters, numbers, spaces, hyphens
+          .replace(/[\s]+/g, '-')               // spaces → hyphens
+          .replace(/-+/g, '-')                  // collapse hyphens
+          .replace(/^-|-$/g, '')                // trim leading/trailing hyphens
+          || `store-${clientId}`;
+        let candidate = baseName;
+        let suffix = 1;
+        // Ensure uniqueness
+        while (true) {
+          const dup = await pool.query(
+            `SELECT 1 FROM client_store_settings WHERE store_slug = $1 AND client_id != $2 LIMIT 1`,
+            [candidate, clientId]
+          );
+          if (dup.rows.length === 0) break;
+          candidate = `${baseName}-${suffix++}`;
+        }
+        await pool.query(
+          `UPDATE client_store_settings SET store_slug = $1 WHERE client_id = $2`,
+          [candidate, clientId]
+        );
+        updatedRow.store_slug = candidate;
+      }
     }
     
     // Verify template was saved correctly
