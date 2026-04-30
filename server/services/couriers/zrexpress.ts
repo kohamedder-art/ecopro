@@ -85,7 +85,68 @@ export class ZRExpressOfficialService implements CourierService {
   }
 
   /**
-   * Find territory IDs for a wilaya/commune combination
+   * Normalize a territory name for comparison:
+   * - lowercase, strip diacritics (é→e, ï→i, etc.), collapse whitespace/hyphens,
+   *   and map common Algerian transliteration variants so "Tamanrasset" matches "Tamanghasset", etc.
+   */
+  private normalizeName(name: string): string {
+    let s = (name || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // strip diacritics
+      .toLowerCase()
+      .replace(/[''`]/g, '')          // remove apostrophes
+      .replace(/[-_]/g, ' ')          // hyphens → spaces
+      .replace(/\s+/g, ' ')
+      .trim();
+    // Common Algerian transliteration equivalences
+    s = s.replace(/gh/g, '')          // tamanghasset → tamanasset
+         .replace(/ou/g, 'u')         // oum → um
+         .replace(/ch/g, 'sh')        // bechar → beshar
+         .replace(/dj/g, 'j')         // djelfa → jelfa
+         .replace(/ph/g, 'f');
+    return s;
+  }
+
+  /** Check if two territory names likely refer to the same place */
+  private namesMatch(a: string, b: string): boolean {
+    const na = this.normalizeName(a);
+    const nb = this.normalizeName(b);
+    if (!na || !nb) return false;
+    // Exact match after normalization
+    if (na === nb) return true;
+    // One contains the other (handles "Ain Bouchekif" vs "Aïn Bouchekif")
+    if (na.includes(nb) || nb.includes(na)) return true;
+    // Match if the longer string starts with the shorter (Alger vs Alger Centre)
+    const shorter = na.length <= nb.length ? na : nb;
+    const longer = na.length > nb.length ? na : nb;
+    if (longer.startsWith(shorter)) return true;
+    return false;
+  }
+
+  /** Map our wilaya name to its numeric code (1-58) for code-based fallback */
+  private static readonly WILAYA_CODES: Record<string, number> = {
+    'adrar': 1, 'chlef': 2, 'laghouat': 3, 'oum el bouaghi': 4, 'batna': 5,
+    'bejaia': 6, 'biskra': 7, 'bechar': 8, 'blida': 9, 'bouira': 10,
+    'tamanrasset': 11, 'tebessa': 12, 'tlemcen': 13, 'tiaret': 14, 'tizi ouzou': 15,
+    'alger': 16, 'djelfa': 17, 'jijel': 18, 'setif': 19, 'saida': 20,
+    'skikda': 21, 'sidi bel abbes': 22, 'annaba': 23, 'guelma': 24, 'constantine': 25,
+    'medea': 26, 'mostaganem': 27, 'msila': 28, 'mascara': 29, 'ouargla': 30,
+    'oran': 31, 'el bayadh': 32, 'illizi': 33, 'bordj bou arreridj': 34, 'boumerdes': 35,
+    'el tarf': 36, 'tindouf': 37, 'tissemsilt': 38, 'el oued': 39, 'khenchela': 40,
+    'souk ahras': 41, 'tipaza': 42, 'mila': 43, 'ain defla': 44, 'naama': 45,
+    'ain temouchent': 46, 'ghardaia': 47, 'relizane': 48,
+    'el mghair': 49, 'el meniaa': 50, 'ouled djellal': 51, 'bordj badji mokhtar': 52,
+    'beni abbes': 53, 'timimoun': 54, 'touggourt': 55, 'djanet': 56,
+    'in salah': 57, 'in guezzam': 58,
+    // Common alternate spellings
+    'tamanghasset': 11, 'béjaïa': 6, 'béchar': 8, 'tébessa': 12,
+    'sétif': 19, 'saïda': 20, 'médéa': 26, "m'sila": 28, 'ghardaïa': 47,
+    'naâma': 45, 'aïn defla': 44, 'aïn témouchent': 46,
+  };
+
+  /**
+   * Find territory IDs for a wilaya/commune combination.
+   * Uses progressive matching: exact → normalized → wilaya-code fallback.
    */
   private async findTerritoryIds(
     wilayaName: string,
@@ -94,24 +155,47 @@ export class ZRExpressOfficialService implements CourierService {
     tenantId: string
   ): Promise<{ cityTerritoryId: string | null; districtTerritoryId: string | null }> {
     const territories = await this.fetchTerritories(apiKey, tenantId);
-    
-    // Find wilaya (level = 'wilaya')
-    const wilaya = territories.find(t => 
-      t.level === 'wilaya' && 
-      t.name.toLowerCase().includes(wilayaName.toLowerCase())
-    );
-    
+    const wilayas = territories.filter(t => t.level === 'wilaya');
+
+    // 1) Try exact lowercase match
+    let wilaya = wilayas.find(t => t.name.toLowerCase() === wilayaName.toLowerCase());
+
+    // 2) Try normalized fuzzy match
     if (!wilaya) {
-      console.warn(`[ZRExpress] Wilaya not found: ${wilayaName}`);
+      wilaya = wilayas.find(t => this.namesMatch(t.name, wilayaName));
+    }
+
+    // 3) Fallback: match by wilaya code (most reliable)
+    if (!wilaya) {
+      const normalizedInput = wilayaName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      const code = ZRExpressOfficialService.WILAYA_CODES[normalizedInput]
+        || ZRExpressOfficialService.WILAYA_CODES[normalizedInput.replace(/-/g, ' ')]
+        || Object.entries(ZRExpressOfficialService.WILAYA_CODES).find(([k]) =>
+            this.normalizeName(k) === this.normalizeName(wilayaName)
+          )?.[1];
+      if (code) {
+        wilaya = wilayas.find(t => t.code === code);
+      }
+    }
+
+    if (!wilaya) {
+      console.warn(`[ZRExpress] Wilaya not found: "${wilayaName}" — available: ${wilayas.map(w => `${w.code}:${w.name}`).slice(0, 10).join(', ')}...`);
       return { cityTerritoryId: null, districtTerritoryId: null };
     }
 
-    // Find commune under this wilaya (level = 'commune', parentId = wilaya.id)
-    const commune = territories.find(t =>
-      t.level === 'commune' &&
-      t.parentId === wilaya.id &&
-      t.name.toLowerCase().includes(communeName.toLowerCase())
-    );
+    // Find commune under this wilaya
+    const communes = territories.filter(t => t.level === 'commune' && t.parentId === wilaya!.id);
+
+    let commune = communes.find(t => t.name.toLowerCase() === communeName.toLowerCase());
+    if (!commune) {
+      commune = communes.find(t => this.namesMatch(t.name, communeName));
+    }
+
+    if (!commune && communes.length > 0) {
+      // Last resort: pick the first commune (capital of the wilaya) rather than failing entirely
+      console.warn(`[ZRExpress] Commune "${communeName}" not found under ${wilaya.name}. Falling back to first commune: ${communes[0].name}`);
+      commune = communes[0];
+    }
 
     return {
       cityTerritoryId: wilaya.id,

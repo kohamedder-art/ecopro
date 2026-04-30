@@ -101,6 +101,12 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
       permission: "manage_bot_settings"
     },
     {
+      titleKey: "sidebar.integrations",
+      path: "/dashboard/integrations",
+      icon: <Puzzle className="w-[18px] h-[18px]" />,
+      permission: "manage_bot_settings"
+    },
+    {
       titleKey: "sidebar.aiSettings",
       path: "/dashboard/ai-settings",
       icon: <Brain className="w-[18px] h-[18px]" />,

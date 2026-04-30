@@ -1132,6 +1132,7 @@ export const fr = {
   "sidebar.marketing": "Marketing & Analytique",
   "sidebar.wasselni": "Bot",
   "sidebar.bot": "Bot",
+  "sidebar.integrations": "Intégrations",
   "sidebar.staff": "Personnel",
   "sidebar.brand": "Sahla4Eco",
   "sidebar.controlPanel": "Panneau de contrôle",

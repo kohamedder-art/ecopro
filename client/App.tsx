@@ -32,6 +32,7 @@ const EnhancedDashboard = lazy(() => import("./pages/admin/EnhancedDashboard"));
 const AdminOrders = lazy(() => import("./pages/admin/Orders"));
 const AdminCalls = lazy(() => import("./pages/admin/Calls"));
 const AdminBotSettings = lazy(() => import("./pages/admin/BotSettings"));
+const AdminIntegrations = lazy(() => import("./pages/admin/Integrations"));
 const AdminAISettings = lazy(() => import("./pages/admin/AISettings"));
 const AdminChats = lazy(() => import("./pages/admin/Chats"));
 const AdminChat = lazy(() => import("./pages/admin/Chat"));
@@ -521,6 +522,7 @@ const App = () => (
                     <Route path="staff" element={<StaffManagement />} />
                     <Route path="calls" element={<AdminCalls />} />
                     <Route path="bot-settings" element={<SubscriptionPageLock><AdminBotSettings /></SubscriptionPageLock>} />
+                    <Route path="integrations" element={<SubscriptionPageLock><AdminIntegrations /></SubscriptionPageLock>} />
                     <Route path="ai-settings" element={<SubscriptionPageLock><AdminAISettings /></SubscriptionPageLock>} />
                     <Route path="wasselni-settings" element={<Navigate to="/dashboard/bot-settings" replace />} />
                     <Route path="marketing-analytics" element={<MarketingAnalytics />} />

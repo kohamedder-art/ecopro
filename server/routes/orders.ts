@@ -772,53 +772,69 @@ export const getClientOrders: RequestHandler = async (req, res) => {
       }
     }
 
-    // Optimized query using Promise.all for parallel execution
-    const [result, countResult] = await Promise.all([
-      pool.query(
-        `SELECT 
-          o.id,
-          o.product_id,
-          o.client_id,
-          o.quantity,
-          o.total_price,
-          o.status,
-          o.variant_id,
-          o.variant_color,
-          o.variant_size,
-          o.variant_name,
-          o.unit_price,
-          o.customer_name,
-          o.customer_email,
-          o.customer_phone,
-          o.shipping_address,
-          o.shipping_wilaya_id,
-          o.shipping_commune_id,
-          o.shipping_hai,
-          o.delivery_type,
-          o.delivery_fee,
-          o.cod_amount,
-          o.created_at,
-          o.updated_at,
-          o.delivery_company_id,
-          o.tracking_number,
-          o.delivery_status,
-          o.shipping_label_url,
-          COALESCE(cp.title, 'Deleted Product') as product_title,
-          COALESCE(cp.price, 0) as product_price,
-          COALESCE(cp.images, '{}') as product_images
-        FROM store_orders o
-        LEFT JOIN client_store_products cp ON o.product_id = cp.id
-        WHERE o.client_id = $1
-          AND o.deleted_at IS NULL
-        ORDER BY o.created_at DESC
-        LIMIT $2 OFFSET $3`,
-        [req.user.id, limit, offset]
-      ),
-      pool.query(
-        'SELECT COUNT(*) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL',
-        [req.user.id]
-      )
-    ]);
+    // Run queries sequentially to avoid competing for pool connections under load.
+    // A single connection is reused, which prevents "timeout exceeded when trying to connect" errors
+    // when the pool is near capacity (e.g., during background bot message processing).
+    const queryWithRetry = async (text: string, params: any[], retries = 1) => {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await pool.query(text, params);
+        } catch (err: any) {
+          const msg = String(err?.message || '').toLowerCase();
+          if (attempt < retries && (msg.includes('timeout') || msg.includes('connection'))) {
+            await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+            continue;
+          }
+          throw err;
+        }
+      }
+    };
+
+    const result = await queryWithRetry(
+      `SELECT 
+        o.id,
+        o.product_id,
+        o.client_id,
+        o.quantity,
+        o.total_price,
+        o.status,
+        o.variant_id,
+        o.variant_color,
+        o.variant_size,
+        o.variant_name,
+        o.unit_price,
+        o.customer_name,
+        o.customer_email,
+        o.customer_phone,
+        o.shipping_address,
+        o.shipping_wilaya_id,
+        o.shipping_commune_id,
+        o.shipping_hai,
+        o.delivery_type,
+        o.delivery_fee,
+        o.cod_amount,
+        o.created_at,
+        o.updated_at,
+        o.delivery_company_id,
+        o.tracking_number,
+        o.delivery_status,
+        o.shipping_label_url,
+        COALESCE(cp.title, 'Deleted Product') as product_title,
+        COALESCE(cp.price, 0) as product_price,
+        COALESCE(cp.images, '{}') as product_images
+      FROM store_orders o
+      LEFT JOIN client_store_products cp ON o.product_id = cp.id
+      WHERE o.client_id = $1
+        AND o.deleted_at IS NULL
+      ORDER BY o.created_at DESC
+      LIMIT $2 OFFSET $3`,
+      [req.user.id, limit, offset]
+    );
+
+    const countResult = await queryWithRetry(
+      'SELECT COUNT(*) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL',
+      [req.user.id]
+    );
 
     const responseData = {
       orders: result.rows,

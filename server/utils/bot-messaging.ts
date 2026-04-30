@@ -650,10 +650,14 @@ function defaultWhatsAppTemplate(): string {
  * Call this periodically (e.g., every 5 minutes)
  */
 export async function processPendingMessages(): Promise<void> {
+  // Use a single dedicated client for the entire batch to avoid pool exhaustion.
+  // Previously each pool.query() in the loop checked out/returned a connection,
+  // creating massive churn that starved other callers (e.g., getClientOrders).
+  const pool = await ensureConnection();
+  const client = await pool.connect();
   try {
-    const pool = await ensureConnection();
     // Get all messages that are due to be sent (ordered by send_at and id for consistency)
-    const result = await pool.query(
+    const result = await client.query(
       `SELECT * FROM bot_messages 
        WHERE status = 'pending' 
        AND send_at <= NOW()
@@ -680,7 +684,7 @@ export async function processPendingMessages(): Promise<void> {
 
         if (message.message_type === "whatsapp") {
           // Get WhatsApp token from bot settings (presence only; Twilio creds come from env)
-          const settingsResult = await pool.query(
+          const settingsResult = await client.query(
             `SELECT whatsapp_token FROM bot_settings WHERE client_id = $1`,
             [message.client_id]
           );
@@ -692,12 +696,12 @@ export async function processPendingMessages(): Promise<void> {
             );
           }
         } else if (message.message_type === 'telegram') {
-          const settingsResult = await pool.query(
+          const settingsResult = await client.query(
             `SELECT telegram_bot_token FROM bot_settings WHERE client_id = $1`,
             [message.client_id]
           );
           const token = String(settingsResult.rows[0]?.telegram_bot_token || '').trim() || (isPlatformTelegramAvailable() ? getPlatformTelegramBotToken() : '');
-          const chatRes = await pool.query(
+          const chatRes = await client.query(
             `SELECT telegram_chat_id FROM order_telegram_chats WHERE order_id = $1 AND client_id = $2 LIMIT 1`,
             [message.order_id, message.client_id]
           );
@@ -706,7 +710,7 @@ export async function processPendingMessages(): Promise<void> {
             // If this message has a confirmation link, attach inline buttons + keep link in text.
             let replyMarkup: any = undefined;
             if (message.confirmation_link) {
-              const linkRes = await pool.query(
+              const linkRes = await client.query(
                 `SELECT start_token FROM order_telegram_links WHERE order_id = $1 AND client_id = $2 ORDER BY created_at DESC LIMIT 1`,
                 [message.order_id, message.client_id]
               );
@@ -728,26 +732,26 @@ export async function processPendingMessages(): Promise<void> {
             }
 
             const contentWithLink = message.confirmation_link
-              ? `${message.message_content}\n\n🔗 If buttons don’t work, open:\n${message.confirmation_link}`
+              ? `${message.message_content}\n\n🔗 If buttons don't work, open:\n${message.confirmation_link}`
               : message.message_content;
 
             sendResult = await sendTelegramMessage(token, chatId, contentWithLink, replyMarkup ? { reply_markup: replyMarkup } : undefined);
           } else {
             // Customer hasn't linked Telegram yet; retry later instead of failing.
-            await pool.query(
+            await client.query(
               `UPDATE bot_messages SET send_at = NOW() + INTERVAL '5 minutes', error_message = $1, updated_at = NOW() WHERE id = $2`,
               ['WAITING_FOR_TELEGRAM_CHAT', message.id]
             );
             continue;
           }
         } else if (message.message_type === 'viber') {
-          const settingsResult = await pool.query(
+          const settingsResult = await client.query(
             `SELECT viber_auth_token, viber_sender_name FROM bot_settings WHERE client_id = $1`,
             [message.client_id]
           );
           const token = settingsResult.rows[0]?.viber_auth_token;
           const senderName = settingsResult.rows[0]?.viber_sender_name;
-          const idRes = await pool.query(
+          const idRes = await client.query(
             `SELECT viber_user_id FROM customer_messaging_ids WHERE client_id = $1 AND customer_phone = $2`,
             [message.client_id, message.customer_phone]
           );
@@ -757,14 +761,14 @@ export async function processPendingMessages(): Promise<void> {
           }
         } else if (message.message_type === 'messenger') {
           // Facebook Messenger handling
-          const settingsResult = await pool.query(
+          const settingsResult = await client.query(
             `SELECT fb_page_access_token FROM bot_settings WHERE client_id = $1`,
             [message.client_id]
           );
           const pageAccessToken = String(settingsResult.rows[0]?.fb_page_access_token || '').trim() || getPlatformFbPageAccessToken();
 
           if (!pageAccessToken) {
-            await pool.query(
+            await client.query(
               `UPDATE bot_messages SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
               ['MISSING_MESSENGER_PAGE_ACCESS_TOKEN', message.id]
             );
@@ -774,14 +778,14 @@ export async function processPendingMessages(): Promise<void> {
           // Try to get PSID from order_messenger_chats first, then customer_messaging_ids
           let psid: string | null = null;
           
-          const orderChatRes = await pool.query(
+          const orderChatRes = await client.query(
             `SELECT messenger_psid FROM order_messenger_chats WHERE order_id = $1 AND client_id = $2 LIMIT 1`,
             [message.order_id, message.client_id]
           );
           psid = orderChatRes.rows[0]?.messenger_psid;
           
           if (!psid) {
-            const idRes = await pool.query(
+            const idRes = await client.query(
               `SELECT messenger_psid FROM customer_messaging_ids WHERE client_id = $1 AND customer_phone = $2`,
               [message.client_id, message.customer_phone]
             );
@@ -799,7 +803,7 @@ export async function processPendingMessages(): Promise<void> {
             }
           } else {
             // Customer hasn't connected Messenger yet; retry later
-            await pool.query(
+            await client.query(
               `UPDATE bot_messages SET send_at = NOW() + INTERVAL '5 minutes', error_message = $1, updated_at = NOW() WHERE id = $2`,
               ['WAITING_FOR_MESSENGER_PSID', message.id]
             );
@@ -809,14 +813,14 @@ export async function processPendingMessages(): Promise<void> {
 
         // Update message status
         if (sendResult?.success) {
-          await pool.query(
+          await client.query(
             `UPDATE bot_messages SET status = 'sent', sent_at = NOW() WHERE id = $1`,
             [message.id]
           );
         } else {
           // If we cannot reach the provider (transient network/DNS issue), retry later instead of failing permanently.
           if (message.message_type === 'messenger' && isRetryableNetworkError(sendResult?.error)) {
-            await pool.query(
+            await client.query(
               `UPDATE bot_messages
                SET send_at = NOW() + INTERVAL '5 minutes',
                    status = 'pending',
@@ -826,7 +830,7 @@ export async function processPendingMessages(): Promise<void> {
               [sendResult?.error || 'NETWORK_ERROR', message.id]
             );
           } else {
-            await pool.query(
+            await client.query(
               `UPDATE bot_messages SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
               [sendResult?.error || "Unknown error", message.id]
             );
@@ -834,17 +838,20 @@ export async function processPendingMessages(): Promise<void> {
         }
       } catch (error) {
         console.error(`Error processing message ${message.id}:`, error);
-        const pool = await ensureConnection();
-        await pool.query(
-          `UPDATE bot_messages SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
-          [error instanceof Error ? error.message : String(error), message.id]
-        );
+        try {
+          await client.query(
+            `UPDATE bot_messages SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
+            [error instanceof Error ? error.message : String(error), message.id]
+          );
+        } catch { /* ignore — client may be broken */ }
       }
     }
 
     console.log(`[Bot] Processed ${result.rows.length} pending messages`);
   } catch (error) {
     console.error("Error in processPendingMessages:", error);
+  } finally {
+    client.release();
   }
 }
 

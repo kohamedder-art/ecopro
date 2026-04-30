@@ -2160,6 +2160,7 @@ export const ar = {
   "sidebar.marketing": "التسويق والتحليلات",
   "sidebar.wasselni": "Bot",
   "sidebar.bot": "البوت",
+  "sidebar.integrations": "ربط المنصات",
   "sidebar.platforms": "ربط المنصات",
   "sidebar.aiSettings": "الذكاء الاصطناعي",
   "sidebar.staff": "الموظفون",

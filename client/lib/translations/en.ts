@@ -1618,6 +1618,7 @@ export const en = {
   "sidebar.marketing": "Marketing & Analytics",
   "sidebar.wasselni": "Bot",
   "sidebar.bot": "Bot",
+  "sidebar.integrations": "Integrations",
   "sidebar.platforms": "Platforms",
   "sidebar.aiSettings": "AI Autopilot",
   "sidebar.staff": "Staff",
