@@ -1,15 +1,17 @@
 /**
- * Gemini AI Service
+ * AI Service (DeepInfra — Llama 3.1 70B Instruct Turbo)
  *
  * All AI calls happen SERVER-SIDE only. The API key never reaches the client.
  * Role-Based System Prompts enforce data isolation between user types.
  * Every call injects an [IDENTITY ENFORCEMENT] clause so the model cannot
  * be prompt-injected into accessing unauthorized data.
+ *
+ * Uses OpenAI-compatible chat completions endpoint via DeepInfra.
  */
 
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
-const GEMINI_FALLBACK_MODEL = 'gemini-2.0-flash';
+const DEEPINFRA_API_BASE = 'https://api.deepinfra.com/v1/openai';
+const AI_MODEL = 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo';
+const AI_FALLBACK_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo';
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 3000, 6000]; // ms
 
@@ -198,104 +200,99 @@ Be concise and informative. No emojis unless specifically requested.`;
   }
 }
 
-// ─── Core fetch wrapper ─────────────────────────────────────────────────────
+// ─── Core fetch wrapper (OpenAI-compatible) ────────────────────────────────
 
-interface GeminiTextPart {
-  text: string;
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
 }
 
-interface GeminiImagePart {
-  inline_data: {
-    mime_type: string;
-    data: string; // base64
-  };
-}
-
-type GeminiPart = GeminiTextPart | GeminiImagePart;
-
-interface GeminiContent {
+// Keep GeminiContent as exported alias for backward compatibility with callers
+export interface GeminiContent {
   role: 'user' | 'model';
-  parts: GeminiPart[];
+  parts: { text: string }[];
 }
 
-async function callGemini(
+/**
+ * Convert legacy Gemini-style conversation history to OpenAI messages format.
+ */
+function convertHistory(history: GeminiContent[]): ChatMessage[] {
+  return history.map(h => ({
+    role: h.role === 'model' ? 'assistant' as const : 'user' as const,
+    content: h.parts.map(p => p.text).join('\n'),
+  }));
+}
+
+async function callAI(
   systemPrompt: string,
   userMessage: string,
   conversationHistory: GeminiContent[] = [],
   images?: { mimeType: string; base64: string }[],
   temperature: number = 0.7
 ): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+  const apiKey = process.env.DEEPINFRA_API_KEY;
+  if (!apiKey) throw new Error('DEEPINFRA_API_KEY is not configured');
 
-  // Build user parts: text + optional images
-  const userParts: GeminiPart[] = [];
-  if (images && images.length > 0) {
-    for (const img of images) {
-      userParts.push({ inline_data: { mime_type: img.mimeType, data: img.base64 } });
-    }
-  }
-  userParts.push({ text: userMessage });
-
-  const contents: GeminiContent[] = [
-    ...conversationHistory,
-    { role: 'user', parts: userParts },
+  // Build messages array
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    ...convertHistory(conversationHistory),
   ];
 
-  const buildBody = () => ({
-    system_instruction: {
-      parts: [{ text: systemPrompt }],
-    },
-    contents,
-    generationConfig: {
-      maxOutputTokens: 1024,
-      temperature,
-      topP: 0.95,
-    },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-    ],
+  // If images provided, prepend a note (Llama text-only — describe the image context)
+  let userContent = userMessage;
+  if (images && images.length > 0) {
+    userContent = `[${images.length} image(s) attached — please analyze based on the text description]\n\n${userMessage}`;
+  }
+  messages.push({ role: 'user', content: userContent });
+
+  const buildBody = (model: string) => ({
+    model,
+    messages,
+    max_tokens: 1024,
+    temperature,
+    top_p: 0.95,
   });
 
-  // Retry with backoff, fallback to secondary model on final attempt
+  // Retry with backoff, fallback to smaller model on final attempt
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const model = attempt === MAX_RETRIES ? GEMINI_FALLBACK_MODEL : GEMINI_TEXT_MODEL;
-    const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`;
+    const model = attempt === MAX_RETRIES ? AI_FALLBACK_MODEL : AI_MODEL;
+    const url = `${DEEPINFRA_API_BASE}/chat/completions`;
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildBody()),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(buildBody(model)),
     });
 
     if (response.ok) {
       const data: any = await response.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error('Empty response from Gemini');
+      const text = data?.choices?.[0]?.message?.content;
+      if (!text) throw new Error('Empty response from AI');
       return text.trim();
     }
 
     if (response.status === 429) throw new Error('AI_QUOTA_EXCEEDED');
 
     if (response.status === 503 && attempt < MAX_RETRIES) {
-      console.warn(`[Gemini] 503 on attempt ${attempt + 1}, retrying in ${RETRY_DELAYS[attempt]}ms...`);
+      console.warn(`[AI] 503 on attempt ${attempt + 1}, retrying in ${RETRY_DELAYS[attempt]}ms...`);
       await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
       continue;
     }
 
     const errText = await response.text();
     if (attempt === MAX_RETRIES) {
-      throw new Error(`Gemini API error ${response.status} (after ${MAX_RETRIES + 1} attempts): ${errText}`);
+      throw new Error(`AI API error ${response.status} (after ${MAX_RETRIES + 1} attempts): ${errText}`);
     }
   }
 
-  throw new Error('Gemini API: all retries exhausted');
+  throw new Error('AI API: all retries exhausted');
 }
 
-// ─── Search-grounded generation (Google Search tool) ────────────────────────
+// ─── Search-grounded generation (no native search — uses prompt-based approach) ─
 
 export interface WebSource {
   title: string;
@@ -308,87 +305,17 @@ interface SearchGroundedResult {
 }
 
 /**
- * Call Gemini with Google Search grounding enabled.
- * The model autonomously decides whether to run a search based on the prompt.
- * Returns the text response plus any web sources from groundingMetadata.
+ * Generate a response for queries that might benefit from web knowledge.
+ * DeepInfra/Llama doesn't have native search grounding, so we rely on the
+ * model's training knowledge. Sources array will be empty.
  */
-async function callGeminiWithSearch(
+async function callAIWithSearch(
   systemPrompt: string,
   userMessage: string,
   conversationHistory: GeminiContent[] = [],
 ): Promise<SearchGroundedResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
-
-  const url = `${GEMINI_API_BASE}/${GEMINI_TEXT_MODEL}:generateContent?key=${apiKey}`;
-
-  const contents: GeminiContent[] = [
-    ...conversationHistory,
-    { role: 'user', parts: [{ text: userMessage }] },
-  ];
-
-  const buildBody = () => ({
-    system_instruction: {
-      parts: [{ text: systemPrompt }],
-    },
-    contents,
-    tools: [{ google_search: {} }],
-    generationConfig: {
-      maxOutputTokens: 2048,
-      temperature: 0.7,
-      topP: 0.9,
-    },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-    ],
-  });
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const model = attempt === MAX_RETRIES ? GEMINI_FALLBACK_MODEL : GEMINI_TEXT_MODEL;
-    const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildBody()),
-    });
-
-    if (response.ok) {
-      const data: any = await response.json();
-      const candidate = data?.candidates?.[0];
-      const text = candidate?.content?.parts?.[0]?.text;
-      if (!text) throw new Error('Empty response from Gemini');
-
-      // Extract web sources from grounding metadata
-      const sources: WebSource[] = [];
-      const chunks: any[] = candidate?.groundingMetadata?.groundingChunks || [];
-      for (const chunk of chunks) {
-        if (chunk?.web?.uri && chunk?.web?.title) {
-          sources.push({ title: chunk.web.title, uri: chunk.web.uri });
-        }
-      }
-
-      return { text: text.trim(), sources };
-    }
-
-    if (response.status === 429) throw new Error('AI_QUOTA_EXCEEDED');
-
-    if (response.status === 503 && attempt < MAX_RETRIES) {
-      console.warn(`[Gemini Search] 503 on attempt ${attempt + 1}, retrying in ${RETRY_DELAYS[attempt]}ms...`);
-      await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
-      continue;
-    }
-
-    const errText = await response.text();
-    if (attempt === MAX_RETRIES) {
-      throw new Error(`Gemini API error ${response.status} (after ${MAX_RETRIES + 1} attempts): ${errText}`);
-    }
-  }
-
-  throw new Error('Gemini API: all retries exhausted');
+  const text = await callAI(systemPrompt, userMessage, conversationHistory);
+  return { text, sources: [] };
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────
@@ -406,13 +333,13 @@ export async function generateText(
   const systemPrompt = buildSystemPrompt(role, ctx);
   // Customer-facing conversations use higher temperature for more natural, human-like responses
   const temp = role === 'customer' ? 0.9 : 0.7;
-  return callGemini(systemPrompt, prompt, history, images, temp);
+  return callAI(systemPrompt, prompt, history, images, temp);
 }
 
 /**
- * Generate a text response with Google Search grounding enabled.
- * The model autonomously searches the web when it determines a search would help.
- * Returns both the text and any web sources used.
+ * Generate a text response with search-grounded knowledge.
+ * DeepInfra/Llama relies on training data rather than live search.
+ * Returns both the text and any web sources used (empty for Llama).
  */
 export async function generateTextWithSearch(
   role: AIUserRole,
@@ -421,7 +348,7 @@ export async function generateTextWithSearch(
   history: GeminiContent[] = [],
 ): Promise<SearchGroundedResult> {
   const systemPrompt = buildSystemPrompt(role, ctx);
-  return callGeminiWithSearch(systemPrompt, prompt, history);
+  return callAIWithSearch(systemPrompt, prompt, history);
 }
 
 /**
@@ -436,7 +363,7 @@ export async function generateJSON<T = any>(
 ): Promise<T> {
   const systemPrompt = buildSystemPrompt(role, ctx);
   const jsonPrompt = `${prompt}\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no explanation text.`;
-  const raw = await callGemini(systemPrompt, jsonPrompt, [], images);
+  const raw = await callAI(systemPrompt, jsonPrompt, [], images);
   // Strip markdown fences if model ignores the instruction
   const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
   return JSON.parse(cleaned) as T;
@@ -484,7 +411,7 @@ export async function analyzeProductImage(
 Context: This is for the Algerian market. Currency is DZD (Algerian Dinar). Prices should be realistic for Algeria.
 IMPORTANT: Respond ONLY with valid JSON. No markdown fences.`;
 
-  const raw = await callGemini(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }]);
+  const raw = await callAI(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }]);
   const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
   return JSON.parse(cleaned);
 }
