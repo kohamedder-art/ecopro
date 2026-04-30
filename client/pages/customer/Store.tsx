@@ -457,6 +457,7 @@ export default function Store() {
     free_delivery: boolean;
     sort_order?: number;
     image_url?: string;
+    label?: string;
   };
 
   const [offersDraft, setOffersDraft] = useState<ProductOfferDraft[]>([]);
@@ -479,6 +480,7 @@ export default function Store() {
         free_delivery: Boolean(o.free_delivery),
         sort_order: o.sort_order == null ? idx : Number(o.sort_order),
         image_url: o.image_url || undefined,
+        label: o.label || undefined,
       })));
       setOffersLoaded(true);
       setOffersDirty(false);
@@ -503,6 +505,7 @@ export default function Store() {
           free_delivery: o.free_delivery,
           sort_order: o.sort_order == null ? idx : Number(o.sort_order),
           image_url: o.image_url || undefined,
+          label: o.label || undefined,
         })),
       }),
     });
@@ -2965,6 +2968,23 @@ export default function Store() {
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
+                        </div>
+                        {/* Custom label */}
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-[11px] text-slate-400 flex-shrink-0">نص العرض</span>
+                          <Input
+                            type="text"
+                            value={o.label || ''}
+                            onChange={(e) => {
+                              setOffersDraft((prev) =>
+                                prev.map((row, i) => (i === idx ? { ...row, label: e.target.value || undefined } : row))
+                              );
+                              setOffersDirty(true);
+                            }}
+                            placeholder={`${o.quantity} منتج 💚${o.free_delivery ? ' + توصيل مجاني ✅' : ''}`}
+                            className="h-7 text-xs flex-1"
+                            dir="auto"
+                          />
                         </div>
                       </div>
                       );
