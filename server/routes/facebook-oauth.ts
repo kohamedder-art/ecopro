@@ -257,13 +257,28 @@ router.get("/status", requireAuth, async (req: Request, res: Response) => {
         // is using the platform shared Page.
         const usingPlatform = platformAvailable && (!fbPageId || fbPageId === platformFbId);
 
+        // Check Instagram: platform-level env vars, or client's own facebook_tokens row
+        const platformIgId = String(process.env.PLATFORM_INSTAGRAM_PAGE_ID || '').trim();
+        const platformIgToken = String(process.env.PLATFORM_INSTAGRAM_ACCESS_TOKEN || '').trim();
+        const platformIgAvailable = !!platformIgId && !!platformIgToken;
+        // Also check if client has their own Instagram via facebook_tokens
+        let clientIgConnected = false;
+        try {
+          const igCheck = await pool.query(
+            `SELECT instagram_account_id FROM facebook_tokens WHERE client_id = $1 AND is_active = TRUE AND instagram_account_id IS NOT NULL AND instagram_account_id != '' LIMIT 1`,
+            [clientId]
+          );
+          clientIgConnected = igCheck.rows.length > 0;
+        } catch { /* table might not exist */ }
+        const igConnected = clientIgConnected || (usingPlatform && platformIgAvailable);
+
         if (fbPageId || usingPlatform) {
           return res.json({
             connected: true,
             // Hide the platform Page ID to avoid exposing env-level identifiers.
             pageId: usingPlatform ? null : (fbPageId || null),
             pageName: null,
-            instagramConnected: false,
+            instagramConnected: igConnected,
             instagramUsername: null,
             tokenExpiresAt: null,
             updatedAt: s.updated_at || null,

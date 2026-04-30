@@ -7,6 +7,7 @@ export interface ProductOffer {
   compare_price?: number | null;
   free_delivery: boolean;
   label?: string | null;
+  image_url?: string | null;
 }
 
 export interface SelectedOffer {
@@ -36,6 +37,7 @@ export function useProductOffers(storeSlug: string, productId: number | string |
             compare_price: o.compare_price == null ? null : Number(o.compare_price),
             free_delivery: Boolean(o.free_delivery),
             label: o.label || null,
+            image_url: o.image_url || null,
           })));
         }
       })
@@ -120,6 +122,13 @@ export default function OfferSelector({
                 }
                 className="w-4 h-4 accent-orange-500"
               />
+              {offer.image_url && (
+                <img
+                  src={offer.image_url}
+                  alt=""
+                  className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                />
+              )}
               <span className="font-bold text-sm" style={{ color: textColor }}>
                 {displayLabel}
               </span>

@@ -5,7 +5,9 @@ import {
   Plus, Search, Eye, Copy, ExternalLink, Edit, Trash2, 
   Star, Package, DollarSign, Image as ImageIcon, Settings,
   Link as LinkIcon, Check, Share2, Grid, List, Store as StoreIcon,
-  Sparkles, Loader2, Layers, Palette, Hash, AlertTriangle
+  Sparkles, Loader2, Layers, Palette, Hash, AlertTriangle,
+  ChevronDown, X, Wand2, ShoppingBag, Ruler, Shirt, Footprints,
+  Tag, Gift, Percent, Truck, Zap, Flame, TicketPercent
 } from 'lucide-react';
 import { useAI } from '@/hooks/useAI';
 import { Button } from '@/components/ui/button';
@@ -454,6 +456,7 @@ export default function Store() {
     compare_price?: number;
     free_delivery: boolean;
     sort_order?: number;
+    image_url?: string;
   };
 
   const [offersDraft, setOffersDraft] = useState<ProductOfferDraft[]>([]);
@@ -475,6 +478,7 @@ export default function Store() {
         compare_price: o.compare_price == null ? undefined : Number(o.compare_price),
         free_delivery: Boolean(o.free_delivery),
         sort_order: o.sort_order == null ? idx : Number(o.sort_order),
+        image_url: o.image_url || undefined,
       })));
       setOffersLoaded(true);
       setOffersDirty(false);
@@ -498,6 +502,7 @@ export default function Store() {
           compare_price: o.compare_price === undefined ? undefined : Number(o.compare_price),
           free_delivery: o.free_delivery,
           sort_order: o.sort_order == null ? idx : Number(o.sort_order),
+          image_url: o.image_url || undefined,
         })),
       }),
     });
@@ -2322,486 +2327,457 @@ export default function Store() {
               </div>
             )}
 
-            {productFormSection === 'variants' && (
-              <div className="space-y-4 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/30 dark:to-purple-950/20 p-4 md:p-5 rounded-xl border border-indigo-200/50 dark:border-indigo-800/30">
-                {/* Header */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                      <Layers className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('store.productForm.variantsTitle')}</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('store.productForm.variantsDesc')}</p>
-                    </div>
+            {productFormSection === 'variants' && (() => {
+              const COLORS = [
+                { name: 'أحمر', tw: 'bg-red-500', ring: 'ring-red-400' },
+                { name: 'أزرق', tw: 'bg-blue-500', ring: 'ring-blue-400' },
+                { name: 'أسود', tw: 'bg-slate-900', ring: 'ring-slate-700' },
+                { name: 'أبيض', tw: 'bg-white border border-slate-300', ring: 'ring-slate-300' },
+                { name: 'أخضر', tw: 'bg-emerald-500', ring: 'ring-emerald-400' },
+                { name: 'أصفر', tw: 'bg-yellow-400', ring: 'ring-yellow-300' },
+                { name: 'رمادي', tw: 'bg-gray-400', ring: 'ring-gray-300' },
+                { name: 'بني', tw: 'bg-amber-700', ring: 'ring-amber-600' },
+                { name: 'برتقالي', tw: 'bg-orange-500', ring: 'ring-orange-400' },
+                { name: 'وردي', tw: 'bg-pink-400', ring: 'ring-pink-300' },
+                { name: 'بنفسجي', tw: 'bg-purple-500', ring: 'ring-purple-400' },
+                { name: 'كحلي', tw: 'bg-blue-900', ring: 'ring-blue-800' },
+                { name: 'بيج', tw: 'bg-amber-100 border border-amber-300', ring: 'ring-amber-200' },
+              ];
+              const CLOTHING = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
+              const SHOES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
+
+              // Derive selected colors & sizes from existing draft
+              const existingColors = [...new Set(variantsDraft.map(v => (v.color || '').trim()).filter(Boolean))];
+              const existingSizes = [...new Set(variantsDraft.map(v => (v.size || '').trim()).filter(Boolean))];
+
+              // Helper: generate all combos from selected colors × sizes
+              const generateCombos = (colors: string[], sizes: string[]) => {
+                const newVariants: typeof variantsDraft = [];
+                const existingKeys = new Set(variantsDraft.map(v => `${(v.color||'').trim()}|${(v.size||'').trim()}`));
+                for (const c of colors) {
+                  for (const s of sizes) {
+                    if (!existingKeys.has(`${c}|${s}`)) {
+                      newVariants.push({
+                        color: c,
+                        size: s,
+                        variant_name: '',
+                        stock_quantity: 0,
+                        is_active: true,
+                        sort_order: variantsDraft.length + newVariants.length,
+                      });
+                    }
+                  }
+                }
+                return newVariants;
+              };
+
+              // Toggle color: add/remove all variants of that color
+              const toggleColor = (colorName: string) => {
+                const has = existingColors.includes(colorName);
+                if (has) {
+                  // Remove all variants with this color
+                  setVariantsDraft(prev => prev.filter(v => (v.color || '').trim() !== colorName));
+                } else {
+                  // Add variants for this color × all existing sizes
+                  const sizesToUse = existingSizes.length > 0 ? existingSizes : [''];
+                  const newOnes = generateCombos([colorName], sizesToUse);
+                  if (newOnes.length > 0) {
+                    setVariantsDraft(prev => [...prev, ...newOnes]);
+                  } else {
+                    // No sizes yet, add one empty
+                    setVariantsDraft(prev => [...prev, {
+                      color: colorName, size: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
+                    }]);
+                  }
+                }
+                setVariantsDirty(true);
+                setVariantsLoaded(true);
+              };
+
+              // Toggle size: add/remove all variants of that size
+              const toggleSize = (sizeName: string) => {
+                const has = existingSizes.includes(sizeName);
+                if (has) {
+                  setVariantsDraft(prev => prev.filter(v => (v.size || '').trim() !== sizeName));
+                } else {
+                  const colorsToUse = existingColors.length > 0 ? existingColors : [''];
+                  const newOnes = generateCombos(colorsToUse, [sizeName]);
+                  if (newOnes.length > 0) {
+                    setVariantsDraft(prev => [...prev, ...newOnes]);
+                  } else {
+                    setVariantsDraft(prev => [...prev, {
+                      color: '', size: sizeName, variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
+                    }]);
+                  }
+                }
+                setVariantsDirty(true);
+                setVariantsLoaded(true);
+              };
+
+              // Group variants by color for the table view
+              const colorGroups: { [color: string]: (typeof variantsDraft[0] & { originalIndex: number })[] } = {};
+              variantsDraft.forEach((v, idx) => {
+                const color = (v.color || '').trim() || '—';
+                if (!colorGroups[color]) colorGroups[color] = [];
+                colorGroups[color].push({ ...v, originalIndex: idx });
+              });
+
+              return (
+              <div className="space-y-4">
+                {/* ─── HEADER ─── */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                    <Layers className="h-5 w-5 text-white" />
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      setVariantsDraft((prev) => [
-                        ...prev,
-                        {
-                          color: '',
-                          size: '',
-                          variant_name: '',
-                          stock_quantity: 0,
-                          is_active: true,
-                          sort_order: prev.length,
-                        },
-                      ]);
-                      setVariantsDirty(true);
-                      setVariantsLoaded(true);
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/25"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    {t('store.productForm.addVariant')}
-                  </Button>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('store.productForm.variantsTitle')}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('store.productForm.variantsDesc')}</p>
+                  </div>
                 </div>
 
                 {loadingVariants && (
-                  <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
                   </div>
                 )}
 
-                {!loadingVariants && variantsLoaded && variantsDraft.length === 0 && (
-                  <div className="text-center py-8 bg-white dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                    <Layers className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">لا يوجد أنواع للمنتج</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs mx-auto leading-relaxed">
-                      اضغط "إضافة نوع" لإنشاء متغيرات مثل:<br/>
-                      <span className="font-semibold text-indigo-500">أحمر</span> مقاس M - 20 قطعة<br/>
-                      <span className="font-semibold text-indigo-500">أحمر</span> مقاس L - 15 قطعة<br/>
-                      <span className="font-semibold text-indigo-500">أسود</span> مقاس M - 10 قطع
+                {!loadingVariants && (
+                <>
+                {/* ═══ STEP 1: Pick Colors ═══ */}
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+                      <Palette className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">① اختر الألوان المتوفرة</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">اضغط على كل لون متوفر لديك</span>
+                    </div>
+                    {existingColors.length > 0 && (
+                      <span className="text-xs font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-2.5 py-1 rounded-full">
+                        {existingColors.length} لون
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <div className="flex flex-wrap gap-2.5">
+                      {COLORS.map((c) => {
+                        const selected = existingColors.includes(c.name);
+                        return (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => toggleColor(c.name)}
+                            className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                              selected
+                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-500 dark:border-indigo-400 shadow-md shadow-indigo-500/10'
+                                : 'bg-slate-50 dark:bg-slate-700/50 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-sm'
+                            }`}
+                          >
+                            <span className={`w-5 h-5 rounded-full ${c.tw} flex-shrink-0 ${selected ? `ring-2 ${c.ring} ring-offset-2` : ''}`} />
+                            <span className="text-slate-700 dark:text-slate-200">{c.name}</span>
+                            {selected && (
+                              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center shadow-sm">
+                                <Check className="h-3 w-3 text-white" />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                      {/* Custom color */}
+                      <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5">
+                        <Plus className="h-4 w-4 text-slate-400" />
+                        <Input
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = (e.target as HTMLInputElement).value.trim();
+                              if (val && !existingColors.includes(val)) {
+                                toggleColor(val);
+                                (e.target as HTMLInputElement).value = '';
+                              }
+                            }
+                          }}
+                          placeholder="لون آخر + Enter"
+                          className="h-7 w-24 border-0 p-0 text-sm bg-transparent focus-visible:ring-0 shadow-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ═══ STEP 2: Pick Sizes ═══ */}
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+                      <Ruler className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">② اختر المقاسات المتوفرة</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">اضغط على كل مقاس متوفر لديك</span>
+                    </div>
+                    {existingSizes.length > 0 && (
+                      <span className="text-xs font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-300 px-2.5 py-1 rounded-full">
+                        {existingSizes.length} مقاس
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {/* Clothing */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Shirt className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ملابس</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {CLOTHING.map((s) => {
+                          const selected = existingSizes.includes(s);
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => toggleSize(s)}
+                              className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                selected
+                                  ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105'
+                                  : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                              }`}
+                            >
+                              {s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* Shoes */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Footprints className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">أحذية</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {SHOES.map((s) => {
+                          const selected = existingSizes.includes(s);
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => toggleSize(s)}
+                              className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                selected
+                                  ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105'
+                                  : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                              }`}
+                            >
+                              {s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* Custom size */}
+                    <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 w-fit">
+                      <Plus className="h-4 w-4 text-slate-400" />
+                      <Input
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = (e.target as HTMLInputElement).value.trim();
+                            if (val && !existingSizes.includes(val)) {
+                              toggleSize(val);
+                              (e.target as HTMLInputElement).value = '';
+                            }
+                          }
+                        }}
+                        placeholder="مقاس آخر + Enter"
+                        className="h-7 w-28 border-0 p-0 text-sm bg-transparent focus-visible:ring-0 shadow-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ═══ STEP 3: Generated Variants Table ═══ */}
+                {variantsDraft.length > 0 && (
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                      <Package className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">③ المخزون لكل نوع</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">أدخل الكمية المتوفرة لكل نوع</span>
+                    </div>
+                    <span className="text-xs font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2.5 py-1 rounded-full">
+                      {variantsDraft.length} نوع
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {Object.entries(colorGroups).map(([color, variants]) => (
+                      <div key={color}>
+                        {/* Color group header */}
+                        {color !== '—' && (
+                          <div className="px-4 py-2 bg-slate-50/80 dark:bg-slate-800/50 flex items-center gap-2">
+                            {(() => {
+                              const colorDef = COLORS.find(c => c.name === color);
+                              return colorDef ? (
+                                <span className={`w-4 h-4 rounded-full ${colorDef.tw}`} />
+                              ) : (
+                                <Palette className="h-4 w-4 text-slate-400" />
+                              );
+                            })()}
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{color}</span>
+                            <span className="text-[10px] text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                              {variants.length}
+                            </span>
+                          </div>
+                        )}
+                        {/* Individual variants */}
+                        {variants.map((v) => (
+                          <div key={v.originalIndex} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                            {/* Size badge */}
+                            <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${
+                              v.size ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
+                            }`}>
+                              {v.size || '—'}
+                            </span>
+
+                            {/* Stock input */}
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <span className="text-xs text-slate-400">الكمية:</span>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={v.stock_quantity ?? ''}
+                                onChange={(e) => {
+                                  const next = Number(e.target.value || 0);
+                                  const idx = v.originalIndex;
+                                  setVariantsDraft(prev =>
+                                    prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row))
+                                  );
+                                  setVariantsDirty(true);
+                                }}
+                                className="h-8 w-20 text-sm text-center"
+                                placeholder="0"
+                              />
+                            </div>
+
+                            {/* Price (optional) */}
+                            <div className="hidden sm:flex items-center gap-1.5">
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={v.price === undefined ? '' : String(v.price)}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  const next = raw === '' ? undefined : Number(raw);
+                                  const idx = v.originalIndex;
+                                  setVariantsDraft(prev =>
+                                    prev.map((row, i) => (i === idx ? { ...row, price: next } : row))
+                                  );
+                                  setVariantsDirty(true);
+                                }}
+                                placeholder="السعر"
+                                className="h-8 w-20 text-sm text-center"
+                              />
+                              <span className="text-[10px] text-slate-400">دج</span>
+                            </div>
+
+                            {/* Toggle + Delete */}
+                            <div className="flex items-center gap-2">
+                              <span dir="ltr">
+                                <Switch
+                                  checked={v.is_active ?? true}
+                                  onCheckedChange={(checked) => {
+                                    const idx = v.originalIndex;
+                                    setVariantsDraft(prev =>
+                                      prev.map((row, i) => (i === idx ? { ...row, is_active: checked } : row))
+                                    );
+                                    setVariantsDirty(true);
+                                  }}
+                                />
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const idx = v.originalIndex;
+                                  setVariantsDraft(prev => prev.filter((_, i) => i !== idx));
+                                  setVariantsDirty(true);
+                                  setVariantsLoaded(true);
+                                }}
+                                className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Bulk add button */}
+                  <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setVariantsDraft((prev) => [
+                          ...prev,
+                          { color: '', size: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length },
+                        ]);
+                        setVariantsDirty(true);
+                        setVariantsLoaded(true);
+                      }}
+                      className="w-full border-dashed text-slate-500 hover:text-indigo-600 hover:border-indigo-300"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      إضافة نوع يدوي
+                    </Button>
+                  </div>
+                </div>
+                )}
+
+                {/* Empty state */}
+                {variantsLoaded && variantsDraft.length === 0 && (
+                  <div className="text-center py-6 bg-white dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/30 flex items-center justify-center mx-auto mb-3">
+                      <ShoppingBag className="h-7 w-7 text-indigo-400 dark:text-indigo-500" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">ابدأ بإضافة الأنواع</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[280px] mx-auto leading-relaxed">
+                      اختر الألوان والمقاسات من الأعلى وسيتم إنشاء جميع الأنواع تلقائياً
                     </p>
                   </div>
                 )}
-
-                {!loadingVariants && variantsDraft.length > 0 && (() => {
-                  // Group variants by color for better visual organization
-                  const colorGroups: { [color: string]: typeof variantsDraft } = {};
-                  const noColorVariants: typeof variantsDraft = [];
-                  
-                  variantsDraft.forEach((v, idx) => {
-                    const color = (v.color || '').trim();
-                    if (color) {
-                      if (!colorGroups[color]) colorGroups[color] = [];
-                      colorGroups[color].push({ ...v, originalIndex: idx } as any);
-                    } else {
-                      noColorVariants.push({ ...v, originalIndex: idx } as any);
-                    }
-                  });
-
-                  return (
-                  <div className="space-y-3">
-                    {/* Color Groups */}
-                    {Object.entries(colorGroups).map(([color, variants]) => (
-                      <div key={color} className="bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                        {/* Color Header */}
-                        <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center">
-                              <Palette className="h-3.5 w-3.5 text-white" />
-                            </div>
-                            <span className="font-semibold text-slate-900 dark:text-white">{color}</span>
-                            <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                              {variants.length} {variants.length === 1 ? 'مقاس' : 'مقاسات'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Size Variants */}
-                        <div className="p-3 space-y-3">
-                          {(() => {
-                            const commonSizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
-                            const shoeSizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
-                            return variants.map((v: any) => (
-                            <div key={v.originalIndex} className="flex flex-col gap-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
-                              {/* Size Selector */}
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">اختر المقاس:</label>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {/* Clothing sizes */}
-                                  <span className="text-[10px] text-slate-500 py-1">ملابس:</span>
-                                  {commonSizes.map((size) => (
-                                    <button
-                                      key={size}
-                                      type="button"
-                                      onClick={() => {
-                                        const idx = v.originalIndex;
-                                        setVariantsDraft((prev) =>
-                                          prev.map((row, i) => (i === idx ? { ...row, size } : row))
-                                        );
-                                        setVariantsDirty(true);
-                                      }}
-                                      className={`min-w-[36px] px-2 py-1 rounded-md text-xs font-medium border transition-all ${
-                                        v.size === size
-                                          ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm'
-                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-                                      }`}
-                                    >
-                                      {size}
-                                    </button>
-                                  ))}
-                                </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                  <span className="text-[10px] text-slate-500 py-1">أحذية:</span>
-                                  {shoeSizes.map((size) => (
-                                    <button
-                                      key={size}
-                                      type="button"
-                                      onClick={() => {
-                                        const idx = v.originalIndex;
-                                        setVariantsDraft((prev) =>
-                                          prev.map((row, i) => (i === idx ? { ...row, size } : row))
-                                        );
-                                        setVariantsDirty(true);
-                                      }}
-                                      className={`min-w-[36px] px-2 py-1 rounded-md text-xs font-medium border transition-all ${
-                                        v.size === size
-                                          ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm'
-                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-                                      }`}
-                                    >
-                                      {size}
-                                    </button>
-                                  ))}
-                                  {/* Custom size */}
-                                  <Input
-                                    value={v.size && ![...commonSizes, ...shoeSizes].includes(v.size) ? v.size : ''}
-                                    onChange={(e) => {
-                                      const next = e.target.value;
-                                      const idx = v.originalIndex;
-                                      setVariantsDraft((prev) =>
-                                        prev.map((row, i) => (i === idx ? { ...row, size: next } : row))
-                                      );
-                                      setVariantsDirty(true);
-                                    }}
-                                    placeholder="مقاس آخر"
-                                    className="h-7 w-20 text-xs"
-                                  />
-                                </div>
-                              </div>
-                              
-                              {/* Stock, Price, Actions */}
-                              <div className="flex items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-600">
-                                <div className="flex items-center gap-2">
-                                  <Hash className="h-4 w-4 text-slate-400" />
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={v.stock_quantity ?? ''}
-                                    onChange={(e) => {
-                                      const next = Number(e.target.value || 0);
-                                      const idx = v.originalIndex;
-                                      setVariantsDraft((prev) =>
-                                        prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row))
-                                      );
-                                      setVariantsDirty(true);
-                                    }}
-                                    className="h-9 w-24 text-sm"
-                                    placeholder="المخزون"
-                                  />
-                                </div>
-                                
-                                <div className="hidden sm:block">
-                                  <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">دج</span>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      step="0.01"
-                                      value={v.price === undefined ? '' : String(v.price)}
-                                      onChange={(e) => {
-                                        const raw = e.target.value;
-                                        const next = raw === '' ? undefined : Number(raw);
-                                        const idx = v.originalIndex;
-                                        setVariantsDraft((prev) =>
-                                          prev.map((row, i) => (i === idx ? { ...row, price: next } : row))
-                                        );
-                                        setVariantsDirty(true);
-                                      }}
-                                      placeholder="السعر (اختياري)"
-                                      className="h-9 w-28 pl-8 text-sm"
-                                    />
-                                  </div>
-                                </div>
-                                
-                                <div className="flex items-center gap-3 flex-1 justify-end">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      const idx = v.originalIndex;
-                                      setVariantsDraft((prev) => prev.filter((_, i) => i !== idx));
-                                      setVariantsDirty(true);
-                                      setVariantsLoaded(true);
-                                    }}
-                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                  
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400 order-2">
-                                      {v.is_active !== false ? 'نشط' : 'معطل'}
-                                    </span>
-                                    <span dir="ltr" className="order-1">
-                                      <Switch
-                                        checked={v.is_active ?? true}
-                                        onCheckedChange={(checked) => {
-                                          const idx = v.originalIndex;
-                                          setVariantsDraft((prev) =>
-                                            prev.map((row, i) => (i === idx ? { ...row, is_active: checked } : row))
-                                          );
-                                          setVariantsDirty(true);
-                                        }}
-                                      />
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            ));
-                          })()}
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {/* Variants without color - Show with color picker and size selector */}
-                    {noColorVariants.length > 0 && (
-                      <div className="bg-white dark:bg-slate-800/80 rounded-xl border border-amber-200 dark:border-amber-800/50 overflow-hidden shadow-sm">
-                        <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800/30 flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">أنواع غير مكتملة - أختر اللون والمقاس</span>
-                        </div>
-                        <div className="p-3 space-y-3">
-                          {noColorVariants.map((v: any) => {
-                            const commonColors = [
-                              { name: 'أحمر', bg: 'bg-red-500', border: 'border-red-600' },
-                              { name: 'أزرق', bg: 'bg-blue-500', border: 'border-blue-600' },
-                              { name: 'أسود', bg: 'bg-slate-900', border: 'border-slate-950' },
-                              { name: 'أبيض', bg: 'bg-white', border: 'border-slate-300', text: 'text-slate-900' },
-                              { name: 'أخضر', bg: 'bg-emerald-500', border: 'border-emerald-600' },
-                              { name: 'أصفر', bg: 'bg-yellow-400', border: 'border-yellow-500', text: 'text-slate-900' },
-                              { name: 'رمادي', bg: 'bg-gray-400', border: 'border-gray-500' },
-                              { name: 'بني', bg: 'bg-amber-700', border: 'border-amber-800' },
-                              { name: 'برتقالي', bg: 'bg-orange-500', border: 'border-orange-600' },
-                              { name: 'وردي', bg: 'bg-pink-400', border: 'border-pink-500' },
-                              { name: 'بنفسجي', bg: 'bg-purple-500', border: 'border-purple-600' },
-                              { name: 'ذهبي', bg: 'bg-yellow-600', border: 'border-yellow-700' },
-                              { name: 'فضي', bg: 'bg-slate-300', border: 'border-slate-400' },
-                              { name: 'بيج', bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-800' },
-                            ];
-                            const commonSizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
-                            const shoeSizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
-                            
-                            return (
-                            <div key={v.originalIndex} className="flex flex-col gap-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4">
-                              {/* Color Selector */}
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                  <Palette className="h-4 w-4 text-indigo-500" />
-                                  اختر اللون:
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                  {commonColors.map((color) => (
-                                    <button
-                                      key={color.name}
-                                      type="button"
-                                      onClick={() => {
-                                        const idx = v.originalIndex;
-                                        setVariantsDraft((prev) =>
-                                          prev.map((row, i) => (i === idx ? { ...row, color: color.name } : row))
-                                        );
-                                        setVariantsDirty(true);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${
-                                        v.color === color.name
-                                          ? `${color.bg} ${color.border} text-white shadow-md`
-                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-                                      } ${color.text || ''}`}
-                                    >
-                                      <span className={`inline-block w-3 h-3 rounded-full mr-1.5 ${color.bg} ${color.name === 'أبيض' || color.name === 'بيج' ? 'border border-slate-300' : ''}`}></span>
-                                      {color.name}
-                                    </button>
-                                  ))}
-                                  {/* Custom color input */}
-                                  <div className="flex items-center gap-2">
-                                    <Input
-                                      value={v.color && !commonColors.find(c => c.name === v.color) ? v.color : ''}
-                                      onChange={(e) => {
-                                        const next = e.target.value;
-                                        const idx = v.originalIndex;
-                                        setVariantsDraft((prev) =>
-                                          prev.map((row, i) => (i === idx ? { ...row, color: next } : row))
-                                        );
-                                        setVariantsDirty(true);
-                                      }}
-                                      placeholder="لون آخر..."
-                                      className="h-8 w-28 text-sm"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Size Selector */}
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">اختر المقاس:</label>
-                                
-                                {/* Clothing sizes */}
-                                <div className="flex flex-wrap gap-1.5">
-                                  <span className="text-xs text-slate-500 py-1">ملابس:</span>
-                                  {commonSizes.map((size) => (
-                                    <button
-                                      key={size}
-                                      type="button"
-                                      onClick={() => {
-                                        const idx = v.originalIndex;
-                                        setVariantsDraft((prev) =>
-                                          prev.map((row, i) => (i === idx ? { ...row, size } : row))
-                                        );
-                                        setVariantsDirty(true);
-                                      }}
-                                      className={`min-w-[36px] px-2 py-1 rounded-md text-xs font-medium border transition-all ${
-                                        v.size === size
-                                          ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm'
-                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-                                      }`}
-                                    >
-                                      {size}
-                                    </button>
-                                  ))}
-                                </div>
-                                
-                                {/* Shoe sizes */}
-                                <div className="flex flex-wrap gap-1.5">
-                                  <span className="text-xs text-slate-500 py-1">أحذية:</span>
-                                  {shoeSizes.map((size) => (
-                                    <button
-                                      key={size}
-                                      type="button"
-                                      onClick={() => {
-                                        const idx = v.originalIndex;
-                                        setVariantsDraft((prev) =>
-                                          prev.map((row, i) => (i === idx ? { ...row, size } : row))
-                                        );
-                                        setVariantsDirty(true);
-                                      }}
-                                      className={`min-w-[36px] px-2 py-1 rounded-md text-xs font-medium border transition-all ${
-                                        v.size === size
-                                          ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm'
-                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-                                      }`}
-                                    >
-                                      {size}
-                                    </button>
-                                  ))}
-                                  {/* Custom size */}
-                                  <Input
-                                    value={v.size && ![...commonSizes, ...shoeSizes].includes(v.size) ? v.size : ''}
-                                    onChange={(e) => {
-                                      const next = e.target.value;
-                                      const idx = v.originalIndex;
-                                      setVariantsDraft((prev) =>
-                                        prev.map((row, i) => (i === idx ? { ...row, size: next } : row))
-                                      );
-                                      setVariantsDirty(true);
-                                    }}
-                                    placeholder="مقاس آخر"
-                                    className="h-7 w-20 text-xs"
-                                  />
-                                </div>
-                              </div>
-                              
-                              {/* Stock and Actions */}
-                              <div className="flex items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-600">
-                                <div className="flex items-center gap-2">
-                                  <Hash className="h-4 w-4 text-slate-400" />
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={v.stock_quantity ?? ''}
-                                    onChange={(e) => {
-                                      const next = Number(e.target.value || 0);
-                                      const idx = v.originalIndex;
-                                      setVariantsDraft((prev) =>
-                                        prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row))
-                                      );
-                                      setVariantsDirty(true);
-                                    }}
-                                    className="h-9 w-24 text-sm"
-                                    placeholder="المخزون"
-                                  />
-                                </div>
-                                
-                                <div className="flex items-center gap-3 flex-1 justify-end">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      const idx = v.originalIndex;
-                                      setVariantsDraft((prev) => prev.filter((_, i) => i !== idx));
-                                      setVariantsDirty(true);
-                                      setVariantsLoaded(true);
-                                    }}
-                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                  
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400 order-2">
-                                      {v.is_active !== false ? 'نشط' : 'معطل'}
-                                    </span>
-                                    <span dir="ltr" className="order-1">
-                                      <Switch
-                                        checked={v.is_active ?? true}
-                                        onCheckedChange={(checked) => {
-                                          const idx = v.originalIndex;
-                                          setVariantsDraft((prev) =>
-                                            prev.map((row, i) => (i === idx ? { ...row, is_active: checked } : row))
-                                          );
-                                          setVariantsDirty(true);
-                                        }}
-                                      />
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  );
-                })()}
+                </>
+                )}
               </div>
-            )}
+              );
+            })()}
 
             {productFormSection === 'offers' && (
-              <div className="space-y-2 bg-orange-500/5 dark:bg-orange-900/10 p-2 md:p-3 rounded border border-orange-500/20">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400">{t('store.productForm.offersTitle')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('store.productForm.offersDesc')}</p>
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/25">
+                    <TicketPercent className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('store.productForm.offersTitle')}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('store.productForm.offersDesc')}</p>
                   </div>
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
                     onClick={() => {
                       setOffersDraft((prev) => [
                         ...prev,
                         {
-                          quantity: 1,
-                          bundle_price: Number(formData.price) || 0,
+                          quantity: prev.length + 2,
+                          bundle_price: (Number(formData.price) || 0) * (prev.length + 2),
                           free_delivery: false,
                           sort_order: prev.length,
                         },
@@ -2809,108 +2785,191 @@ export default function Store() {
                       setOffersDirty(true);
                       setOffersLoaded(true);
                     }}
-                    className="border-orange-500/30 hover:bg-orange-500/10"
+                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-md shadow-orange-500/20"
                   >
+                    <Plus className="h-4 w-4 mr-1" />
                     {t('store.productForm.addOffer')}
                   </Button>
                 </div>
 
                 {loadingOffers && (
-                  <div className="text-sm text-muted-foreground">{t('store.productForm.loadingOffers')}</div>
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                  </div>
                 )}
 
                 {!loadingOffers && offersLoaded && offersDraft.length === 0 && (
-                  <div className="text-sm text-muted-foreground">{t('store.productForm.noOffers')}</div>
+                  <div className="text-center py-8 bg-white dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 flex items-center justify-center mx-auto mb-3">
+                      <Gift className="h-7 w-7 text-orange-400 dark:text-orange-500" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">لا يوجد عروض بعد</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[280px] mx-auto leading-relaxed">
+                      أنشئ عروض خاصة مثل: اشترِ 2 بسعر 2700 دج بدل 3000 دج
+                    </p>
+                  </div>
                 )}
 
                 {!loadingOffers && offersDraft.length > 0 && (
-                  <div className="space-y-2">
-                    {offersDraft.map((o, idx) => (
-                      <div key={o.id ?? idx} className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end">
-                        <div className="space-y-1">
-                          <Label className="text-xs">{t('store.productForm.offerQuantity')}</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={Number(o.quantity)}
-                            onChange={(e) => {
-                              const next = Math.max(1, Number(e.target.value || 1));
-                              setOffersDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, quantity: next } : row))
-                              );
-                              setOffersDirty(true);
-                            }}
-                          />
-                        </div>
+                  <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                    <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {offersDraft.map((o, idx) => {
+                      const unitPrice = Number(formData.price) || 0;
+                      const totalRegular = unitPrice * Number(o.quantity);
+                      const bundlePrice = Number(o.bundle_price) || 0;
+                      const savings = totalRegular > bundlePrice ? totalRegular - bundlePrice : 0;
+                      const discountPercent = totalRegular > 0 ? Math.round((savings / totalRegular) * 100) : 0;
 
-                        <div className="space-y-1">
-                          <Label className="text-xs">{t('store.productForm.offerBundlePrice')}</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={String(o.bundle_price)}
-                            onChange={(e) => {
-                              const next = Number(e.target.value || 0);
-                              setOffersDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, bundle_price: next } : row))
-                              );
-                              setOffersDirty(true);
-                            }}
-                          />
-                        </div>
+                      return (
+                      <div key={o.id ?? idx} className="px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors">
+                        <div className="flex items-center gap-3">
+                          {/* Offer image thumbnail */}
+                          <label className="flex-shrink-0 cursor-pointer group">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const fd = new FormData();
+                                  fd.append('image', file);
+                                  const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                                  if (!res.ok) throw new Error('Upload failed');
+                                  const data = await res.json();
+                                  setOffersDraft((prev) =>
+                                    prev.map((row, i) => (i === idx ? { ...row, image_url: data.url } : row))
+                                  );
+                                  setOffersDirty(true);
+                                } catch { /* silent */ }
+                              }}
+                            />
+                            {o.image_url ? (
+                              <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
+                                <img src={o.image_url} alt="" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                                  <Edit className="h-3 w-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center group-hover:border-orange-400 transition-colors">
+                                <ImageIcon className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-orange-400 transition-colors" />
+                              </div>
+                            )}
+                          </label>
 
-                        <div className="space-y-1">
-                          <Label className="text-xs">{t('store.productForm.offerComparePrice')}</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={o.compare_price === undefined ? '' : String(o.compare_price)}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              const next = raw === '' ? undefined : Number(raw);
-                              setOffersDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, compare_price: next } : row))
-                              );
-                              setOffersDirty(true);
-                            }}
-                            placeholder="—"
-                          />
-                        </div>
+                          {/* Number badge */}
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
+                            idx === 0 ? 'bg-gradient-to-br from-orange-500 to-red-500' :
+                            idx === 1 ? 'bg-gradient-to-br from-violet-500 to-purple-600' :
+                            'bg-gradient-to-br from-emerald-500 to-teal-600'
+                          }`}>
+                            {idx + 1}
+                          </div>
 
-                        <div className="flex items-center gap-2 h-10">
-                          <input
-                            type="checkbox"
-                            checked={o.free_delivery}
-                            onChange={(e) => {
-                              const next = e.target.checked;
-                              setOffersDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, free_delivery: next } : row))
-                              );
-                              setOffersDirty(true);
-                            }}
-                            className="w-4 h-4"
-                          />
-                          <Label className="text-xs">{t('store.productForm.offerFreeDelivery')}</Label>
-                        </div>
+                          {/* Quantity */}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-slate-400">اشترِ</span>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={Number(o.quantity)}
+                              onChange={(e) => {
+                                const next = Math.max(1, Number(e.target.value || 1));
+                                setOffersDraft((prev) =>
+                                  prev.map((row, i) => (i === idx ? { ...row, quantity: next } : row))
+                                );
+                                setOffersDirty(true);
+                              }}
+                              className="h-8 w-14 text-center text-sm font-bold"
+                            />
+                          </div>
 
-                        <div className="flex justify-end">
-                          <Button
+                          {/* Bundle Price */}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-slate-400">بسعر</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={String(o.bundle_price)}
+                              onChange={(e) => {
+                                const next = Number(e.target.value || 0);
+                                setOffersDraft((prev) =>
+                                  prev.map((row, i) => (i === idx ? { ...row, bundle_price: next } : row))
+                                );
+                                setOffersDirty(true);
+                              }}
+                              className="h-8 w-24 text-center text-sm font-bold"
+                            />
+                            <span className="text-[10px] text-slate-400">دج</span>
+                          </div>
+
+                          {/* Compare Price */}
+                          <div className="hidden sm:flex items-center gap-1.5">
+                            <span className="text-xs text-slate-400">بدل</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={o.compare_price === undefined ? '' : String(o.compare_price)}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                const next = raw === '' ? undefined : Number(raw);
+                                setOffersDraft((prev) =>
+                                  prev.map((row, i) => (i === idx ? { ...row, compare_price: next } : row))
+                                );
+                                setOffersDirty(true);
+                              }}
+                              placeholder="—"
+                              className="h-8 w-24 text-center text-sm text-slate-400 line-through"
+                            />
+                          </div>
+
+                          {/* Free delivery chip */}
+                          <button
                             type="button"
-                            variant="destructive"
-                            size="sm"
+                            onClick={() => {
+                              setOffersDraft((prev) =>
+                                prev.map((row, i) => (i === idx ? { ...row, free_delivery: !row.free_delivery } : row))
+                              );
+                              setOffersDirty(true);
+                            }}
+                            className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                              o.free_delivery
+                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600'
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-400 border border-transparent hover:border-slate-300'
+                            }`}
+                          >
+                            <Truck className="h-3 w-3" />
+                            {o.free_delivery ? '✓' : 'مجاني'}
+                          </button>
+
+                          {/* Discount badge */}
+                          {discountPercent > 0 && (
+                            <span className="flex-shrink-0 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400 px-1.5 py-0.5 rounded-md">
+                              -{discountPercent}%
+                            </span>
+                          )}
+
+                          {/* Delete */}
+                          <button
+                            type="button"
                             onClick={() => {
                               setOffersDraft((prev) => prev.filter((_, i) => i !== idx));
                               setOffersDirty(true);
                               setOffersLoaded(true);
                             }}
+                            className="flex-shrink-0 p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                           >
-                            {t('store.productForm.removeOffer')}
-                          </Button>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
+                    </div>
                   </div>
                 )}
               </div>

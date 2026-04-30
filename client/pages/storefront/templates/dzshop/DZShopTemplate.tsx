@@ -14,9 +14,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const [lastTelegramUrl, setLastTelegramUrl] = React.useState<string | null>(null);
     const [lastCustomerPhone, setLastCustomerPhone] = React.useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
-    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
-    const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
     const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
+    const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
     useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
     const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;

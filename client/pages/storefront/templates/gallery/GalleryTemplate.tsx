@@ -83,8 +83,8 @@ export default function GalleryTemplate(props: TemplateProps) {
 
   /* ---------- delivery ---------- */
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
 
   /* ---------- state ---------- */
   const [cart, setCart] = useState<any[]>([]);

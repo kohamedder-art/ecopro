@@ -59,8 +59,8 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const [activeScroll, setActiveScroll] = useState(0);
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
   // Handle scroll tracking for background transitions
   useEffect(() => {
     const handleScroll = () => {

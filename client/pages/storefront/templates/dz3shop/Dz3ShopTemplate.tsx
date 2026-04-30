@@ -152,11 +152,11 @@ export default function Dz3ShopTemplate({
 
   // ── Delivery System ──
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings);
+  const [deliveryType, setDeliveryType] = useState<'home' | 'desk'>('home');
+  const { showAddress, showCommune, showNotes } = useOrderFields(settings, deliveryType);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const [deliveryType, setDeliveryType] = useState<'home' | 'desk'>('home');
   const baseDeliveryFee = selectedWilaya
     ? (deliveryType === 'home' ? selectedWilaya.homePrice : selectedWilaya.deskPrice) ?? 0
     : 0;

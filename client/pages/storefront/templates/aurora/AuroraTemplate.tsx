@@ -89,8 +89,8 @@ function AuroraImageGallery({ product: p, surfaceColor, accentColor, onZoom }: {
 
 export default function AuroraTemplate({ settings, products, canManage, storeSlug, onProductView, initialProductSlug }: TemplateProps) {
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCheckout, setShowCheckout] = useState(false);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);

@@ -21,6 +21,10 @@ const OfferSchema = z
       (v) => (typeof v === 'string' ? v.trim() : v),
       z.string().max(200)
     ).optional(),
+    image_url: z.preprocess(
+      (v) => (typeof v === 'string' ? v.trim() : v === null ? undefined : v),
+      z.string().max(2000)
+    ).optional(),
     sort_order: z.preprocess(
       (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
       z.number().int()
@@ -51,7 +55,7 @@ export const getClientProductOffers: RequestHandler = async (req, res) => {
     if (!owns.rowCount) return res.status(404).json({ error: 'Product not found' });
 
     const result = await pool.query(
-      `SELECT id, quantity, bundle_price, compare_price, free_delivery, label, sort_order, is_active
+      `SELECT id, quantity, bundle_price, compare_price, free_delivery, label, sort_order, is_active, image_url
        FROM product_offers
        WHERE product_id = $1 AND client_id = $2
        ORDER BY sort_order ASC, quantity ASC`,
@@ -103,6 +107,7 @@ export const putClientProductOffers: RequestHandler = async (req, res) => {
       const comparePrice = o.compare_price === undefined ? null : Number(o.compare_price);
       const freeDelivery = o.free_delivery ?? false;
       const label = o.label?.trim() || null;
+      const imageUrl = o.image_url?.trim() || null;
       const isActive = o.is_active ?? true;
       const sortOrder = o.sort_order ?? 0;
 
@@ -111,17 +116,17 @@ export const putClientProductOffers: RequestHandler = async (req, res) => {
         await client.query(
           `UPDATE product_offers
            SET quantity = $1, bundle_price = $2, compare_price = $3,
-               free_delivery = $4, label = $5, sort_order = $6, is_active = $7, updated_at = NOW()
-           WHERE id = $8 AND product_id = $9 AND client_id = $10`,
-          [o.quantity, bundlePrice, comparePrice, freeDelivery, label, sortOrder, isActive, o.id, productId, clientId]
+               free_delivery = $4, label = $5, sort_order = $6, is_active = $7, image_url = $8, updated_at = NOW()
+           WHERE id = $9 AND product_id = $10 AND client_id = $11`,
+          [o.quantity, bundlePrice, comparePrice, freeDelivery, label, sortOrder, isActive, imageUrl, o.id, productId, clientId]
         );
       } else {
         const inserted = await client.query(
           `INSERT INTO product_offers
-           (client_id, product_id, quantity, bundle_price, compare_price, free_delivery, label, sort_order, is_active)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           (client_id, product_id, quantity, bundle_price, compare_price, free_delivery, label, sort_order, is_active, image_url)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
            RETURNING id`,
-          [clientId, productId, o.quantity, bundlePrice, comparePrice, freeDelivery, label, sortOrder, isActive]
+          [clientId, productId, o.quantity, bundlePrice, comparePrice, freeDelivery, label, sortOrder, isActive, imageUrl]
         );
         keepIds.add(Number(inserted.rows[0].id));
       }
@@ -140,7 +145,7 @@ export const putClientProductOffers: RequestHandler = async (req, res) => {
     inTransaction = false;
 
     const out = await pool.query(
-      `SELECT id, quantity, bundle_price, compare_price, free_delivery, label, sort_order, is_active
+      `SELECT id, quantity, bundle_price, compare_price, free_delivery, label, sort_order, is_active, image_url
        FROM product_offers
        WHERE product_id = $1 AND client_id = $2
        ORDER BY sort_order ASC, quantity ASC`,
@@ -186,7 +191,7 @@ export const getPublicProductOffers: RequestHandler = async (req, res) => {
     if (!prod.rowCount) return res.status(404).json({ error: 'Product not found' });
 
     const result = await pool.query(
-      `SELECT id, quantity, bundle_price, compare_price, free_delivery, label
+      `SELECT id, quantity, bundle_price, compare_price, free_delivery, label, image_url
        FROM product_offers
        WHERE product_id = $1 AND client_id = $2 AND is_active = true
        ORDER BY sort_order ASC, quantity ASC`,

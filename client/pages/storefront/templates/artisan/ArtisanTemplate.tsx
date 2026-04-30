@@ -146,8 +146,8 @@ export default function ArtisanTemplate(props: TemplateProps) {
 
   /* ---------- delivery prices from API ---------- */
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
-  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
 
   /* ---------- cart ---------- */
   const [cart, setCart] = useState<any[]>([]);

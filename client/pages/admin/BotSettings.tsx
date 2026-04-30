@@ -555,7 +555,7 @@ export default function AdminBotSettings() {
               { value: 'facebook', label: 'Facebook', icon: <MessageSquare className="w-5 h-5" />, color: 'text-blue-600', border: 'border-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30',
                 connected: !!fbStatus?.connected, status: fbStatus?.pageName || null, oauth: true },
               { value: 'instagram', label: 'Instagram', icon: <Instagram className="w-5 h-5" />, color: 'text-pink-600', border: 'border-pink-500', bg: 'bg-pink-50 dark:bg-pink-950/30',
-                connected: !!fbStatus?.instagramConnected, status: fbStatus?.instagramUsername ? `@${fbStatus.instagramUsername}` : null, oauth: true },
+                connected: !!(fbStatus?.instagramConnected || settings.instagramUsingPlatform || settings.instagramTokenConfigured), status: fbStatus?.instagramUsername ? `@${fbStatus.instagramUsername}` : null, oauth: true },
               { value: 'telegram', label: 'Telegram', icon: <Send className="w-5 h-5" />, color: 'text-sky-600', border: 'border-sky-500', bg: 'bg-sky-50 dark:bg-sky-950/30',
                 connected: !!(settings.telegramTokenConfigured || settings.telegramUsingPlatform), status: settings.telegramBotUsername ? `@${settings.telegramBotUsername}` : null, oauth: false },
               { value: 'whatsapp_cloud', label: 'WhatsApp', icon: <Phone className="w-5 h-5" />, color: 'text-green-600', border: 'border-green-500', bg: 'bg-green-50 dark:bg-green-950/30',
@@ -772,57 +772,59 @@ export default function AdminBotSettings() {
                   </p>
                 </div>
               )}
-              {showInstagramAdvanced && fbLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-pink-500" />
-                </div>
-              ) : fbStatus?.connected && fbStatus?.instagramConnected ? (
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
-                    <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <p className="text-xs font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-1">
-                        <Instagram className="w-3.5 h-3.5" />
-                        {fbStatus.instagramUsername ? `@${fbStatus.instagramUsername}` : 'Instagram Business'}
-                      </p>
-                      <p className="text-[10px] text-emerald-700 dark:text-emerald-300">
+              {showInstagramAdvanced && (
+                fbLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-pink-500" />
+                  </div>
+                ) : fbStatus?.connected && fbStatus?.instagramConnected ? (
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
+                      <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <p className="text-xs font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-1">
+                          <Instagram className="w-3.5 h-3.5" />
+                          {fbStatus.instagramUsername ? `@${fbStatus.instagramUsername}` : 'Instagram Business'}
+                        </p>
+                        <p className="text-[10px] text-emerald-700 dark:text-emerald-300">
+                          {isRTL
+                            ? 'مربوط عبر فيسبوك — الرسائل المباشرة يتم الرد عليها تلقائياً بالذكاء الاصطناعي'
+                            : 'Connected via Facebook — DMs are auto-replied by AI'}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {isRTL ? 'الصفحة:' : 'Page:'} {fbStatus.pageName}
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm"
+                        className="rounded-xl text-[10px] text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30 shrink-0"
+                        onClick={disconnectFacebook} disabled={fbDisconnecting}>
+                        {fbDisconnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unplug className="h-3 w-3" />}
+                        <span className="mx-1">{t('platforms.disconnect')}</span>
+                      </Button>
+                    </div>
+                    <div className="p-3 rounded-xl bg-pink-50 dark:bg-pink-500/10 border border-pink-200 dark:border-pink-500/20">
+                      <p className="text-[11px] text-pink-800 dark:text-pink-200">
                         {isRTL
-                          ? 'مربوط عبر فيسبوك — الرسائل المباشرة يتم الرد عليها تلقائياً بالذكاء الاصطناعي'
-                          : 'Connected via Facebook — DMs are auto-replied by AI'}
-                      </p>
-                      <p className="text-[10px] text-slate-500">
-                        {isRTL ? 'الصفحة:' : 'Page:'} {fbStatus.pageName}
+                          ? '✨ الردود التلقائية: الذكاء الاصطناعي يرد على رسائل Instagram المباشرة تلقائياً بناءً على منتجات متجرك والتعليمات في إعدادات AI.'
+                          : '✨ Auto-replies: AI responds to Instagram DMs automatically based on your store products and instructions in AI settings.'}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm"
-                      className="rounded-xl text-[10px] text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30 shrink-0"
-                      onClick={disconnectFacebook} disabled={fbDisconnecting}>
-                      {fbDisconnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unplug className="h-3 w-3" />}
-                      <span className="mx-1">{t('platforms.disconnect')}</span>
-                    </Button>
                   </div>
-                  <div className="p-3 rounded-xl bg-pink-50 dark:bg-pink-500/10 border border-pink-200 dark:border-pink-500/20">
-                    <p className="text-[11px] text-pink-800 dark:text-pink-200">
+                ) : (
+                  <div className="text-center py-6 space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center mx-auto">
+                      <Instagram className="w-6 h-6 text-pink-500" />
+                    </div>
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {isRTL ? 'غير متصل بـ Instagram' : 'Not connected to Instagram'}
+                    </p>
+                    <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
                       {isRTL
-                        ? '✨ الردود التلقائية: الذكاء الاصطناعي يرد على رسائل Instagram المباشرة تلقائياً بناءً على منتجات متجرك والتعليمات في إعدادات AI.'
-                        : '✨ Auto-replies: AI responds to Instagram DMs automatically based on your store products and instructions in AI settings.'}
+                        ? 'يرجى الاتصال أولاً بحساب فيسبوك من علامة التبويب "فيسبوك" أعلاه. سيتم اكتشاف Instagram تلقائياً إذا كان مربوطاً بالصفحة.'
+                        : 'Please connect your Facebook account from the "Facebook" tab above. Instagram will be auto-detected if linked to your Page.'}
                     </p>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-6 space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center mx-auto">
-                    <Instagram className="w-6 h-6 text-pink-500" />
-                  </div>
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {isRTL ? 'غير متصل بـ Instagram' : 'Not connected to Instagram'}
-                  </p>
-                  <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
-                    {isRTL
-                      ? 'يرجى الاتصال أولاً بحساب فيسبوك من علامة التبويب "فيسبوك" أعلاه. سيتم اكتشاف Instagram تلقائياً إذا كان مربوطاً بالصفحة.'
-                      : 'Please connect your Facebook account from the "Facebook" tab above. Instagram will be auto-detected if linked to your Page.'}
-                  </p>
-                </div>
+                )
               )}
 
               {/* Manual credentials for custom mode - only show when useMyOwnBot selected */}

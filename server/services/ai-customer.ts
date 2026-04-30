@@ -15,9 +15,10 @@ interface StoreContext {
   storeName: string;
   storeDescription: string;
   currency: string;
-  products: { title: string; price: number; originalPrice?: number; description?: string; category?: string; inStock: boolean }[];
+  products: { title: string; price: number; originalPrice?: number; description?: string; category?: string; inStock: boolean; offers?: { quantity: number; bundle_price: number; free_delivery: boolean }[] }[];
   deliveryInfo: string;
   aiInstructions?: string;
+  storeLink?: string;
 }
 
 /**
@@ -64,18 +65,20 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
 
   // Store settings
   const settingsRes = await pool.query(
-    `SELECT store_name, store_description FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
+    `SELECT store_name, store_description, store_slug FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
     [clientId]
   );
   if (!settingsRes.rows.length) return null;
-  const { store_name, store_description } = settingsRes.rows[0];
+  const { store_name, store_description, store_slug } = settingsRes.rows[0];
 
-  // Active products (limit to 50 to keep prompt size reasonable)
+  // Active products with offers (limit to 50 to keep prompt size reasonable)
   const productsRes = await pool.query(
-    `SELECT title, price, original_price, description, category, stock_quantity
-     FROM client_store_products
-     WHERE client_id = $1 AND status = 'active'
-     ORDER BY is_featured DESC NULLS LAST, created_at DESC
+    `SELECT p.id, p.title, p.price, p.original_price, p.description, p.category, p.stock_quantity,
+            (SELECT json_agg(json_build_object('quantity', o.quantity, 'bundle_price', o.bundle_price, 'free_delivery', o.free_delivery))
+             FROM product_offers o WHERE o.product_id = p.id AND o.client_id = p.client_id AND o.is_active = true) as offers
+     FROM client_store_products p
+     WHERE p.client_id = $1 AND p.status = 'active'
+     ORDER BY p.is_featured DESC NULLS LAST, p.created_at DESC
      LIMIT 50`,
     [clientId]
   );
@@ -87,6 +90,7 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
     description: p.description ? String(p.description).slice(0, 200) : undefined,
     category: p.category || undefined,
     inStock: (p.stock_quantity ?? 1) > 0,
+    offers: Array.isArray(p.offers) ? p.offers : undefined,
   }));
 
   // Delivery summary (average price, active wilayas count)
@@ -109,6 +113,9 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
     [clientId]
   );
 
+  // Build store link
+  const storeLink = store_slug ? `https://ecopro.dz/store/${store_slug}` : undefined;
+
   return {
     storeName: store_name || 'المتجر',
     storeDescription: store_description || '',
@@ -116,6 +123,7 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
     products,
     deliveryInfo,
     aiInstructions: aiRes.rows[0]?.ai_instructions || undefined,
+    storeLink,
   };
 }
 
@@ -185,15 +193,163 @@ function buildProductCatalog(ctx: StoreContext): string {
     let line = `${i + 1}. ${p.title} — ${p.price} ${ctx.currency}`;
     if (p.originalPrice && p.originalPrice > p.price) {
       const discount = Math.round((1 - p.price / p.originalPrice) * 100);
-      line += ` (خصم ${discount}%، السعر الأصلي: ${p.originalPrice} ${ctx.currency})`;
+      line += ` (خصم ${discount}%، كان: ${p.originalPrice} ${ctx.currency})`;
     }
-    if (!p.inStock) line += ' [نفذ من المخزون]';
-    if (p.category) line += ` | فئة: ${p.category}`;
+    if (!p.inStock) line += ' [غير متوفر]';
+    if (p.category) line += ` | ${p.category}`;
     if (p.description) line += `\n   ${p.description}`;
+    if (p.offers?.length) {
+      const offerLines = p.offers.map(o => {
+        let ol = `   🏷️ اشترِ ${o.quantity} بـ ${o.bundle_price} ${ctx.currency}`;
+        if (o.free_delivery) ol += ' + توصيل مجاني';
+        return ol;
+      });
+      line += '\n' + offerLines.join('\n');
+    }
     return line;
   });
 
   return lines.join('\n');
+}
+
+/**
+ * Resolve customer phone from their platform chat ID.
+ */
+async function resolveCustomerPhone(
+  clientId: number,
+  platform: Platform,
+  platformChatId: string
+): Promise<string | null> {
+  try {
+    // For WhatsApp, the platformChatId IS the phone number
+    if (platform === 'whatsapp') {
+      return String(platformChatId).replace(/\D/g, '') || null;
+    }
+    const pool = await ensureConnection();
+    const col = platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
+    const res = await pool.query(
+      `SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND ${col} = $2 LIMIT 1`,
+      [clientId, platformChatId]
+    );
+    return res.rows[0]?.customer_phone || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load customer's recent orders with full tracking/delivery context.
+ */
+async function loadCustomerOrders(
+  clientId: number,
+  customerPhone: string
+): Promise<string> {
+  try {
+    const pool = await ensureConnection();
+    const res = await pool.query(
+      `SELECT o.id, o.status, o.total_price, o.created_at, o.quantity,
+              o.delivery_status, o.tracking_number, o.delivery_type,
+              o.customer_name, o.customer_address,
+              p.title as product_title,
+              dc.name as delivery_company,
+              w.name as wilaya_name,
+              c.name as commune_name,
+              (SELECT de.description FROM delivery_events de
+               WHERE de.order_id = o.id
+               ORDER BY de.created_at DESC LIMIT 1) as last_tracking_update,
+              (SELECT de.event_type FROM delivery_events de
+               WHERE de.order_id = o.id
+               ORDER BY de.created_at DESC LIMIT 1) as last_event_type,
+              (SELECT de.created_at FROM delivery_events de
+               WHERE de.order_id = o.id
+               ORDER BY de.created_at DESC LIMIT 1) as last_event_date
+       FROM store_orders o
+       LEFT JOIN client_store_products p ON p.id = o.product_id
+       LEFT JOIN delivery_companies dc ON dc.id = o.delivery_company_id
+       LEFT JOIN wilayas w ON w.id = o.shipping_wilaya_id
+       LEFT JOIN communes c ON c.id = o.shipping_commune_id
+       WHERE o.client_id = $1 AND o.customer_phone = $2
+       ORDER BY o.created_at DESC
+       LIMIT 10`,
+      [clientId, customerPhone]
+    );
+    if (!res.rows.length) return '';
+
+    const orderStatusLabels: Record<string, string> = {
+      pending: 'قيد الانتظار',
+      confirmed: 'مؤكد',
+      processing: 'قيد التحضير',
+      shipped: 'تم الشحن',
+      delivered: 'تم التوصيل',
+      cancelled: 'ملغى',
+      declined: 'مرفوض',
+      returned: 'مرجع',
+      failed: 'فشل',
+    };
+
+    const deliveryStatusLabels: Record<string, string> = {
+      pending: 'لم يُشحن بعد',
+      assigned: 'تم تعيين شركة التوصيل',
+      picked_up: 'تم الاستلام من المتجر',
+      in_transit: 'في الطريق',
+      out_for_delivery: 'خرج للتوصيل',
+      delivered: 'تم التسليم',
+      failed: 'فشل التوصيل',
+      returned: 'مرجع للمرسل',
+    };
+
+    const eventTypeLabels: Record<string, string> = {
+      pickup: 'تم الاستلام من المتجر',
+      in_transit: 'في الطريق إلى الوجهة',
+      out_for_delivery: 'خرج للتوصيل — المندوب في الطريق',
+      at_hub: 'وصل لمركز التوزيع',
+      delivered: 'تم التسليم بنجاح',
+      failed: 'محاولة توصيل فاشلة',
+      returned: 'تم إرجاع الطرد',
+    };
+
+    const lines = res.rows.map((o: any) => {
+      const status = orderStatusLabels[o.status] || o.status;
+      const date = new Date(o.created_at).toLocaleDateString('ar-DZ');
+      const product = o.product_title || 'منتج';
+      const qty = o.quantity || 1;
+
+      let line = `📦 طلب #${o.id} — ${product} (×${qty}) — ${o.total_price} دج\n`;
+      line += `   الحالة: ${status}`;
+
+      // Delivery tracking info
+      if (o.tracking_number) {
+        const dStatus = deliveryStatusLabels[o.delivery_status] || o.delivery_status || 'غير محدد';
+        line += ` | التوصيل: ${dStatus}`;
+        if (o.delivery_company) line += ` (${o.delivery_company})`;
+        line += `\n   رقم التتبع: ${o.tracking_number}`;
+      } else if (o.status === 'confirmed' || o.status === 'pending') {
+        line += ` | لم يُشحن بعد`;
+      }
+
+      // Latest tracking event
+      if (o.last_event_type) {
+        const eventLabel = eventTypeLabels[o.last_event_type] || o.last_tracking_update || o.last_event_type;
+        const eventDate = o.last_event_date ? new Date(o.last_event_date).toLocaleDateString('ar-DZ') : '';
+        line += `\n   آخر تحديث: ${eventLabel}${eventDate ? ` (${eventDate})` : ''}`;
+      }
+
+      // Destination
+      if (o.wilaya_name) {
+        line += `\n   الوجهة: ${o.wilaya_name}`;
+        if (o.commune_name) line += ` — ${o.commune_name}`;
+        if (o.delivery_type === 'desk') line += ' (استلام من المكتب)';
+      }
+
+      line += `\n   تاريخ الطلب: ${date}`;
+      return line;
+    });
+
+    return lines.join('\n\n');
+  } catch (err) {
+    console.error('[AI-Customer] Failed to load orders:', err);
+    return '';
+  }
 }
 
 /**
@@ -222,30 +378,28 @@ export async function handleCustomerMessage(
   // Load conversation history
   const history = await getConversationHistory(clientId, platform, platformChatId);
 
-  // Build the prompt
-  const catalog = buildProductCatalog(ctx);
-  const prompt = `أنت مساعد مبيعات لمتجر "${ctx.storeName}".
-${ctx.storeDescription ? `وصف المتجر: ${ctx.storeDescription}` : ''}
+  // Resolve customer identity and load their orders
+  const customerPhone = await resolveCustomerPhone(clientId, platform, platformChatId);
+  const orderHistory = customerPhone ? await loadCustomerOrders(clientId, customerPhone) : '';
 
-${ctx.aiInstructions ? `تعليمات صاحب المتجر:\n${ctx.aiInstructions}\n` : ''}
-المنتجات المتوفرة:
+  // Build the prompt — context-only, the system prompt handles personality and rules
+  const catalog = buildProductCatalog(ctx);
+  const storeOrderLink = ctx.storeLink ? `\nرابط الطلب: ${ctx.storeLink}` : '';
+
+  const orderSection = orderHistory
+    ? `\n═══ طلبات هذا الزبون ═══\n${orderHistory}\n`
+    : '';
+
+  const prompt = `[متجر: ${ctx.storeName}]
+${ctx.storeDescription ? ctx.storeDescription + '\n' : ''}${ctx.aiInstructions ? `\n[تعليمات خاصة من صاحب المتجر]: ${ctx.aiInstructions}\n` : ''}
+═══ المنتجات المتوفرة ═══
 ${catalog}
 
-معلومات التوصيل:
+═══ التوصيل ═══
 ${ctx.deliveryInfo}
-
-قواعد مهمة:
-- أنت تمثل المتجر وتساعد الزبائن في الشراء.
-- أجب فقط عن المنتجات الموجودة في القائمة أعلاه.
-- إذا سأل الزبون عن منتج غير موجود، قل له بلطف أنه غير متوفر حالياً.
-- لا تختلق أسعاراً أو منتجات غير موجودة في القائمة.
-- إذا أراد الزبون الطلب، أخبره بالتوجه لرابط المتجر لإتمام الطلب.
-- كن مختصراً ومفيداً. لا تكتب رسائل طويلة.
-- لا تذكر أنك ذكاء اصطناعي. تصرف كمساعد المتجر.
-- العملة هي الدينار الجزائري (دج).
-- لا تشارك أبداً أي معلومات تخص المتجر مثل عدد الطلبات أو الإيرادات أو بيانات العملاء الآخرين - أنت تتحدث مع زبون، ليس صاحب المتجر.
-
-رسالة الزبون:
+الدفع عند الاستلام (COD).${storeOrderLink}
+${orderSection}
+═══ رسالة الزبون ═══
 ${customerMessage}`;
 
   try {

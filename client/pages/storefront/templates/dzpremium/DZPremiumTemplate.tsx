@@ -24,9 +24,9 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
     const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
     const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
-    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings);
-    const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
     const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
+    const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
     const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
