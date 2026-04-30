@@ -611,18 +611,23 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
       // AI auto-reply: respond to customer messages intelligently
       const trimmedText = String(text || '').trim();
       if (trimmedText && botToken && chatId) {
-        // Resolve client_id from webhook secret or customer_messaging_ids
-        const clientId = await resolveClientFromTelegramSecret(secret) 
-          || await resolveClientFromTelegramChatId(chatId);
+        // Resolve client_id: prefer chat_id mapping (accurate for shared bots),
+        // fall back to webhook secret only if no chat mapping exists
+        const clientId = await resolveClientFromTelegramChatId(chatId)
+          || await resolveClientFromTelegramSecret(secret);
         
         if (clientId) {
           try {
             const aiResponse = await handleCustomerMessage(clientId, 'telegram', chatId, trimmedText);
             if (aiResponse) {
               await sendTelegramMessage(botToken, chatId, aiResponse);
+            } else {
+              // AI disabled or returned null — send fallback
+              await sendTelegramMessage(botToken, chatId, 'مرحباً! 👋\n\nسنرد عليك في أقرب وقت.');
             }
           } catch (err) {
             console.error('[TelegramWebhook] AI auto-reply error:', err);
+            await sendTelegramMessage(botToken, chatId, 'مرحباً! 👋\n\nسنرد عليك في أقرب وقت.');
           }
         }
       }

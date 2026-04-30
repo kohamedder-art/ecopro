@@ -544,7 +544,7 @@ export const createOrder: RequestHandler = async (req, res) => {
             productTitle,
             Number(order.total_price ?? expectedTotalPrice),
             storeSlug,
-            { skipTelegram: true }
+            { skipTelegram: true, quantity, address: customer_address || undefined }
           ).catch(() => {/* swallow errors */});
 
           // Always schedule confirmation message with buttons (worker will wait for chat link if needed)
@@ -573,7 +573,8 @@ export const createOrder: RequestHandler = async (req, res) => {
             storeName,
             productTitle,
             Number(order.total_price ?? expectedTotalPrice),
-            storeSlug
+            storeSlug,
+            { quantity, address: customer_address || undefined }
           ).catch(() => {/* swallow errors */});
         }
       }
@@ -1409,7 +1410,6 @@ export const restorePresetStatus: RequestHandler = async (req, res) => {
       failed:          { name: 'Failed',            color: '#ef4444', icon: '✕',  sort_order: 21, counts_as_revenue: false },
       delivered:       { name: 'Delivered',        color: '#10b981', icon: '✓',  sort_order: 11, counts_as_revenue: true  },
       declined:        { name: 'Declined',          color: '#ef4444', icon: '✕',  sort_order: 20, counts_as_revenue: false },
-      failed:          { name: 'Failed',            color: '#ef4444', icon: '✕',  sort_order: 21, counts_as_revenue: false },
       delivery_failed: { name: 'Delivery Failed',   color: '#ef4444', icon: '🚫', sort_order: 22, counts_as_revenue: false },
       returned:        { name: 'Returned',          color: '#f97316', icon: '↩️', sort_order: 23, counts_as_revenue: false },
       didnt_pickup:    { name: "Didn't Pickup",     color: '#f97316', icon: '⛔', sort_order: 24, counts_as_revenue: false },

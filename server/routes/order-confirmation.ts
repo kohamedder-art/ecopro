@@ -388,7 +388,7 @@ export async function sendBotMessagesForOrder(
   productName: string,
   price: number,
   storeSlug: string,
-  options?: { skipTelegram?: boolean }
+  options?: { skipTelegram?: boolean; quantity?: number; address?: string }
 ): Promise<void> {
   try {
     // Reuse existing unexpired link token if possible (prevents duplicates)

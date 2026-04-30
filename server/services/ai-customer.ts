@@ -9,7 +9,7 @@
 import { ensureConnection } from '../utils/database';
 import { generateText } from './gemini';
 
-type Platform = 'telegram' | 'messenger' | 'whatsapp';
+type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 
 interface StoreContext {
   storeName: string;
@@ -226,14 +226,119 @@ async function resolveCustomerPhone(
       return String(platformChatId).replace(/\D/g, '') || null;
     }
     const pool = await ensureConnection();
-    const col = platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
+    const col = platform === 'telegram' ? 'telegram_chat_id'
+      : (platform === 'messenger' || platform === 'instagram') ? 'messenger_psid'
+      : 'messenger_psid';
     const res = await pool.query(
       `SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND ${col} = $2 LIMIT 1`,
       [clientId, platformChatId]
     );
-    return res.rows[0]?.customer_phone || null;
+    if (res.rows[0]?.customer_phone) return res.rows[0].customer_phone;
+
+    // Fallback: check messenger_subscribers / order_messenger_chats for Messenger/Instagram
+    if (platform === 'messenger' || platform === 'instagram') {
+      const subRes = await pool.query(
+        `SELECT customer_phone FROM messenger_subscribers WHERE client_id = $1 AND psid = $2 AND customer_phone IS NOT NULL LIMIT 1`,
+        [clientId, platformChatId]
+      );
+      if (subRes.rows[0]?.customer_phone) return subRes.rows[0].customer_phone;
+
+      // Last resort: check if there's an order_messenger_chats record → get phone from order
+      const orderRes = await pool.query(
+        `SELECT so.customer_phone FROM order_messenger_chats omc
+         JOIN store_orders so ON so.id = omc.order_id AND so.client_id = omc.client_id
+         WHERE omc.client_id = $1 AND omc.messenger_psid = $2 AND so.customer_phone IS NOT NULL
+         ORDER BY so.created_at DESC LIMIT 1`,
+        [clientId, platformChatId]
+      );
+      if (orderRes.rows[0]?.customer_phone) return orderRes.rows[0].customer_phone;
+    }
+
+    return null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Extract an Algerian phone number from a customer message.
+ * Supports formats: 0551234567, 05 51 23 45 67, +213551234567, 213551234567, 0551-234-567
+ * Returns normalized phone (digits only, with leading 0) or null.
+ */
+function extractPhoneFromMessage(message: string): string | null {
+  // Match Algerian mobile numbers: 05/06/07 followed by 8 digits, with optional +213 prefix
+  // Allow spaces, dots, dashes between digit groups
+  const patterns = [
+    /(?:\+?213|0)[\s.-]?([567])[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})/,
+    /(?:\+?213|0)[\s.-]?([567]\d{8})/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match) {
+      // Reconstruct the number: take all captured groups, strip non-digits
+      const digits = match[0].replace(/[\s.\-+]/g, '');
+      // Normalize: strip 213 prefix and add leading 0
+      if (digits.startsWith('213') && digits.length >= 12) {
+        return '0' + digits.slice(3);
+      }
+      if (digits.startsWith('0') && digits.length === 10) {
+        return digits;
+      }
+      // Try to normalize from raw digits
+      const raw = digits.replace(/^0+/, '');
+      if (raw.length === 9 && /^[567]/.test(raw)) {
+        return '0' + raw;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Load a single order by ID (for when customer provides order # but no phone).
+ * Returns order info string or empty string.
+ * NOTE: Does not reveal customer_phone for security — AI should verify identity first.
+ */
+async function loadOrderById(clientId: number, orderId: number): Promise<string> {
+  try {
+    const pool = await ensureConnection();
+    const res = await pool.query(
+      `SELECT o.id, o.status, o.total_price, o.created_at, o.quantity,
+              o.delivery_status, o.tracking_number, o.delivery_type,
+              o.customer_name,
+              p.title as product_title,
+              dc.name as delivery_company,
+              w.name as wilaya_name,
+              (SELECT de.event_type FROM delivery_events de
+               WHERE de.order_id = o.id ORDER BY de.created_at DESC LIMIT 1) as last_event_type
+       FROM store_orders o
+       LEFT JOIN client_store_products p ON p.id = o.product_id
+       LEFT JOIN delivery_companies dc ON dc.id = o.delivery_company_id
+       LEFT JOIN wilayas w ON w.id = o.shipping_wilaya_id
+       WHERE o.client_id = $1 AND o.id = $2
+       LIMIT 1`,
+      [clientId, orderId]
+    );
+    if (!res.rows.length) return '';
+
+    const o = res.rows[0];
+    const statusLabels: Record<string, string> = {
+      pending: 'قيد الانتظار', confirmed: 'مؤكد', processing: 'قيد التحضير',
+      shipped: 'تم الشحن', delivered: 'تم التوصيل', cancelled: 'ملغى',
+    };
+    const status = statusLabels[o.status] || o.status;
+    const date = new Date(o.created_at).toLocaleDateString('ar-DZ');
+    let line = `📦 طلب #${o.id} — ${o.product_title || 'منتج'} (×${o.quantity || 1}) — ${o.total_price} دج\n`;
+    line += `   الحالة: ${status}`;
+    if (o.tracking_number) line += ` | رقم التتبع: ${o.tracking_number}`;
+    if (o.delivery_company) line += ` (${o.delivery_company})`;
+    if (o.wilaya_name) line += `\n   الوجهة: ${o.wilaya_name}`;
+    line += `\n   الاسم: ${o.customer_name || 'غير محدد'}`;
+    line += `\n   تاريخ الطلب: ${date}`;
+    return line;
+  } catch {
+    return '';
   }
 }
 
@@ -379,16 +484,55 @@ export async function handleCustomerMessage(
   const history = await getConversationHistory(clientId, platform, platformChatId);
 
   // Resolve customer identity and load their orders
-  const customerPhone = await resolveCustomerPhone(clientId, platform, platformChatId);
-  const orderHistory = customerPhone ? await loadCustomerOrders(clientId, customerPhone) : '';
+  let customerPhone = await resolveCustomerPhone(clientId, platform, platformChatId);
+  let orderHistory = customerPhone ? await loadCustomerOrders(clientId, customerPhone) : '';
+
+  // If customer is NOT identified, check if their message contains a phone number.
+  // This handles the case where customer is chatting from a different/unlinked session
+  // and provides their phone to look up their order.
+  let phoneProvidedInMessage = false;
+  if (!customerPhone || !orderHistory) {
+    const extractedPhone = extractPhoneFromMessage(customerMessage);
+    if (extractedPhone) {
+      const lookupOrders = await loadCustomerOrders(clientId, extractedPhone);
+      if (lookupOrders) {
+        orderHistory = lookupOrders;
+        customerPhone = extractedPhone;
+        phoneProvidedInMessage = true;
+      }
+    }
+  }
+
+  // Also check if the message contains an order ID like #1234 or "طلب 1234"
+  let orderByIdInfo = '';
+  if (!orderHistory) {
+    const orderIdMatch = customerMessage.match(/(?:#|طلب\s*#?\s*|order\s*#?\s*)(\d{1,8})/i);
+    if (orderIdMatch) {
+      const orderId = parseInt(orderIdMatch[1], 10);
+      if (orderId > 0) {
+        orderByIdInfo = await loadOrderById(clientId, orderId);
+      }
+    }
+  }
 
   // Build the prompt — context-only, the system prompt handles personality and rules
   const catalog = buildProductCatalog(ctx);
   const storeOrderLink = ctx.storeLink ? `\nرابط الطلب: ${ctx.storeLink}` : '';
 
-  const orderSection = orderHistory
-    ? `\n═══ طلبات هذا الزبون ═══\n${orderHistory}\n`
-    : '';
+  // Build order section with clear instructions for the AI
+  let orderSection = '';
+  if (orderHistory) {
+    const source = phoneProvidedInMessage
+      ? `(تم البحث برقم الهاتف الذي قدمه الزبون: ${customerPhone})`
+      : `(مرتبط تلقائياً)`;
+    orderSection = `\n═══ طلبات هذا الزبون ${source} ═══\n${orderHistory}\n\n[هام: هذه بيانات حقيقية من النظام. إذا سأل الزبون عن طلبه أو الشحن أو التوصيل أو الحالة أو أي شيء له علاقة بطلباته، أجب من هذه البيانات مباشرة. لا تقل "سأتحقق" أو "لا أجد طلباتك" — البيانات أمامك.]\n`;
+  } else if (orderByIdInfo) {
+    orderSection = `\n═══ طلب تم البحث عنه برقم الطلب ═══\n${orderByIdInfo}\n\n[هام: هذه بيانات حقيقية. أجب من هذه البيانات. لكن تحقق أن الزبون هو فعلاً صاحب الطلب — اطلب منه تأكيد اسمه أو رقم هاتفه قبل إعطائه تفاصيل كاملة.]\n`;
+  } else if (customerPhone) {
+    orderSection = `\n[هذا الزبون مسجل برقم ${customerPhone} لكن ليس لديه طلبات حالياً.]\n`;
+  } else {
+    orderSection = `\n[لم نتمكن من تحديد هوية هذا الزبون بعد. إذا سأل عن طلب، اطلب منه رقم هاتفه اللي طلب بيه وتاريخ الطلب التقريبي باش نقدرو نلقاو الطلب تاعو.]\n`;
+  }
 
   const prompt = `[متجر: ${ctx.storeName}]
 ${ctx.storeDescription ? ctx.storeDescription + '\n' : ''}${ctx.aiInstructions ? `\n[تعليمات خاصة من صاحب المتجر]: ${ctx.aiInstructions}\n` : ''}
@@ -442,7 +586,9 @@ export async function isSenderStoreOwner(
   if (storedOwnerChatId && storedOwnerChatId === String(platformChatId).trim()) return true;
 
   // Fallback: check if sender phone matches support_phone
-  const senderCol = platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
+  const senderCol = platform === 'telegram' ? 'telegram_chat_id'
+    : (platform === 'messenger' || platform === 'instagram') ? 'messenger_psid'
+    : 'messenger_psid';
   const senderRes = await pool.query(
     `SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND ${senderCol} = $2 LIMIT 1`,
     [clientId, platformChatId]

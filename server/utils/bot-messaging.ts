@@ -1,3 +1,97 @@
+/**
+ * ╔══════════════════════════════════════════════════════════════════════════════╗
+ * ║                    BOT MESSAGING — ARCHITECTURE GUIDE                       ║
+ * ╠══════════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                            ║
+ * ║  THIS FILE is the CORE of the bot system. Every platform sends messages    ║
+ * ║  through this file. If you're reading this after running out of context,   ║
+ * ║  HERE IS EVERYTHING YOU NEED TO KNOW:                                      ║
+ * ║                                                                            ║
+ * ╠══════════════════════════════════════════════════════════════════════════════╣
+ * ║  HOW THE BOT WORKS (same for ALL platforms):                               ║
+ * ║                                                                            ║
+ * ║  1. Customer places order on storefront                                    ║
+ * ║  2. sendOrderConfirmationMessages() is called                              ║
+ * ║     → Queues messages into `bot_messages` table with send_at delay         ║
+ * ║     → Each platform gets: instant receipt, pin tip, delayed confirmation   ║
+ * ║  3. processPendingMessages() runs every 30s (background worker)            ║
+ * ║     → Picks up rows WHERE status='pending' AND send_at <= NOW()            ║
+ * ║     → Routes to correct send function by message_type                      ║
+ * ║     → Updates status to 'sent' or 'failed'                                ║
+ * ║                                                                            ║
+ * ╠══════════════════════════════════════════════════════════════════════════════╣
+ * ║  PER-PLATFORM DETAILS (Telegram is the gold standard):                     ║
+ * ║                                                                            ║
+ * ║  TELEGRAM (routes/telegram.ts):                                            ║
+ * ║    Connection: t.me/Bot?start=TOKEN → webhook gets /start TOKEN            ║
+ * ║    → saves customer_phone ↔ telegram_chat_id in customer_messaging_ids     ║
+ * ║    Sending: sendTelegramMessage() via Bot API /sendMessage                 ║
+ * ║    Buttons: inline_keyboard with approve:/decline: callback_data           ║
+ * ║    AI reply: handleCustomerMessage(clientId, 'telegram', chatId, text)     ║
+ * ║    Late-connect: sendLateConnectOrderMessages() + release queued msgs      ║
+ * ║                                                                            ║
+ * ║  MESSENGER (routes/messenger.ts):                                          ║
+ * ║    Connection: m.me/PAGE?ref=TOKEN → referral event OR GET_STARTED         ║
+ * ║    → saves customer_phone ↔ messenger_psid in customer_messaging_ids       ║
+ * ║    ⚠️ KNOWN BUG: m.me ref tokens often DON'T work on mobile browsers      ║
+ * ║    → Mobile opens Messenger app but loses the ref parameter                ║
+ * ║    → Fallback: first message from user also checks pending preconnect      ║
+ * ║      tokens and auto-links if there's exactly 1 recent token              ║
+ * ║    Sending: sendMessengerMessageDirect() via Graph API /me/messages        ║
+ * ║    Buttons: template type 'button' with postback CONFIRM_ORDER_/DECLINE_   ║
+ * ║    AI reply: handleCustomerMessage(clientId, 'messenger', psid, text)      ║
+ * ║    Uses MESSAGE_TAG: POST_PURCHASE_UPDATE for messages outside 24h window  ║
+ * ║                                                                            ║
+ * ║  WHATSAPP CLOUD (routes/whatsapp-cloud.ts):                                ║
+ * ║    Connection: auto — phone number IS the identifier, no linking needed    ║
+ * ║    → saves in whatsapp_subscribers table                                   ║
+ * ║    Sending: sendWhatsAppCloudMessage() via Cloud API /{phoneNumberId}/msgs ║
+ * ║    Buttons: interactive type 'button' with reply buttons                   ║
+ * ║    AI reply: handleCustomerMessage(clientId, 'whatsapp', phone, text)      ║
+ * ║    ⚠️ processPendingMessages uses sendWhatsAppCloudMessage (Cloud API)     ║
+ * ║    ⚠️ sendWhatsAppMessage (Twilio) is LEGACY — only for old Twilio setups ║
+ * ║                                                                            ║
+ * ║  INSTAGRAM (handled inside routes/messenger.ts):                           ║
+ * ║    Connection: none — DMs arrive via same webhook with object='instagram'  ║
+ * ║    AI reply: handleCustomerMessage(clientId, 'instagram', igSenderId, txt) ║
+ * ║    No order confirmation flow — AI chat only                               ║
+ * ║                                                                            ║
+ * ║  VIBER (no webhook file yet — send-only):                                  ║
+ * ║    Connection: requires viber_user_id in customer_messaging_ids            ║
+ * ║    Sending: sendViberMessage() via Viber REST API                          ║
+ * ║    No AI reply, no buttons, no order confirmation scheduling               ║
+ * ║                                                                            ║
+ * ╠══════════════════════════════════════════════════════════════════════════════╣
+ * ║  KEY TABLES:                                                               ║
+ * ║    bot_settings        — per-client config (tokens, templates, toggles)    ║
+ * ║    bot_messages        — message queue (status: pending/sent/failed)        ║
+ * ║    customer_messaging_ids — phone↔chatId mapping per platform              ║
+ * ║    order_telegram_chats   — order-scoped Telegram chat binding             ║
+ * ║    order_messenger_chats  — order-scoped Messenger PSID binding            ║
+ * ║    confirmation_links     — web confirmation link tokens                   ║
+ * ║    order_telegram_links   — Telegram /start tokens per order               ║
+ * ║    messenger_preconnect_tokens — Messenger ref tokens per phone            ║
+ * ║    customer_preconnect_tokens  — Telegram preconnect tokens per phone      ║
+ * ║    whatsapp_subscribers        — WhatsApp subscriber tracking              ║
+ * ║    messenger_subscribers       — Messenger subscriber tracking             ║
+ * ║                                                                            ║
+ * ╠══════════════════════════════════════════════════════════════════════════════╣
+ * ║  SENDING FUNCTIONS (one per platform):                                     ║
+ * ║    sendTelegramMessage()          — Telegram Bot API (native https)        ║
+ * ║    sendMessengerMessageDirect()   — Facebook Graph API (fetch)             ║
+ * ║    sendWhatsAppCloudMessage()     — WhatsApp Cloud API (fetch)             ║
+ * ║    sendWhatsAppMessage()          — Twilio (LEGACY, kept for old setups)   ║
+ * ║    sendViberMessage()             — Viber REST API (fetch)                 ║
+ * ║                                                                            ║
+ * ╠══════════════════════════════════════════════════════════════════════════════╣
+ * ║  TEMPLATE VARIABLES (available in all message templates):                  ║
+ * ║    {customerName}, {storeName}, {companyName}, {productName},              ║
+ * ║    {price}, {totalPrice}, {orderId}, {confirmationLink},                   ║
+ * ║    {quantity}, {customerPhone}, {address}                                  ║
+ * ║                                                                            ║
+ * ╚══════════════════════════════════════════════════════════════════════════════╝
+ */
+
 import { randomBytes } from 'crypto';
 import https from 'https';
 import { ensureConnection } from "./database";
@@ -8,6 +102,9 @@ function getPlatformFbPageAccessToken() { return String(process.env.PLATFORM_FB_
 function getPlatformTelegramBotToken() { return String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim(); }
 function getPlatformTelegramBotUsername() { return String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim(); }
 function isPlatformTelegramAvailable() { return !!getPlatformTelegramBotToken() && !!getPlatformTelegramBotUsername(); }
+
+function getWaPhoneNumberId() { return String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim(); }
+function getWaAccessToken() { return String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim(); }
 
 type SendResult = { success: boolean; messageId?: string; error?: string };
 
@@ -45,6 +142,112 @@ export async function sendWhatsAppMessage(
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`[WhatsApp] Failed to send message: ${errorMsg}`);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Send WhatsApp message via WhatsApp Cloud API (Meta).
+ * This is the PRIMARY WhatsApp sender. The Twilio one above is LEGACY.
+ * Used by processPendingMessages() for 'whatsapp_cloud' and 'whatsapp' message types.
+ */
+export async function sendWhatsAppCloudMessage(
+  accessToken: string,
+  phoneNumberId: string,
+  to: string,
+  message: string
+): Promise<SendResult> {
+  try {
+    if (!accessToken) return { success: false, error: 'WhatsApp access token missing' };
+    if (!phoneNumberId) return { success: false, error: 'WhatsApp phone number ID missing' };
+    if (!to) return { success: false, error: 'WhatsApp recipient phone missing' };
+
+    const payload = {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'text',
+      text: { body: message },
+    };
+
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data: any = await response.json().catch(() => null);
+    if (!response.ok || data?.error) {
+      console.error('[WhatsApp Cloud] Send failed:', data?.error || data);
+      return { success: false, error: data?.error?.message || `Send failed (${response.status})` };
+    }
+
+    const msgId = data?.messages?.[0]?.id;
+    console.log(`[WhatsApp Cloud] Message sent to ${to}: ${msgId}`);
+    return { success: true, messageId: msgId };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[WhatsApp Cloud] Failed to send: ${errorMsg}`);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Send WhatsApp Cloud order confirmation with interactive buttons.
+ */
+export async function sendWhatsAppCloudOrderConfirmation(
+  accessToken: string,
+  phoneNumberId: string,
+  to: string,
+  params: { text: string; orderId: number }
+): Promise<SendResult> {
+  try {
+    if (!accessToken || !phoneNumberId || !to) {
+      return { success: false, error: 'WhatsApp Cloud credentials missing' };
+    }
+
+    const payload = {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'interactive',
+      interactive: {
+        type: 'button',
+        body: { text: params.text },
+        action: {
+          buttons: [
+            { type: 'reply', reply: { id: `confirm_order_${params.orderId}`, title: '✅ تأكيد' } },
+            { type: 'reply', reply: { id: `cancel_order_${params.orderId}`, title: '❌ إلغاء' } },
+          ],
+        },
+      },
+    };
+
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data: any = await response.json().catch(() => null);
+    if (!response.ok || data?.error) {
+      console.error('[WhatsApp Cloud] Order confirmation failed:', data?.error || data);
+      return { success: false, error: data?.error?.message || `Send failed (${response.status})` };
+    }
+
+    return { success: true, messageId: data?.messages?.[0]?.id };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     return { success: false, error: errorMsg };
   }
 }
@@ -399,7 +602,7 @@ export async function sendOrderConfirmationMessages(
   productName: string,
   price: number,
   confirmationLink: string,
-  options?: { skipTelegram?: boolean }
+  options?: { skipTelegram?: boolean; quantity?: number; address?: string }
 ): Promise<void> {
   try {
     const pool = await ensureConnection();
@@ -497,7 +700,10 @@ export async function sendOrderConfirmationMessages(
       price,
       totalPrice: price,
       orderId,
-      confirmationLink
+      confirmationLink,
+      quantity: options?.quantity || 1,
+      customerPhone,
+      address: options?.address || 'غير محدد',
     };
 
     // Telegram: schedule message if we have a token AND customer has connected to Telegram
@@ -618,6 +824,69 @@ export async function sendOrderConfirmationMessages(
           [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
         );
         console.log(`[Bot] Messenger messages queued with WAITING_FOR_MESSENGER_PSID for order ${orderId}`);
+      }
+    }
+
+    // WhatsApp Cloud: schedule order confirmation messages (same pattern as Telegram/Messenger).
+    // WhatsApp doesn't need pre-connect — the phone number IS the identifier.
+    // We check whatsapp_enabled OR whatsapp_cloud_enabled in bot_settings.
+    const effectiveWaToken = getWaAccessToken();
+    const effectiveWaPhoneId = String(settings.whatsapp_phone_id || '').trim() || getWaPhoneNumberId();
+    if ((settings.whatsapp_enabled || settings.whatsapp_cloud_enabled) && effectiveWaToken && effectiveWaPhoneId) {
+      const defaultInstant = `✅ تم استلام الطلب!\n\nطلب #${orderId}\nالمنتج: {productName}\nالمجموع: {totalPrice} دج\n\nسنطلب منك التأكيد قريباً.`;
+      const defaultConfirmation = `مرحباً {customerName}!\n\nهل تؤكد طلبك من {storeName}؟\n\n📦 {productName}\n💰 {totalPrice} دج\n\nاستخدم الأزرار أدناه:`;
+
+      const instantMessage = replaceTemplateVariables(
+        String(settings.template_instant_order || defaultInstant),
+        templateVariables
+      );
+      const confirmationMessage = replaceTemplateVariables(
+        String(settings.template_order_confirmation || defaultConfirmation),
+        templateVariables
+      );
+
+      // Instant receipt — send now
+      const now = new Date();
+      await pool.query(
+        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
+         VALUES ($1, $2, $3, 'whatsapp_cloud', $4, $5)`,
+        [orderId, clientId, customerPhone, instantMessage, now]
+      );
+
+      // Delayed confirmation with buttons
+      const delayMinutes = settings.whatsapp_delay_minutes || settings.telegram_delay_minutes || 5;
+      const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+      await pool.query(
+        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+         VALUES ($1, $2, $3, 'whatsapp_cloud', $4, $5, $6)`,
+        [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
+      );
+      console.log(`[Bot] WhatsApp Cloud scheduled for ${customerPhone} at ${sendAt}`);
+    }
+
+    // Viber: schedule order confirmation if enabled and customer has viber_user_id
+    if (settings.viber_enabled && settings.viber_auth_token) {
+      const viberConnectionRes = await pool.query(
+        `SELECT viber_user_id FROM customer_messaging_ids
+         WHERE client_id = $1 AND customer_phone = $2 AND viber_user_id IS NOT NULL
+         LIMIT 1`,
+        [clientId, customerPhone]
+      );
+
+      if (viberConnectionRes.rows.length > 0) {
+        const defaultConfirmation = `مرحباً {customerName}!\n\nتم استلام طلبك من {storeName}:\n📦 {productName}\n💰 {totalPrice} دج\n\nرقم الطلب: #{orderId}\n\nرابط التأكيد:\n{confirmationLink}`;
+        const confirmationMessage = replaceTemplateVariables(
+          String(settings.template_order_confirmation || defaultConfirmation),
+          templateVariables
+        );
+        const delayMinutes = settings.viber_delay_minutes || settings.telegram_delay_minutes || 5;
+        const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+           VALUES ($1, $2, $3, 'viber', $4, $5, $6)`,
+          [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
+        );
+        console.log(`[Bot] Viber scheduled for ${customerPhone} at ${sendAt}`);
       }
     }
   } catch (error) {
@@ -759,6 +1028,32 @@ export async function processPendingMessages(): Promise<void> {
           if (token && receiverId) {
             sendResult = await sendViberMessage(token, receiverId, message.message_content, senderName);
           }
+        } else if (message.message_type === 'whatsapp_cloud') {
+          // WhatsApp Cloud API handling — phone number IS the recipient
+          const settingsResult = await client.query(
+            `SELECT whatsapp_phone_id FROM bot_settings WHERE client_id = $1`,
+            [message.client_id]
+          );
+          const phoneNumberId = String(settingsResult.rows[0]?.whatsapp_phone_id || '').trim() || getWaPhoneNumberId();
+          const accessToken = getWaAccessToken();
+
+          if (!accessToken || !phoneNumberId) {
+            await client.query(
+              `UPDATE bot_messages SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
+              ['MISSING_WHATSAPP_CLOUD_CREDENTIALS', message.id]
+            );
+            continue;
+          }
+
+          // If this is a confirmation message (has confirmation_link), send with interactive buttons
+          if (message.confirmation_link) {
+            sendResult = await sendWhatsAppCloudOrderConfirmation(accessToken, phoneNumberId, message.customer_phone, {
+              text: String(message.message_content || ''),
+              orderId: Number(message.order_id),
+            });
+          } else {
+            sendResult = await sendWhatsAppCloudMessage(accessToken, phoneNumberId, message.customer_phone, message.message_content);
+          }
         } else if (message.message_type === 'messenger') {
           // Facebook Messenger handling
           const settingsResult = await client.query(
@@ -819,7 +1114,8 @@ export async function processPendingMessages(): Promise<void> {
           );
         } else {
           // If we cannot reach the provider (transient network/DNS issue), retry later instead of failing permanently.
-          if (message.message_type === 'messenger' && isRetryableNetworkError(sendResult?.error)) {
+          // Applies to ALL platforms, not just Messenger.
+          if (isRetryableNetworkError(sendResult?.error)) {
             await client.query(
               `UPDATE bot_messages
                SET send_at = NOW() + INTERVAL '5 minutes',

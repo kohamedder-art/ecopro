@@ -118,20 +118,24 @@ async function tryLinkPlatformSenderToLatestToken(
 
   // Release queued bot_messages that were waiting for PSID
   try {
+    // Release instant/pin messages now, keep confirmation delayed
     await pool.query(
       `UPDATE bot_messages
-       SET send_at = NOW(),
-           status = 'pending',
-           error_message = NULL,
-           updated_at = NOW()
-       WHERE client_id = $1
-         AND customer_phone = $2
-         AND message_type = 'messenger'
-         AND status = 'pending'
-         AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
+       SET send_at = NOW(), status = 'pending', error_message = NULL, updated_at = NOW()
+       WHERE client_id = $1 AND customer_phone = $2 AND message_type = 'messenger'
+         AND status = 'pending' AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+         AND confirmation_link IS NULL`,
       [clientId, customerPhone]
     );
-    // Trigger immediate processing so messages arrive fast
+    await pool.query(
+      `UPDATE bot_messages
+       SET send_at = GREATEST(send_at, NOW() + INTERVAL '3 minutes'), status = 'pending', error_message = NULL, updated_at = NOW()
+       WHERE client_id = $1 AND customer_phone = $2 AND message_type = 'messenger'
+         AND status = 'pending' AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+         AND confirmation_link IS NOT NULL`,
+      [clientId, customerPhone]
+    );
+    // Trigger immediate processing so instant messages arrive fast
     processPendingMessages().catch(() => {});
   } catch (e) {
     console.warn('[Messenger] Failed to release queued bot_messages in tryLink:', (e as any)?.message || e);
@@ -749,8 +753,12 @@ async function handleReferral(pageId: string, senderId: string, referral: any) {
     );
 
     // Late-connect fix: if the customer already placed an order, there may be queued bot_messages
-    // waiting for a PSID. Release those immediately now that we have linked the PSID.
+    // waiting for a PSID. Release those now that we have linked the PSID.
+    // IMPORTANT: Don't set ALL messages to send_at=NOW(). Messages without a confirmation_link
+    // (instant receipt, pin tip) can send immediately. Messages WITH confirmation_link should
+    // keep their original delay so the customer gets the confirmation LATER, not all at once.
     try {
+      // Release instant/pin messages — send now
       await pool.query(
         `UPDATE bot_messages
          SET send_at = NOW(),
@@ -761,10 +769,26 @@ async function handleReferral(pageId: string, senderId: string, referral: any) {
            AND customer_phone = $2
            AND message_type = 'messenger'
            AND status = 'pending'
-           AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
+           AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+           AND confirmation_link IS NULL`,
         [client_id, customer_phone]
       );
-      // Trigger immediate processing so messages arrive fast
+      // Release confirmation messages — keep delay (at least 3 min from now)
+      await pool.query(
+        `UPDATE bot_messages
+         SET send_at = GREATEST(send_at, NOW() + INTERVAL '3 minutes'),
+             status = 'pending',
+             error_message = NULL,
+             updated_at = NOW()
+         WHERE client_id = $1
+           AND customer_phone = $2
+           AND message_type = 'messenger'
+           AND status = 'pending'
+           AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+           AND confirmation_link IS NOT NULL`,
+        [client_id, customer_phone]
+      );
+      // Trigger immediate processing so instant messages arrive fast
       processPendingMessages().catch(() => {});
     } catch (e) {
       console.warn('[Messenger] Failed to release queued bot_messages after referral:', (e as any)?.message || e);
@@ -1142,23 +1166,22 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
           [ref_token]
         );
 
-        // Late-connect fix: if the customer already placed an order, there may be queued bot_messages
-        // waiting for a PSID. Release those immediately now that we have linked the PSID.
+        // Late-connect fix: release queued messages. Instant/pin NOW, confirmation keeps delay.
         try {
           await pool.query(
-            `UPDATE bot_messages
-             SET send_at = NOW(),
-                 status = 'pending',
-                 error_message = NULL,
-                 updated_at = NOW()
-             WHERE client_id = $1
-               AND customer_phone = $2
-               AND message_type = 'messenger'
-               AND status = 'pending'
-               AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
+            `UPDATE bot_messages SET send_at = NOW(), status = 'pending', error_message = NULL, updated_at = NOW()
+             WHERE client_id = $1 AND customer_phone = $2 AND message_type = 'messenger'
+               AND status = 'pending' AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+               AND confirmation_link IS NULL`,
             [client_id, customer_phone]
           );
-          // Trigger immediate processing so messages arrive fast
+          await pool.query(
+            `UPDATE bot_messages SET send_at = GREATEST(send_at, NOW() + INTERVAL '3 minutes'), status = 'pending', error_message = NULL, updated_at = NOW()
+             WHERE client_id = $1 AND customer_phone = $2 AND message_type = 'messenger'
+               AND status = 'pending' AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+               AND confirmation_link IS NOT NULL`,
+            [client_id, customer_phone]
+          );
           processPendingMessages().catch(() => {});
         } catch (e) {
           console.warn('[Messenger] Failed to release queued bot_messages after GET_STARTED:', (e as any)?.message || e);
@@ -1454,22 +1477,22 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
         [linkClientId, senderId, pageId, customer_phone]
       );
 
-      // Release queued bot_messages that were waiting for PSID
+      // Release queued bot_messages. Instant/pin NOW, confirmation keeps delay.
       try {
         await pool.query(
-          `UPDATE bot_messages
-           SET send_at = NOW(),
-               status = 'pending',
-               error_message = NULL,
-               updated_at = NOW()
-           WHERE client_id = $1
-             AND customer_phone = $2
-             AND message_type = 'messenger'
-             AND status = 'pending'
-             AND error_message = 'WAITING_FOR_MESSENGER_PSID'`,
+          `UPDATE bot_messages SET send_at = NOW(), status = 'pending', error_message = NULL, updated_at = NOW()
+           WHERE client_id = $1 AND customer_phone = $2 AND message_type = 'messenger'
+             AND status = 'pending' AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+             AND confirmation_link IS NULL`,
           [linkClientId, customer_phone]
         );
-        // Trigger immediate processing so messages arrive fast
+        await pool.query(
+          `UPDATE bot_messages SET send_at = GREATEST(send_at, NOW() + INTERVAL '3 minutes'), status = 'pending', error_message = NULL, updated_at = NOW()
+           WHERE client_id = $1 AND customer_phone = $2 AND message_type = 'messenger'
+             AND status = 'pending' AND error_message = 'WAITING_FOR_MESSENGER_PSID'
+             AND confirmation_link IS NOT NULL`,
+          [linkClientId, customer_phone]
+        );
         processPendingMessages().catch(() => {});
       } catch (e) {
         console.warn('[Messenger] Failed to release queued bot_messages after message link:', (e as any)?.message || e);
@@ -1496,13 +1519,65 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
     // If the user just linked via token, don't spam additional menu replies.
     if (linkedViaToken) return;
 
-    // Handle help command
-    if (text.includes('مساعدة') || text.includes('help')) {
-      await sendMessengerMessage(
-        pageAccessToken,
-        senderId,
-        `كيف يمكنني مساعدتك؟ 🤔\n\n• للاستفسار عن طلب، أرسل رقم الطلب\n• للتواصل مع الدعم، اكتب "دعم"\n• لمعرفة حالة طلبك، اكتب "طلباتي"`
+    // ── AI-FIRST approach: try AI auto-reply for ALL messages ──
+    // The AI has full store context, product catalog, delivery info, and customer orders.
+    // It handles questions like "اين طلبي", "هل تم شحن طلبي", "مرحبا", pricing questions, etc.
+    // Only fall through to static commands if AI is disabled or fails.
+    if (client_id && message.text) {
+      try {
+        const aiResponse = await handleCustomerMessage(client_id, 'messenger', senderId, String(message.text));
+        if (aiResponse) {
+          await sendMessengerMessage(pageAccessToken, senderId, aiResponse);
+          return;
+        }
+      } catch (err) {
+        console.error('[Messenger] AI auto-reply error:', err);
+      }
+    }
+
+    // ── Fallback static commands (only reached if AI is disabled or returned null) ──
+    if (text.includes('طلباتي') || text.includes('orders')) {
+      // Get orders for THIS customer — try customer_messaging_ids first, then subscriber mapping
+      let customerPhone: string | null = null;
+      const phoneRes = await pool.query(
+        `SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND messenger_psid = $2 LIMIT 1`,
+        [client_id, senderId]
       );
+      customerPhone = phoneRes.rows[0]?.customer_phone || null;
+
+      // Fallback: try subscriber mapping
+      if (!customerPhone) {
+        const subPhoneRes = await pool.query(
+          `SELECT customer_phone FROM messenger_subscribers WHERE client_id = $1 AND psid = $2 AND customer_phone IS NOT NULL LIMIT 1`,
+          [client_id, senderId]
+        );
+        customerPhone = subPhoneRes.rows[0]?.customer_phone || null;
+      }
+
+      if (!customerPhone) {
+        await sendMessengerMessage(pageAccessToken, senderId, 'لم نتمكن من العثور على طلباتك. تأكد من ربط حسابك أولاً.');
+      } else {
+        const ordersResult = await pool.query(
+          `SELECT id, status, total_price, created_at FROM store_orders
+           WHERE client_id = $1 AND customer_phone = $2
+           ORDER BY created_at DESC LIMIT 5`,
+          [client_id, customerPhone]
+        );
+
+        if (ordersResult.rows.length === 0) {
+          await sendMessengerMessage(pageAccessToken, senderId, 'لا توجد طلبات حالياً.');
+        } else {
+          const statusAr: Record<string, string> = { pending: '⏳ قيد الانتظار', confirmed: '✅ مؤكد', cancelled: '❌ ملغي', delivered: '📦 تم التسليم', shipped: '🚚 في الطريق' };
+          const ordersList = ordersResult.rows
+            .map(o => `📦 #${o.id} - ${statusAr[o.status] || o.status} - ${o.total_price} دج`)
+            .join('\n');
+          await sendMessengerMessage(
+            pageAccessToken,
+            senderId,
+            `طلباتك الأخيرة:\n\n${ordersList}`
+          );
+        }
+      }
     } else if (text.includes('دعم') || text.includes('support')) {
       let phone = '';
       try {
@@ -1522,54 +1597,12 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
           ? `📞 للتواصل مع ${store_name}: ${phone}\n\nاكتب أيضاً رقم الطلب إن وجد.`
           : `اكتب رقم الطلب إن وجد، وسيتواصل معك ${store_name} قريباً. ✅`
       );
-    } else if (text.includes('طلباتي') || text.includes('orders')) {
-      // Get orders for THIS customer only (matched by their linked phone)
-      const phoneRes = await pool.query(
-        `SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND messenger_psid = $2 LIMIT 1`,
-        [client_id, senderId]
-      );
-      const customerPhone = phoneRes.rows[0]?.customer_phone;
-      if (!customerPhone) {
-        await sendMessengerMessage(pageAccessToken, senderId, 'لم نتمكن من العثور على طلباتك. تأكد من ربط حسابك أولاً.');
-      } else {
-        const ordersResult = await pool.query(
-          `SELECT id, status, total_price, created_at FROM store_orders
-           WHERE client_id = $1 AND customer_phone = $2
-           ORDER BY created_at DESC LIMIT 5`,
-          [client_id, customerPhone]
-        );
-
-        if (ordersResult.rows.length === 0) {
-          await sendMessengerMessage(pageAccessToken, senderId, 'لا توجد طلبات حالياً.');
-        } else {
-          const ordersList = ordersResult.rows
-            .map(o => `📦 #${o.id} - ${o.status} - ${o.total_price} دج`)
-            .join('\n');
-          await sendMessengerMessage(
-            pageAccessToken,
-            senderId,
-            `طلباتك الأخيرة:\n\n${ordersList}`
-          );
-        }
-      }
     } else {
-      // AI auto-reply: try intelligent response, fall back to menu
-      if (client_id && message.text) {
-        try {
-          const aiResponse = await handleCustomerMessage(client_id, 'messenger', senderId, String(message.text));
-          if (aiResponse) {
-            await sendMessengerMessage(pageAccessToken, senderId, aiResponse);
-            return;
-          }
-        } catch (err) {
-          console.error('[Messenger] AI auto-reply error:', err);
-        }
-      }
-      // Fallback: default menu reply
+      // Ultimate fallback: generic greeting
       await sendMessengerMessage(
         pageAccessToken,
         senderId,
-        `مرحباً 👋\n\nاكتب "help" أو "مساعدة" لعرض الخيارات.\nاكتب "طلباتي" لعرض آخر الطلبات.\nاكتب "دعم" للتواصل مع المتجر.`
+        `مرحباً بك في ${store_name}! 👋\n\nأرسل أي سؤال وسنرد عليك في أقرب وقت.`
       );
     }
   } catch (error) {
@@ -1718,8 +1751,8 @@ async function handleInstagramMessage(igAccountId: string, senderId: string, mes
 
     if (!pageAccessToken) return;
 
-    // Try AI auto-reply
-    const aiResponse = await handleCustomerMessage(clientId, 'messenger', `ig_${senderId}`, text);
+    // Try AI auto-reply — pass 'instagram' as platform so per-platform toggle is checked correctly
+    const aiResponse = await handleCustomerMessage(clientId, 'instagram', `ig_${senderId}`, text);
     if (aiResponse) {
       await sendInstagramMessage(pageAccessToken, senderId, aiResponse);
       return;

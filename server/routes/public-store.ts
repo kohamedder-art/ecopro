@@ -1261,7 +1261,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
             productTitle,
             orderTotalPrice,
             storefrontSlugForLinks,
-            { skipTelegram: true }
+            { skipTelegram: true, quantity, address: customer_address || undefined }
           ).catch(() => {});
         }
       } else {
@@ -1274,7 +1274,8 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
           storeName,
           productTitle,
           orderTotalPrice,
-          storefrontSlugForLinks
+          storefrontSlugForLinks,
+          { quantity, address: customer_address || undefined }
         ).catch(() => {});
       }
     }
