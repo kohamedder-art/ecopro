@@ -45,6 +45,44 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist/spa",
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          // React core — cached long-term, rarely changes
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+            return 'react-core';
+          }
+          // Router
+          if (id.includes('node_modules/react-router')) {
+            return 'react-router';
+          }
+          // Radix UI primitives — many small packages, bundle together
+          if (id.includes('node_modules/@radix-ui')) {
+            return 'radix-ui';
+          }
+          // Lucide icons — large icon set
+          if (id.includes('node_modules/lucide-react')) {
+            return 'lucide-icons';
+          }
+          // Charts (recharts + d3 deps)
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
+            return 'charts';
+          }
+          // Framer Motion — animation library
+          if (id.includes('node_modules/framer-motion')) {
+            return 'framer-motion';
+          }
+          // Three.js / 3D (heavy, only used by template editor)
+          if (id.includes('node_modules/three') || id.includes('node_modules/@react-three')) {
+            return 'three-3d';
+          }
+          // TanStack Query
+          if (id.includes('node_modules/@tanstack')) {
+            return 'tanstack';
+          }
+        },
+      },
+    },
   },
   plugins: [react()],
   resolve: {

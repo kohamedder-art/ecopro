@@ -1,9 +1,4 @@
 // Seller pages removed
-import Pricing from "./pages/Pricing";
-import SubscriptionTiers from "./pages/SubscriptionTiers";
-import About from "./pages/About";
-import Contact from "./pages/Contact";
-import Privacy from "./pages/Privacy";
 import { Toaster } from "@/components/ui/toaster";
 
 import "./global.css";
@@ -13,17 +8,21 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { getCurrentUser, removeAuthToken, syncAuthState, startAutoRefresh } from "@/lib/auth";
 import Layout from "@/components/layout/Layout";
-import Index from "./pages/Index";
-// import AppPlaceholder from "./pages/AppPlaceholder";
-import NotFound from "./pages/NotFound";
-import Login from "./pages/Login";
-import PlatformAdminLogin from "./pages/PlatformAdminLogin";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
 import React, { Suspense, lazy } from "react";
 
-// Lazy load heavy pages for faster initial load
+// Lazy load ALL pages — keep main bundle minimal
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const PlatformAdminLogin = lazy(() => import("./pages/PlatformAdminLogin"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const SubscriptionTiers = lazy(() => import("./pages/SubscriptionTiers"));
+const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
 const Kernel = lazy(() => import("./pages/Kernel"));
 const AdminLayout = lazy(() => import("./pages/admin/Layout"));
