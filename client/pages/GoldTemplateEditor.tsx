@@ -1633,9 +1633,16 @@ export default function GoldTemplateEditor() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <span className="font-bold text-xs tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400 uppercase">STORE ENGINE</span>
-          <Button onClick={handleSave} disabled={saving} size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 h-8 text-xs font-bold shadow-[0_0_15px_-5px_rgba(79,70,229,0.4)]">
-            {saving ? <div className="w-3 h-3 rounded-full border-2 border-white/20 border-t-white animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            {settings.store_slug && (
+              <Button variant="ghost" size="sm" onClick={() => window.open(`/store/${settings.store_slug}`, '_blank')} className="hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 rounded-lg h-8 px-2" title="Preview store">
+                <ExternalLink className="w-4 h-4" />
+              </Button>
+            )}
+            <Button onClick={handleSave} disabled={saving} size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 h-8 text-xs font-bold shadow-[0_0_15px_-5px_rgba(79,70,229,0.4)]">
+              {saving ? <div className="w-3 h-3 rounded-full border-2 border-white/20 border-t-white animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            </Button>
+          </div>
         </div>
 
         {/* FULL-SCREEN PREVIEW */}
