@@ -98,18 +98,16 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-0.5">
       {Object.entries(groupedMessages).map(([date, dayMessages]) => (
         <div key={date}>
           {/* Date Divider */}
-          <div className="flex items-center gap-2 my-3">
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/50"></div>
-            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 px-2 py-0.5 bg-slate-50 dark:bg-slate-800 rounded-full">{date}</span>
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/50"></div>
+          <div className="flex items-center justify-center my-4">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 px-3 py-1 bg-white dark:bg-slate-900 rounded-lg shadow-sm">{date}</span>
           </div>
 
           {/* Messages */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {dayMessages.map((message, index) => {
               const isOwnMessage = 
                 (userRole === 'client' && message.sender_type === 'client') ||
@@ -121,109 +119,111 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                 dayMessages[index - 1]?.sender_type !== message.sender_type
               );
 
+              // Determine if this is the last message in a group (for tail)
+              const isLastInGroup = index === dayMessages.length - 1 ||
+                dayMessages[index + 1]?.sender_type !== message.sender_type;
+
               return (
-                <div key={message.id} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} group`}>
-                  <div className={`max-w-[78%] ${isOwnMessage ? 'items-end' : 'items-start'} flex flex-col`}>
+                <div key={message.id} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} group relative`}>
+                  <div className={`max-w-[75%] lg:max-w-[65%] ${isOwnMessage ? 'items-end' : 'items-start'} flex flex-col`}>
                     {/* Sender Label */}
                     {showSenderLabel && !isOwnMessage && (
-                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-0.5 ml-1">{getSenderLabel(message.sender_type)}</p>
+                      <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mb-1 ml-2">{getSenderLabel(message.sender_type)}</p>
                     )}
 
                     {/* Reply Preview */}
                     {message.reply_to_id && (
-                      <div className={`text-[10px] mb-1 px-2 py-1 rounded-lg border-l-2 ${
-                        isOwnMessage ? 'bg-violet-100 dark:bg-violet-400/10 border-violet-400' : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600'
+                      <div className={`text-[11px] mb-1 mx-1 px-3 py-1.5 rounded-lg border-l-2 ${
+                        isOwnMessage ? 'bg-white/10 border-white/30' : 'bg-slate-100 dark:bg-slate-800 border-emerald-400'
                       }`}>
-                        <div className="flex items-center gap-1 text-slate-400">
-                          <CornerUpLeft className="w-2.5 h-2.5" />
-                          <span>Replying to</span>
+                        <div className="flex items-center gap-1 text-slate-400 dark:text-slate-500">
+                          <CornerUpLeft className="w-3 h-3" />
+                          <span className="font-medium">Reply</span>
                         </div>
-                        <p className="text-slate-500 dark:text-slate-300 truncate">
+                        <p className={`truncate ${isOwnMessage ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>
                           {getReplyMessage(message.reply_to_id)?.message_content || 'Deleted message'}
                         </p>
                       </div>
                     )}
 
-                    {/* Edit/Delete/Reaction Actions - Only for own messages (edit/delete) or any message (react) */}
+                    {/* Hover Actions */}
                     {editingId !== message.id && (
-                      <div className={`flex items-center gap-1 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                        {/* Reaction button */}
-                        <div className="relative">
-                          <button
-                            onClick={() => setShowReactionPicker(showReactionPicker === message.id ? null : message.id)}
-                            className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
-                            title="Add reaction"
-                          >
-                            <SmilePlus className="w-3 h-3" />
-                          </button>
-                          
-                          {/* Reaction Picker */}
-                          {showReactionPicker === message.id && (
-                            <div className={`absolute ${isOwnMessage ? 'right-0' : 'left-0'} bottom-full mb-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-1 flex gap-0.5 shadow-lg z-10`}>
-                              {REACTIONS.map(emoji => (
-                                <button
-                                  key={emoji}
-                                  onClick={() => handleReaction(message.id, emoji)}
-                                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition text-sm"
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
+                      <div className={`flex items-center gap-0.5 mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOwnMessage ? 'justify-end mr-1' : 'justify-start ml-1'}`}>
+                        <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-100 dark:border-slate-800 p-0.5">
+                          {/* Reaction button */}
+                          <div className="relative">
+                            <button
+                              onClick={() => setShowReactionPicker(showReactionPicker === message.id ? null : message.id)}
+                              className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition"
+                              title="React"
+                            >
+                              <SmilePlus className="w-3.5 h-3.5" />
+                            </button>
+                            {showReactionPicker === message.id && (
+                              <div className={`absolute ${isOwnMessage ? 'right-0' : 'left-0'} bottom-full mb-1.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-1.5 flex gap-0.5 shadow-xl z-10`}>
+                                {REACTIONS.map(emoji => (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => handleReaction(message.id, emoji)}
+                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-base"
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {onReply && (
+                            <button
+                              onClick={() => onReply(message)}
+                              className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition"
+                              title="Reply"
+                            >
+                              <Reply className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {isOwnMessage && message.message_type === 'text' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditingId(message.id);
+                                  setEditContent(message.message_content);
+                                }}
+                                className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-violet-600 transition"
+                                title="Edit"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (deletingId === message.id) return;
+                                  setDeletingId(message.id);
+                                  try {
+                                    await onMessageDelete?.(message.id);
+                                  } finally {
+                                    setDeletingId(null);
+                                  }
+                                }}
+                                disabled={deletingId === message.id}
+                                className="p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition disabled:opacity-50"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
                           )}
                         </div>
-
-                        {/* Reply button */}
-                        {onReply && (
-                          <button
-                            onClick={() => onReply(message)}
-                            className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
-                            title="Reply"
-                          >
-                            <Reply className="w-3 h-3" />
-                          </button>
-                        )}
-
-                        {/* Edit/Delete for own messages only */}
-                        {isOwnMessage && message.message_type === 'text' && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setEditingId(message.id);
-                                setEditContent(message.message_content);
-                              }}
-                              className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-white/10 text-violet-400 hover:text-violet-600 dark:hover:text-violet-300 transition"
-                              title="Edit message"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={async () => {
-                                if (deletingId === message.id) return;
-                                setDeletingId(message.id);
-                                try {
-                                  await onMessageDelete?.(message.id);
-                                } finally {
-                                  setDeletingId(null);
-                                }
-                              }}
-                              disabled={deletingId === message.id}
-                              className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400 hover:text-red-500 transition disabled:opacity-50"
-                              title="Delete message"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </>
-                        )}
                       </div>
                     )}
 
                     {/* Message Bubble */}
                     <div
-                      className={`px-3 py-2 rounded-2xl transition-all ${
+                      className={`px-3.5 py-2 transition-all shadow-sm ${
                         isOwnMessage
-                          ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-br-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm'
+                          ? `bg-violet-600 text-white ${isLastInGroup ? 'rounded-2xl rounded-br-sm' : 'rounded-2xl'}`
+                          : `bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 ${isLastInGroup ? 'rounded-2xl rounded-bl-sm' : 'rounded-2xl'}`
                       }`}
                     >
                       {/* System Message */}
@@ -413,34 +413,34 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                     {/* Reactions Display */}
                     {message.reactions && Object.keys(message.reactions).length > 0 && (
-                      <div className={`flex flex-wrap gap-1 mt-0.5 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`flex flex-wrap gap-1 -mt-1 mb-0.5 ${isOwnMessage ? 'justify-end mr-1' : 'justify-start ml-1'}`}>
                         {Object.entries(message.reactions).map(([emoji, userIds]) => (
                           <button
                             key={emoji}
                             onClick={() => handleReaction(message.id, emoji)}
-                            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] transition ${
+                            className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] transition shadow-sm ${
                               userIds.includes(userId)
-                                ? 'bg-violet-100 dark:bg-violet-500/20 border border-violet-300 dark:border-violet-500/30 text-violet-700 dark:text-violet-300'
-                                : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                ? 'bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 text-violet-700 dark:text-violet-300'
+                                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                             }`}
                           >
                             <span>{emoji}</span>
-                            <span className="font-medium">{userIds.length}</span>
+                            <span className="font-semibold">{userIds.length}</span>
                           </button>
                         ))}
                       </div>
                     )}
 
                     {/* Time and Read Status */}
-                    <div className={`flex items-center justify-end gap-1 mt-0.5 text-[10px] font-medium ${
-                      isOwnMessage ? 'text-violet-400 dark:text-violet-300' : 'text-slate-400 dark:text-slate-500'
+                    <div className={`flex items-center gap-1 mt-0.5 text-[10px] ${
+                      isOwnMessage ? 'justify-end mr-1' : 'justify-start ml-1'
                     }`}>
-                      <span>{formatTime(message.created_at)}</span>
+                      <span className="text-slate-400 dark:text-slate-500">{formatTime(message.created_at)}</span>
                       {isOwnMessage && (
                         message.is_read ? (
-                          <CheckCheck className="w-3 h-3 text-green-500" />
+                          <CheckCheck className="w-3.5 h-3.5 text-blue-500" />
                         ) : (
-                          <Check className="w-3 h-3" />
+                          <Check className="w-3.5 h-3.5 text-slate-400" />
                         )
                       )}
                     </div>

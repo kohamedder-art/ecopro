@@ -117,21 +117,21 @@ export function ChatPage() {
   const userId = user.clientId || user.sellerId || 0;
 
   return (
-    <div className="flex flex-col md:flex-row w-full h-full bg-gray-50 overflow-hidden">
-      {/* Chat List - hidden on mobile when a chat is selected */}
-      <div className={`w-full md:w-1/3 bg-white shadow-sm flex flex-col min-h-0 order-2 md:order-1 overflow-hidden ${
+    <div className="flex w-full h-full bg-white dark:bg-slate-950 overflow-hidden">
+      {/* Sidebar — chat list */}
+      <div className={`w-full md:w-[360px] lg:w-[380px] border-r border-slate-200 dark:border-slate-800 flex flex-col min-h-0 flex-shrink-0 ${
         selectedChatId ? 'hidden md:flex' : 'flex'
       }`}>
         <ChatList
           userRole={userRole}
-          selectedChatId={selectedChatId}
+          selectedChatId={selectedChatId ?? undefined}
           onSelectChat={setSelectedChatId}
         />
       </div>
 
-      {/* Main Chat Area - full width on mobile when chat selected */}
-      <div className={`w-full md:w-2/3 bg-white flex flex-col min-h-0 order-1 md:order-2 overflow-hidden ${
-        selectedChatId ? 'flex-1' : 'hidden md:flex'
+      {/* Main chat area */}
+      <div className={`flex-1 flex flex-col min-h-0 min-w-0 ${
+        selectedChatId ? 'flex' : 'hidden md:flex'
       }`}>
         {selectedChatId ? (
           <ChatWindow
@@ -141,18 +141,18 @@ export function ChatPage() {
             onClose={() => setSelectedChatId(null)}
           />
         ) : (
-          <div className="hidden md:flex items-center justify-center bg-gray-50 flex-1">
-            <div className="text-center px-4">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">💬</span>
+          <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900/50">
+            <div className="text-center px-6 max-w-sm">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-500/10 dark:to-purple-500/10 flex items-center justify-center mx-auto mb-5">
+                <svg className="w-9 h-9 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
               </div>
-              <p className="text-gray-600 text-lg font-medium">
-                {userRole === 'seller' ? 'Select a chat to start' : 'Welcome to Chat'}
-              </p>
-              <p className="text-gray-500 text-sm mt-2">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-1.5">
+                {userRole === 'seller' ? 'Select a conversation' : 'Welcome to Support'}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 {userRole === 'seller'
-                  ? 'Click on a customer to view and respond to messages'
-                  : 'Request codes from sellers'}
+                  ? 'Choose a customer from the sidebar to view and respond to their messages'
+                  : 'Send us a message and we\'ll get back to you as soon as possible'}
               </p>
             </div>
           </div>
