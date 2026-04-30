@@ -616,9 +616,12 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
         const clientId = await resolveClientFromTelegramChatId(chatId)
           || await resolveClientFromTelegramSecret(secret);
         
+        console.log(`[TelegramWebhook] AI resolve: chatId=${chatId} → clientId=${clientId}`);
+        
         if (clientId) {
           try {
             const aiResponse = await handleCustomerMessage(clientId, 'telegram', chatId, trimmedText);
+            console.log(`[TelegramWebhook] AI response for client ${clientId}: ${aiResponse ? 'OK (' + aiResponse.length + ' chars)' : 'NULL'}`);
             if (aiResponse) {
               await sendTelegramMessage(botToken, chatId, aiResponse);
             } else {
@@ -629,6 +632,8 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
             console.error('[TelegramWebhook] AI auto-reply error:', err);
             await sendTelegramMessage(botToken, chatId, 'مرحباً! 👋\n\nسنرد عليك في أقرب وقت.');
           }
+        } else {
+          console.warn(`[TelegramWebhook] No client resolved for chatId=${chatId}, secret=${secret ? 'present' : 'missing'}`);
         }
       }
       return res.status(200).json({ ok: true });

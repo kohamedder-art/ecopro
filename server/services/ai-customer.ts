@@ -470,15 +470,25 @@ export async function handleCustomerMessage(
 ): Promise<string | null> {
   // Check if AI is enabled (global + per-platform)
   const enabled = await isAiAutoReplyEnabled(clientId, platform);
-  if (!enabled) return null;
+  if (!enabled) {
+    console.log(`[AI-Customer] AI disabled for client ${clientId} on ${platform}`);
+    return null;
+  }
 
   // Don't auto-reply to the store owner
   const ownerTalking = await isSenderStoreOwner(clientId, platform, platformChatId);
-  if (ownerTalking) return null;
+  if (ownerTalking) {
+    console.log(`[AI-Customer] Sender is store owner, skipping (client=${clientId}, chatId=${platformChatId})`);
+    return null;
+  }
 
   // Load store context
   const ctx = await loadStoreContext(clientId);
-  if (!ctx) return null;
+  if (!ctx) {
+    console.log(`[AI-Customer] No store context for client ${clientId}`);
+    return null;
+  }
+  console.log(`[AI-Customer] Processing msg for client ${clientId} (${ctx.storeName}), platform=${platform}, chatId=${platformChatId}`);
 
   // Load conversation history
   const history = await getConversationHistory(clientId, platform, platformChatId);
