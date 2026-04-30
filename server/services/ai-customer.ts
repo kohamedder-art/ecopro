@@ -306,16 +306,14 @@ async function loadOrderById(clientId: number, orderId: number): Promise<string>
     const res = await pool.query(
       `SELECT o.id, o.status, o.total_price, o.created_at, o.quantity,
               o.delivery_status, o.tracking_number, o.delivery_type,
-              o.customer_name,
+              o.customer_name, o.shipping_address,
               p.title as product_title,
               dc.name as delivery_company,
-              w.name as wilaya_name,
               (SELECT de.event_type FROM delivery_events de
                WHERE de.order_id = o.id ORDER BY de.created_at DESC LIMIT 1) as last_event_type
        FROM store_orders o
        LEFT JOIN client_store_products p ON p.id = o.product_id
        LEFT JOIN delivery_companies dc ON dc.id = o.delivery_company_id
-       LEFT JOIN wilayas w ON w.id = o.shipping_wilaya_id
        WHERE o.client_id = $1 AND o.id = $2
        LIMIT 1`,
       [clientId, orderId]
@@ -333,7 +331,7 @@ async function loadOrderById(clientId: number, orderId: number): Promise<string>
     line += `   الحالة: ${status}`;
     if (o.tracking_number) line += ` | رقم التتبع: ${o.tracking_number}`;
     if (o.delivery_company) line += ` (${o.delivery_company})`;
-    if (o.wilaya_name) line += `\n   الوجهة: ${o.wilaya_name}`;
+    if (o.shipping_address) line += `\n   الوجهة: ${o.shipping_address}`;
     line += `\n   الاسم: ${o.customer_name || 'غير محدد'}`;
     line += `\n   تاريخ الطلب: ${date}`;
     return line;
@@ -354,11 +352,9 @@ async function loadCustomerOrders(
     const res = await pool.query(
       `SELECT o.id, o.status, o.total_price, o.created_at, o.quantity,
               o.delivery_status, o.tracking_number, o.delivery_type,
-              o.customer_name, o.customer_address,
+              o.customer_name, o.shipping_address,
               p.title as product_title,
               dc.name as delivery_company,
-              w.name as wilaya_name,
-              c.name as commune_name,
               (SELECT de.description FROM delivery_events de
                WHERE de.order_id = o.id
                ORDER BY de.created_at DESC LIMIT 1) as last_tracking_update,
@@ -371,8 +367,6 @@ async function loadCustomerOrders(
        FROM store_orders o
        LEFT JOIN client_store_products p ON p.id = o.product_id
        LEFT JOIN delivery_companies dc ON dc.id = o.delivery_company_id
-       LEFT JOIN wilayas w ON w.id = o.shipping_wilaya_id
-       LEFT JOIN communes c ON c.id = o.shipping_commune_id
        WHERE o.client_id = $1 AND o.customer_phone = $2
        ORDER BY o.created_at DESC
        LIMIT 10`,
@@ -440,9 +434,8 @@ async function loadCustomerOrders(
       }
 
       // Destination
-      if (o.wilaya_name) {
-        line += `\n   الوجهة: ${o.wilaya_name}`;
-        if (o.commune_name) line += ` — ${o.commune_name}`;
+      if (o.shipping_address) {
+        line += `\n   الوجهة: ${o.shipping_address}`;
         if (o.delivery_type === 'desk') line += ' (استلام من المكتب)';
       }
 
