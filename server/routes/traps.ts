@@ -292,62 +292,55 @@ async function nuclearTrapHandler(req: any, res: any) {
   `);
 }
 
-// Special robots.txt trap - returns fake "secrets" that hackers will waste time cracking
-// All hashes are SHA256 of troll messages, completely useless
-async function robotsTrapHandler(req: any, res: any) {
-  const ip = getClientIp(req);
-  const ua = (req.headers['user-agent'] as string | undefined) || null;
-  const linuxUa = !!ua && /Linux/i.test(ua) && !/Android/i.test(ua);
-  const geo = getGeo(req, ip);
-  const fpCookie = parseCookie(req, 'ecopro_fp');
-  const fingerprint = computeFingerprint({ ip, userAgent: ua, cookie: fpCookie });
-  const u = req.user;
-
-  await logSecurityEvent({
-    event_type: 'trap_hit',
-    severity: linuxUa ? 'error' : 'warn',
-    request_id: (req as any).requestId || null,
-    method: req.method,
-    path: req.path || req.url,
-    status_code: 200,
-    ip,
-    user_agent: ua,
-    fingerprint,
-    country_code: geo.country_code,
-    region: geo.region,
-    city: geo.city,
-    user_id: u?.id != null ? String(u.id) : null,
-    user_type: u?.user_type != null ? String(u.user_type) : null,
-    role: u?.role != null ? String(u.role) : null,
-    metadata: {
-      trap_type: 'robots_honeypot',
-      query: req.query || null,
-      headers: {
-        referer: req.headers.referer || null,
-        origin: req.headers.origin || null,
-      },
-    },
-  });
-
-  // Return fake "secrets" - all SHA256 hashes of troll messages
-  // Hackers will waste hours trying to crack these thinking they're passwords
-  const fakeSecrets = `# robots.txt - DO NOT SHARE
-# Internal use only - contains sensitive paths
-
+// Real robots.txt for search engine crawlers — DO NOT trap Googlebot/Bingbot
+function robotsTxtHandler(req: any, res: any) {
+  const host = req.headers.host || 'sahla4eco.com';
+  const scheme = req.protocol || 'https';
+  const robotsTxt = `# robots.txt — Sahla4Eco
 User-agent: *
-Disallow: /api/v2/internal/
-Disallow: /admin-backup-2024/
-Disallow: /.env.production.local
-Disallow: /debug/
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /login
+Disallow: /register
+Disallow: /chat
+Disallow: /admin
 
-# DEPRECATED - remove after migration
-# DB_PASSWORD_HASH=34485af2e020123e22a93a5edb3f48beaa1337b79fde5f653f6eeab833e2d42f
-# API_SECRET=6eed3afda2aeb54555f3c47eeebe24bdbd719237e99b9ca16f5b9e3514f3c368
-# JWT_SIGNING_KEY=5d481143c5da3eeda5f971bd628fbd831ec230cfe98015e3a246d556e9fa9462
-# ADMIN_TOKEN=a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456
+# Storefronts are public and should be indexed
+Allow: /store/
+
+Sitemap: ${scheme}://${host}/sitemap.xml
 `;
+  res.type('text/plain').send(robotsTxt);
+}
 
-  res.type('text/plain').send(fakeSecrets);
+// Sitemap — lists key public pages for search engines
+async function sitemapHandler(req: any, res: any) {
+  const host = req.headers.host || 'sahla4eco.com';
+  const base = `https://${host}`;
+
+  // Static pages
+  const staticPages = ['/', '/pricing', '/about'];
+
+  // Dynamic store pages
+  let storeUrls: string[] = [];
+  try {
+    const pool = (await import('../utils/database')).ensureConnection ? await (await import('../utils/database')).ensureConnection() : null;
+    if (pool) {
+      const storesRes = await pool.query(
+        `SELECT store_slug FROM client_store_settings WHERE store_slug IS NOT NULL AND store_slug != '' LIMIT 500`
+      );
+      storeUrls = storesRes.rows.map((r: any) => `/store/${r.store_slug}`);
+    }
+  } catch { /* ignore */ }
+
+  const urls = [...staticPages, ...storeUrls];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map(u => `  <url><loc>${base}${u}</loc><changefreq>${u === '/' ? 'daily' : 'weekly'}</changefreq><priority>${u === '/' ? '1.0' : u.startsWith('/store/') ? '0.8' : '0.6'}</priority></url>`).join('\n')}
+</urlset>`;
+  res.type('application/xml').send(xml);
 }
 
 // ============================================
@@ -355,8 +348,9 @@ Disallow: /debug/
 // Express 5 uses path-to-regexp v8+ which requires {*name} for wildcards
 // ============================================
 
-// robots.txt - honeypot with fake secrets! Hackers will waste time cracking useless hashes
-router.all('/robots.txt', robotsTrapHandler);
+// Real robots.txt + sitemap for SEO
+router.get('/robots.txt', robotsTxtHandler);
+router.get('/sitemap.xml', sitemapHandler);
 
 // ============================================
 // 🚨 NUCLEAR TRAPS - Fake paths from robots.txt

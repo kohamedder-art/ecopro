@@ -1583,13 +1583,42 @@ export function createServer(options?: { skipDbInit?: boolean }) {
         const buildId = String(process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 12);
         const indexPath = path.join(spaBuildPath, 'index.html');
         fs.readFile(indexPath, 'utf8')
-          .then((html) => {
+          .then(async (html) => {
             const withBuild = buildId
               ? html.replace(/(href|src)=(['"])(\/assets\/[^'"?]+)\2/g, `$1=$2$3?v=${buildId}$2`)
               : html;
+            let withMeta = withBuild;
+
+            // Inject dynamic meta tags for store pages so crawlers see real titles
+            const storeMatch = req.path.match(/^\/store\/([^/]+)/);
+            if (storeMatch) {
+              try {
+                const { ensureConnection: getPool } = await import('./utils/database');
+                const dbPool = await getPool();
+                const storeSlug = storeMatch[1];
+                const storeRes = await dbPool.query(
+                  `SELECT store_name, seo_description FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
+                  [storeSlug]
+                );
+                const store = storeRes.rows[0];
+                if (store?.store_name) {
+                  const storeName = store.store_name.replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                  const storeDesc = (store.seo_description || `${store.store_name} — shop online on Sahla4Eco`).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                  const storeUrl = `https://${req.headers.host || 'sahla4eco.com'}${req.path}`;
+                  withMeta = withMeta
+                    .replace(/<title>[^<]*<\/title>/, `<title>${storeName} — Sahla4Eco</title>`)
+                    .replace(/<meta name="description"[^>]*>/, `<meta name="description" content="${storeDesc}" />`)
+                    .replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${storeName}" />`)
+                    .replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${storeDesc}" />`)
+                    .replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${storeUrl}" />`)
+                    .replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${storeUrl}" />`);
+                }
+              } catch { /* ignore — serve default meta */ }
+            }
+
             const injected = nonce
-              ? withBuild.replace(/<script\s+type="module"\s+/g, `<script type="module" nonce="${nonce}" `)
-              : withBuild;
+              ? withMeta.replace(/<script\s+type="module"\s+/g, `<script type="module" nonce="${nonce}" `)
+              : withMeta;
             res.setHeader('Cache-Control', 'no-store');
             res.type('html').send(injected);
           })
