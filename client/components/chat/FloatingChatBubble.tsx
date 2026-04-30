@@ -492,6 +492,23 @@ export default function FloatingChatBubble() {
 
                         {alerts.length > 0 && (
                           <div className="space-y-2">
+                            <div className="flex justify-end">
+                              <button
+                                onClick={() => {
+                                  const csrfM = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
+                                  const csrf = csrfM ? decodeURIComponent(csrfM[1]) : '';
+                                  fetch('/api/ai/alerts/dismiss-all', {
+                                    method: 'POST',
+                                    credentials: 'include',
+                                    headers: { 'X-CSRF-Token': csrf },
+                                  }).catch(() => {});
+                                  setAlerts([]);
+                                }}
+                                className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                              >
+                                مسح الكل
+                              </button>
+                            </div>
                             {alerts.map((alert, ai) => (
                               <div
                                 key={ai}

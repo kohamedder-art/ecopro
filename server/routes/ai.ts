@@ -2027,6 +2027,32 @@ router.get('/alerts', authAiLimiter, async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/ai/alerts/dismiss-all
+ * Dismiss ALL alerts for the authenticated store owner.
+ * Must be defined BEFORE :id routes so Express doesn't match "dismiss-all" as :id.
+ */
+router.post('/alerts/dismiss-all', authAiLimiter, async (req: Request, res: Response) => {
+  try {
+    const user = extractAiUser(req);
+    if (!user || !(user.role === 'client' || user.user_type === 'client')) return res.status(401).json({ error: 'Unauthorized' });
+    const clientId = user.id || user.clientId;
+    await pool.query(
+      `INSERT INTO alert_tracking (alert_id, client_id, status)
+       SELECT a.id, $1, 'dismissed'
+       FROM ai_alerts a
+       LEFT JOIN alert_tracking t ON t.alert_id = a.id AND t.client_id = $1
+       WHERE a.client_id = $1 AND COALESCE(t.status, 'unread') NOT IN ('dismissed')
+       ON CONFLICT (alert_id, client_id) DO UPDATE SET status = 'dismissed'`,
+      [clientId]
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[alerts/dismiss-all]', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
  * POST /api/ai/alerts/:id/read
  * Mark an alert as read by the store owner.
  */
