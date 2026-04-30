@@ -117,7 +117,7 @@ export async function checkAndInsertAlert(
   try {
     message = await messageFn();
   } catch {
-    // Fallback so one failed Gemini call doesn't abort other alerts
+    // Fallback so one failed AI call doesn't abort other alerts
     message = buildFallbackMessage(type, metadata);
   }
 
@@ -227,20 +227,20 @@ export async function markAlertFollowed(
 function buildFallbackMessage(type: string, meta: Record<string, unknown>): string {
   switch (type) {
     case 'stale_orders':
-      return `You have ${meta.count ?? 'some'} order(s) stuck in pending for over 24 hours. Head to your Orders dashboard to confirm or cancel them.`;
+      return `عندك ${meta.count ?? 'بعض'} طلب(ات) عالقة في الانتظار لأكثر من 24 ساعة. توجه لصفحة الطلبات لتأكيدها أو إلغائها.`;
     case 'out_of_stock':
-      return `${meta.count ?? 'Some'} of your active products are out of stock. Update your inventory to avoid losing sales.`;
+      return `${meta.count ?? 'بعض'} منتجات نفذ مخزونها. حدّث المخزون باش ما تخسرش مبيعات.`;
     case 'low_stock':
-      return `${meta.count ?? 'Some'} inventory items are below their reorder level. Consider restocking before you run out.`;
+      return `${meta.count ?? 'بعض'} منتجات مخزونها قارب ينفذ. فكّر في إعادة التوريد.`;
     case 'subscription_expiry':
-      return `Your subscription expires in ${meta.daysLeft ?? 'a few'} day(s). Renew now to keep your store running.`;
+      return `اشتراكك ينتهي خلال ${meta.daysLeft ?? 'أيام قليلة'} يوم. جدّد الآن باش متجرك يبقى شغال.`;
     case 'fake_order_spike':
-      return `You have ${meta.count ?? 'several'} fake or duplicate orders this week. Review them in your Orders dashboard.`;
+      return `عندك ${meta.count ?? 'عدة'} طلبات مزيفة أو مكررة هاد الأسبوع. راجعها في صفحة الطلبات.`;
     case 'bot_disabled':
-      return `Your messaging bot is currently disabled, but orders are still coming in. Enable it so customers receive confirmations automatically.`;
+      return `البوت تاع الرسائل معطّل حالياً والطلبات مازالت داخلة. فعّلو باش العملاء يتلقاو تأكيد تلقائي.`;
     case 'delivery_gap':
-      return `Some regions placing orders with you have no delivery price configured. Set delivery prices for all active wilayas.`;
+      return `بعض الولايات اللي عندها طلبات ما عندهاش أسعار توصيل. حدّد أسعار التوصيل لكل الولايات.`;
     default:
-      return `Guardian detected an issue with your store. Check your dashboard for details.`;
+      return `تم اكتشاف مشكلة في متجرك. تحقق من لوحة التحكم.`;
   }
 }

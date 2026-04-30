@@ -117,10 +117,10 @@ export default function FloatingChatBubble() {
   }, [chatMode, historyLoaded]);
 
   const SUGGESTED_QUESTIONS = [
-    '� Find me a winning product to sell right now',
-    '💰 How much money did I make this week?',
-    '🚀 What should I do next to grow my store?',
-    '📦 Show me my pending orders',
+    '🔍 لقيلي منتج رابح نبيعو دروك',
+    '💰 شحال ربحت هاد الأسبوع؟',
+    '🚀 واش لازم ندير باش نكبّر المتجر تاعي؟',
+    '📦 وريني الطلبات اللي مازالت معلقة',
   ];
 
   const handleAiImageAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -486,8 +486,8 @@ export default function FloatingChatBubble() {
                           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto shadow-lg shadow-purple-500/20">
                             <Sparkles className="w-5 h-5 text-white" />
                           </div>
-                          <p className="text-[15px] font-semibold text-slate-800 dark:text-white">Your AI Business Partner</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500">Let's find your next winning product</p>
+                          <p className="text-[15px] font-semibold text-slate-800 dark:text-white">مساعدك الذكي</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500">كيفاش نقدر نعاونك اليوم؟</p>
                         </div>
 
                         {alerts.length > 0 && (
