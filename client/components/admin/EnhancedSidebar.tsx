@@ -74,7 +74,6 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
         { titleKey: "store.management", path: "/dashboard/preview", icon: <Eye className="w-3.5 h-3.5" />, permission: "view_products_list" },
         { titleKey: "store.templateEditor", path: "/template-editor", icon: <Palette className="w-3.5 h-3.5" />, permission: "view_products_list" },
         { titleKey: "store.viewStorefront", path: storefrontPath, icon: <Store className="w-3.5 h-3.5" />, permission: "view_products_list" },
-        { titleKey: "store.checkoutSettings", path: "/dashboard/checkout-settings", icon: <ShoppingCart className="w-3.5 h-3.5" />, permission: "view_products_list" },
       ],
     },
     { titleKey: "sidebar.stock", path: "/dashboard/stock", icon: <Package className="w-[18px] h-[18px]" />, permission: "view_inventory" },
@@ -206,6 +205,8 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
       <div key={item.path}>
         <Link
           to={hasChildren || !hasAccess ? "#" : item.path}
+          target={item.path.startsWith('/store/') ? '_blank' : undefined}
+          rel={item.path.startsWith('/store/') ? 'noopener noreferrer' : undefined}
           onMouseEnter={() => hasAccess && !hasChildren && handlePrefetch(item.path)}
           onClick={(e) => {
             if (!hasAccess) {
@@ -215,7 +216,7 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
             if (hasChildren) {
               e.preventDefault();
               toggleExpand(item.path);
-            } else {
+            } else if (!item.path.startsWith('/store/')) {
               setMobileOpen(false);
             }
           }}

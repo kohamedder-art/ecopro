@@ -571,10 +571,12 @@ export async function sendOrderConfirmationMessages(
            VALUES ($1, $2, $3, 'messenger', $4, $5)`,
           [orderId, clientId, customerPhone, instantMessage, now]
         );
+        // Add 5 second delay for pin message so it arrives after the greeting
+        const pinDelay = new Date(now.getTime() + 5000);
         await pool.query(
           `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
            VALUES ($1, $2, $3, 'messenger', $4, $5)`,
-          [orderId, clientId, customerPhone, pinMessage, now]
+          [orderId, clientId, customerPhone, pinMessage, pinDelay]
         );
 
         const delayMinutes = settings.messenger_delay_minutes || 5;
@@ -603,10 +605,12 @@ export async function sendOrderConfirmationMessages(
            VALUES ($1, $2, $3, 'messenger', $4, $5, 'WAITING_FOR_MESSENGER_PSID')`,
           [orderId, clientId, customerPhone, instantMessage, now]
         );
+        // Add 5 second delay for pin message
+        const pinDelay = new Date(now.getTime() + 5000);
         await pool.query(
           `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at, error_message)
            VALUES ($1, $2, $3, 'messenger', $4, $5, 'WAITING_FOR_MESSENGER_PSID')`,
-          [orderId, clientId, customerPhone, pinMessage, now]
+          [orderId, clientId, customerPhone, pinMessage, pinDelay]
         );
         await pool.query(
           `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at, error_message)
@@ -648,11 +652,12 @@ function defaultWhatsAppTemplate(): string {
 export async function processPendingMessages(): Promise<void> {
   try {
     const pool = await ensureConnection();
-    // Get all messages that are due to be sent
+    // Get all messages that are due to be sent (ordered by send_at and id for consistency)
     const result = await pool.query(
       `SELECT * FROM bot_messages 
        WHERE status = 'pending' 
        AND send_at <= NOW()
+       ORDER BY send_at ASC, id ASC
        LIMIT 100`
     );
 

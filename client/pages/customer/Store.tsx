@@ -5,7 +5,7 @@ import {
   Plus, Search, Eye, Copy, ExternalLink, Edit, Trash2, 
   Star, Package, DollarSign, Image as ImageIcon, Settings,
   Link as LinkIcon, Check, Share2, Grid, List, Store as StoreIcon,
-  Sparkles, Loader2
+  Sparkles, Loader2, Layers, Palette, Hash, AlertTriangle
 } from 'lucide-react';
 import { useAI } from '@/hooks/useAI';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { TemplatesTab } from '@/components/TemplatesTab';
 import { generateStoreUrl, storeNameToSlug } from '@/utils/storeUrl';
 import { useTranslation } from '@/lib/i18n';
@@ -2322,16 +2323,21 @@ export default function Store() {
             )}
 
             {productFormSection === 'variants' && (
-              <div className="space-y-2 bg-indigo-500/5 dark:bg-indigo-900/10 p-2 md:p-3 rounded border border-indigo-500/20">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{t('store.productForm.variantsTitle')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('store.productForm.variantsDesc')}</p>
+              <div className="space-y-4 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/30 dark:to-purple-950/20 p-4 md:p-5 rounded-xl border border-indigo-200/50 dark:border-indigo-800/30">
+                {/* Header */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                      <Layers className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('store.productForm.variantsTitle')}</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('store.productForm.variantsDesc')}</p>
+                    </div>
                   </div>
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
                     onClick={() => {
                       setVariantsDraft((prev) => [
                         ...prev,
@@ -2347,146 +2353,432 @@ export default function Store() {
                       setVariantsDirty(true);
                       setVariantsLoaded(true);
                     }}
-                    className="border-indigo-500/30 hover:bg-indigo-500/10"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/25"
                   >
+                    <Plus className="h-4 w-4 mr-1" />
                     {t('store.productForm.addVariant')}
                   </Button>
                 </div>
 
                 {loadingVariants && (
-                  <div className="text-sm text-muted-foreground">{t('store.productForm.loadingVariants')}</div>
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                  </div>
                 )}
 
                 {!loadingVariants && variantsLoaded && variantsDraft.length === 0 && (
-                  <div className="text-sm text-muted-foreground">{t('store.productForm.noVariants')}</div>
+                  <div className="text-center py-8 bg-white dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                    <Layers className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">لا يوجد أنواع للمنتج</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs mx-auto leading-relaxed">
+                      اضغط "إضافة نوع" لإنشاء متغيرات مثل:<br/>
+                      <span className="font-semibold text-indigo-500">أحمر</span> مقاس M - 20 قطعة<br/>
+                      <span className="font-semibold text-indigo-500">أحمر</span> مقاس L - 15 قطعة<br/>
+                      <span className="font-semibold text-indigo-500">أسود</span> مقاس M - 10 قطع
+                    </p>
+                  </div>
                 )}
 
                 {!loadingVariants && variantsDraft.length > 0 && (() => {
-                  const hasAnyColor = variantsDraft.some(v => (v.color || '').trim());
-                  const hasAnySize = variantsDraft.some(v => (v.size || '').trim());
-                  const allHaveColor = variantsDraft.every(v => (v.color || '').trim());
-                  const allHaveSize = variantsDraft.every(v => (v.size || '').trim());
-                  const colorInconsistent = hasAnyColor && !allHaveColor;
-                  const sizeInconsistent = hasAnySize && !allHaveSize;
+                  // Group variants by color for better visual organization
+                  const colorGroups: { [color: string]: typeof variantsDraft } = {};
+                  const noColorVariants: typeof variantsDraft = [];
+                  
+                  variantsDraft.forEach((v, idx) => {
+                    const color = (v.color || '').trim();
+                    if (color) {
+                      if (!colorGroups[color]) colorGroups[color] = [];
+                      colorGroups[color].push({ ...v, originalIndex: idx } as any);
+                    } else {
+                      noColorVariants.push({ ...v, originalIndex: idx } as any);
+                    }
+                  });
+
                   return (
-                  <div className="space-y-2">
-                    {(colorInconsistent || sizeInconsistent) && (
-                      <div className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
-                        <span className="text-lg leading-none">⚠️</span>
-                        <div>
-                          <span className="font-bold">{t('store.productForm.variantInconsistentTitle') || 'تنبيه: بيانات الأنواع غير مكتملة'}</span>
-                          <br />
-                          {colorInconsistent && <span>{t('store.productForm.variantInconsistentColor') || 'بعض الأنواع لديها لون والبعض لا — يجب ملء اللون لجميع الأنواع أو تركه فارغاً للجميع.'}</span>}
-                          {colorInconsistent && sizeInconsistent && <br />}
-                          {sizeInconsistent && <span>{t('store.productForm.variantInconsistentSize') || 'بعض الأنواع لديها مقاس والبعض لا — يجب ملء المقاس لجميع الأنواع أو تركه فارغاً للجميع.'}</span>}
+                  <div className="space-y-3">
+                    {/* Color Groups */}
+                    {Object.entries(colorGroups).map(([color, variants]) => (
+                      <div key={color} className="bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                        {/* Color Header */}
+                        <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center">
+                              <Palette className="h-3.5 w-3.5 text-white" />
+                            </div>
+                            <span className="font-semibold text-slate-900 dark:text-white">{color}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                              {variants.length} {variants.length === 1 ? 'مقاس' : 'مقاسات'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Size Variants */}
+                        <div className="p-3 space-y-3">
+                          {(() => {
+                            const commonSizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
+                            const shoeSizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
+                            return variants.map((v: any) => (
+                            <div key={v.originalIndex} className="flex flex-col gap-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                              {/* Size Selector */}
+                              <div className="space-y-2">
+                                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">اختر المقاس:</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {/* Clothing sizes */}
+                                  <span className="text-[10px] text-slate-500 py-1">ملابس:</span>
+                                  {commonSizes.map((size) => (
+                                    <button
+                                      key={size}
+                                      type="button"
+                                      onClick={() => {
+                                        const idx = v.originalIndex;
+                                        setVariantsDraft((prev) =>
+                                          prev.map((row, i) => (i === idx ? { ...row, size } : row))
+                                        );
+                                        setVariantsDirty(true);
+                                      }}
+                                      className={`min-w-[36px] px-2 py-1 rounded-md text-xs font-medium border transition-all ${
+                                        v.size === size
+                                          ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm'
+                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
+                                      }`}
+                                    >
+                                      {size}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  <span className="text-[10px] text-slate-500 py-1">أحذية:</span>
+                                  {shoeSizes.map((size) => (
+                                    <button
+                                      key={size}
+                                      type="button"
+                                      onClick={() => {
+                                        const idx = v.originalIndex;
+                                        setVariantsDraft((prev) =>
+                                          prev.map((row, i) => (i === idx ? { ...row, size } : row))
+                                        );
+                                        setVariantsDirty(true);
+                                      }}
+                                      className={`min-w-[36px] px-2 py-1 rounded-md text-xs font-medium border transition-all ${
+                                        v.size === size
+                                          ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm'
+                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
+                                      }`}
+                                    >
+                                      {size}
+                                    </button>
+                                  ))}
+                                  {/* Custom size */}
+                                  <Input
+                                    value={v.size && ![...commonSizes, ...shoeSizes].includes(v.size) ? v.size : ''}
+                                    onChange={(e) => {
+                                      const next = e.target.value;
+                                      const idx = v.originalIndex;
+                                      setVariantsDraft((prev) =>
+                                        prev.map((row, i) => (i === idx ? { ...row, size: next } : row))
+                                      );
+                                      setVariantsDirty(true);
+                                    }}
+                                    placeholder="مقاس آخر"
+                                    className="h-7 w-20 text-xs"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Stock, Price, Actions */}
+                              <div className="flex items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-600">
+                                <div className="flex items-center gap-2">
+                                  <Hash className="h-4 w-4 text-slate-400" />
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={v.stock_quantity ?? ''}
+                                    onChange={(e) => {
+                                      const next = Number(e.target.value || 0);
+                                      const idx = v.originalIndex;
+                                      setVariantsDraft((prev) =>
+                                        prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row))
+                                      );
+                                      setVariantsDirty(true);
+                                    }}
+                                    className="h-9 w-24 text-sm"
+                                    placeholder="المخزون"
+                                  />
+                                </div>
+                                
+                                <div className="hidden sm:block">
+                                  <div className="relative">
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">دج</span>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      step="0.01"
+                                      value={v.price === undefined ? '' : String(v.price)}
+                                      onChange={(e) => {
+                                        const raw = e.target.value;
+                                        const next = raw === '' ? undefined : Number(raw);
+                                        const idx = v.originalIndex;
+                                        setVariantsDraft((prev) =>
+                                          prev.map((row, i) => (i === idx ? { ...row, price: next } : row))
+                                        );
+                                        setVariantsDirty(true);
+                                      }}
+                                      placeholder="السعر (اختياري)"
+                                      className="h-9 w-28 pl-8 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-3 flex-1 justify-end">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const idx = v.originalIndex;
+                                      setVariantsDraft((prev) => prev.filter((_, i) => i !== idx));
+                                      setVariantsDirty(true);
+                                      setVariantsLoaded(true);
+                                    }}
+                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 order-2">
+                                      {v.is_active !== false ? 'نشط' : 'معطل'}
+                                    </span>
+                                    <span dir="ltr" className="order-1">
+                                      <Switch
+                                        checked={v.is_active ?? true}
+                                        onCheckedChange={(checked) => {
+                                          const idx = v.originalIndex;
+                                          setVariantsDraft((prev) =>
+                                            prev.map((row, i) => (i === idx ? { ...row, is_active: checked } : row))
+                                          );
+                                          setVariantsDirty(true);
+                                        }}
+                                      />
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Variants without color - Show with color picker and size selector */}
+                    {noColorVariants.length > 0 && (
+                      <div className="bg-white dark:bg-slate-800/80 rounded-xl border border-amber-200 dark:border-amber-800/50 overflow-hidden shadow-sm">
+                        <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800/30 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">أنواع غير مكتملة - أختر اللون والمقاس</span>
+                        </div>
+                        <div className="p-3 space-y-3">
+                          {noColorVariants.map((v: any) => {
+                            const commonColors = [
+                              { name: 'أحمر', bg: 'bg-red-500', border: 'border-red-600' },
+                              { name: 'أزرق', bg: 'bg-blue-500', border: 'border-blue-600' },
+                              { name: 'أسود', bg: 'bg-slate-900', border: 'border-slate-950' },
+                              { name: 'أبيض', bg: 'bg-white', border: 'border-slate-300', text: 'text-slate-900' },
+                              { name: 'أخضر', bg: 'bg-emerald-500', border: 'border-emerald-600' },
+                              { name: 'أصفر', bg: 'bg-yellow-400', border: 'border-yellow-500', text: 'text-slate-900' },
+                              { name: 'رمادي', bg: 'bg-gray-400', border: 'border-gray-500' },
+                              { name: 'بني', bg: 'bg-amber-700', border: 'border-amber-800' },
+                              { name: 'برتقالي', bg: 'bg-orange-500', border: 'border-orange-600' },
+                              { name: 'وردي', bg: 'bg-pink-400', border: 'border-pink-500' },
+                              { name: 'بنفسجي', bg: 'bg-purple-500', border: 'border-purple-600' },
+                              { name: 'ذهبي', bg: 'bg-yellow-600', border: 'border-yellow-700' },
+                              { name: 'فضي', bg: 'bg-slate-300', border: 'border-slate-400' },
+                              { name: 'بيج', bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-800' },
+                            ];
+                            const commonSizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
+                            const shoeSizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
+                            
+                            return (
+                            <div key={v.originalIndex} className="flex flex-col gap-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4">
+                              {/* Color Selector */}
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                  <Palette className="h-4 w-4 text-indigo-500" />
+                                  اختر اللون:
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                  {commonColors.map((color) => (
+                                    <button
+                                      key={color.name}
+                                      type="button"
+                                      onClick={() => {
+                                        const idx = v.originalIndex;
+                                        setVariantsDraft((prev) =>
+                                          prev.map((row, i) => (i === idx ? { ...row, color: color.name } : row))
+                                        );
+                                        setVariantsDirty(true);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${
+                                        v.color === color.name
+                                          ? `${color.bg} ${color.border} text-white shadow-md`
+                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
+                                      } ${color.text || ''}`}
+                                    >
+                                      <span className={`inline-block w-3 h-3 rounded-full mr-1.5 ${color.bg} ${color.name === 'أبيض' || color.name === 'بيج' ? 'border border-slate-300' : ''}`}></span>
+                                      {color.name}
+                                    </button>
+                                  ))}
+                                  {/* Custom color input */}
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      value={v.color && !commonColors.find(c => c.name === v.color) ? v.color : ''}
+                                      onChange={(e) => {
+                                        const next = e.target.value;
+                                        const idx = v.originalIndex;
+                                        setVariantsDraft((prev) =>
+                                          prev.map((row, i) => (i === idx ? { ...row, color: next } : row))
+                                        );
+                                        setVariantsDirty(true);
+                                      }}
+                                      placeholder="لون آخر..."
+                                      className="h-8 w-28 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Size Selector */}
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">اختر المقاس:</label>
+                                
+                                {/* Clothing sizes */}
+                                <div className="flex flex-wrap gap-1.5">
+                                  <span className="text-xs text-slate-500 py-1">ملابس:</span>
+                                  {commonSizes.map((size) => (
+                                    <button
+                                      key={size}
+                                      type="button"
+                                      onClick={() => {
+                                        const idx = v.originalIndex;
+                                        setVariantsDraft((prev) =>
+                                          prev.map((row, i) => (i === idx ? { ...row, size } : row))
+                                        );
+                                        setVariantsDirty(true);
+                                      }}
+                                      className={`min-w-[36px] px-2 py-1 rounded-md text-xs font-medium border transition-all ${
+                                        v.size === size
+                                          ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm'
+                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
+                                      }`}
+                                    >
+                                      {size}
+                                    </button>
+                                  ))}
+                                </div>
+                                
+                                {/* Shoe sizes */}
+                                <div className="flex flex-wrap gap-1.5">
+                                  <span className="text-xs text-slate-500 py-1">أحذية:</span>
+                                  {shoeSizes.map((size) => (
+                                    <button
+                                      key={size}
+                                      type="button"
+                                      onClick={() => {
+                                        const idx = v.originalIndex;
+                                        setVariantsDraft((prev) =>
+                                          prev.map((row, i) => (i === idx ? { ...row, size } : row))
+                                        );
+                                        setVariantsDirty(true);
+                                      }}
+                                      className={`min-w-[36px] px-2 py-1 rounded-md text-xs font-medium border transition-all ${
+                                        v.size === size
+                                          ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm'
+                                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
+                                      }`}
+                                    >
+                                      {size}
+                                    </button>
+                                  ))}
+                                  {/* Custom size */}
+                                  <Input
+                                    value={v.size && ![...commonSizes, ...shoeSizes].includes(v.size) ? v.size : ''}
+                                    onChange={(e) => {
+                                      const next = e.target.value;
+                                      const idx = v.originalIndex;
+                                      setVariantsDraft((prev) =>
+                                        prev.map((row, i) => (i === idx ? { ...row, size: next } : row))
+                                      );
+                                      setVariantsDirty(true);
+                                    }}
+                                    placeholder="مقاس آخر"
+                                    className="h-7 w-20 text-xs"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Stock and Actions */}
+                              <div className="flex items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-600">
+                                <div className="flex items-center gap-2">
+                                  <Hash className="h-4 w-4 text-slate-400" />
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={v.stock_quantity ?? ''}
+                                    onChange={(e) => {
+                                      const next = Number(e.target.value || 0);
+                                      const idx = v.originalIndex;
+                                      setVariantsDraft((prev) =>
+                                        prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row))
+                                      );
+                                      setVariantsDirty(true);
+                                    }}
+                                    className="h-9 w-24 text-sm"
+                                    placeholder="المخزون"
+                                  />
+                                </div>
+                                
+                                <div className="flex items-center gap-3 flex-1 justify-end">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const idx = v.originalIndex;
+                                      setVariantsDraft((prev) => prev.filter((_, i) => i !== idx));
+                                      setVariantsDirty(true);
+                                      setVariantsLoaded(true);
+                                    }}
+                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 order-2">
+                                      {v.is_active !== false ? 'نشط' : 'معطل'}
+                                    </span>
+                                    <span dir="ltr" className="order-1">
+                                      <Switch
+                                        checked={v.is_active ?? true}
+                                        onCheckedChange={(checked) => {
+                                          const idx = v.originalIndex;
+                                          setVariantsDraft((prev) =>
+                                            prev.map((row, i) => (i === idx ? { ...row, is_active: checked } : row))
+                                          );
+                                          setVariantsDirty(true);
+                                        }}
+                                      />
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
-                    {variantsDraft.map((v, idx) => {
-                      const missingColor = colorInconsistent && !(v.color || '').trim();
-                      const missingSize = sizeInconsistent && !(v.size || '').trim();
-                      return (
-                      <div key={v.id ?? idx} className={`grid grid-cols-2 md:grid-cols-6 gap-2 items-end ${(missingColor || missingSize) ? 'ring-2 ring-amber-500/50 rounded-lg p-1' : ''}`}>
-                        <div className="space-y-1">
-                          <Label className={`text-xs ${missingColor ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}>{t('store.productForm.variantColor')}{missingColor ? ' ⚠️' : ''}</Label>
-                          <Input
-                            value={v.color || ''}
-                            onChange={(e) => {
-                              const next = e.target.value;
-                              setVariantsDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, color: next } : row))
-                              );
-                              setVariantsDirty(true);
-                            }}
-                            placeholder={t('store.productForm.variantColorPlaceholder')}
-                            className={missingColor ? 'border-amber-500 bg-amber-500/5' : ''}
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className={`text-xs ${missingSize ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}>{t('store.productForm.variantSize')}{missingSize ? ' ⚠️' : ''}</Label>
-                          <Input
-                            value={v.size || ''}
-                            onChange={(e) => {
-                              const next = e.target.value;
-                              setVariantsDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, size: next } : row))
-                              );
-                              setVariantsDirty(true);
-                            }}
-                            placeholder={t('store.productForm.variantSizePlaceholder')}
-                            className={missingSize ? 'border-amber-500 bg-amber-500/5' : ''}
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-xs">{t('store.productForm.variantStock')}</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={Number(v.stock_quantity ?? 0)}
-                            onChange={(e) => {
-                              const next = Number(e.target.value || 0);
-                              setVariantsDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row))
-                              );
-                              setVariantsDirty(true);
-                            }}
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-xs">{t('store.productForm.variantPriceOptional')}</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={v.price === undefined ? '' : String(v.price)}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              const next = raw === '' ? undefined : Number(raw);
-                              setVariantsDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, price: next } : row))
-                              );
-                              setVariantsDirty(true);
-                            }}
-                            placeholder={t('store.productForm.variantPricePlaceholder')}
-                          />
-                        </div>
-
-                        <div className="flex items-center gap-2 h-10">
-                          <input
-                            type="checkbox"
-                            checked={v.is_active ?? true}
-                            onChange={(e) => {
-                              const next = e.target.checked;
-                              setVariantsDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, is_active: next } : row))
-                              );
-                              setVariantsDirty(true);
-                            }}
-                            className="w-4 h-4"
-                          />
-                          <Label className="text-xs">{t('store.productForm.variantActive')}</Label>
-                        </div>
-
-                        <div className="flex justify-end">
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              setVariantsDraft((prev) => prev.filter((_, i) => i !== idx));
-                              setVariantsDirty(true);
-                              setVariantsLoaded(true);
-                            }}
-                          >
-                            {t('store.productForm.removeVariant')}
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                    })}
                   </div>
                   );
                 })()}
