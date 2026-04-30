@@ -380,7 +380,7 @@ export default function FloatingChatBubble() {
   return (
     <>
       {/* ── Floating trigger button ── */}
-      <div className={`fixed bottom-4 z-[9999] ${isEditorPage ? 'left-4' : 'right-4'}`}>
+      <div className={`fixed bottom-20 sm:bottom-4 z-[9999] ${isEditorPage ? 'left-4' : 'right-4'}`}>
         <div className="relative">
           {unreadMessagesCount > 0 && (
             <div className="absolute inset-0 rounded-full border-2 border-indigo-400 animate-ping opacity-60 pointer-events-none" />
