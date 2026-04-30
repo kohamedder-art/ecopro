@@ -64,17 +64,10 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('node_modules/lucide-react')) {
             return 'lucide-icons';
           }
-          // Charts (recharts + d3 deps)
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
-            return 'charts';
-          }
+          // NOTE: recharts/d3 NOT split — they have circular deps that break manual chunking
           // Framer Motion — animation library
           if (id.includes('node_modules/framer-motion')) {
             return 'framer-motion';
-          }
-          // Three.js / 3D (heavy, only used by template editor)
-          if (id.includes('node_modules/three') || id.includes('node_modules/@react-three')) {
-            return 'three-3d';
           }
           // TanStack Query
           if (id.includes('node_modules/@tanstack')) {
