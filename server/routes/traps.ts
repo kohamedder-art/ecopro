@@ -352,6 +352,11 @@ ${urls.map(u => `  <url><loc>${base}${u}</loc><changefreq>${u === '/' ? 'daily' 
 router.get('/robots.txt', robotsTxtHandler);
 router.get('/sitemap.xml', sitemapHandler);
 
+// Google Search Console verification
+router.get('/google5e19f89849407905.html', (_req: any, res: any) => {
+  res.type('html').send('google-site-verification: google5e19f89849407905.html');
+});
+
 // ============================================
 // 🚨 NUCLEAR TRAPS - Fake paths from robots.txt
 // Anyone hitting these gets INSTANTLY BLOCKED
