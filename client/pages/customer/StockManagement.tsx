@@ -39,8 +39,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
+import { markOnboardingStepComplete } from '@/lib/onboarding';
+import { formatPriceForInput } from '@/lib/formatPrice';
 
 interface StockItem {
   id: number;
@@ -122,7 +125,7 @@ export default function StockManagement() {
   const [uploading, setUploading] = useState(false);
   const [activeFormSection, setActiveFormSection] = useState<'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'notes'>('product');
   const [adjustData, setAdjustData] = useState({
-    adjustment: 0,
+    adjustment: undefined as number | undefined,
     reason: 'adjustment',
     notes: '',
   });
@@ -1406,9 +1409,11 @@ export default function StockManagement() {
                             <Input
                               type="number"
                               min={0}
-                              value={Number(v.stock_quantity ?? 0)}
+                              value={v.stock_quantity ?? ''}
                               onChange={(e) => {
-                                const next = Math.max(0, parseInt(e.target.value) || 0);
+                                const raw = e.target.value;
+                                const parsed = raw === '' ? undefined : Number(raw);
+                                const next = typeof parsed === 'number' && Number.isFinite(parsed) ? Math.max(0, parsed) : undefined;
                                 setVariantsDraft((prev) =>
                                   prev.map((x) => (x === v ? { ...x, stock_quantity: next } : x))
                                 );
@@ -1523,7 +1528,7 @@ export default function StockManagement() {
                       id="unit_price"
                       type="number"
                       step="0.01"
-                      value={formData.unit_price || ''}
+                      value={formatPriceForInput(formData.unit_price)}
                       onChange={(e) => {
                         const v = e.target.value;
                         const n = Number(v);
@@ -1598,8 +1603,12 @@ export default function StockManagement() {
                         type="number"
                         min="0"
                         step="1"
-                        value={formData.shipping_flat_fee ?? 0}
-                        onChange={(e) => setFormData(prev => ({ ...prev, shipping_flat_fee: parseFloat(e.target.value) || 0 }))}
+                        value={formData.shipping_flat_fee ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const parsed = raw === '' ? undefined : Number(raw);
+                          setFormData(prev => ({ ...prev, shipping_flat_fee: typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined }))
+                        }}
                         className="border-indigo-500/30 focus:border-indigo-500/60 h-9 text-base"
                       />
                     </div>
@@ -1746,8 +1755,12 @@ export default function StockManagement() {
                 >−</button>
                 <Input
                   type="number"
-                  value={adjustData.adjustment === 0 ? '' : adjustData.adjustment}
-                  onChange={(e) => setAdjustData({ ...adjustData, adjustment: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
+                  value={adjustData.adjustment ?? ''}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const parsed = raw === '' ? undefined : Number(raw);
+                    setAdjustData({ ...adjustData, adjustment: typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined });
+                  }}
                   placeholder="0"
                   className="h-8 text-center text-sm font-semibold tabular-nums flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />

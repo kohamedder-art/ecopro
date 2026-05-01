@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useStoreProducts } from '@/hooks/useStoreProducts';
 import { markOnboardingStepComplete } from '@/lib/onboarding';
+import { formatPriceForInput } from '@/lib/formatPrice';
 import {
   Dialog,
   DialogContent,
@@ -336,6 +337,7 @@ export default function Store() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { t, locale } = useTranslation();
+  const isRTL = locale === 'ar';
   const { toast } = useToast();
   // Products Management was duplicated with Overview; keep a single Store page.
 
@@ -627,7 +629,9 @@ export default function Store() {
           };
 
           const handleCreateProduct = async () => {
+            if (savingProduct) return; // Prevent duplicate submissions
             try {
+              setSavingProduct(true);
               setProductFormSubmitAttempted(true);
               setProductFormServerError(null);
               if (!canSubmitProduct) {
@@ -693,6 +697,8 @@ export default function Store() {
               const msg = error instanceof Error ? error.message : 'Failed to create product';
               setProductFormServerError(msg);
               toast({ variant: 'destructive', title: 'Create failed', description: msg });
+            } finally {
+              setSavingProduct(false);
             }
           };
           const handleUpdateProduct = async () => {
@@ -749,7 +755,7 @@ export default function Store() {
                 setOffersDirty(false);
                 setProductFormSubmitAttempted(false);
                 setProductFormServerError(null);
-                toast({ title: 'Saved', description: 'Product updated successfully.' });
+                toast({ title: t('store.toast.savedTitle'), description: t('store.toast.productUpdatedDesc') });
               } else {
                 const error = await res.json().catch(() => ({} as any));
                 const msg = String((error as any)?.error || 'Failed to update product');
@@ -921,6 +927,7 @@ export default function Store() {
   // Product modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [showSelectInventory, setShowSelectInventory] = useState(false);
   const [productFormSection, setProductFormSection] = useState<
     'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'video' | 'notes'
@@ -2144,6 +2151,7 @@ export default function Store() {
         if (!open) {
           setShowAddModal(false);
           setShowEditModal(false);
+          setSavingProduct(false);
           setFormData({ ...DEFAULT_PRODUCT_FORM });
           setSelectedProduct(null);
           setProductFormSection('product');
@@ -2286,7 +2294,7 @@ export default function Store() {
                       id="price"
                       type="number"
                       step="0.01"
-                      value={formData.price ?? ''}
+                      value={formatPriceForInput(formData.price)}
                       onChange={(e) => {
                         const raw = e.target.value;
                         const parsed = raw === '' ? undefined : Number(raw);
@@ -2307,8 +2315,12 @@ export default function Store() {
                       id="original_price"
                       type="number"
                       step="0.01"
-                      value={formData.original_price || ''}
-                      onChange={(e) => setFormData({ ...formData, original_price: parseFloat(e.target.value) || undefined })}
+                      value={formatPriceForInput(formData.original_price)}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const parsed = raw === '' ? undefined : Number(raw);
+                        setFormData({ ...formData, original_price: typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined });
+                      }}
                       placeholder="0"
                       className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
                     />
@@ -2320,8 +2332,12 @@ export default function Store() {
                   <Input
                     id="stock_quantity"
                     type="number"
-                    value={formData.stock_quantity ?? 1}
-                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseInt(e.target.value) || 0 })}
+                    value={formData.stock_quantity ?? ''}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const parsed = raw === '' ? undefined : Number(raw);
+                      setFormData({ ...formData, stock_quantity: typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined });
+                    }}
                     min="0"
                     className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
                   />
@@ -2671,7 +2687,7 @@ export default function Store() {
                                 type="number"
                                 min={0}
                                 step="0.01"
-                                value={v.price === undefined ? '' : String(v.price)}
+                                value={formatPriceForInput(v.price)}
                                 onChange={(e) => {
                                   const raw = e.target.value;
                                   const next = raw === '' ? undefined : Number(raw);
@@ -2780,7 +2796,7 @@ export default function Store() {
                         ...prev,
                         {
                           quantity: prev.length + 2,
-                          bundle_price: (Number(formData.price) || 0) * (prev.length + 2),
+                          bundle_price: (Number(formData.price) ?? 0) * (prev.length + 2),
                           free_delivery: false,
                           sort_order: prev.length,
                         },
@@ -2817,9 +2833,9 @@ export default function Store() {
                   <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
                     <div className="divide-y divide-slate-100 dark:divide-slate-700">
                     {offersDraft.map((o, idx) => {
-                      const unitPrice = Number(formData.price) || 0;
+                      const unitPrice = Number(formData.price) ?? 0;
                       const totalRegular = unitPrice * Number(o.quantity);
-                      const bundlePrice = Number(o.bundle_price) || 0;
+                      const bundlePrice = Number(o.bundle_price) ?? 0;
                       const savings = totalRegular > bundlePrice ? totalRegular - bundlePrice : 0;
                       const discountPercent = totalRegular > 0 ? Math.round((savings / totalRegular) * 100) : 0;
 
@@ -2871,52 +2887,30 @@ export default function Store() {
                             {idx + 1}
                           </div>
 
-                          {/* Quantity */}
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-slate-400">اشترِ</span>
+                          {/* Single editable offer text input */}
+                          <div className="flex-1">
                             <Input
-                              type="number"
-                              min={1}
-                              value={Number(o.quantity)}
+                              type="text"
+                              value={o.label || ''}
                               onChange={(e) => {
-                                const next = Math.max(1, Number(e.target.value || 1));
                                 setOffersDraft((prev) =>
-                                  prev.map((row, i) => (i === idx ? { ...row, quantity: next } : row))
+                                  prev.map((row, i) => (i === idx ? { ...row, label: e.target.value || undefined } : row))
                                 );
                                 setOffersDirty(true);
                               }}
-                              className="h-8 w-14 text-center text-sm font-bold"
+                              placeholder={`${o.quantity} منتج 💚${o.free_delivery ? ' + توصيل مجاني ✅' : ''}`}
+                              className="h-8 text-sm font-bold"
+                              dir="auto"
                             />
-                          </div>
-
-                          {/* Bundle Price */}
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-slate-400">بسعر</span>
-                            <Input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              value={String(o.bundle_price)}
-                              onChange={(e) => {
-                                const next = Number(e.target.value || 0);
-                                setOffersDraft((prev) =>
-                                  prev.map((row, i) => (i === idx ? { ...row, bundle_price: next } : row))
-                                );
-                                setOffersDirty(true);
-                              }}
-                              className="h-8 w-24 text-center text-sm font-bold"
-                            />
-                            <span className="text-[10px] text-slate-400">دج</span>
                           </div>
 
                           {/* Compare Price */}
                           <div className="hidden sm:flex items-center gap-1.5">
-                            <span className="text-xs text-slate-400">بدل</span>
                             <Input
                               type="number"
                               min={0}
                               step="0.01"
-                              value={o.compare_price === undefined ? '' : String(o.compare_price)}
+                              value={formatPriceForInput(o.compare_price)}
                               onChange={(e) => {
                                 const raw = e.target.value;
                                 const next = raw === '' ? undefined : Number(raw);
@@ -2968,23 +2962,6 @@ export default function Store() {
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
-                        </div>
-                        {/* Custom label */}
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-[11px] text-slate-400 flex-shrink-0">نص العرض</span>
-                          <Input
-                            type="text"
-                            value={o.label || ''}
-                            onChange={(e) => {
-                              setOffersDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, label: e.target.value || undefined } : row))
-                              );
-                              setOffersDirty(true);
-                            }}
-                            placeholder={`${o.quantity} منتج 💚${o.free_delivery ? ' + توصيل مجاني ✅' : ''}`}
-                            className="h-7 text-xs flex-1"
-                            dir="auto"
-                          />
                         </div>
                       </div>
                       );
@@ -3071,13 +3048,15 @@ export default function Store() {
                         type="number"
                         min="0"
                         step="1"
-                        value={formData.shipping_flat_fee ?? 0}
-                        onChange={(e) =>
+                        value={formData.shipping_flat_fee ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const parsed = raw === '' ? undefined : Number(raw);
                           setFormData((prev) => ({
                             ...prev,
-                            shipping_flat_fee: parseFloat(e.target.value) || 0,
+                            shipping_flat_fee: typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined,
                           }))
-                        }
+                        }}
                         className="border-indigo-500/30 focus:border-indigo-500/60 h-9 text-base"
                       />
                     </div>
@@ -3303,9 +3282,15 @@ export default function Store() {
             </Button>
             <Button
               onClick={showAddModal ? handleCreateProduct : handleUpdateProduct}
-              disabled={!canSubmitProduct}
+              disabled={!canSubmitProduct || savingProduct}
             >
-              {showAddModal ? t('store.createProduct') : t('save')}
+              {savingProduct ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{isRTL ? 'جاري الحفظ...' : 'Saving...'}</>
+              ) : showAddModal ? (
+                t('store.createProduct')
+              ) : (
+                t('save')
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

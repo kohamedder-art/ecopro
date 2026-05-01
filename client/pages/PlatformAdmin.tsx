@@ -1163,10 +1163,10 @@ export default function PlatformAdmin() {
   useEffect(() => {
     if (!platformSettings) return;
     setSettingsForm({
-      max_users: Number(platformSettings.max_users ?? 1000) || 0,
-      max_stores: Number(platformSettings.max_stores ?? 1000) || 0,
-      subscription_price: Number(platformSettings.subscription_price ?? 7) || 0,
-      trial_days: Number(platformSettings.trial_days ?? 30) || 0,
+      max_users: Number(platformSettings.max_users ?? 1000) ?? 0,
+      max_stores: Number(platformSettings.max_stores ?? 1000) ?? 0,
+      subscription_price: Number(platformSettings.subscription_price ?? 7) ?? 0,
+      trial_days: Number(platformSettings.trial_days ?? 30) ?? 0,
     });
   }, [platformSettings]);
 

@@ -568,6 +568,7 @@ export const en = {
   "store.productForm.notesPlaceholder": "Add private notes about this product (not shown to customers).",
 
   "store.toast.savedTitle": "Saved",
+  "store.toast.productUpdatedDesc": "Product updated successfully",
   "store.toast.settingsUpdatedDesc": "Store settings updated.",
   "store.toast.saveFailedTitle": "Save failed",
   "store.toast.saveFailedDesc": "Failed to save settings",

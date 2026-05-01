@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Bot, Save, Loader2, MessageSquare, Check, Users, Code2, Truck, CreditCard, MapPin, Package, Navigation, ChevronDown } from "lucide-react";
+import { Bot, Save, Loader2, MessageSquare, Check, Users, Code2, Truck, CreditCard, MapPin, Package, Navigation, ChevronDown, HelpCircle, Info } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -494,6 +494,102 @@ export default function AdminBotSettings() {
             </div>
           </div>
         </div>)}
+
+        {/* ── Help & FAQ Section ── */}
+        <div className="mt-8 p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+              <HelpCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <h3 className="font-bold text-slate-900 dark:text-white">{isRTL ? 'كيف تعمل البوتات؟' : 'How do bots work?'}</h3>
+          </div>
+          
+          <div className="space-y-2">
+            <details className="group">
+              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو البوت التجاري؟' : 'What is the Order Confirmation Bot?'}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isRTL 
+                  ? 'يرسل البوت رسائل تأكيد الطلب تلقائياً عندما يقوم العميل بإنشاء طلب جديد. يمكنك تخصيص الرسالة لتتضمن اسم العميل، تفاصيل المنتج، السعر، والعنوان.'
+                  : 'The bot automatically sends order confirmation messages when a customer creates a new order. You can customize the message to include the customer name, product details, price, and address.'}
+              </div>
+            </details>
+
+            <details className="group">
+              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو بوت تحديثات الطلب؟' : 'What is the Order Updates Bot?'}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isRTL 
+                  ? 'يرسل البوت إشعارات للعملاء عند تغيير حالة الطلب - مثل تأكيد الدفع، الشحن، أو التسليم. يساعد هذا العملاء على متابعة طلباتهم في الوقت الفعلي.'
+                  : 'The bot sends notifications to customers when order status changes - like payment confirmation, shipping, or delivery. This helps customers track their orders in real-time.'}
+              </div>
+            </details>
+
+            <details className="group">
+              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو بوت تتبع الشحن؟' : 'What is the Tracking Bot?'}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isRTL 
+                  ? 'يقدم البوت معلومات تتبع الشحن للعملاء. عند إضافة رقم تتبع للطلب، يستطيع العملاء الاستعلام عن موقع شحنتهم في أي وقت.'
+                  : 'The bot provides shipping tracking information to customers. When you add a tracking number to an order, customers can inquire about their shipment location at any time.'}
+              </div>
+            </details>
+
+            <details className="group">
+              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هي المتغيرات المتاحة في القوالب؟' : 'What variables are available in templates?'}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isRTL ? (
+                  <>
+                    يمكنك استخدام هذه المتغيرات في قوالب الرسائل:
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{customerName}'}</code> - اسم العميل</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{orderId}'}</code> - رقم الطلب</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{productName}'}</code> - اسم المنتج</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{totalPrice}'}</code> - السعر الإجمالي</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{address}'}</code> - عنوان التوصيل</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{trackingNumber}'}</code> - رقم التتبع</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{companyName}'}</code> - اسم المتجر</li>
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    You can use these variables in your message templates:
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{customerName}'}</code> - Customer name</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{orderId}'}</code> - Order ID</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{productName}'}</code> - Product name</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{totalPrice}'}</code> - Total price</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{address}'}</code> - Delivery address</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{trackingNumber}'}</code> - Tracking number</li>
+                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{companyName}'}</code> - Store name</li>
+                    </ul>
+                  </>
+                )}
+              </div>
+            </details>
+
+            <details className="group">
+              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'كيف يمكنني تخصيص الرسائل؟' : 'How can I customize messages?'}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isRTL 
+                  ? 'اكتب رسالتك بالشكل الذي تريده في مربع النص. استخدم المتغيرات بين الأقواس المتموجة للبيانات الديناميكية. يمكنك استخدام الرموز التعبيرية (Emojis) لجعل الرسائل أكثر جاذبية وودية.'
+                  : 'Write your message as you want it in the text box. Use variables between curly braces for dynamic data. You can use emojis to make messages more engaging and friendly.'}
+              </div>
+            </details>
+          </div>
+        </div>
 
         {/* Floating Save */}
         <div className={`fixed bottom-4 ${isRTL ? 'left-4' : 'right-4'}`}>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Users, CreditCard, Shield, Lock, Award, Zap, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/lib/i18n';
+import { formatPriceForInput } from '@/lib/formatPrice';
 
 interface PlatformSettings {
   max_users: number;
@@ -72,7 +73,7 @@ export default function SettingsTab({ platformSettings, stats, settingsForm, set
           <div className="space-y-3">
             <div className="bg-gray-50/40 dark:bg-slate-900/40 rounded-xl border border-gray-200/60 dark:border-slate-700/30 p-3">
               <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{t('platformAdmin.settings.monthlyPrice')}</label>
-              <input type="number" step="0.01" value={settingsForm.subscription_price}
+              <input type="number" step="0.01" value={formatPriceForInput(settingsForm.subscription_price)}
                 onChange={e => setSettingsForm(s => ({ ...s, subscription_price: Number(e.target.value) }))}
                 className="w-full bg-white/60 dark:bg-slate-800/60 border border-gray-300/60 dark:border-slate-600/50 text-gray-900 dark:text-white rounded-lg focus:border-emerald-500/50 text-sm p-2 outline-none"
               />

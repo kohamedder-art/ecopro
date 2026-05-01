@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Globe, Save, Loader2, Phone, MessageSquare, Check, ExternalLink, Unplug, CheckCircle, Instagram, Send, Smartphone, ChevronDown } from "lucide-react";
+import { Globe, Save, Loader2, Phone, MessageSquare, Check, ExternalLink, Unplug, CheckCircle, Instagram, Send, Smartphone, ChevronDown, HelpCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -85,13 +85,13 @@ export default function Integrations() {
   const [showWhatsappAdvanced, setShowWhatsappAdvanced] = useState(false);
   const [showViberAdvanced, setShowViberAdvanced] = useState(false);
   const [showInstagramAdvanced, setShowInstagramAdvanced] = useState(false);
-  const [showFacebookManual, setShowFacebookManual] = useState(false);
 
   // Facebook OAuth state
   const [fbStatus, setFbStatus] = useState<FbOAuthStatus | null>(null);
   const [fbLoading, setFbLoading] = useState(true);
   const [fbConnecting, setFbConnecting] = useState(false);
   const [fbDisconnecting, setFbDisconnecting] = useState(false);
+  const [disconnectingPlatform, setDisconnectingPlatform] = useState<string | null>(null);
   const [fbPages, setFbPages] = useState<FbPage[]>([]);
   const [showPagePicker, setShowPagePicker] = useState(false);
   const [selectedPageId, setSelectedPageId] = useState<string>('');
@@ -172,6 +172,34 @@ export default function Integrations() {
       toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
     } finally {
       setFbDisconnecting(false);
+    }
+  }
+
+  // Generic disconnect handler for platforms that store credentials in settings
+  async function disconnectPlatform(platform: 'telegram' | 'whatsapp' | 'viber' | 'instagram') {
+    const platformNames: Record<string, string> = {
+      telegram: 'Telegram',
+      whatsapp: 'WhatsApp',
+      viber: 'Viber',
+      instagram: 'Instagram'
+    };
+    try {
+      setDisconnectingPlatform(platform);
+      await apiFetch('/api/settings', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...(platform === 'telegram' && { telegramToken: '', telegramBotUsername: '', telegramUsingPlatform: false }),
+          ...(platform === 'whatsapp' && { whatsappApiToken: '', whatsappPhoneNumberId: '', whatsappBusinessAccountId: '' }),
+          ...(platform === 'viber' && { viberAuthToken: '', viberUsingPlatform: false }),
+          ...(platform === 'instagram' && { instagramAccountId: '', instagramUsingPlatform: false })
+        })
+      });
+      await loadSettings();
+      toast({ title: `${platformNames[platform]} ${isRTL ? 'تم فصله بنجاح' : 'disconnected successfully'}` });
+    } catch {
+      toast({ title: `${isRTL ? 'خطأ في فصل' : 'Error disconnecting'} ${platformNames[platform]}`, variant: 'destructive' });
+    } finally {
+      setDisconnectingPlatform(null);
     }
   }
 
@@ -441,50 +469,49 @@ export default function Integrations() {
           </button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-5">
-          {/* ── Desktop sidebar: platform list ── */}
-          <div className="hidden lg:flex flex-col gap-2 w-[260px] shrink-0">
-            {platforms.map(p => {
-              const isActive = activePlatform === p.value;
-              return (
-                <button key={p.value} onClick={() => setActivePlatform(p.value)}
-                  className={`group flex items-center gap-3.5 w-full p-3.5 rounded-2xl border text-start transition-all duration-200 ${
-                    isActive
-                      ? `bg-gradient-to-r ${p.activeGradient} shadow-sm`
-                      : p.connected
-                        ? 'border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/40 dark:bg-emerald-500/[0.04] hover:bg-emerald-50/80 dark:hover:bg-emerald-500/[0.08]'
-                        : 'border-slate-200/80 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:border-slate-300 dark:hover:border-white/[0.1]'
-                  }`}>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                    isActive ? p.iconBg : p.connected ? 'bg-emerald-100 dark:bg-emerald-500/15' : 'bg-slate-100 dark:bg-white/[0.06] group-hover:bg-slate-200/70 dark:group-hover:bg-white/[0.08]'
-                  }`}>
-                    <span className={isActive ? p.color : p.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-500 dark:group-hover:text-slate-400'}>
-                      {p.icon}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={`text-sm font-bold ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{p.label}</p>
-                      {p.connected && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-500/20 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                          <Check className="w-2.5 h-2.5" />{isRTL ? 'متصل' : 'On'}
-                        </span>
-                      )}
+        <div className="flex flex-col gap-4 lg:gap-5">
+          {/* ── Horizontal Platform Cards ── */}
+          <div className="hidden lg:block">
+            <div className="grid grid-cols-5 gap-3">
+              {platforms.map(p => {
+                const isActive = activePlatform === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    onClick={() => setActivePlatform(p.value)}
+                    className={`group relative p-4 rounded-2xl border-2 text-center transition-all ${
+                      isActive
+                        ? `${p.value === 'facebook' ? 'border-blue-400 bg-blue-50/80' : p.value === 'instagram' ? 'border-pink-400 bg-pink-50/80' : p.value === 'telegram' ? 'border-sky-400 bg-sky-50/80' : p.value === 'whatsapp_cloud' ? 'border-emerald-400 bg-emerald-50/80' : 'border-violet-400 bg-violet-50/80'} shadow-md scale-[1.02]`
+                        : p.connected
+                          ? 'border-emerald-300 bg-emerald-50/50 dark:bg-emerald-900/20 hover:border-emerald-400'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} w-2 h-2 rounded-full ${p.connected ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-md ${
+                      p.value === 'facebook' ? 'bg-blue-500' :
+                      p.value === 'instagram' ? 'bg-gradient-to-br from-pink-500 via-purple-500 to-orange-400' :
+                      p.value === 'telegram' ? 'bg-sky-500' :
+                      p.value === 'whatsapp_cloud' ? 'bg-emerald-500' :
+                      'bg-violet-500'
+                    }`}>
+                      <span className="text-white">{p.icon}</span>
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                      {p.status || p.desc}
-                    </p>
-                  </div>
-                  {isActive && (
-                    <div className={`w-1.5 h-8 rounded-full ${p.iconBg}`} />
-                  )}
-                </button>
-              );
-            })}
+                    <p className="font-bold text-slate-900 dark:text-white text-sm">{p.label}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{p.connected ? (isRTL ? 'متصل' : 'Connected') : (isRTL ? 'غير متصل' : 'Not connected')}</p>
+                    {p.connected && (
+                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* ── Settings panel ── */}
-          <div className="flex-1 min-w-0">
+          <div>
             {/* Platform header inside settings panel */}
             <div className={`p-5 rounded-2xl bg-gradient-to-r ${activePlatformData.activeGradient} mb-4`}>
               <div className="flex items-center gap-3">
@@ -496,9 +523,35 @@ export default function Integrations() {
                   <p className="text-xs text-slate-600 dark:text-slate-400">{activePlatformData.desc}</p>
                 </div>
                 {activePlatformData.connected && (
-                  <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                    <CheckCircle className="w-3.5 h-3.5" />{isRTL ? 'متصل' : 'Connected'}
-                  </span>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle className="w-3.5 h-3.5" />{isRTL ? 'متصل' : 'Connected'}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 rounded-lg text-xs text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
+                      onClick={() => {
+                        if (activePlatform === 'facebook' || activePlatform === 'instagram') {
+                          disconnectFacebook();
+                        } else if (activePlatform === 'telegram') {
+                          disconnectPlatform('telegram');
+                        } else if (activePlatform === 'whatsapp_cloud') {
+                          disconnectPlatform('whatsapp');
+                        } else if (activePlatform === 'viber') {
+                          disconnectPlatform('viber');
+                        }
+                      }}
+                      disabled={fbDisconnecting || disconnectingPlatform === activePlatform}
+                    >
+                      {fbDisconnecting || disconnectingPlatform === activePlatform ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Unplug className="h-3 w-3" />
+                      )}
+                      <span className="mx-1">{t('platforms.disconnect')}</span>
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -511,43 +564,7 @@ export default function Integrations() {
                     <div className="flex items-center justify-center py-10">
                       <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                     </div>
-                  ) : fbStatus?.connected ? (
-                    <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-500/[0.08] border border-emerald-200/80 dark:border-emerald-500/20">
-                      <div className="flex items-start gap-4">
-                        <div className="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-                          <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
-                            {t('platforms.facebook.connectedTo')} <strong>{fbStatus.pageName}</strong>
-                          </p>
-                          {fbStatus.instagramConnected && (
-                            <p className="text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-                              <Instagram className="w-3.5 h-3.5" />
-                              Instagram: {fbStatus.instagramUsername ? `@${fbStatus.instagramUsername}` : t('platforms.connected')}
-                            </p>
-                          )}
-                          {!fbStatus.instagramConnected && (
-                            <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                              <Instagram className="w-3.5 h-3.5" />
-                              {isRTL ? 'Instagram غير مربوط — تأكد أن صفحتك مربوطة بحساب Instagram Business' : 'Instagram not linked — make sure your Page is linked to an Instagram Business account'}
-                            </p>
-                          )}
-                          {fbStatus.tokenExpiresAt && (
-                            <p className="text-[11px] text-slate-500 mt-1">
-                              {t('platforms.facebook.tokenExpires')}: {new Date(fbStatus.tokenExpiresAt).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                        <Button variant="outline" size="sm"
-                          className="rounded-xl text-xs text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30 shrink-0 h-10 px-4"
-                          onClick={disconnectFacebook} disabled={fbDisconnecting}>
-                          {fbDisconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unplug className="h-3.5 w-3.5" />}
-                          <span className="mx-1.5">{t('platforms.disconnect')}</span>
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
+                  ) : !fbStatus?.connected ? (
                     <div className="flex flex-col items-center justify-center py-10 px-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
                       <div className="w-16 h-16 rounded-3xl bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center mb-4">
                         <MessageSquare className="w-8 h-8 text-blue-500" />
@@ -561,7 +578,7 @@ export default function Integrations() {
                         {t('platforms.facebook.connectBtn')}
                       </Button>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Page picker */}
                   {showPagePicker && fbPages.length > 0 && (
@@ -605,35 +622,22 @@ export default function Integrations() {
 
                   <PlatformModeToggle available={settings.platformMessengerAvailable} showAdvanced={showMessengerAdvanced} setShowAdvanced={setShowMessengerAdvanced} />
                   {(showMessengerAdvanced || !settings.platformMessengerAvailable) && (
-                    <>
-                      <div className="relative py-3">
-                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200 dark:border-slate-700" /></div>
-                        <div className="relative flex justify-center">
-                          <button type="button" onClick={() => setShowFacebookManual(v => !v)}
-                            className="px-4 py-1.5 bg-white dark:bg-[#0a0e1a] rounded-full text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700">
-                            {showFacebookManual ? (isRTL ? 'إخفاء الإعدادات اليدوية' : 'Hide manual setup') : (isRTL ? 'أو أدخل البيانات يدوياً' : 'Or enter credentials manually')}
-                          </button>
-                        </div>
+                    <div className="space-y-4 p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06]">
+                      <p className="text-xs text-slate-500">
+                        {isRTL ? 'أدخل معرّف صفحة فيسبوك ورمز وصول الصفحة من Meta Developer Dashboard.' : 'Enter your Facebook Page ID and Page Access Token from Meta Developer Dashboard.'}
+                      </p>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">{isRTL ? 'معرّف صفحة فيسبوك' : 'Facebook Page ID'}</Label>
+                        <Input className="h-11 rounded-xl" value={settings.fbPageId || ''} onChange={(e) => updateSetting('fbPageId', e.target.value)} placeholder="e.g. 123456789012345" />
                       </div>
-                      {showFacebookManual && (
-                        <div className="space-y-4 p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06]">
-                          <p className="text-xs text-slate-500">
-                            {isRTL ? 'أدخل معرّف صفحة فيسبوك ورمز وصول الصفحة من Meta Developer Dashboard.' : 'Enter your Facebook Page ID and Page Access Token from Meta Developer Dashboard.'}
-                          </p>
-                          <div className="space-y-2">
-                            <Label className="text-xs font-semibold">{isRTL ? 'معرّف صفحة فيسبوك' : 'Facebook Page ID'}</Label>
-                            <Input className="h-11 rounded-xl" value={settings.fbPageId || ''} onChange={(e) => updateSetting('fbPageId', e.target.value)} placeholder="e.g. 123456789012345" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs font-semibold">{isRTL ? 'رمز وصول الصفحة' : 'Page Access Token'}</Label>
-                            <Input className="h-11 rounded-xl" type="password" value={settings.fbPageAccessToken || ''} onChange={(e) => updateSetting('fbPageAccessToken', e.target.value)} placeholder="Paste page access token" />
-                            {settings.fbPageAccessTokenConfigured && !String(settings.fbPageAccessToken || '').trim() && (
-                              <p className="text-[11px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">{isRTL ? 'رمز وصول الصفحة' : 'Page Access Token'}</Label>
+                        <Input className="h-11 rounded-xl" type="password" value={settings.fbPageAccessToken || ''} onChange={(e) => updateSetting('fbPageAccessToken', e.target.value)} placeholder="Paste page access token" />
+                        {settings.fbPageAccessTokenConfigured && !String(settings.fbPageAccessToken || '').trim() && (
+                          <p className="text-[11px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
+                        )}
+                      </div>
+                    </div>
                   )}
                   <DelaySettings delayKey="messengerDelayMinutes" delayValue={settings.messengerDelayMinutes ?? 5} />
                 </>
@@ -648,29 +652,7 @@ export default function Integrations() {
                       <div className="flex items-center justify-center py-10">
                         <Loader2 className="h-6 w-6 animate-spin text-pink-500" />
                       </div>
-                    ) : fbStatus?.connected && fbStatus?.instagramConnected ? (
-                      <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-500/[0.08] border border-emerald-200/80 dark:border-emerald-500/20">
-                        <div className="flex items-start gap-4">
-                          <div className="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-                            <Instagram className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                          </div>
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-1.5">
-                              {fbStatus.instagramUsername ? `@${fbStatus.instagramUsername}` : 'Instagram Business'}
-                            </p>
-                            <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                              {isRTL ? 'مربوط عبر فيسبوك — الرسائل المباشرة يتم الرد عليها تلقائياً بالذكاء الاصطناعي' : 'Connected via Facebook — DMs are auto-replied by AI'}
-                            </p>
-                          </div>
-                          <Button variant="outline" size="sm"
-                            className="rounded-xl text-xs text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30 shrink-0 h-10 px-4"
-                            onClick={disconnectFacebook} disabled={fbDisconnecting}>
-                            {fbDisconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unplug className="h-3.5 w-3.5" />}
-                            <span className="mx-1.5">{t('platforms.disconnect')}</span>
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
+                    ) : !(fbStatus?.connected && fbStatus?.instagramConnected) ? (
                       <div className="flex flex-col items-center justify-center py-10 px-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
                         <div className="w-16 h-16 rounded-3xl bg-pink-100 dark:bg-pink-500/15 flex items-center justify-center mb-4">
                           <Instagram className="w-8 h-8 text-pink-500" />
@@ -684,7 +666,7 @@ export default function Integrations() {
                             : 'Please connect your Facebook account first from the "Facebook" tab. Instagram will be auto-detected.'}
                         </p>
                       </div>
-                    )
+                    ) : null
                   )}
 
                   {showInstagramAdvanced && (
@@ -776,6 +758,78 @@ export default function Integrations() {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ── Help & FAQ Section ── */}
+      <div className="mt-8 p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+            <HelpCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <h3 className="font-bold text-slate-900 dark:text-white">{isRTL ? 'كيف تعمل التكاملات؟' : 'How do integrations work?'}</h3>
+        </div>
+        
+        <div className="space-y-2">
+          <details className="group">
+            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو الغرض من التكاملات؟' : 'What is the purpose of integrations?'}</span>
+              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              {isRTL 
+                ? 'تتيح لك التكاملات استقبال طلبات العملاء تلقائياً من منصات التواصل الاجتماعي مثل فيسبوك وإنستغرام وتلغرام. عندما يرسل أحد العملاء رسالة إلى صفحتك، يقوم البوت تلقائياً بالرد وتأكيد الطلب.'
+                : 'Integrations allow you to automatically receive customer orders from social media platforms like Facebook, Instagram, and Telegram. When a customer sends a message to your page, the bot automatically responds and confirms the order.'}
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما الفرق بين "بوت المنصة" و"بوتي الخاص"؟' : 'What is the difference between "Platform Bot" and "My Own Bot"?'}</span>
+              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              {isRTL 
+                ? 'بوت المنصة: يستخدم EcoPro بوته الخاص للرد على العملاء. بوتي الخاص: يمكنك استخدام بوتك الشخصي (مثل بوت Telegram الخاص بك) للرد على الرسائل. هذا يعطيك مزيداً من التحكم والمرونة.'
+                : 'Platform Bot: EcoPro uses its own bot to respond to customers. My Own Bot: You can use your personal bot (like your own Telegram bot) to reply to messages. This gives you more control and flexibility.'}
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'هل يمكنني ربط عدة منصات في نفس الوقت؟' : 'Can I connect multiple platforms at the same time?'}</span>
+              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              {isRTL 
+                ? 'نعم! يمكنك ربط جميع المنصات (فيسبوك، إنستغرام، تلغرام، واتساب، فايبر) في نفس الوقت. سيتلقى متجرك الطلبات من جميع هذه المنصات.'
+                : 'Yes! You can connect all platforms (Facebook, Instagram, Telegram, WhatsApp, Viber) at the same time. Your store will receive orders from all these platforms.'}
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'كيف يمكنني الحصول على رموز الوصول (Tokens)؟' : 'How do I get access tokens?'}</span>
+              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              {isRTL 
+                ? 'لكل منصة طريقة مختلفة: فيسبوك/إنستغرام من خلال Meta Developer Dashboard، تلغرام عبر @BotFather، واتساب عبر Meta for Developers، وفايبر من خلال إعدادات Public Account.'
+                : 'Each platform has a different method: Facebook/Instagram through Meta Developer Dashboard, Telegram via @BotFather, WhatsApp via Meta for Developers, and Viber through Public Account settings.'}
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'هل التكاملات آمنة؟' : 'Are integrations secure?'}</span>
+              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              {isRTL 
+                ? 'نعم، جميع الرموز والبيانات الحساسة تُخزن بشكل آمن ومشفّر. لا نشارك بياناتك مع أي طرف ثالث.'
+                : 'Yes, all tokens and sensitive data are stored securely and encrypted. We do not share your data with any third parties.'}
+            </div>
+          </details>
         </div>
       </div>
 

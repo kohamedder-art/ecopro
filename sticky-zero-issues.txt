@@ -1,0 +1,129 @@
+🔍 Scanning for sticky 0 issues...
+
+Found 291 files to scan
+
+================================================================================
+FOUND 17 POTENTIAL STICKY 0 ISSUES
+================================================================================
+
+🔴 HIGH SEVERITY (1 issues):
+--------------------------------------------------------------------------------
+
+📁 /home/skull/Desktop/ecopro/client/pages/storefront/templates/novadz/NovaDzTemplate.tsx:68:31
+   Issue: default-zero
+   Code:  const [imgIdx, setImgIdx] = useState(0);
+   Fix:   Use useState<number | "">() or useState<number | undefined>() instead
+
+🟡 MEDIUM SEVERITY (16 issues):
+--------------------------------------------------------------------------------
+
+📁 client/pages/PlatformAdmin.tsx:1169
+   Issue: parse-fallback-zero
+   Code:  trial_days: Number(platformSettings.trial_days ?? 30) || 0,
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/admin/delivery/DeliveryPricing.tsx:240
+   Issue: parse-fallback-zero
+   Code:  onChange={(e) => setDefaultPrice(Number(e.target.value) || 0)}
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/admin/delivery/DeliveryPricing.tsx:357
+   Issue: parse-fallback-zero
+   Code:  onChange={(e) => updatePrice(wilaya.id, 'home_delivery_price', Number(e.target.value) || 0)}
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/admin/delivery/DeliveryPricing.tsx:436
+   Issue: parse-fallback-zero
+   Code:  onChange={(e) => updatePrice(wilaya.id, 'home_delivery_price', Number(e.target.value) || 0)}
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/customer/StockManagement.tsx:125
+   Issue: default-zero
+   Code:  adjustment: 0,
+   Fix:   Use undefined or null as default, handle in display
+
+📁 client/pages/customer/StockManagement.tsx:1409
+   Issue: fallback-zero
+   Code:  value={Number(v.stock_quantity ?? 0)}
+   Fix:   Consider using value={value ?? ""} for better UX
+
+📁 client/pages/customer/StockManagement.tsx:1411
+   Issue: parse-fallback-zero
+   Code:  const next = Math.max(0, parseInt(e.target.value) || 0);
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/customer/StockManagement.tsx:1601
+   Issue: fallback-zero
+   Code:  value={formData.shipping_flat_fee ?? 0}
+   Fix:   Consider using value={value ?? ""} for better UX
+
+📁 client/pages/customer/StockManagement.tsx:1602
+   Issue: parse-fallback-zero
+   Code:  onChange={(e) => setFormData(prev => ({ ...prev, shipping_flat_fee: parseFloat(e.target.value) || 0 }))}
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/customer/StockManagement.tsx:1750
+   Issue: parse-fallback-zero
+   Code:  onChange={(e) => setAdjustData({ ...adjustData, adjustment: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/customer/Store.tsx:2324
+   Issue: parse-fallback-zero
+   Code:  onChange={(e) => setFormData({ ...formData, stock_quantity: parseInt(e.target.value) || 0 })}
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/customer/Store.tsx:2783
+   Issue: parse-fallback-zero
+   Code:  bundle_price: (Number(formData.price) || 0) * (prev.length + 2),
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/customer/Store.tsx:2820
+   Issue: parse-fallback-zero
+   Code:  const unitPrice = Number(formData.price) || 0;
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/customer/Store.tsx:2822
+   Issue: parse-fallback-zero
+   Code:  const bundlePrice = Number(o.bundle_price) || 0;
+   Fix:   Store raw string value in state, only convert to number on submit
+
+📁 client/pages/customer/Store.tsx:3074
+   Issue: fallback-zero
+   Code:  value={formData.shipping_flat_fee ?? 0}
+   Fix:   Consider using value={value ?? ""} for better UX
+
+📁 client/pages/customer/Store.tsx:3078
+   Issue: parse-fallback-zero
+   Code:  shipping_flat_fee: parseFloat(e.target.value) || 0,
+   Fix:   Store raw string value in state, only convert to number on submit
+
+================================================================================
+SUMMARY BY FILE
+================================================================================
+🟡 client/pages/customer/StockManagement.tsx: 6 issues (0 high, 6 medium)
+🟡 client/pages/customer/Store.tsx: 6 issues (0 high, 6 medium)
+🟡 client/pages/admin/delivery/DeliveryPricing.tsx: 3 issues (0 high, 3 medium)
+🟡 client/pages/PlatformAdmin.tsx: 1 issues (0 high, 1 medium)
+🔴 client/pages/storefront/templates/novadz/NovaDzTemplate.tsx: 1 issues (1 high, 0 medium)
+
+================================================================================
+CSV EXPORT (for spreadsheet)
+================================================================================
+file,line,column,issue,severity,code,suggestion
+"client/pages/PlatformAdmin.tsx",1169,19,parse-fallback-zero,medium,"trial_days: Number(platformSettings.trial_days ?? 30) || 0,","Store raw string value in state, only convert to number on submit"
+"client/pages/admin/delivery/DeliveryPricing.tsx",240,50,parse-fallback-zero,medium,"onChange={(e) => setDefaultPrice(Number(e.target.value) || 0)}","Store raw string value in state, only convert to number on submit"
+"client/pages/admin/delivery/DeliveryPricing.tsx",357,88,parse-fallback-zero,medium,"onChange={(e) => updatePrice(wilaya.id, 'home_delivery_price', Number(e.target.v","Store raw string value in state, only convert to number on submit"
+"client/pages/admin/delivery/DeliveryPricing.tsx",436,86,parse-fallback-zero,medium,"onChange={(e) => updatePrice(wilaya.id, 'home_delivery_price', Number(e.target.v","Store raw string value in state, only convert to number on submit"
+"client/pages/customer/StockManagement.tsx",125,15,default-zero,medium,"adjustment: 0,","Use undefined or null as default, handle in display"
+"client/pages/customer/StockManagement.tsx",1409,31,fallback-zero,medium,"value={Number(v.stock_quantity ?? 0)}","Consider using value={value ?? ""} for better UX"
+"client/pages/customer/StockManagement.tsx",1411,58,parse-fallback-zero,medium,"const next = Math.max(0, parseInt(e.target.value) || 0);","Store raw string value in state, only convert to number on submit"
+"client/pages/customer/StockManagement.tsx",1601,25,fallback-zero,medium,"value={formData.shipping_flat_fee ?? 0}","Consider using value={value ?? ""} for better UX"
+"client/pages/customer/StockManagement.tsx",1602,93,parse-fallback-zero,medium,"onChange={(e) => setFormData(prev => ({ ...prev, shipping_flat_fee: parseFloat(e","Store raw string value in state, only convert to number on submit"
+"client/pages/customer/StockManagement.tsx",1750,107,parse-fallback-zero,medium,"onChange={(e) => setAdjustData({ ...adjustData, adjustment: e.target.value === '","Store raw string value in state, only convert to number on submit"
+"client/pages/customer/Store.tsx",2324,81,parse-fallback-zero,medium,"onChange={(e) => setFormData({ ...formData, stock_quantity: parseInt(e.target.va","Store raw string value in state, only convert to number on submit"
+"client/pages/customer/Store.tsx",2783,42,parse-fallback-zero,medium,"bundle_price: (Number(formData.price) || 0) * (prev.length + 2),","Store raw string value in state, only convert to number on submit"
+"client/pages/customer/Store.tsx",2820,41,parse-fallback-zero,medium,"const unitPrice = Number(formData.price) || 0;","Store raw string value in state, only convert to number on submit"
+"client/pages/customer/Store.tsx",2822,43,parse-fallback-zero,medium,"const bundlePrice = Number(o.bundle_price) || 0;","Store raw string value in state, only convert to number on submit"
+"client/pages/customer/Store.tsx",3074,25,fallback-zero,medium,"value={formData.shipping_flat_fee ?? 0}","Consider using value={value ?? ""} for better UX"
+"client/pages/customer/Store.tsx",3078,48,parse-fallback-zero,medium,"shipping_flat_fee: parseFloat(e.target.value) || 0,","Store raw string value in state, only convert to number on submit"
+"client/pages/storefront/templates/novadz/NovaDzTemplate.tsx",68,31,default-zero,high,"const [imgIdx, setImgIdx] = useState(0);","Use useState<number | "">() or useState<number | undefined>() instead"

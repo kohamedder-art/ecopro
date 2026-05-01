@@ -428,9 +428,9 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
         <I18nProvider>
+          <Toaster />
+          <Sonner />
           <PermissionProvider>
             <StaffPermissionProvider>
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

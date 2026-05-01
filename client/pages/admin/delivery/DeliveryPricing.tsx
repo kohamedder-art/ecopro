@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
+import { formatPriceForInput } from '@/lib/formatPrice';
 import { getAlgeriaWilayas, AlgeriaWilaya, formatWilayaLabel } from "@/lib/algeriaGeo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -236,8 +237,12 @@ export default function DeliveryPricing() {
               <Input
                 type="number"
                 min={0}
-                value={defaultPrice}
-                onChange={(e) => setDefaultPrice(Number(e.target.value) || 0)}
+                value={defaultPrice ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const parsed = raw === '' ? undefined : Number(raw);
+                  setDefaultPrice(typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined);
+                }}
                 className="h-8 text-sm text-center"
               />
             </div>
@@ -353,8 +358,12 @@ export default function DeliveryPricing() {
                       <Input
                         type="number"
                         min={0}
-                        value={price.home_delivery_price}
-                        onChange={(e) => updatePrice(wilaya.id, 'home_delivery_price', Number(e.target.value) || 0)}
+                        value={formatPriceForInput(price.home_delivery_price)}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const parsed = raw === '' ? undefined : Number(raw);
+                          updatePrice(wilaya.id, 'home_delivery_price', typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined);
+                        }}
                         className="h-7 text-xs text-center w-full"
                       />
                     </td>
@@ -362,8 +371,12 @@ export default function DeliveryPricing() {
                       <Input
                         type="number"
                         min={0}
-                        value={price.desk_delivery_price ?? ''}
-                        onChange={(e) => updatePrice(wilaya.id, 'desk_delivery_price', e.target.value ? Number(e.target.value) : null)}
+                        value={formatPriceForInput(price.desk_delivery_price)}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const parsed = raw === '' ? undefined : Number(raw);
+                          updatePrice(wilaya.id, 'desk_delivery_price', typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null);
+                        }}
                         placeholder="—"
                         className="h-7 text-xs text-center w-full"
                       />
@@ -432,8 +445,12 @@ export default function DeliveryPricing() {
                     <Input
                       type="number"
                       min={0}
-                      value={price.home_delivery_price}
-                      onChange={(e) => updatePrice(wilaya.id, 'home_delivery_price', Number(e.target.value) || 0)}
+                      value={formatPriceForInput(price.home_delivery_price)}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const parsed = raw === '' ? undefined : Number(raw);
+                        updatePrice(wilaya.id, 'home_delivery_price', typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined);
+                      }}
                       className="h-8 text-xs text-center"
                     />
                   </div>
@@ -444,8 +461,12 @@ export default function DeliveryPricing() {
                     <Input
                       type="number"
                       min={0}
-                      value={price.desk_delivery_price ?? ''}
-                      onChange={(e) => updatePrice(wilaya.id, 'desk_delivery_price', e.target.value ? Number(e.target.value) : null)}
+                      value={formatPriceForInput(price.desk_delivery_price)}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const parsed = raw === '' ? undefined : Number(raw);
+                        updatePrice(wilaya.id, 'desk_delivery_price', typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null);
+                      }}
                       placeholder="—"
                       className="h-8 text-xs text-center"
                     />

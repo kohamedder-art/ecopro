@@ -619,6 +619,7 @@ export const ar = {
   "store.productForm.notesPlaceholder": "أضف ملاحظات داخلية حول المنتج (لا تظهر للعملاء).",
 
   "store.toast.savedTitle": "تم الحفظ",
+  "store.toast.productUpdatedDesc": "تم تحديث المنتج بنجاح",
   "store.toast.settingsUpdatedDesc": "تم تحديث إعدادات المتجر.",
   "store.toast.saveFailedTitle": "فشل الحفظ",
   "store.toast.saveFailedDesc": "تعذر حفظ الإعدادات",
