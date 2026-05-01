@@ -94,7 +94,13 @@ export const uploadImage: RequestHandler = async (req, res) => {
     }
 
     // If Cloudinary is configured, upload there (persistent storage)
-    if (isCloudinaryConfigured()) {
+    const cloudConfigured = isCloudinaryConfigured();
+    console.log('[uploadImage] Cloudinary configured:', cloudConfigured, 'env check:', {
+      hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
+      hasApiKey: !!process.env.CLOUDINARY_API_KEY,
+      hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
+    });
+    if (cloudConfigured) {
       try {
         const clientId = req.user.id;
         const result = await uploadToCloudinary(req.file.path, {
@@ -105,6 +111,7 @@ export const uploadImage: RequestHandler = async (req, res) => {
         // Clean up temp file
         await fs.unlink(req.file.path).catch(() => null);
 
+        console.log('[uploadImage] Cloudinary upload successful:', result.url);
         return res.status(200).json({
           url: result.url,
           filename: result.publicId.split('/').pop() || result.publicId,
@@ -116,6 +123,8 @@ export const uploadImage: RequestHandler = async (req, res) => {
         console.error('[uploadImage] Cloudinary upload failed:', cloudErr);
         // Fall through to local storage as fallback
       }
+    } else {
+      console.log('[uploadImage] Using local storage (Cloudinary not configured)');
     }
 
     // Local storage fallback (development or if Cloudinary fails)
