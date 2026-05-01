@@ -483,6 +483,7 @@ export default function Store() {
         sort_order: o.sort_order == null ? idx : Number(o.sort_order),
         image_url: o.image_url || undefined,
         label: o.label || undefined,
+        is_active: o.is_active !== false, // Default to true if not explicitly false
       })));
       setOffersLoaded(true);
       setOffersDirty(false);
@@ -508,6 +509,7 @@ export default function Store() {
           sort_order: o.sort_order == null ? idx : Number(o.sort_order),
           image_url: o.image_url || undefined,
           label: o.label || undefined,
+          is_active: o.is_active !== false,
         })),
       }),
     });

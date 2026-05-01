@@ -8,6 +8,7 @@ export interface ProductOffer {
   free_delivery: boolean;
   label?: string | null;
   image_url?: string | null;
+  is_active?: boolean;
 }
 
 export interface SelectedOffer {
