@@ -58,10 +58,6 @@ export default function SpiriluxeTemplate({
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
 
-  // ─── Content State ───
-  const [aboveContent, setAboveContent] = useState<any[]>([]);
-  const [belowContent, setBelowContent] = useState<any[]>([]);
-
   // Load content from settings on mount
   useEffect(() => {
     if (settings) {
