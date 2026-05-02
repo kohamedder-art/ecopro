@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, Search, Filter, PackageX, Package, AlertTriangle, 
   TrendingDown, TrendingUp, Edit, Trash2, History, Download,
-  BarChart3, RefreshCw, Tag, X, Check
+  BarChart3, RefreshCw, Tag, X, Check, Sparkles, Loader2, Layers,
+  Palette, Ruler, Shirt, Footprints, ShoppingBag, Gift, TicketPercent,
+  Truck, ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +47,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { markOnboardingStepComplete } from '@/lib/onboarding';
 import { formatPriceForInput } from '@/lib/formatPrice';
+import { useAI } from '@/hooks/useAI';
 
 interface StockItem {
   id: number;
@@ -95,6 +99,168 @@ type StockVariantDraft = {
   is_active?: boolean;
   sort_order?: number;
 };
+
+// ─── AI Helper Components ───────
+
+function AIGenerateDescription({
+  title,
+  category,
+  onGenerate,
+}: {
+  title: string;
+  category: string;
+  onGenerate: (desc: string) => void;
+}) {
+  const { call, loading } = useAI('/api/ai/product/description');
+  const handleClick = async () => {
+    if (!title.trim()) return;
+    const data = await call({ title, category });
+    if (data?.description) onGenerate(data.description);
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading || !title.trim()}
+      className="flex items-center gap-1 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 disabled:opacity-40 transition-colors"
+      title="Generate description with AI"
+    >
+      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+      AI Generate
+    </button>
+  );
+}
+
+function AISuggestTitles({
+  category,
+  onSelect,
+}: {
+  category: string;
+  onSelect: (title: string) => void;
+}) {
+  const { call, loading } = useAI('/api/ai/product/suggest-titles');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const handleClick = async () => {
+    const data = await call({ category });
+    if (data?.suggestions) setSuggestions(data.suggestions);
+  };
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={loading}
+        className="flex items-center gap-1 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 disabled:opacity-40 transition-colors"
+      >
+        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+        AI Suggest Titles
+      </button>
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onSelect(s)}
+              className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AIVisionSuggest({
+  imageUrl,
+  locale,
+  onApply,
+}: {
+  imageUrl: string;
+  locale: string;
+  onApply: (data: {
+    title?: string;
+    description?: string;
+    price?: number;
+    category?: string;
+  }) => void;
+}) {
+  const { call, loading } = useAI('/api/ai/product/vision');
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  const handleAnalyze = async () => {
+    const data = await call({ imageUrl, locale });
+    if (data) {
+      setResult(data);
+      setOpen(true);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleAnalyze}
+        disabled={loading || !imageUrl}
+        className="flex items-center gap-1 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 disabled:opacity-40 transition-colors"
+      >
+        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+        AI Vision Suggest
+      </button>
+
+      {open && result && (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>AI Vision Suggestions</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              {result.title && (
+                <div>
+                  <Label className="text-xs">Suggested Title</Label>
+                  <div className="flex gap-2">
+                    <Input value={result.title} readOnly className="flex-1" />
+                    <Button size="sm" onClick={() => onApply({ title: result.title })}>Use</Button>
+                  </div>
+                </div>
+              )}
+              {result.category && (
+                <div>
+                  <Label className="text-xs">Suggested Category</Label>
+                  <div className="flex gap-2">
+                    <Input value={result.category} readOnly className="flex-1" />
+                    <Button size="sm" onClick={() => onApply({ category: result.category })}>Use</Button>
+                  </div>
+                </div>
+              )}
+              {result.price && (
+                <div>
+                  <Label className="text-xs">Suggested Price</Label>
+                  <div className="flex gap-2">
+                    <Input value={result.price} readOnly className="flex-1" />
+                    <Button size="sm" onClick={() => onApply({ price: result.price })}>Use</Button>
+                  </div>
+                </div>
+              )}
+              {result.description && (
+                <div>
+                  <Label className="text-xs">Suggested Description</Label>
+                  <Textarea value={result.description} readOnly className="flex-1" rows={3} />
+                  <Button size="sm" onClick={() => onApply({ description: result.description })} className="mt-2">Use Description</Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+// ──────────────────────────────────
 
 export default function StockManagement() {
   const { t } = useTranslation();
