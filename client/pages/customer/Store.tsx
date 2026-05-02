@@ -3035,7 +3035,7 @@ export default function Store() {
                       <SelectTrigger className="border-indigo-500/30 focus:border-indigo-500/60 h-9 text-base font-semibold">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="z-50" sideOffset={4}>
                         <SelectItem value="delivery_pricing">{t('store.productForm.shippingMode.delivery_pricing')}</SelectItem>
                         <SelectItem value="flat">{t('store.productForm.shippingMode.flat')}</SelectItem>
                         <SelectItem value="free">{t('store.productForm.shippingMode.free')}</SelectItem>
