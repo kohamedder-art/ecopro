@@ -67,14 +67,28 @@ export default function SpiriluxeTemplate({
         const aboveContentData = settings.spiriluxe_above_content;
         const belowContentData = settings.spiriluxe_below_content;
         
-        if (aboveContentData && typeof aboveContentData === 'string') {
-          setAboveContent(JSON.parse(aboveContentData));
+        if (aboveContentData) {
+          const parsed = typeof aboveContentData === 'string' ? JSON.parse(aboveContentData) : aboveContentData;
+          if (Array.isArray(parsed)) {
+            setAboveContent(parsed);
+          } else {
+            console.warn('spiriluxe_above_content is not an array:', parsed);
+            setAboveContent([]);
+          }
         }
-        if (belowContentData && typeof belowContentData === 'string') {
-          setBelowContent(JSON.parse(belowContentData));
+        if (belowContentData) {
+          const parsed = typeof belowContentData === 'string' ? JSON.parse(belowContentData) : belowContentData;
+          if (Array.isArray(parsed)) {
+            setBelowContent(parsed);
+          } else {
+            console.warn('spiriluxe_below_content is not an array:', parsed);
+            setBelowContent([]);
+          }
         }
       } catch (error) {
         console.error('Error loading content from settings:', error);
+        setAboveContent([]);
+        setBelowContent([]);
       }
     }
   }, [settings]);
@@ -239,8 +253,10 @@ export default function SpiriluxeTemplate({
 
   // ─── Render Content Section ───
   const renderContentSection = (content: any[], isAbove: boolean) => {
+    // Ensure content is always an array
+    const safeContent = Array.isArray(content) ? content : [];
     // Only show items that have URLs or are currently uploading
-    const visibleContent = content.filter(item => item.url || item.uploading);
+    const visibleContent = safeContent.filter(item => item.url || item.uploading);
     
     return (
       <div className="space-y-4 mb-8">
