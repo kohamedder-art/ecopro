@@ -62,10 +62,10 @@ export default function SpiriluxeTemplate({
   useEffect(() => {
     if (settings) {
       try {
-        // Try template_settings first, then regular settings
-        const templateSettings = settings.template_settings || {};
-        const aboveContentData = templateSettings.spiriluxe_above_content || settings.spiriluxe_above_content;
-        const belowContentData = templateSettings.spiriluxe_below_content || settings.spiriluxe_below_content;
+        // Server merges template_settings into the main response
+        // Keys like spiriluxe_above_content are at the top level
+        const aboveContentData = settings.spiriluxe_above_content;
+        const belowContentData = settings.spiriluxe_below_content;
         
         if (aboveContentData && typeof aboveContentData === 'string') {
           setAboveContent(JSON.parse(aboveContentData));
@@ -199,18 +199,19 @@ export default function SpiriluxeTemplate({
       const settingKey = type === 'above' ? 'spiriluxe_above_content' : 'spiriluxe_below_content';
       
       if (canManage) {
-        // Save to store settings using template_settings
+        // Save to store settings - send keys directly (not wrapped in template_settings)
         try {
-          await fetch('/api/client/store/settings', {
+          const response = await fetch('/api/client/store/settings', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({
-              template_settings: {
-                [settingKey]: JSON.stringify(updatedContent)
-              }
+              [settingKey]: JSON.stringify(updatedContent)
             })
           });
+          if (!response.ok) {
+            console.error('Failed to save content:', await response.text());
+          }
         } catch (saveError) {
           console.error('Failed to save content to settings:', saveError);
         }
