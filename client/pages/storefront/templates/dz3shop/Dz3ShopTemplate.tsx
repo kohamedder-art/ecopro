@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
@@ -17,7 +17,9 @@ import {
   ChevronRight, 
   Heart, 
   Maximize2,
-  Play
+  Play,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -86,6 +88,8 @@ export default function Dz3ShopTemplate({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const [videoPreview, setVideoPreview] = useState<{ type: 'youtube' | 'video' | 'iframe'; url: string } | null>(null);
+  const [videoMuted, setVideoMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [detailVariant, setDetailVariant] = useState<SelectedVariant | null>(null);
 
@@ -519,6 +523,7 @@ export default function Dz3ShopTemplate({
                       accentColor={accentColor}
                       textColor={surfaceTextColor}
                       borderColor={surfaceBorderColor}
+                      className="mb-4"
                     />
                   )}
 
@@ -690,24 +695,34 @@ export default function Dz3ShopTemplate({
       {/* Video Preview Modal */}
       {videoPreview && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setVideoPreview(null)}>
+          {/* Close button */}
           <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setVideoPreview(null); }}>
             <X size={20} />
           </button>
+          {/* Mute/Unmute toggle */}
+          <button 
+            className="absolute top-4 left-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"
+            onClick={(e) => { e.stopPropagation(); setVideoMuted(!videoMuted); }}
+          >
+            {videoMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          </button>
           <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full max-w-4xl aspect-video rounded-2xl overflow-hidden">
+            {/* Full width video - removed max-w-4xl constraint */}
+            <div className="w-full h-full max-h-[90vh] aspect-video rounded-2xl overflow-hidden">
               {videoPreview.type === 'youtube' ? (
                 <iframe 
                   className="w-full h-full" 
-                  src={videoPreview.url} 
+                  src={`${videoPreview.url}&mute=${videoMuted ? 1 : 0}`} 
                   allow="autoplay; encrypted-media" 
                   allowFullScreen 
                 />
               ) : videoPreview.type === 'video' ? (
                 <video 
+                  ref={videoRef}
                   className="w-full h-full" 
                   src={videoPreview.url} 
                   autoPlay 
-                  muted 
+                  muted={videoMuted}
                   loop 
                   playsInline
                   controls={false}

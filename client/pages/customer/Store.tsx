@@ -460,6 +460,7 @@ export default function Store() {
     sort_order?: number;
     image_url?: string;
     label?: string;
+    is_active?: boolean;
   };
 
   const [offersDraft, setOffersDraft] = useState<ProductOfferDraft[]>([]);
