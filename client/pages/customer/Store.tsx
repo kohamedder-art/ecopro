@@ -2983,12 +2983,14 @@ export default function Store() {
                     <Label htmlFor="status" className="text-base font-bold">{t('store.productForm.status')}</Label>
                     <Select
                       value={formData.status || 'active'}
-                      onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, status: value as 'active' | 'draft' | 'archived' }))
+                      }
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="z-[300]" sideOffset={4}>
                         <SelectItem value="active">{t('store.productForm.statusActive')}</SelectItem>
                         <SelectItem value="draft">{t('store.productForm.statusDraft')}</SelectItem>
                         <SelectItem value="archived">{t('store.productForm.statusArchived')}</SelectItem>
@@ -3035,7 +3037,7 @@ export default function Store() {
                       <SelectTrigger className="border-indigo-500/30 focus:border-indigo-500/60 h-9 text-base font-semibold">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent position="popper" className="z-50" sideOffset={4}>
+                      <SelectContent position="popper" className="z-[300]" sideOffset={4}>
                         <SelectItem value="delivery_pricing">{t('store.productForm.shippingMode.delivery_pricing')}</SelectItem>
                         <SelectItem value="flat">{t('store.productForm.shippingMode.flat')}</SelectItem>
                         <SelectItem value="free">{t('store.productForm.shippingMode.free')}</SelectItem>
