@@ -418,10 +418,9 @@ export default function Dz3ShopTemplate({
                 <div className="rounded-xl overflow-hidden shadow-sm relative aspect-[4/5] lg:aspect-auto lg:flex-1 lg:max-h-[70vh]" style={{ backgroundColor: surfaceColor }}>
                   {videoEmbed && showVideo ? (
                     <div className="w-full h-full flex items-center justify-center p-4">
-                      {/* Small auto-playing video thumbnail */}
+                      {/* Auto-playing video thumbnail */}
                       <div 
-                        className="relative rounded-xl overflow-hidden shadow-lg cursor-pointer group"
-                        style={{ width: '200px', height: '200px' }}
+                        className="relative rounded-xl overflow-hidden shadow-lg cursor-pointer group w-full max-w-md aspect-square"
                         onClick={() => {
                           if (videoEmbed.type === 'youtube') {
                             setVideoPreview({ type: 'youtube', url: `https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1` });
