@@ -201,12 +201,14 @@ export default function SpiriluxeTemplate({
       if (canManage) {
         // Save to store settings using template_settings
         try {
-          await fetch('/api/store/settings', {
-            method: 'POST',
+          await fetch('/api/client/store/settings', {
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({
-              [settingKey]: JSON.stringify(updatedContent)
+              template_settings: {
+                [settingKey]: JSON.stringify(updatedContent)
+              }
             })
           });
         } catch (saveError) {
