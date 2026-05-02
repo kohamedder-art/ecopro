@@ -57,6 +57,31 @@ export default function SpiriluxeTemplate({
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
+
+  // ─── Content State ───
+  const [aboveContent, setAboveContent] = useState<any[]>([]);
+  const [belowContent, setBelowContent] = useState<any[]>([]);
+
+  // Load content from settings on mount
+  useEffect(() => {
+    if (settings) {
+      try {
+        // Try template_settings first, then regular settings
+        const templateSettings = settings.template_settings || {};
+        const aboveContentData = templateSettings.spiriluxe_above_content || settings.spiriluxe_above_content;
+        const belowContentData = templateSettings.spiriluxe_below_content || settings.spiriluxe_below_content;
+        
+        if (aboveContentData && typeof aboveContentData === 'string') {
+          setAboveContent(JSON.parse(aboveContentData));
+        }
+        if (belowContentData && typeof belowContentData === 'string') {
+          setBelowContent(JSON.parse(belowContentData));
+        }
+      } catch (error) {
+        console.error('Error loading content from settings:', error);
+      }
+    }
+  }, [settings]);
   
   useEffect(() => { 
     if (offers.length > 0 && !selectedOffer) { 
@@ -173,10 +198,25 @@ export default function SpiriluxeTemplate({
         fileName: file.name
       });
 
-      // Save to settings (in a real implementation, this would persist to the database)
+      // Save to settings for persistence
       const updatedContent = type === 'above' ? aboveContent : belowContent;
       const settingKey = type === 'above' ? 'spiriluxe_above_content' : 'spiriluxe_below_content';
-      console.log(`Saving ${settingKey}:`, updatedContent);
+      
+      if (canManage) {
+        // Save to store settings using template_settings
+        try {
+          await fetch('/api/store/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              [settingKey]: JSON.stringify(updatedContent)
+            })
+          });
+        } catch (saveError) {
+          console.error('Failed to save content to settings:', saveError);
+        }
+      }
 
     } catch (error) {
       console.error('Upload failed:', error);
@@ -503,7 +543,7 @@ export default function SpiriluxeTemplate({
                   type="submit" 
                   disabled={isSubmitting}
                   className="w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:transform-none shadow-lg"
-                  style={{ backgroundColor: accentColor, color: '#ffffff' }}
+                  style={{ backgroundColor: String(accentColor), color: '#ffffff' }}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -526,7 +566,7 @@ export default function SpiriluxeTemplate({
   );
 
   function handleOfferSelect(offerId: string) {
-    const offer = offers.find(o => o.id === offerId);
+    const offer = offers.find(o => String(o.id) === String(offerId));
     if (offer) {
       setSelectedOffer({
         offer_id: offer.id,
