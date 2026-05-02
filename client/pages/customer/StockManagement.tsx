@@ -59,6 +59,7 @@ interface StockItem {
   notes?: string;
   is_low_stock?: boolean;
   images?: string[];
+  video_url?: string;
   created_at: string;
   updated_at: string;
 }
