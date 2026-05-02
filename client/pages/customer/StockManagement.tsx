@@ -123,7 +123,8 @@ export default function StockManagement() {
   // Form state
   const [formData, setFormData] = useState<Partial<StockItem>>({});
   const [uploading, setUploading] = useState(false);
-  const [activeFormSection, setActiveFormSection] = useState<'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'notes'>('product');
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [activeFormSection, setActiveFormSection] = useState<'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'video' | 'notes'>('product');
   const [adjustData, setAdjustData] = useState({
     adjustment: undefined as number | undefined,
     reason: 'adjustment',
@@ -153,6 +154,7 @@ export default function StockManagement() {
       shipping_mode: formData.shipping_mode,
       shipping_flat_fee: formData.shipping_flat_fee == null ? undefined : Number(formData.shipping_flat_fee),
       notes: formData.notes ? String(formData.notes) : undefined,
+      video_url: (formData as any).video_url ? String((formData as any).video_url) : undefined,
       images,
     };
   };
@@ -174,6 +176,7 @@ export default function StockManagement() {
       shipping_mode: formData.shipping_mode,
       shipping_flat_fee: formData.shipping_flat_fee == null ? undefined : Number(formData.shipping_flat_fee),
       notes: formData.notes ? String(formData.notes) : undefined,
+      video_url: (formData as any).video_url ? String((formData as any).video_url) : undefined,
       images,
     };
   };
@@ -698,6 +701,7 @@ export default function StockManagement() {
       images: Array.isArray((item as any).images) ? (item as any).images : [],
       shipping_mode: ((item as any).shipping_mode as any) || 'delivery_pricing',
       shipping_flat_fee: (item as any).shipping_flat_fee ?? null,
+      video_url: (item as any).video_url || '',
     });
     setActiveFormSection('product');
     setVariantsDraft([]);
@@ -790,7 +794,7 @@ export default function StockManagement() {
           <Button
             size="sm"
             onClick={() => {
-              setFormData({ name: '', description: '', category: '', quantity: 0, unit_price: undefined, reorder_level: 10, status: 'active', shipping_mode: 'delivery_pricing', shipping_flat_fee: null, images: [], notes: '' });
+              setFormData({ name: '', description: '', category: '', quantity: 0, unit_price: undefined, reorder_level: 10, status: 'active', shipping_mode: 'delivery_pricing', shipping_flat_fee: null, images: [], notes: '', video_url: '' });
               setActiveFormSection('product');
               setVariantsDraft([]);
               setVariantsLoaded(false);
@@ -1137,6 +1141,7 @@ export default function StockManagement() {
                   { key: 'status', label: t('stock.form.sections.status') },
                   { key: 'shipping', label: t('stock.form.sections.shipping') },
                   { key: 'images', label: t('stock.form.sections.images') },
+                  { key: 'video', label: '🎬 فيديو' },
                   { key: 'notes', label: t('stock.form.sections.notes') },
                 ] as const
               ).map((sec) => (
@@ -1649,6 +1654,81 @@ export default function StockManagement() {
                     Upload up to 10 images. Each image must be &lt; 10MB.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {activeFormSection === 'video' && (
+              <div className="space-y-3 bg-rose-500/5 dark:bg-rose-900/10 p-2 md:p-3 rounded border border-rose-500/20">
+                <div>
+                  <h3 className="text-lg font-bold text-rose-600 dark:text-rose-400">🎬 فيديو المنتج</h3>
+                  <p className="text-sm text-muted-foreground">الفيديو يظهر أولاً في معرض الصور — العميل يرى الفيديو ثم يتنقل للصور</p>
+                </div>
+                {/* Upload video file directly */}
+                <div className="flex items-center gap-2">
+                  <label className={`flex items-center gap-2 px-3 py-2 rounded-md border border-dashed cursor-pointer text-sm transition-colors ${uploadingVideo ? 'opacity-50 pointer-events-none' : 'hover:bg-rose-500/10 border-rose-400/40'}`}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                    {uploadingVideo ? 'جارٍ الرفع...' : 'رفع فيديو من جهازك (mp4)'}
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/ogg"
+                      className="hidden"
+                      disabled={uploadingVideo}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (!file.type.startsWith('video/')) {
+                          toast({ variant: 'destructive', title: 'خطأ', description: 'الرجاء اختيار ملف فيديو (mp4, webm...)' });
+                          return;
+                        }
+                        if (file.size > 100 * 1024 * 1024) {
+                          toast({ variant: 'destructive', title: 'الملف كبير جداً', description: 'الحد الأقصى لحجم الفيديو هو 100MB' });
+                          e.target.value = '';
+                          return;
+                        }
+                        setUploadingVideo(true);
+                        try {
+                          const fd = new FormData();
+                          fd.append('image', file);
+                          const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                          if (!res.ok) throw new Error('فشل الرفع');
+                          const data = await res.json();
+                          setFormData((prev) => ({ ...prev, video_url: data.url }));
+                          toast({ title: 'تم رفع الفيديو ✓' });
+                        } catch {
+                          toast({ variant: 'destructive', title: 'فشل رفع الفيديو', description: 'حاول مرة أخرى' });
+                        } finally {
+                          setUploadingVideo(false);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                  </label>
+                  <span className="text-xs text-muted-foreground">أو الصق رابطاً أدناه</span>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="video_url" className="text-base font-bold">رابط الفيديو</Label>
+                  <Input
+                    id="video_url"
+                    value={(formData as any).video_url || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, video_url: e.target.value }))}
+                    placeholder="https://youtube.com/... أو رابط مباشر"
+                    className="border-rose-500/30 focus:border-rose-500/60 transition-colors h-10 text-base"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    يدعم YouTube، Vimeo، أو رابط فيديو مباشر (MP4)
+                  </p>
+                </div>
+                {/* Preview if video exists */}
+                {(formData as any).video_url && (
+                  <div className="rounded-lg overflow-hidden border border-rose-500/30 bg-black">
+                    <video
+                      src={(formData as any).video_url}
+                      className="w-full max-h-48 object-contain"
+                      controls
+                      preload="metadata"
+                    />
+                  </div>
+                )}
               </div>
             )}
 
