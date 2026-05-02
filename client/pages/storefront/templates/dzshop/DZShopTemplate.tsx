@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { TemplateProps, StoreProduct } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useImageClassifier } from '@/hooks/useImageClassifier';
@@ -15,6 +16,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const [lastCustomerPhone, setLastCustomerPhone] = React.useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
     const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+    const [showBanner, setShowBanner] = useState(settings?.show_promotional_banner !== false);
     const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
     useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
@@ -428,11 +430,37 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">-35%</span>
                     </div>
 
-                    <div className="border p-4 rounded-xl mb-6" style={{ backgroundColor: accentColor + '10', borderColor: accentColor + '30' }}>
+                    {showBanner ? (
+                    <div className="relative border p-4 rounded-xl mb-6" style={{ backgroundColor: accentColor + '10', borderColor: accentColor + '30' }}>
+                        {canManage && (
+                            <button
+                                onClick={() => setShowBanner(false)}
+                                className="absolute top-2 right-2 p-1 rounded-full hover:bg-black/10 transition-colors"
+                                style={{ color: accentColor }}
+                                title="إزالة اللافتة"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        )}
                         <p className="text-sm font-semibold" style={{ color: accentColor }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_subtitle')}>
                             {settings?.template_hero_subtitle || "🔥 عرض محدود: اطلب الآن واحصل على توصيل مجاني!"}
                         </p>
                     </div>
+                ) : canManage && (
+                    <div className="mb-6">
+                        <button
+                            onClick={() => setShowBanner(true)}
+                            className="w-full border-2 border-dashed rounded-xl p-4 text-center hover:border-solid transition-colors"
+                            style={{ borderColor: accentColor + '50', color: accentColor }}
+                        >
+                            <div className="flex items-center justify-center gap-2">
+                                <span className="text-2xl">🎯</span>
+                                <span className="font-semibold">Add Promotional Banner</span>
+                            </div>
+                            <p className="text-xs mt-1 opacity-70">Click to add a promotional banner</p>
+                        </button>
+                    </div>
+                )}
 
                     {/* Checkout Form */}
                     {orderSuccess ? (

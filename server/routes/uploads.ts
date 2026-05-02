@@ -99,6 +99,9 @@ export const uploadImage: RequestHandler = async (req, res) => {
       hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
       hasApiKey: !!process.env.CLOUDINARY_API_KEY,
       hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
+      cloudNameValue: process.env.CLOUDINARY_CLOUD_NAME,
+      apiKeyValue: process.env.CLOUDINARY_API_KEY,
+      apiSecretValue: process.env.CLOUDINARY_API_SECRET,
     });
     if (cloudConfigured) {
       try {

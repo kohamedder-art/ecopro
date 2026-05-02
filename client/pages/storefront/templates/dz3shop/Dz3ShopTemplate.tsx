@@ -43,6 +43,7 @@ export default function Dz3ShopTemplate({
   const heroSubtitle = settings?.template_hero_subtitle || 'اكتشفوا أفضل المنتجات متوفرة لدينا 🔥';
   const buttonText = settings?.template_button_text || 'أطلب الآن';
   const storeName = settings?.store_name || 'المتجر';
+  const [showBanner, setShowBanner] = useState(settings?.show_promotional_banner !== false);
 
   // ── Dark/Light detection ──
   const isDark = useMemo(() => {
@@ -383,15 +384,36 @@ export default function Dz3ShopTemplate({
                   {heroTitle}
                 </span>
               </h2>
-              <p className="text-sm mt-1" style={{ color: textMuted }}>
-                <span
-                  contentEditable={canManage}
-                  suppressContentEditableWarning
-                  onBlur={handleTextEdit('template_hero_subtitle')}
-                >
-                  {heroSubtitle}
-                </span>
-              </p>
+              {showBanner ? (
+                <div className="relative border p-4 rounded-xl mb-4" style={{ backgroundColor: accentColor + '10', borderColor: accentColor + '30' }}>
+                  {canManage && (
+                    <button
+                      onClick={() => setShowBanner(false)}
+                      className="absolute top-2 right-2 p-1 rounded-full hover:bg-black/10 transition-colors"
+                      style={{ color: accentColor }}
+                      title="إزالة اللافتة"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  <p className="text-sm font-semibold" style={{ color: accentColor }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_subtitle')}>
+                    {heroSubtitle}
+                  </p>
+                </div>
+              ) : canManage && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowBanner(true)}
+                    className="w-full border-2 border-dashed rounded-xl p-3 text-center hover:border-solid transition-colors"
+                    style={{ borderColor: accentColor + '50', color: accentColor }}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-xl">🎯</span>
+                      <span className="font-semibold text-sm">Add Promotional Banner</span>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">

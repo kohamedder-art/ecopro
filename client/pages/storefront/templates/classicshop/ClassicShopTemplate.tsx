@@ -34,6 +34,7 @@ export default function ClassicShopTemplate({
   const heroSubtitle = settings?.template_hero_subtitle || 'استمارة الطلب';
   const buttonText = settings?.template_button_text || 'إشتري الآن';
   const storeName = settings?.store_name || 'المتجر';
+  const [showBanner, setShowBanner] = useState(settings?.show_promotional_banner !== false);
 
   // ── Dark/Light detection ──
   const isDark = useMemo(() => {
@@ -342,15 +343,42 @@ export default function ClassicShopTemplate({
 
           {/* ── ORDER FORM CARD ── */}
           <div className="rounded-lg p-5 shadow-sm mb-8" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
-            <h2
-              className="text-center font-bold text-lg mb-4"
-              style={{ color: surfaceTextColor }}
-              contentEditable={canManage}
-              suppressContentEditableWarning
-              onBlur={handleTextEdit('template_hero_subtitle')}
-            >
-              {heroSubtitle}
-            </h2>
+            {showBanner ? (
+              <div className="relative border p-4 rounded-xl mb-4" style={{ backgroundColor: accentColor + '10', borderColor: accentColor + '30' }}>
+                {canManage && (
+                  <button
+                    onClick={() => setShowBanner(false)}
+                    className="absolute top-2 right-2 p-1 rounded-full hover:bg-black/10 transition-colors"
+                    style={{ color: accentColor }}
+                    title="إزالة اللافتة"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                <h2
+                  className="text-center font-bold text-lg"
+                  style={{ color: accentColor }}
+                  contentEditable={canManage}
+                  suppressContentEditableWarning
+                  onBlur={handleTextEdit('template_hero_subtitle')}
+                >
+                  {heroSubtitle}
+                </h2>
+              </div>
+            ) : canManage && (
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowBanner(true)}
+                  className="w-full border-2 border-dashed rounded-xl p-3 text-center hover:border-solid transition-colors"
+                  style={{ borderColor: accentColor + '50', color: accentColor }}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-xl">🎯</span>
+                    <span className="font-semibold text-sm">Add Promotional Banner</span>
+                  </div>
+                </button>
+              </div>
+            )}
 
             <div className="space-y-4">
               {offers.length > 0 && (

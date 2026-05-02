@@ -1877,9 +1877,9 @@ export default function Store() {
       }}>
         <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Product from Stock</DialogTitle>
+            <DialogTitle>{t('stock.addFromStockTitle')}</DialogTitle>
             <DialogDescription className="text-sm">
-              Select an existing product from your inventory to add to your store
+              {t('stock.addFromStockDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -1887,9 +1887,9 @@ export default function Store() {
             {inventoryProducts.length === 0 ? (
               <div className="text-center py-8">
                 <Package className="w-12 h-12 mx-auto text-muted-foreground opacity-50 mb-3" />
-                <p className="text-muted-foreground">No products in your inventory yet</p>
+                <p className="text-muted-foreground">{t('stock.noInventoryProducts')}</p>
                 <Button variant="outline" className="mt-4" onClick={() => navigate('/dashboard/stock')}>
-                  Go to Stock Management
+                  {t('stock.goToStock')}
                 </Button>
               </div>
             ) : (
@@ -1949,7 +1949,7 @@ export default function Store() {
                                 <span className="font-semibold text-primary text-sm">{Math.round(Number(price))} DA</span>
                               )}
                               <Badge variant={stockQty > 0 ? 'secondary' : 'destructive'} className="text-xs px-1.5 py-0">
-                                {stockQty > 0 ? `${stockQty} in stock` : 'Out of stock'}
+                                {stockQty > 0 ? `${stockQty} ${t('stock.inStock')}` : t('stock.outOfStock')}
                               </Badge>
                             </div>
                           </div>
@@ -1978,14 +1978,14 @@ export default function Store() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{(selectedInventoryProduct as any).name || (selectedInventoryProduct as any).title}</p>
-                        <p className="text-xs text-muted-foreground">Selected</p>
+                        <p className="text-xs text-muted-foreground">{t('stock.selected')}</p>
                       </div>
                     </div>
                     {inventoryVariantsLoading ? (
-                      <div className="text-xs text-muted-foreground">Loading variants…</div>
+                      <div className="text-xs text-muted-foreground">{t('stock.loadingVariants')}</div>
                     ) : inventoryVariants.length > 0 ? (
                       <div className="space-y-2">
-                        <Label className="text-xs">Choose Variants to Include</Label>
+                        <Label className="text-xs">{t('stock.chooseVariants')}</Label>
                         <div className="max-h-40 overflow-y-auto rounded border bg-background/60">
                           {inventoryVariants
                             .slice()
@@ -2030,7 +2030,7 @@ export default function Store() {
                       </div>
                     ) : (
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Quantity to Add</Label>
+                        <Label className="text-xs">{t('stock.quantityToAdd')}</Label>
                         <div className="flex items-center gap-2">
                           <Button
                             size="icon"
@@ -2073,7 +2073,7 @@ export default function Store() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSelectInventory(false)}>
-              Cancel
+              {t('stock.cancelBtn')}
             </Button>
             <Button
               onClick={async () => {

@@ -1035,6 +1035,59 @@ export default function GoldTemplateEditor() {
       </div>
     );
 
+    const bindColor = (label: string, key: keyof StoreSettings, fallback: string) => (
+      <div className="space-y-2">
+        <div className="text-sm font-medium">{label}</div>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={settings?.[key] || fallback}
+            onChange={(e) => handleSettingChange(String(key), e.target.value)}
+            className="w-12 h-12 rounded border border-input cursor-pointer"
+          />
+          <Input
+            value={settings?.[key] || fallback}
+            onChange={(e) => handleSettingChange(String(key), e.target.value)}
+            placeholder={fallback}
+            className="flex-1"
+          />
+        </div>
+      </div>
+    );
+
+    const bindSwitch = (label: string, key: keyof StoreSettings, defaultValue: boolean) => (
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-medium">{label}</div>
+        <button
+          onClick={() => handleSettingChange(String(key), !settings?.[key])}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            settings?.[key] !== false ? 'bg-primary' : 'bg-gray-200'
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              settings?.[key] !== false ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+    );
+
+    const bindSelect = (label: string, key: string, options: { value: string; label: string }[], fallback: string) => (
+      <div className="space-y-2">
+        <div className="text-sm font-medium">{label}</div>
+        <select
+          value={String((settings as any)[key] || fallback)}
+          onChange={(e) => handleSettingChange(key, e.target.value)}
+          className="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+    );
+
     const bindImage = (label: string, key: keyof StoreSettings) => (
       <div className="space-y-2">
         <div className="text-sm font-medium">{label}</div>
@@ -1051,39 +1104,6 @@ export default function GoldTemplateEditor() {
             }}
           />
         </div>
-      </div>
-    );
-
-    const bindColor = (label: string, key: keyof StoreSettings, fallback: string) => (
-      <div className="space-y-2">
-        <div className="text-sm font-medium">{label}</div>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={String((settings as any)[key] || fallback)}
-            onChange={(e) => handleSettingChange(String(key), e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer"
-          />
-          <Input
-            value={String((settings as any)[key] || fallback)}
-            onChange={(e) => handleSettingChange(String(key), e.target.value)}
-          />
-        </div>
-      </div>
-    );
-
-    const bindSelect = (label: string, key: string, options: { value: string; label: string }[], fallback: string) => (
-      <div className="space-y-2">
-        <div className="text-sm font-medium">{label}</div>
-        <select
-          value={String((settings as any)[key] || fallback)}
-          onChange={(e) => handleSettingChange(key, e.target.value)}
-          className="w-full px-3 py-2 border rounded-md bg-background text-foreground"
-        >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
       </div>
     );
 
@@ -1210,9 +1230,13 @@ export default function GoldTemplateEditor() {
       } else {
         body = (
           <div className="space-y-4">
-            {bindText('Badge Title', 'template_hero_badge_title' as any, 'Soft Plush Elephant')}
-            {bindText('Badge Subtitle', 'template_hero_badge_subtitle' as any, 'Limited offer')}
-            {bindColor('Badge Accent', 'template_accent_color', '#F97316')}
+            <div className="border rounded-lg p-3 bg-gradient-to-r from-orange-50 to-red-50">
+              <h4 className="font-semibold text-sm mb-2">🎯 Promotional Banner</h4>
+              {bindSwitch('Show Banner', 'show_promotional_banner' as any, true)}
+              {bindText('Banner Title', 'template_hero_badge_title' as any, '🔥 عرض محدود')}
+              {bindText('Banner Subtitle', 'template_hero_badge_subtitle' as any, 'اطلب الآن واحصل على توصيل مجاني!')}
+              {bindColor('Banner Accent', 'template_accent_color', '#F97316')}
+            </div>
           </div>
         );
       }

@@ -132,37 +132,48 @@ function AIGenerateDescription({
 }
 
 function AISuggestTitles({
+  currentTitle,
   category,
   onSelect,
 }: {
+  currentTitle: string;
   category: string;
   onSelect: (title: string) => void;
 }) {
-  const { call, loading } = useAI('/api/ai/product/suggest-titles');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const { call, loading } = useAI('/api/ai/product/title');
+
   const handleClick = async () => {
-    const data = await call({ category });
-    if (data?.suggestions) setSuggestions(data.suggestions);
+    if (!currentTitle.trim()) return;
+    const data = await call({ currentTitle, category });
+    if (data?.suggestions?.length) {
+      setSuggestions(data.suggestions);
+      setOpen(true);
+    }
   };
+
   return (
-    <div className="space-y-2">
+    <div className="relative">
       <button
         type="button"
         onClick={handleClick}
-        disabled={loading}
+        disabled={loading || !currentTitle.trim()}
         className="flex items-center gap-1 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 disabled:opacity-40 transition-colors"
+        title="Suggest better titles with AI"
       >
         {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-        AI Suggest Titles
+        AI Suggest
       </button>
-      {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {suggestions.map((s) => (
+      {open && suggestions.length > 0 && (
+        <div className="absolute left-0 top-full mt-1 z-[200] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-2 w-[260px]">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider px-2 pb-1">Pick a title</p>
+          {suggestions.map((s, i) => (
             <button
-              key={s}
+              key={i}
               type="button"
-              onClick={() => onSelect(s)}
-              className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
+              onClick={() => { onSelect(s); setOpen(false); }}
+              className="w-full text-left px-2 py-1.5 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             >
               {s}
             </button>
@@ -1327,27 +1338,49 @@ export default function StockManagement() {
 
             {activeFormSection === 'product' && (
               <div className="space-y-2 bg-primary/5 dark:bg-slate-800/30 p-2 md:p-3 rounded border border-primary/20">
-                <h3 className="text-lg font-bold text-primary flex items-center gap-2">
-                  {t('stock.basicInfo')}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                  <div className="space-y-1 md:col-span-2">
-                    <Label htmlFor="name" className="text-base font-bold">{t('stock.productName')}</Label>
-                    <Input
-                      id="name"
-                      value={formData.name || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder={t('stock.productName')}
-                      className="border-primary/30 focus:border-primary/60 transition-colors h-9 text-base"
+                <h3 className="text-lg font-bold text-primary">{t('stock.basicInfo')}</h3>
+
+                {(formData.images?.length || 0) > 0 && (
+                  <AIVisionSuggest
+                    imageUrl={formData.images![0]}
+                    locale="ar"
+                    onApply={(data) => setFormData(prev => ({
+                      ...prev,
+                      ...(data.title ? { name: data.title } : {}),
+                      ...(data.description ? { description: data.description } : {}),
+                      ...(data.category ? { category: data.category } : {}),
+                      ...(data.price ? { unit_price: data.price } : {}),
+                    }))}
+                  />
+                )}
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="name" className="text-base font-bold">{t('stock.productName')} *</Label>
+                    <AISuggestTitles
+                      currentTitle={formData.name || ''}
+                      category={formData.category || ''}
+                      onSelect={(title) => setFormData(prev => ({ ...prev, name: title }))}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {t('stock.hints.name')}
-                    </p>
                   </div>
+                  <Input
+                    id="name"
+                    value={formData.name || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder={t('stock.productName')}
+                    className="border-primary/30 focus:border-primary/60 transition-colors h-9 text-base"
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="description" className="text-base font-bold">{t('stock.description')}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="description" className="text-base font-bold">{t('stock.description')}</Label>
+                    <AIGenerateDescription
+                      title={formData.name || ''}
+                      category={formData.category || ''}
+                      onGenerate={(desc) => setFormData(prev => ({ ...prev, description: desc }))}
+                    />
+                  </div>
                   <Textarea
                     id="description"
                     value={formData.description || ''}
@@ -1359,117 +1392,14 @@ export default function StockManagement() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="category" className="text-base font-bold flex items-center gap-2">
-                    <Tag className="w-4 h-4" /> {t('stock.category')}
-                  </Label>
-                  <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className="w-full justify-between border-primary/30 hover:border-primary/60 h-9 text-base font-normal"
-                      >
-                        {formData.category || t('stock.selectCategory')}
-                        <Tag className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[280px] p-0" align="start">
-                      <div className="p-2 border-b">
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder={t('stock.newCategoryName')}
-                            value={newCategoryName}
-                            onChange={(e) => setNewCategoryName(e.target.value)}
-                            className="h-8 text-sm"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                createCategory();
-                              }
-                            }}
-                          />
-                          <Button
-                            size="sm"
-                            onClick={createCategory}
-                            disabled={!newCategoryName.trim() || creatingCategory}
-                            className="h-8 px-2"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="max-h-[200px] overflow-y-auto p-1">
-                        {allCategories.length === 0 && categories.length === 0 ? (
-                          <p className="text-sm text-muted-foreground p-2 text-center">
-                            {t('stock.noCategories')}
-                          </p>
-                        ) : (
-                          <>
-                            {allCategories.map((cat) => (
-                              <div
-                                key={cat.id}
-                                className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-primary/10 ${
-                                  formData.category === cat.name ? 'bg-primary/20' : ''
-                                }`}
-                                onClick={() => {
-                                  setFormData(prev => ({ ...prev, category: cat.name }));
-                                  setCategoryPopoverOpen(false);
-                                }}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span>{cat.icon}</span>
-                                  <span className="text-sm font-medium">{cat.name}</span>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {cat.product_count}
-                                  </Badge>
-                                </div>
-                                {formData.category === cat.name && (
-                                  <Check className="w-4 h-4 text-primary" />
-                                )}
-                              </div>
-                            ))}
-                            {categories
-                              .filter(c => !allCategories.some(ac => ac.name === c))
-                              .map((cat) => (
-                                <div
-                                  key={cat}
-                                  className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-primary/10 ${
-                                    formData.category === cat ? 'bg-primary/20' : ''
-                                  }`}
-                                  onClick={() => {
-                                    setFormData(prev => ({ ...prev, category: cat }));
-                                    setCategoryPopoverOpen(false);
-                                  }}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span>📦</span>
-                                    <span className="text-sm font-medium">{cat}</span>
-                                  </div>
-                                  {formData.category === cat && (
-                                    <Check className="w-4 h-4 text-primary" />
-                                  )}
-                                </div>
-                              ))}
-                          </>
-                        )}
-                      </div>
-                      {formData.category && (
-                        <div className="border-t p-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full text-muted-foreground"
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, category: '' }));
-                              setCategoryPopoverOpen(false);
-                            }}
-                          >
-                            <X className="w-4 h-4 mr-2" /> {t('stock.clearCategory')}
-                          </Button>
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
+                  <Label htmlFor="category" className="text-base font-bold">{t('stock.category')}</Label>
+                  <Input
+                    id="category"
+                    value={formData.category || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                    placeholder={t('stock.selectCategory')}
+                    className="border-primary/30 focus:border-primary/60 transition-colors h-9 text-base"
+                  />
                 </div>
               </div>
             )}
