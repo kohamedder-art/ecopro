@@ -3,19 +3,21 @@ import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
-import {
-  ShoppingBag,
-  User,
-  Phone,
-  MapPin,
-  Home,
-  Building2,
-  Check,
-  X,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Heart,
+import { 
+  ShoppingBag, 
+  User, 
+  Phone, 
+  MapPin, 
+  Home, 
+  Building2, 
+  Check, 
+  X, 
+  Search, 
+  ChevronLeft, 
+  ChevronRight, 
+  Heart, 
+  Maximize2,
+  Play
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -83,6 +85,7 @@ export default function Dz3ShopTemplate({
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProductId(p.id); setViewMode('product'); } } }, [initialProductSlug, products]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
+  const [videoPreview, setVideoPreview] = useState<{ type: 'youtube' | 'video' | 'iframe'; url: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [detailVariant, setDetailVariant] = useState<SelectedVariant | null>(null);
 
@@ -414,14 +417,46 @@ export default function Dz3ShopTemplate({
                 {/* Main display: video or image */}
                 <div className="rounded-xl overflow-hidden shadow-sm relative aspect-[4/5] lg:aspect-auto lg:flex-1 lg:max-h-[70vh]" style={{ backgroundColor: surfaceColor }}>
                   {videoEmbed && showVideo ? (
-                    <div className="w-full h-full">
-                      {videoEmbed.type === 'youtube' ? (
-                        <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                      ) : videoEmbed.type === 'video' ? (
-                        <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                      ) : (
-                        <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                      )}
+                    <div className="w-full h-full flex items-center justify-center p-4">
+                      {/* Small auto-playing video thumbnail */}
+                      <div 
+                        className="relative rounded-xl overflow-hidden shadow-lg cursor-pointer group"
+                        style={{ width: '200px', height: '200px' }}
+                        onClick={() => {
+                          if (videoEmbed.type === 'youtube') {
+                            setVideoPreview({ type: 'youtube', url: `https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1` });
+                          } else if (videoEmbed.type === 'video') {
+                            setVideoPreview({ type: 'video', url: videoEmbed.url });
+                          } else {
+                            setVideoPreview({ type: 'iframe', url: videoEmbed.url });
+                          }
+                        }}
+                      >
+                        {videoEmbed.type === 'youtube' ? (
+                          <img 
+                            src={`https://img.youtube.com/vi/${videoEmbed.id}/0.jpg`} 
+                            alt="Video thumbnail" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : videoEmbed.type === 'video' ? (
+                          <video 
+                            className="w-full h-full object-cover" 
+                            src={videoEmbed.url} 
+                            autoPlay 
+                            muted 
+                            loop 
+                            playsInline 
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                            <Play size={32} style={{ color: surfaceTextColor }} />
+                          </div>
+                        )}
+                        {/* Expand icon overlay */}
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Maximize2 size={32} className="text-white" />
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="w-full h-full group cursor-pointer" onClick={() => setZoomState({ images: detailImages, idx: activeImageIndex })}>
@@ -650,6 +685,43 @@ export default function Dz3ShopTemplate({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Video Preview Modal */}
+      {videoPreview && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setVideoPreview(null)}>
+          <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setVideoPreview(null); }}>
+            <X size={20} />
+          </button>
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-4xl aspect-video rounded-2xl overflow-hidden">
+              {videoPreview.type === 'youtube' ? (
+                <iframe 
+                  className="w-full h-full" 
+                  src={videoPreview.url} 
+                  allow="autoplay; encrypted-media" 
+                  allowFullScreen 
+                />
+              ) : videoPreview.type === 'video' ? (
+                <video 
+                  className="w-full h-full" 
+                  src={videoPreview.url} 
+                  autoPlay 
+                  muted 
+                  loop 
+                  playsInline
+                  controls={false}
+                />
+              ) : (
+                <iframe 
+                  className="w-full h-full" 
+                  src={videoPreview.url} 
+                  allowFullScreen 
+                />
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
