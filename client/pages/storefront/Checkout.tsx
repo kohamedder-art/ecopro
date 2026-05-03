@@ -212,6 +212,10 @@ export default function Checkout() {
   const template = readStorefrontTemplate('fashion');
   const settings: StoreSettings = readStorefrontSettings<StoreSettings>({} as StoreSettings);
   const style = TEMPLATE_STYLES[template] || TEMPLATE_STYLES.fashion;
+  
+  // Use custom background color from settings if available, otherwise fall back to template default
+  const customBgColor = settings.template_bg_color || settings.primary_color;
+  const bgColor = customBgColor ? '' : style.bg;
   const accentColor = settings.template_accent_color || style.accent;
 
   const dzWilayas = getAlgeriaWilayas();
@@ -576,7 +580,7 @@ export default function Checkout() {
   ];
 
   return (
-    <div dir="rtl" className={`min-h-screen ${style.bg} ${style.text}`}>
+    <div dir="rtl" className={`min-h-screen ${bgColor} ${style.text}`} style={customBgColor ? { backgroundColor: customBgColor } : undefined}>
       {/* Header */}
       <div className={`border-b ${style.border} sticky top-0 z-40 bg-opacity-95 backdrop-blur`}>
         <div className="max-w-6xl mx-auto px-2 sm:px-3 md:px-3 py-2 sm:py-3 md:py-3 flex items-center gap-2 sm:gap-3 md:gap-3">

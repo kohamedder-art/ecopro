@@ -621,6 +621,7 @@ export async function handleCustomerMessage(
 
   // Build the prompt — context-only, the system prompt handles personality and rules
   const catalog = buildProductCatalog(ctx);
+  const storeLinkSection = ctx.storeLink ? `\nرابط المتجر: ${ctx.storeLink}` : '';
   const storeOrderLink = ctx.storeLink ? `\nرابط الطلب: ${ctx.storeLink}` : '';
 
   // Build order section with clear instructions for the AI
@@ -760,7 +761,7 @@ ${catalog}
 
 ═══ التوصيل ═══
 ${ctx.deliveryInfo}
-الدفع عند الاستلام (COD).${storeOrderLink}
+الدفع عند الاستلام (COD).${storeLinkSection}${storeOrderLink}
 ${orderSection}${orderIntentInstructions}
 ═══ رسالة الزبون ═══
 ${effectiveMessage}`;
