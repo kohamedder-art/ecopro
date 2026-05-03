@@ -1,0 +1,850 @@
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import {
+  RefreshCw, Search, Bot, ShoppingBag, TrendingUp,
+  X, Copy, Check, Download, ChevronRight, Phone, MapPin,
+  Send, Truck, CheckCircle, XCircle, Clock, Package,
+  AlertTriangle, ChevronDown, MessageCircle, Edit3, Save, Loader2,
+} from "lucide-react";
+import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface ChatOrder {
+  id: number;
+  customer_name: string;
+  customer_phone: string;
+  product_title: string;
+  product_images: string[];
+  quantity: number;
+  total_price: number;
+  unit_price: number;
+  delivery_fee: number;
+  status: string;
+  delivery_type: string;
+  shipping_address: string;
+  source_platform: string;
+  tracking_number?: string;
+  delivery_status?: string;
+  created_at: string;
+}
+
+// ─── Platform config ──────────────────────────────────────────────────────────
+const PLATFORM_META: Record<string, { label: string; emoji: string; color: string; bg: string; darkBg: string }> = {
+  telegram:  { label: "Telegram",  emoji: "✈️", color: "#229ED9", bg: "#e8f5fb",  darkBg: "rgba(34,158,217,0.15)" },
+  whatsapp:  { label: "WhatsApp",  emoji: "💬", color: "#25D366", bg: "#e8faf0",  darkBg: "rgba(37,211,102,0.15)"  },
+  messenger: { label: "Messenger", emoji: "🟦", color: "#0084FF", bg: "#e5f2ff",  darkBg: "rgba(0,132,255,0.15)"   },
+  instagram: { label: "Instagram", emoji: "📸", color: "#E1306C", bg: "#fde8ef",  darkBg: "rgba(225,48,108,0.15)"  },
+};
+
+// ─── Status config (mirrors Orders page built-ins) ────────────────────────────
+const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
+  pending:    { label: "قيد الانتظار",  color: "#eab308", icon: "●"  },
+  confirmed:  { label: "مؤكد",          color: "#22c55e", icon: "✓"  },
+  processing: { label: "قيد التجهيز",   color: "#3b82f6", icon: "◐"  },
+  shipped:    { label: "تم الشحن",      color: "#8b5cf6", icon: "📦" },
+  delivered:  { label: "تم التسليم",    color: "#10b981", icon: "✓"  },
+  cancelled:  { label: "ملغى",          color: "#ef4444", icon: "✕"  },
+  duplicate:  { label: "مكرر",          color: "#9ca3af", icon: "📋" },
+  fake:       { label: "مشبوه",         color: "#dc2626", icon: "⚠️" },
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function parseUTCDate(s: string) {
+  if (!s) return new Date();
+  if (s.includes("Z") || s.includes("+")) return new Date(s);
+  return new Date(s.replace(" ", "T") + "Z");
+}
+
+function timeAgo(iso: string) {
+  const mins = Math.floor((Date.now() - parseUTCDate(iso).getTime()) / 60000);
+  if (mins < 1)   return "الآن";
+  if (mins < 60)  return `منذ ${mins} دقيقة`;
+  if (mins < 1440) return `منذ ${Math.floor(mins / 60)} ساعة`;
+  return `منذ ${Math.floor(mins / 1440)} يوم`;
+}
+
+function fmtPrice(n: number) {
+  return Math.round(n).toLocaleString("ar-DZ");
+}
+
+function exportCSV(rows: ChatOrder[]) {
+  const headers = ["رقم الطلب", "المنصة", "العميل", "الهاتف", "المنتج", "الكمية", "المبلغ", "الحالة", "التاريخ"];
+  const lines = [
+    headers.join(","),
+    ...rows.map(o => [
+      o.id,
+      o.source_platform,
+      `"${o.customer_name || ""}"`,
+      o.customer_phone || "",
+      `"${o.product_title || ""}"`,
+      o.quantity,
+      Math.round(Number(o.total_price)),
+      o.status,
+      parseUTCDate(o.created_at).toLocaleDateString("ar-DZ"),
+    ].join(",")),
+  ];
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url;
+  a.download = `chat-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Status update options ─────────────────────────────────────────────────────
+const STATUS_OPTIONS = [
+  { value: "pending",    label: "قيد الانتظار",  icon: <Clock className="w-3 h-3" />,        color: "#eab308" },
+  { value: "confirmed",  label: "مؤكد",           icon: <CheckCircle className="w-3 h-3" />,   color: "#22c55e" },
+  { value: "processing", label: "قيد التجهيز",    icon: <Package className="w-3 h-3" />,       color: "#3b82f6" },
+  { value: "shipped",    label: "تم الشحن",       icon: <Truck className="w-3 h-3" />,         color: "#8b5cf6" },
+  { value: "delivered",  label: "تم التسليم",     icon: <CheckCircle className="w-3 h-3" />,   color: "#10b981" },
+  { value: "cancelled",  label: "ملغى",           icon: <XCircle className="w-3 h-3" />,       color: "#ef4444" },
+  { value: "fake",       label: "مشبوه",          icon: <AlertTriangle className="w-3 h-3" />, color: "#dc2626" },
+];
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+export default function ChatOrders() {
+  const [orders,         setOrders]         = useState<ChatOrder[]>([]);
+  const [total,          setTotal]           = useState(0);
+  const [loading,        setLoading]         = useState(true);
+  const [isRefreshing,   setIsRefreshing]    = useState(false);
+  const [search,         setSearch]          = useState("");
+  const [platformFilter, setPlatformFilter]  = useState("all");
+  const [statusFilter,   setStatusFilter]    = useState("all");
+  const [dateRange,      setDateRange]       = useState<"all"|"today"|"week"|"month">("all");
+  const [expandedId,     setExpandedId]      = useState<number | null>(null);
+  const [copiedKey,      setCopiedKey]       = useState<string | null>(null);
+  const [newCount,       setNewCount]        = useState(0);
+  const [actionLoading,  setActionLoading]   = useState<number | null>(null);
+  const [statusDropdown, setStatusDropdown]  = useState<number | null>(null);
+  const [msgInput,       setMsgInput]        = useState<Record<number, string>>({});
+  const [msgSending,     setMsgSending]      = useState<number | null>(null);
+  const [toast,          setToast]           = useState<{ text: string; ok: boolean } | null>(null);
+  const [showEditModal,  setShowEditModal]   = useState(false);
+  const [editingOrder,   setEditingOrder]    = useState<ChatOrder | null>(null);
+  const [editForm,       setEditForm]        = useState({ customer_name: "", customer_phone: "", shipping_address: "" });
+  const [savingEdit,     setSavingEdit]      = useState(false);
+  const [deliveryOrder,  setDeliveryOrder]   = useState<ChatOrder | null>(null);
+  const prevCountRef = useRef(0);
+
+  const showToast = (text: string, ok = true) => {
+    setToast({ text, ok });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const copy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1500);
+    });
+  };
+
+  // ── Load ──
+  const load = useCallback(async (silent = false) => {
+    if (!silent) { setIsRefreshing(true); setLoading(true); }
+    try {
+      const params = new URLSearchParams({ limit: "200" });
+      if (platformFilter !== "all") params.set("platform", platformFilter);
+      const res  = await fetch(`/api/client/orders/chat?${params}`, { credentials: "include" });
+      const data = await res.json();
+      const arr  = data.orders || [];
+      setOrders(arr);
+      setTotal(data.total || arr.length);
+    } catch {
+      setOrders([]);
+    } finally {
+      setIsRefreshing(false);
+      setLoading(false);
+    }
+  }, [platformFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // ── Poll 30 s ──
+  useEffect(() => {
+    const id = setInterval(() => load(true), 30000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  // ── New-order badge ──
+  useEffect(() => {
+    if (prevCountRef.current === 0) { prevCountRef.current = orders.length; return; }
+    const diff = orders.length - prevCountRef.current;
+    if (diff > 0) setNewCount(p => p + diff);
+    prevCountRef.current = orders.length;
+  }, [orders.length]);
+
+  // ── Update status ──
+  const updateStatus = async (orderId: number, newStatus: string) => {
+    setActionLoading(orderId);
+    setStatusDropdown(null);
+    try {
+      const csrf = document.cookie.match(/ecopro_csrf=([^;]*)/)?.[1] || "";
+      const res = await fetch(`/api/client/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": decodeURIComponent(csrf) },
+        credentials: "include",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error();
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      showToast("✓ تم تحديث الحالة");
+    } catch {
+      showToast("فشل تحديث الحالة", false);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ── Send bot message ──
+  const sendMessage = async (orderId: number, intent: string, channel: string) => {
+    if (!intent.trim()) return;
+    setMsgSending(orderId);
+    try {
+      const csrf = document.cookie.match(/ecopro_csrf=([^;]*)/)?.[1] || "";
+      const res = await fetch("/api/ai/bot-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": decodeURIComponent(csrf) },
+        credentials: "include",
+        body: JSON.stringify({ type: "bot_send_message", orderId, intent, channel }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "فشل");
+      showToast(`✓ تم إرسال الرسالة${data.preview ? `: "${data.preview.slice(0, 60)}..."` : ""}`);
+      setMsgInput(prev => ({ ...prev, [orderId]: "" }));
+    } catch (e: any) {
+      showToast(e.message || "فشل إرسال الرسالة", false);
+    } finally {
+      setMsgSending(null);
+    }
+  };
+
+  // ── Edit order ──
+  const openEdit = (o: ChatOrder) => {
+    setEditingOrder(o);
+    setEditForm({ customer_name: o.customer_name || "", customer_phone: o.customer_phone || "", shipping_address: o.shipping_address || "" });
+    setShowEditModal(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editingOrder) return;
+    setSavingEdit(true);
+    try {
+      const csrf = document.cookie.match(/ecopro_csrf=([^;]*)/)?.[1] || "";
+      const res = await fetch(`/api/client/orders/${editingOrder.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": decodeURIComponent(csrf) },
+        credentials: "include",
+        body: JSON.stringify({ customer_name: editForm.customer_name, customer_phone: editForm.customer_phone, shipping_address: editForm.shipping_address }),
+      });
+      if (!res.ok) throw new Error();
+      setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...editForm } : o));
+      setShowEditModal(false);
+      setEditingOrder(null);
+      showToast("✓ تم حفظ التعديلات");
+    } catch {
+      showToast("فشل حفظ التعديلات", false);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // ── Derived ──
+  const filtered = orders.filter(o => {
+    const q = search.trim().toLowerCase();
+    if (q && !(
+      String(o.id).includes(q) ||
+      (o.customer_name || "").toLowerCase().includes(q) ||
+      (o.customer_phone || "").includes(q) ||
+      (o.product_title || "").toLowerCase().includes(q)
+    )) return false;
+
+    if (statusFilter !== "all" && o.status !== statusFilter) return false;
+
+    if (dateRange !== "all") {
+      const cutoff = dateRange === "today" ? Date.now() - 86400000
+                   : dateRange === "week"  ? Date.now() - 7  * 86400000
+                   :                         Date.now() - 30 * 86400000;
+      if (parseUTCDate(o.created_at).getTime() < cutoff) return false;
+    }
+    return true;
+  });
+
+  const revenue        = orders.filter(o => !["cancelled","fake"].includes(o.status)).reduce((s, o) => s + Number(o.total_price || 0), 0);
+  const confirmedCount = orders.filter(o => o.status === "confirmed").length;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <div className="pt-4" dir="rtl" onClick={() => setStatusDropdown(null)}>
+
+      {/* ── Toast ── */}
+      {toast && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-xl text-sm font-bold text-white transition-all ${toast.ok ? "bg-emerald-500" : "bg-red-500"}`}>
+          {toast.ok ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+          {toast.text}
+        </div>
+      )}
+
+      {/* ── New orders banner ── */}
+      {newCount > 0 && (
+        <div
+          onClick={() => { setNewCount(0); load(); }}
+          className="mb-3 flex items-center gap-3 rounded-xl bg-gradient-to-r from-violet-500/15 to-indigo-500/10 border border-violet-500/30 px-4 py-3 cursor-pointer hover:from-violet-500/25 transition-all shadow-sm shadow-violet-500/10"
+        >
+          <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0">
+            <Bot className="h-4 w-4 text-violet-600 animate-bounce" />
+          </div>
+          <div>
+            <span className="text-sm font-bold text-violet-700 dark:text-violet-400 block">🤖 {newCount} طلب جديد من الدردشة!</span>
+            <span className="text-xs text-violet-600/70">انقر للتحديث</span>
+          </div>
+          <span className="ml-auto text-xs font-bold bg-violet-500 text-white px-2.5 py-1 rounded-full animate-pulse">{newCount}</span>
+        </div>
+      )}
+
+      {/* ── Stats row ── */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-violet-500/50 transition-all shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow">
+            <Bot className="h-3.5 w-3.5 text-white" />
+          </div>
+          <div>
+            <div className="text-xl font-black tabular-nums leading-none">{total}</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">طلبيات الدردشة</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-emerald-500/50 transition-all shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0 shadow">
+            <TrendingUp className="h-3.5 w-3.5 text-white" />
+          </div>
+          <div>
+            <div className="text-xl font-black tabular-nums leading-none text-emerald-500">{confirmedCount}</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">مؤكد</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-amber-500/50 transition-all shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center shrink-0 shadow text-sm leading-none">💰</div>
+          <div>
+            <div className="text-xl font-black tabular-nums leading-none text-amber-500">{fmtPrice(revenue)}</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">الإيرادات · دج</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main card ── */}
+      <div className="rounded-2xl border border-border/40 bg-card shadow-md overflow-hidden">
+
+        {/* Toolbar */}
+        <div className="p-3 border-b border-border/40 bg-gradient-to-r from-muted/20 to-transparent">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-base md:text-lg font-black bg-gradient-to-r from-violet-500 to-indigo-500 bg-clip-text text-transparent flex items-center gap-2">
+              <span className="inline-block w-1 h-5 rounded-full bg-gradient-to-b from-violet-500 to-indigo-500"></span>
+              طلبيات الدردشة
+            </h3>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <button
+                onClick={() => load()}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all h-8 shadow-sm disabled:opacity-50"
+              >
+                {isRefreshing
+                  ? <><span className="w-3 h-3 border-2 border-violet-400/40 border-t-violet-500 rounded-full animate-spin" /> جارٍ التحديث</>
+                  : <><RefreshCw className="h-3.5 w-3.5" /> تحديث</>}
+              </button>
+              <button
+                onClick={() => exportCSV(filtered)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all h-8 shadow-sm"
+              >
+                <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">تصدير CSV</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Search + date */}
+          <div className="flex flex-col sm:flex-row gap-2 mt-3">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="بحث برقم الطلب، الاسم، الهاتف، المنتج..."
+                className="w-full h-9 pr-9 pl-3 rounded-lg border border-border/60 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 focus:bg-background transition-all"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground w-5 h-5 flex items-center justify-center rounded-full hover:bg-muted">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+            <div className="flex gap-1 bg-muted/40 p-1 rounded-lg border border-border/40">
+              {(["all","today","week","month"] as const).map(r => (
+                <button
+                  key={r}
+                  onClick={() => setDateRange(r)}
+                  className={`px-2.5 h-7 rounded-md text-xs font-bold transition-all flex-1 sm:flex-none ${dateRange === r ? "bg-violet-500 text-white shadow-sm shadow-violet-500/30" : "text-muted-foreground hover:text-foreground hover:bg-background"}`}
+                >
+                  {r === "all" ? "الكل" : r === "today" ? "اليوم" : r === "week" ? "7 أيام" : "30 يوم"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Platform + status tabs */}
+        <div className="border-b border-border/40 bg-muted/10 px-3 py-2 flex flex-wrap gap-1.5">
+          {/* Platform pills */}
+          <button
+            onClick={() => setPlatformFilter("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+              platformFilter === "all"
+                ? "bg-violet-500 text-white border-violet-500 shadow-md shadow-violet-500/30"
+                : "bg-background text-muted-foreground border-border hover:border-violet-400/40 hover:text-foreground"
+            }`}
+          >
+            🤖 الكل ({orders.length})
+          </button>
+          {Object.entries(PLATFORM_META).map(([key, meta]) => {
+            const cnt = orders.filter(o => o.source_platform === key).length;
+            const active = platformFilter === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setPlatformFilter(key)}
+                style={active ? { backgroundColor: meta.color, borderColor: meta.color, boxShadow: `0 4px 12px ${meta.color}40` } : { color: meta.color, borderColor: `${meta.color}40`, backgroundColor: meta.bg }}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${active ? "text-white" : ""}`}
+              >
+                {meta.emoji} {meta.label} ({cnt})
+              </button>
+            );
+          })}
+          <div className="w-px bg-border/60 mx-1 self-stretch" />
+          {/* Status pills */}
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${statusFilter === "all" ? "bg-foreground text-background border-foreground" : "bg-background text-muted-foreground border-border hover:text-foreground"}`}
+          >
+            كل الحالات
+          </button>
+          {Object.entries(STATUS_META).map(([key, s]) => {
+            const cnt   = orders.filter(o => o.status === key).length;
+            const active = statusFilter === key;
+            if (!cnt && !active) return null;
+            return (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                style={active
+                  ? { backgroundColor: s.color, borderColor: s.color, color: "#fff", boxShadow: `0 4px 12px ${s.color}40` }
+                  : { color: s.color, borderColor: `${s.color}40`, backgroundColor: `${s.color}15` }}
+                className="px-3 py-1.5 rounded-full text-xs font-bold transition-all border"
+              >
+                {s.icon} {s.label} ({cnt})
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Body ── */}
+        <div className="overflow-x-auto">
+          {loading && (
+            <div className="p-8 text-center">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-violet-500/10 mb-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-violet-500" />
+              </div>
+              <p className="text-xs text-muted-foreground">جارٍ تحميل الطلبات...</p>
+            </div>
+          )}
+
+          {!loading && orders.length === 0 && (
+            <div className="p-10 text-center flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/20 flex items-center justify-center">
+                <Bot className="w-8 h-8 text-violet-400" />
+              </div>
+              <div>
+                <p className="font-bold text-base">لا توجد طلبيات دردشة بعد</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                  عندما يطلب العملاء عبر الذكاء الاصطناعي في Telegram أو WhatsApp أو Messenger، ستظهر طلباتهم هنا تلقائياً
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!loading && orders.length > 0 && filtered.length === 0 && (
+            <div className="p-8 text-center">
+              <div className="text-2xl mb-2">🔍</div>
+              <p className="text-sm font-semibold text-muted-foreground">لا توجد نتائج</p>
+              <p className="text-xs text-muted-foreground mt-1">جرّب تغيير الفلتر أو كلمة البحث</p>
+            </div>
+          )}
+
+          {!loading && filtered.length > 0 && (
+            <table className="w-full text-sm font-semibold">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">الصورة</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">رقم الطلب</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">المنصة</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">المنتج</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">العميل</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">المبلغ</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">الحالة</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">الوقت</th>
+                  <th className="w-6" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(o => {
+                  const pm    = PLATFORM_META[o.source_platform] || { label: o.source_platform || "AI", emoji: "🤖", color: "#6b7280", bg: "#f3f4f6", darkBg: "rgba(107,114,128,0.15)" };
+                  const sm    = STATUS_META[o.status]            || { label: o.status, color: "#6b7280", icon: "●" };
+                  const img   = Array.isArray(o.product_images) ? o.product_images[0] : null;
+                  const open  = expandedId === o.id;
+
+                  return (
+                    <React.Fragment key={o.id}>
+                      <tr
+                        onClick={() => setExpandedId(open ? null : o.id)}
+                        className={`group border-b border-border/30 transition-all duration-150 cursor-pointer hover:bg-primary/5 ${open ? "bg-violet-500/5" : ""}`}
+                      >
+                        {/* Image */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                          {img ? (
+                            <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-border/40 ml-auto shadow-sm group-hover:border-violet-500/30 transition-all">
+                              <img src={img} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                            </div>
+                          ) : (
+                            <div className="w-11 h-11 rounded-xl bg-muted/80 flex items-center justify-center border-2 border-border/30 ml-auto">
+                              <ShoppingBag className="w-4 h-4 text-muted-foreground/50" />
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Order # */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => copy(`ORD-${String(o.id).padStart(3,"0")}`, `id-${o.id}`)}
+                            className="inline-flex items-center gap-1.5 group/copy hover:text-violet-600 transition-colors font-mono text-xs font-bold bg-muted/50 hover:bg-violet-500/10 px-2 py-1 rounded-md"
+                          >
+                            ORD-{String(o.id).padStart(3,"0")}
+                            {copiedKey === `id-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/copy:opacity-70" />}
+                          </button>
+                        </td>
+
+                        {/* Platform */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                          <span
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                            style={{ color: pm.color, background: pm.bg }}
+                          >
+                            <span>{pm.emoji}</span>
+                            {pm.label}
+                          </span>
+                        </td>
+
+                        {/* Product */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                          <span className="text-sm font-semibold max-w-[160px] truncate block" title={o.product_title}>
+                            {o.product_title || "—"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">×{o.quantity}</span>
+                        </td>
+
+                        {/* Customer */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="text-sm font-bold">{o.customer_name || "—"}</span>
+                            {o.customer_phone && (
+                              <button
+                                onClick={() => copy(o.customer_phone, `ph-${o.id}`)}
+                                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-violet-600 transition-colors group/ph"
+                                dir="ltr"
+                              >
+                                {o.customer_phone}
+                                {copiedKey === `ph-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/ph:opacity-60" />}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Amount */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                          <span className="text-sm font-black tabular-nums">{fmtPrice(Number(o.total_price))}</span>
+                          <span className="text-xs text-muted-foreground mr-0.5">دج</span>
+                        </td>
+
+                        {/* Status — interactive dropdown */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+                          <div className="relative inline-block">
+                            <button
+                              onClick={() => setStatusDropdown(statusDropdown === o.id ? null : o.id)}
+                              disabled={actionLoading === o.id}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all hover:opacity-80 active:scale-95"
+                              style={{ color: sm.color, background: `${sm.color}18`, border: `1px solid ${sm.color}30` }}
+                            >
+                              {actionLoading === o.id
+                                ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                                : <span>{sm.icon}</span>}
+                              {sm.label}
+                              <ChevronDown className="w-2.5 h-2.5 opacity-60" />
+                            </button>
+                            {statusDropdown === o.id && (
+                              <div className="absolute top-full mt-1 right-0 z-30 bg-card border border-border rounded-xl shadow-xl py-1 min-w-[140px]">
+                                {STATUS_OPTIONS.map(opt => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => updateStatus(o.id, opt.value)}
+                                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold hover:bg-muted transition-colors text-right ${o.status === opt.value ? "opacity-40 pointer-events-none" : ""}`}
+                                    style={{ color: opt.color }}
+                                  >
+                                    {opt.icon}
+                                    {opt.label}
+                                    {o.status === opt.value && <Check className="w-3 h-3 mr-auto" />}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Time */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                          <span className="text-xs text-muted-foreground">{timeAgo(o.created_at)}</span>
+                        </td>
+
+                        {/* Expand toggle */}
+                        <td className="px-2 py-2.5 text-center">
+                          <ChevronRight className={`h-4 w-4 text-muted-foreground/50 transition-transform duration-200 ${open ? "rotate-90" : "group-hover:translate-x-0.5"}`} />
+                        </td>
+                      </tr>
+
+                      {/* ── Expanded panel ── */}
+                      {open && (
+                        <tr className="border-b border-border/30">
+                          <td colSpan={9} className="p-0">
+                            <div className="bg-gradient-to-r from-violet-500/5 via-background to-indigo-500/5 border-t border-violet-500/10 px-4 py-4 space-y-4">
+
+                              {/* Info grid */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" /> عنوان التوصيل
+                                  </span>
+                                  <span className="font-semibold text-foreground">{o.shipping_address || "—"}</span>
+                                  <span className="text-xs text-muted-foreground">{o.delivery_type === "desk" ? "🏪 توصيل للمكتب" : "🏠 توصيل للمنزل"}</span>
+                                </div>
+
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                                    <Phone className="w-3 h-3" /> التواصل
+                                  </span>
+                                  <span className="font-semibold text-foreground" dir="ltr">{o.customer_phone || "—"}</span>
+                                  <span className="text-xs capitalize" style={{ color: pm.color }}>{pm.emoji} {pm.label}</span>
+                                </div>
+
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">تفاصيل المبلغ</span>
+                                  <span className="text-xs text-muted-foreground">سعر الوحدة: <strong className="text-foreground">{fmtPrice(Number(o.unit_price))} دج</strong></span>
+                                  <span className="text-xs text-muted-foreground">رسوم التوصيل: <strong className="text-foreground">{fmtPrice(Number(o.delivery_fee))} دج</strong></span>
+                                  <span className="text-xs font-black text-amber-600">الإجمالي: {fmtPrice(Number(o.total_price))} دج</span>
+                                </div>
+
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">التاريخ</span>
+                                  <span className="text-xs text-foreground">
+                                    {parseUTCDate(o.created_at).toLocaleDateString("ar-DZ", { day: "2-digit", month: "long", year: "numeric" })}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {parseUTCDate(o.created_at).toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                  {o.tracking_number && (
+                                    <button onClick={() => copy(o.tracking_number!, `trk-${o.id}`)} className="text-xs font-mono text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded w-fit flex items-center gap-1 transition-colors">
+                                      🚚 {o.tracking_number}
+                                      {copiedKey === `trk-${o.id}` ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5 opacity-60" />}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Action row */}
+                              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/30">
+
+                                {/* Quick status shortcuts */}
+                                <span className="text-[11px] font-bold text-muted-foreground ml-1">تغيير الحالة:</span>
+                                {STATUS_OPTIONS.filter(s => s.value !== o.status).slice(0, 4).map(opt => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => updateStatus(o.id, opt.value)}
+                                    disabled={actionLoading === o.id}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
+                                    style={{ color: opt.color, borderColor: `${opt.color}40`, background: `${opt.color}10` }}
+                                  >
+                                    {opt.icon} {opt.label}
+                                  </button>
+                                ))}
+
+                                {/* Edit + Delivery + Tracking */}
+                                <div className="mr-auto flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => openEdit(o)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-600 text-xs font-bold hover:bg-blue-500/20 transition-all"
+                                  >
+                                    <Edit3 className="w-3 h-3" /> تعديل
+                                  </button>
+                                  <button
+                                    onClick={() => setDeliveryOrder(o)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 text-violet-600 text-xs font-bold hover:bg-violet-500/20 transition-all"
+                                  >
+                                    <Truck className="w-3 h-3" /> رفع للتوصيل
+                                  </button>
+                                  <a
+                                    href="/dashboard/tracking"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-bold hover:bg-muted transition-all"
+                                  >
+                                    <Package className="w-3 h-3" /> التتبع
+                                  </a>
+                                </div>
+                              </div>
+
+                              {/* Send message panel */}
+                              <div className="flex items-center gap-2 bg-muted/30 border border-border/50 rounded-xl p-2">
+                                <MessageCircle className="w-4 h-4 text-violet-500 shrink-0" />
+                                <input
+                                  value={msgInput[o.id] || ""}
+                                  onChange={e => setMsgInput(prev => ({ ...prev, [o.id]: e.target.value }))}
+                                  onKeyDown={e => { if (e.key === "Enter") sendMessage(o.id, msgInput[o.id] || "", o.source_platform); }}
+                                  placeholder={`أرسل رسالة للزبون عبر ${pm.label}...`}
+                                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+                                  dir="rtl"
+                                />
+                                <div className="flex items-center gap-1">
+                                  {["messenger","whatsapp","telegram"].map(ch => (
+                                    <button
+                                      key={ch}
+                                      onClick={() => sendMessage(o.id, msgInput[o.id] || "", ch)}
+                                      disabled={!msgInput[o.id]?.trim() || msgSending === o.id}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition-all disabled:opacity-30 hover:bg-muted"
+                                      style={{
+                                        color: ch === "messenger" ? "#0084FF" : ch === "whatsapp" ? "#25D366" : "#229ED9",
+                                        borderColor: ch === "messenger" ? "#0084FF40" : ch === "whatsapp" ? "#25D36640" : "#229ED940",
+                                      }}
+                                    >
+                                      {msgSending === o.id ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> : <Send className="w-3 h-3" />}
+                                      {ch === "messenger" ? "M" : ch === "whatsapp" ? "W" : "TG"}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Footer count */}
+        {!loading && filtered.length > 0 && (
+          <div className="px-3 py-2 border-t border-border/40 bg-muted/10 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              عرض <strong>{filtered.length}</strong> من <strong>{total}</strong> طلب
+            </span>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Bot className="w-3 h-3 text-violet-500" />
+              مصدر: الذكاء الاصطناعي
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Edit order modal ── */}
+      <Dialog open={showEditModal} onOpenChange={v => { if (!v) { setShowEditModal(false); setEditingOrder(null); } }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit3 className="w-4 h-4 text-blue-500" />
+              تعديل الطلب {editingOrder ? `ORD-${String(editingOrder.id).padStart(3,"0")}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground">اسم الزبون</label>
+              <input
+                value={editForm.customer_name}
+                onChange={e => setEditForm(p => ({ ...p, customer_name: e.target.value }))}
+                className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                placeholder="اسم الزبون"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground">رقم الهاتف</label>
+              <input
+                value={editForm.customer_phone}
+                onChange={e => setEditForm(p => ({ ...p, customer_phone: e.target.value }))}
+                className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                placeholder="رقم الهاتف"
+                dir="ltr"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground">عنوان التوصيل</label>
+              <input
+                value={editForm.shipping_address}
+                onChange={e => setEditForm(p => ({ ...p, shipping_address: e.target.value }))}
+                className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                placeholder="العنوان"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={saveEdit}
+                disabled={savingEdit}
+                className="flex-1 h-10 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              >
+                {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                حفظ التعديلات
+              </button>
+              <button
+                onClick={() => { setShowEditModal(false); setEditingOrder(null); }}
+                className="h-10 px-4 rounded-xl border border-border text-sm font-bold hover:bg-muted transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delivery assignment modal ── */}
+      <Dialog open={!!deliveryOrder} onOpenChange={v => { if (!v) setDeliveryOrder(null); }}>
+        <DialogContent dir="rtl" className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="w-4 h-4 text-violet-500" />
+              رفع للتوصيل — {deliveryOrder ? `ORD-${String(deliveryOrder.id).padStart(3,"0")}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {deliveryOrder && (
+            <OrderFulfillment
+              order={{
+                id: deliveryOrder.id,
+                customer_name: deliveryOrder.customer_name,
+                customer_phone: deliveryOrder.customer_phone,
+                customer_address: deliveryOrder.shipping_address,
+                total_price: Number(deliveryOrder.total_price),
+                delivery_company_id: undefined,
+                tracking_number: deliveryOrder.tracking_number,
+                delivery_status: deliveryOrder.delivery_status,
+              }}
+              onDeliveryAssigned={() => { setDeliveryOrder(null); load(); showToast("✓ تم رفع الطلب للتوصيل"); }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

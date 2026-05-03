@@ -1125,7 +1125,7 @@ export const fr = {
   "sidebar.store": "Ma Boutique",
   "sidebar.stock": "Stock",
   "sidebar.images": "Images",
-  "sidebar.orders": "Commandes",
+  "sidebar.orders": "Commandes Boutique",
   "sidebar.delivery": "Livraison",
   "sidebar.addons": "Extensions",
   "sidebar.pixels": "Statistiques Pixel",

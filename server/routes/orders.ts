@@ -619,6 +619,8 @@ export const createClientOrder: RequestHandler = async (req, res) => {
     quantity = 1,
     total_price,
     notes,
+    order_source = 'manual',
+    source_platform,
   } = req.body as any;
 
   const trimName = typeof customer_name === 'string' ? customer_name.trim() : '';
@@ -678,6 +680,8 @@ export const createClientOrder: RequestHandler = async (req, res) => {
     addCol('status', clientOrderStatus);
     addCol('payment_status', 'unpaid');
     addCol('delivery_type', 'home');
+    addCol('order_source', order_source || 'manual');
+    addCol('source_platform', source_platform || null);
     addCol('created_at', new Date());
 
     const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(',');
@@ -823,19 +827,22 @@ export const getClientOrders: RequestHandler = async (req, res) => {
         COALESCE(cp.title, 'Deleted Product') as product_title,
         COALESCE(cp.price, 0) as product_price,
         COALESCE(cp.images, '{}') as product_images,
-        dc.name as delivery_company_name
+        dc.name as delivery_company_name,
+        o.order_source,
+        o.source_platform
       FROM store_orders o
       LEFT JOIN client_store_products cp ON o.product_id = cp.id
       LEFT JOIN delivery_companies dc ON o.delivery_company_id = dc.id
       WHERE o.client_id = $1
         AND o.deleted_at IS NULL
+        AND (o.order_source IS NULL OR o.order_source != 'ai_chat')
       ORDER BY o.created_at DESC
       LIMIT $2 OFFSET $3`,
       [req.user.id, limit, offset]
     );
 
     const countResult = await queryWithRetry(
-      'SELECT COUNT(*) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL',
+      `SELECT COUNT(*) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND (order_source IS NULL OR order_source != 'ai_chat')`,
       [req.user.id]
     );
 
@@ -856,6 +863,60 @@ export const getClientOrders: RequestHandler = async (req, res) => {
   } catch (error) {
     console.error("Get client orders error:", error);
     res.status(500).json({ error: "Failed to fetch orders" });
+  }
+};
+
+/**
+ * Get only AI chat orders for the client
+ * GET /api/client/orders/chat
+ */
+export const getChatOrders: RequestHandler = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    const clientId = Number((req.user as any).id);
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const platformFilter = req.query.platform as string | undefined;
+
+    const baseParams: any[] = [clientId];
+    const platformClause = platformFilter ? ` AND o.source_platform = $2` : '';
+    if (platformFilter) baseParams.push(platformFilter);
+
+    const result = await pool.query(
+      `SELECT
+        o.id, o.product_id, o.quantity, o.total_price, o.unit_price, o.delivery_fee,
+        o.status, o.customer_name, o.customer_phone, o.shipping_address,
+        o.delivery_type, o.created_at, o.updated_at,
+        o.order_source, o.source_platform,
+        o.tracking_number, o.delivery_status,
+        COALESCE(cp.title, 'Deleted Product') as product_title,
+        COALESCE(cp.images, '{}') as product_images
+       FROM store_orders o
+       LEFT JOIN client_store_products cp ON o.product_id = cp.id
+       WHERE o.client_id = $1
+         AND o.order_source = 'ai_chat'
+         AND o.deleted_at IS NULL
+         ${platformClause}
+       ORDER BY o.created_at DESC
+       LIMIT $${baseParams.length + 1} OFFSET $${baseParams.length + 2}`,
+      [...baseParams, limit, offset]
+    );
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as total FROM store_orders WHERE client_id = $1 AND order_source = 'ai_chat' AND deleted_at IS NULL${platformFilter ? ` AND source_platform = $2` : ''}`,
+      platformFilter ? [clientId, platformFilter] : [clientId]
+    );
+
+    res.json({
+      orders: result.rows,
+      total: parseInt(countResult.rows[0].total),
+      limit,
+      offset,
+      hasMore: offset + limit < parseInt(countResult.rows[0].total),
+    });
+  } catch (err) {
+    console.error('[getChatOrders]', err);
+    res.status(500).json({ error: 'Failed to fetch chat orders' });
   }
 };
 

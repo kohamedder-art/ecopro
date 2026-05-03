@@ -11,6 +11,37 @@ import { generateText } from './gemini';
 
 type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 
+interface PendingOrderSession {
+  clientId: number;
+  platform: Platform;
+  platformChatId: string;
+  productId?: number;
+  productTitle?: string;
+  productPrice?: number;
+  customerName?: string;
+  customerPhone?: string;
+  wilayaId?: number;
+  wilayaName?: string;
+  deliveryType?: 'home' | 'desk';
+  step: 'product' | 'name' | 'phone' | 'wilaya' | 'confirm';
+  createdAt: number;
+}
+
+// In-memory store for active AI order sessions (expires in 30 min)
+const pendingOrderSessions = new Map<string, PendingOrderSession>();
+const SESSION_TTL_MS = 30 * 60 * 1000;
+
+function sessionKey(clientId: number, platform: Platform, chatId: string): string {
+  return `${clientId}:${platform}:${chatId}`;
+}
+
+function cleanExpiredSessions(): void {
+  const now = Date.now();
+  for (const [key, s] of pendingOrderSessions) {
+    if (now - s.createdAt > SESSION_TTL_MS) pendingOrderSessions.delete(key);
+  }
+}
+
 interface StoreContext {
   storeName: string;
   storeDescription: string;
@@ -114,7 +145,7 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
   );
 
   // Build store link
-  const storeLink = store_slug ? `https://ecopro.dz/store/${store_slug}` : undefined;
+  const storeLink = store_slug ? `https://www.sahla4eco.com/store/${store_slug}` : undefined;
 
   return {
     storeName: store_name || 'المتجر',
@@ -451,6 +482,73 @@ async function loadCustomerOrders(
 }
 
 /**
+ * Create an order from a completed AI chat session.
+ */
+async function createOrderFromChat(
+  session: PendingOrderSession
+): Promise<{ orderId: number; total: number } | null> {
+  try {
+    const pool = await ensureConnection();
+    const storeOrderColumns = await (async () => {
+      const res = await pool.query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = 'store_orders'`
+      );
+      return new Set<string>(res.rows.map((r: any) => String(r.column_name)));
+    })();
+
+    const insertCols: string[] = [];
+    const insertVals: any[] = [];
+    const addCol = (col: string, val: any) => {
+      if (!storeOrderColumns.has(col)) return;
+      insertCols.push(col);
+      insertVals.push(val);
+    };
+
+    const deliveryRes = session.wilayaId
+      ? await pool.query(
+          `SELECT home_delivery_price, desk_delivery_price FROM delivery_prices
+           WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
+          [session.clientId, session.wilayaId]
+        )
+      : { rows: [] };
+    const deliveryFee = deliveryRes.rows[0]
+      ? Number(session.deliveryType === 'desk'
+          ? deliveryRes.rows[0].desk_delivery_price
+          : deliveryRes.rows[0].home_delivery_price) || 0
+      : 0;
+    const total = (session.productPrice || 0) + deliveryFee;
+
+    addCol('client_id', session.clientId);
+    addCol('product_id', session.productId || null);
+    addCol('quantity', 1);
+    addCol('unit_price', session.productPrice || 0);
+    addCol('total_price', total);
+    addCol('delivery_fee', deliveryFee);
+    addCol('delivery_type', session.deliveryType || 'home');
+    addCol('customer_name', session.customerName || '');
+    addCol('customer_phone', session.customerPhone || '');
+    addCol('shipping_address', session.wilayaName || null);
+    addCol('shipping_wilaya_id', session.wilayaId || null);
+    addCol('status', 'pending');
+    addCol('payment_status', 'unpaid');
+    addCol('order_source', 'ai_chat');
+    addCol('source_platform', session.platform);
+    addCol('created_at', new Date());
+
+    const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(',');
+    const result = await pool.query(
+      `INSERT INTO store_orders (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING id, total_price`,
+      insertVals
+    );
+    return { orderId: result.rows[0].id, total: Number(result.rows[0].total_price) };
+  } catch (err) {
+    console.error('[AI-Customer] createOrderFromChat error:', err);
+    return null;
+  }
+}
+
+/**
  * Main handler: generate an AI response for an incoming customer message.
  *
  * Returns the AI response text, or null if AI auto-reply is disabled or context is missing.
@@ -468,12 +566,15 @@ export async function handleCustomerMessage(
     return null;
   }
 
-  // Don't auto-reply to the store owner
+  // Don't auto-reply to the store owner (unless they prefix with /test for testing the customer flow)
+  const isTestMode = customerMessage.trim().startsWith('/test');
   const ownerTalking = await isSenderStoreOwner(clientId, platform, platformChatId);
-  if (ownerTalking) {
+  if (ownerTalking && !isTestMode) {
     console.log(`[AI-Customer] Sender is store owner, skipping (client=${clientId}, chatId=${platformChatId})`);
     return null;
   }
+  // Strip /test prefix before processing so the actual message is clean
+  const effectiveMessage = isTestMode ? customerMessage.trim().replace(/^\/test\s*/i, '') : customerMessage;
 
   // Load store context
   const ctx = await loadStoreContext(clientId);
@@ -495,7 +596,7 @@ export async function handleCustomerMessage(
   // and provides their phone to look up their order.
   let phoneProvidedInMessage = false;
   if (!customerPhone || !orderHistory) {
-    const extractedPhone = extractPhoneFromMessage(customerMessage);
+    const extractedPhone = extractPhoneFromMessage(effectiveMessage);
     if (extractedPhone) {
       const lookupOrders = await loadCustomerOrders(clientId, extractedPhone);
       if (lookupOrders) {
@@ -509,7 +610,7 @@ export async function handleCustomerMessage(
   // Also check if the message contains an order ID like #1234 or "طلب 1234"
   let orderByIdInfo = '';
   if (!orderHistory) {
-    const orderIdMatch = customerMessage.match(/(?:#|طلب\s*#?\s*|order\s*#?\s*)(\d{1,8})/i);
+    const orderIdMatch = effectiveMessage.match(/(?:#|طلب\s*#?\s*|order\s*#?\s*)(\d{1,8})/i);
     if (orderIdMatch) {
       const orderId = parseInt(orderIdMatch[1], 10);
       if (orderId > 0) {
@@ -537,6 +638,121 @@ export async function handleCustomerMessage(
     orderSection = `\n[لم نتمكن من تحديد هوية هذا الزبون بعد. إذا سأل عن طلب، اطلب منه رقم هاتفه اللي طلب بيه وتاريخ الطلب التقريبي باش نقدرو نلقاو الطلب تاعو.]\n`;
   }
 
+  // ── Check for active order session ──────────────────────────────────────
+  cleanExpiredSessions();
+  const sKey = sessionKey(clientId, platform, platformChatId);
+  const activeSession = pendingOrderSessions.get(sKey);
+
+  // If we are in an active order collection session, handle it directly
+  if (activeSession) {
+    const msg = effectiveMessage.trim().toLowerCase();
+    const isCancel = /إلغ|cancel|لا حاجة|مبقيتش|بطل|stop/i.test(effectiveMessage);
+    if (isCancel) {
+      pendingOrderSessions.delete(sKey);
+      return 'حسناً، تم إلغاء الطلب. إذا غيرت رأيك، قولي وأساعدك 😊';
+    }
+
+    const isConfirm = /نعم|أكيد|موافق|تأكيد|confirm|اطلب|أطلب|اتمام|أتمم|واه|ايه|اه|ok|oui/i.test(effectiveMessage);
+
+    if (activeSession.step === 'confirm') {
+      if (isConfirm) {
+        const result = await createOrderFromChat(activeSession);
+        pendingOrderSessions.delete(sKey);
+        if (result) {
+          return `✅ تم تسجيل طلبك بنجاح!\n\n📦 رقم الطلب: #${result.orderId}\n💰 المبلغ: ${result.total} دج (الدفع عند الاستلام)\n\nشكراً ${activeSession.customerName}! سنتواصل معك قريباً لتأكيد موعد التوصيل 🚚`;
+        } else {
+          return 'عذراً، حصل خطأ في تسجيل طلبك. يرجى المحاولة مجدداً أو تواصل معنا مباشرة.';
+        }
+      } else {
+        return `عندك تعديل؟ قولي شو تبي تبدل، أو قل "تأكيد" باش نكمل.\n\n• الاسم: ${activeSession.customerName}\n• الهاتف: ${activeSession.customerPhone}\n• الولاية: ${activeSession.wilayaName || 'غير محددة'}\n• المنتج: ${activeSession.productTitle}\n• المبلغ: ${activeSession.productPrice} دج + توصيل`;
+      }
+    }
+
+    if (activeSession.step === 'name') {
+      const name = effectiveMessage.trim();
+      if (name.length < 2) return 'يرجى إدخال اسمك الكامل باش نقدر نسجل الطلب.';
+      activeSession.customerName = name;
+      activeSession.step = 'phone';
+      return `شكراً ${name}! الآن أعطني رقم هاتفك (مثل: 0555123456) 📱`;
+    }
+
+    if (activeSession.step === 'phone') {
+      const extractedPhone = extractPhoneFromMessage(effectiveMessage) || effectiveMessage.trim().replace(/\s/g, '');
+      if (!/^0[5-7]\d{8}$/.test(extractedPhone)) {
+        return 'رقم الهاتف غير صحيح. يرجى إدخال رقم جزائري صحيح (مثال: 0555123456)';
+      }
+      activeSession.customerPhone = extractedPhone;
+      activeSession.step = 'wilaya';
+      return `تمام! الآن أعطني اسم ولايتك للتوصيل 📍`;
+    }
+
+    if (activeSession.step === 'wilaya') {
+      const pool = await ensureConnection();
+      const wilayaMatch = await pool.query(
+        `SELECT id, name_ar, name FROM wilayas WHERE lower(name_ar) LIKE lower($1) OR lower(name) LIKE lower($1) LIMIT 1`,
+        [`%${effectiveMessage.trim()}%`]
+      ).catch(() => ({ rows: [] }));
+      let wilayaId: number | undefined;
+      let wilayaName: string | undefined;
+      if (wilayaMatch.rows[0]) {
+        wilayaId = Number(wilayaMatch.rows[0].id);
+        wilayaName = wilayaMatch.rows[0].name_ar || wilayaMatch.rows[0].name;
+      } else {
+        wilayaName = effectiveMessage.trim();
+      }
+      activeSession.wilayaId = wilayaId;
+      activeSession.wilayaName = wilayaName;
+      activeSession.step = 'confirm';
+
+      // Calculate delivery fee if wilaya found
+      let deliveryFee = 0;
+      if (wilayaId) {
+        const dRes = await pool.query(
+          `SELECT home_delivery_price FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
+          [clientId, wilayaId]
+        ).catch(() => ({ rows: [] }));
+        deliveryFee = Number(dRes.rows[0]?.home_delivery_price) || 0;
+      }
+      const total = (activeSession.productPrice || 0) + deliveryFee;
+
+      return `تأكيد الطلب:\n\n📦 المنتج: ${activeSession.productTitle}\n💰 السعر: ${activeSession.productPrice} دج\n🚚 التوصيل: ${deliveryFee} دج\n💳 المجموع: ${total} دج\n👤 الاسم: ${activeSession.customerName}\n📱 الهاتف: ${activeSession.customerPhone}\n📍 الولاية: ${wilayaName}\n\n✅ الدفع عند الاستلام\n\nاكتب "تأكيد" للتسجيل أو "إلغاء" للإلغاء`;
+    }
+  }
+
+  // ── Detect new order intent from the message ──────────────────────────────
+  const orderIntentRegex = /(?:حاب|حابة|بغيت|نطلب|أطلب|اطلب|نشري|أشري|بغيت نشري|حابة نطلب|نحب نطلب|je veux commander|je veux acheter|i want to order|i want to buy)/i;
+  const hasOrderIntent = orderIntentRegex.test(effectiveMessage) && ctx.products.length > 0;
+  let orderIntentInstructions = '';
+  if (hasOrderIntent && !activeSession) {
+    // Pick the most likely product if mentioned
+    const mentionedProduct = ctx.products.find(p => effectiveMessage.includes(p.title)) || (ctx.products.length === 1 ? ctx.products[0] : null);
+    if (mentionedProduct) {
+      const newSession: PendingOrderSession = {
+        clientId,
+        platform,
+        platformChatId,
+        productId: undefined,
+        productTitle: mentionedProduct.title,
+        productPrice: mentionedProduct.price,
+        step: 'name',
+        createdAt: Date.now(),
+      };
+      // Try to find the product ID
+      try {
+        const pool = await ensureConnection();
+        const pRes = await pool.query(
+          `SELECT id FROM client_store_products WHERE client_id = $1 AND title = $2 LIMIT 1`,
+          [clientId, mentionedProduct.title]
+        );
+        if (pRes.rows[0]) newSession.productId = Number(pRes.rows[0].id);
+      } catch {}
+      pendingOrderSessions.set(sKey, newSession);
+      return `واو، خيار ممتاز! ${mentionedProduct.title} بـ ${mentionedProduct.price} دج 🙌\n\nباش نسجل طلبك، محتاج منك معلومات صغيرة:\n\nما هو اسمك الكامل؟`;
+    } else if (ctx.products.length > 0) {
+      orderIntentInstructions = `\n\n[الزبون يريد الطلب — اسأله عن المنتج الذي يريده من القائمة أعلاه، ثم قل له سنكمل باقي التفاصيل معه خطوة بخطوة]`;
+    }
+  }
+
   const prompt = `[متجر: ${ctx.storeName}]
 ${ctx.storeDescription ? ctx.storeDescription + '\n' : ''}${ctx.aiInstructions ? `\n[تعليمات خاصة من صاحب المتجر]: ${ctx.aiInstructions}\n` : ''}
 ═══ المنتجات المتوفرة ═══
@@ -545,9 +761,9 @@ ${catalog}
 ═══ التوصيل ═══
 ${ctx.deliveryInfo}
 الدفع عند الاستلام (COD).${storeOrderLink}
-${orderSection}
+${orderSection}${orderIntentInstructions}
 ═══ رسالة الزبون ═══
-${customerMessage}`;
+${effectiveMessage}`;
 
   try {
     const response = await generateText(
@@ -558,7 +774,7 @@ ${customerMessage}`;
     );
 
     // Save the conversation turn (non-blocking — don't let a DB error kill the reply)
-    saveConversationTurn(clientId, platform, platformChatId, customerMessage, response)
+    saveConversationTurn(clientId, platform, platformChatId, effectiveMessage, response)
       .catch(err => console.error(`[AI-Customer] Failed to save conversation:`, err));
 
     return response;

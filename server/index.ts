@@ -1417,6 +1417,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
   app.post("/api/orders/create", storefrontOrderLimiter, orderRoutes.createOrder); // Public - buyers can create orders
   app.post("/api/client/orders", authenticate, requireClient, orderRoutes.createClientOrder); // Authenticated - store owner creates order manually
   app.get("/api/client/orders", authenticate, requireClient, orderRoutes.getClientOrders);
+  app.get("/api/client/orders/chat", authenticate, requireClient, orderRoutes.getChatOrders);
   app.get("/api/orders/new-count", authenticate, requireClient, orderRoutes.getNewOrdersCount); // Get count of new orders;
   
   // Fraud detection routes (authenticated - client only)

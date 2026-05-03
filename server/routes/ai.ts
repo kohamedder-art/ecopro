@@ -1603,10 +1603,12 @@ Enable/disable bot: ECOPRO_ACTION:{"type":"bot_toggle","enable":true|false}
 Change delay: ECOPRO_ACTION:{"type":"bot_set_schedule","delayMinutes":<number>}
 Rewrite templates: ECOPRO_ACTION:{"type":"bot_update_templates","language":"ar|fr|en","tone":"<optional>"}
 Auto-configure: ECOPRO_ACTION:{"type":"bot_auto_configure","language":"ar|fr|en","tone":"<optional>"}
-Send message to customer (ask for confirmation first, then append): ECOPRO_ACTION:{"type":"bot_send_message","orderId":<number>,"intent":"<what to say>","channel":"telegram|messenger|whatsapp"}
-If user mentions a channel (Telegram, Messenger, WhatsApp), use it. Default: telegram.
+Send message to customer — emit the action IMMEDIATELY once you have the order ID and what to say. Do NOT ask for confirmation, do NOT say "I'll send it", just send it:
+ECOPRO_ACTION:{"type":"bot_send_message","orderId":<number>,"intent":"<what to say>","channel":"telegram|messenger|whatsapp"}
+If user mentions a channel (Telegram, Messenger, WhatsApp), use it. Default: messenger.
+Only ask for clarification if the order ID or recipient is completely unknown — once you have that info, ACT immediately.
 
-RULES: Only ONE action marker per response. Never chain multiple. Always confirm before delete_product and bot_send_message. For ambiguous requests, ask which product/order/field they mean.
+RULES: Only ONE action marker per response. Never chain multiple. Always confirm before delete_product ONLY. For bot_send_message — execute immediately, never stall. For ambiguous requests, ask which product/order/field they mean.
 
 ═══ PRODUCT RESEARCH (WEB SEARCH) ═══
 You have access to Google Search. Use it when the conversation involves products, sourcing, or growth decisions.

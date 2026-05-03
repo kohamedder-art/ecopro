@@ -219,11 +219,7 @@ export default function FloatingChatBubble() {
       if (result.action?.type === 'update_order_status') {
         setPendingAction(result.action as AIAction);
       } else if (typeof result.action?.type === 'string' && result.action.type.startsWith('bot_')) {
-        if (result.action.type === 'bot_send_message') {
-          setPendingAction(result.action as AIAction);
-        } else {
-          void executeBotAction(result.action as AIAction);
-        }
+        void executeBotAction(result.action as AIAction);
       } else if (typeof result.action?.type === 'string' &&
           ['create_product', 'edit_product', 'delete_product', 'update_store_settings', 'update_store_design'].includes(result.action.type)) {
         setPendingAction(result.action as AIAction);
@@ -290,25 +286,6 @@ export default function FloatingChatBubble() {
         if (res.ok) {
           // Refresh template editor preview if it's open
           queryClient.invalidateQueries({ queryKey: ['storeSettings'] });
-        }
-        setPendingAction(null);
-        setActionLoading(false);
-        return;
-      }
-
-      if (pendingAction.type === 'bot_send_message') {
-        const res = await fetch('/api/ai/bot-action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-          credentials: 'include',
-          body: JSON.stringify(pendingAction),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          const preview = data.preview ? `\n\n> ${data.preview}` : '';
-          setAiMessages(prev => [...prev, { role: 'assistant', content: `✓ ${data.message}${preview}` }]);
-        } else {
-          setAiMessages(prev => [...prev, { role: 'assistant', content: `Could not send message: ${data.error}` }]);
         }
         setPendingAction(null);
         setActionLoading(false);
@@ -642,9 +619,7 @@ export default function FloatingChatBubble() {
                     <div className="mx-3 mb-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 flex items-center gap-2 flex-shrink-0">
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                       <span className="text-[12px] text-amber-700 dark:text-amber-300 flex-1 leading-snug">
-                        {pendingAction.type === 'bot_send_message'
-                          ? <>Send bot message to order <strong>#{pendingAction.orderId}</strong>?</>
-                          : pendingAction.type === 'create_product'
+                        {pendingAction.type === 'create_product'
                           ? <>Create product <strong>&quot;{pendingAction.title}&quot;</strong> at <strong>{pendingAction.price} DZD</strong>?</>
                           : pendingAction.type === 'edit_product'
                           ? <>Update <strong>{pendingAction.field}</strong> of product <strong>#{pendingAction.productId}</strong> to <strong>&quot;{pendingAction.value}&quot;</strong>?</>

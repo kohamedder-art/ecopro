@@ -4,7 +4,7 @@ import {
   Truck, Megaphone, Star, Percent, Globe, BarChart3, 
   Users, Shield, Ban, Puzzle, CreditCard, Settings,
   ChevronDown, ChevronRight, Menu, X, Package, Bot,
-    Divide, Palette, User, Lock, Image, Brain, MapPin
+    Divide, Palette, User, Lock, Image, Brain, MapPin, MessageSquare
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -79,6 +79,7 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
     { titleKey: "sidebar.stock", path: "/dashboard/stock", icon: <Package className="w-[18px] h-[18px]" />, permission: "view_inventory" },
     { titleKey: "sidebar.orders", path: "/dashboard/orders", icon: <ShoppingCart className="w-[18px] h-[18px]" />, permission: "view_orders_list" },
     { titleKey: "sidebar.tracking", path: "/dashboard/tracking", icon: <MapPin className="w-[18px] h-[18px]" />, permission: "view_orders_list" },
+    { titleKey: "sidebar.chatOrders", path: "/dashboard/orders/chat", icon: <MessageSquare className="w-[18px] h-[18px]" />, permission: "view_orders_list" },
     {
       titleKey: "sidebar.delivery",
       path: "/dashboard/delivery/companies",
