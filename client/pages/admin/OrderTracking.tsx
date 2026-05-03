@@ -86,16 +86,16 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
   };
 
   return (
-    <div className="flex-1 min-w-0 space-y-2.5">
-      {/* Step circles + labels */}
-      <div className="flex items-end">
+    <div className="flex-1 min-w-0 space-y-2 overflow-hidden">
+      {/* Step circles + labels - mobile responsive */}
+      <div className="flex items-end justify-between gap-1 sm:gap-2">
         {TRACKING_STEPS.map((step, i) => {
           const done   = !isBad && i < currentStep;
           const active = !isBad && i === currentStep;
           return (
-            <div key={step.key} className="flex flex-col items-center gap-1" style={{ flex: 1 }}>
+            <div key={step.key} className="flex flex-col items-center gap-1 flex-1 min-w-0">
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
+                className="w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all duration-300"
                 style={{
                   background: done
                     ? step.color
@@ -106,15 +106,15 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
                     : "#e5e7eb",
                   color: (done || active) ? "#fff" : "#9ca3af",
                   boxShadow: active && !isCancelled
-                    ? `0 0 0 3px ${step.color}35, 0 2px 8px ${step.color}50`
+                    ? `0 0 0 2px ${step.color}35, 0 2px 6px ${step.color}40`
                     : undefined,
-                  transform: active ? "scale(1.18)" : "scale(1)",
+                  transform: active ? "scale(1.1)" : "scale(1)",
                 }}
               >
                 {done ? "✓" : isCancelled && active ? "✕" : step.icon}
               </div>
               <span
-                className="text-[9px] leading-tight text-center font-semibold line-clamp-2 max-w-[44px]"
+                className="text-[8px] sm:text-[9px] leading-tight text-center font-semibold line-clamp-2 max-w-[36px] sm:max-w-[44px]"
                 style={{ color: done || active ? step.color : "#9ca3af" }}
               >
                 {step.labelAr}
@@ -192,85 +192,91 @@ function OrderRow({ order }: { order: TrackingOrder }) {
   return (
     <div
       dir="rtl"
-      className="rounded-2xl overflow-hidden flex transition-all duration-200 hover:-translate-y-0.5"
+      className="rounded-2xl overflow-hidden flex flex-col sm:flex-row transition-all duration-200 hover:-translate-y-0.5"
       style={{
         background: "#fff",
         boxShadow: `0 2px 8px rgba(0,0,0,0.06), 0 0 0 1px ${stepColor}18`,
       }}
     >
-      {/* Color stripe */}
-      <div className="w-1.5 flex-shrink-0" style={{ background: stepColor }} />
+      {/* Color stripe - horizontal on mobile, vertical on desktop */}
+      <div className="h-1.5 sm:h-auto sm:w-1.5 flex-shrink-0" style={{ background: stepColor }} />
 
-      {/* Thumbnail */}
-      <div className="p-3 flex-shrink-0 flex items-center">
-        <div
-          className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center"
-          style={{ background: `${stepColor}12`, border: `1.5px solid ${stepColor}25` }}
-        >
-          {order.product_image ? (
-            <img src={order.product_image} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <Package className="w-6 h-6" style={{ color: stepColor }} />
+      {/* Mobile: horizontal info row, Desktop: vertical thumbnail + info */}
+      <div className="flex flex-row sm:flex-row items-start sm:items-stretch gap-2 sm:gap-0 p-2 sm:p-3">
+        {/* Thumbnail */}
+        <div className="flex-shrink-0 flex items-center">
+          <div
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden flex items-center justify-center"
+            style={{ background: `${stepColor}12`, border: `1.5px solid ${stepColor}25` }}
+          >
+            {order.product_image ? (
+              <img src={order.product_image} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <Package className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: stepColor }} />
+            )}
+          </div>
+        </div>
+
+        {/* Info block */}
+        <div className="flex-1 sm:flex-shrink-0 sm:w-40 py-0 sm:py-3 pr-2 sm:pr-0 sm:pl-3 space-y-0.5 sm:space-y-1 flex flex-col justify-center min-w-0">
+          <div className="flex items-center gap-2 sm:block">
+            <button
+              onClick={() => navigator.clipboard?.writeText(String(order.reference_id || order.id))}
+              className="text-[11px] font-black text-right flex items-center gap-1 group w-fit"
+              style={{ color: stepColor }}
+              title="انقر لنسخ رقم الطلب"
+            >
+              #{order.reference_id || order.id}
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px]">📋</span>
+            </button>
+            <p className="text-xs font-bold text-gray-800 truncate hidden sm:block">{order.customer_name}</p>
+          </div>
+          <p className="text-xs font-bold text-gray-800 truncate sm:hidden">{order.customer_name}</p>
+          <p className="text-[11px] text-gray-500 flex items-center gap-1">
+            <Phone className="w-3 h-3" /> {order.customer_phone}
+          </p>
+          <p className="text-[11px] text-gray-400 flex items-center gap-1 hidden sm:flex">
+            <Calendar className="w-3 h-3" />
+            {new Date(order.created_at).toLocaleDateString("ar-DZ")}
+          </p>
+          <p
+            className="text-[11px] sm:text-[12px] font-black mt-0.5"
+            style={{ color: isCancelled ? "#ef4444" : "#16a34a" }}
+          >
+            {Math.round(price).toLocaleString("ar-DZ")} دج
+          </p>
+          {/* Tracking number (copyable) — only if assigned to courier */}
+          {hasCourier && (
+            <button
+              onClick={() => navigator.clipboard?.writeText(order.tracking_number!)}
+              className="text-[9px] sm:text-[10px] font-mono text-right flex items-center gap-1 group w-fit max-w-full truncate mt-0.5"
+              style={{ color: "#6b7280" }}
+              title="انقر لنسخ رقم التتبع"
+            >
+              🚚 {order.tracking_number}
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px]">📋</span>
+            </button>
           )}
         </div>
       </div>
 
-      {/* Info block */}
-      <div className="flex-shrink-0 w-40 py-3 pr-0 pl-3 space-y-1 flex flex-col justify-center">
-        <button
-          onClick={() => navigator.clipboard?.writeText(String(order.reference_id || order.id))}
-          className="text-[11px] font-black text-right flex items-center gap-1 group w-fit"
-          style={{ color: stepColor }}
-          title="انقر لنسخ رقم الطلب"
-        >
-          #{order.reference_id || order.id}
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px]">📋</span>
-        </button>
-        <p className="text-xs font-bold text-gray-800 truncate">{order.customer_name}</p>
-        <p className="text-[11px] text-gray-500 flex items-center gap-1">
-          <Phone className="w-3 h-3" /> {order.customer_phone}
-        </p>
-        <p className="text-[11px] text-gray-400 flex items-center gap-1">
-          <Calendar className="w-3 h-3" />
-          {new Date(order.created_at).toLocaleDateString("ar-DZ")}
-        </p>
-        <p
-          className="text-[12px] font-black mt-0.5"
-          style={{ color: isCancelled ? "#ef4444" : "#16a34a" }}
-        >
-          {Math.round(price).toLocaleString("ar-DZ")} دج
-        </p>
-        {/* Tracking number (copyable) — only if assigned to courier */}
-        {hasCourier && (
-          <button
-            onClick={() => navigator.clipboard?.writeText(order.tracking_number!)}
-            className="text-[10px] font-mono text-right flex items-center gap-1 group w-fit max-w-full truncate mt-0.5"
-            style={{ color: "#6b7280" }}
-            title="انقر لنسخ رقم التتبع"
-          >
-            🚚 {order.tracking_number}
-            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px]">📋</span>
-          </button>
-        )}
-      </div>
+      {/* Divider - hidden on mobile */}
+      <div className="hidden sm:block w-px my-3 bg-gray-100 flex-shrink-0" />
 
-      {/* Divider */}
-      <div className="w-px my-3 bg-gray-100 flex-shrink-0" />
-
-      {/* Tracking bar */}
-      <div className="flex-1 min-w-0 p-3 flex flex-col justify-center gap-1">
+      {/* Tracking bar - full width on mobile */}
+      <div className="flex-1 min-w-0 p-2 sm:p-3 flex flex-col justify-center gap-1 border-t sm:border-t-0 border-gray-100">
         {/* Source label: courier or internal */}
         <div className="flex items-center gap-1.5 mb-1">
           {hasCourier ? (
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-bold"
               style={{ background: "#e5f0ff", color: "#007aff" }}
             >
               🛰️ {order.delivery_company || "شركة التوصيل"}
             </span>
           ) : (
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-bold"
               style={{ background: "#f3f4f6", color: "#6b7280" }}
             >
               📋 حالة داخلية

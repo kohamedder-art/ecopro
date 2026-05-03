@@ -479,7 +479,9 @@ export default function ChatOrders() {
           )}
 
           {!loading && filtered.length > 0 && (
-            <table className="w-full text-sm font-semibold">
+            <>
+            {/* Desktop Table */}
+            <table className="hidden lg:table w-full text-sm font-semibold">
               <thead>
                 <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
                   <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">الصورة</th>
@@ -617,9 +619,9 @@ export default function ChatOrders() {
                         </td>
                       </tr>
 
-                      {/* ── Expanded panel ── */}
+                      {/* ── Expanded panel ── Desktop */}
                       {open && (
-                        <tr className="border-b border-border/30">
+                        <tr className="border-b border-border/30 hidden lg:table-row">
                           <td colSpan={9} className="p-0">
                             <div className="bg-gradient-to-r from-violet-500/5 via-background to-indigo-500/5 border-t border-violet-500/10 px-4 py-4 space-y-4">
 
@@ -750,6 +752,178 @@ export default function ChatOrders() {
                 })}
               </tbody>
             </table>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden space-y-3">
+              {filtered.map(o => {
+                const pm    = PLATFORM_META[o.source_platform] || { label: o.source_platform || "AI", emoji: "🤖", color: "#6b7280", bg: "#f3f4f6", darkBg: "rgba(107,114,128,0.15)" };
+                const sm    = STATUS_META[o.status]            || { label: o.status, color: "#6b7280", icon: "●" };
+                const img   = Array.isArray(o.product_images) ? o.product_images[0] : null;
+                const open  = expandedId === o.id;
+
+                return (
+                  <div
+                    key={o.id}
+                    className={`rounded-2xl border transition-all duration-200 overflow-hidden ${open ? "border-violet-500/40 bg-violet-500/5" : "border-border/50 bg-card hover:border-violet-300/30"}`}
+                  >
+                    {/* Card Header - Click to expand */}
+                    <div
+                      onClick={() => setExpandedId(open ? null : o.id)}
+                      className="p-3 flex items-center gap-3 cursor-pointer"
+                    >
+                      {/* Thumbnail */}
+                      <div className="flex-shrink-0">
+                        {img ? (
+                          <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-border/40 shadow-sm">
+                            <img src={img} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-muted/80 flex items-center justify-center border-2 border-border/40">
+                            <ShoppingBag className="w-5 h-5 text-muted-foreground/50" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Main Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copy(`ORD-${String(o.id).padStart(3,"0")}`, `id-${o.id}`); }}
+                            className="font-mono text-xs font-bold text-violet-600 bg-violet-500/10 px-2 py-0.5 rounded"
+                          >
+                            ORD-{String(o.id).padStart(3,"0")}
+                          </button>
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                            style={{ color: pm.color, background: pm.bg }}
+                          >
+                            {pm.emoji} {pm.label}
+                          </span>
+                        </div>
+                        <p className="text-sm font-bold truncate">{o.product_title || "—"}</p>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-muted-foreground">×{o.quantity}</span>
+                          <span className="text-sm font-black text-emerald-600">{fmtPrice(Number(o.total_price))} دج</span>
+                        </div>
+                      </div>
+
+                      {/* Chevron */}
+                      <ChevronRight className={`w-5 h-5 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+                    </div>
+
+                    {/* Card Actions Row */}
+                    <div className="px-3 pb-3 flex items-center justify-between gap-2 border-t border-border/30 pt-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold">{o.customer_name || "—"}</span>
+                        {o.customer_phone && (
+                          <button
+                            onClick={() => copy(o.customer_phone, `ph-${o.id}`)}
+                            className="text-[10px] text-muted-foreground hover:text-violet-600"
+                            dir="ltr"
+                          >
+                            {o.customer_phone}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setStatusDropdown(statusDropdown === o.id ? null : o.id)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold"
+                          style={{ color: sm.color, background: `${sm.color}18`, border: `1px solid ${sm.color}30` }}
+                        >
+                          {sm.icon} {sm.label}
+                        </button>
+                        {statusDropdown === o.id && (
+                          <div className="absolute mt-8 z-30 bg-card border border-border rounded-xl shadow-xl py-1 min-w-[140px]">
+                            {STATUS_OPTIONS.map(opt => (
+                              <button
+                                key={opt.value}
+                                onClick={() => { updateStatus(o.id, opt.value); setStatusDropdown(null); }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold hover:bg-muted transition-colors text-right"
+                                style={{ color: opt.color }}
+                              >
+                                {opt.icon} {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <span className="text-[10px] text-muted-foreground">{timeAgo(o.created_at)}</span>
+                      </div>
+                    </div>
+
+                    {/* Expanded Panel */}
+                    {open && (
+                      <div className="border-t border-violet-500/10 bg-gradient-to-r from-violet-500/5 via-background to-indigo-500/5 px-3 py-3 space-y-3">
+                        {/* Info Grid */}
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <span className="text-[10px] text-muted-foreground">العنوان</span>
+                            <p className="font-semibold truncate">{o.shipping_address || "—"}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground">الهاتف</span>
+                            <p className="font-semibold" dir="ltr">{o.customer_phone || "—"}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground">السعر</span>
+                            <p className="font-semibold">{fmtPrice(Number(o.unit_price))} دج × {o.quantity}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground">التاريخ</span>
+                            <p className="font-semibold">{parseUTCDate(o.created_at).toLocaleDateString("ar-DZ")}</p>
+                          </div>
+                        </div>
+
+                        {/* Status Change */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/30">
+                          <span className="text-[10px] text-muted-foreground">تغيير:</span>
+                          {STATUS_OPTIONS.filter(s => s.value !== o.status).slice(0, 4).map(opt => (
+                            <button
+                              key={opt.value}
+                              onClick={() => updateStatus(o.id, opt.value)}
+                              disabled={actionLoading === o.id}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border"
+                              style={{ color: opt.color, borderColor: `${opt.color}40`, background: `${opt.color}10` }}
+                            >
+                              {opt.icon} {opt.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <button onClick={() => openEdit(o)} className="flex-1 h-9 rounded-lg bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-1">
+                            <Edit3 className="w-3 h-3" /> تعديل
+                          </button>
+                          <button onClick={() => setDeliveryOrder(o)} className="flex-1 h-9 rounded-lg bg-orange-500 text-white text-xs font-bold flex items-center justify-center gap-1">
+                            <Truck className="w-3 h-3" /> توصيل
+                          </button>
+                        </div>
+
+                        {/* Message Input */}
+                        <div className="flex items-center gap-2 bg-muted/30 border border-border/50 rounded-lg p-2">
+                          <input
+                            value={msgInput[o.id] || ""}
+                            onChange={e => setMsgInput(prev => ({ ...prev, [o.id]: e.target.value }))}
+                            onKeyDown={e => { if (e.key === "Enter") sendMessage(o.id, msgInput[o.id] || "", o.source_platform); }}
+                            placeholder={`رسالة ${pm.label}...`}
+                            className="flex-1 bg-transparent text-xs placeholder:text-muted-foreground/50 focus:outline-none text-right"
+                          />
+                          <button
+                            onClick={() => sendMessage(o.id, msgInput[o.id] || "", o.source_platform)}
+                            disabled={!msgInput[o.id]?.trim() || msgSending === o.id}
+                            className="h-8 px-2 rounded-md bg-violet-500 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"
+                          >
+                            {msgSending === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            </>
           )}
         </div>
 
