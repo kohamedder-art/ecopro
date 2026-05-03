@@ -193,8 +193,8 @@ export default function SpiriluxeTemplate({
       
       // Add temporary uploading item
       const addFn = type === 'above' ? setAboveContent : setBelowContent;
-      const currentContent = type === 'above' ? aboveContent : belowContent;
-      addFn([...currentContent, tempContent]);
+      const prevContent = type === 'above' ? aboveContent : belowContent;
+      addFn([...prevContent, tempContent]);
 
       // Upload the file
       const result = await uploadImage(file);
@@ -208,8 +208,16 @@ export default function SpiriluxeTemplate({
         fileName: file.name
       });
 
-      // Save to settings for persistence
-      const updatedContent = type === 'above' ? aboveContent : belowContent;
+      // Get the updated content array AFTER the state update
+      const existingContent = type === 'above' ? aboveContent : belowContent;
+      const finalContent = [...existingContent, { 
+        id: tempId, 
+        type: contentType, 
+        url: result.url, 
+        caption: '', 
+        uploading: false, 
+        fileName: file.name 
+      }];
       const settingKey = type === 'above' ? 'spiriluxe_above_content' : 'spiriluxe_below_content';
       
       if (canManage) {
@@ -220,7 +228,7 @@ export default function SpiriluxeTemplate({
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({
-              [settingKey]: JSON.stringify(updatedContent)
+              [settingKey]: JSON.stringify(finalContent)
             })
           });
           if (!response.ok) {
@@ -235,8 +243,8 @@ export default function SpiriluxeTemplate({
       console.error('Upload failed:', error);
       // Remove the temporary item on error
       const removeFn = type === 'above' ? setAboveContent : setBelowContent;
-      const currentContent = type === 'above' ? aboveContent : belowContent;
-      removeFn(currentContent.filter(item => !item.uploading));
+      const errorContent = type === 'above' ? aboveContent : belowContent;
+      removeFn(errorContent.filter(item => !item.uploading));
     }
   };
 
@@ -400,6 +408,58 @@ export default function SpiriluxeTemplate({
       <div className="max-w-md mx-auto">
         {/* Content Above Form */}
         {renderContentSection(aboveContent, true)}
+
+        {/* Product Display Section */}
+        {mainProduct && (
+          <div className="px-6 mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+              {/* Product Image */}
+              {mainProduct.images && mainProduct.images.length > 0 && (
+                <div className="relative aspect-[4/3] lg:aspect-[16/9] overflow-hidden">
+                  <img 
+                    src={mainProduct.images[0]} 
+                    alt={mainProduct.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {mainProduct.images.length > 1 && (
+                    <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                      +{mainProduct.images.length - 1} صور
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Product Info */}
+              <div className="p-4">
+                <h2 className="text-xl font-bold mb-2">{mainProduct.title}</h2>
+                {mainProduct.description && (
+                  <p className="text-sm opacity-70 mb-3 line-clamp-3">{mainProduct.description}</p>
+                )}
+                <div className="flex items-center justify-between">
+                  <div>
+                    {mainProduct.original_price && mainProduct.original_price > mainProduct.price && (
+                      <span className="text-sm line-through opacity-50 mr-2">
+                        {Math.round(mainProduct.original_price).toLocaleString()} {currency}
+                      </span>
+                    )}
+                    <span className="text-2xl font-bold" style={{ color: accentColor }}>
+                      {Math.round(mainProduct.price).toLocaleString()} {currency}
+                    </span>
+                  </div>
+                  {mainProduct.stock_quantity !== undefined && mainProduct.stock_quantity > 0 ? (
+                    <span className="text-sm text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                      متوفر
+                    </span>
+                  ) : (
+                    <span className="text-sm text-red-600 bg-red-100 px-3 py-1 rounded-full">
+                      غير متوفر
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Order Form - Center */}
         <div className="px-6 py-8">
