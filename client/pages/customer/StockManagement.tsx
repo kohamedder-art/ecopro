@@ -314,6 +314,22 @@ export default function StockManagement() {
   const [variantsDirty, setVariantsDirty] = useState(false);
   const [loadingVariants, setLoadingVariants] = useState(false);
 
+  type StockOfferDraft = {
+    id?: number;
+    quantity: number;
+    bundle_price: number;
+    compare_price?: number;
+    free_delivery?: boolean;
+    label?: string;
+    image_url?: string;
+    sort_order?: number;
+    is_active?: boolean;
+  };
+  const [offersDraft, setOffersDraft] = useState<StockOfferDraft[]>([]);
+  const [offersLoaded, setOffersLoaded] = useState(false);
+  const [offersDirty, setOffersDirty] = useState(false);
+  const [loadingOffers, setLoadingOffers] = useState(false);
+
   const buildCreatePayload = () => {
     const images = Array.isArray(formData.images) ? formData.images : [];
 
@@ -397,6 +413,61 @@ export default function StockManagement() {
       setVariantsDirty(false);
     } finally {
       setLoadingVariants(false);
+    }
+  };
+
+  const loadStockOffers = async (stockId: number) => {
+    setLoadingOffers(true);
+    try {
+      const res = await fetch(`/api/client/stock/${stockId}/offers`);
+      if (!res.ok) throw new Error('Failed to load offers');
+      const data = await res.json();
+      const offers = Array.isArray(data?.offers) ? data.offers : [];
+      setOffersDraft(offers.map((o: any) => ({
+        id: o.id,
+        quantity: Number(o.quantity),
+        bundle_price: Number(o.bundle_price),
+        compare_price: o.compare_price == null ? undefined : Number(o.compare_price),
+        free_delivery: Boolean(o.free_delivery),
+        label: o.label || undefined,
+        image_url: o.image_url || undefined,
+        sort_order: o.sort_order ?? 0,
+        is_active: o.is_active !== false,
+      })));
+      setOffersLoaded(true);
+      setOffersDirty(false);
+    } catch {
+      setOffersDraft([]);
+      setOffersLoaded(true);
+    } finally {
+      setLoadingOffers(false);
+    }
+  };
+
+  const saveStockOffers = async (stockId: number) => {
+    try {
+      const res = await fetch(`/api/client/stock/${stockId}/offers`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offers: offersDraft.map((o, idx) => ({
+            ...(o.id ? { id: o.id } : {}),
+            quantity: Number(o.quantity),
+            bundle_price: Number(o.bundle_price),
+            compare_price: o.compare_price == null ? undefined : Number(o.compare_price),
+            free_delivery: o.free_delivery ?? false,
+            label: o.label || undefined,
+            image_url: o.image_url || undefined,
+            sort_order: o.sort_order ?? idx,
+            is_active: o.is_active !== false,
+          })),
+        }),
+      });
+      if (!res.ok && res.status !== 404) {
+        throw new Error('Failed to save offers');
+      }
+    } catch (error) {
+      console.error('Failed to save stock offers', error);
     }
   };
 
@@ -702,12 +773,22 @@ export default function StockManagement() {
             console.error('Failed to save stock variants after create', e);
           }
         }
+        if (createdId && offersDraft.length > 0) {
+          try {
+            await saveStockOffers(createdId);
+          } catch (e) {
+            console.error('Failed to save stock offers after create', e);
+          }
+        }
         await loadStock();
         setShowAddModal(false);
         setFormData({});
         setVariantsDraft([]);
         setVariantsLoaded(false);
         setVariantsDirty(false);
+        setOffersDraft([]);
+        setOffersLoaded(false);
+        setOffersDirty(false);
         toast({
           title: t('stock.toast.createdTitle'),
           description: t('stock.toast.createdDesc'),
@@ -770,6 +851,14 @@ export default function StockManagement() {
             });
           }
         }
+        if (offersDirty) {
+          try {
+            await saveStockOffers(selectedItem.id);
+            setOffersDirty(false);
+          } catch (e) {
+            console.error('Failed to save stock offers', e);
+          }
+        }
         await loadStock();
         setShowEditModal(false);
         setSelectedItem(null);
@@ -777,6 +866,9 @@ export default function StockManagement() {
         setVariantsDraft([]);
         setVariantsLoaded(false);
         setVariantsDirty(false);
+        setOffersDraft([]);
+        setOffersLoaded(false);
+        setOffersDirty(false);
       } else {
         const error = await res.json();
         toast({
@@ -885,10 +977,14 @@ export default function StockManagement() {
     setVariantsDraft([]);
     setVariantsLoaded(false);
     setVariantsDirty(false);
+    setOffersDraft([]);
+    setOffersLoaded(false);
+    setOffersDirty(false);
     setShowEditModal(true);
 
-    // Load variants in background
+    // Load variants and offers in background
     loadStockVariants(item.id);
+    loadStockOffers(item.id);
   };
 
   const openAdjustModal = (item: StockItem) => {
@@ -1296,6 +1392,9 @@ export default function StockManagement() {
           setVariantsDraft([]);
           setVariantsLoaded(false);
           setVariantsDirty(false);
+          setOffersDraft([]);
+          setOffersLoaded(false);
+          setOffersDirty(false);
         }
       }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background via-background to-primary/5 dark:from-slate-950 dark:to-slate-900/30 p-3 md:p-4">
@@ -1404,170 +1503,479 @@ export default function StockManagement() {
               </div>
             )}
 
-            {activeFormSection === 'variants' && (
-              <div className="space-y-2 bg-indigo-500/5 dark:bg-indigo-900/10 p-2 md:p-3 rounded border border-indigo-500/20">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400">Variants (Size / Color)</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Optional. If you add variants, total stock quantity is automatically the sum of active variant stock.
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('stock.hints.variants')}
-                    </p>
+            {activeFormSection === 'variants' && (() => {
+              const COLORS = [
+                { name: 'أحمر', tw: 'bg-red-500', ring: 'ring-red-400' },
+                { name: 'أزرق', tw: 'bg-blue-500', ring: 'ring-blue-400' },
+                { name: 'أسود', tw: 'bg-slate-900', ring: 'ring-slate-700' },
+                { name: 'أبيض', tw: 'bg-white border border-slate-300', ring: 'ring-slate-300' },
+                { name: 'أخضر', tw: 'bg-emerald-500', ring: 'ring-emerald-400' },
+                { name: 'أصفر', tw: 'bg-yellow-400', ring: 'ring-yellow-300' },
+                { name: 'رمادي', tw: 'bg-gray-400', ring: 'ring-gray-300' },
+                { name: 'بني', tw: 'bg-amber-700', ring: 'ring-amber-600' },
+                { name: 'برتقالي', tw: 'bg-orange-500', ring: 'ring-orange-400' },
+                { name: 'وردي', tw: 'bg-pink-400', ring: 'ring-pink-300' },
+                { name: 'بنفسجي', tw: 'bg-purple-500', ring: 'ring-purple-400' },
+                { name: 'كحلي', tw: 'bg-blue-900', ring: 'ring-blue-800' },
+                { name: 'بيج', tw: 'bg-amber-100 border border-amber-300', ring: 'ring-amber-200' },
+              ];
+              const CLOTHING = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
+              const SHOES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
+
+              const existingColors = [...new Set(variantsDraft.map(v => (v.color || '').trim()).filter(Boolean))];
+              const existingSizes = [...new Set(variantsDraft.map(v => (v.size || '').trim()).filter(Boolean))];
+
+              const generateCombos = (colors: string[], sizes: string[]) => {
+                const newVariants: typeof variantsDraft = [];
+                const existingKeys = new Set(variantsDraft.map(v => `${(v.color||'').trim()}|${(v.size||'').trim()}`));
+                for (const c of colors) {
+                  for (const s of sizes) {
+                    if (!existingKeys.has(`${c}|${s}`)) {
+                      newVariants.push({ color: c, size: s, variant_name: '', stock_quantity: 0, is_active: true, sort_order: variantsDraft.length + newVariants.length });
+                    }
+                  }
+                }
+                return newVariants;
+              };
+
+              const toggleColor = (colorName: string) => {
+                const has = existingColors.includes(colorName);
+                if (has) {
+                  setVariantsDraft(prev => prev.filter(v => (v.color || '').trim() !== colorName));
+                } else {
+                  const sizesToUse = existingSizes.length > 0 ? existingSizes : [''];
+                  const newOnes = generateCombos([colorName], sizesToUse);
+                  if (newOnes.length > 0) {
+                    setVariantsDraft(prev => [...prev, ...newOnes]);
+                  } else {
+                    setVariantsDraft(prev => [...prev, { color: colorName, size: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length }]);
+                  }
+                }
+                setVariantsDirty(true);
+                setVariantsLoaded(true);
+              };
+
+              const toggleSize = (sizeName: string) => {
+                const has = existingSizes.includes(sizeName);
+                if (has) {
+                  setVariantsDraft(prev => prev.filter(v => (v.size || '').trim() !== sizeName));
+                } else {
+                  const colorsToUse = existingColors.length > 0 ? existingColors : [''];
+                  const newOnes = generateCombos(colorsToUse, [sizeName]);
+                  if (newOnes.length > 0) {
+                    setVariantsDraft(prev => [...prev, ...newOnes]);
+                  } else {
+                    setVariantsDraft(prev => [...prev, { color: '', size: sizeName, variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length }]);
+                  }
+                }
+                setVariantsDirty(true);
+                setVariantsLoaded(true);
+              };
+
+              const colorGroups: { [color: string]: (typeof variantsDraft[0] & { originalIndex: number })[] } = {};
+              variantsDraft.forEach((v, idx) => {
+                const color = (v.color || '').trim() || '—';
+                if (!colorGroups[color]) colorGroups[color] = [];
+                colorGroups[color].push({ ...v, originalIndex: idx });
+              });
+
+              return (
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                    <Layers className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('stock.form.sections.variants')}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('stock.hints.variants')}</p>
+                  </div>
+                </div>
+
+                {loadingVariants && (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                  </div>
+                )}
+
+                {!loadingVariants && (<>
+                {/* Step 1: Colors */}
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+                      <Palette className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">① اختر الألوان المتوفرة</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">اضغط على كل لون متوفر لديك</span>
+                    </div>
+                    {existingColors.length > 0 && (
+                      <span className="text-xs font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-2.5 py-1 rounded-full">
+                        {existingColors.length} لون
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <div className="flex flex-wrap gap-2.5">
+                      {COLORS.map((c) => {
+                        const selected = existingColors.includes(c.name);
+                        return (
+                          <button key={c.name} type="button" onClick={() => toggleColor(c.name)}
+                            className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                              selected
+                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-500 dark:border-indigo-400 shadow-md shadow-indigo-500/10'
+                                : 'bg-slate-50 dark:bg-slate-700/50 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-sm'
+                            }`}>
+                            <span className={`w-5 h-5 rounded-full ${c.tw} flex-shrink-0 ${selected ? `ring-2 ${c.ring} ring-offset-2` : ''}`} />
+                            <span className="text-slate-700 dark:text-slate-200">{c.name}</span>
+                            {selected && (
+                              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center shadow-sm">
+                                <Check className="h-3 w-3 text-white" />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                      <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5">
+                        <Plus className="h-4 w-4 text-slate-400" />
+                        <Input
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = (e.target as HTMLInputElement).value.trim();
+                              if (val && !existingColors.includes(val)) { toggleColor(val); (e.target as HTMLInputElement).value = ''; }
+                            }
+                          }}
+                          placeholder="لون آخر + Enter"
+                          className="h-7 w-24 border-0 p-0 text-sm bg-transparent focus-visible:ring-0 shadow-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 2: Sizes */}
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+                      <Ruler className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">② اختر المقاسات المتوفرة</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">اضغط على كل مقاس متوفر لديك</span>
+                    </div>
+                    {existingSizes.length > 0 && (
+                      <span className="text-xs font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-300 px-2.5 py-1 rounded-full">
+                        {existingSizes.length} مقاس
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Shirt className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ملابس</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {CLOTHING.map((s) => {
+                          const selected = existingSizes.includes(s);
+                          return (
+                            <button key={s} type="button" onClick={() => toggleSize(s)}
+                              className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                selected ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105' : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                              }`}>{s}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Footprints className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">أحذية</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {SHOES.map((s) => {
+                          const selected = existingSizes.includes(s);
+                          return (
+                            <button key={s} type="button" onClick={() => toggleSize(s)}
+                              className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                selected ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105' : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                              }`}>{s}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 w-fit">
+                      <Plus className="h-4 w-4 text-slate-400" />
+                      <Input
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = (e.target as HTMLInputElement).value.trim();
+                            if (val && !existingSizes.includes(val)) { toggleSize(val); (e.target as HTMLInputElement).value = ''; }
+                          }
+                        }}
+                        placeholder="مقاس آخر + Enter"
+                        className="h-7 w-28 border-0 p-0 text-sm bg-transparent focus-visible:ring-0 shadow-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3: Variants table */}
+                {variantsDraft.length > 0 && (
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                      <Package className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">③ المخزون لكل نوع</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">أدخل الكمية المتوفرة لكل نوع</span>
+                    </div>
+                    <span className="text-xs font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2.5 py-1 rounded-full">
+                      {variantsDraft.length} نوع
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {Object.entries(colorGroups).map(([color, variants]) => (
+                      <div key={color}>
+                        {color !== '—' && (
+                          <div className="px-4 py-2 bg-slate-50/80 dark:bg-slate-800/50 flex items-center gap-2">
+                            {(() => { const cd = COLORS.find(c => c.name === color); return cd ? <span className={`w-4 h-4 rounded-full ${cd.tw}`} /> : <Palette className="h-4 w-4 text-slate-400" />; })()}
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{color}</span>
+                            <span className="text-[10px] text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">{variants.length}</span>
+                          </div>
+                        )}
+                        {variants.map((v) => (
+                          <div key={v.originalIndex} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                            <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${v.size ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                              {v.size || '—'}
+                            </span>
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <span className="text-xs text-slate-400">الكمية:</span>
+                              <Input
+                                type="number" min={0}
+                                value={v.stock_quantity ?? ''}
+                                onChange={(e) => {
+                                  const next = Number(e.target.value || 0);
+                                  const idx = v.originalIndex;
+                                  setVariantsDraft(prev => prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row)));
+                                  setVariantsDirty(true);
+                                }}
+                                className="h-8 w-20 text-sm text-center" placeholder="0"
+                              />
+                            </div>
+                            <div className="hidden sm:flex items-center gap-1.5">
+                              <Input
+                                type="number" min={0} step="0.01"
+                                value={formatPriceForInput(v.price)}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  const next = raw === '' ? undefined : Number(raw);
+                                  const idx = v.originalIndex;
+                                  setVariantsDraft(prev => prev.map((row, i) => (i === idx ? { ...row, price: next } : row)));
+                                  setVariantsDirty(true);
+                                }}
+                                placeholder="السعر" className="h-8 w-20 text-sm text-center"
+                              />
+                              <span className="text-[10px] text-slate-400">دج</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span dir="ltr">
+                                <Switch
+                                  checked={v.is_active ?? true}
+                                  onCheckedChange={(checked) => {
+                                    const idx = v.originalIndex;
+                                    setVariantsDraft(prev => prev.map((row, i) => (i === idx ? { ...row, is_active: checked } : row)));
+                                    setVariantsDirty(true);
+                                  }}
+                                />
+                              </span>
+                              <button type="button"
+                                onClick={() => { const idx = v.originalIndex; setVariantsDraft(prev => prev.filter((_, i) => i !== idx)); setVariantsDirty(true); setVariantsLoaded(true); }}
+                                className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                    <Button type="button" size="sm" variant="outline"
+                      onClick={() => {
+                        setVariantsDraft(prev => [...prev, { color: '', size: '', variant_name: '', price: undefined, stock_quantity: 0, is_active: true, sort_order: prev.length }]);
+                        setVariantsLoaded(true); setVariantsDirty(true);
+                      }}>
+                      <Plus className="h-3.5 w-3.5 mr-1" /> إضافة نوع يدوياً
+                    </Button>
+                  </div>
+                </div>
+                )}
+                </>)}
+              </div>
+              );
+            })()}
+
+            {activeFormSection === 'offers' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/25">
+                    <TicketPercent className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('stock.offersTitle')}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('stock.offersDesc')}</p>
                   </div>
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
                     onClick={() => {
-                      setVariantsDraft((prev) => [
+                      setOffersDraft((prev) => [
                         ...prev,
                         {
-                          color: '',
-                          size: '',
-                          variant_name: '',
-                          price: undefined,
-                          stock_quantity: 0,
-                          is_active: true,
+                          quantity: prev.length + 2,
+                          bundle_price: (Number(formData.unit_price) ?? 0) * (prev.length + 2),
+                          free_delivery: false,
                           sort_order: prev.length,
                         },
                       ]);
-                      setVariantsLoaded(true);
-                      setVariantsDirty(true);
+                      setOffersDirty(true);
+                      setOffersLoaded(true);
                     }}
+                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-md shadow-orange-500/20"
                   >
-                    Add Variant
+                    <Plus className="h-4 w-4 mr-1" />
+                    {t('stock.offersAddBtn') || 'إضافة عرض'}
                   </Button>
                 </div>
 
-                {loadingVariants && <div className="text-sm text-muted-foreground">Loading variants…</div>}
-
-                {!loadingVariants && variantsLoaded && variantsDraft.length === 0 && (
-                  <div className="text-sm text-muted-foreground">No variants added.</div>
+                {loadingOffers && (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                  </div>
                 )}
 
-                {variantsDraft.length > 0 && (() => {
-                  const hasAnyColor = variantsDraft.some(v => (v.color || '').trim());
-                  const hasAnySize = variantsDraft.some(v => (v.size || '').trim());
-                  const allHaveColor = variantsDraft.every(v => (v.color || '').trim());
-                  const allHaveSize = variantsDraft.every(v => (v.size || '').trim());
-                  const colorInconsistent = hasAnyColor && !allHaveColor;
-                  const sizeInconsistent = hasAnySize && !allHaveSize;
-                  return (
-                  <div className="space-y-2">
-                    {(colorInconsistent || sizeInconsistent) && (
-                      <div className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
-                        <span className="text-lg leading-none">⚠️</span>
-                        <div>
-                          <span className="font-bold">{t('store.productForm.variantInconsistentTitle') || 'Warning: Incomplete variant data'}</span>
-                          <br />
-                          {colorInconsistent && <span>{t('store.productForm.variantInconsistentColor') || 'Some variants have a color and some don\'t — fill in color for all or leave empty for all.'}</span>}
-                          {colorInconsistent && sizeInconsistent && <br />}
-                          {sizeInconsistent && <span>{t('store.productForm.variantInconsistentSize') || 'Some variants have a size and some don\'t — fill in size for all or leave empty for all.'}</span>}
+                {!loadingOffers && (offersDraft.length === 0) && (
+                  <div className="text-center py-8 bg-white dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 flex items-center justify-center mx-auto mb-3">
+                      <Gift className="h-7 w-7 text-orange-400 dark:text-orange-500" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">لا يوجد عروض بعد</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[280px] mx-auto leading-relaxed">
+                      أنشئ عروض خاصة مثل: اشترِ 2 بسعر 2700 دج بدل 3000 دج
+                    </p>
+                    {showAddModal && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 max-w-[300px] mx-auto">
+                        💡 يمكنك إضافة العروض بعد إنشاء المنتج من خلال تعديله لاحقاً
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {!loadingOffers && offersDraft.length > 0 && (
+                  <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                    <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {offersDraft.map((o, idx) => {
+                      const unitPrice = Number(formData.unit_price) ?? 0;
+                      const totalRegular = unitPrice * Number(o.quantity);
+                      const bundlePrice = Number(o.bundle_price) ?? 0;
+                      const savings = totalRegular > bundlePrice ? totalRegular - bundlePrice : 0;
+                      const discountPercent = totalRegular > 0 ? Math.round((savings / totalRegular) * 100) : 0;
+                      return (
+                      <div key={o.id ?? idx} className="px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <label className="flex-shrink-0 cursor-pointer group">
+                            <input type="file" accept="image/*" className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const fd = new FormData();
+                                  fd.append('image', file);
+                                  const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                                  if (!res.ok) throw new Error('Upload failed');
+                                  const data = await res.json();
+                                  setOffersDraft((prev) => prev.map((row, i) => (i === idx ? { ...row, image_url: data.url } : row)));
+                                  setOffersDirty(true);
+                                } catch { /* silent */ }
+                              }}
+                            />
+                            {o.image_url ? (
+                              <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
+                                <img src={o.image_url} alt="" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                                  <Edit className="h-3 w-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center group-hover:border-orange-400 transition-colors">
+                                <ImageIcon className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-orange-400 transition-colors" />
+                              </div>
+                            )}
+                          </label>
+
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
+                            idx === 0 ? 'bg-gradient-to-br from-orange-500 to-red-500' :
+                            idx === 1 ? 'bg-gradient-to-br from-violet-500 to-purple-600' :
+                            'bg-gradient-to-br from-emerald-500 to-teal-600'
+                          }`}>{idx + 1}</div>
+
+                          <div className="flex-1">
+                            <Input
+                              type="text"
+                              value={o.label || ''}
+                              onChange={(e) => { setOffersDraft((prev) => prev.map((row, i) => (i === idx ? { ...row, label: e.target.value || undefined } : row))); setOffersDirty(true); }}
+                              placeholder={`${o.quantity} منتج 💚${o.free_delivery ? ' + توصيل مجاني ✅' : ''}`}
+                              className="h-8 text-sm font-bold" dir="auto"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number" min={1}
+                              value={o.quantity}
+                              onChange={(e) => { setOffersDraft((prev) => prev.map((row, i) => (i === idx ? { ...row, quantity: Number(e.target.value) } : row))); setOffersDirty(true); }}
+                              className="h-8 w-14 text-sm text-center"
+                            />
+                            <span className="text-xs text-slate-400">×</span>
+                            <Input
+                              type="number" min={0} step="0.01"
+                              value={formatPriceForInput(o.bundle_price)}
+                              onChange={(e) => { const n = e.target.value === '' ? 0 : Number(e.target.value); setOffersDraft((prev) => prev.map((row, i) => (i === idx ? { ...row, bundle_price: n } : row))); setOffersDirty(true); }}
+                              className="h-8 w-24 text-sm text-center"
+                            />
+                          </div>
+
+                          <button type="button"
+                            onClick={() => { setOffersDraft((prev) => prev.map((row, i) => (i === idx ? { ...row, free_delivery: !row.free_delivery } : row))); setOffersDirty(true); }}
+                            className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                              o.free_delivery
+                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300'
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-400 border border-transparent hover:border-slate-300'
+                            }`}>
+                            <Truck className="h-3 w-3" />
+                            {o.free_delivery ? '✓' : 'مجاني'}
+                          </button>
+
+                          {discountPercent > 0 && (
+                            <span className="flex-shrink-0 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400 px-1.5 py-0.5 rounded-md">-{discountPercent}%</span>
+                          )}
+
+                          <button type="button"
+                            onClick={() => { setOffersDraft((prev) => prev.filter((_, i) => i !== idx)); setOffersDirty(true); setOffersLoaded(true); }}
+                            className="flex-shrink-0 p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </div>
-                    )}
-                    {variantsDraft
-                      .slice()
-                      .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
-                      .map((v, idx) => {
-                        const missingColor = colorInconsistent && !(v.color || '').trim();
-                        const missingSize = sizeInconsistent && !(v.size || '').trim();
-                        return (
-                        <div key={v.id ?? `new-${idx}`} className={`grid grid-cols-12 gap-2 items-end border rounded p-2 bg-background/50 ${(missingColor || missingSize) ? 'ring-2 ring-amber-500/50' : ''}`}>
-                          <div className="col-span-4">
-                            <Label className={`text-xs ${missingColor ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}>Color{missingColor ? ' ⚠️' : ''}</Label>
-                            <Input
-                              value={v.color || ''}
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                setVariantsDraft((prev) =>
-                                  prev.map((x) => (x === v ? { ...x, color: next } : x))
-                                );
-                                setVariantsDirty(true);
-                              }}
-                              className={`h-9 ${missingColor ? 'border-amber-500 bg-amber-500/5' : ''}`}
-                              placeholder="e.g. Red"
-                            />
-                          </div>
-                          <div className="col-span-4">
-                            <Label className={`text-xs ${missingSize ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}>Size{missingSize ? ' ⚠️' : ''}</Label>
-                            <Input
-                              value={v.size || ''}
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                setVariantsDraft((prev) =>
-                                  prev.map((x) => (x === v ? { ...x, size: next } : x))
-                                );
-                                setVariantsDirty(true);
-                              }}
-                              className={`h-9 ${missingSize ? 'border-amber-500 bg-amber-500/5' : ''}`}
-                              placeholder="e.g. M"
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Stock</Label>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={v.stock_quantity ?? ''}
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                const parsed = raw === '' ? undefined : Number(raw);
-                                const next = typeof parsed === 'number' && Number.isFinite(parsed) ? Math.max(0, parsed) : undefined;
-                                setVariantsDraft((prev) =>
-                                  prev.map((x) => (x === v ? { ...x, stock_quantity: next } : x))
-                                );
-                                setVariantsDirty(true);
-                              }}
-                              className="h-9"
-                            />
-                          </div>
-                          <div className="col-span-2 flex gap-2 justify-end">
-                            <Button
-                              type="button"
-                              variant={v.is_active === false ? 'outline' : 'default'}
-                              size="sm"
-                              className="h-9"
-                              onClick={() => {
-                                setVariantsDraft((prev) =>
-                                  prev.map((x) => (x === v ? { ...x, is_active: !(x.is_active ?? true) } : x))
-                                );
-                                setVariantsDirty(true);
-                              }}
-                            >
-                              {v.is_active === false ? 'Off' : 'On'}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-9"
-                              onClick={() => {
-                                setVariantsDraft((prev) => prev.filter((x) => x !== v));
-                                setVariantsDirty(true);
-                              }}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
                       );
-                      })}
+                    })}
+                    </div>
                   </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            {activeFormSection === 'offers' && (
-              <div className="space-y-2 bg-orange-500/5 dark:bg-orange-900/10 p-2 md:p-3 rounded border border-orange-500/20">
-                <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400">{t('stock.offersTitle')}</h3>
-                <p className="text-sm text-muted-foreground">{t('stock.offersDesc')}</p>
-                <div className="rounded-md border border-orange-500/20 bg-orange-500/5 px-3 py-2 text-xs text-muted-foreground">
-                  {t('stock.offersHint')}
-                </div>
+                )}
               </div>
             )}
 
@@ -1583,7 +1991,7 @@ export default function StockManagement() {
                     <SelectTrigger id="stock_status" className="border-amber-500/30 focus:border-amber-500/60 h-9 text-base font-semibold">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" className="z-[300]" sideOffset={4}>
                       <SelectItem value="active">{t('stock.active')}</SelectItem>
                       <SelectItem value="out_of_stock">{t('stock.outStock')}</SelectItem>
                       <SelectItem value="discontinued">{t('stock.discontinued')}</SelectItem>
@@ -1594,38 +2002,12 @@ export default function StockManagement() {
             )}
 
             {activeFormSection === 'price' && (
-              <div className="space-y-2 bg-amber-500/5 dark:bg-amber-900/10 p-2 md:p-3 rounded border border-amber-500/20">
-                <h3 className="text-lg font-bold text-amber-600 dark:text-amber-400">Price & Inventory</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="quantity" className="text-base font-bold">{t('stock.quantity')}</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      value={formData.quantity ?? ''}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === '') {
-                          setFormData(prev => ({ ...prev, quantity: undefined }));
-                          return;
-                        }
+              <div className="space-y-2 bg-emerald-500/5 dark:bg-emerald-900/10 p-2 md:p-3 rounded border border-emerald-500/20">
+                <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{t('stock.basicInfo') || 'السعر والمخزون'}</h3>
 
-                        const n = Number.parseInt(v, 10);
-                        setFormData(prev => ({
-                          ...prev,
-                          quantity: Number.isNaN(n) ? undefined : Math.max(0, n),
-                        }));
-                      }}
-                      min="0"
-                      className="border-amber-500/30 focus:border-amber-500/60 transition-colors h-9 text-base"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t('stock.hints.quantity')}
-                    </p>
-                  </div>
-
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="unit_price" className="text-base font-bold">{t('stock.unitPrice')}</Label>
+                    <Label htmlFor="unit_price" className="text-base font-bold">{t('stock.unitPrice')} *</Label>
                     <Input
                       id="unit_price"
                       type="number"
@@ -1637,37 +2019,47 @@ export default function StockManagement() {
                         setFormData(prev => ({ ...prev, unit_price: v === '' || Number.isNaN(n) ? undefined : n }));
                       }}
                       min="0"
-                      className="border-amber-500/30 focus:border-amber-500/60 transition-colors h-9 text-base"
+                      placeholder="0"
+                      className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="reorder_level" className="text-base font-bold">{t('stock.reorderLevel')}</Label>
+                    <Label htmlFor="compare_price" className="text-base font-bold">{t('stock.comparePrice') || 'السعر الأصلي (شطب)'}</Label>
                     <Input
-                      id="reorder_level"
+                      id="compare_price"
                       type="number"
-                      value={formData.reorder_level ?? ''}
+                      step="0.01"
+                      value={formatPriceForInput((formData as any).compare_price)}
                       onChange={(e) => {
                         const v = e.target.value;
-                        if (v === '') {
-                          setFormData(prev => ({ ...prev, reorder_level: undefined }));
-                          return;
-                        }
-
-                        const n = Number.parseInt(v, 10);
-                        setFormData(prev => ({
-                          ...prev,
-                          reorder_level: Number.isNaN(n) ? undefined : Math.max(0, n),
-                        }));
+                        const n = Number(v);
+                        setFormData(prev => ({ ...prev, compare_price: v === '' || Number.isNaN(n) ? undefined : n } as any));
                       }}
                       min="0"
-                      className="border-amber-500/30 focus:border-amber-500/60 transition-colors h-9 text-base"
+                      placeholder="0"
+                      className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {t('stock.hints.reorder')}
-                    </p>
                   </div>
                 </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="quantity" className="text-base font-bold">{t('stock.quantity')}</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={formData.quantity ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const n = Number.parseInt(v, 10);
+                      setFormData(prev => ({ ...prev, quantity: v === '' || Number.isNaN(n) ? undefined : Math.max(0, n) }));
+                    }}
+                    min="0"
+                    className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
+                  />
+                  <p className="text-xs text-muted-foreground">{t('stock.hints.quantity')}</p>
+                </div>
+
               </div>
             )}
 
@@ -1690,7 +2082,7 @@ export default function StockManagement() {
                       <SelectTrigger className="border-indigo-500/30 focus:border-indigo-500/60 h-9 text-base font-semibold">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="z-[300]" sideOffset={4}>
                         <SelectItem value="delivery_pricing">Normal delivery prices (wilaya-based)</SelectItem>
                         <SelectItem value="flat">Same shipping price for all wilayas</SelectItem>
                         <SelectItem value="free">Free shipping</SelectItem>

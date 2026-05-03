@@ -304,7 +304,7 @@ async function loadOrderById(clientId: number, orderId: number): Promise<string>
   try {
     const pool = await ensureConnection();
     const res = await pool.query(
-      `SELECT o.id, o.status, o.total_price, o.created_at, o.quantity,
+      `SELECT o.id, o.total_price, o.created_at, o.quantity,
               o.delivery_status, o.tracking_number, o.delivery_type,
               o.customer_name, o.shipping_address,
               p.title as product_title,
@@ -321,16 +321,28 @@ async function loadOrderById(clientId: number, orderId: number): Promise<string>
     if (!res.rows.length) return '';
 
     const o = res.rows[0];
-    const statusLabels: Record<string, string> = {
-      pending: 'قيد الانتظار', confirmed: 'مؤكد', processing: 'قيد التحضير',
-      shipped: 'تم الشحن', delivered: 'تم التوصيل', cancelled: 'ملغى',
+    // NOTE: internal order `status` is intentionally NOT shared with AI customer context.
+    // Only courier delivery_status (from webhooks) is exposed to customers.
+    const deliveryStatusLabels: Record<string, string> = {
+      pending:          'لم يُشحن بعد',
+      assigned:         'تم تعيين شركة التوصيل',
+      picked_up:        'تم استلامه من المتجر',
+      in_transit:       'في الطريق',
+      out_for_delivery: 'خرج للتوصيل — المندوب في الطريق إليك',
+      delivered:        'تم التسليم بنجاح ✅',
+      failed:           'فشلت محاولة التوصيل',
+      returned:         'تم إرجاعه للمرسل',
     };
-    const status = statusLabels[o.status] || o.status;
     const date = new Date(o.created_at).toLocaleDateString('ar-DZ');
     let line = `📦 طلب #${o.id} — ${o.product_title || 'منتج'} (×${o.quantity || 1}) — ${o.total_price} دج\n`;
-    line += `   الحالة: ${status}`;
-    if (o.tracking_number) line += ` | رقم التتبع: ${o.tracking_number}`;
-    if (o.delivery_company) line += ` (${o.delivery_company})`;
+    if (o.tracking_number) {
+      const dStatus = deliveryStatusLabels[o.delivery_status] || o.delivery_status || 'جاري المتابعة';
+      line += `   حالة التوصيل: ${dStatus}`;
+      line += ` | رقم التتبع: ${o.tracking_number}`;
+      if (o.delivery_company) line += ` (${o.delivery_company})`;
+    } else {
+      line += `   الطلب قيد التحضير — لم يُشحن بعد`;
+    }
     if (o.shipping_address) line += `\n   الوجهة: ${o.shipping_address}`;
     line += `\n   الاسم: ${o.customer_name || 'غير محدد'}`;
     line += `\n   تاريخ الطلب: ${date}`;
@@ -350,7 +362,7 @@ async function loadCustomerOrders(
   try {
     const pool = await ensureConnection();
     const res = await pool.query(
-      `SELECT o.id, o.status, o.total_price, o.created_at, o.quantity,
+      `SELECT o.id, o.total_price, o.created_at, o.quantity,
               o.delivery_status, o.tracking_number, o.delivery_type,
               o.customer_name, o.shipping_address,
               p.title as product_title,
@@ -374,63 +386,51 @@ async function loadCustomerOrders(
     );
     if (!res.rows.length) return '';
 
-    const orderStatusLabels: Record<string, string> = {
-      pending: 'قيد الانتظار',
-      confirmed: 'مؤكد',
-      processing: 'قيد التحضير',
-      shipped: 'تم الشحن',
-      delivered: 'تم التوصيل',
-      cancelled: 'ملغى',
-      declined: 'مرفوض',
-      returned: 'مرجع',
-      failed: 'فشل',
-    };
-
+    // NOTE: internal order `status` is intentionally NOT included in the AI customer context.
+    // Customers only see courier delivery_status (from webhooks) — never internal statuses.
     const deliveryStatusLabels: Record<string, string> = {
-      pending: 'لم يُشحن بعد',
-      assigned: 'تم تعيين شركة التوصيل',
-      picked_up: 'تم الاستلام من المتجر',
-      in_transit: 'في الطريق',
-      out_for_delivery: 'خرج للتوصيل',
-      delivered: 'تم التسليم',
-      failed: 'فشل التوصيل',
-      returned: 'مرجع للمرسل',
+      pending:          'لم يُشحن بعد',
+      assigned:         'تم تعيين شركة التوصيل',
+      picked_up:        'تم استلامه من المتجر',
+      in_transit:       'في الطريق',
+      out_for_delivery: 'خرج للتوصيل — المندوب في الطريق إليك',
+      delivered:        'تم التسليم بنجاح ✅',
+      failed:           'فشلت محاولة التوصيل',
+      returned:         'تم إرجاعه للمرسل',
     };
 
     const eventTypeLabels: Record<string, string> = {
-      pickup: 'تم الاستلام من المتجر',
-      in_transit: 'في الطريق إلى الوجهة',
+      pickup:           'تم الاستلام من المتجر',
+      in_transit:       'في الطريق إلى الوجهة',
       out_for_delivery: 'خرج للتوصيل — المندوب في الطريق',
-      at_hub: 'وصل لمركز التوزيع',
-      delivered: 'تم التسليم بنجاح',
-      failed: 'محاولة توصيل فاشلة',
-      returned: 'تم إرجاع الطرد',
+      at_hub:           'وصل لمركز التوزيع',
+      delivered:        'تم التسليم بنجاح',
+      failed:           'محاولة توصيل فاشلة',
+      returned:         'تم إرجاع الطرد',
     };
 
     const lines = res.rows.map((o: any) => {
-      const status = orderStatusLabels[o.status] || o.status;
       const date = new Date(o.created_at).toLocaleDateString('ar-DZ');
       const product = o.product_title || 'منتج';
       const qty = o.quantity || 1;
 
       let line = `📦 طلب #${o.id} — ${product} (×${qty}) — ${o.total_price} دج\n`;
-      line += `   الحالة: ${status}`;
 
-      // Delivery tracking info
+      // Only courier delivery_status exposed — not internal order status
       if (o.tracking_number) {
-        const dStatus = deliveryStatusLabels[o.delivery_status] || o.delivery_status || 'غير محدد';
-        line += ` | التوصيل: ${dStatus}`;
+        const dStatus = deliveryStatusLabels[o.delivery_status] || o.delivery_status || 'جاري المتابعة';
+        line += `   حالة التوصيل: ${dStatus}`;
         if (o.delivery_company) line += ` (${o.delivery_company})`;
         line += `\n   رقم التتبع: ${o.tracking_number}`;
-      } else if (o.status === 'confirmed' || o.status === 'pending') {
-        line += ` | لم يُشحن بعد`;
+      } else {
+        line += `   الطلب قيد التحضير — لم يُشحن بعد`;
       }
 
-      // Latest tracking event
+      // Latest courier tracking event
       if (o.last_event_type) {
         const eventLabel = eventTypeLabels[o.last_event_type] || o.last_tracking_update || o.last_event_type;
         const eventDate = o.last_event_date ? new Date(o.last_event_date).toLocaleDateString('ar-DZ') : '';
-        line += `\n   آخر تحديث: ${eventLabel}${eventDate ? ` (${eventDate})` : ''}`;
+        line += `\n   آخر تحديث من شركة التوصيل: ${eventLabel}${eventDate ? ` (${eventDate})` : ''}`;
       }
 
       // Destination

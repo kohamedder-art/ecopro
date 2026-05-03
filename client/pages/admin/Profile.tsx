@@ -76,6 +76,7 @@ export default function Profile() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [weakPassword, setWeakPassword] = useState(() => localStorage.getItem('password_needs_upgrade') === '1');
 
   const handleFormatVoucherCode = (value: string) => {
     const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
@@ -127,6 +128,8 @@ export default function Profile() {
       if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to change password');
       setPasswordSuccess(true);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      localStorage.removeItem('password_needs_upgrade');
+      setWeakPassword(false);
       toast({ title: t('common.success'), description: t('profile.passwordUpdated') });
       setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err: any) {
@@ -345,6 +348,15 @@ export default function Profile() {
           </div>
 
           <form onSubmit={handleChangePassword} className="p-5 space-y-3">
+            {weakPassword && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 px-3.5 py-3">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-amber-800 dark:text-amber-300">كلمة المرور الحالية ضعيفة</p>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">يُنصح بتحديثها لحماية حسابك — استخدم حروفاً كبيرة وصغيرة وأرقاماً ورموزاً.</p>
+                </div>
+              </div>
+            )}
             <Field label={t('profile.currentPassword')}>
               <div className="relative">
                 <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />

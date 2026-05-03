@@ -145,9 +145,14 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
     const textMuted = isDark ? 'rgba(255,255,255,0.6)' : '#6b7280';
     const inputBg = isDark ? 'rgba(255,255,255,0.08)' : '#ffffff';
     const inputBorder = isDark ? 'rgba(255,255,255,0.15)' : '#d1d5db';
-    const formInputBg = isDark ? '#0f2d22' : '#f9fafb';
-    const formInputBorder = isDark ? '#2d4a3e' : '#e5e7eb';
-    const formInputPlaceholder = isDark ? '#4a7a62' : '#9ca3af';
+    // Form inputs: subtle white overlay on heroBg — no color mixing that creates contrast
+    const formInputBg = isDark ? 'rgba(255,255,255,0.07)' : '#f9fafb';
+    const formInputBorder = isDark ? 'rgba(255,255,255,0.12)' : '#e5e7eb';
+    const formInputPlaceholder = isDark ? 'rgba(255,255,255,0.35)' : '#9ca3af';
+    // Section bg tints: slightly lighter/darker than heroBg
+    const sectionBg1 = isDark ? `color-mix(in srgb, ${heroBg} 85%, white 15%)` : '#f3f4f6';
+    const sectionBg2 = isDark ? `color-mix(in srgb, ${heroBg} 92%, black 8%)` : '#f9fafb';
+    const mobilePanelBg = isDark ? `color-mix(in srgb, ${heroBg} 80%, white 20%)` : '#ffffff';
 
     return (
         <div style={{ fontFamily: "'Cairo', sans-serif", '--dzp-accent': rawAccent, color: textColor } as React.CSSProperties} className="min-h-screen" dir="rtl">
@@ -174,12 +179,6 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
 
             {/* ── HERO SECTION ── */}
             <section className={`relative min-h-screen lg:min-h-[90vh] ${isDark ? '' : 'text-gray-900'}`} style={{ backgroundColor: heroBg }}>
-
-                {/* Background glow */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full opacity-10 blur-[120px]" style={{ backgroundColor: accentColor }} />
-                    <div className="absolute -bottom-20 -right-20 w-[400px] h-[400px] rounded-full opacity-8 blur-[100px]" style={{ backgroundColor: accentColor }} />
-                </div>
 
                 {/* Header inside hero */}
                 <header className="relative z-10 px-6 py-4 flex justify-between items-center border-b" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
@@ -326,7 +325,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
             </section>
 
             {/* ── BENEFITS STRIP ── */}
-            <section className="py-12 px-4" style={{ backgroundColor: isDark ? '#0f1a14' : '#f3f4f6' }}>
+            {!settings?.dzp_hide_benefits && <section className="py-12 px-4" style={{ backgroundColor: sectionBg1 }}>
                 <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
                         { icon: 'ph-truck', titleKey: 'dzp_benefit1_title', descKey: 'dzp_benefit1_desc', def_title: 'توصيل سريع', def_desc: 'نوصل طلبك في وقت قياسي لجميع الولايات' },
@@ -348,11 +347,11 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
                         </div>
                     ))}
                 </div>
-            </section>
+            </section>}
 
             {/* ── PRODUCT DESCRIPTION ── */}
             {product?.description && (
-                <section className="py-12 px-4" style={{ backgroundColor: isDark ? '#080f0b' : '#f9fafb' }}>
+                <section className="py-12 px-4" style={{ backgroundColor: sectionBg2 }}>
                     <div className="max-w-3xl mx-auto">
                         <h2 className="text-xl font-black mb-6 border-b pb-4" style={{ color: textColor, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>وصف المنتج</h2>
                         <div className="prose max-w-none" style={{ color: textMuted }} dangerouslySetInnerHTML={{ __html: product.description }} />
@@ -370,7 +369,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
             {showForm && (
                 <div className="lg:hidden fixed inset-0 z-50 flex items-end">
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowForm(false)} />
-                    <div className="relative w-full rounded-t-3xl overflow-y-auto max-h-[90vh] p-6" style={{ backgroundColor: isDark ? '#0a1a11' : '#ffffff' }}>
+                    <div className="relative w-full rounded-t-3xl overflow-y-auto max-h-[90vh] p-6" style={{ backgroundColor: mobilePanelBg }}>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-black text-lg" style={{ color: textColor }}>تفاصيل الطلب</h3>
                             <button onClick={() => setShowForm(false)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ color: textMuted, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }}>

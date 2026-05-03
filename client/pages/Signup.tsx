@@ -174,6 +174,14 @@ export default function Signup() {
         }
       }
       
+      // Flag weak password so profile page can nudge the user to upgrade
+      const pwScore = [password.length >= 10, /[A-Z]/.test(password), /[0-9]/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
+      if (pwScore < 3) {
+        localStorage.setItem('password_needs_upgrade', '1');
+      } else {
+        localStorage.removeItem('password_needs_upgrade');
+      }
+
       setSuccess(t('signup.success'));
       setTimeout(() => navigate('/dashboard'), 1500);
 
@@ -292,7 +300,7 @@ export default function Signup() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`block w-full bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-indigo-500 focus:border-indigo-500 px-10 py-2.5 text-base rounded-xl font-medium transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/50 text-left ${
-                    password && password.length < 12 ? "border-red-300 focus:border-red-500 focus:ring-red-500" : ""
+                    password && password.length < 6 ? "border-red-300 focus:border-red-500 focus:ring-red-500" : ""
                   }`}
                   placeholder="••••••••"
                   dir="ltr"
@@ -305,9 +313,25 @@ export default function Signup() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              {password && password.length < 12 && (
-                <p className="text-xs text-red-500 font-semibold mt-1">{t('signup.passwordError')}</p>
+              {password && password.length < 6 && (
+                <p className="text-xs text-red-500 font-semibold mt-1">{t('signup.passwordTooShort')}</p>
               )}
+              {password && password.length >= 6 && (() => {
+                const score = [password.length >= 10, /[A-Z]/.test(password), /[0-9]/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
+                const labels = ['', 'ضعيف', 'مقبول', 'جيد', 'قوي'];
+                const colors = ['', 'bg-red-400', 'bg-amber-400', 'bg-blue-500', 'bg-emerald-500'];
+                const textColors = ['', 'text-red-500', 'text-amber-500', 'text-blue-500', 'text-emerald-500'];
+                return (
+                  <div className="mt-1.5 space-y-1">
+                    <div className="flex gap-1">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= score ? colors[score] : 'bg-slate-200 dark:bg-slate-700'}`} />
+                      ))}
+                    </div>
+                    <p className={`text-[10px] font-semibold ${textColors[score]}`}>{labels[score]}</p>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Voucher Code */}
@@ -354,7 +378,7 @@ export default function Signup() {
             <div>
               <Button
                 type="submit"
-                disabled={loading || (email.length > 0 && !isGmailSignup(email)) || (password.length > 0 && password.length < 12)}
+                disabled={loading || (email.length > 0 && !isGmailSignup(email)) || password.length < 6}
                 className="w-full flex justify-center h-12 px-4 border border-transparent rounded-xl shadow-lg text-base font-black text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:-translate-y-0.5 group disabled:opacity-70 disabled:hover:translate-y-0"
               >
                 {loading ? (

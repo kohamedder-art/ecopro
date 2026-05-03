@@ -1611,6 +1611,7 @@ export const en = {
   "sidebar.stock": "Stock",
   "sidebar.images": "Images",
   "sidebar.orders": "Orders",
+  "sidebar.tracking": "Tracking",
   "sidebar.delivery": "Delivery",
   "sidebar.deliveryCompanies": "Companies",
   "sidebar.deliveryPricing": "Pricing",

@@ -78,6 +78,7 @@ const AffiliateDashboard = lazy(() => import("./pages/affiliate/AffiliateDashboa
 const AddOrder = lazy(() => import("./pages/admin/orders/AddOrder"));
 const AbandonedOrders = lazy(() => import("./pages/admin/orders/AbandonedOrders"));
 const FlexScan = lazy(() => import("./pages/admin/orders/FlexScan"));
+const OrderTracking = lazy(() => import("./pages/admin/OrderTracking"));
 
 // Delivery submenu pages - lazy loaded
 const DeliveryCompanies = lazy(() => import("./pages/admin/delivery/DeliveryCompanies"));
@@ -512,6 +513,7 @@ const App = () => (
                     <Route path="orders/add" element={<SubscriptionPageLock><AddOrder /></SubscriptionPageLock>} />
                     <Route path="orders/abandoned" element={<SubscriptionPageLock><AbandonedOrders /></SubscriptionPageLock>} />
                     <Route path="orders/flex-scan" element={<SubscriptionPageLock><FlexScan /></SubscriptionPageLock>} />
+                    <Route path="tracking" element={<OrderTracking />} />
                     {/* Products management moved to Store page */}
                     {/* Delivery submenu routes */}
                     <Route path="delivery/companies" element={<DeliveryCompanies />} />

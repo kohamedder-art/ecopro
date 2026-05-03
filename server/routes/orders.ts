@@ -162,7 +162,7 @@ export const createOrder: RequestHandler = async (req, res) => {
         resolvedClientId = Number(cs.rows[0].client_id);
         if (!isProduction) console.log(`[Orders] Found in client_store_settings, client_id=${resolvedClientId}`);
       } else {
-        return res.status(404).json({ error: 'Store not found' });
+        return res.status(404).json({ error: 'المتجر غير موجود' });
       }
     }
 
@@ -172,7 +172,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       [product_id]
     );
     if (productRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ error: 'المنتج غير موجود' });
     }
     const productRow = productRes.rows[0];
     const productClientId = Number(productRow.client_id);
@@ -180,11 +180,11 @@ export const createOrder: RequestHandler = async (req, res) => {
       resolvedClientId = productClientId;
       if (!isProduction) console.log(`[Orders] Resolved client_id from product: ${resolvedClientId}`);
     } else if (resolvedClientId !== productClientId) {
-      return res.status(400).json({ error: 'Product does not belong to store' });
+      return res.status(400).json({ error: 'المنتج لا ينتمي لهذا المتجر' });
     }
 
     if (String(productRow.status || 'active') !== 'active') {
-      return res.status(400).json({ error: 'Product is not available' });
+      return res.status(400).json({ error: 'المنتج غير متوفر حالياً' });
     }
 
     let variantRow: any | null = null;
@@ -197,20 +197,20 @@ export const createOrder: RequestHandler = async (req, res) => {
         [Number(variant_id), product_id, productClientId]
       );
       if (vRes.rows.length === 0) {
-        return res.status(400).json({ error: 'Invalid variant' });
+        return res.status(400).json({ error: 'الخيار المحدد غير صالح' });
       }
       variantRow = vRes.rows[0];
       if (variantRow.stock_quantity !== null) {
         const vStock = Number(variantRow.stock_quantity);
         if (!Number.isFinite(vStock) || vStock < quantity) {
-          return res.status(400).json({ error: 'Insufficient stock' });
+          return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
         }
       }
     }
 
     const unitPrice = variantRow && variantRow.price != null ? Number(variantRow.price) : Number(productRow.price);
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-      return res.status(400).json({ error: 'Invalid product price' });
+      return res.status(400).json({ error: 'سعر المنتج غير صالح' });
     }
 
     // Validate offer if provided
@@ -225,18 +225,18 @@ export const createOrder: RequestHandler = async (req, res) => {
           [Number(offer_id), product_id, productClientId]
         );
         if (offerRes.rows.length === 0) {
-          return res.status(400).json({ error: 'Invalid offer' });
+          return res.status(400).json({ error: 'العرض المحدد غير صالح أو غير متاح' });
         }
         offerRow = offerRes.rows[0];
       } catch {
-        return res.status(400).json({ error: 'Invalid offer' });
+        return res.status(400).json({ error: 'العرض المحدد غير صالح أو غير متاح' });
       }
     }
 
     if (!variantRow && productRow.stock_quantity !== null) {
       const availableStock = Number(productRow.stock_quantity);
       if (!Number.isFinite(availableStock) || availableStock < quantity) {
-        return res.status(400).json({ error: 'Insufficient stock' });
+        return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
       }
     }
 
@@ -255,7 +255,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       : (unitPrice * Number(quantity)) + deliveryFee;
 
     if (!resolvedClientId) {
-      return res.status(400).json({ error: 'Could not determine store owner' });
+      return res.status(400).json({ error: 'تعذر التعرف على المتجر' });
     }
 
     if (client_id && Number(client_id) !== Number(resolvedClientId)) {
@@ -312,7 +312,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       if (parseInt(velocityCheck.rows[0]?.cnt || '0') >= 3) {
         await client.query('ROLLBACK');
         inTransaction = false;
-        return res.status(429).json({ error: 'Too many orders from this phone number. Please wait before ordering again.' });
+        return res.status(429).json({ error: 'لقد قدمت طلبات كثيرة بهذا الرقم. يرجى الانتظار قليلاً قبل المحاولة مجدداً.' });
       }
     } catch {}
 
@@ -354,27 +354,27 @@ export const createOrder: RequestHandler = async (req, res) => {
 
     if (variantRow) {
       const vUpdate = await client.query(
-        'UPDATE product_variants SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND product_id = $3 AND client_id = $4 AND stock_quantity >= $1 RETURNING stock_quantity',
+        'UPDATE product_variants SET stock_quantity = CASE WHEN stock_quantity IS NULL THEN NULL ELSE stock_quantity - $1 END WHERE id = $2 AND product_id = $3 AND client_id = $4 AND (stock_quantity IS NULL OR stock_quantity >= $1) RETURNING stock_quantity',
         [quantity, Number(variantRow.id), product_id, resolvedClientId]
       );
       const pUpdate = await client.query(
-        'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
+        'UPDATE client_store_products SET stock_quantity = CASE WHEN stock_quantity IS NULL THEN NULL ELSE stock_quantity - $1 END WHERE id = $2 AND client_id = $3 AND (stock_quantity IS NULL OR stock_quantity >= $1) RETURNING stock_quantity',
         [quantity, product_id, resolvedClientId]
       );
       if (vUpdate.rows.length === 0 || pUpdate.rows.length === 0) {
         await client.query('ROLLBACK');
         inTransaction = false;
-        return res.status(400).json({ error: 'Insufficient stock' });
+        return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
       }
     } else {
       const stockUpdate = await client.query(
-        'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
+        'UPDATE client_store_products SET stock_quantity = CASE WHEN stock_quantity IS NULL THEN NULL ELSE stock_quantity - $1 END WHERE id = $2 AND client_id = $3 AND (stock_quantity IS NULL OR stock_quantity >= $1) RETURNING stock_quantity',
         [quantity, product_id, resolvedClientId]
       );
       if (stockUpdate.rows.length === 0) {
         await client.query('ROLLBACK');
         inTransaction = false;
-        return res.status(400).json({ error: 'Insufficient stock' });
+        return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
       }
     }
 
@@ -822,9 +822,11 @@ export const getClientOrders: RequestHandler = async (req, res) => {
         o.shipping_label_url,
         COALESCE(cp.title, 'Deleted Product') as product_title,
         COALESCE(cp.price, 0) as product_price,
-        COALESCE(cp.images, '{}') as product_images
+        COALESCE(cp.images, '{}') as product_images,
+        dc.name as delivery_company_name
       FROM store_orders o
       LEFT JOIN client_store_products cp ON o.product_id = cp.id
+      LEFT JOIN delivery_companies dc ON o.delivery_company_id = dc.id
       WHERE o.client_id = $1
         AND o.deleted_at IS NULL
       ORDER BY o.created_at DESC

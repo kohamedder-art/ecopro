@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { TemplateProps, StoreProduct } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
-import { X, Upload, Image, Video, Play, Truck, Shield, Plus, Trash2 } from 'lucide-react';
+import { Truck, Shield, Trash2, Plus } from 'lucide-react';
 import { uploadImage } from '@/lib/api';
 
 export default function SpiriluxeTemplate({ 
@@ -25,14 +25,18 @@ export default function SpiriluxeTemplate({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
   const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const [showBanner, setShowBanner] = useState(settings?.show_promotional_banner !== false);
 
-  // ── Content Areas State (Above/Below Form) ──
-  const [aboveContent, setAboveContent] = useState(settings?.spiriluxe_above_content || []);
-  const [belowContent, setBelowContent] = useState(settings?.spiriluxe_below_content || []);
+  // ── Product Images State ──
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [uploadingAbove, setUploadingAbove] = useState(false);
+  const [uploadingBelow, setUploadingBelow] = useState(false);
+  // aboveCount tracks how many images show above form vs below
+  const [aboveCount, setAboveCount] = useState<number | null>(null);
 
   // ── Delivery & Order State ──
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
@@ -53,45 +57,22 @@ export default function SpiriluxeTemplate({
   // ─── Product Selection ───
   const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug) : null) || (settings?.spiriluxe_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.spiriluxe_main_product_id)) : null) || products?.[0];
 
+  useEffect(() => { if (mainProduct && onProductView) onProductView(mainProduct); }, [mainProduct?.id]);
+
   // ─── Offer & Variant System ───
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
 
-  // Load content from settings on mount
+  // Sync product images from mainProduct and reset price when product changes
   useEffect(() => {
-    if (settings) {
-      try {
-        // Server merges template_settings into the main response
-        // Keys like spiriluxe_above_content are at the top level
-        const aboveContentData = settings.spiriluxe_above_content;
-        const belowContentData = settings.spiriluxe_below_content;
-        
-        if (aboveContentData) {
-          const parsed = typeof aboveContentData === 'string' ? JSON.parse(aboveContentData) : aboveContentData;
-          if (Array.isArray(parsed)) {
-            setAboveContent(parsed);
-          } else {
-            console.warn('spiriluxe_above_content is not an array:', parsed);
-            setAboveContent([]);
-          }
-        }
-        if (belowContentData) {
-          const parsed = typeof belowContentData === 'string' ? JSON.parse(belowContentData) : belowContentData;
-          if (Array.isArray(parsed)) {
-            setBelowContent(parsed);
-          } else {
-            console.warn('spiriluxe_below_content is not an array:', parsed);
-            setBelowContent([]);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading content from settings:', error);
-        setAboveContent([]);
-        setBelowContent([]);
-      }
-    }
-  }, [settings]);
+    const imgs = Array.isArray(mainProduct?.images) ? mainProduct.images.filter(Boolean) : [];
+    setProductImages(imgs);
+    // Load persisted above/below split for this product
+    const savedCount = mainProduct?.id ? settings?.[`spiriluxe_above_count_${mainProduct.id}`] : undefined;
+    setAboveCount(savedCount != null ? Number(savedCount) : imgs.length);
+    setSelectedOffer(null);
+  }, [mainProduct?.id]);
   
   useEffect(() => { 
     if (offers.length > 0 && !selectedOffer) { 
@@ -115,6 +96,7 @@ export default function SpiriluxeTemplate({
     if (!mainProduct) return;
     
     setIsSubmitting(true);
+    setOrderError(null);
     try {
       const fd = new FormData(e.currentTarget);
       const payload = {
@@ -138,339 +120,204 @@ export default function SpiriluxeTemplate({
         body: JSON.stringify(payload)
       });
       
-      if (!res.ok) throw new Error('Order error');
       const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'حدث خطأ أثناء تقديم الطلب.');
+      setLastOrderId(data.order?.id || null);
+      setLastTelegramUrl(data.telegramStartUrl || null);
+      setLastCustomerPhone(String(fd.get('phone') || ''));
       setOrderSuccess(true);
-      setLastOrderId(data.order_id);
-      setLastTelegramUrl(data.telegram_start_url);
-      setLastCustomerPhone(data.customer_phone);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Order error:', error);
+      setOrderError(error?.message || 'حدث خطأ أثناء تقديم الطلب. يرجى المحاولة مجدداً.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ─── Content Management ───
-  const fileInputRefs = {
-    aboveImage: useRef<HTMLInputElement>(null),
-    aboveVideo: useRef<HTMLInputElement>(null),
-    belowImage: useRef<HTMLInputElement>(null),
-    belowVideo: useRef<HTMLInputElement>(null),
-  };
+  // ─── Image refs ───
+  const fileInputAboveRef = useRef<HTMLInputElement>(null);
+  const fileInputBelowRef = useRef<HTMLInputElement>(null);
 
-  const addContentAbove = (type: 'image' | 'video') => {
-    const newContent = { id: Date.now(), type, url: '', caption: '', uploading: false };
-    setAboveContent([...aboveContent, newContent]);
-  };
-
-  const addContentBelow = (type: 'image' | 'video') => {
-    const newContent = { id: Date.now(), type, url: '', caption: '', uploading: false };
-    setBelowContent([...belowContent, newContent]);
-  };
-
-  const removeContentAbove = (id: number) => {
-    setAboveContent(aboveContent.filter(item => item.id !== id));
-  };
-
-  const removeContentBelow = (id: number) => {
-    setBelowContent(belowContent.filter(item => item.id !== id));
-  };
-
-  const updateContentAbove = (id: number, updates: any) => {
-    setAboveContent(aboveContent.map(item => item.id === id ? { ...item, ...updates } : item));
-  };
-
-  const updateContentBelow = (id: number, updates: any) => {
-    setBelowContent(belowContent.map(item => item.id === id ? { ...item, ...updates } : item));
-  };
-
-  const handleFileUpload = async (type: 'above' | 'below', contentType: 'image' | 'video', file: File) => {
+  // Save images array to product
+  const saveProductImages = async (images: string[]) => {
+    if (!canManage || !mainProduct?.id) return;
     try {
-      // Create temporary uploading state item
-      const tempId = Date.now();
-      const tempContent = { id: tempId, type: contentType, url: '', caption: '', uploading: true, fileName: file.name };
-      
-      // Add temporary uploading item
-      const addFn = type === 'above' ? setAboveContent : setBelowContent;
-      const prevContent = type === 'above' ? aboveContent : belowContent;
-      addFn([...prevContent, tempContent]);
-
-      // Upload the file
-      const result = await uploadImage(file);
-      
-      // Update the temporary item with the uploaded URL and remove uploading state
-      const updateFn = type === 'above' ? updateContentAbove : updateContentBelow;
-      updateFn(tempId, { 
-        url: result.url, 
-        uploading: false,
-        type: contentType,
-        fileName: file.name
+      await fetch(`/api/client/store/products/${mainProduct.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ images })
       });
-
-      // Get the updated content array AFTER the state update
-      const existingContent = type === 'above' ? aboveContent : belowContent;
-      const finalContent = [...existingContent, { 
-        id: tempId, 
-        type: contentType, 
-        url: result.url, 
-        caption: '', 
-        uploading: false, 
-        fileName: file.name 
-      }];
-      const settingKey = type === 'above' ? 'spiriluxe_above_content' : 'spiriluxe_below_content';
-      
-      if (canManage) {
-        // Save to store settings - send keys directly (not wrapped in template_settings)
-        try {
-          const response = await fetch('/api/client/store/settings', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              [settingKey]: JSON.stringify(finalContent)
-            })
-          });
-          if (!response.ok) {
-            console.error('Failed to save content:', await response.text());
-          }
-        } catch (saveError) {
-          console.error('Failed to save content to settings:', saveError);
-        }
-      }
-
-    } catch (error) {
-      console.error('Upload failed:', error);
-      // Remove the temporary item on error
-      const removeFn = type === 'above' ? setAboveContent : setBelowContent;
-      const errorContent = type === 'above' ? aboveContent : belowContent;
-      removeFn(errorContent.filter(item => !item.uploading));
+    } catch (err) {
+      console.error('Failed to save product images:', err);
     }
   };
 
-  const triggerFileInput = (ref: React.RefObject<HTMLInputElement>) => {
-    ref.current?.click();
+  // Save aboveCount split to settings
+  const saveAboveCount = async (count: number) => {
+    if (!canManage || !mainProduct?.id) return;
+    try {
+      await fetch('/api/client/store/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ [`spiriluxe_above_count_${mainProduct.id}`]: count })
+      });
+    } catch (err) {
+      console.error('Failed to save above count:', err);
+    }
   };
 
-  // ─── Text Edit Handler ───
-  const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
-    if (!canManage) return;
-    const text = e.currentTarget.innerText || e.currentTarget.textContent || '';
-    console.log(`Saving ${key}:`, text);
+  // Upload image and append to product images
+  const handleUpload = async (position: 'above' | 'below', file: File) => {
+    if (!mainProduct?.id) return;
+    const setUploading = position === 'above' ? setUploadingAbove : setUploadingBelow;
+    setUploading(true);
+    try {
+      const result = await uploadImage(file);
+      const currentAboveCount = aboveCount ?? productImages.length;
+      let nextImages: string[];
+      if (position === 'above') {
+        // Insert at end of above section
+        const above = productImages.slice(0, currentAboveCount);
+        const below = productImages.slice(currentAboveCount);
+        nextImages = [...above, result.url, ...below];
+        setAboveCount(currentAboveCount + 1);
+      } else {
+        nextImages = [...productImages, result.url];
+      }
+      setProductImages(nextImages);
+      await saveProductImages(nextImages);
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setUploading(false);
+    }
   };
 
-  // ─── Render Content Section ───
-  const renderContentSection = (content: any[], isAbove: boolean) => {
-    // Ensure content is always an array
-    const safeContent = Array.isArray(content) ? content : [];
-    // Only show items that have URLs or are currently uploading
-    const visibleContent = safeContent.filter(item => item.url || item.uploading);
-    
-    return (
-      <div className="space-y-4 mb-8">
-        {visibleContent.map((item) => (
-          <div key={item.id} className="relative group">
-            {item.uploading ? (
-              <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-                <div className="text-center">
-                  <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-600">Uploading...</p>
-                </div>
-              </div>
-            ) : item.type === 'image' ? (
-              <div className="relative">
-                <img 
-                  src={item.url} 
-                  alt={item.caption || 'Content image'}
-                  className="w-full rounded-lg shadow-sm"
-                />
-                {item.caption && (
-                  <p className="mt-2 text-sm text-gray-600 text-center">{item.caption}</p>
-                )}
-              </div>
-            ) : (
-              <div className="relative">
-                <video 
-                  src={item.url} 
-                  controls 
-                  className="w-full rounded-lg shadow-sm"
-                  poster=""
-                />
-                {item.caption && (
-                  <p className="mt-2 text-sm text-gray-600 text-center">{item.caption}</p>
-                )}
-              </div>
-            )}
-            
+  // Remove image from product by index
+  const handleRemoveImage = async (index: number) => {
+    const currentAboveCount = aboveCount ?? productImages.length;
+    const nextImages = productImages.filter((_, i) => i !== index);
+    // Adjust aboveCount if removing an above image
+    if (index < currentAboveCount) {
+      setAboveCount(Math.max(0, currentAboveCount - 1));
+    }
+    setProductImages(nextImages);
+    await saveProductImages(nextImages);
+  };
+
+  // Move image one position up or down in the array
+  const handleMoveImage = async (globalIndex: number, direction: 'up' | 'down') => {
+    const current = aboveCount ?? productImages.length;
+    const imgs = [...productImages];
+    const swapWith = direction === 'up' ? globalIndex - 1 : globalIndex + 1;
+
+    let newAboveCount = current;
+
+    // Special case: last above-image moves ↓ into below (no swap needed, just shift boundary)
+    if (direction === 'down' && globalIndex === current - 1) {
+      newAboveCount = current - 1;
+      setAboveCount(newAboveCount);
+      await saveAboveCount(newAboveCount);
+      return;
+    }
+
+    // Special case: first below-image moves ↑ into above (no swap needed, just shift boundary)
+    if (direction === 'up' && globalIndex === current) {
+      newAboveCount = current + 1;
+      setAboveCount(newAboveCount);
+      await saveAboveCount(newAboveCount);
+      return;
+    }
+
+    // Normal case: swap within same section
+    if (swapWith < 0 || swapWith >= imgs.length) return;
+    [imgs[globalIndex], imgs[swapWith]] = [imgs[swapWith], imgs[globalIndex]];
+    setProductImages(imgs);
+    await saveProductImages(imgs);
+  };
+
+  // Render a list of image items with delete/move buttons
+  const renderImages = (images: string[], startIndex: number, position: 'above' | 'below') => (
+    <div className="space-y-0">
+      {images.map((url, i) => {
+        const globalIndex = startIndex + i;
+        return (
+          <div key={url + globalIndex} className="relative group">
+            <img src={url} alt="" className="w-full block" />
             {canManage && (
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}
+                {(globalIndex > 0 || (position === 'below' && globalIndex === (aboveCount ?? productImages.length))) && (
+                  <button
+                    onClick={() => handleMoveImage(globalIndex, 'up')}
+                    className="p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 text-xs font-bold"
+                    title="Move up"
+                  >↑</button>
+                )}
+                {/* Show ↓ if not last image, OR if it's the last above-image (can cross into below) */}
+                {(globalIndex < productImages.length - 1 || (position === 'above' && globalIndex === (aboveCount ?? productImages.length) - 1)) && (
+                  <button
+                    onClick={() => handleMoveImage(globalIndex, 'down')}
+                    className="p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 text-xs font-bold"
+                    title="Move down"
+                  >↓</button>
+                )}
                 <button
-                  onClick={() => {
-                    isAbove ? removeContentAbove(item.id) : removeContentBelow(item.id);
-                  }}
+                  onClick={() => handleRemoveImage(globalIndex)}
                   className="p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600"
-                  title="Remove content"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                  title="Remove"
+                ><Trash2 className="w-4 h-4" /></button>
               </div>
             )}
           </div>
-        ))}
-        
-        {canManage && (
-          <div className="flex gap-2 justify-center">
-            <button
-              onClick={() => {
-                const ref = isAbove ? fileInputRefs.aboveImage : fileInputRefs.belowImage;
-                triggerFileInput(ref);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-            >
-              <Plus className="w-4 h-4" />
-              <Image className="w-4 h-4" />
-              Add Image
-            </button>
-            <button
-              onClick={() => {
-                const ref = isAbove ? fileInputRefs.aboveVideo : fileInputRefs.belowVideo;
-                triggerFileInput(ref);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
-            >
-              <Plus className="w-4 h-4" />
-              <Video className="w-4 h-4" />
-              Add Video
-            </button>
-          </div>
-        )}
-        
-        {/* Hidden file inputs */}
-        {canManage && (
-          <>
-            <input
-              ref={fileInputRefs.aboveImage}
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handleFileUpload('above', 'image', file);
-                }
-              }}
-              className="hidden"
-            />
-            <input
-              ref={fileInputRefs.aboveVideo}
-              type="file"
-              accept="video/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handleFileUpload('above', 'video', file);
-                }
-              }}
-              className="hidden"
-            />
-            <input
-              ref={fileInputRefs.belowImage}
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handleFileUpload('below', 'image', file);
-                }
-              }}
-              className="hidden"
-            />
-            <input
-              ref={fileInputRefs.belowVideo}
-              type="file"
-              accept="video/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handleFileUpload('below', 'video', file);
-                }
-              }}
-              className="hidden"
-            />
-          </>
-        )}
-      </div>
-    );
-  };
+        );
+      })}
+    </div>
+  );
+
+  const currentAboveCount = aboveCount ?? productImages.length;
+  const aboveImages = productImages.slice(0, currentAboveCount);
+  const belowImages = productImages.slice(currentAboveCount);
 
   // ─── Render ───
   return (
     <div className="min-h-screen" style={{ backgroundColor: bgColor, color: textColor }}>
       <div className="max-w-md mx-auto">
-        {/* Content Above Form */}
-        {renderContentSection(aboveContent, true)}
 
-        {/* Product Display Section */}
-        {mainProduct && (
-          <div className="px-6 mb-6">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-              {/* Product Image */}
-              {mainProduct.images && mainProduct.images.length > 0 && (
-                <div className="relative aspect-[4/3] lg:aspect-[16/9] overflow-hidden">
-                  <img 
-                    src={mainProduct.images[0]} 
-                    alt={mainProduct.title}
-                    className="w-full h-full object-cover"
-                  />
-                  {mainProduct.images.length > 1 && (
-                    <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                      +{mainProduct.images.length - 1} صور
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {/* Product Info */}
-              <div className="p-4">
-                <h2 className="text-xl font-bold mb-2">{mainProduct.title}</h2>
-                {mainProduct.description && (
-                  <p className="text-sm opacity-70 mb-3 line-clamp-3">{mainProduct.description}</p>
-                )}
-                <div className="flex items-center justify-between">
-                  <div>
-                    {mainProduct.original_price && mainProduct.original_price > mainProduct.price && (
-                      <span className="text-sm line-through opacity-50 mr-2">
-                        {Math.round(mainProduct.original_price).toLocaleString()} {currency}
-                      </span>
-                    )}
-                    <span className="text-2xl font-bold" style={{ color: accentColor }}>
-                      {Math.round(mainProduct.price).toLocaleString()} {currency}
-                    </span>
-                  </div>
-                  {mainProduct.stock_quantity !== undefined && mainProduct.stock_quantity > 0 ? (
-                    <span className="text-sm text-green-600 bg-green-100 px-3 py-1 rounded-full">
-                      متوفر
-                    </span>
-                  ) : (
-                    <span className="text-sm text-red-600 bg-red-100 px-3 py-1 rounded-full">
-                      غير متوفر
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
+        {/* Images Above Form */}
+        {aboveImages.length > 0 && renderImages(aboveImages, 0, 'above')}
+
+        {/* Upload above button - editor only */}
+        {canManage && (
+          <div className="flex justify-center gap-2 py-2">
+            <button
+              onClick={() => fileInputAboveRef.current?.click()}
+              disabled={uploadingAbove}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+            >
+              <Plus className="w-3 h-3" />
+              {uploadingAbove ? 'Uploading...' : 'Add Image Above'}
+            </button>
+            <button
+              onClick={() => fileInputBelowRef.current?.click()}
+              disabled={uploadingBelow}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+            >
+              <Plus className="w-3 h-3" />
+              {uploadingBelow ? 'Uploading...' : 'Add Image Below'}
+            </button>
           </div>
         )}
+        <input ref={fileInputAboveRef} type="file" accept="image/*" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload('above', f); e.target.value=''; }} />
+        <input ref={fileInputBelowRef} type="file" accept="image/*" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload('below', f); e.target.value=''; }} />
 
-        {/* Order Form - Center */}
-        <div className="px-6 py-8">
+        {/* Order Form */}
+        <div className="px-6 py-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
-                <span className="text-2xl">🛒</span>
-              </div>
-              <h3 className="text-xl font-bold mb-2">أكمل طلبك</h3>
-              <p className="text-sm opacity-70">املأ بياناتك وسنقوم بمعالجة طلبك فوراً</p>
-            </div>
             
             {orderSuccess ? (
               <div className="text-center py-8">
@@ -489,6 +336,33 @@ export default function SpiriluxeTemplate({
               </div>
             ) : (
               <form onSubmit={handleOrder} className="space-y-5">
+                {orderError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-semibold rounded-xl px-4 py-3">
+                    {orderError}
+                  </div>
+                )}
+                {mainProduct?.variants && mainProduct.variants.length > 0 && (
+                  <VariantSelector
+                    variants={mainProduct.variants}
+                    selected={selectedVariant}
+                    onSelect={setSelectedVariant}
+                    accentColor={accentColor}
+                    currency={currency}
+                    basePrice={mainProduct.price}
+                  />
+                )}
+                {offers.length > 0 && (
+                  <OfferSelector
+                    offers={offers}
+                    unitPrice={mainProduct?.price || 0}
+                    currency={currency}
+                    selectedOfferId={selectedOffer?.offer_id ?? null}
+                    onSelect={(o) => setSelectedOffer(o)}
+                    accentColor={accentColor}
+                    textColor={textColor}
+                    borderColor="#e5e7eb"
+                  />
+                )}
                 <div>
                   <label className="block text-sm font-semibold mb-2">الاسم الكامل *</label>
                   <input 
@@ -562,57 +436,45 @@ export default function SpiriluxeTemplate({
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-semibold mb-3">طريقة التوصيل *</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="flex items-center justify-center p-3 border-2 rounded-xl cursor-pointer hover:border-purple-500 transition-all" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb' }}>
-                      <input 
-                        type="radio" 
-                        name="delivery_type" 
-                        value="home" 
-                        checked={selectedDeliveryType === 'home'}
-                        onChange={() => setSelectedDeliveryType('home')}
-                        className="sr-only"
-                      />
-                      <div className="text-center">
-                        <Truck className="w-6 h-6 mx-auto mb-1" style={{ color: selectedDeliveryType === 'home' ? accentColor : '#6b7280' }} />
-                        <span className="text-sm font-medium">توصيل للمنزل</span>
-                      </div>
-                    </label>
-                    <label className="flex items-center justify-center p-3 border-2 rounded-xl cursor-pointer hover:border-purple-500 transition-all" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb' }}>
-                      <input 
-                        type="radio" 
-                        name="delivery_type" 
-                        value="desk" 
-                        checked={selectedDeliveryType === 'desk'}
-                        onChange={() => setSelectedDeliveryType('desk')}
-                        className="sr-only"
-                      />
-                      <div className="text-center">
-                        <span className="text-xl mb-1 block" style={{ color: selectedDeliveryType === 'desk' ? accentColor : '#6b7280' }}>🏢</span>
-                        <span className="text-sm font-medium">استلام من المكتب</span>
-                      </div>
-                    </label>
+                {showHomeDelivery && showDeskDelivery && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-3">طريقة التوصيل *</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="flex items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb' }}>
+                        <input type="radio" name="delivery_type" value="home" checked={selectedDeliveryType === 'home'} onChange={() => setSelectedDeliveryType('home')} className="sr-only" />
+                        <div className="text-center">
+                          <Truck className="w-6 h-6 mx-auto mb-1" style={{ color: selectedDeliveryType === 'home' ? accentColor : '#6b7280' }} />
+                          <span className="text-sm font-medium">توصيل للمنزل</span>
+                        </div>
+                      </label>
+                      <label className="flex items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb' }}>
+                        <input type="radio" name="delivery_type" value="desk" checked={selectedDeliveryType === 'desk'} onChange={() => setSelectedDeliveryType('desk')} className="sr-only" />
+                        <div className="text-center">
+                          <span className="text-xl mb-1 block" style={{ color: selectedDeliveryType === 'desk' ? accentColor : '#6b7280' }}>🏢</span>
+                          <span className="text-sm font-medium">استلام من المكتب</span>
+                        </div>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Order Summary */}
-                <div className="border-t pt-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">سعر المنتج:</span>
-                      <span className="font-semibold">{Math.round(productTotal).toLocaleString()} {currency}</span>
+                {selectedWilayaId && (
+                  <div className="p-3 rounded-xl text-sm space-y-2" style={{ backgroundColor: accentColor + '10', border: `1px solid ${accentColor}30` }}>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">سعر المنتجات</span>
+                      <span className="font-bold">{Math.round(productTotal).toLocaleString()} {currency}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">رسوم التوصيل:</span>
-                      <span className="font-semibold">{Math.round(deliveryFee).toLocaleString()} {currency}</span>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">سعر التوصيل</span>
+                      <span className="font-bold" style={{ color: accentColor }}>{Math.round(deliveryFee).toLocaleString()} {currency}</span>
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t">
-                      <span className="text-lg font-bold">الإجمالي:</span>
-                      <span className="text-xl font-bold" style={{ color: accentColor }}>{Math.round(grandTotal).toLocaleString()} {currency}</span>
+                    <div className="flex justify-between pt-2" style={{ borderTop: `1px solid ${accentColor}40` }}>
+                      <span className="font-bold">التكلفة الإجمالية</span>
+                      <span className="font-black text-base" style={{ color: accentColor }}>{Math.round(grandTotal).toLocaleString()} {currency}</span>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <button 
                   type="submit" 
@@ -634,21 +496,23 @@ export default function SpiriluxeTemplate({
           </div>
         </div>
 
-        {/* Content Below Form */}
-        {renderContentSection(belowContent, false)}
+        {/* Images Below Form */}
+        {belowImages.length > 0 && renderImages(belowImages, currentAboveCount, 'below')}
+
+
+        {/* Platform Link */}
+        <div className="text-center py-6">
+          <a 
+            href="https://sahla4eco.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm opacity-50 hover:opacity-100 transition-opacity"
+          >
+            made by sahla4eco
+          </a>
+        </div>
       </div>
     </div>
   );
 
-  function handleOfferSelect(offerId: string) {
-    const offer = offers.find(o => String(o.id) === String(offerId));
-    if (offer) {
-      setSelectedOffer({
-        offer_id: offer.id,
-        quantity: offer.quantity,
-        bundle_price: offer.bundle_price,
-        free_delivery: offer.free_delivery
-      });
-    }
-  }
 }

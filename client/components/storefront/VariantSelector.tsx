@@ -239,7 +239,7 @@ export default function VariantSelector({
                   style={{
                     backgroundColor: isActive ? accentColor : 'transparent',
                     borderColor: isActive ? accentColor : 'rgba(128,128,128,0.3)',
-                    color: isActive ? '#fff' : undefined,
+                    color: isActive ? '#fff' : 'inherit',
                     opacity: isAvailable ? 1 : 0.3,
                     cursor: isAvailable ? 'pointer' : 'not-allowed',
                   }}

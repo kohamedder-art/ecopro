@@ -118,14 +118,10 @@ export const register: RequestHandler = async (req, res) => {
       return jsonError(res, 400, 'Only @gmail.com email addresses are allowed for signup');
     }
 
-    // Strong password policy + breach check
+    // Password policy check
     const policy = checkPasswordPolicy(password, normalizedEmail);
     if (policy.ok === false) {
       return jsonError(res, 400, policy.reason);
-    }
-    const pwned = await checkPwnedPassword(password);
-    if (pwned.ok && pwned.pwned) {
-      return jsonError(res, 400, 'Password has appeared in a data breach; choose a different password');
     }
 
     // Check if user already exists

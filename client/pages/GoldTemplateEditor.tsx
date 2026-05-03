@@ -1864,6 +1864,21 @@ export default function GoldTemplateEditor() {
                     </div>
                     )}
 
+                    {/* Template-specific sections (DZPremium) */}
+                    {activeTemplateId === 'dzpremium' && (
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Eye className="w-3 h-3 text-indigo-500"/> أقسام DZ بريميوم</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
+                        <label className="flex items-center justify-between cursor-pointer py-1">
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">بطاقات المزايا (توصيل / دفع / ضمان)</span>
+                          <button onClick={() => handleSettingChange('dzp_hide_benefits', !(settings as any).dzp_hide_benefits)} className={`w-10 h-6 rounded-full transition-colors relative ${!(settings as any).dzp_hide_benefits ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${!(settings as any).dzp_hide_benefits ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </button>
+                        </label>
+                      </div>
+                    </div>
+                    )}
+
                     {/* Template-specific sections (Lumina) */}
                     {activeTemplateId === 'lumina' && (
                     <div className="space-y-3">

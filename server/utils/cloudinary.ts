@@ -7,6 +7,9 @@
  * - CLOUDINARY_API_SECRET
  */
 
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs/promises';
 
@@ -52,6 +55,14 @@ export async function uploadToCloudinary(
     transformation?: any[];
   } = {}
 ): Promise<CloudinaryUploadResult> {
+  // Re-configure to ensure fresh env vars
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true,
+  });
+
   const { folder = 'ecopro', publicId, resourceType = 'auto', transformation } = options;
 
   const uploadOptions: any = {

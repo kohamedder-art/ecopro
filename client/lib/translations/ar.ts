@@ -2153,6 +2153,7 @@ export const ar = {
   "sidebar.stock": "المخزون",
   "sidebar.images": "الصور",
   "sidebar.orders": "الطلبات",
+  "sidebar.tracking": "التتبع",
   "sidebar.delivery": "التوصيل",
   "sidebar.deliveryCompanies": "شركات التوصيل",
   "sidebar.deliveryPricing": "أسعار التوصيل",
