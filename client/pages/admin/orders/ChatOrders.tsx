@@ -665,12 +665,10 @@ export default function ChatOrders() {
                                 </div>
                               </div>
 
-                              {/* Action row */}
+                              {/* ── Status shortcuts row ── */}
                               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/30">
-
-                                {/* Quick status shortcuts */}
-                                <span className="text-[11px] font-bold text-muted-foreground ml-1">تغيير الحالة:</span>
-                                {STATUS_OPTIONS.filter(s => s.value !== o.status).slice(0, 4).map(opt => (
+                                <span className="text-[11px] font-bold text-muted-foreground">تغيير الحالة:</span>
+                                {STATUS_OPTIONS.filter(s => s.value !== o.status).slice(0, 5).map(opt => (
                                   <button
                                     key={opt.value}
                                     onClick={() => updateStatus(o.id, opt.value)}
@@ -681,28 +679,36 @@ export default function ChatOrders() {
                                     {opt.icon} {opt.label}
                                   </button>
                                 ))}
+                              </div>
 
-                                {/* Edit + Delivery + Tracking */}
-                                <div className="mr-auto flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => openEdit(o)}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-600 text-xs font-bold hover:bg-blue-500/20 transition-all"
-                                  >
-                                    <Edit3 className="w-3 h-3" /> تعديل
-                                  </button>
-                                  <button
-                                    onClick={() => setDeliveryOrder(o)}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 text-violet-600 text-xs font-bold hover:bg-violet-500/20 transition-all"
-                                  >
-                                    <Truck className="w-3 h-3" /> رفع للتوصيل
-                                  </button>
-                                  <a
-                                    href="/dashboard/tracking"
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-bold hover:bg-muted transition-all"
-                                  >
-                                    <Package className="w-3 h-3" /> التتبع
-                                  </a>
-                                </div>
+                              {/* ── Feature actions row ── */}
+                              <div className="flex items-center gap-3 pt-1">
+                                {/* Edit order — blue, data action */}
+                                <button
+                                  onClick={() => openEdit(o)}
+                                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold shadow-sm shadow-blue-500/30 transition-all active:scale-95"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  تعديل الطلب
+                                </button>
+
+                                {/* Upload to delivery — orange/amber, logistics action */}
+                                <button
+                                  onClick={() => setDeliveryOrder(o)}
+                                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-sm shadow-orange-500/30 transition-all active:scale-95"
+                                >
+                                  <Truck className="w-3.5 h-3.5" />
+                                  رفع للتوصيل
+                                </button>
+
+                                {/* Tracking — slate, navigation action */}
+                                <a
+                                  href="/dashboard/tracking"
+                                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold shadow-sm shadow-slate-700/30 transition-all active:scale-95"
+                                >
+                                  <Package className="w-3.5 h-3.5" />
+                                  تتبع الشحن
+                                </a>
                               </div>
 
                               {/* Send message panel */}
