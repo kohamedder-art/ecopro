@@ -889,6 +889,8 @@ export const getChatOrders: RequestHandler = async (req, res) => {
         o.delivery_type, o.created_at, o.updated_at,
         o.order_source, o.source_platform,
         o.tracking_number, o.delivery_status,
+        o.variant_id, o.variant_color, o.variant_size, o.variant_name,
+        o.original_price, o.discount_percent,
         COALESCE(cp.title, 'Deleted Product') as product_title,
         COALESCE(cp.images, '{}') as product_images
        FROM store_orders o
