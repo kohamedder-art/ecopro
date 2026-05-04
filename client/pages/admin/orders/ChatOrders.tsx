@@ -18,8 +18,6 @@ interface ChatOrder {
   quantity: number;
   total_price: number;
   unit_price: number;
-  original_price?: number;
-  discount_percent?: number;
   delivery_fee: number;
   status: string;
   delivery_type: string;
@@ -561,9 +559,6 @@ export default function ChatOrders() {
                               {o.variant_color}{o.variant_size ? ` / ${o.variant_size}` : ''}
                             </span>
                           )}
-                          {o.discount_percent && (
-                            <span className="text-xs text-green-600 font-medium block">خصم {o.discount_percent}%</span>
-                          )}
                           <span className="text-xs text-muted-foreground">×{o.quantity}</span>
                         </td>
 
@@ -824,9 +819,6 @@ export default function ChatOrders() {
                             {o.variant_color}{o.variant_size ? ` / ${o.variant_size}` : ''}
                           </p>
                         )}
-                        {o.discount_percent && (
-                          <p className="text-xs text-green-600 font-medium">خصم {o.discount_percent}%</p>
-                        )}
                         <div className="flex items-center justify-between mt-1">
                           <span className="text-xs text-muted-foreground">×{o.quantity}</span>
                           <span className="text-sm font-black text-emerald-600">{fmtPrice(Number(o.total_price))} دج</span>
@@ -911,12 +903,6 @@ export default function ChatOrders() {
                                 {o.variant_color && <span className="inline-block w-3 h-3 rounded-full mr-1 align-middle" style={{ backgroundColor: o.variant_color }}></span>}
                                 {o.variant_color}{o.variant_size ? ` / ${o.variant_size}` : ''}
                               </p>
-                            </div>
-                          )}
-                          {o.discount_percent && (
-                            <div className="col-span-2">
-                              <span className="text-[10px] text-muted-foreground">الخصم</span>
-                              <p className="font-semibold text-green-600">{o.discount_percent}% خصم</p>
                             </div>
                           )}
                         </div>
