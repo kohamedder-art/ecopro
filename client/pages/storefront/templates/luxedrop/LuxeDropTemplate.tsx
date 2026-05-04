@@ -5,7 +5,8 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
-import { Home, Building2, X } from 'lucide-react';
+import { Home, Building2, X, Eye, EyeOff } from 'lucide-react';
+import type { TemplateEditorSection } from '@/lib/templateEditorSchema';
 
 export default function LuxeDropTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView }: TemplateProps) {
         const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#d4af37';
@@ -41,7 +42,10 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
     const surfaceTextMuted = isHeaderDark ? '#94a3b8' : '#64748b';
     const surfaceBorderColor = isHeaderDark ? '#334155' : '#e2e8f0';
     const inputBg = isHeaderDark ? 'rgba(255,255,255,0.06)' : '#ffffff';
-        const productId = settings?.luxd_main_product_id;
+    const showCountdown = settings?.luxd_show_countdown !== false;
+    const showFeatures = settings?.luxd_show_features !== false;
+    const showSocialProof = settings?.luxd_show_social_proof !== false;
+    const productId = settings?.luxd_main_product_id;
     const product = (productId ? products?.find((p: any) => p.id === productId) : null) || products?.[0];
     const hasProductImages = product?.images && product.images.length > 0;
 
@@ -51,6 +55,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
     const [timeLeft, setTimeLeft] = useState({ min: 14, sec: 59 });
 
     useEffect(() => {
+        if (!showCountdown) return;
         const timer = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev.sec > 0) return { min: prev.min, sec: prev.sec - 1 };
@@ -59,13 +64,14 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
             });
         }, 1000);
         return () => clearInterval(timer);
-    }, []);
+    }, [showCountdown]);
 
     // Social Proof State
     const [socialProof, setSocialProof] = useState<{name: string, visible: boolean}>({ name: '', visible: false });
     const buyers = ["كمال من وهران", "سارة من تيزي وزو", "أحمد من سطيف", "ياسين من قسنطينة", "ليلى من عنابة", "محمد من العاصمة"];
 
     useEffect(() => {
+        if (!showSocialProof) return;
         const showProof = () => {
             setSocialProof({ 
                 name: buyers[Math.floor(Math.random() * buyers.length)], 
@@ -76,7 +82,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
         const initial = setTimeout(showProof, 3000);
         const interval = setInterval(showProof, 15000);
         return () => { clearTimeout(initial); clearInterval(interval); };
-    }, []);
+    }, [showSocialProof]);
 
     // Inject fonts and icons
     useEffect(() => {
@@ -386,17 +392,51 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                 </div>
 
                 {/* Countdown */}
-                <div className="lux-glass-card rounded-2xl p-4 mb-8 text-center">
-                    <p className="text-sm mb-2" style={{ color: textMuted }}>ينتهي هذا العرض في:</p>
+                {(showCountdown || canManage) && (
+                <div className="lux-glass-card rounded-2xl p-4 mb-8 text-center relative" data-edit-path="countdown-section">
+                    {canManage && (
+                        <div className="absolute -top-3 -right-3 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+                            <button
+                                onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'luxd_show_countdown', value: !showCountdown }, '*')}
+                                className="flex items-center gap-1 font-bold"
+                            >
+                                {showCountdown ? <><Eye className="w-3 h-3"/> إخفاء</> : <><EyeOff className="w-3 h-3"/> إظهار</>}
+                            </button>
+                        </div>
+                    )}
+                    {showCountdown && (
+                    <>
+                    <p className="text-sm mb-2" style={{ color: textMuted }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_countdown_label')}>
+                        {settings?.luxd_countdown_label || "ينتهي هذا العرض في:"}
+                    </p>
                     <div className="flex justify-center gap-4 text-2xl font-bold">
                         <div><span>{timeLeft.min.toString().padStart(2, '0')}</span><p className="text-[10px] uppercase" style={{ color: textMuted }}>دقيقة</p></div>
                         <div style={{ color: accentColor }}>:</div>
                         <div><span>{timeLeft.sec.toString().padStart(2, '0')}</span><p className="text-[10px] uppercase" style={{ color: textMuted }}>ثانية</p></div>
                     </div>
+                    </>
+                    )}
+                    {canManage && !showCountdown && (
+                        <p className="text-sm text-muted-foreground py-4">⏱️ Countdown hidden - click إظهار to show</p>
+                    )}
                 </div>
+                )}
 
                 {/* Quick Features */}
-                <div className="space-y-3 mb-8">
+                {(showFeatures || canManage) && (
+                <div className="space-y-3 mb-8 relative" data-edit-path="features-section">
+                    {canManage && (
+                        <div className="absolute -top-3 -right-3 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+                            <button
+                                onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'luxd_show_features', value: !showFeatures }, '*')}
+                                className="flex items-center gap-1 font-bold"
+                            >
+                                {showFeatures ? <><Eye className="w-3 h-3"/> إخفاء</> : <><EyeOff className="w-3 h-3"/> إظهار</>}
+                            </button>
+                        </div>
+                    )}
+                    {showFeatures && (
+                    <>
                     <div className="flex items-center gap-3 p-3 lux-glass-card rounded-xl">
                         <i className="ph ph-seal-check text-2xl" style={{ color: accentColor }}></i>
                         <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_feat1')}>
@@ -409,7 +449,13 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                             {settings?.luxd_feat2 || "توصيل سريع مجاني لباب المنزل"}
                         </span>
                     </div>
+                    </>
+                    )}
+                    {canManage && !showFeatures && (
+                        <p className="text-sm text-muted-foreground py-4 text-center bg-slate-100 dark:bg-slate-800 rounded-xl">✨ Features hidden - click إظهار to show</p>
+                    )}
                 </div>
+                )}
 
                 {/* Sticky Form Section */}
                 <div id="order-form" className="p-6 rounded-3xl mb-8" style={{ backgroundColor: surfaceColor, color: surfaceTextColor }}>
@@ -516,8 +562,21 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                 </div>{/* end right column */}
             </main>
 
-            {/* Fake Social Proof Popup */}
-            <div className={`fixed bottom-24 left-4 right-4 md:left-auto md:w-80 lux-glass-card p-3 rounded-2xl flex items-center gap-3 lux-notification-pop z-40 transition-all duration-300 ${socialProof.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+            {/* Social Proof Notification */}
+            {(showSocialProof || canManage) && (
+            <div className={`fixed bottom-24 left-4 right-4 md:left-auto md:w-80 lux-glass-card p-3 rounded-2xl flex items-center gap-3 lux-notification-pop z-40 transition-all duration-300 ${socialProof.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`} data-edit-path="social-proof-section">
+                {canManage && (
+                    <div className="absolute -top-3 -right-3 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-50">
+                        <button
+                            onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'luxd_show_social_proof', value: !showSocialProof }, '*')}
+                            className="flex items-center gap-1 font-bold"
+                        >
+                            {showSocialProof ? <><Eye className="w-3 h-3"/> إخفاء</> : <><EyeOff className="w-3 h-3"/> إظهار</>}
+                        </button>
+                    </div>
+                )}
+                {showSocialProof && (
+                <>
                 <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: surfaceMuted }}>
                     <i className="ph ph-user text-xl"></i>
                 </div>
@@ -525,7 +584,10 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                     <p><strong>{socialProof.name}</strong></p>
                     <p style={{ color: textMuted }}>طلب هذا المنتج منذ 3 دقائق</p>
                 </div>
+                </>
+                )}
             </div>
+            )}
 
             {/* Sticky Bottom Bar - mobile only */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 backdrop-blur-md border-t flex items-center gap-4 z-50" style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.85)', borderColor }}>
@@ -570,3 +632,43 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
         </div>
     );
 }
+
+export const TEMPLATE_EDITOR_SECTIONS: TemplateEditorSection[] = [
+  {
+    title: 'Section Visibility',
+    description: 'Show or hide optional sections',
+    fields: [
+      {
+        key: 'luxd_show_countdown',
+        label: 'Show Countdown Timer',
+        type: 'checkbox',
+        defaultValue: true,
+      },
+      {
+        key: 'luxd_show_features',
+        label: 'Show Features Section',
+        type: 'checkbox',
+        defaultValue: true,
+      },
+      {
+        key: 'luxd_show_social_proof',
+        label: 'Show Social Proof Notifications',
+        type: 'checkbox',
+        defaultValue: true,
+      },
+    ],
+  },
+  {
+    title: 'Countdown Timer',
+    description: 'Customize the countdown timer text',
+    fields: [
+      {
+        key: 'luxd_countdown_label',
+        label: 'Countdown Label',
+        type: 'text',
+        placeholder: 'ينتهي هذا العرض في:',
+        defaultValue: 'ينتهي هذا العرض في:',
+      },
+    ],
+  },
+];
