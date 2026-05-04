@@ -542,7 +542,20 @@ async function createOrderFromChat(
       `INSERT INTO store_orders (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING id, total_price`,
       insertVals
     );
-    return { orderId: result.rows[0].id, total: Number(result.rows[0].total_price) };
+
+    // Send notification to store owner about new chat order
+    const orderId = result.rows[0].id;
+    try {
+      await pool.query(
+        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
+         VALUES ($1, $2, $3, 'telegram', $4, NOW())`,
+        [orderId, session.clientId, session.customerPhone || '', `📦 طلب جديد من AI Chat!\n\nرقم الطلب: #${orderId}\nالمنتج: ${session.productTitle}\nالسعر: ${session.productPrice} دج\nالاسم: ${session.customerName}\nالهاتف: ${session.customerPhone}\nالولاية: ${session.wilayaName}\nالعنوان: ${session.customerAddress}`]
+      );
+    } catch (notifyErr) {
+      console.error('[AI-Customer] Failed to send notification:', notifyErr);
+    }
+
+    return { orderId, total: Number(result.rows[0].total_price) };
   } catch (err) {
     console.error('[AI-Customer] createOrderFromChat error:', err);
     return null;

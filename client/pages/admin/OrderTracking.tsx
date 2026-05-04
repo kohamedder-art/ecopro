@@ -393,7 +393,7 @@ export default function OrderTracking() {
   const paginated  = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   // quick stat counts
-  const inTransit  = orders.filter(o => ["shipped","in_transit","out_for_delivery","out_delivery"].includes(o.status)).length;
+  const inTransit  = orders.filter(o => ["shipped","in_transit","out_for_delivery","out_delivery","assigned","picked_up","at_hub","at_warehouse","ready_for_pickup","processing","confirmed"].includes(o.status)).length;
   const delivered  = orders.filter(o => ["delivered","completed"].includes(o.status)).length;
   const failed     = orders.filter(o => ["failed","cancelled","returned","fake","duplicate"].includes(o.status)).length;
 

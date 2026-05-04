@@ -593,6 +593,17 @@ export class DeliveryService {
         }).catch(err => console.error('[Webhook] Bot notification failed:', err?.message || err));
       }
 
+      // Send store owner notification about delivery status update
+      try {
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
+           VALUES ($1, $2, $3, 'telegram', $4, NOW())`,
+          [orderId, clientId, customerPhone || '', `🚚 تحديث حالة التوصيل للطلب #${orderId}\n\nالحدث: ${event.event_type}\n${event.description || ''}\n${event.location ? `الموقع: ${event.location}` : ''}\nرقم التتبع: ${trackingNumber}`]
+        );
+      } catch (ownerNotifyErr) {
+        console.error('[Webhook] Store owner notification failed:', ownerNotifyErr);
+      }
+
       console.log(`[Webhook] Event processed for order ${orderId}: ${event.event_type}`);
       return { success: true };
     } catch (error: any) {
