@@ -20,10 +20,11 @@ interface PendingOrderSession {
   productPrice?: number;
   customerName?: string;
   customerPhone?: string;
+  customerAddress?: string;
   wilayaId?: number;
   wilayaName?: string;
   deliveryType?: 'home' | 'desk';
-  step: 'product' | 'name' | 'phone' | 'wilaya' | 'confirm';
+  step: 'product' | 'name' | 'phone' | 'wilaya' | 'address' | 'confirm';
   createdAt: number;
 }
 
@@ -703,25 +704,36 @@ export async function handleCustomerMessage(
       }
       activeSession.wilayaId = wilayaId;
       activeSession.wilayaName = wilayaName;
+      activeSession.step = 'address';
+      return `تمام! الآن أعطني عنوانك الكامل (الحي، الشارع، رقم المبنى) 🏠`;
+    }
+
+    if (activeSession.step === 'address') {
+      const address = effectiveMessage.trim();
+      if (address.length < 5) return 'يرجى إدخال عنوانك الكامل باش نقدر نوصل الطلب.';
+      activeSession.customerAddress = address;
       activeSession.step = 'confirm';
 
       // Calculate delivery fee if wilaya found
+      const pool = await ensureConnection();
       let deliveryFee = 0;
-      if (wilayaId) {
+      if (activeSession.wilayaId) {
         const dRes = await pool.query(
-          `SELECT home_delivery_price FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
-          [clientId, wilayaId]
+          `SELECT home_delivery_price, desk_delivery_price FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
+          [clientId, activeSession.wilayaId]
         ).catch(() => ({ rows: [] }));
-        deliveryFee = Number(dRes.rows[0]?.home_delivery_price) || 0;
+        const homePrice = Number(dRes.rows[0]?.home_delivery_price) || 0;
+        const deskPrice = Number(dRes.rows[0]?.desk_delivery_price) || 0;
+        deliveryFee = homePrice; // Default to home delivery
       }
       const total = (activeSession.productPrice || 0) + deliveryFee;
 
-      return `تأكيد الطلب:\n\n📦 المنتج: ${activeSession.productTitle}\n💰 السعر: ${activeSession.productPrice} دج\n🚚 التوصيل: ${deliveryFee} دج\n💳 المجموع: ${total} دج\n👤 الاسم: ${activeSession.customerName}\n📱 الهاتف: ${activeSession.customerPhone}\n📍 الولاية: ${wilayaName}\n\n✅ الدفع عند الاستلام\n\nاكتب "تأكيد" للتسجيل أو "إلغاء" للإلغاء`;
+      return `تأكيد الطلب:\n\n📦 المنتج: ${activeSession.productTitle}\n💰 السعر: ${activeSession.productPrice} دج\n🚚 التوصيل: ${deliveryFee} دج\n💳 المجموع: ${total} دج\n👤 الاسم: ${activeSession.customerName}\n📱 الهاتف: ${activeSession.customerPhone}\n📍 الولاية: ${activeSession.wilayaName}\n🏠 العنوان: ${activeSession.customerAddress}\n\n✅ الدفع عند الاستلام\n\nاكتب "تأكيد" للتسجيل أو "إلغاء" للإلغاء`;
     }
   }
 
   // ── Detect new order intent from the message ──────────────────────────────
-  const orderIntentRegex = /(?:حاب|حابة|بغيت|نطلب|أطلب|اطلب|نشري|أشري|بغيت نشري|حابة نطلب|نحب نطلب|je veux commander|je veux acheter|i want to order|i want to buy)/i;
+  const orderIntentRegex = /(?:حاب|حابة|بغيت|نطلب|أطلب|اطلب|نشري|أشري|بغيت نشري|حابة نطلب|نحب نطلب|انشاء|طلبية|طلب|نشاء|أريد|أريد|أريد طلب|أريد طلبية|اريد|اريد طلب|اريد طلبية|ابغى|يبغى|نشاء طلب|انشاء طلبية|أبغى|أبغى طلب|نشاء طلبية|نشاء طلب|طلب منك|طلب من عندك|حاب نطلب|حابة نشري|حابة نطلب|نحب نشري|نحب نطلب|je veux commander|je veux acheter|i want to order|i want to buy|i want to purchase|want to order|want to buy|want to purchase|أريد الشراء|اريد الشراء|أبغى الشراء)/i;
   const hasOrderIntent = orderIntentRegex.test(effectiveMessage) && ctx.products.length > 0;
   let orderIntentInstructions = '';
   if (hasOrderIntent && !activeSession) {
