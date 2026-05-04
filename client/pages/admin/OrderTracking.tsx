@@ -395,7 +395,7 @@ export default function OrderTracking() {
   // quick stat counts
   const inTransit  = orders.filter(o => ["shipped","in_transit","out_for_delivery","out_delivery"].includes(o.status)).length;
   const delivered  = orders.filter(o => ["delivered","completed"].includes(o.status)).length;
-  const failed     = orders.filter(o => ["failed","cancelled","returned"].includes(o.status)).length;
+  const failed     = orders.filter(o => ["failed","cancelled","returned","fake","duplicate"].includes(o.status)).length;
 
   return (
     <div className="space-y-5 py-4" dir="rtl">
