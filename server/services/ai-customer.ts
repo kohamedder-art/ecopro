@@ -737,8 +737,20 @@ export async function handleCustomerMessage(
   const hasOrderIntent = orderIntentRegex.test(effectiveMessage) && ctx.products.length > 0;
   let orderIntentInstructions = '';
   if (hasOrderIntent && !activeSession) {
-    // Pick the most likely product if mentioned
-    const mentionedProduct = ctx.products.find(p => effectiveMessage.includes(p.title)) || (ctx.products.length === 1 ? ctx.products[0] : null);
+    // Pick the most likely product if mentioned in current message
+    let mentionedProduct = ctx.products.find(p => effectiveMessage.includes(p.title));
+
+    // If not mentioned in current message, check conversation history for product context
+    if (!mentionedProduct && history.length > 0) {
+      const historyText = history.map(h => h.parts[0]?.text || '').join(' ').toLowerCase();
+      mentionedProduct = ctx.products.find(p => historyText.includes(p.title.toLowerCase()));
+    }
+
+    // If still no product, use single product if only one exists
+    if (!mentionedProduct && ctx.products.length === 1) {
+      mentionedProduct = ctx.products[0];
+    }
+
     if (mentionedProduct) {
       const newSession: PendingOrderSession = {
         clientId,
