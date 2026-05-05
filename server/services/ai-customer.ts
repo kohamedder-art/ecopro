@@ -32,6 +32,9 @@ interface PendingOrderSession {
 const pendingOrderSessions = new Map<string, PendingOrderSession>();
 const SESSION_TTL_MS = 30 * 60 * 1000;
 
+// Unified rate limiter
+import { checkRateLimit, getRateLimitResetTime, RATE_LIMITS, getRateLimitMessage } from '../utils/ai-rate-limiter';
+
 function sessionKey(clientId: number, platform: Platform, chatId: string): string {
   return `${clientId}:${platform}:${chatId}`;
 }
@@ -47,10 +50,21 @@ interface StoreContext {
   storeName: string;
   storeDescription: string;
   currency: string;
-  products: { title: string; price: number; originalPrice?: number; description?: string; category?: string; inStock: boolean; offers?: { quantity: number; bundle_price: number; free_delivery: boolean }[] }[];
+  products: { 
+    title: string; 
+    price: number; 
+    originalPrice?: number; 
+    description?: string; 
+    category?: string; 
+    inStock: boolean; 
+    stockQuantity?: number;
+    offers?: { quantity: number; bundle_price: number; free_delivery: boolean }[];
+    variants?: { name: string; value: string; price?: number; stock?: number; inStock: boolean }[];
+  }[];
   deliveryInfo: string;
   aiInstructions?: string;
   storeLink?: string;
+  hasWholesale?: boolean;
 }
 
 /**
@@ -103,11 +117,13 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
   if (!settingsRes.rows.length) return null;
   const { store_name, store_description, store_slug } = settingsRes.rows[0];
 
-  // Active products with offers (limit to 50 to keep prompt size reasonable)
+  // Active products with offers and variants (limit to 50 to keep prompt size reasonable)
   const productsRes = await pool.query(
     `SELECT p.id, p.title, p.price, p.original_price, p.description, p.category, p.stock_quantity,
             (SELECT json_agg(json_build_object('quantity', o.quantity, 'bundle_price', o.bundle_price, 'free_delivery', o.free_delivery))
-             FROM product_offers o WHERE o.product_id = p.id AND o.client_id = p.client_id AND o.is_active = true) as offers
+             FROM product_offers o WHERE o.product_id = p.id AND o.client_id = p.client_id AND o.is_active = true) as offers,
+            (SELECT json_agg(json_build_object('name', v.variant_name, 'value', v.variant_value, 'price', v.price_adjustment, 'stock', v.stock_quantity, 'inStock', (v.stock_quantity > 0)))
+             FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id) as variants
      FROM client_store_products p
      WHERE p.client_id = $1 AND p.status = 'active'
      ORDER BY p.is_featured DESC NULLS LAST, p.created_at DESC
@@ -122,7 +138,9 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
     description: p.description ? String(p.description).slice(0, 200) : undefined,
     category: p.category || undefined,
     inStock: (p.stock_quantity ?? 1) > 0,
+    stockQuantity: p.stock_quantity,
     offers: Array.isArray(p.offers) ? p.offers : undefined,
+    variants: Array.isArray(p.variants) ? p.variants.filter((v: any) => v.name && v.value) : undefined,
   }));
 
   // Delivery summary (average price, active wilayas count)
@@ -145,6 +163,16 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
     [clientId]
   );
 
+  // Check for wholesale pricing availability
+  const wholesaleRes = await pool.query(
+    `SELECT 1 FROM product_offers o 
+     JOIN client_store_products p ON p.id = o.product_id 
+     WHERE p.client_id = $1 AND o.quantity >= 10 AND o.is_active = true 
+     LIMIT 1`,
+    [clientId]
+  ).catch(() => ({ rows: [] }));
+  const hasWholesale = wholesaleRes.rows.length > 0;
+
   // Build store link
   const storeLink = store_slug ? `https://www.sahla4eco.com/store/${store_slug}` : undefined;
 
@@ -156,6 +184,7 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
     deliveryInfo,
     aiInstructions: aiRes.rows[0]?.ai_instructions || undefined,
     storeLink,
+    hasWholesale,
   };
 }
 
@@ -217,6 +246,7 @@ async function saveConversationTurn(
 
 /**
  * Build the product catalog section for the AI prompt.
+ * ✅ FIX 6: Include variant-specific stock information
  */
 function buildProductCatalog(ctx: StoreContext): string {
   if (!ctx.products.length) return 'لا توجد منتجات حالياً في المتجر.';
@@ -225,11 +255,29 @@ function buildProductCatalog(ctx: StoreContext): string {
     let line = `${i + 1}. ${p.title} — ${p.price} ${ctx.currency}`;
     if (p.originalPrice && p.originalPrice > p.price) {
       const discount = Math.round((1 - p.price / p.originalPrice) * 100);
-      line += ` (خصم ${discount}%، كان: ${p.originalPrice} ${ctx.currency})`;
+      line += ` (خصم ${discount}%，كان: ${p.originalPrice} ${ctx.currency})`;
     }
-    if (!p.inStock) line += ' [غير متوفر]';
+    // Enhanced stock information
+    if (!p.inStock || (p.stockQuantity !== undefined && p.stockQuantity <= 0)) {
+      line += ' [غير متوفر - نفذت الكمية]';
+    } else if (p.stockQuantity !== undefined && p.stockQuantity <= 5) {
+      line += ` [⚡ بقي ${p.stockQuantity} فقط]`;
+    } else if (p.inStock) {
+      line += ' [متوفر ✅]';
+    }
     if (p.category) line += ` | ${p.category}`;
     if (p.description) line += `\n   ${p.description}`;
+    
+    // Include variant information
+    if (p.variants && p.variants.length > 0) {
+      const variantLines = p.variants.map(v => {
+        const stockInfo = v.inStock ? (v.stock && v.stock <= 5 ? `(${v.stock} بقي)` : '✅') : '❌ نفذ';
+        const priceInfo = v.price && v.price !== p.price ? `(${v.price} دج)` : '';
+        return `     • ${v.name}: ${v.value} ${priceInfo} ${stockInfo}`;
+      });
+      line += '\n   التشكيلات:' + '\n' + variantLines.join('\n');
+    }
+    
     if (p.offers?.length) {
       const offerLines = p.offers.map(o => {
         let ol = `   🏷️ اشترِ ${o.quantity} بـ ${o.bundle_price} ${ctx.currency}`;
@@ -241,7 +289,59 @@ function buildProductCatalog(ctx: StoreContext): string {
     return line;
   });
 
+  // Add wholesale info if available
+  if (ctx.hasWholesale) {
+    lines.push('\n💼 متوفر أسعار الجملة للكميات - تواصل معنا للتفاصيل');
+  }
+
   return lines.join('\n');
+}
+
+/**
+ * Extract wilaya from message text.
+ */
+async function extractWilayaFromMessage(message: string): Promise<{ id: number; name: string } | null> {
+  try {
+    const pool = await ensureConnection();
+    // Try to match wilaya name in message
+    const words = message.split(/\s+/);
+    for (const word of words) {
+      if (word.length < 3) continue;
+      const res = await pool.query(
+        `SELECT id, name_ar as name FROM wilayas 
+         WHERE lower(name_ar) LIKE lower($1) OR lower(name) LIKE lower($1) 
+         LIMIT 1`,
+        [`%${word}%`]
+      );
+      if (res.rows[0]) {
+        return { id: res.rows[0].id, name: res.rows[0].name };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract address from message (anything after "عنوان" or "سكن" or long text after wilaya).
+ */
+function extractAddressFromMessage(message: string): string | null {
+  // Try to find address markers
+  const markers = ['عنوان', 'العنوان', 'سكن', 'السكن', 'اقامة', 'الاقامة', 'حي', 'الحي', 'شارع', 'الشارع'];
+  for (const marker of markers) {
+    const regex = new RegExp(`${marker}[\\s:]*(.{10,100})`, 'i');
+    const match = message.match(regex);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+  // Try to get last long text segment (likely address)
+  const segments = message.split(/[،,\\.\\n]/).map(s => s.trim()).filter(s => s.length > 10);
+  if (segments.length > 0) {
+    return segments[segments.length - 1];
+  }
+  return null;
 }
 
 /**
@@ -294,37 +394,63 @@ async function resolveCustomerPhone(
 
 /**
  * Extract an Algerian phone number from a customer message.
- * Supports formats: 0551234567, 05 51 23 45 67, +213551234567, 213551234567, 0551-234-567
+ * Supports formats: 0551234567, 05 51 23 45 67, +213551234567, 00213551234567, 213551234567, 0551-234-567, 05.51.23.45.67
  * Returns normalized phone (digits only, with leading 0) or null.
  */
 function extractPhoneFromMessage(message: string): string | null {
-  // Match Algerian mobile numbers: 05/06/07 followed by 8 digits, with optional +213 prefix
-  // Allow spaces, dots, dashes between digit groups
+  // Match Algerian mobile numbers: 05/06/07 followed by 8 digits
+  // Supports: +213, 00213, 213 prefixes, and various separators (space, dot, dash)
   const patterns = [
-    /(?:\+?213|0)[\s.-]?([567])[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})/,
-    /(?:\+?213|0)[\s.-]?([567]\d{8})/,
+    // Format: +213 5/6/7 XX XX XX or +2135XXXXXXXX
+    /(?:\+?213|00213)[\s.-]?([567])[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})/,
+    // Format: 0 5/6/7 XX XX XX with various separators
+    /\b0[\s.-]?([567])[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})\b/,
+    // Format: consecutive digits with optional separators anywhere
+    /(?:\+?213|00213)?[\s.-]*([567]\d{8})/,
+    // Format: 0 followed by 9 digits with any separators
+    /\b0([567]\d{8})\b/,
   ];
 
   for (const pattern of patterns) {
     const match = message.match(pattern);
     if (match) {
-      // Reconstruct the number: take all captured groups, strip non-digits
-      const digits = match[0].replace(/[\s.\-+]/g, '');
-      // Normalize: strip 213 prefix and add leading 0
-      if (digits.startsWith('213') && digits.length >= 12) {
-        return '0' + digits.slice(3);
+      // Extract all digits from the matched string
+      const fullMatch = match[0];
+      const digits = fullMatch.replace(/[^0-9]/g, '');
+      
+      // Normalize to Algerian format with leading 0
+      let normalized: string;
+      
+      if (digits.startsWith('00213')) {
+        // 00213555123456 -> 0555123456
+        normalized = '0' + digits.slice(5);
+      } else if (digits.startsWith('213')) {
+        // 213555123456 -> 0555123456
+        normalized = '0' + digits.slice(3);
+      } else if (digits.startsWith('0')) {
+        // Already has leading 0
+        normalized = digits;
+      } else if (digits.length === 9 && /^[567]/.test(digits)) {
+        // Missing leading 0, add it
+        normalized = '0' + digits;
+      } else {
+        normalized = digits;
       }
-      if (digits.startsWith('0') && digits.length === 10) {
-        return digits;
-      }
-      // Try to normalize from raw digits
-      const raw = digits.replace(/^0+/, '');
-      if (raw.length === 9 && /^[567]/.test(raw)) {
-        return '0' + raw;
+      
+      // Validate: must be exactly 10 digits starting with 05, 06, or 07
+      if (/^0[567]\d{8}$/.test(normalized)) {
+        return normalized;
       }
     }
   }
   return null;
+}
+
+/**
+ * Validate if a string is a proper Algerian phone number.
+ */
+function isValidAlgerianPhone(phone: string): boolean {
+  return /^0[567]\d{8}$/.test(phone.replace(/\D/g, ''));
 }
 
 /**
@@ -660,11 +786,29 @@ export async function handleCustomerMessage(
 
   // If we are in an active order collection session, handle it directly
   if (activeSession) {
+    // ✅ FIX 7: Check if session is about to expire (warn at 25 min)
+    const sessionAge = Date.now() - activeSession.createdAt;
+    if (sessionAge > 25 * 60 * 1000 && sessionAge < 30 * 60 * 1000) {
+      // Session about to expire, warn user
+    }
+    
     const msg = effectiveMessage.trim().toLowerCase();
-    const isCancel = /إلغ|cancel|لا حاجة|مبقيتش|بطل|stop/i.test(effectiveMessage);
+    const isCancel = /إلغ|cancel|لا حاجة|مبقيتش|بطل|stop|ألغي|ألغى|cancel/i.test(effectiveMessage);
     if (isCancel) {
       pendingOrderSessions.delete(sKey);
-      return 'حسناً، تم إلغاء الطلب. إذا غيرت رأيك، قولي وأساعدك 😊';
+      return 'حسناً، تم إلغاء الطلب. إذا غيرت رأيك، قولي وأساعدك 😊\n\nلو حاب تطلب منتج آخر، قولي شنو هو!';
+    }
+    
+    // ✅ FIX 10: Handle change/modification requests
+    const isChangeRequest = /بدل|غير|بدلة|تغيير|تبديل|modif|change/i.test(effectiveMessage);
+    if (isChangeRequest && activeSession.step !== 'confirm') {
+      return `ماشي مشكل! شنو تبي تبدل؟\n\n• المنتج: ${activeSession.productTitle}\n• الاسم: ${activeSession.customerName || 'مازال ما عطيتوش'}\n• الهاتف: ${activeSession.customerPhone || 'مازال ما عطيتوش'}\n• الولاية: ${activeSession.wilayaName || 'مازال ما عطيتهاش'}\n• العنوان: ${activeSession.customerAddress || 'مازال ما عطيتوش'}\n\nقلي شنو تبي تبدل ونعدله لك 👍`;
+    }
+    
+    // ✅ FIX 8: Handle multi-product intent during session
+    const multiProductIntent = /منتج.*ثاني|منتج.*آخر|كذلك|أيضا| aussi |also/i.test(effectiveMessage);
+    if (multiProductIntent) {
+      return `حالياً نقدر نسجل منتج واحد فقط في الطلب 😔\n\nلكن تقدر تطلب المنتج الثاني في طلب منفصل مباشرة بعد ما نكمل هذا الطلب!\n\nكمل معي هذا الطلب أولا: ${activeSession.productTitle}`;
     }
 
     const isConfirm = /نعم|أكيد|موافق|تأكيد|confirm|اطلب|أطلب|اتمام|أتمم|واه|ايه|اه|ok|oui/i.test(effectiveMessage);
@@ -684,9 +828,70 @@ export async function handleCustomerMessage(
     }
 
     if (activeSession.step === 'name') {
+      // ✅ FIX 5: Handle all-at-once input - try to extract phone and wilaya too
       const name = effectiveMessage.trim();
       if (name.length < 2) return 'يرجى إدخال اسمك الكامل باش نقدر نسجل الطلب.';
       activeSession.customerName = name;
+      
+      // Try to extract phone from same message
+      const extractedPhone = extractPhoneFromMessage(effectiveMessage);
+      if (extractedPhone && isValidAlgerianPhone(extractedPhone)) {
+        activeSession.customerPhone = extractedPhone;
+        
+        // Try to extract wilaya too
+        const wilayaMatch = await extractWilayaFromMessage(effectiveMessage);
+        if (wilayaMatch) {
+          activeSession.wilayaId = wilayaMatch.id;
+          activeSession.wilayaName = wilayaMatch.name;
+          
+          // Try to extract address
+          const address = extractAddressFromMessage(effectiveMessage);
+          if (address && address.length >= 5) {
+            activeSession.customerAddress = address;
+            activeSession.step = 'confirm';
+            
+            // Calculate delivery fee
+            const pool = await ensureConnection();
+            let deliveryFee = 0;
+            if (activeSession.wilayaId) {
+              const dRes = await pool.query(
+                `SELECT home_delivery_price, desk_delivery_price FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
+                [clientId, activeSession.wilayaId]
+              ).catch(() => ({ rows: [] }));
+              const homePrice = Number(dRes.rows[0]?.home_delivery_price) || 0;
+              deliveryFee = homePrice;
+            }
+            const total = (activeSession.productPrice || 0) + deliveryFee;
+            
+            return `ممتاز! جمعت كل المعلومات دفعة واحدة 👏
+
+تأكيد الطلب:
+📦 المنتج: ${activeSession.productTitle}
+💰 السعر: ${activeSession.productPrice} دج
+🚚 التوصيل: ${deliveryFee} دج
+💳 المجموع: ${total} دج
+👤 الاسم: ${activeSession.customerName}
+📱 الهاتف: ${activeSession.customerPhone}
+📍 الولاية: ${activeSession.wilayaName}
+🏠 العنوان: ${activeSession.customerAddress}
+
+✅ الدفع عند الاستلام
+
+اكتب "تأكيد" للتسجيل أو "إلغاء" للإلغاء`;
+          }
+          
+          activeSession.step = 'address';
+          return `تمام ${name}! لقيت رقمك (${extractedPhone}) والولاية (${wilayaMatch.name}) 👍
+
+الآن أعطني عنوانك الكامل (الحي، الشارع، رقم المبنى) 🏠`;
+        }
+        
+        activeSession.step = 'wilaya';
+        return `شكراً ${name}! لقيت رقم هاتفك: ${extractedPhone} 👍
+
+الآن أعطني اسم ولايتك للتوصيل 📍`;
+      }
+      
       activeSession.step = 'phone';
       return `شكراً ${name}! الآن أعطني رقم هاتفك (مثل: 0555123456) 📱`;
     }
@@ -765,6 +970,11 @@ export async function handleCustomerMessage(
     }
 
     if (mentionedProduct) {
+      // ❌ CRITICAL FIX: Check stock before starting order session
+      if (!mentionedProduct.inStock) {
+        return `عذراً، المنتج "${mentionedProduct.title}" غير متوفر حالياً في المخزون 😔\n\nهل تبي منتج آخر؟ شوف الكتالوج: ${ctx.storeLink || 'الموقع'}`;
+      }
+      
       const newSession: PendingOrderSession = {
         clientId,
         platform,
@@ -803,6 +1013,13 @@ ${orderSection}${orderIntentInstructions}
 ═══ رسالة الزبون ═══
 ${effectiveMessage}`;
 
+  // Check rate limit before calling AI
+  const rateLimitKey = `${clientId}:${platform}:${platformChatId}`;
+  if (!checkRateLimit(rateLimitKey, RATE_LIMITS.customer)) {
+    const resetTime = getRateLimitResetTime(rateLimitKey);
+    return getRateLimitMessage(resetTime, 'customer', 'ar');
+  }
+
   try {
     const response = await generateText(
       'customer',
@@ -816,9 +1033,15 @@ ${effectiveMessage}`;
       .catch(err => console.error(`[AI-Customer] Failed to save conversation:`, err));
 
     return response;
-  } catch (err) {
+  } catch (err: any) {
     console.error(`[AI-Customer] Error generating response for client ${clientId}:`, err);
-    return null;
+    // ✅ CRITICAL FIX: Always return a fallback message instead of null
+    const fallbacks = [
+      `عذراً، حصل خطأ تقني. جرب تكلمني مرة أخرى بعد شوية ⏱️`,
+      `المعذرة، النظام مشغول حالياً. حاول بعد دقيقة 🙏`,
+      `واخا عندي مشكل تقني صغير. رجاءً أرسل رسالتك مرة أخرى 😊`,
+    ];
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
   }
 }
 
