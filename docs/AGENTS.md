@@ -49,6 +49,70 @@ This section records the work completed in the prior Copilot chat so a new agent
 
 ---
 
+# 🎨 **HOW TO MAKE ECOPRO LOOK CUSTOM-CODED (Not AI-Generated)**
+
+**Goal:** Build the platform 100% using AI while ensuring the final product looks like a handcrafted masterpiece by a human engineer. Break the "Antigravity/AI-generated" look by following these rules:
+
+## 1. Break the "Generic UI" Pattern
+
+AI defaults to standard layouts and boring color palettes. **Force uniqueness:**
+
+- **Unique Micro-Interactions:** Don't ask for "a tracking bar." Ask for specific custom animations—like a truck icon with subtle vibration, or a loading state that reflects Algerian brand identity.
+- **Irregular Layouts:** AI loves symmetry. Force asymmetrical grids or unique spacing that doesn't follow standard templates.
+- **Custom Illustrations/Icons:** Avoid FontAwesome defaults. Generate unique SVGs or custom icons for bespoke feel.
+
+## 2. Force Human-Like Coding Standards
+
+AI code is often "too perfect" or repetitive. **Add human imperfections:**
+
+- **Domain-Specific Naming:** Instead of `OrderFactoryBuilder`, use `EcoreShipmentDispatcher` or `Sahla4ecoOrderRouter`. Names should reflect the actual business domain.
+- **Opinionated Architecture:** Dictate specific patterns (like Domain-Driven Design) that AI wouldn't usually pick.
+- **Contextual Comments:** Write comments explaining **why** a decision was made, not just what the code does:
+  ```typescript
+  // Fix for Algerian SMS gateway latency - do not refactor
+  const SMS_RETRY_DELAY = 3000; // Yalidine requires 3s between requests
+  ```
+- **Intentional Imperfections:** Use values like `padding: 13px` instead of `12px` to break the "perfect" AI grid.
+
+## 3. Implement "Slow Thinking" Features
+
+AI-built sites lack deep business logic. **Add complex edge cases:**
+
+- **Algerian-Specific Logic:** Handle all 05/06/07 mobile prefixes, Wilaya-based delivery costs, local payment flows.
+- **Deep Integrations:** Build multi-step workflows like "Meta Instant Form → AI Bot → WhatsApp Confirmation" instead of simple buttons.
+- **Error Handling for Local Reality:** Handle slow mobile data, intermittent connections, Algerian SMS gateway quirks.
+
+## 4. Use the "Surgery" Workflow
+
+**Never ask AI to "build the whole page."** That produces generic results.
+
+- **One Intent Per Session:** Each chat session = one specific feature or fix.
+- **Review Checklist:** Before finishing, ask: "Does this have proper error handling? Are there hardcoded values? Is mobile view actually usable?"
+- **Manual Polish:** Spend 10% of time manually adjusting small things:
+  - Change button wording to natural Darija/slang
+  - Adjust CSS values by 1px to break perfect grids
+  - Add location-specific references ("Livraison rapide à Alger")
+
+## 5. Naming Conventions (Domain-Specific)
+
+Use names that reflect the actual platform purpose, not generic patterns:
+
+| Generic (AI Default) | Custom (Human Style) |
+|-------------------|---------------------|
+| `UserController` | `Sahla4ecoStoreOwnerController` |
+| `OrderService` | `DZOrderFulfillmentService` |
+| `ProductRepository` | `CatalogManager` |
+| `PaymentGateway` | `CODValidator` |
+| `NotificationSystem` | `BotOrchestrator` |
+
+## 6. Code Style Guidelines
+
+- **Max 26 Behavioral Dimensions:** Research shows AI loses fidelity after 26 distinct rules. Keep instructions focused on top 5-10 critical behaviors.
+- **Context Window Management:** Use sliding windows or summarization. Don't pass 100-message history for every turn.
+- **Prompt Compression:** Cache static system prompt parts to reduce costs by 50%.
+
+---
+
 ## 🚨 CRITICAL RULES - READ FIRST
 
 1. **NEVER create a local database** - Only use the Render PostgreSQL database
