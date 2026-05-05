@@ -17,33 +17,25 @@ const DEFAULT_TEMPLATE_ID = 'dzshop';
 
 // Templates that are considered 100% editable + verified against TEMPLATE_EDITS_CONTRACT.
 // These are the only templates shown by default in the picker.
-const READY_TEMPLATE_IDS = new Set(['dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery', 'iyco', 'bassem28', 'classicshop', 'jewelheart', 'dz3shop', 'spiriluxe', 'leroishop']);
+// NOTE: Disabled templates (files kept but not selectable):
+// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina
+const READY_TEMPLATE_IDS = new Set(['dzshop', 'luxedrop', 'needdz', 'zenith', 'boutique', 'streetwear', 'iyco', 'bassem28', 'dz3shop', 'spiriluxe', 'leroishop']);
 
 // Template preview data with categories
+// NOTE: Disabled templates (files kept but not selectable):
+// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina
 const TEMPLATE_PREVIEWS = [
   { id: 'dzshop', name: 'متجر DZ — كلاسيكي جزائري', image: '', categories: ['popular', 'industry'] },
-  { id: 'dzpremium', name: 'DZ بريميوم — صفحة هبوط سريعة', image: '', categories: ['popular', 'landing'] },
   { id: 'luxedrop', name: 'لوكس دروب — الوضع الداكن', image: '', categories: ['dark', 'landing'] },
-
   { id: 'needdz', name: 'NeedDZ — تطبيق موبايل', image: '', categories: ['mobile', 'popular'] },
-  { id: 'novadz', name: 'نوفا DZ — عصري متحول', image: '', categories: ['popular', 'landing'] },
-  { id: 'minimalist', name: 'مينيماليست — بسيط و أنيق', image: '', categories: ['minimal', 'elegant'] },
-  { id: 'lumina', name: 'لومينا — صفحة هبوط', image: '', categories: ['landing', 'popular'] },
   { id: 'zenith', name: 'زينيث — هبوط نظيف', image: '', categories: ['landing', 'minimal'] },
   { id: 'boutique', name: 'بوتيك — متجر تشكيلة', image: '', categories: ['popular', 'elegant'] },
-  { id: 'aurora', name: 'أورورا — داكن فاخر', image: '', categories: ['dark', 'elegant'] },
-  { id: 'sculptor', name: 'سكلبتور — تفاصيل المنتج', image: '', categories: ['dark', 'elegant'] },
-  { id: 'artisan', name: 'أرتيزان — تشكيلة طبيعية', image: '', categories: ['elegant', 'popular'] },
-  { id: 'vera', name: 'فيرا — سينمائي فاخر', image: '', categories: ['dark', 'elegant'] },
   { id: 'streetwear', name: 'ستريت وير — شبكة داكنة', image: '', categories: ['dark', 'popular'] },
-  { id: 'gallery', name: 'غاليري — شبكة بسيطة', image: '', categories: ['minimal', 'popular'] },
-  { id: 'iyco', name: 'IYCO — ملابس عصرية', image: '', categories: ['popular', 'landing'], isNew: true },
-  { id: 'bassem28', name: 'بريمو — منتج احترافي', image: '', categories: ['popular', 'landing', 'elegant'], isNew: true },
-  { id: 'classicshop', name: 'كلاسيك شوب — منتج نظيف', image: '', categories: ['minimal', 'popular'], isNew: true },
-  { id: 'jewelheart', name: 'جوهرة — مجوهرات أنيقة', image: '', categories: ['elegant', 'landing'], isNew: true },
-  { id: 'dz3shop', name: 'Dz3 شوب — كتالوج المنتجات', image: '', categories: ['popular', 'industry'], isNew: true },
-  { id: 'spiriluxe', name: 'سبيريلوكس — هبوط + صور + فيديو', image: '', categories: ['landing', 'popular'], isNew: true },
-  { id: 'leroishop', name: 'لوروا شوب — كتالوج متعدد المنتجات', image: '', categories: ['popular', 'industry'], isNew: true }
+  { id: 'iyco', name: 'IYCO — ملابس عصرية', image: '', categories: ['popular', 'landing'] },
+  { id: 'bassem28', name: 'بريمو — منتج احترافي', image: '', categories: ['popular', 'landing', 'elegant'] },
+  { id: 'dz3shop', name: 'Dz3 شوب — كتالوج المنتجات', image: '', categories: ['popular', 'industry'] },
+  { id: 'spiriluxe', name: 'سبيريلوكس — هبوط + صور + فيديو', image: '', categories: ['landing', 'popular'] },
+  { id: 'leroishop', name: 'لوروا شوب — كتالوج متعدد المنتجات', image: '', categories: ['popular', 'industry'] }
 ];
 
 const TEMPLATE_CATEGORIES = [

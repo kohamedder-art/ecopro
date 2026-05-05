@@ -34,30 +34,21 @@ interface RealTemplate {
   tags: string[];
 }
 
+// NOTE: Disabled templates (files kept but not selectable):
+// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera
+
 const REAL_TEMPLATES: RealTemplate[] = [
   {
     id: 'dzshop',
     name: 'DZ Shop',
     nameAr: 'متجر DZ',
-    descAr: 'قالب جزائري كلاسيكي مع ألوان بنفسجية — مثالي للمتاجر العامة',
+    descAr: 'قالب جزائري كلاسيكي مع ألوان بنفسجية',
     category: 'storefront',
     imageType: 'standard',
     gradient: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 50%, #c4b5fd 100%)',
     accent: '#7c3aed',
-    icon: <ShoppingBag className="w-5 h-5" />,
-    tags: ['شائع', 'متجر عام'],
-  },
-  {
-    id: 'dzpremium',
-    name: 'DZ Premium',
-    nameAr: 'DZ بريميوم',
-    descAr: 'تصميم أخضر سريع — مبيعات وتحويل عالي',
-    category: 'landing',
-    imageType: 'both',
-    gradient: 'linear-gradient(135deg, #059669 0%, #34d399 50%, #6ee7b7 100%)',
-    accent: '#059669',
-    icon: <Zap className="w-5 h-5" />,
-    tags: ['تحويل عالي', 'صفحة هبوط'],
+    icon: <ShoppingBag className="w-4 h-4" />,
+    tags: ['شائع', 'متجر'],
   },
   {
     id: 'luxedrop',
@@ -68,153 +59,117 @@ const REAL_TEMPLATES: RealTemplate[] = [
     imageType: 'standard',
     gradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #6366f1 100%)',
     accent: '#6366f1',
-    icon: <Star className="w-5 h-5" />,
+    icon: <Star className="w-4 h-4" />,
     tags: ['داكن', 'فاخر'],
   },
-
   {
     id: 'needdz',
     name: 'NeedDZ',
     nameAr: 'NeedDZ موبايل',
-    descAr: 'تصميم تطبيق موبايل — يشبه التطبيقات الحديثة',
+    descAr: 'تصميم تطبيق موبايل حديث',
     category: 'storefront',
     imageType: 'standard',
     gradient: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #93c5fd 100%)',
     accent: '#2563eb',
-    icon: <Smartphone className="w-5 h-5" />,
+    icon: <Smartphone className="w-4 h-4" />,
     tags: ['موبايل', 'شائع'],
   },
-  {
-    id: 'novadz',
-    name: 'Nova DZ',
-    nameAr: 'نوفا DZ',
-    descAr: 'قالب عصري مع تحويل مرتفع — الأكثر مبيعاً',
-    category: 'landing',
-    imageType: 'long',
-    gradient: 'linear-gradient(135deg, #f97316 0%, #fb923c 50%, #fdba74 100%)',
-    accent: '#f97316',
-    icon: <Zap className="w-5 h-5" />,
-    tags: ['الأكثر مبيعاً', 'عصري'],
-  },
-  {
-    id: 'minimalist',
-    name: "L'Atelier",
-    nameAr: 'لاتيليي (مينيمال)',
-    descAr: 'تصميم نظيف بسيط — للبوتيكات والحرفيين',
-    category: 'storefront',
-    imageType: 'long',
-    gradient: 'linear-gradient(135deg, #fafaf9 0%, #e7e5e4 50%, #78716c 100%)',
-    accent: '#78716c',
-    icon: <Layout className="w-5 h-5" />,
-    tags: ['بسيط', 'بوتيك'],
-  },
-  {
-    id: 'lumina',
-    name: 'Lumina',
-    nameAr: 'لومينا',
-    descAr: 'صفحة هبوط منتج واحد — صور كبيرة وطلب سريع',
-    category: 'landing',
-    imageType: 'long',
-    gradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #e11d48 100%)',
-    accent: '#e11d48',
-    icon: <Star className="w-5 h-5" />,
-    tags: ['صفحة هبوط', 'منتج واحد'],
-  },
+  // NOTE: novadz and lumina disabled - see index.tsx
   {
     id: 'zenith',
     name: 'Zenith',
     nameAr: 'زينيث',
-    descAr: 'تصميم نظيف أبيض وأسود — صور طويلة كاملة وطلب مباشر',
+    descAr: 'تصميم نظيف أبيض وأسود',
     category: 'landing',
     imageType: 'long',
     gradient: 'linear-gradient(135deg, #111827 0%, #374151 50%, #f9fafb 100%)',
     accent: '#111827',
-    icon: <Star className="w-5 h-5" />,
-    tags: ['صفحة هبوط', 'منتج واحد'],
+    icon: <Star className="w-4 h-4" />,
+    tags: ['هبوط', 'منتج واحد'],
   },
   {
     id: 'boutique',
     name: 'Boutique',
     nameAr: 'بوتيك',
-    descAr: 'متجر مجموعات أنيق — بطل + شبكة منتجات + سلة جانبية',
+    descAr: 'متجر مجموعات أنيق مع سلة جانبية',
     category: 'storefront',
     imageType: 'standard',
     gradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #f59e0b 100%)',
     accent: '#f59e0b',
-    icon: <ShoppingBag className="w-5 h-5" />,
+    icon: <ShoppingBag className="w-4 h-4" />,
     tags: ['متجر', 'مجموعات'],
-  },
-  {
-    id: 'aurora',
-    name: 'Aurora',
-    nameAr: 'أورورا',
-    descAr: 'متجر فاخر داكن — بطاقات زجاجية وتصميم ذهبي عصري',
-    category: 'storefront',
-    imageType: 'standard',
-    gradient: 'linear-gradient(135deg, #080808 0%, #121212 50%, #E2B872 100%)',
-    accent: '#E2B872',
-    icon: <Crown className="w-5 h-5" />,
-    tags: ['فاخر', 'داكن'],
-  },
-  {
-    id: 'sculptor',
-    name: 'Sculptor',
-    nameAr: 'سكلبتور',
-    descAr: 'عرض منتج واحد فاخر — معرض صور أفقي وتصميم ذهبي داكن',
-    category: 'landing',
-    imageType: 'standard',
-    gradient: 'linear-gradient(135deg, #0A0A0A 0%, #1a1a1a 50%, #D4AF37 100%)',
-    accent: '#D4AF37',
-    icon: <Star className="w-5 h-5" />,
-    tags: ['فاخر', 'منتج واحد'],
-  },
-  {
-    id: 'artisan',
-    name: 'Artisan',
-    nameAr: 'نسيج',
-    descAr: 'متجر أنيق بطابع ترابي دافئ — سلة مشتريات ودفع سلس',
-    category: 'storefront',
-    imageType: 'standard',
-    gradient: 'linear-gradient(135deg, #fdfaf6 0%, #d4a574 50%, #7c4a32 100%)',
-    accent: '#7c4a32',
-    icon: <Sparkles className="w-5 h-5" />,
-    tags: ['ترابي', 'متعدد المنتجات'],
-  },
-  {
-    id: 'vera',
-    name: 'Véra',
-    nameAr: 'فيرا',
-    descAr: 'واجهة سينمائية فاخرة — شبكة بينتو ونظام طلب أنيق',
-    category: 'landing',
-    imageType: 'standard',
-    gradient: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #d4af37 100%)',
-    accent: '#d4af37',
-    icon: <Crown className="w-5 h-5" />,
-    tags: ['فاخر', 'سينمائي'],
   },
   {
     id: 'streetwear',
     name: 'Streetwear',
     nameAr: 'ستريت وير',
-    descAr: 'متجر ملابس داكن مع اختيار مقاسات وسلة مشتريات جانبية',
+    descAr: 'متجر ملابس داكن مع اختيار مقاسات',
     category: 'storefront',
     imageType: 'standard',
     gradient: 'linear-gradient(135deg, #080808 0%, #111 50%, #D4AF37 100%)',
     accent: '#D4AF37',
-    icon: <ShoppingBag className="w-5 h-5" />,
+    icon: <ShoppingBag className="w-4 h-4" />,
     tags: ['داكن', 'مقاسات'],
   },
   {
-    id: 'gallery',
-    name: 'Gallery',
-    nameAr: 'غاليري',
-    descAr: 'شبكة منتجات خفيفة مع شراء سريع وسلة ملتصقة بالأسفل',
+    id: 'dz3shop',
+    name: 'DZ3 Shop',
+    nameAr: 'دي زي 3 شوب',
+    descAr: 'متجر متعدد المنتجات شبكة كثيفة',
     category: 'storefront',
     imageType: 'standard',
-    gradient: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #facc15 100%)',
-    accent: '#facc15',
-    icon: <Layout className="w-5 h-5" />,
-    tags: ['خفيف', 'شبكة'],
+    gradient: 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)',
+    accent: '#dc2626',
+    icon: <ShoppingBag className="w-4 h-4" />,
+    tags: ['متعدد', 'شبكة'],
+  },
+  {
+    id: 'spiriluxe',
+    name: 'Spiriluxe',
+    nameAr: 'سبيريلوكس',
+    descAr: 'صفحة هبوط فاخرة مع عروض',
+    category: 'landing',
+    imageType: 'standard',
+    gradient: 'linear-gradient(135deg, #581c87 0%, #7c3aed 50%, #a78bfa 100%)',
+    accent: '#7c3aed',
+    icon: <Sparkles className="w-4 h-4" />,
+    tags: ['فاخر', 'عروض'],
+  },
+  {
+    id: 'leroishop',
+    name: 'Le Roi Shop',
+    nameAr: 'لو روا شوب',
+    descAr: 'متجر تقليدي شبكة منتجات 5 أعمدة',
+    category: 'storefront',
+    imageType: 'standard',
+    gradient: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)',
+    accent: '#1e40af',
+    icon: <Layout className="w-4 h-4" />,
+    tags: ['تقليدي', 'شبكة'],
+  },
+  {
+    id: 'iyco',
+    name: 'IYCO',
+    nameAr: 'أيكو',
+    descAr: 'صفحة هبوط منتج واحد عصري',
+    category: 'landing',
+    imageType: 'long',
+    gradient: 'linear-gradient(135deg, #0f172a 0%, #312e81 50%, #6366f1 100%)',
+    accent: '#6366f1',
+    icon: <Zap className="w-4 h-4" />,
+    tags: ['هبوط', 'عصري'],
+  },
+  {
+    id: 'bassem28',
+    name: 'Primo',
+    nameAr: 'بريمو',
+    descAr: 'صفحة هبوط منتج واحد أنيقة',
+    category: 'landing',
+    imageType: 'standard',
+    gradient: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%)',
+    accent: '#f59e0b',
+    icon: <Star className="w-4 h-4" />,
+    tags: ['هبوط', 'أنيق'],
   },
 ];
 
@@ -389,84 +344,68 @@ export function TemplatesTab({ storeSettings, setStoreSettings }: TemplatesTabPr
         <p className="text-sm text-slate-500 dark:text-slate-400">{t('templates.chooseTemplateDesc')}</p>
       </div>
 
-      {/* Template Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* Template Grid - Compact 4-column layout */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
         {REAL_TEMPLATES.map((tpl) => {
           const isActive = currentTemplateId === tpl.id;
           return (
             <div
               key={tpl.id}
-              className={`group relative rounded-[20px] border-2 overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-lg hover:scale-[1.02] ${
+              className={`group relative rounded-xl border-2 overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-md hover:scale-[1.02] ${
                 isActive
-                  ? 'border-purple-500 shadow-lg shadow-purple-500/20 ring-1 ring-purple-400'
+                  ? 'border-purple-500 shadow-md shadow-purple-500/20 ring-1 ring-purple-400'
                   : 'border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-600'
               }`}
               onClick={() => openTemplateSwitch(tpl.id)}
             >
-              {/* Gradient preview swatch */}
+              {/* Gradient preview swatch - smaller */}
               <div
-                className="h-28 w-full relative overflow-hidden"
+                className="h-16 w-full relative overflow-hidden"
                 style={{ background: tpl.gradient }}
               >
-                {/* Mini phone mockup inside the gradient */}
+                {/* Mini phone mockup - smaller */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-14 h-20 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 shadow-lg flex flex-col items-center justify-center gap-1 p-1.5">
-                    <div className="w-full h-1.5 rounded-full bg-white/40" />
-                    <div className="w-3/4 h-1 rounded-full bg-white/25" />
-                    <div className="flex gap-0.5 mt-1">
-                      <div className="w-3 h-3 rounded-[3px] bg-white/30" />
-                      <div className="w-3 h-3 rounded-[3px] bg-white/30" />
-                    </div>
-                    <div className="flex gap-0.5">
-                      <div className="w-3 h-3 rounded-[3px] bg-white/30" />
-                      <div className="w-3 h-3 rounded-[3px] bg-white/30" />
+                  <div className="w-10 h-14 rounded-md bg-white/20 backdrop-blur-sm border border-white/30 shadow flex flex-col items-center justify-center gap-0.5 p-1">
+                    <div className="w-full h-1 rounded-full bg-white/40" />
+                    <div className="w-2/3 h-0.5 rounded-full bg-white/25" />
+                    <div className="flex gap-0.5 mt-0.5">
+                      <div className="w-2 h-2 rounded-[2px] bg-white/30" />
+                      <div className="w-2 h-2 rounded-[2px] bg-white/30" />
                     </div>
                   </div>
                 </div>
-                {/* Active badge */}
+                {/* Active badge - smaller */}
                 {isActive && (
-                  <div className="absolute top-2 left-2 flex items-center gap-1 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
-                    <Check className="w-3 h-3" />
+                  <div className="absolute top-1 left-1 flex items-center gap-0.5 bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow">
+                    <Check className="w-2.5 h-2.5" />
                     مُفعّل
                   </div>
                 )}
-                {/* Category badge */}
-                <div className="absolute top-2 right-2 text-[10px] font-medium bg-black/30 text-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                  {tpl.category === 'landing' ? 'صفحة هبوط' : 'متجر'}
-                </div>
-                {/* Image type badge */}
-                <div className={`absolute bottom-2 right-2 flex items-center gap-1 text-[10px] font-medium backdrop-blur-sm px-2 py-0.5 rounded-full ${
-                  tpl.imageType === 'long'
-                    ? 'bg-amber-500/30 text-amber-100'
-                    : tpl.imageType === 'both'
-                    ? 'bg-emerald-500/30 text-emerald-100'
-                    : 'bg-white/20 text-white/80'
-                }`}>
-                  <ImageIcon className="w-3 h-3" />
-                  {tpl.imageType === 'long' ? 'صور طويلة' : tpl.imageType === 'both' ? 'عادية + طويلة' : 'صور عادية'}
+                {/* Category badge - smaller */}
+                <div className="absolute top-1 right-1 text-[9px] font-medium bg-black/30 text-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
+                  {tpl.category === 'landing' ? 'هبوط' : 'متجر'}
                 </div>
               </div>
 
-              {/* Card body */}
-              <div className="p-3 bg-white dark:bg-slate-800/80 space-y-2">
-                <div className="flex items-center gap-2">
+              {/* Card body - compact */}
+              <div className="p-2 bg-white dark:bg-slate-800/80 space-y-1.5">
+                <div className="flex items-center gap-1.5">
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm"
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-white shadow-sm"
                     style={{ backgroundColor: tpl.accent }}
                   >
                     {tpl.icon}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">{tpl.nameAr}</h4>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500">{tpl.name}</p>
+                    <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">{tpl.nameAr}</h4>
                   </div>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{tpl.descAr}</p>
-                <div className="flex flex-wrap gap-1">
-                  {tpl.tags.map((tag) => (
+                <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight line-clamp-1">{tpl.descAr}</p>
+                <div className="flex flex-wrap gap-0.5">
+                  {tpl.tags.slice(0, 1).map((tag) => (
                     <span
                       key={tag}
-                      className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                      className="text-[9px] px-1 py-0.5 rounded-full font-medium"
                       style={{ backgroundColor: `${tpl.accent}15`, color: tpl.accent }}
                     >
                       {tag}
@@ -477,10 +416,10 @@ export function TemplatesTab({ storeSettings, setStoreSettings }: TemplatesTabPr
                   <Button
                     type="button"
                     size="sm"
-                    className="w-full mt-1 h-8 text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl"
+                    className="w-full mt-0.5 h-6 text-[10px] bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg"
                     onClick={(e) => { e.stopPropagation(); openTemplateSwitch(tpl.id); }}
                   >
-                    {t('templates.useThisTemplate') || 'استخدام هذا القالب'}
+                    استخدام
                   </Button>
                 )}
               </div>

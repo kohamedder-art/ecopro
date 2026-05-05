@@ -1,24 +1,19 @@
 import React from 'react';
 import { TemplateProps } from './types';
+// NOTE: Disabled templates (files kept but not selectable):
+// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera
+// To re-enable, add imports and add to validIds array below
+
 import DZShopTemplate from './dzshop/DZShopTemplate';
-import DZPremiumTemplate from './dzpremium/DZPremiumTemplate';
 import LuxeDropTemplate from './luxedrop/LuxeDropTemplate';
 import NeedDZTemplate from './needdz/NeedDZTemplate';
 import NovaDzTemplate from './novadz/NovaDzTemplate';
-import MinimalistTemplate from './minimalist/MinimalistTemplate';
 import LuminaTemplate from './lumina/LuminaTemplate';
 import ZenithTemplate from './zenith/ZenithTemplate';
 import BoutiqueTemplate from './boutique/BoutiqueTemplate';
-import AuroraTemplate from './aurora/AuroraTemplate';
-import SculptorTemplate from './sculptor/SculptorTemplate';
-import ArtisanTemplate from './artisan/ArtisanTemplate';
-import VeraTemplate from './vera/VeraTemplate';
 import StreetwearTemplate from './streetwear/StreetwearTemplate';
-import GalleryTemplate from './gallery/GalleryTemplate';
 import IycoTemplate from './iyco/IycoTemplate';
 import Bassem28Template from './bassem28/Bassem28Template';
-import ClassicShopTemplate from './classicshop/ClassicShopTemplate';
-import JewelHeartTemplate from './jewelheart/JewelHeartTemplate';
 import Dz3ShopTemplate from './dz3shop/Dz3ShopTemplate';
 import SpiriluxeTemplate from './spiriluxe/SpiriluxeTemplate';
 import LeRoiShopTemplate from './leroishop/LeRoiShopTemplate';
@@ -27,7 +22,8 @@ export type TemplateId = 'dzshop' | 'dzpremium' | 'luxedrop' | string;
 
 export function normalizeTemplateId(id: string): string {
     if (id === 'luxedark') return 'luxedrop'; // Removed template, redirect to closest
-    const validIds = ['dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist', 'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan', 'vera', 'streetwear', 'gallery', 'iyco', 'bassem28', 'classicshop', 'jewelheart', 'dz3shop', 'spiriluxe', 'leroishop'];
+    // Disabled: dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina
+    const validIds = ['dzshop', 'luxedrop', 'needdz', 'zenith', 'boutique', 'streetwear', 'iyco', 'bassem28', 'dz3shop', 'spiriluxe', 'leroishop'];
     if (validIds.includes(id)) return id;
     return 'dzshop'; // Fallback
 }
@@ -59,52 +55,44 @@ export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
   };
 
   switch (id) {
-      case 'novadz':
-          return <NovaDzTemplate {...sanitizedProps} />;
-      case 'lumina':
-          return <LuminaTemplate {...sanitizedProps} />;
+      // Active templates
       case 'zenith':
           return <ZenithTemplate {...sanitizedProps} />;
       case 'boutique':
           return <BoutiqueTemplate {...sanitizedProps} />;
-      case 'aurora':
-          return <AuroraTemplate {...sanitizedProps} />;
-      case 'sculptor':
-          return <SculptorTemplate {...sanitizedProps} />;
-      case 'artisan':
-          return <ArtisanTemplate {...sanitizedProps} />;
-      case 'vera':
-          return <VeraTemplate {...sanitizedProps} />;
       case 'streetwear':
           return <StreetwearTemplate {...sanitizedProps} />;
-      case 'gallery':
-          return <GalleryTemplate {...sanitizedProps} />;
       case 'iyco':
           return <IycoTemplate {...sanitizedProps} />;
       case 'bassem28':
           return <Bassem28Template {...sanitizedProps} />;
-      case 'classicshop':
-          return <ClassicShopTemplate {...sanitizedProps} />;
-      case 'jewelheart':
-          return <JewelHeartTemplate {...sanitizedProps} />;
       case 'dz3shop':
           return <Dz3ShopTemplate {...sanitizedProps} />;
       case 'spiriluxe':
           return <SpiriluxeTemplate {...sanitizedProps} />;
       case 'leroishop':
           return <LeRoiShopTemplate {...sanitizedProps} />;
-      case 'minimalist':
-          return <MinimalistTemplate {...sanitizedProps} />;
-      case 'dzpremium':
-          return <DZPremiumTemplate {...sanitizedProps} />;
       case 'luxedrop':
           return <LuxeDropTemplate {...sanitizedProps} />;
       case 'needdz':
           return <NeedDZTemplate {...sanitizedProps} />;
+      // Disabled templates redirect to dzshop:
+      case 'dzpremium':
+      case 'minimalist':
+      case 'aurora':
+      case 'sculptor':
+      case 'artisan':
+      case 'gallery':
+      case 'jewelheart':
+      case 'classicshop':
+      case 'vera':
+      case 'novadz':
+      case 'lumina':
       case 'dzshop':
       default:
           return <DZShopTemplate {...sanitizedProps} />;
   }
 }
 
-export { DZShopTemplate, DZPremiumTemplate, LuxeDropTemplate, NeedDZTemplate, NovaDzTemplate, MinimalistTemplate, LuminaTemplate, ZenithTemplate, BoutiqueTemplate, AuroraTemplate, SculptorTemplate, ArtisanTemplate, VeraTemplate, StreetwearTemplate, GalleryTemplate, IycoTemplate, Bassem28Template, ClassicShopTemplate, JewelHeartTemplate, Dz3ShopTemplate, SpiriluxeTemplate, LeRoiShopTemplate };
+// Only exporting active templates
+export { DZShopTemplate, LuxeDropTemplate, NeedDZTemplate, NovaDzTemplate, LuminaTemplate, ZenithTemplate, BoutiqueTemplate, StreetwearTemplate, IycoTemplate, Bassem28Template, Dz3ShopTemplate, SpiriluxeTemplate, LeRoiShopTemplate };
