@@ -143,9 +143,9 @@ export default function LeRoiShopTemplate({
   const productTotal = selectedOffer ? selectedOffer.bundle_price : unitPrice * quantity;
   const grandTotal = productTotal + deliveryFee;
 
-  // Related products (exclude active product)
+  // Related products (exclude active product) - show more like Temu
   const relatedProducts = useMemo(() =>
-    (products || []).filter(p => p.id !== activeProduct?.id).slice(0, 4),
+    (products || []).filter(p => p.id !== activeProduct?.id).slice(0, 10),
     [products, activeProduct?.id]
   );
 
@@ -368,37 +368,68 @@ export default function LeRoiShopTemplate({
               </div>
             )}
 
-            {/* Product Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-              {(products || []).map((product) => (
-                <div
-                  key={product.id}
-                  className="lrs-card rounded-lg overflow-hidden cursor-pointer p-3"
-                  style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}
-                  onClick={() => openProduct(product)}
-                >
-                  <img
-                    src={product.images?.[0] || '/placeholder.png'}
-                    alt={product.title}
-                    className="w-full aspect-square object-cover rounded-md mb-3"
-                  />
-                  <div className="text-center">
-                    <h3 className="text-sm font-bold h-10 overflow-hidden line-clamp-2" style={{ color: textColor }}>
-                      {product.title}
-                    </h3>
-                    <div className="my-1 flex justify-center"><Stars /></div>
-                    <div className="font-black text-sm md:text-base mb-2" style={{ color: accentColor }}>
-                      {Math.round(product.price ?? 0).toLocaleString()} {currency}
+            {/* Product Grid - Temu Style */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+              {(products || []).map((product) => {
+                const discount = product.original_price 
+                  ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+                  : 0;
+                const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
+                
+                return (
+                  <div
+                    key={product.id}
+                    className="group cursor-pointer transition-transform hover:-translate-y-1"
+                    onClick={() => openProduct(product)}
+                  >
+                    {/* Image Container - fills card like Temu */}
+                    <div className="relative overflow-hidden rounded-lg mb-2" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+                      <img
+                        src={product.images?.[0] || '/placeholder.png'}
+                        alt={product.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      
+                      {/* Top-left badges like Temu */}
+                      <div className="absolute top-2 left-2 flex flex-col gap-1">
+                        {discount > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                            -{discount}%
+                          </span>
+                        )}
+                        {isLowStock && (
+                          <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            ⚡ {product.stock_quantity} left
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <button
-                      className="w-full py-1.5 rounded text-sm font-bold text-white transition-colors hover:opacity-90"
-                      style={{ backgroundColor: accentColor }}
-                    >
-                      اطلب الآن
-                    </button>
+                    
+                    {/* Compact info - like Temu */}
+                    <div className="px-0.5">
+                      <h3 className="text-xs font-medium truncate mb-0.5 text-right" style={{ color: textColor }}>
+                        {product.title}
+                      </h3>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <span className="font-bold text-sm" style={{ color: accentColor }}>
+                          {Math.round(product.price ?? 0).toLocaleString()} {currency}
+                        </span>
+                        {product.original_price && (
+                          <span className="text-[10px] line-through" style={{ color: textMuted }}>
+                            {Math.round(product.original_price).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                      {product.views > 0 && (
+                        <div className="text-[10px] mt-0.5 text-right" style={{ color: textMuted }}>
+                          <span className="text-orange-500">🔥</span>
+                          {product.views > 1000 ? `${Math.floor(product.views/1000)}K+ sold` : `${product.views}+ sold`}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -642,25 +673,67 @@ export default function LeRoiShopTemplate({
                     {settings?.lrs_related_subtitle || 'توصيل مجاني عند طلب أكثر من منتج'}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-                  {relatedProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="lrs-card rounded-lg overflow-hidden cursor-pointer p-3"
-                      style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}
-                      onClick={() => { openProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    >
-                      <div className="rounded-md mb-3 overflow-hidden" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
-                        <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} className="w-full h-full object-cover" />
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+                  {relatedProducts.map((product) => {
+                    const discount = product.original_price 
+                      ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+                      : 0;
+                    const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
+                    
+                    return (
+                      <div
+                        key={product.id}
+                        className="group cursor-pointer transition-transform hover:-translate-y-1"
+                        onClick={() => { openProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      >
+                        {/* Image Container - fills card like Temu */}
+                        <div className="relative overflow-hidden rounded-lg mb-2" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+                          <img 
+                            src={product.images?.[0] || '/placeholder.png'} 
+                            alt={product.title} 
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                          />
+                          
+                          {/* Top-left badges like Temu */}
+                          <div className="absolute top-2 left-2 flex flex-col gap-1">
+                            {discount > 0 && (
+                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                                -{discount}%
+                              </span>
+                            )}
+                            {isLowStock && (
+                              <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                ⚡ {product.stock_quantity} left
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Compact info - like Temu */}
+                        <div className="px-0.5">
+                          <h3 className="text-xs font-medium truncate mb-0.5 text-right" style={{ color: textColor }}>
+                            {product.title}
+                          </h3>
+                          <div className="flex items-center gap-1.5 justify-end">
+                            <span className="font-bold text-sm" style={{ color: accentColor }}>
+                              {Math.round(product.price ?? 0).toLocaleString()} {currency}
+                            </span>
+                            {product.original_price && (
+                              <span className="text-[10px] line-through" style={{ color: textMuted }}>
+                                {Math.round(product.original_price).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                          {product.views > 0 && (
+                            <div className="text-[10px] mt-0.5 text-right" style={{ color: textMuted }}>
+                              <span className="text-orange-500">🔥</span>
+                              {product.views > 1000 ? `${Math.floor(product.views/1000)}K+ sold` : `${product.views}+ sold`}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <h3 className="text-sm font-bold h-10 overflow-hidden" style={{ color: textColor }}>{product.title}</h3>
-                        <div className="my-1 flex justify-center"><Stars /></div>
-                        <div className="font-black text-sm mb-2" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</div>
-                        <button className="w-full py-1.5 rounded text-sm font-bold text-white" style={{ backgroundColor: accentColor }}>اطلب الآن</button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

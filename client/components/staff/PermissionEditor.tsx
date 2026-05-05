@@ -10,14 +10,14 @@ interface PermissionEditorProps {
   onPermissionChange: (permission: string, value: boolean) => void;
 }
 
-const CATEGORY_META: Record<string, { desc: string; icon: React.ReactNode; gradient: string; shadow: string }> = {
-  dashboard: { desc: 'Access to main dashboard and navigation', icon: <LayoutDashboard className="h-3.5 w-3.5 text-white" />, gradient: 'from-sky-500 to-blue-600', shadow: 'shadow-sky-500/30' },
-  orders:    { desc: 'Manage customer orders and their statuses', icon: <ShoppingCart className="h-3.5 w-3.5 text-white" />, gradient: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/30' },
-  products:  { desc: 'Manage store products and inventory', icon: <Package className="h-3.5 w-3.5 text-white" />, gradient: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/30' },
-  analytics: { desc: 'View analytics, reports, and export data', icon: <BarChart3 className="h-3.5 w-3.5 text-white" />, gradient: 'from-violet-500 to-purple-600', shadow: 'shadow-violet-500/30' },
-  settings:  { desc: 'Access and modify store settings', icon: <Settings className="h-3.5 w-3.5 text-white" />, gradient: 'from-slate-500 to-gray-600', shadow: 'shadow-slate-500/30' },
-  staff:     { desc: 'Manage staff members and view activity logs', icon: <Users className="h-3.5 w-3.5 text-white" />, gradient: 'from-blue-500 to-indigo-600', shadow: 'shadow-blue-500/30' },
-  advanced:  { desc: 'Advanced features like bot settings and broadcasting', icon: <Zap className="h-3.5 w-3.5 text-white" />, gradient: 'from-rose-500 to-pink-600', shadow: 'shadow-rose-500/30' },
+const CATEGORY_META: Record<string, { title: string; desc: string; icon: React.ReactNode; gradient: string; shadow: string }> = {
+  dashboard: { title: 'لوحة التحكم', desc: 'الوصول للوحة التحكم الرئيسية والتنقل', icon: <LayoutDashboard className="h-3.5 w-3.5 text-white" />, gradient: 'from-sky-500 to-blue-600', shadow: 'shadow-sky-500/30' },
+  orders:    { title: 'الطلبات', desc: 'إدارة طلبات العملاء وحالاتها', icon: <ShoppingCart className="h-3.5 w-3.5 text-white" />, gradient: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/30' },
+  products:  { title: 'المنتجات', desc: 'إدارة منتجات المتجر والمخزون', icon: <Package className="h-3.5 w-3.5 text-white" />, gradient: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/30' },
+  analytics: { title: 'التحليلات', desc: 'عرض التحليلات والتقارير وتصدير البيانات', icon: <BarChart3 className="h-3.5 w-3.5 text-white" />, gradient: 'from-violet-500 to-purple-600', shadow: 'shadow-violet-500/30' },
+  settings:  { title: 'الإعدادات', desc: 'الوصول وتعديل إعدادات المتجر', icon: <Settings className="h-3.5 w-3.5 text-white" />, gradient: 'from-slate-500 to-gray-600', shadow: 'shadow-slate-500/30' },
+  staff:     { title: 'الموظفون', desc: 'إدارة أعضاء الفريق وعرض سجلات النشاط', icon: <Users className="h-3.5 w-3.5 text-white" />, gradient: 'from-blue-500 to-indigo-600', shadow: 'shadow-blue-500/30' },
+  advanced:  { title: 'متقدم', desc: 'ميزات متقدمة مثل إعدادات البوت والبث', icon: <Zap className="h-3.5 w-3.5 text-white" />, gradient: 'from-rose-500 to-pink-600', shadow: 'shadow-rose-500/30' },
 };
 
 export function PermissionEditor({ permissions, onPermissionChange }: PermissionEditorProps) {
@@ -41,7 +41,7 @@ export function PermissionEditor({ permissions, onPermissionChange }: Permission
                 {meta.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-base font-extrabold capitalize">{category.replace(/_/g, ' ')}</p>
+                <p className="text-base font-extrabold">{meta.title}</p>
                 <p className="text-sm text-muted-foreground truncate">{meta.desc}</p>
               </div>
               <span className="text-sm font-bold text-muted-foreground bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded-md flex-shrink-0">

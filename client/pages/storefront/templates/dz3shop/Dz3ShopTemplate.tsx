@@ -260,44 +260,72 @@ export default function Dz3ShopTemplate({
   }
 
   // ══════════════════════════════════════
-  // PRODUCT CARD COMPONENT
+  // PRODUCT CARD COMPONENT (Temu-style)
   // ══════════════════════════════════════
-  const ProductCard = ({ product }: { product: any }) => (
-    <div
-      className="overflow-hidden transition-transform hover:-translate-y-1 cursor-pointer p-2"
-      style={{ border: `1px solid ${accentColor}`, borderRadius: 8, backgroundColor: surfaceColor }}
-      onClick={() => openProduct(product.id)}
-    >
-      <div className="rounded mb-2 overflow-hidden" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
-        <img
-          src={product.images?.[0] || '/placeholder.png'}
-          alt={product.title}
-          className="w-full h-full object-cover"
-        />
-      </div>
-      <div className="text-center">
-        <div className="text-xs font-medium h-8 overflow-hidden mb-1" style={{ color: surfaceTextColor }}>
-          {product.title}
+  const ProductCard = ({ product }: { product: any }) => {
+    const discount = product.original_price 
+      ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+      : 0;
+    const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
+    
+    return (
+      <div
+        className="group cursor-pointer transition-transform hover:-translate-y-1"
+        onClick={() => openProduct(product.id)}
+      >
+        {/* Image Container - fills card edge-to-edge like Temu */}
+        <div className="relative overflow-hidden rounded-lg mb-2" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+          <img
+            src={product.images?.[0] || '/placeholder.png'}
+            alt={product.title}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          
+          {/* Top-left badges like Temu */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {discount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                -{discount}%
+              </span>
+            )}
+            {isLowStock && (
+              <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                ⚡ {product.stock_quantity} left
+              </span>
+            )}
+          </div>
         </div>
-        <div className="font-bold text-sm" style={{ color: accentColor }}>
-          {Math.round(product.price ?? 0).toLocaleString()} {currency}
+        
+        {/* Compact info below - like Temu */}
+        <div className="px-0.5">
+          {/* Title - single line truncated */}
+          <h3 className="text-xs font-medium truncate mb-0.5 text-right" style={{ color: surfaceTextColor }}>
+            {product.title}
+          </h3>
+          
+          {/* Price row with original price strikethrough */}
+          <div className="flex items-center gap-1.5 justify-end">
+            <span className="font-bold text-sm" style={{ color: accentColor }}>
+              {Math.round(product.price ?? 0).toLocaleString()} {currency}
+            </span>
+            {product.original_price && (
+              <span className="text-[10px] line-through" style={{ color: textMuted }}>
+                {Math.round(product.original_price).toLocaleString()}
+              </span>
+            )}
+          </div>
+          
+          {/* Sales count like Temu */}
+          {product.views > 0 && (
+            <div className="text-[10px] mt-0.5 text-right" style={{ color: textMuted }}>
+              <span className="text-orange-500">🔥</span>
+              {product.views > 1000 ? `${Math.floor(product.views/1000)}K+ sold` : `${product.views}+ sold`}
+            </div>
+          )}
         </div>
-        <button
-          className="w-full rounded mt-2 py-1 text-xs font-bold transition-colors"
-          style={{
-            border: `1px solid ${accentColor}`,
-            color: accentColor,
-            backgroundColor: 'transparent',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = accentColor; e.currentTarget.style.color = '#ffffff'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = accentColor; }}
-          onClick={(e) => { e.stopPropagation(); openProduct(product.id); }}
-        >
-          اطلب
-        </button>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ══════════════════════════════════════
   // MAIN TEMPLATE RENDER
@@ -416,7 +444,7 @@ export default function Dz3ShopTemplate({
               )}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -663,7 +691,7 @@ export default function Dz3ShopTemplate({
                   <Heart size={18} style={{ color: accentColor }} />
                   منتجات أخرى
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
                   {otherProducts.map(product => (
                     <ProductCard key={product.id} product={product} />
                   ))}

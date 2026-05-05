@@ -78,52 +78,52 @@ export const ALL_PERMISSIONS = Object.values(PERMISSIONS).reduce(
   {}
 ) as Record<string, string>;
 
-// Permission display names for UI
+// Permission display names for UI (Arabic)
 export const PERMISSION_LABELS: Record<string, string> = {
   // Dashboard
-  view_dashboard: 'View Dashboard',
-  view_orders_list: 'View Orders List',
-  view_products_list: 'View Products List',
-  view_analytics: 'View Analytics',
-  view_settings: 'View Settings',
-  view_staff: 'View Staff',
-  
+  view_dashboard: 'عرض لوحة التحكم',
+  view_orders_list: 'عرض قائمة الطلبات',
+  view_products_list: 'عرض قائمة المنتجات',
+  view_analytics: 'عرض التحليلات',
+  view_settings: 'عرض الإعدادات',
+  view_staff: 'عرض الموظفين',
+
   // Orders
-  edit_order_status: 'Edit Order Status',
-  edit_order_notes: 'Edit Order Notes',
-  delete_orders: 'Delete Orders',
-  bulk_order_actions: 'Bulk Order Actions',
-  block_customers: 'Block Customers',
-  
+  edit_order_status: 'تعديل حالة الطلب',
+  edit_order_notes: 'تعديل ملاحظات الطلب',
+  delete_orders: 'حذف الطلبات',
+  bulk_order_actions: 'إجراءات الطلبات بالجملة',
+  block_customers: 'حظر العملاء',
+
   // Products
-  add_products: 'Add Products',
-  edit_products: 'Edit Products',
-  delete_products: 'Delete Products',
-  manage_variants: 'Manage Variants',
-  manage_stock: 'Manage Stock',
-  view_inventory: 'View Inventory',
-  
+  add_products: 'إضافة منتجات',
+  edit_products: 'تعديل المنتجات',
+  delete_products: 'حذف المنتجات',
+  manage_variants: 'إدارة المتغيرات',
+  manage_stock: 'إدارة المخزون',
+  view_inventory: 'عرض المخزون',
+
   // Analytics
-  export_data: 'Export Data',
-  view_reports: 'View Reports',
-  
+  export_data: 'تصدير البيانات',
+  view_reports: 'عرض التقارير',
+
   // Settings
-  view_store_settings: 'View Store Settings',
-  edit_store_info: 'Edit Store Info',
-  edit_store_branding: 'Edit Store Branding',
-  edit_store_templates: 'Edit Store Templates',
-  edit_delivery_settings: 'Edit Delivery Settings',
-  
+  view_store_settings: 'عرض إعدادات المتجر',
+  edit_store_info: 'تعديل معلومات المتجر',
+  edit_store_branding: 'تعديل هوية المتجر',
+  edit_store_templates: 'تعديل قوالب المتجر',
+  edit_delivery_settings: 'تعديل إعدادات التوصيل',
+
   // Staff
-  invite_staff: 'Invite Staff',
-  manage_staff: 'Manage Staff',
-  view_activity_logs: 'View Activity Logs',
-  
+  invite_staff: 'دعوة موظف',
+  manage_staff: 'إدارة الموظفين',
+  view_activity_logs: 'عرض سجلات النشاط',
+
   // Advanced
-  manage_bot_settings: 'Manage Bot Settings',
-  manage_broadcasting: 'Manage Broadcasting',
-  access_templates: 'Access Templates',
-  manage_categories: 'Manage Categories',
+  manage_bot_settings: 'إدارة إعدادات البوت',
+  manage_broadcasting: 'إدارة البث',
+  access_templates: 'الوصول للقوالب',
+  manage_categories: 'إدارة التصنيفات',
 };
 
 export interface StaffMember {

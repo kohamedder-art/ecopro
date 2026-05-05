@@ -60,11 +60,11 @@ export default function StaffManagement() {
       setLoading(true);
       const response = await fetch('/api/client/staff');
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || data.error || 'Failed to load staff');
+      if (!response.ok) throw new Error(data.message || data.error || t('staff.loadError'));
       setStaffList(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading staff:', error);
-      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to load staff members' });
+      toast({ variant: 'destructive', title: t('common.error'), description: error instanceof Error ? error.message : t('staff.loadError') });
     } finally {
       setLoading(false);
     }
@@ -72,11 +72,11 @@ export default function StaffManagement() {
 
   const handleCreateStaff = async () => {
     if (!staffUsername || !staffPassword) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Username and password are required' });
+      toast({ variant: 'destructive', title: t('common.error'), description: t('staff.usernamePasswordRequired') });
       return;
     }
     if (staffPassword.length < 6) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Password must be at least 6 characters' });
+      toast({ variant: 'destructive', title: t('common.error'), description: t('staff.passwordTooShort') });
       return;
     }
     try {
@@ -86,14 +86,14 @@ export default function StaffManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: staffUsername, password: staffPassword, role: staffRole, permissions: selectedPermissions }),
       });
-      if (!response.ok) { const error = await response.json(); throw new Error(error.error || 'Failed to create staff'); }
+      if (!response.ok) { const error = await response.json(); throw new Error(error.error || t('staff.createError')); }
       setCreatedStaff({ username: staffUsername, password: staffPassword });
       setShowCreatedDialog(true);
-      toast({ title: 'Success', description: 'Staff member created successfully!' });
+      toast({ title: t('common.success'), description: t('staff.createdSuccess') });
       setStaffUsername(''); setStaffPassword(''); setStaffRole('manager'); setSelectedPermissions({}); setShowCreateDialog(false);
       loadStaffList();
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to create staff' });
+      toast({ variant: 'destructive', title: t('common.error'), description: error instanceof Error ? error.message : t('staff.createError') });
     } finally { setCreating(false); }
   };
 
@@ -106,23 +106,23 @@ export default function StaffManagement() {
     try {
       setSaving(true);
       const response = await fetch(`/api/client/staff/${editingStaff.id}/permissions`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: editPermissions }) });
-      if (!response.ok) throw new Error('Failed to update permissions');
-      toast({ title: 'Success', description: 'Permissions updated successfully' });
+      if (!response.ok) throw new Error(t('staff.updatePermissionsError'));
+      toast({ title: t('common.success'), description: t('staff.permissionsUpdated') });
       setShowEditDialog(false); setEditingStaff(null); loadStaffList();
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to update permissions' });
+      toast({ variant: 'destructive', title: t('common.error'), description: error instanceof Error ? error.message : t('staff.updatePermissionsError') });
     } finally { setSaving(false); }
   };
 
   const handleRemoveStaff = async (staffId: number, staffEmail: string) => {
-    if (!confirm(`Are you sure you want to remove ${staffEmail}? They will lose access immediately.`)) return;
+    if (!confirm(t('staff.confirmRemove', { email: staffEmail }))) return;
     try {
       const response = await fetch(`/api/client/staff/${staffId}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Failed to remove staff');
-      toast({ title: 'Success', description: 'Staff member removed successfully' });
+      if (!response.ok) throw new Error(t('staff.removeError'));
+      toast({ title: t('common.success'), description: t('staff.removedSuccess') });
       loadStaffList();
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to remove staff' });
+      toast({ variant: 'destructive', title: t('common.error'), description: error instanceof Error ? error.message : t('staff.removeError') });
     }
   };
 
@@ -193,7 +193,7 @@ export default function StaffManagement() {
               {/* Permissions */}
               <div className={surfaceMuted + ' p-4'}>
                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                  <Shield className="h-3.5 w-3.5 text-emerald-500" /> Permissions
+                  <Shield className="h-3.5 w-3.5 text-emerald-500" /> {t('staff.permissions')}
                 </h3>
                 <div className="bg-white/60 dark:bg-slate-800/40 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/50">
                   <PermissionEditor permissions={selectedPermissions} onPermissionChange={(p, v) => setSelectedPermissions(prev => ({ ...prev, [p]: v }))} />
@@ -202,10 +202,10 @@ export default function StaffManagement() {
 
               {/* Actions */}
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/70 dark:border-slate-700/60">
-                <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="h-9 rounded-xl text-xs">Cancel</Button>
+                <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="h-9 rounded-xl text-xs">{t('cancel')}</Button>
                 <Button onClick={handleCreateStaff} disabled={creating || !staffUsername || !staffPassword}
                   className="h-9 rounded-xl text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white gap-1.5 shadow-md">
-                  {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Create Account
+                  {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {t('staff.createAccount')}
                 </Button>
               </div>
             </div>
@@ -254,8 +254,8 @@ export default function StaffManagement() {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 mb-3">
                 <Users className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-sm font-bold text-muted-foreground">No staff members yet</p>
-              <p className="text-sm text-muted-foreground mt-1">Invite someone to get started!</p>
+              <p className="text-sm font-bold text-muted-foreground">{t('staff.noStaff')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('staff.addFirst')}</p>
             </div>
           ) : (
             staffList.map((staff) => (
@@ -302,15 +302,15 @@ export default function StaffManagement() {
 
                   {/* Right: actions */}
                   <div className={`flex items-center gap-1 flex-shrink-0 ${isRTL ? 'mr-2' : 'ml-2'}`}>
-                    <Button variant="ghost" size="sm" onClick={() => handleViewActivityLog(staff.id)} title="View Activity Log"
+                    <Button variant="ghost" size="sm" onClick={() => handleViewActivityLog(staff.id)} title={t('staff.viewActivity')}
                       className="h-8 w-8 rounded-xl p-0 hover:bg-sky-500/10 hover:text-sky-600">
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleEditOpen(staff)} title="Edit Permissions"
+                    <Button variant="ghost" size="sm" onClick={() => handleEditOpen(staff)} title={t('staff.edit')}
                       className="h-8 w-8 rounded-xl p-0 hover:bg-amber-500/10 hover:text-amber-600">
                       <Edit className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleRemoveStaff(staff.id, staff.email)} title="Remove Staff"
+                    <Button variant="ghost" size="sm" onClick={() => handleRemoveStaff(staff.id, staff.email)} title={t('staff.delete')}
                       className="h-8 w-8 rounded-xl p-0 hover:bg-red-500/10 text-red-500 hover:text-red-600">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -337,18 +337,18 @@ export default function StaffManagement() {
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-500">
                 <Shield className="h-3.5 w-3.5 text-white" />
               </div>
-              Edit Permissions — {editingStaff?.email}
+              {t('staff.edit')} — {editingStaff?.email}
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">Permissions apply instantly when changed</DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground">{t('staff.permissionsApplyInstantly')}</DialogDescription>
           </DialogHeader>
           <div className="py-3">
             <PermissionEditor permissions={editPermissions} onPermissionChange={handlePermissionChange} />
           </div>
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-200/70 dark:border-slate-700/60">
-            <Button variant="outline" onClick={() => setShowEditDialog(false)} className="h-9 rounded-xl text-xs">Close</Button>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)} className="h-9 rounded-xl text-xs">{t('cancel')}</Button>
             <Button onClick={handleSavePermissions} disabled={saving}
               className="h-9 rounded-xl text-xs bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white gap-1.5 shadow-md">
-              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Save Changes
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {t('save')}
             </Button>
           </div>
         </DialogContent>

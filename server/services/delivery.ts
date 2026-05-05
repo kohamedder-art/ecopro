@@ -8,6 +8,51 @@ import { getCourierService } from './courier-service';
 import { registerCourierService } from './courier-service';
 import { CourierShipmentResponse, DeliveryStatus } from '../types/delivery';
 import { getAlgeriaCommuneNameById, getAlgeriaWilayaNameById, getDefaultCommuneNameForWilayaId } from '../utils/algeria-geo';
+
+// Helper to validate order fields before uploading to delivery services
+function validateOrderForDelivery(order: any): { valid: boolean; errors?: { field: string; code: string; value?: any; message_ar: string }[] } {
+  const fieldNames: Record<string, string> = {
+    customer_name: 'اسم العميل',
+    customer_phone: 'رقم الهاتف',
+    shipping_address: 'عنوان الشحن',
+    shipping_wilaya_id: 'معرف الولاية',
+    shipping_commune_id: 'معرف البلدية',
+    cod_amount: 'مبلغ الدفع عند الاستلام',
+  };
+
+  const errorMessages: Record<string, string> = {
+    missing: 'مفقود',
+    too_short: 'قصير جداً',
+    invalid: 'غير صالح',
+  };
+
+  const errors: { field: string; code: string; value?: any; message_ar: string }[] = [];
+
+  if (!order.customer_name || String(order.customer_name).trim().length === 0) {
+    errors.push({ field: 'customer_name', code: 'missing', message_ar: `${fieldNames.customer_name} ${errorMessages.missing}` });
+  }
+
+  const rawPhone = String(order.customer_phone || '').replace(/[\s\-().+]/g, '');
+  if (rawPhone.length === 0) {
+    errors.push({ field: 'customer_phone', code: 'missing', message_ar: `${fieldNames.customer_phone} ${errorMessages.missing}` });
+  } else if (rawPhone.length < 9) {
+    errors.push({ field: 'customer_phone', code: 'too_short', value: order.customer_phone, message_ar: `${fieldNames.customer_phone} ${errorMessages.too_short}` });
+  }
+
+  if (!order.shipping_address || String(order.shipping_address).trim().length === 0) {
+    errors.push({ field: 'shipping_address', code: 'missing', message_ar: `${fieldNames.shipping_address} ${errorMessages.missing}` });
+  }
+
+  // Optional wilaya/commune IDs should be numeric if provided
+  if (order.shipping_wilaya_id && isNaN(Number(order.shipping_wilaya_id))) {
+    errors.push({ field: 'shipping_wilaya_id', code: 'invalid', value: order.shipping_wilaya_id, message_ar: `${fieldNames.shipping_wilaya_id} ${errorMessages.invalid}` });
+  }
+  if (order.shipping_commune_id && isNaN(Number(order.shipping_commune_id))) {
+    errors.push({ field: 'shipping_commune_id', code: 'invalid', value: order.shipping_commune_id, message_ar: `${fieldNames.shipping_commune_id} ${errorMessages.invalid}` });
+  }
+
+  return { valid: errors.length === 0, errors: errors.length ? errors : undefined };
+}
 import { sendDeliveryStatusNotification } from '../utils/bot-messaging';
 
 // Import real courier services (verified APIs only)
@@ -118,7 +163,7 @@ export class DeliveryService {
       );
 
       if (integrationResult.rows.length === 0) {
-        throw new Error('Delivery integration not configured for this company');
+        throw new Error('لم يتم تكوين تكامل التوصيل لهذه الشركة');
       }
 
       const integration = integrationResult.rows[0];
@@ -130,7 +175,7 @@ export class DeliveryService {
 
       const service = getCourierService(order.company_name);
       if (!service) {
-        throw new Error(`No service found for ${order.company_name}`);
+        throw new Error(`لم يتم العثور على خدمة لـ ${order.company_name}`);
       }
 
 

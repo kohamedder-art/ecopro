@@ -441,6 +441,7 @@ export default function Store() {
     variant_name?: string;
     price?: number;
     stock_quantity: number;
+    images?: string[];
     is_active?: boolean;
     sort_order?: number;
   };
@@ -531,6 +532,7 @@ export default function Store() {
           variant_name: v.variant_name ?? '',
           price: v.price == null ? undefined : Number(v.price),
           stock_quantity: Number(v.stock_quantity ?? 0),
+          images: v.images || [],
           is_active: v.is_active == null ? true : Boolean(v.is_active),
           sort_order: v.sort_order == null ? idx : Number(v.sort_order),
         }))
@@ -559,6 +561,7 @@ export default function Store() {
           variant_name: (v.variant_name || '').trim() || undefined,
           price: v.price === undefined || v.price === null || Number.isNaN(Number(v.price)) ? undefined : Number(v.price),
           stock_quantity: Number(v.stock_quantity ?? 0),
+          images: v.images || [],
           is_active: v.is_active ?? true,
           sort_order: v.sort_order == null ? idx : Number(v.sort_order),
         })),
@@ -2652,6 +2655,115 @@ export default function Store() {
                             <span className="text-[10px] text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
                               {variants.length}
                             </span>
+                            
+                            {/* Image upload for this color */}
+                            <div className="flex-1 flex justify-end">
+                              <label className="cursor-pointer group flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 transition-colors">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    
+                                    // Upload the image
+                                    const uploadVariantImage = async () => {
+                                      const formData = new FormData();
+                                      formData.append('image', file);
+                                      
+                                      try {
+                                        const res = await fetch('/api/upload', {
+                                          method: 'POST',
+                                          credentials: 'include',
+                                          body: formData,
+                                        });
+                                        
+                                        if (!res.ok) throw new Error('Upload failed');
+                                        const data = await res.json();
+                                        const imageUrl = data.url;
+                                        
+                                        // Update all variants of this color with the image
+                                        setVariantsDraft(prev =>
+                                          prev.map((row, i) => {
+                                            // Check if this variant matches the current color
+                                            const rowColor = (row.color || '').trim();
+                                            if (rowColor === color) {
+                                              const currentImages = row.images || [];
+                                              // Add image to the beginning of the array (primary image)
+                                              if (!currentImages.includes(imageUrl)) {
+                                                return { ...row, images: [imageUrl, ...currentImages] };
+                                              }
+                                            }
+                                            return row;
+                                          })
+                                        );
+                                        setVariantsDirty(true);
+                                        toast({ title: 'تم رفع الصورة', description: `تمت إضافة صورة للون ${color}` });
+                                      } catch (err) {
+                                        toast({ variant: 'destructive', title: 'فشل الرفع', description: 'حدث خطأ أثناء رفع الصورة' });
+                                      }
+                                    };
+                                    
+                                    uploadVariantImage();
+                                    e.target.value = ''; // Reset input
+                                  }}
+                                />
+                                <ImageIcon className="h-3.5 w-3.5" />
+                                <span>صورة اللون</span>
+                              </label>
+                              
+                              {/* Show image preview and remove button if variants have images */}
+                              {(() => {
+                                const colorVariantsWithImages = variants.filter(v => (v.images?.length || 0) > 0);
+                                const firstImage = colorVariantsWithImages[0]?.images?.[0];
+                                if (firstImage) {
+                                  return (
+                                    <div className="flex items-center gap-2">
+                                      {/* Image preview */}
+                                      <div className="relative group">
+                                        <img 
+                                          src={firstImage} 
+                                          alt={color}
+                                          className="w-8 h-8 rounded object-cover border border-slate-200"
+                                        />
+                                        {/* Remove button on hover */}
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            // Remove this image from all variants of this color
+                                            setVariantsDraft(prev =>
+                                              prev.map((row) => {
+                                                const rowColor = (row.color || '').trim();
+                                                if (rowColor === color && row.images) {
+                                                  return { 
+                                                    ...row, 
+                                                    images: row.images.filter(img => img !== firstImage)
+                                                  };
+                                                }
+                                                return row;
+                                              })
+                                            );
+                                            setVariantsDirty(true);
+                                            toast({ title: 'تم الحذف', description: `تم حذف صورة اللون ${color}` });
+                                          }}
+                                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="حذف الصورة"
+                                        >
+                                          <X className="h-2.5 w-2.5" />
+                                        </button>
+                                      </div>
+                                      <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded">
+                                        {colorVariantsWithImages[0].images?.length} صورة
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
                           </div>
                         )}
                         {/* Individual variants */}

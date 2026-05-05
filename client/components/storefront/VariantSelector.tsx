@@ -19,6 +19,8 @@ interface VariantSelectorProps {
   basePrice?: number;
   /** Direction — RTL by default for Arabic storefronts */
   dir?: 'rtl' | 'ltr';
+  /** Show visual color thumbnails like Temu instead of color circles */
+  visualMode?: boolean;
 }
 
 /** Map common color names (Arabic + English + French) to hex  */
@@ -66,6 +68,7 @@ export default function VariantSelector({
   currency = 'د.ج',
   basePrice,
   dir = 'rtl',
+  visualMode = true, // Default to Temu-style visual selector
 }: VariantSelectorProps) {
   if (!variants || variants.length === 0) return null;
 
@@ -174,8 +177,80 @@ export default function VariantSelector({
 
   return (
     <div className="flex flex-col gap-3" dir={dir}>
-      {/* Color selector */}
-      {hasColors && (
+      {/* Color selector - Visual style like Temu (shows variant images) */}
+      {hasColors && visualMode && (
+        <div className="flex flex-col gap-3">
+          <span className="text-xs font-semibold opacity-70">
+            اللون{selectedColor ? `: ${selectedColor}` : ''}
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {colors.map(c => {
+              const isActive = !!(selectedColor && c.name && selectedColor.trim().toLowerCase() === c.name.trim().toLowerCase());
+              // Find variant with this color to get its image
+              const colorVariant = variants.find(v => v.color === c.name);
+              const variantImage = colorVariant?.images?.[0];
+              const isPopular = (colorVariant?.stock_quantity || 0) < 10; // Low stock = popular
+              
+              return (
+                <button
+                  key={c.name}
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleColorClick(c.name); }}
+                  className="relative flex flex-col items-center gap-1 transition-all"
+                >
+                  {/* Image thumbnail like Temu */}
+                  <div 
+                    className="relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all"
+                    style={{
+                      borderColor: isActive ? accentColor : 'transparent',
+                      boxShadow: isActive ? `0 0 0 1px ${accentColor}` : '0 1px 3px rgba(0,0,0,0.1)',
+                      transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                    }}
+                  >
+                    {variantImage ? (
+                      <img 
+                        src={variantImage} 
+                        alt={c.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div 
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ backgroundColor: c.hex || '#ccc' }}
+                      >
+                        <span className="text-[10px] font-bold text-white drop-shadow-sm">
+                          {c.name.slice(0, 2)}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Fire icon badge for popular/low stock items like Temu */}
+                    {isPopular && !isActive && (
+                      <div className="absolute bottom-1 left-1">
+                        <span className="text-orange-500 text-xs">🔥</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Color name below image */}
+                  <span 
+                    className="text-[11px] font-medium truncate max-w-[64px] text-center"
+                    style={{ 
+                      color: isActive ? accentColor : 'inherit',
+                      fontWeight: isActive ? 700 : 500,
+                    }}
+                  >
+                    {c.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Color selector - Classic color circles (fallback) */}
+      {hasColors && !visualMode && (
         <div className="flex flex-col gap-2">
           <span className="text-xs font-semibold opacity-70">
             اللون{selectedColor ? `: ${selectedColor}` : ''}
@@ -184,7 +259,6 @@ export default function VariantSelector({
             {colors.map(c => {
               const isActive = !!(selectedColor && c.name && selectedColor.trim().toLowerCase() === c.name.trim().toLowerCase());
               const hex = c.hex;
-              const isLightColor = hex && (hex.toLowerCase() === '#f9fafb' || hex.toLowerCase() === '#ffffff');
               return (
                 <div key={c.name} className="flex flex-col items-center gap-0.5">
                   <button

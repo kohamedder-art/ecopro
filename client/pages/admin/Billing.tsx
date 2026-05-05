@@ -269,6 +269,69 @@ const AdminBilling = () => {
                   </Link>
                 )}
               </div>
+
+              {/* Payment History inside subscription card */}
+              <div className="border-t border-slate-200/70 dark:border-slate-700/60">
+                <div className="p-3 border-b border-slate-200/70 dark:border-slate-700/60 flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/30">
+                    <Receipt className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-extrabold">{t('admin.billing.paymentHistory')}</p>
+                    <p className="text-xs text-muted-foreground">{t('admin.billing.subtitle')}</p>
+                  </div>
+                </div>
+                <div className="p-3">
+                  {payLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-sky-500" />
+                    </div>
+                  ) : payments.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200/70 dark:border-slate-700/60">
+                            {[t('admin.billing.date'), t('admin.billing.amount'), t('admin.billing.status'), t('admin.billing.method')].map((h, i) => (
+                              <th key={i} className={`${isRTL ? 'text-right' : 'text-left'} py-2 px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground`}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {payments.slice(0, 5).map((p) => (
+                            <tr key={p.id} className="border-b border-slate-100/80 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                              <td className="py-2 px-2 font-medium">
+                                {new Date(p.created_at).toLocaleDateString(isRTL ? 'ar-DZ' : 'en-US', { month: 'short', day: 'numeric' })}
+                              </td>
+                              <td className="py-2 px-2 font-extrabold">{Math.round(p.amount)} {p.currency}</td>
+                              <td className="py-2 px-2">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <PaymentStatusDot status={p.status} />
+                                  <span className="capitalize text-xs">{t(`admin.billing.paymentStatus.${p.status}`)}</span>
+                                </span>
+                              </td>
+                              <td className="py-2 px-2 text-muted-foreground text-xs">
+                                {p.payment_method === 'redotpay' ? 'RedotPay' :
+                                 p.payment_method === 'code' ? t('admin.billing.voucherCode') : p.payment_method}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {payments.length > 5 && (
+                        <p className="text-xs text-muted-foreground text-center mt-2">+ {payments.length - 5} more</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 mx-auto mb-2">
+                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-bold text-muted-foreground">{t('admin.billing.noPayments')}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('admin.billing.paymentHistoryHint')}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </>
           ) : (
             <div className="p-8 text-center text-sm text-muted-foreground">{t('admin.billing.noSubscription')}</div>
@@ -294,103 +357,6 @@ const AdminBilling = () => {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ─── Payment History ──────────────────────────────── */}
-      <div className={surfaceCard}>
-        <div className="p-4 border-b border-slate-200/70 dark:border-slate-700/60 flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/30">
-            <Receipt className="h-4 w-4 text-white" />
-          </div>
-          <div>
-            <p className="text-base font-extrabold">{t('admin.billing.paymentHistory')}</p>
-            <p className="text-sm text-muted-foreground">{t('admin.billing.subtitle')}</p>
-          </div>
-        </div>
-        <div className="p-3">
-          {payLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-sky-500" />
-            </div>
-          ) : payments.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200/70 dark:border-slate-700/60">
-                    {[t('admin.billing.date'), t('admin.billing.amount'), t('admin.billing.status'), t('admin.billing.method'), t('admin.billing.transactionId'), ''].map((h, i) => (
-                      <th key={i} className={`${isRTL ? 'text-right' : 'text-left'} py-2.5 px-2 text-sm font-bold uppercase tracking-wider text-muted-foreground`}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map((p) => (
-                    <tr key={p.id} className="border-b border-slate-100/80 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="py-2.5 px-2 font-medium">
-                        {new Date(p.created_at).toLocaleDateString(isRTL ? 'ar-DZ' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-                      <td className="py-2.5 px-2 font-extrabold">{Math.round(p.amount)} {p.currency}</td>
-                      <td className="py-2.5 px-2">
-                        <span className="inline-flex items-center gap-1.5">
-                          <PaymentStatusDot status={p.status} />
-                          <span className="capitalize">{t(`admin.billing.paymentStatus.${p.status}`)}</span>
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-muted-foreground">{p.payment_method === 'redotpay' ? 'RedotPay' : p.payment_method}</td>
-                      <td className="py-2.5 px-2 text-muted-foreground font-mono text-xs">{p.transaction_id?.slice(0, 14)}…</td>
-                      <td className="py-2.5 px-2 text-center">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-7 rounded-lg text-xs gap-1">
-                              <Download className="h-3 w-3" /> {t('admin.billing.details')}
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="rounded-2xl">
-                            <DialogHeader>
-                              <DialogTitle className="text-sm">{t('admin.billing.paymentDetails')}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-3">
-                              <div className={`${surfaceMuted} p-3`}>
-                                <p className="text-sm text-muted-foreground mb-1">{t('admin.billing.transactionId')}</p>
-                                <p className="font-mono text-xs break-all">{p.transaction_id}</p>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {[
-                                  { l: t('admin.billing.amount'), v: `${p.amount} ${p.currency}` },
-                                  { l: t('admin.billing.status'), v: t(`admin.billing.paymentStatus.${p.status}`) },
-                                  { l: t('admin.billing.date'), v: new Date(p.created_at).toLocaleDateString() },
-                                  { l: t('admin.billing.method'), v: p.payment_method },
-                                ].map((d, i) => (
-                                  <div key={i} className={`${surfaceMuted} p-2.5`}>
-                                    <p className="text-sm text-muted-foreground">{d.l}</p>
-                                    <p className="text-sm font-bold capitalize">{d.v}</p>
-                                  </div>
-                                ))}
-                              </div>
-                              {p.error_message && (
-                                <Alert variant="destructive" className="rounded-xl">
-                                  <AlertCircle className="h-3.5 w-3.5" />
-                                  <AlertDescription className="text-xs">{p.error_message}</AlertDescription>
-                                </Alert>
-                              )}
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 mx-auto mb-3">
-                <CreditCard className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <p className="text-sm font-bold text-muted-foreground">{t('admin.billing.noPayments')}</p>
-              <p className="text-sm text-muted-foreground mt-1">{t('admin.billing.paymentHistoryHint')}</p>
-            </div>
-          )}
         </div>
       </div>
 

@@ -1,61 +1,18 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
-import { useOrderFields } from '@/hooks/useOrderFields';
-import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
-import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
-import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
-import { Home, Building2, X, Eye, EyeOff } from 'lucide-react';
-import type { TemplateEditorSection } from '@/lib/templateEditorSchema';
+import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { Eye, EyeOff } from 'lucide-react';
 
-export default function LuxeDropTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView }: TemplateProps) {
-        const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#d4af37';
-    const bgColor = settings?.template_bg_color || '#0a0a0a';
-    const isDark = useMemo(() => {
-        const hex = bgColor.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        return (r * 299 + g * 587 + b * 114) / 1000 < 128;
-    }, [bgColor]);
-    const headerColor = settings?.iyco_header_color || (isDark ? '#1e293b' : '#ffffff');
-    const isHeaderDark = useMemo(() => {
-        const hex = headerColor.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        return (r * 299 + g * 587 + b * 114) / 1000 < 128;
-    }, [headerColor]);
-    const isLight = (hex: string) => {
-        const h = hex.replace('#', '');
-        const r = parseInt(h.substring(0, 2), 16);
-        const g = parseInt(h.substring(2, 4), 16);
-        const b = parseInt(h.substring(4, 6), 16);
-        return (r * 299 + g * 587 + b * 114) / 1000 >= 128;
-    };
-    const textColor = isDark ? (isLight(accentColor) ? accentColor : '#f1f5f9') : '#1e293b';
-    const textMuted = isDark ? '#94a3b8' : '#64748b';
-    const borderColor = isDark ? '#334155' : '#e2e8f0';
-    const surfaceMuted = isDark ? '#0f172a' : '#f1f5f9';
-    const surfaceColor = headerColor;
-    const surfaceTextColor = isHeaderDark ? '#f1f5f9' : '#1e293b';
-    const surfaceTextMuted = isHeaderDark ? '#94a3b8' : '#64748b';
-    const surfaceBorderColor = isHeaderDark ? '#334155' : '#e2e8f0';
-    const inputBg = isHeaderDark ? 'rgba(255,255,255,0.06)' : '#ffffff';
-    const showCountdown = settings?.luxd_show_countdown !== false;
-    const showFeatures = settings?.luxd_show_features !== false;
-    const showSocialProof = settings?.luxd_show_social_proof !== false;
-    const productId = settings?.luxd_main_product_id;
+export default function LuxeDropTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
+        const accentColor = settings?.template_accent_color || settings?.primary_color || '#d4af37';
+        const productId = settings?.luxd_main_product_id;
     const product = (productId ? products?.find((p: any) => p.id === productId) : null) || products?.[0];
     const hasProductImages = product?.images && product.images.length > 0;
-
-    useEffect(() => { if (product && onProductView) onProductView(product); }, [product?.id]);
 
     // Countdown State
     const [timeLeft, setTimeLeft] = useState({ min: 14, sec: 59 });
 
     useEffect(() => {
-        if (!showCountdown) return;
         const timer = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev.sec > 0) return { min: prev.min, sec: prev.sec - 1 };
@@ -64,14 +21,13 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
             });
         }, 1000);
         return () => clearInterval(timer);
-    }, [showCountdown]);
+    }, []);
 
     // Social Proof State
     const [socialProof, setSocialProof] = useState<{name: string, visible: boolean}>({ name: '', visible: false });
     const buyers = ["كمال من وهران", "سارة من تيزي وزو", "أحمد من سطيف", "ياسين من قسنطينة", "ليلى من عنابة", "محمد من العاصمة"];
 
     useEffect(() => {
-        if (!showSocialProof) return;
         const showProof = () => {
             setSocialProof({ 
                 name: buyers[Math.floor(Math.random() * buyers.length)], 
@@ -82,7 +38,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
         const initial = setTimeout(showProof, 3000);
         const interval = setInterval(showProof, 15000);
         return () => { clearTimeout(initial); clearInterval(interval); };
-    }, [showSocialProof]);
+    }, []);
 
     // Inject fonts and icons
     useEffect(() => {
@@ -103,28 +59,15 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
-  const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
-  const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
-  const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
-    const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
-    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
-  useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-    const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
+    const deliveryFee = selectedWilaya?.homePrice ?? 0;
 
-    // Variant system
-    const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
-
-    // Offers system
-    const { offers } = useProductOffers(storeSlug, product?.id);
-    const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
-    useEffect(() => { if (offers.length > 0 && !selectedOffer) { const f = offers[0]; setSelectedOffer({ offer_id: f.id, quantity: f.quantity, bundle_price: f.bundle_price, free_delivery: f.free_delivery }); } }, [offers]);
-    const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-    const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
-    const productTotal = selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? product?.price ?? 0);
-    const grandTotal = productTotal + deliveryFee;
+    // Section visibility toggles
+    const showCountdown = settings?.luxd_show_countdown !== false;
+    const showFeatures = settings?.luxd_show_features !== false;
+    const showSocialProof = settings?.luxd_show_social !== false;
 
     const handleOrder = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -147,23 +90,17 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                 body: JSON.stringify({
                     store_slug: storeSlug,
                     product_id: product.id,
-                    ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
-                    quantity: selectedOffer?.quantity || 1,
-                    ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-                    total_price: selectedOffer ? selectedOffer.bundle_price : product.price,
+                    quantity: 1,
+                    total_price: product.price,
                     delivery_fee: deliveryFee,
-                    delivery_type: selectedDeliveryType, 
+                    delivery_type: 'desk', 
                     customer_name: name,
                     customer_phone: phone,
-                    customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address'), fd.get('notes')].filter(Boolean).join(' - '),
-                    shipping_wilaya_id: selectedWilayaId,
+                    customer_address: selectedWilaya?.labelAR || ''
                 })
             });
 
             const data = await res.json();
-      setLastOrderId(data.order?.id || null);
-      setLastTelegramUrl(data.telegramStartUrl || null);
-      setLastCustomerPhone(phone);
             if (res.ok) {
                 setOrderSuccess(true);
             } else {
@@ -188,29 +125,6 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
     const [t2Image, setT2Image] = useState<string>(product?.images?.[2] || "");
     const [t3Image, setT3Image] = useState<string>(product?.images?.[3] || "");
     const [t4Image, setT4Image] = useState<string>(product?.images?.[4] || "");
-    const [showVideo, setShowVideo] = useState(true);
-    const videoUrl = (product as any)?.metadata?.video_url || '';
-    const videoEmbed = useMemo(() => {
-      if (!videoUrl) return null;
-      const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-      if (yt) return { type: 'youtube' as const, id: yt[1] };
-      if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
-      return { type: 'iframe' as const, url: videoUrl };
-    }, [videoUrl]);
-
-    // Swipe support
-    const swipeTouchStartX = useRef<number | null>(null);
-    const handleSwipeStart = (e: React.TouchEvent) => { swipeTouchStartX.current = e.touches[0].clientX; };
-    const handleSwipeEnd = (e: React.TouchEvent, images: string[]) => {
-      if (swipeTouchStartX.current === null) return;
-      const diff = swipeTouchStartX.current - e.changedTouches[0].clientX;
-      if (Math.abs(diff) > 40) {
-        const cur = images.indexOf(mainImage);
-        const next = diff > 0 ? Math.min(cur + 1, images.length - 1) : Math.max(cur - 1, 0);
-        if (images[next]) setMainImage(images[next]);
-      }
-      swipeTouchStartX.current = null;
-    };
 
     // Auto-sync images when product changes
     useEffect(() => {
@@ -221,8 +135,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
             setT3Image(product.images[3] || "");
             setT4Image(product.images[4] || "");
         }
-        setShowVideo(!!videoEmbed);
-    }, [product?.id]);
+    }, [product]);
 
 
     const fileMainRef = useRef<HTMLInputElement>(null);
@@ -250,23 +163,17 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
         if (imgSrc) setMainImage(imgSrc);
     };
 
-    const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
-    const allImages = product?.images && product.images.length > 0 ? product.images : [mainImage, t1Image, t2Image, t3Image, t4Image].filter(Boolean);
-    const extraImages = product?.images && product.images.length > 5 ? product.images.slice(5) : [];
-    const thumbBase = [t1Image, t2Image, t3Image, t4Image];
-    const thumbImages = [...thumbBase.filter(Boolean), ...extraImages];
-
     const scrollToOrder = () => {
         document.getElementById('order-form')?.scrollIntoView({ behavior: 'smooth' });
     };
 
     return (
-        <div style={{ fontFamily: "'Cairo', sans-serif", backgroundColor: bgColor, color: textColor }} className="min-h-screen pb-24" dir="rtl">
+        <div style={{ fontFamily: "'Cairo', sans-serif", backgroundColor: settings?.template_bg_color || '#0a0a0a' }} className="text-white min-h-screen pb-24" dir="rtl">
             <style>{`
                 .lux-gold-gradient { background: linear-gradient(90deg, ${accentColor} 0%, #f9e076 50%, ${accentColor} 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
                 .lux-gold-bg { background: linear-gradient(90deg, ${accentColor} 0%, #f9e076 100%); }
-                .lux-glass-card { background: ${surfaceColor}; backdrop-filter: blur(10px); border: 1px solid ${surfaceBorderColor}; }
-                .lux-img-slot { aspect-ratio: 1/1; background: ${surfaceMuted}; border: 2px dashed ${borderColor}; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; position: relative; }
+                .lux-glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+                .lux-img-slot { aspect-ratio: 1/1; background: #1a1a1a; border: 2px dashed #333; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; position: relative; }
                 .lux-img-slot img { width: 100%; height: 100%; object-fit: cover; }
                 [contenteditable="true"]:focus { outline: 2px solid ${accentColor}; background: rgba(212, 175, 55, 0.1); padding: 0 4px; border-radius: 4px; }
                 @keyframes slideInLux { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -274,15 +181,15 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
             `}</style>
 
             {/* Top Banner */}
-            <div className="text-center py-1 text-sm font-bold" style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#ffffff' }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_banner')}>
+            <div className="bg-red-600 text-white text-center py-1 text-sm font-bold" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_banner')}>
                 {settings?.luxd_banner || "🔥 عرض خاص: ينتهي العرض عند انتهاء العداد"}
             </div>
 
             {/* Header */}
-            <header className="p-4 flex justify-between items-center border-b" style={{ borderColor }}>
+            <header className="p-4 flex justify-between items-center border-b border-white/10">
                 <div className="flex items-center gap-2">
                     {settings?.store_logo ? (
-                        <img src={settings.store_logo} alt={settings?.store_name || "متجري"} className="w-9 h-9 rounded-full object-cover border-2 shadow-sm" style={{ borderColor: accentColor + '66' }} />
+                        <img src={settings.store_logo} alt={settings?.store_name || "متجري"} className="w-9 h-9 rounded-full object-cover border-2 border-yellow-500/40 shadow-sm" />
                     ) : (
                         <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shadow-sm lux-gold-gradient">
                             {(settings?.store_name || 'م').charAt(0)}
@@ -292,86 +199,47 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="text-xs" style={{ color: textMuted }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_visitors')}>
+                    <span className="text-xs text-gray-400" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_visitors')}>
                         {settings?.luxd_visitors || "142 متسوق حالياً"}
                     </span>
                 </div>
             </header>
 
             {/* Product Showcase */}
-            <main className="max-w-6xl mx-auto px-4 mt-4 lg:grid lg:grid-cols-[1fr_420px] lg:gap-10 lg:items-start">
-
-                {/* Left Column: Images (wraps on mobile) */}
-                <div className="lg:sticky lg:top-20">
+            <main className="max-w-md mx-auto px-4 mt-6">
                 
                 {/* Main Image Container */}
-                <div className="lux-img-slot rounded-3xl mb-3 select-none" style={{ aspectRatio: '4/5', maxHeight: '560px' }}
-                    onTouchStart={handleSwipeStart}
-                    onTouchEnd={e => handleSwipeEnd(e, allImages)}
-                    onClick={() => { if (videoEmbed && showVideo) return; canManage ? fileMainRef.current?.click() : mainImage && setZoomState({ images: allImages, idx: Math.max(0, allImages.indexOf(mainImage)) }); }}>
-                    {videoEmbed && showVideo ? (
-                      <div className="w-full h-full">
-                        {videoEmbed.type === 'youtube' ? (
-                          <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                        ) : videoEmbed.type === 'video' ? (
-                          <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                        ) : (
-                          <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                        )}
-                      </div>
-                    ) : mainImage ? (
-                        <img src={mainImage} alt="Main" className="pointer-events-none" />
+                <div className="lux-img-slot rounded-3xl mb-4" onClick={() => canManage && fileMainRef.current?.click()}>
+                    {mainImage ? (
+                        <img src={mainImage} alt="Main" />
                     ) : ( 
-                        <div className="text-center" style={{ color: textMuted }}>
+                        <div className="text-center text-gray-500">
                             <i className="ph ph-camera text-5xl"></i>
                             <p className="text-sm mt-2">انقر لإضافة الصورة الأساسية</p>
                         </div>
                    )}
-                   {canManage && !showVideo && <input type="file" ref={fileMainRef} className="hidden" accept="image/*" onChange={handleImgUpload(setMainImage)} /> }
-                </div>
-                {/* Dot indicators + video indicator */}
-                {(videoEmbed || allImages.length > 1) && (
-                  <div className="flex justify-center gap-1.5 mb-3 items-center">
-                    {videoEmbed && (
-                      <button onClick={() => setShowVideo(true)} className="w-7 h-5 rounded-full flex items-center justify-center transition-all" style={{ backgroundColor: showVideo ? '#000' : accentColor + '40', border: showVideo ? `2px solid ${accentColor}` : '2px solid transparent' }}>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
-                      </button>
-                    )}
-                    {allImages.map((img, i) => (
-                      <button key={i} onClick={() => { setShowVideo(false); setMainImage(img); }}
-                        className="rounded-full transition-all"
-                        style={{ width: !showVideo && mainImage === img ? 20 : 6, height: 6, backgroundColor: !showVideo && mainImage === img ? accentColor : accentColor + '40' }}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Thumbnails (horizontal, supports extra product images) */}
-                <div className="flex gap-2 overflow-x-auto pb-1 mb-6">
-                    {thumbImages.map((img, idx) => {
-                        if (idx < 4) {
-                            const slotRef = idx === 0 ? fileT1Ref : idx === 1 ? fileT2Ref : idx === 2 ? fileT3Ref : fileT4Ref;
-                            const slotImg = [t1Image, t2Image, t3Image, t4Image][idx];
-                            const slotSetter = idx === 0 ? setT1Image : idx === 1 ? setT2Image : idx === 2 ? setT3Image : setT4Image;
-                            return (
-                                <div key={idx} className="lux-img-slot rounded-xl h-24" onClick={() => (!slotImg && canManage) ? slotRef.current?.click() : handleThumbClick(slotImg)}>
-                                    {slotImg ? <img src={slotImg} /> : <i className="ph ph-plus text-gray-600"></i>}
-                                    {!slotImg && canManage && <input type="file" ref={slotRef} className="hidden" accept="image/*" onChange={handleImgUpload(slotSetter, true)} /> }
-                                </div>
-                            );
-                        }
-                        return (
-                            <button key={idx} onClick={() => handleThumbClick(img)} className="flex-shrink-0 w-20 h-24 rounded-xl overflow-hidden cursor-pointer" style={{ backgroundColor: surfaceMuted }}>
-                                <img src={img} className="w-full h-full object-cover" />
-                            </button>
-                        );
-                    })}
+                   {canManage && <input type="file" ref={fileMainRef} className="hidden" accept="image/*" onChange={handleImgUpload(setMainImage)} /> }
                 </div>
 
-                </div>{/* end left column */}
-
-                {/* Right Column: Details + Form */}
-                <div>
+                {/* Thumbnails */}
+                <div className="grid grid-cols-4 gap-2 mb-6">
+                    <div className="lux-img-slot rounded-xl h-20" onClick={() => (!t1Image && canManage) ? fileT1Ref.current?.click() : handleThumbClick(t1Image)}>
+                        {t1Image ? <img src={t1Image} /> : <i className="ph ph-plus text-gray-600"></i>}
+                        {!t1Image && canManage && <input type="file" ref={fileT1Ref} className="hidden" accept="image/*" onChange={handleImgUpload(setT1Image, true)} /> }
+                    </div>
+                    <div className="lux-img-slot rounded-xl h-20" onClick={() => (!t2Image && canManage) ? fileT2Ref.current?.click() : handleThumbClick(t2Image)}>
+                        {t2Image ? <img src={t2Image} /> : <i className="ph ph-plus text-gray-600"></i>}
+                        {!t2Image && canManage && <input type="file" ref={fileT2Ref} className="hidden" accept="image/*" onChange={handleImgUpload(setT2Image, true)} /> }
+                    </div>
+                    <div className="lux-img-slot rounded-xl h-20" onClick={() => (!t3Image && canManage) ? fileT3Ref.current?.click() : handleThumbClick(t3Image)}>
+                        {t3Image ? <img src={t3Image} /> : <i className="ph ph-plus text-gray-600"></i>}
+                        {!t3Image && canManage && <input type="file" ref={fileT3Ref} className="hidden" accept="image/*" onChange={handleImgUpload(setT3Image, true)} /> }
+                    </div>
+                    <div className="lux-img-slot rounded-xl h-20" onClick={() => (!t4Image && canManage) ? fileT4Ref.current?.click() : handleThumbClick(t4Image)}>
+                        {t4Image ? <img src={t4Image} /> : <i className="ph ph-plus text-gray-600"></i>}
+                        {!t4Image && canManage && <input type="file" ref={fileT4Ref} className="hidden" accept="image/*" onChange={handleImgUpload(setT4Image, true)} /> }
+                    </div>
+                </div>
 
                 {/* Title & Price */}
                 <div className="text-center space-y-2 mb-8">
@@ -379,11 +247,11 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                         {settings?.luxd_title || product?.title || `ساعة "إمبراطور" الفاخرة - إصدار محدود`}
                     </h1>
                     <div className="flex justify-center items-center gap-4">
-                        <span className="text-3xl font-black" style={{ color: textColor }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_price')}>
-                            {Math.round(product?.price ?? 8500).toLocaleString()} دج
+                        <span className="text-3xl font-black text-white" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_price')}>
+                            {product?.price || "8500"} دج
                         </span>
-                        <span className="text-lg line-through" style={{ color: textMuted }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_compare_price')}>
-                            {(product as any)?.compare_at_price ? `${Math.round((product as any).compare_at_price ?? 0).toLocaleString()} دج` : "12000 دج"}
+                        <span className="text-lg text-gray-500 line-through" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_compare_price')}>
+                            {(product as any)?.compare_at_price ? `${(product as any).compare_at_price} دج` : "12000 دج"}
                         </span>
                     </div>
                     <p className="text-green-400 font-bold" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_savings')}>
@@ -393,9 +261,9 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
 
                 {/* Countdown */}
                 {(showCountdown || canManage) && (
-                <div className="lux-glass-card rounded-2xl p-4 mb-8 text-center relative" data-edit-path="countdown-section">
+                <div className="lux-glass-card rounded-2xl p-4 mb-8 text-center relative" data-edit-path="countdown">
                     {canManage && (
-                        <div className="absolute -top-3 -right-3 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+                        <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                             <button
                                 onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'luxd_show_countdown', value: !showCountdown }, '*')}
                                 className="flex items-center gap-1 font-bold"
@@ -406,27 +274,25 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                     )}
                     {showCountdown && (
                     <>
-                    <p className="text-sm mb-2" style={{ color: textMuted }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_countdown_label')}>
-                        {settings?.luxd_countdown_label || "ينتهي هذا العرض في:"}
-                    </p>
+                    <p className="text-sm text-gray-400 mb-2">ينتهي هذا العرض في:</p>
                     <div className="flex justify-center gap-4 text-2xl font-bold">
-                        <div><span>{timeLeft.min.toString().padStart(2, '0')}</span><p className="text-[10px] uppercase" style={{ color: textMuted }}>دقيقة</p></div>
+                        <div><span>{timeLeft.min.toString().padStart(2, '0')}</span><p className="text-[10px] text-gray-500 uppercase">دقيقة</p></div>
                         <div style={{ color: accentColor }}>:</div>
-                        <div><span>{timeLeft.sec.toString().padStart(2, '0')}</span><p className="text-[10px] uppercase" style={{ color: textMuted }}>ثانية</p></div>
+                        <div><span>{timeLeft.sec.toString().padStart(2, '0')}</span><p className="text-[10px] text-gray-500 uppercase">ثانية</p></div>
                     </div>
                     </>
                     )}
                     {canManage && !showCountdown && (
-                        <p className="text-sm text-muted-foreground py-4">⏱️ Countdown hidden - click إظهار to show</p>
+                        <span className="text-gray-500 text-xs">⏱️ Countdown hidden</span>
                     )}
                 </div>
                 )}
 
                 {/* Quick Features */}
                 {(showFeatures || canManage) && (
-                <div className="space-y-3 mb-8 relative" data-edit-path="features-section">
+                <div className="space-y-3 mb-8 relative" data-edit-path="features">
                     {canManage && (
-                        <div className="absolute -top-3 -right-3 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+                        <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                             <button
                                 onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'luxd_show_features', value: !showFeatures }, '*')}
                                 className="flex items-center gap-1 font-bold"
@@ -452,123 +318,53 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                     </>
                     )}
                     {canManage && !showFeatures && (
-                        <p className="text-sm text-muted-foreground py-4 text-center bg-slate-100 dark:bg-slate-800 rounded-xl">✨ Features hidden - click إظهار to show</p>
+                        <span className="text-gray-500 text-xs">⭐ Features hidden</span>
                     )}
                 </div>
                 )}
 
                 {/* Sticky Form Section */}
-                <div id="order-form" className="p-6 rounded-3xl mb-8" style={{ backgroundColor: surfaceColor, color: surfaceTextColor }}>
+                <div id="order-form" className="bg-white text-black p-6 rounded-3xl mb-8">
                     <h3 className="text-xl font-black mb-4 text-center" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_form_title')}>
                         {settings?.luxd_form_title || "املأ المعلومات لإتمام الطلب"}
                     </h3>
                     {orderSuccess ? (
-                        <div className="p-6 rounded-3xl border text-center" style={{ backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : '#f0fdf4', borderColor: isDark ? 'rgba(34,197,94,0.3)' : '#bbf7d0' }}>
-                            <h3 className="text-2xl font-black mb-2" style={{ color: isDark ? '#4ade80' : '#15803d' }}>تم الشراء بنجاح!</h3>
-                            <p className="font-bold" style={{ color: surfaceTextMuted }}>سنتصل بك لتأكيد طلبك في أقرب وقت.</p>
-                            <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
+                        <div className="bg-green-50 p-6 rounded-3xl border border-green-200 text-center">
+                            <h3 className="text-2xl font-black mb-2 text-green-700">تم الشراء بنجاح!</h3>
+                            <p className="text-gray-600 font-bold">سنتصل بك لتأكيد طلبك في أقرب وقت.</p>
                         </div>
                     ) : (
                     <form className="space-y-4" onSubmit={handleOrder}>
-                        {product?.variants && product.variants.length > 0 && (
-                          <VariantSelector
-                            variants={product.variants}
-                            selected={selectedVariant}
-                            onSelect={setSelectedVariant}
-                            accentColor={accentColor}
-                            currency="دج"
-                            basePrice={product.price}
-                          />
-                        )}
-                        {offers.length > 0 && (
-                          <OfferSelector
-                            offers={offers}
-                            unitPrice={product?.price || 0}
-                            currency="دج"
-                            selectedOfferId={selectedOffer?.offer_id ?? null}
-                            onSelect={handleOfferSelect}
-                            accentColor={accentColor}
-                            textColor={surfaceTextColor}
-                            borderColor={surfaceBorderColor}
-                          />
-                        )}
-                        <input required name="name" type="text" placeholder="الاسم الكامل" className="w-full p-4 rounded-xl font-bold outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} onFocus={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}`} onBlur={e => e.currentTarget.style.boxShadow = 'none'} />
-                        <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full p-4 rounded-xl font-bold outline-none text-left" dir="ltr" style={{ backgroundColor: inputBg, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} onFocus={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}`} onBlur={e => e.currentTarget.style.boxShadow = 'none'} />
-                        <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full p-4 rounded-xl font-bold outline-none text-right" style={{ backgroundColor: inputBg, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} onFocus={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}`} onBlur={e => e.currentTarget.style.boxShadow = 'none'}>
+                        <input required name="name" type="text" placeholder="الاسم الكامل" className="w-full bg-gray-100 p-4 rounded-xl font-bold outline-none focus:ring-2 ring-yellow-500" />
+                        <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full bg-gray-100 p-4 rounded-xl font-bold outline-none focus:ring-2 ring-yellow-500 text-left" dir="ltr" />
+                        <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full bg-gray-100 p-4 rounded-xl font-bold outline-none focus:ring-2 ring-yellow-500 text-right">
                             <option value="">اختر الولاية</option>
                             {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                         </select>
                         {selectedWilayaId && (
-                            <div className="p-3 rounded-xl text-sm space-y-2" style={{ backgroundColor: isDark ? 'rgba(16,185,129,0.08)' : '#ecfdf5', border: isDark ? '1px solid rgba(16,185,129,0.2)' : '1px solid #a7f3d0' }}>
-                                <div className="flex justify-between" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
-                                    <span>سعر المنتجات</span>
-                                    <span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round(productTotal ?? 0).toLocaleString()} دج</span>
-                                </div>
-                                <div className="flex justify-between" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
-                                    <span>سعر التوصيل</span>
-                                    <span className="font-bold" style={{ color: isDark ? '#34d399' : '#047857' }}>{Math.round(deliveryFee ?? 0).toLocaleString()} دج</span>
-                                </div>
-                                <div className="flex justify-between pt-2" style={{ borderTop: isDark ? '1px solid rgba(16,185,129,0.2)' : '1px solid #a7f3d0' }}>
-                                    <span className="font-bold" style={{ color: surfaceTextColor }}>التكلفة الإجمالية</span>
-                                    <span className="font-black" style={{ color: isDark ? '#34d399' : '#047857' }}>{Math.round(grandTotal ?? 0).toLocaleString()} دج</span>
-                                </div>
+                            <div className="p-2 bg-emerald-50 rounded-lg text-sm font-bold text-emerald-700 flex justify-between">
+                                <span>سعر التوصيل:</span>
+                                <span>{deliveryFee} دج</span>
                             </div>
-                        )}
-                        {showCommune && <input name="commune" type="text" placeholder="البلدية" className="w-full p-4 rounded-xl font-bold outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} onFocus={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}`} onBlur={e => e.currentTarget.style.boxShadow = 'none'} />}
-                        {showAddress && <input name="address" type="text" placeholder="العنوان" className="w-full p-4 rounded-xl font-bold outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} onFocus={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}`} onBlur={e => e.currentTarget.style.boxShadow = 'none'} />}
-                        {showNotes && <textarea name="notes" placeholder="ملاحظات" rows={2} className="w-full p-4 rounded-xl font-bold outline-none resize-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} onFocus={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}`} onBlur={e => e.currentTarget.style.boxShadow = 'none'} />}
-                        {(showHomeDelivery && showDeskDelivery) && (
-                          <div>
-                            <label className="block text-sm font-bold mb-2" style={{ color: surfaceTextMuted }}>نوع التوصيل</label>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedDeliveryType('home')}
-                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
-                                style={{
-                                  backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
-                                  border: `1px solid ${surfaceBorderColor}`,
-                                  color: selectedDeliveryType === 'home' ? '#ffffff' : surfaceTextColor,
-                                }}
-                              >
-                                <Home size={16} />
-                                <span className="text-sm font-bold">التوصيل للمنزل</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedDeliveryType('desk')}
-                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
-                                style={{
-                                  backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
-                                  border: `1px solid ${surfaceBorderColor}`,
-                                  color: selectedDeliveryType === 'desk' ? '#ffffff' : surfaceTextColor,
-                                }}
-                              >
-                                <Building2 size={16} />
-                                <span className="text-sm font-bold">الاستلام من المكتب</span>
-                              </button>
-                            </div>
-                          </div>
                         )}
                         <button disabled={isSubmitting} type="submit" className="w-full lux-gold-bg text-black py-5 rounded-xl text-xl font-black shadow-xl uppercase disabled:opacity-50">
                             <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('luxd_form_btn')}>
-                                {isSubmitting ? "جاري الشراء..." : (settings?.luxd_form_btn || settings?.template_button_text || "تأكيد الشراء الآن")}
+                                {isSubmitting ? "جاري الشراء..." : (settings?.luxd_form_btn || "تأكيد الشراء الآن")}
                             </span>
                         </button>
                     </form>
                     )}
                 </div>
 
-                </div>{/* end right column */}
             </main>
 
-            {/* Social Proof Notification */}
+            {/* Fake Social Proof Popup */}
             {(showSocialProof || canManage) && (
-            <div className={`fixed bottom-24 left-4 right-4 md:left-auto md:w-80 lux-glass-card p-3 rounded-2xl flex items-center gap-3 lux-notification-pop z-40 transition-all duration-300 ${socialProof.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`} data-edit-path="social-proof-section">
+            <div className={`fixed bottom-24 left-4 right-4 md:left-auto md:w-80 lux-glass-card p-3 rounded-2xl flex items-center gap-3 lux-notification-pop z-40 transition-all duration-300 relative ${socialProof.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`} data-edit-path="social-proof">
                 {canManage && (
-                    <div className="absolute -top-3 -right-3 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-50">
+                    <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                         <button
-                            onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'luxd_show_social_proof', value: !showSocialProof }, '*')}
+                            onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'luxd_show_social', value: !showSocialProof }, '*')}
                             className="flex items-center gap-1 font-bold"
                         >
                             {showSocialProof ? <><Eye className="w-3 h-3"/> إخفاء</> : <><EyeOff className="w-3 h-3"/> إظهار</>}
@@ -577,24 +373,27 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                 )}
                 {showSocialProof && (
                 <>
-                <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: surfaceMuted }}>
+                <div className="w-12 h-12 bg-gray-700 rounded-full flex-shrink-0 flex items-center justify-center">
                     <i className="ph ph-user text-xl"></i>
                 </div>
                 <div className="text-xs">
                     <p><strong>{socialProof.name}</strong></p>
-                    <p style={{ color: textMuted }}>طلب هذا المنتج منذ 3 دقائق</p>
+                    <p className="text-gray-400">طلب هذا المنتج منذ 3 دقائق</p>
                 </div>
                 </>
+                )}
+                {canManage && !showSocialProof && (
+                    <span className="text-gray-500 text-xs">⭐ Social proof hidden</span>
                 )}
             </div>
             )}
 
-            {/* Sticky Bottom Bar - mobile only */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 backdrop-blur-md border-t flex items-center gap-4 z-50" style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.85)', borderColor }}>
+            {/* Sticky Bottom Bar */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-black/80 backdrop-blur-md border-t border-white/10 flex items-center gap-4 z-50">
                 <div className="flex-1">
-                    <div className="text-xs" style={{ color: textMuted }}>السعر الإجمالي:</div>
+                    <div className="text-xs text-gray-400">السعر الإجمالي:</div>
                     <div className="text-lg font-bold lux-gold-gradient">
-                        {Math.round((product?.price ?? 0) + deliveryFee).toLocaleString()} دج
+                        {(product?.price || 0) + deliveryFee} دج
                     </div>
                 </div>
                 <button onClick={scrollToOrder} className="flex-[2] lux-gold-bg text-black py-3 rounded-xl font-black flex items-center justify-center gap-2">
@@ -603,72 +402,6 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
                 </button>
             </div>
 
-            {/* Platform Footer */}
-            <div className="pb-20 text-center py-6 text-xs" style={{ color: textMuted }}>
-                © {new Date().getFullYear()} {settings?.store_name || 'متجري'}. جميع الحقوق محفوظة · صنع بواسطة <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor, textDecoration: 'none' }}>Sahla4Eco</a>
-            </div>
-
-            {/* Image Zoom Modal */}
-            {zoomState && (
-                <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
-                    <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
-                        <X size={20} />
-                    </button>
-                    <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-                        <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
-                    </div>
-                    {zoomState.images.length > 1 && (
-                        <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
-                            {zoomState.images.map((img, i) => (
-                                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
-                                    <img src={img} alt="" className="w-full h-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
         </div>
     );
 }
-
-export const TEMPLATE_EDITOR_SECTIONS: TemplateEditorSection[] = [
-  {
-    title: 'Section Visibility',
-    description: 'Show or hide optional sections',
-    fields: [
-      {
-        key: 'luxd_show_countdown',
-        label: 'Show Countdown Timer',
-        type: 'checkbox',
-        defaultValue: true,
-      },
-      {
-        key: 'luxd_show_features',
-        label: 'Show Features Section',
-        type: 'checkbox',
-        defaultValue: true,
-      },
-      {
-        key: 'luxd_show_social_proof',
-        label: 'Show Social Proof Notifications',
-        type: 'checkbox',
-        defaultValue: true,
-      },
-    ],
-  },
-  {
-    title: 'Countdown Timer',
-    description: 'Customize the countdown timer text',
-    fields: [
-      {
-        key: 'luxd_countdown_label',
-        label: 'Countdown Label',
-        type: 'text',
-        placeholder: 'ينتهي هذا العرض في:',
-        defaultValue: 'ينتهي هذا العرض في:',
-      },
-    ],
-  },
-];

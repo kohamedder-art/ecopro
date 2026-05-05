@@ -659,38 +659,42 @@ export default function AISettingsPage() {
                           ))}
                         </div>
                       </div>
-
-                      {/* AI Instructions */}
-                      <div className={`rounded-xl border p-4 ${colors.glow} ${colors.border}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Sparkles className="h-4 w-4 text-amber-500" />
-                          <p className="text-xs font-bold">
-                            {isRTL ? "تعليمات الذكاء الاصطناعي" : "AI Instructions"}
-                          </p>
-                          <span className="ms-auto text-[10px] text-muted-foreground font-medium">
-                            {settings.ai_instructions?.length || 0}/500
-                          </span>
-                        </div>
-                        <Textarea
-                          value={settings.ai_instructions || ""}
-                          onChange={(e) => {
-                            setSettings((s) => ({ ...s, ai_instructions: e.target.value.slice(0, 500) }));
-                            setDirty(true);
-                          }}
-                          rows={4}
-                          placeholder={
-                            isRTL
-                              ? "مثال: ركز على بيع المنتجات الجديدة، رحب بالزبائن باسم المتجر، لا تعطي خصومات..."
-                              : "E.g. Focus on new products, greet by store name, never offer discounts..."
-                          }
-                          className="bg-background/60 border-border/60 rounded-xl text-xs resize-none"
-                        />
-                      </div>
                     </div>
                   )}
                 </div>
               );
             })}
+
+            {/* AI Instructions as separate card in grid */}
+            {activeTab === "core" && settings.storefront_assistant && (
+              <div className={`rounded-xl border p-6 ${colors.glow} ${colors.border} row-span-2 flex flex-col`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    <p className="text-xs font-bold">
+                      {isRTL ? "تعليمات الذكاء الاصطناعي" : "AI Instructions"}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    {settings.ai_instructions?.length || 0}/500
+                  </span>
+                </div>
+                <Textarea
+                  value={settings.ai_instructions || ""}
+                  onChange={(e) => {
+                    setSettings((s) => ({ ...s, ai_instructions: e.target.value.slice(0, 500) }));
+                    setDirty(true);
+                  }}
+                  rows={12}
+                  placeholder={
+                    isRTL
+                      ? "مثال: ركز على بيع المنتجات الجديدة، رحب بالزبائن باسم المتجر، لا تعطي خصومات..."
+                      : "E.g. Focus on new products, greet by store name, never offer discounts..."
+                  }
+                  className="bg-background/60 border-border/60 rounded-xl text-xs resize-none flex-1"
+                />
+              </div>
+            )}
           </div>
         </div>
 

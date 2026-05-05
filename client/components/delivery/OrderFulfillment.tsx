@@ -61,13 +61,13 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
         setCompanies(data.filter((c: DeliveryCompany) => c.is_configured && c.has_api_key));
       }
     } catch (err) {
-      console.error('Failed to fetch delivery companies', err);
+      console.error('فشل في جلب شركات التوصيل', err);
     }
   };
 
   const handleAssignDelivery = async () => {
     if (!selectedCompany) {
-      setError('Please select a delivery company');
+      setError('الرجاء اختيار شركة توصيل');
       return;
     }
 
@@ -88,7 +88,14 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to assign delivery');
+        // If backend provides field errors with Arabic messages, use them
+        if (data.courier_response && data.courier_response.fieldErrors) {
+          const arabicDetails = data.courier_response.fieldErrors
+            .map((e: any) => e.message_ar || `${e.field}: ${e.code}`)
+            .join('، ');
+          throw new Error(`${data.error || 'فشل في تعيين شركة التوصيل'} (معلومات ناقصة: ${arabicDetails})`);
+        }
+        throw new Error(data.error || 'فشل في تعيين شركة التوصيل');
       }
 
       setSuccess('Delivery company assigned successfully!');
@@ -123,11 +130,17 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to generate label');
+        if (data.courier_response && data.courier_response.fieldErrors) {
+          const arabicDetails = data.courier_response.fieldErrors
+            .map((e: any) => e.message_ar || `${e.field}: ${e.code}`)
+            .join('، ');
+          throw new Error(`${data.error || 'فشل في إنشاء بطاقة الشحن'} (معلومات ناقصة: ${arabicDetails})`);
+        }
+        throw new Error(data.error || 'فشل في إنشاء بطاقة الشحن');
       }
 
       const data = await response.json();
-      setSuccess(`Label generated! Tracking: ${data.tracking_number}`);
+      setSuccess(`تم إنشاء بطاقة الشحن! رقم التتبع: ${data.tracking_number}`);
 
       // Download label if available
       if (data.label_url) {
@@ -153,10 +166,10 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Truck className="w-5 h-5" />
-            Delivery Management
+            إدارة التوصيل
           </CardTitle>
           <CardDescription>
-            Assign a delivery company and generate shipping labels
+            عين شركة توصيل و أنشئ بطاقات الشحن
           </CardDescription>
         </CardHeader>
 
@@ -166,11 +179,11 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-blue-600" />
-                <span className="font-medium">Delivery Assigned</span>
+                <span className="font-medium">تم تعيين شركة التوصيل</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Company</p>
+                  <p className="text-muted-foreground">الشركة</p>
                   <div className="flex items-center gap-2">
                     <DeliveryCompanyLogo
                       name={assignedCompanyData?.name}
@@ -181,13 +194,13 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
                 </div>
                 {order.tracking_number && (
                   <div>
-                    <p className="text-muted-foreground">Tracking</p>
+                    <p className="text-muted-foreground">رقم التتبع</p>
                     <p className="font-medium">{order.tracking_number}</p>
                   </div>
                 )}
                 {order.delivery_status && (
                   <div>
-                    <p className="text-muted-foreground">Status</p>
+                    <p className="text-muted-foreground">الحالة</p>
                     <p className="font-medium capitalize">{order.delivery_status}</p>
                   </div>
                 )}
@@ -218,7 +231,7 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
               className="flex-1"
               disabled={isLoading}
             >
-              {order.delivery_company_id ? 'Change Delivery' : 'Assign Delivery'}
+              {order.delivery_company_id ? 'تغيير التوصيل' : 'تعيين توصيل'}
             </Button>
 
             {order.delivery_company_id && (
@@ -231,12 +244,12 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
                 {labelGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
+                    جاري الإنشاء...
                   </>
                 ) : (
                   <>
                     <Printer className="w-4 h-4 mr-2" />
-                    Generate Label
+                    إنشاء البطاقة
                   </>
                 )}
               </Button>
@@ -246,8 +259,8 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
           {order.delivery_company_id && selectedCompanyData && !canGenerateLabel && (
             <div className="text-xs text-muted-foreground">
               {isNoest
-                ? 'Noest labels are available inside your Noest account dashboard.'
-                : 'This courier provides labels in their own dashboard.'}
+                ? 'بطاقات Noest متاحة داخل لوحة تحكم حساب Noest الخاص بك.'
+                : 'هذه الشركة توفر البطاقات في لوحة التحكم الخاصة بها.'}
             </div>
           )}
 
@@ -258,7 +271,7 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
               className="w-full"
             >
               <Printer className="w-4 h-4 mr-2" />
-              Download Label
+              تحميل البطاقة
             </Button>
           )}
         </CardContent>
@@ -268,9 +281,9 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Select Delivery Company</DialogTitle>
+            <DialogTitle>اختيار شركة التوصيل</DialogTitle>
             <DialogDescription>
-              Choose a delivery company to handle this order
+              اختر شركة توصيل لمعالجة هذا الطلب
             </DialogDescription>
           </DialogHeader>
 
@@ -300,9 +313,9 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
                   <div className="flex-1">
                     <p className="font-medium text-sm">{company.name}</p>
                     <div className="flex gap-2 text-xs text-muted-foreground mt-1">
-                      {company.features.supports_cod && <span>✓ COD</span>}
-                      {company.features.supports_tracking && <span>✓ Tracking</span>}
-                      {company.features.supports_labels && <span>✓ Labels</span>}
+                      {company.features.supports_cod && <span>✓ الدفع عند الاستلام</span>}
+                      {company.features.supports_tracking && <span>✓ التتبع</span>}
+                      {company.features.supports_labels && <span>✓ البطاقات</span>}
                     </div>
                   </div>
                 </label>
@@ -312,13 +325,13 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
             {/* COD Amount Input */}
             {selectedCompanyData?.features.supports_cod && (
               <div className="space-y-2">
-                <Label htmlFor="cod-amount">Cash on Delivery Amount (DA)</Label>
+                <Label htmlFor="cod-amount">مبلغ الدفع عند الاستلام (دج)</Label>
                 <Input
                   id="cod-amount"
                   type="number"
                   value={codAmount}
                   onChange={(e) => setCodAmount(parseFloat(e.target.value))}
-                  placeholder="Enter COD amount"
+                  placeholder="أدخل مبلغ الدفع عند الاستلام"
                 />
               </div>
             )}
@@ -326,7 +339,7 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>
-              Cancel
+              إلغاء
             </Button>
             <Button
               onClick={handleAssignDelivery}
@@ -335,10 +348,10 @@ export function OrderFulfillment({ order, onDeliveryAssigned }: OrderFulfillment
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Assigning...
+                  جاري التعيين...
                 </>
               ) : (
-                'Assign Delivery'
+                'تعيين التوصيل'
               )}
             </Button>
           </DialogFooter>

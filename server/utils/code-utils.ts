@@ -399,12 +399,26 @@ export async function redeemSubscriptionCode(
         [subscriptionId]
       );
 
+      // Create payment record for code redemption (2900 DZD)
+      await client.query(
+        `INSERT INTO payments
+         (user_id, subscription_id, checkout_session_id, amount, currency, status, transaction_id, payment_method, provider_response, paid_at)
+         VALUES ($1, $2, NULL, $3, 'DZD', 'completed', $4, 'code', $5, NOW())`,
+        [
+          userId,
+          subscriptionId,
+          2900, // Code value in DZD
+          code, // Use the redeemed code as transaction_id for traceability
+          JSON.stringify({ code_redeemed: code, method: 'voucher_code', duration_days: 30 })
+        ]
+      );
+
       // Unlock account if it was locked - always unlock after successful code redemption
       // This handles any lock reason since the user proved they have a valid code
       await client.query(
-        `UPDATE clients 
+        `UPDATE clients
          SET is_locked = false, locked_reason = NULL, locked_at = NULL, locked_by_admin_id = NULL
-         WHERE id = $1 
+         WHERE id = $1
          AND is_locked = true`,
         [clientId]
       );

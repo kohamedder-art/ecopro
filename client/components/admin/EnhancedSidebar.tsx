@@ -4,7 +4,8 @@ import {
   Truck, Megaphone, Star, Percent, Globe, BarChart3, 
   Users, Shield, Ban, Puzzle, CreditCard, Settings,
   ChevronDown, ChevronRight, Menu, X, Package, Bot,
-    Divide, Palette, User, Lock, Image, Brain, MapPin, MessageSquare
+    Divide, Palette, User, Lock, Image, Brain, MapPin, MessageSquare,
+  Receipt
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
