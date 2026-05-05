@@ -35,7 +35,7 @@ interface RealTemplate {
 }
 
 // NOTE: Disabled templates (files kept but not selectable):
-// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera
+// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, luxedrop, streetwear, novadz, lumina
 
 const REAL_TEMPLATES: RealTemplate[] = [
   {
@@ -50,18 +50,19 @@ const REAL_TEMPLATES: RealTemplate[] = [
     icon: <ShoppingBag className="w-4 h-4" />,
     tags: ['شائع', 'متجر'],
   },
-  {
-    id: 'luxedrop',
-    name: 'Luxe Drop',
-    nameAr: 'لوكس دروب',
-    descAr: 'تصميم داكن أنيق — عرض منتجات فاخرة',
-    category: 'landing',
-    imageType: 'standard',
-    gradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #6366f1 100%)',
-    accent: '#6366f1',
-    icon: <Star className="w-4 h-4" />,
-    tags: ['داكن', 'فاخر'],
-  },
+  // NOTE: luxedrop disabled - see index.tsx
+  // {
+  //   id: 'luxedrop',
+  //   name: 'Luxe Drop',
+  //   nameAr: 'لوكس دروب',
+  //   descAr: 'تصميم داكن أنيق — عرض منتجات فاخرة',
+  //   category: 'landing',
+  //   imageType: 'standard',
+  //   gradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #6366f1 100%)',
+  //   accent: '#6366f1',
+  //   icon: <Star className="w-4 h-4" />,
+  //   tags: ['داكن', 'فاخر'],
+  // },
   {
     id: 'needdz',
     name: 'NeedDZ',
@@ -74,7 +75,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     icon: <Smartphone className="w-4 h-4" />,
     tags: ['موبايل', 'شائع'],
   },
-  // NOTE: novadz and lumina disabled - see index.tsx
+  // NOTE: novadz, lumina, luxedrop, streetwear disabled - see index.tsx
   {
     id: 'zenith',
     name: 'Zenith',
@@ -99,18 +100,19 @@ const REAL_TEMPLATES: RealTemplate[] = [
     icon: <ShoppingBag className="w-4 h-4" />,
     tags: ['متجر', 'مجموعات'],
   },
-  {
-    id: 'streetwear',
-    name: 'Streetwear',
-    nameAr: 'ستريت وير',
-    descAr: 'متجر ملابس داكن مع اختيار مقاسات',
-    category: 'storefront',
-    imageType: 'standard',
-    gradient: 'linear-gradient(135deg, #080808 0%, #111 50%, #D4AF37 100%)',
-    accent: '#D4AF37',
-    icon: <ShoppingBag className="w-4 h-4" />,
-    tags: ['داكن', 'مقاسات'],
-  },
+  // NOTE: streetwear disabled - see index.tsx
+  // {
+  //   id: 'streetwear',
+  //   name: 'Streetwear',
+  //   nameAr: 'ستريت وير',
+  //   descAr: 'متجر ملابس داكن مع اختيار مقاسات',
+  //   category: 'storefront',
+  //   imageType: 'standard',
+  //   gradient: 'linear-gradient(135deg, #080808 0%, #111 50%, #D4AF37 100%)',
+  //   accent: '#D4AF37',
+  //   icon: <ShoppingBag className="w-4 h-4" />,
+  //   tags: ['داكن', 'مقاسات'],
+  // },
   {
     id: 'dz3shop',
     name: 'DZ3 Shop',
