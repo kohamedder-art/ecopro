@@ -21,6 +21,23 @@ export type StoreSettingsLike = {
   template_hero_heading?: string | null;
   template_hero_subtitle?: string | null;
   template_button_text?: string | null;
+  // Purchase/checkout settings
+  show_product_title?: boolean | null;
+  show_full_name?: boolean | null;
+  show_phone?: boolean | null;
+  show_wilaya?: boolean | null;
+  show_address?: boolean | null;
+  show_commune?: boolean | null;
+  show_notes?: boolean | null;
+  show_quantity?: boolean | null;
+  payment_cash_on_delivery?: boolean | null;
+  payment_credit_card?: boolean | null;
+  payment_paypal?: boolean | null;
+  checkout_form_bg_color?: string | null;
+  checkout_form_text_color?: string | null;
+  checkout_button_color?: string | null;
+  checkout_button_text?: string | null;
+  checkout_accent_color?: string | null;
 };
 
 export type StoreProductLike = {
