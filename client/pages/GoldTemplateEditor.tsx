@@ -18,19 +18,21 @@ const DEFAULT_TEMPLATE_ID = 'dzshop';
 // Templates that are considered 100% editable + verified against TEMPLATE_EDITS_CONTRACT.
 // These are the only templates shown by default in the picker.
 // NOTE: Disabled templates (files kept but not selectable):
-// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina
-const READY_TEMPLATE_IDS = new Set(['dzshop', 'luxedrop', 'needdz', 'zenith', 'boutique', 'streetwear', 'iyco', 'bassem28', 'dz3shop', 'spiriluxe', 'leroishop']);
+// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina, luxedrop, streetwear
+const READY_TEMPLATE_IDS = new Set(['dzshop', 'needdz', 'zenith', 'boutique', 'iyco', 'bassem28', 'dz3shop', 'spiriluxe', 'leroishop']);
 
 // Template preview data with categories
 // NOTE: Disabled templates (files kept but not selectable):
-// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina
+// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina, luxedrop, streetwear
 const TEMPLATE_PREVIEWS = [
   { id: 'dzshop', name: 'متجر DZ — كلاسيكي جزائري', image: '', categories: ['popular', 'industry'] },
-  { id: 'luxedrop', name: 'لوكس دروب — الوضع الداكن', image: '', categories: ['dark', 'landing'] },
+  // NOTE: luxedrop disabled
+  // { id: 'luxedrop', name: 'لوكس دروب — الوضع الداكن', image: '', categories: ['dark', 'landing'] },
   { id: 'needdz', name: 'NeedDZ — تطبيق موبايل', image: '', categories: ['mobile', 'popular'] },
   { id: 'zenith', name: 'زينيث — هبوط نظيف', image: '', categories: ['landing', 'minimal'] },
   { id: 'boutique', name: 'بوتيك — متجر تشكيلة', image: '', categories: ['popular', 'elegant'] },
-  { id: 'streetwear', name: 'ستريت وير — شبكة داكنة', image: '', categories: ['dark', 'popular'] },
+  // NOTE: streetwear disabled
+  // { id: 'streetwear', name: 'ستريت وير — شبكة داكنة', image: '', categories: ['dark', 'popular'] },
   { id: 'iyco', name: 'IYCO — ملابس عصرية', image: '', categories: ['popular', 'landing'] },
   { id: 'bassem28', name: 'بريمو — منتج احترافي', image: '', categories: ['popular', 'landing', 'elegant'] },
   { id: 'dz3shop', name: 'Dz3 شوب — كتالوج المنتجات', image: '', categories: ['popular', 'industry'] },

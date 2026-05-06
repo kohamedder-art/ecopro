@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { ChevronDown, Phone, ShoppingCart, ShieldCheck } from 'lucide-react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useImageClassifier } from '@/hooks/useImageClassifier';
+import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#000000';
@@ -14,25 +16,28 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const deliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+
+  // Main product
+  const mainProduct = (settings?.dzp_main_product_id
+    ? products?.find((p: any) => String(p.id) === String(settings?.dzp_main_product_id))
+    : null) || products?.[0];
+
+  // Variant and Offer support
+  const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
+  const { offers } = useProductOffers(storeSlug, mainProduct?.id);
+  const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
+  const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
+  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [commune, setCommune] = useState('');
 
-  // Main product
-  const mainProduct = (settings?.dzp_main_product_id
-    ? products?.find((p: any) => String(p.id) === String(settings?.dzp_main_product_id))
-    : null) || products?.[0] || {
-    id: 0,
-    title: 'منتج مميز',
-    price: 3900,
-    original_price: 6500,
-    images: [],
-  };
-
-  const productPrice = mainProduct?.price ?? 3900;
-  const productImages = mainProduct?.images && mainProduct.images.length > 0 ? mainProduct.images : [];
+  // Safe fallbacks after mainProduct declaration
+  const safeProduct = mainProduct || { id: 0, title: 'منتج مميز', price: 3900, original_price: 6500, images: [], variants: [] };
+  const productPrice = safeProduct.price ?? 3900;
+  const productImages = safeProduct.images && safeProduct.images.length > 0 ? safeProduct.images : [];
   const currency = settings?.currency_code || 'د.ج';
 
   // Editable text fields
@@ -81,8 +86,10 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         body: JSON.stringify({
           store_slug: storeSlug,
           product_id: mainProduct.id,
-          quantity,
-          total_price: productPrice * quantity,
+          ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
+          quantity: selectedOffer?.quantity || 1,
+          ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
+          total_price: selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? mainProduct.price ?? 0),
           delivery_fee: deliveryFee,
           delivery_type: 'desk',
           customer_name: customerName,
@@ -207,6 +214,32 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             >
               {formTitle}
             </h2>
+
+            {/* Variants */}
+            {safeProduct.variants && safeProduct.variants.length > 0 && (
+              <VariantSelector 
+                variants={safeProduct.variants} 
+                selected={selectedVariant} 
+                onSelect={setSelectedVariant} 
+                accentColor={accentColor} 
+                currency={currency} 
+                basePrice={safeProduct.price} 
+              />
+            )}
+
+            {/* Offers */}
+            {offers.length > 0 && (
+              <OfferSelector 
+                offers={offers} 
+                unitPrice={mainProduct?.price || 0} 
+                currency={currency} 
+                selectedOfferId={selectedOffer?.offer_id ?? null} 
+                onSelect={handleOfferSelect} 
+                accentColor={accentColor} 
+                textColor="#1e293b" 
+                borderColor="#e2e8f0" 
+              />
+            )}
 
             <form onSubmit={handleOrder} className="space-y-4">
 

@@ -18,7 +18,9 @@ import {
 } from 'lucide-react';
 import { TemplateProps } from '../types';
 
-import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
+import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 
 const FALLBACK_PRODUCTS = [
   {
@@ -59,7 +61,14 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const deliveryFee = selectedWilaya?.homePrice ?? 0;
+  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+
+  // Variant and Offer support
+  const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
+  const { offers } = useProductOffers(storeSlug, selectedProduct?.id);
+  const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
+  const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
+  const deliveryFee = resolveDeliveryFee(selectedProduct, selectedOffer, baseDeliveryFee);
 
   // Section visibility toggles
   const showCountdown = settings?.needdz_show_countdown !== false;
@@ -105,8 +114,10 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
       const payload = {
         store_slug: storeSlug || settings?.store_name || "needdz",
         product_id: selectedProduct.id,
-        quantity: 1,
-        total_price: selectedProduct.price,
+        ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
+        quantity: selectedOffer?.quantity || 1,
+        ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
+        total_price: selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? selectedProduct.price ?? 0),
         delivery_fee: deliveryFee,
         delivery_type: 'desk',
         customer_name: fd.get('name'),
@@ -368,6 +379,32 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
                       <p className="font-black" style={{ color: accentColor }}>{selectedProduct?.price} DA</p>
                     </div>
                   </div>
+
+                  {/* Variants */}
+                  {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
+                    <VariantSelector 
+                      variants={selectedProduct.variants} 
+                      selected={selectedVariant} 
+                      onSelect={setSelectedVariant} 
+                      accentColor={accentColor} 
+                      currency={settings?.currency_code || 'دج'} 
+                      basePrice={selectedProduct.price} 
+                    />
+                  )}
+
+                  {/* Offers */}
+                  {offers.length > 0 && (
+                    <OfferSelector 
+                      offers={offers} 
+                      unitPrice={selectedProduct?.price || 0} 
+                      currency={settings?.currency_code || 'دج'} 
+                      selectedOfferId={selectedOffer?.offer_id ?? null} 
+                      onSelect={handleOfferSelect} 
+                      accentColor={accentColor} 
+                      textColor="#1e293b" 
+                      borderColor="#e2e8f0" 
+                    />
+                  )}
 
                   <form className="space-y-5" onSubmit={handleOrder}>
                     <div className="grid gap-4">

@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TemplateProps, StoreProduct } from '../types';
-import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useImageClassifier } from '@/hooks/useImageClassifier';
+import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Eye, EyeOff } from 'lucide-react';
 
 export default function DZShopTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
@@ -10,15 +12,24 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-    const deliveryFee = selectedWilaya?.homePrice ?? 0;
+    const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
 
     // Section visibility toggles
     const showBanner = settings?.dzshop_show_banner !== false;
     const showTrustBadges = settings?.dzshop_show_trust !== false;
 
+    // Get product first (needed for variant/offer hooks)
+    const product = (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
+
+    // Variant and Offer support
+    const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
+    const { offers } = useProductOffers(storeSlug, product?.id);
+    const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
+    const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
+    const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
+
     const handleDefaultOrder = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const product = (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
         if (!product) return;
         setIsSubmitting(true);
         try {
@@ -26,8 +37,10 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             const payload = {
                 store_slug: storeSlug || settings?.store_name || 'dzshop',
                 product_id: product.id,
-                quantity: 1,
-                total_price: product.price || 0,
+                ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
+                quantity: selectedOffer?.quantity || 1,
+                ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
+                total_price: selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? product.price ?? 0),
                 delivery_fee: deliveryFee,
                 delivery_type: 'desk',
                 customer_name: fd.get('name'),
@@ -51,8 +64,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
     const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#2563eb');
     const accentColor = settings?.template_accent_color || primaryColor;
-        const productId = settings?.dzp_main_product_id;
-    const product = (productId ? products?.find((p: any) => String(p.id) === String(productId)) : null) || products?.[0];
     const hasProductImages = product?.images && product.images.length > 0;
 
     // Smart image classification: routes square images to gallery, wide/tall to banner
@@ -345,6 +356,32 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         
                         <h3 className="text-lg font-bold mb-4 mt-2">معلومات المشتري</h3>
                         
+                        {/* Variants */}
+                        {product?.variants && product.variants.length > 0 && (
+                            <VariantSelector 
+                                variants={product.variants} 
+                                selected={selectedVariant} 
+                                onSelect={setSelectedVariant} 
+                                accentColor={accentColor} 
+                                currency={settings?.currency_code || 'دج'} 
+                                basePrice={product.price} 
+                            />
+                        )}
+
+                        {/* Offers */}
+                        {offers.length > 0 && (
+                            <OfferSelector 
+                                offers={offers} 
+                                unitPrice={product?.price || 0} 
+                                currency={settings?.currency_code || 'دج'} 
+                                selectedOfferId={selectedOffer?.offer_id ?? null} 
+                                onSelect={handleOfferSelect} 
+                                accentColor={accentColor} 
+                                textColor="#1e293b" 
+                                borderColor="#e2e8f0" 
+                            />
+                        )}
+
                         <form className="space-y-4" onSubmit={handleDefaultOrder}>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">الاسم الكامل</label>
