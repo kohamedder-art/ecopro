@@ -7,12 +7,12 @@
  * be prompt-injected into accessing unauthorized data.
  *
  * Uses OpenAI-compatible chat completions endpoint via DeepInfra.
- * NOTE: Using 8B model for cost efficiency. Upgrade to 70B if more power needed.
+ * NOTE: Using 70B model for better instruction following and Arabic language support.
  */
 
 const DEEPINFRA_API_BASE = 'https://api.deepinfra.com/v1/openai';
-const AI_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo';
-const AI_FALLBACK_MODEL = 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo'; // Fallback to 70B if 8B fails
+const AI_MODEL = 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo';
+const AI_FALLBACK_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'; // Fallback to 8B if 70B fails
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 3000, 6000]; // ms
 
