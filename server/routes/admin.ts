@@ -620,7 +620,7 @@ export const getSystemCapacity: RequestHandler = async (_req, res) => {
             COUNT(*)::int as total,
             COUNT(*) FILTER (WHERE last_login > NOW() - INTERVAL '15 minutes')::int as active15m,
             COUNT(*) FILTER (WHERE last_login > NOW() - INTERVAL '24 hours')::int as activeToday
-          FROM users
+          FROM clients
         `),
         pool.query(`SELECT COUNT(*)::int as count FROM client_store_products WHERE status = 'active'`),
         pool.query(`SELECT COUNT(*)::int as count FROM store_orders WHERE created_at > NOW() - INTERVAL '30 days'`),
