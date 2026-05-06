@@ -8,6 +8,16 @@ import { MessageCircle, Search, Send, AlertCircle, Plus, UserPlus, X, Tag, Perce
 import { apiFetch } from '@/lib/api';
 import Header from '@/components/layout/Header';
 import { useAI } from '@/hooks/useAI';
+import { useAISettings } from '@/hooks/useAISettings';
+import { useToast } from '@/components/ui/use-toast';
+
+declare global {
+  interface Window {
+    __ADMIN_CHAT_INSTANCE__?: {
+      generateReplySuggestions: () => void;
+    };
+  }
+}
 
 interface Chat {
   id: number;
@@ -69,6 +79,8 @@ const TIERS = [
 ];
 
 export default function AdminChat() {
+  const { toast } = useToast();
+  const { data: aiSettings } = useAISettings();
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -76,6 +88,16 @@ export default function AdminChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Expose function to child components
+  useEffect(() => {
+    (window as any).__ADMIN_CHAT_INSTANCE__ = {
+      generateReplySuggestions,
+    };
+    return () => {
+      delete (window as any).__ADMIN_CHAT_INSTANCE__;
+    };
+  }, [messages, aiSettings]);
   const [showCodePanel, setShowCodePanel] = useState(false);
   const [issuingCode, setIssuingCode] = useState<string | null>(null);
   
@@ -205,6 +227,38 @@ export default function AdminChat() {
       setError(err?.message || 'Failed to send message');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateReplySuggestions = async () => {
+    if (!aiSettings?.reply_suggestions || !messages.length) return;
+    
+    try {
+      const lastMessage = messages[messages.length - 1];
+      const situation = lastMessage.sender_type === 'client' 
+        ? `Customer: ${lastMessage.message_content}`
+        : `Last reply: ${lastMessage.message_content}`;
+      
+      const res = await fetch('/api/ai/order/reply-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ situation }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.templates && data.templates.length > 0) {
+          // Show suggestions in toast or small modal
+          toast({ 
+            title: 'Reply Suggestions', 
+            description: data.templates.join(' | '),
+            duration: 10000 
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to generate suggestions:', e);
     }
   };
 
@@ -727,15 +781,30 @@ function AIDraftReplyBar({
   return (
     <div className="space-y-1.5">
       {messages.some((m) => m.sender_type === 'client') && (
-        <button
-          type="button"
-          onClick={handleDraft}
-          disabled={drafting}
-          className="flex items-center gap-1.5 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors disabled:opacity-50"
-        >
-          {drafting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-          AI Draft Reply
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleDraft}
+            disabled={drafting}
+            className="flex items-center gap-1.5 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors disabled:opacity-50"
+          >
+            {drafting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            AI Draft Reply
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const parentComponent = window.__ADMIN_CHAT_INSTANCE__;
+              if (parentComponent?.generateReplySuggestions) {
+                parentComponent.generateReplySuggestions();
+              }
+            }}
+            className="flex items-center gap-1.5 text-xs font-bold text-violet-400 hover:text-violet-300 transition-colors"
+          >
+            <Sparkles className="w-3 h-3" />
+            Reply Ideas
+          </button>
+        </div>
       )}
       <form onSubmit={onSubmit} className="flex items-center gap-2">
         <input

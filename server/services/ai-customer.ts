@@ -122,7 +122,7 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
     `SELECT p.id, p.title, p.price, p.original_price, p.description, p.category, p.stock_quantity,
             (SELECT json_agg(json_build_object('quantity', o.quantity, 'bundle_price', o.bundle_price, 'free_delivery', o.free_delivery))
              FROM product_offers o WHERE o.product_id = p.id AND o.client_id = p.client_id AND o.is_active = true) as offers,
-            (SELECT json_agg(json_build_object('name', v.variant_name, 'value', v.variant_value, 'price', v.price_adjustment, 'stock', v.stock_quantity, 'inStock', (v.stock_quantity > 0)))
+            (SELECT json_agg(json_build_object('name', v.variant_name, 'value', v.variant_name, 'price', v.price_adjustment, 'stock', v.stock_quantity, 'inStock', (v.stock_quantity > 0)))
              FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id) as variants
      FROM client_store_products p
      WHERE p.client_id = $1 AND p.status = 'active'

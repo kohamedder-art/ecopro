@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
-import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload, ChevronRight, Search, Copy, Check, StickyNote, AlertTriangle, Bell, Calendar, Phone, Edit3, User, MapPin, Package, Hash, Loader2, Save } from "lucide-react";
+import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload, ChevronRight, Search, Copy, Check, StickyNote, AlertTriangle, Bell, Calendar, Phone, Edit3, User, MapPin, Package, Hash, Loader2, Save, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "@/lib/i18n";
 import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
 import { RiskAlert } from "@/components/orders/RiskAlert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { getAlgeriaCommunesByWilayaId, getAlgeriaWilayas } from "@/lib/algeriaGeo";
+import { useAISettings } from "@/hooks/useAISettings";
+import { useToast } from "@/components/ui/use-toast";
 
 interface DeliveryCompany {
   id: number;
@@ -31,6 +34,8 @@ interface OrderStatus {
 export default function OrdersAdmin() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { data: aiSettings } = useAISettings();
   const [orders, setOrders] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -863,8 +868,47 @@ export default function OrdersAdmin() {
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base md:text-lg font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent flex items-center gap-2">
               <span className="inline-block w-1 h-5 rounded-full bg-gradient-to-b from-primary to-accent"></span>
-              {t('orders.title')}
+              {t('orders.orders')}
             </h3>
+            <div className="flex items-center gap-2">
+              {aiSettings?.order_priority && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/ai/order/priority', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                          orders: getFilteredOrders().map(o => ({
+                            id: o.id,
+                            customer_name: o.customer_name,
+                            status: o.status,
+                            created_at: o.created_at,
+                            total_price: o.unit_price * o.quantity,
+                          })),
+                        }),
+                      });
+                      if (!res.ok) throw new Error();
+                      const data = await res.json();
+                      if (data.priorityOrders) {
+                        toast({ title: 'Priority analyzed', description: `${data.priorityOrders.length} urgent orders flagged` });
+                        setOrders(prev => prev.map(o => {
+                          const priority = data.priorityOrders.find((p: any) => p.id === o.id);
+                          return { ...o, aiPriority: priority?.priority || null, aiReason: priority?.reason || null };
+                        }));
+                      }
+                    } catch {
+                      toast({ title: 'Error', description: 'Failed to analyze priorities', variant: 'destructive' });
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {t('orders.analyzePriority') || 'Analyze Priority'}
+                </button>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 flex-wrap justify-end">
               <button 
                 onClick={() => loadOrders()}
@@ -1114,6 +1158,13 @@ export default function OrdersAdmin() {
                       )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+                      {o.aiPriority && (
+                        <div className="flex items-center justify-end gap-1 mb-0.5">
+                          <Badge variant={o.aiPriority === 'high' ? 'destructive' : 'secondary'} className="text-[10px] h-4 px-1.5">
+                            {o.aiPriority === 'high' ? 'URGENT' : 'Priority'}
+                          </Badge>
+                        </div>
+                      )}
                       <button
                         onClick={() => copyToClipboard(o.id, `id-${o.id}`)}
                         className="inline-flex items-center gap-1.5 group/copy hover:text-primary transition-colors font-mono text-xs font-bold bg-muted/50 hover:bg-primary/10 px-2 py-1 rounded-md"

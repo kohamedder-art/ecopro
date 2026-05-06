@@ -54,6 +54,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useTranslation } from '@/lib/i18n';
 import { apiFetch } from '@/lib/api';
+import { useAISettings } from '@/hooks/useAISettings';
+import { useToast } from '@/components/ui/use-toast';
 import {
   Card,
   CardContent,
@@ -83,7 +85,6 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
-import { useToast } from '@/components/ui/use-toast';
 import TikTokIcon from '@/components/icons/TikTokIcon';
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -335,11 +336,49 @@ const inputClass =
 
 export default function MarketingAnalytics() {
   const { t, locale } = useTranslation();
-  const isRTL = locale === 'ar';
   const { toast } = useToast();
+  const { data: aiSettings } = useAISettings();
+  const isRTL = locale === 'ar';
   const queryClient = useQueryClient();
   const [selectedDays, setSelectedDays] = useState('30');
   const [activeTab, setActiveTab] = useState('overview');
+
+  const generateBroadcastMessage = async (segment: string, campaignType: string) => {
+    if (!aiSettings?.broadcast_composer) return;
+    
+    try {
+      const res = await fetch('/api/ai/whatsapp/compose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          segment,
+          campaignType,
+          storeInfo: {
+            name: 'Your Store',
+            description: 'Store description',
+          },
+        }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.message) {
+          toast({ 
+            title: 'Broadcast Message Generated', 
+            description: data.message,
+            duration: 15000 
+          });
+        }
+      }
+    } catch (e) {
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to generate broadcast message',
+        variant: 'destructive'
+      });
+    }
+  };
 
   // ─── Queries ─────────────────────────────────────────────
 
@@ -501,6 +540,15 @@ export default function MarketingAnalytics() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {aiSettings?.broadcast_composer && (
+              <button
+                onClick={() => generateBroadcastMessage('all', 'promotion')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors"
+              >
+                <Megaphone className="w-3.5 h-3.5" />
+                {t('marketing.composeBroadcast') || 'Compose Broadcast'}
+              </button>
+            )}
             <Select value={selectedDays} onValueChange={setSelectedDays}>
               <SelectTrigger className="w-[120px] h-8 rounded-lg bg-white/10 backdrop-blur-sm border-white/15 text-white text-xs hover:bg-white/15 transition-colors [&>svg]:text-white/50">
                 <SelectValue />

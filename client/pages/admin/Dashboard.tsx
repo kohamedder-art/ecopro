@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Search, Bell, Calendar, Star, TrendingUp, MoreHorizontal, ChevronDown, Package, X, Sparkles, Loader2, MapPin
+  Search, Bell, Calendar, Star, TrendingUp, MoreHorizontal, ChevronDown, Package, X, Sparkles, Loader2, MapPin, AlertTriangle, Brain
 } from 'lucide-react';
 import { useTranslation } from "@/lib/i18n";
 import { useAI } from '@/hooks/useAI';
+import { useAISettings } from '@/hooks/useAISettings';
+import { useToast } from '@/components/ui/use-toast';
 import { getCurrentUser } from '@/lib/auth';
 
 interface DashboardStats {
@@ -26,10 +28,12 @@ interface Analytics {
 }
 
 export default function Dashboard() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const { toast } = useToast();
+  const { data: aiSettings } = useAISettings();
   const user = getCurrentUser();
   const userName = user?.name || 'User';
-  const [stats, setStats] = useState<DashboardStats>({ 
+  const [stats, setStats] = useState<DashboardStats>({
     products: 0, orders: 0, revenue: 0, pendingOrders: 0, completedOrders: 0, visitors: 0
   });
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
@@ -74,9 +78,116 @@ export default function Dashboard() {
         fetch(`/api/dashboard/analytics?days=${dayRange}`)
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
-      if (analyticsRes.ok) setAnalytics(await analyticsRes.json());
+      if (analyticsRes.ok) {
+        const data = await analyticsRes.json();
+        setAnalytics(data);
+      }
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const generateAINarration = async () => {
+    if (!aiSettings?.analytics_narration || !analytics) return;
+    try {
+      const res = await fetch('/api/ai/analytics/narrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ stats, analytics, days: dayRange }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.narration) toast({ title: 'AI Summary', description: data.narration });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const checkChurnWarning = async () => {
+    if (!aiSettings?.churn_warning || !analytics?.dailyRevenue) return;
+    try {
+      const revenueHistory = analytics.dailyRevenue.map((d: any) => ({
+        date: d.date,
+        revenue: d.revenue,
+      }));
+      const res = await fetch('/api/ai/analytics/churn-warning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ revenueHistory }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.warning) {
+          toast({ 
+            title: 'Churn Warning', 
+            description: data.warning,
+            variant: 'destructive'
+          });
+        } else {
+          toast({ title: 'Revenue Trend', description: 'No significant decline detected' });
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const generateInventoryForecast = async () => {
+    if (!aiSettings?.inventory_forecast) return;
+    try {
+      const res = await fetch('/api/ai/analytics/forecast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.forecast) {
+          toast({ 
+            title: 'Inventory Forecast', 
+            description: data.forecast,
+            duration: 15000 
+          });
+        }
+      }
+    } catch (e) {
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to generate forecast',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const analyzeOmniBehavior = async () => {
+    if (!aiSettings?.omni_intelligence) return;
+    try {
+      const res = await fetch('/api/ai/analyze-behavior', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ days: 30, locale }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.summary) {
+          toast({ 
+            title: t('dashboard.omniIntelligence') || 'Omni Intelligence', 
+            description: data.summary,
+            duration: 20000 
+          });
+        }
+      }
+    } catch (e) {
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to analyze behavior',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -242,6 +353,50 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center justify-end gap-2 mt-2 lg:mt-0">
+          {/* AI Narration */}
+          {aiSettings?.analytics_narration && (
+            <button
+              onClick={generateAINarration}
+              className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {t('dashboard.aiSummary') || 'AI Summary'}
+            </button>
+          )}
+
+          {/* Churn Warning */}
+          {aiSettings?.churn_warning && (
+            <button
+              onClick={checkChurnWarning}
+              className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              {t('dashboard.churnCheck') || 'Churn Check'}
+            </button>
+          )}
+
+          {/* Inventory Forecast */}
+          {aiSettings?.inventory_forecast && (
+            <button
+              onClick={generateInventoryForecast}
+              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+            >
+              <Package className="w-3.5 h-3.5" />
+              {t('dashboard.inventoryForecast') || 'Forecast'}
+            </button>
+          )}
+
+          {/* Omni Intelligence */}
+          {aiSettings?.omni_intelligence && (
+            <button
+              onClick={analyzeOmniBehavior}
+              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+            >
+              <Brain className="w-3.5 h-3.5" />
+              {t('dashboard.omniIntelligence') || 'Omni AI'}
+            </button>
+          )}
+
           {/* Day range picker */}
           <div className="relative hidden sm:block" ref={dayPickerRef}>
             <button

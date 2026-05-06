@@ -964,6 +964,7 @@ export default function GoldTemplateEditor() {
   }, [previewDevice]);
 
   const [deviceScale, setDeviceScale] = useState(1);
+  const globalZoom = 0.8; // Auto-zoom to 80% for better visibility
 
   useLayoutEffect(() => {
     const container = canvasContainerRef.current;
@@ -971,7 +972,7 @@ export default function GoldTemplateEditor() {
 
     const compute = () => {
       if (previewDevice === 'desktop') {
-        setDeviceScale(1);
+        setDeviceScale(1 * globalZoom);
         return;
       }
       const availW = container.clientWidth;
@@ -979,7 +980,7 @@ export default function GoldTemplateEditor() {
       const naturalW = previewDevice === 'mobile' ? 375 : 768;
       const naturalH = previewDevice === 'mobile' ? 812 : 1024;
       const s = Math.min((availW * 0.98) / naturalW, (availH * 0.98) / naturalH, 1.4);
-      setDeviceScale(Math.max(0.25, s));
+      setDeviceScale(Math.max(0.25, s * globalZoom));
     };
 
     compute();

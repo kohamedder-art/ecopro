@@ -22,6 +22,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useStoreProducts } from '@/hooks/useStoreProducts';
+import { useAISettings } from '@/hooks/useAISettings';
 import { markOnboardingStepComplete } from '@/lib/onboarding';
 import { formatPriceForInput } from '@/lib/formatPrice';
 import {
@@ -84,6 +85,7 @@ type StoreProductFormData = Partial<StoreProduct> & {
   shipping_flat_fee?: number | null;
   notes?: string;
   video_url?: string;
+  alt_texts?: Record<string, string>;
 };
 
 const DEFAULT_PRODUCT_FORM: StoreProductFormData = {
@@ -348,6 +350,8 @@ export default function Store() {
   const { data: storeProductsData } = useStoreProducts({
     onUnauthorized: () => navigate('/login'),
   });
+
+  const { data: aiSettings } = useAISettings();
 
   const applyFilters = (
     list: StoreProduct[],
@@ -1328,12 +1332,37 @@ export default function Store() {
       return url;
     };
 
+    const generateAltText = async (imageUrl: string): Promise<string> => {
+      if (!aiSettings?.auto_alt_text || !formData.title) return '';
+      try {
+        const res = await fetch('/api/ai/product/alt-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ imageUrl, productTitle: formData.title }),
+        });
+        if (!res.ok) return '';
+        const data = await res.json();
+        return data.altText || '';
+      } catch {
+        return '';
+      }
+    };
+
     setUploading(true);
     try {
       const uploadedUrls: string[] = [];
       for (const file of toUpload) {
         const url = await uploadOne(file);
         uploadedUrls.push(url);
+        // Generate alt text if enabled
+        const altText = await generateAltText(url);
+        if (altText) {
+          setFormData((prev) => ({
+            ...prev,
+            alt_texts: { ...(prev.alt_texts || {}), [url]: altText },
+          }));
+        }
       }
 
       setFormData((prev) => {
@@ -2295,7 +2324,42 @@ export default function Store() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="price" className="text-base font-bold">{t('store.productForm.price')} *</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="price" className="text-base font-bold">{t('store.productForm.price')} *</Label>
+                      {aiSettings?.auto_pricing && formData.title && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs text-violet-600 hover:text-violet-700"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/ai/product/pricing', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({
+                                  title: formData.title,
+                                  description: formData.description,
+                                  category: formData.category,
+                                }),
+                              });
+                              if (!res.ok) throw new Error();
+                              const data = await res.json();
+                              if (data.suggestedPrice) {
+                                setFormData({ ...formData, price: data.suggestedPrice });
+                                toast({ title: 'Price suggested', description: `Suggested: ${data.suggestedPrice} DZD` });
+                              }
+                            } catch {
+                              toast({ title: 'Error', description: 'Failed to suggest price', variant: 'destructive' });
+                            }
+                          }}
+                        >
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          {t('store.productForm.suggestPrice') || 'Suggest'}
+                        </Button>
+                      )}
+                    </div>
                     <Input
                       id="price"
                       type="number"

@@ -84,7 +84,8 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     badge: "شائع",
     description: p.description || "Un produit fantastique avec de superbes caractéristiques.",
     images: p.images && p.images.length > 0 ? p.images : FALLBACK_PRODUCTS[0].images,
-    features: ["جودة عالية", "توصيل سريع", "ضمان"]
+    features: ["جودة عالية", "توصيل سريع", "ضمان"],
+    variants: p.variants || []
   })) : FALLBACK_PRODUCTS;
 
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {

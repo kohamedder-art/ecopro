@@ -489,10 +489,15 @@ router.post('/analyze-behavior', authenticate, requireClient, authAiLimiter, asy
 
     let summary = fallbackSummary;
     try {
+      const locale = req.body?.locale || 'ar';
+      const isArabic = locale === 'ar';
+      const languageInstruction = isArabic ? 'أكتب الرد بالعربية (Arabic). ' : '';
+      
       const aiPrompt = `You are preparing a short optimization brief for a store owner.
 Use this sanitized Omni summary JSON and write exactly 4 short sentences in plain business language.
 Mention: the strongest opportunity, the biggest friction, whether creatives are profitable, and the most important next action.
 Do not invent numbers.
+${languageInstruction}
 
 JSON:
 ${JSON.stringify({

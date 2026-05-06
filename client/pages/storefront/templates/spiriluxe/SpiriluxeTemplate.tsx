@@ -37,6 +37,7 @@ export default function SpiriluxeTemplate({
   const [uploadingBelow, setUploadingBelow] = useState(false);
   // aboveCount tracks how many images show above form vs below
   const [aboveCount, setAboveCount] = useState<number | null>(null);
+  const aboveCountRef = useRef<number | null>(null);
 
   // ── Delivery & Order State ──
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
@@ -55,7 +56,7 @@ export default function SpiriluxeTemplate({
   const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   // ─── Product Selection ───
-  const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug) : null) || (settings?.spiriluxe_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.spiriluxe_main_product_id)) : null) || products?.[0];
+  const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug) : null) || (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
 
   useEffect(() => { if (mainProduct && onProductView) onProductView(mainProduct); }, [mainProduct?.id]);
 
@@ -64,15 +65,28 @@ export default function SpiriluxeTemplate({
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
 
-  // Sync product images from mainProduct and reset price when product changes
+  // When product changes: reset images and offer
   useEffect(() => {
+    if (!mainProduct?.id) return;
     const imgs = Array.isArray(mainProduct?.images) ? mainProduct.images.filter(Boolean) : [];
     setProductImages(imgs);
-    // Load persisted above/below split for this product
-    const savedCount = mainProduct?.id ? settings?.[`spiriluxe_above_count_${mainProduct.id}`] : undefined;
-    setAboveCount(savedCount != null ? Number(savedCount) : imgs.length);
     setSelectedOffer(null);
+    // Default to all above until settings load
+    aboveCountRef.current = imgs.length;
+    setAboveCount(imgs.length);
   }, [mainProduct?.id]);
+
+  // When saved aboveCount setting arrives (async): apply it without resetting images
+  useEffect(() => {
+    if (!mainProduct?.id) return;
+    const savedCount = settings?.[`spiriluxe_above_count_${mainProduct.id}`];
+    if (savedCount != null) {
+      const count = Number(savedCount);
+      aboveCountRef.current = count;
+      setAboveCount(count);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.[`spiriluxe_above_count_${mainProduct?.id}`]]);
   
   useEffect(() => { 
     if (offers.length > 0 && !selectedOffer) { 
@@ -201,7 +215,9 @@ export default function SpiriluxeTemplate({
     const nextImages = productImages.filter((_, i) => i !== index);
     // Adjust aboveCount if removing an above image
     if (index < currentAboveCount) {
-      setAboveCount(Math.max(0, currentAboveCount - 1));
+      const newCount = Math.max(0, currentAboveCount - 1);
+      setAboveCount(newCount);
+      await saveAboveCount(newCount);
     }
     setProductImages(nextImages);
     await saveProductImages(nextImages);
@@ -209,25 +225,25 @@ export default function SpiriluxeTemplate({
 
   // Move image one position up or down in the array
   const handleMoveImage = async (globalIndex: number, direction: 'up' | 'down') => {
-    const current = aboveCount ?? productImages.length;
+    const current = aboveCountRef.current ?? aboveCount ?? productImages.length;
     const imgs = [...productImages];
     const swapWith = direction === 'up' ? globalIndex - 1 : globalIndex + 1;
 
-    let newAboveCount = current;
-
     // Special case: last above-image moves ↓ into below (no swap needed, just shift boundary)
     if (direction === 'down' && globalIndex === current - 1) {
-      newAboveCount = current - 1;
-      setAboveCount(newAboveCount);
-      await saveAboveCount(newAboveCount);
+      const newCount = current - 1;
+      aboveCountRef.current = newCount;
+      setAboveCount(newCount);
+      await saveAboveCount(newCount);
       return;
     }
 
     // Special case: first below-image moves ↑ into above (no swap needed, just shift boundary)
     if (direction === 'up' && globalIndex === current) {
-      newAboveCount = current + 1;
-      setAboveCount(newAboveCount);
-      await saveAboveCount(newAboveCount);
+      const newCount = current + 1;
+      aboveCountRef.current = newCount;
+      setAboveCount(newCount);
+      await saveAboveCount(newCount);
       return;
     }
 
@@ -251,7 +267,8 @@ export default function SpiriluxeTemplate({
                 {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}
                 {(globalIndex > 0 || (position === 'below' && globalIndex === (aboveCount ?? productImages.length))) && (
                   <button
-                    onClick={() => handleMoveImage(globalIndex, 'up')}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleMoveImage(globalIndex, 'up'); }}
                     className="p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 text-xs font-bold"
                     title="Move up"
                   >↑</button>
@@ -259,13 +276,15 @@ export default function SpiriluxeTemplate({
                 {/* Show ↓ if not last image, OR if it's the last above-image (can cross into below) */}
                 {(globalIndex < productImages.length - 1 || (position === 'above' && globalIndex === (aboveCount ?? productImages.length) - 1)) && (
                   <button
-                    onClick={() => handleMoveImage(globalIndex, 'down')}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleMoveImage(globalIndex, 'down'); }}
                     className="p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 text-xs font-bold"
                     title="Move down"
                   >↓</button>
                 )}
                 <button
-                  onClick={() => handleRemoveImage(globalIndex)}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleRemoveImage(globalIndex); }}
                   className="p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600"
                   title="Remove"
                 ><Trash2 className="w-4 h-4" /></button>
@@ -317,7 +336,7 @@ export default function SpiriluxeTemplate({
 
         {/* Order Form */}
         <div className="px-6 py-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+          <div className="bg-white rounded-2xl shadow-xl p-6">
             
             {orderSuccess ? (
               <div className="text-center py-8">

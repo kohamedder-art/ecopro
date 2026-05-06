@@ -685,6 +685,10 @@ export const en = {
   "dashboard.avgOrderValue": "Average Order Value",
   "dashboard.successRate": "Success Rate",
   "dashboard.conversionRate": "Conversion Rate",
+  "dashboard.churnCheck": "Churn Check",
+  "dashboard.inventoryForecast": "Inventory Forecast",
+  "dashboard.omniIntelligence": "Omni Intelligence",
+  "dashboard.aiSummary": "AI Summary",
 
   // Seller Dashboard
   "seller.dashboard": "Seller Dashboard",

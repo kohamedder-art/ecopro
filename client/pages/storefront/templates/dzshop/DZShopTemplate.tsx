@@ -196,9 +196,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
             {/* Top Bar Notice */}
             {(showBanner || canManage) && (
-            <div className="text-white text-center py-2 text-sm font-bold relative" style={{ backgroundColor: 'var(--dz-primary)' }} data-edit-path="top-notice">
+            <div className="text-white text-center py-2 text-sm font-bold relative overflow-visible" style={{ backgroundColor: 'var(--dz-primary)' }} data-edit-path="top-notice">
                 {canManage && (
-                    <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+                    <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-50">
                         <button
                             onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'dzshop_show_banner', value: !showBanner }, '*')}
                             className="flex items-center gap-1 font-bold"
