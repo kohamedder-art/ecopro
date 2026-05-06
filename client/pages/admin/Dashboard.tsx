@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Search, Bell, Calendar, Star, TrendingUp, MoreHorizontal, ChevronDown, X, Loader2, MapPin
+  Search, Bell, Calendar, Star, TrendingUp, MoreHorizontal, ChevronDown, X, Loader2, MapPin, Package, Sparkles
 } from 'lucide-react';
 import { useTranslation } from "@/lib/i18n";
+import { useAI } from '@/hooks/useAI';
 import { useToast } from '@/components/ui/use-toast';
 import { getCurrentUser } from '@/lib/auth';
 
