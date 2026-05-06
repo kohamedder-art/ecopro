@@ -167,6 +167,18 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
         {/* ── LONG IMAGE STACK ── */}
         <div className="w-full flex flex-col">
+          {/* Hero Video (if set, shows first) */}
+          {settings?.hero_video_url && (
+            <video
+              src={settings.hero_video_url}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-auto block"
+              poster={landingImages[0]}
+            />
+          )}
           {landingImages.length > 0 ? (
             landingImages.map((imgUrl, index) => (
               <img
