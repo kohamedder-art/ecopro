@@ -976,11 +976,9 @@ export default function GoldTemplateEditor() {
       }
       const rect = container.getBoundingClientRect();
       const availW = rect.width;
-      const availH = rect.height;
       const naturalW = previewDevice === 'mobile' ? 375 : 768;
-      const naturalH = previewDevice === 'mobile' ? 812 : 1024;
-      const s = Math.min((availW * 0.95) / naturalW, (availH * 0.95) / naturalH);
-      setDeviceScale(Math.max(0.25, s));
+      const s = Math.max(0.25, (availW * 0.95) / naturalW);
+      setDeviceScale(Math.min(s, 2));
     };
 
     compute();
@@ -2470,7 +2468,7 @@ export default function GoldTemplateEditor() {
 
           <div
             ref={canvasContainerRef}
-            className="flex-1 w-full z-10 flex items-center justify-center overflow-hidden"
+            className="flex-1 w-full z-10 flex items-start justify-center overflow-x-hidden overflow-y-auto"
           >
             {previewDevice !== 'desktop' ? (
               /* Compensating wrapper: layout footprint = visual (scaled) size */
