@@ -2031,7 +2031,7 @@ export default function GoldTemplateEditor() {
 
   // ===== DESKTOP LAYOUT =====
   return (
-    <div dir="ltr" className="h-dvh flex overflow-hidden bg-slate-50 dark:bg-[#0A0D14] font-sans text-slate-800 dark:text-slate-200 w-full max-w-[90vw] mx-auto relative" style={{ isolation: 'isolate' }}>
+    <div dir="ltr" className="h-dvh flex overflow-hidden bg-slate-50 dark:bg-[#0A0D14] font-sans text-slate-800 dark:text-slate-200" style={{ isolation: 'isolate', zoom: 0.9 }}>
       {/* GLOW EFFECTS */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[120px] mix-blend-screen pointer-events-none z-0" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-violet-600/10 blur-[120px] mix-blend-screen pointer-events-none z-0" />
