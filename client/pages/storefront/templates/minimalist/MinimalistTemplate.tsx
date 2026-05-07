@@ -248,7 +248,7 @@ export default function MinimalistTemplate({ settings, products, canManage, stor
 
       {/* Why Us Section */}
       {(showFeatures || canManage) && (
-      <section className="bg-stone-900 text-stone-100 py-24 px-8 rounded-t-[60px] relative z-20" data-edit-path="features-section">
+      <section className="bg-stone-900 text-stone-100 py-24 px-8 rounded-t-[60px] relative z-20 overflow-visible" data-edit-path="features-section">
         {canManage && (
             <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                 <button

@@ -70,6 +70,8 @@ export default function LeRoiShopTemplate({
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProduct(p); setView('product'); } } }, [initialProductSlug, products]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -245,7 +247,8 @@ export default function LeRoiShopTemplate({
           delivery_type: selectedDeliveryType,
           customer_name: name,
           customer_phone: phone,
-          customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address'), fd.get('notes')].filter(Boolean).join(' - '),
+          customer_notes: fd.get('notes') as string,
+          customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address')].filter(Boolean).join(' - '),
           shipping_wilaya_id: selectedWilayaId,
         }),
       });
@@ -451,32 +454,41 @@ export default function LeRoiShopTemplate({
               {/* Image */}
               <div className="w-full md:w-1/2 flex flex-col">
                 <div className="rounded-xl overflow-hidden shadow-sm aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh]" style={{ backgroundColor: surfaceMuted }}>
-                  {videoEmbed && showVideo ? (
-                    <div className="w-full h-full">
-                      {videoEmbed.type === 'youtube' ? (
-                        <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                      ) : videoEmbed.type === 'video' ? (
-                        <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                      ) : (
-                        <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-full h-full cursor-pointer" onClick={() => setLightboxOpen(true)}>
-                      <img src={activeProduct.images?.[activeImageIndex] || activeProduct.images?.[0] || '/placeholder.png'} alt={activeProduct.title} className="w-full h-full object-cover" />
-                    </div>
-                  )}
+                  <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
+                    {videoEmbed && (
+                      <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
+                        {videoEmbed.type === 'youtube' ? (
+                          <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                        ) : videoEmbed.type === 'video' ? (
+                          <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                        ) : (
+                          <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
+                        )}
+                      </div>
+                    )}
+                    {activeProduct.images?.length > 0 ? activeProduct.images?.map((img: string, i: number) => (
+                      <img key={i} src={img} alt={activeProduct.title}
+                        className="w-full h-full object-cover shrink-0 cursor-pointer"
+                        style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+                        onClick={() => setLightboxOpen(true)}
+                      />
+                    )) : (
+                      <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: textMuted }}>
+                        <span>لا توجد صور</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {/* Thumbnails: video first */}
                 {(videoEmbed || activeProduct.images?.length > 1) && (
                   <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
                     {videoEmbed && (
-                      <button onClick={() => setShowVideo(true)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `3px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
+                      <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `3px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
                       </button>
                     )}
                     {activeProduct.images?.map((img: string, i: number) => (
-                      <button key={i} onClick={() => { setShowVideo(false); setActiveImageIndex(i); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${!showVideo && i === activeImageIndex ? accentColor : 'transparent'}`, opacity: !showVideo && i === activeImageIndex ? 1 : 0.6 }}>
+                      <button key={i} onClick={() => { setShowVideo(false); setActiveImageIndex(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${!showVideo && i === activeImageIndex ? accentColor : 'transparent'}`, opacity: !showVideo && i === activeImageIndex ? 1 : 0.6 }}>
                         <img src={img} alt="" className="w-full h-full object-contain" />
                       </button>
                     ))}
@@ -525,10 +537,25 @@ export default function LeRoiShopTemplate({
                       <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: accentColor + '20' }}>
                         <svg width="28" height="28" fill="none" stroke={accentColor} strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
                       </div>
-                      <h3 className="text-xl font-black mb-1" style={{ color: textColor }}>تم تسجيل طلبك بنجاح!</h3>
-                      <p className="text-sm" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب.</p>
+                      <h3 className="text-xl font-black mb-1" style={{ color: textColor }}>تم تسجيل طلبك بنجاح! 🎉</h3>
+                      <p className="text-sm mb-4" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
         <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={lastCustomerPhone || undefined} />
-                      <button onClick={goToCatalog} className="mt-4 px-6 py-2 rounded-lg text-white text-sm font-bold" style={{ backgroundColor: accentColor }}>
+                      <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: surfaceMuted }}>
+                        <div className="flex justify-between text-sm">
+                          <span>{activeProduct.title} × {quantity}</span>
+                          <span className="font-bold">{Math.round(productTotal ?? 0).toLocaleString()} {currency}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span style={{ color: textMuted }}>التوصيل</span>
+                          <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${currency}`}</span>
+                        </div>
+                        <div className="h-px bg-gray-200 my-1" />
+                        <div className="flex justify-between font-black">
+                          <span>المجموع</span>
+                          <span style={{ color: accentColor }}>{Math.round(grandTotal ?? 0).toLocaleString()} {currency}</span>
+                        </div>
+                      </div>
+                      <button onClick={goToCatalog} className="px-6 py-2 rounded-lg text-white font-bold" style={{ backgroundColor: accentColor }}>
                         تسوق مرة أخرى
                       </button>
                     </div>
@@ -546,8 +573,8 @@ export default function LeRoiShopTemplate({
                         {showCommune && (
                           <input name="commune" type="text" placeholder="البلدية" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />)}
                       </div>
-                      {(showHomeDelivery && showDeskDelivery) && (
-                        <div className="flex gap-2">
+                      <div className="flex gap-2">
+                        {showHomeDelivery && (
                           <button
                             type="button"
                             onClick={() => setSelectedDeliveryType('home')}
@@ -560,6 +587,8 @@ export default function LeRoiShopTemplate({
                           >
                             <span>التوصيل للمنزل</span>
                           </button>
+                        )}
+                        {showDeskDelivery && (
                           <button
                             type="button"
                             onClick={() => setSelectedDeliveryType('desk')}
@@ -572,8 +601,8 @@ export default function LeRoiShopTemplate({
                           >
                             <span>الاستلام من المكتب</span>
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                       {showAddress && (
                         <input name="address" type="text" placeholder="العنوان الكامل (إختياري)" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       )}
@@ -607,6 +636,7 @@ export default function LeRoiShopTemplate({
                           accentColor={accentColor}
                           textColor={textColor}
                           borderColor={inputBorderColor}
+                          hidePrice={true}
                         />
                       </div>
                       )}

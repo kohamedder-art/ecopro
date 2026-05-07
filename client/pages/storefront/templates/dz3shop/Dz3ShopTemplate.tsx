@@ -93,6 +93,9 @@ export default function Dz3ShopTemplate({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [detailVariant, setDetailVariant] = useState<SelectedVariant | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
 
   // ── Main Product ──
   const mainProduct = useMemo(() => {
@@ -161,7 +164,7 @@ export default function Dz3ShopTemplate({
   // ── Delivery System ──
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [deliveryType, setDeliveryType] = useState<'home' | 'desk'>('home');
-  const { showAddress, showCommune, showNotes } = useOrderFields(settings, deliveryType);
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, deliveryType);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
@@ -177,7 +180,8 @@ export default function Dz3ShopTemplate({
 
   // ── Pricing ──
   const detailPrice = detailVariant?.price ?? detailProduct?.price ?? 0;
-  const total = detailPrice + deliveryFee;
+  const productTotal = selectedOffer ? selectedOffer.bundle_price : detailPrice * quantity;
+  const total = productTotal + deliveryFee;
 
   // ── Order State ──
   const [customerName, setCustomerName] = useState('');
@@ -202,14 +206,15 @@ export default function Dz3ShopTemplate({
           store_slug: storeSlug,
           product_id: detailProduct.id,
           ...(detailVariant?.id ? { variant_id: detailVariant.id } : {}),
-          quantity: selectedOffer?.quantity ?? 1,
+          quantity,
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-          total_price: selectedOffer ? selectedOffer.bundle_price : total,
+          total_price: selectedOffer ? selectedOffer.bundle_price : productTotal,
           delivery_fee: deliveryFee,
           delivery_type: deliveryType,
           customer_name: customerName,
           customer_phone: customerPhone,
-          customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune, customerNotes].filter(Boolean).join(' - '),
+          customer_notes: customerNotes,
+          customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune].filter(Boolean).join(' - '),
           shipping_wilaya_id: selectedWilayaId,
         }),
       });
@@ -250,10 +255,25 @@ export default function Dz3ShopTemplate({
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <Check size={32} style={{ color: accentColor }} />
           </div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: textColor }}>تم تأكيد طلبك!</h2>
-          <p className="mb-6" style={{ color: textMuted }}>سنتواصل معك قريباً لتأكيد الطلب</p>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: textColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
+          <p className="mb-6" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
           <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
-          <button onClick={() => { setOrderSuccess(false); setCustomerName(''); setCustomerPhone(''); setSelectedWilayaId(null); }} className="mt-6 px-6 py-2 rounded-lg text-white font-bold" style={{ backgroundColor: accentColor }}>تسوق مرة أخرى</button>
+          <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: surfaceMuted }}>
+            <div className="flex justify-between text-sm">
+              <span>{detailProduct.title} × {quantity}</span>
+              <span className="font-bold">{Math.round(productTotal ?? 0).toLocaleString()} {currency}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: textMuted }}>التوصيل</span>
+              <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${currency}`}</span>
+            </div>
+            <div className="h-px bg-gray-200 my-1" />
+            <div className="flex justify-between font-black">
+              <span>المجموع</span>
+              <span style={{ color: accentColor }}>{Math.round(total).toLocaleString()} {currency}</span>
+            </div>
+          </div>
+          <button onClick={() => { setOrderSuccess(false); setCustomerName(''); setCustomerPhone(''); setSelectedWilayaId(null); }} className="px-6 py-2 rounded-lg text-white font-bold" style={{ backgroundColor: accentColor }}>تسوق مرة أخرى</button>
         </div>
       </div>
     );
@@ -470,11 +490,9 @@ export default function Dz3ShopTemplate({
 
                 {/* Main display: video or image */}
                 <div className="rounded-xl overflow-hidden shadow-sm relative aspect-[4/5] lg:aspect-auto lg:flex-1 lg:max-h-[70vh]" style={{ backgroundColor: surfaceColor }}>
-                  {videoEmbed && showVideo ? (
-                    <div className="w-full h-full relative">
-                      {/* Auto-playing video thumbnail - same size as images */}
-                      <div 
-                        className="w-full h-full rounded-xl overflow-hidden shadow-lg cursor-pointer group"
+                  <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
+                    {videoEmbed && (
+                      <div className="h-full shrink-0 relative group" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
                         onClick={() => {
                           if (videoEmbed.type === 'youtube') {
                             setVideoPreview({ type: 'youtube', url: `https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1` });
@@ -486,58 +504,43 @@ export default function Dz3ShopTemplate({
                         }}
                       >
                         {videoEmbed.type === 'youtube' ? (
-                          <img 
-                            src={`https://img.youtube.com/vi/${videoEmbed.id}/0.jpg`} 
-                            alt="Video thumbnail" 
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={`https://img.youtube.com/vi/${videoEmbed.id}/0.jpg`} alt="Video thumbnail" className="w-full h-full object-cover cursor-pointer" />
                         ) : videoEmbed.type === 'video' ? (
-                          <video 
-                            className="w-full h-full object-cover" 
-                            src={videoEmbed.url} 
-                            autoPlay 
-                            muted 
-                            loop 
-                            playsInline 
-                          />
+                          <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                          <div className="w-full h-full flex items-center justify-center bg-slate-800 cursor-pointer">
                             <Play size={32} style={{ color: surfaceTextColor }} />
                           </div>
                         )}
-                        {/* Expand icon overlay */}
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                           <Maximize2 size={32} className="text-white" />
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-full group cursor-pointer" onClick={() => setZoomState({ images: detailImages, idx: activeImageIndex })}>
-                      <img src={detailImages[activeImageIndex] || '/placeholder.png'} alt={detailProduct.title} className="w-full h-full object-cover" />
-                      {detailImages.length > 1 && (
-                        <>
-                          <div className="absolute inset-y-0 left-0 flex items-center px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button className="w-8 h-8 rounded-full shadow flex items-center justify-center" style={{ backgroundColor: surfaceColor + 'cc' }} onClick={(e) => { e.stopPropagation(); setActiveImageIndex(i => (i + 1) % detailImages.length); }}><ChevronLeft size={16} style={{ color: surfaceTextColor }} /></button>
-                          </div>
-                          <div className="absolute inset-y-0 right-0 flex items-center px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button className="w-8 h-8 rounded-full shadow flex items-center justify-center" style={{ backgroundColor: surfaceColor + 'cc' }} onClick={(e) => { e.stopPropagation(); setActiveImageIndex(i => (i - 1 + detailImages.length) % detailImages.length); }}><ChevronRight size={16} style={{ color: surfaceTextColor }} /></button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+                    )}
+                    {detailImages.length > 0 ? detailImages.map((img, i) => (
+                      <img key={i} src={img} alt={detailProduct.title}
+                        className="w-full h-full object-cover shrink-0 cursor-pointer"
+                        style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+                        onClick={() => setZoomState({ images: detailImages, idx: i })}
+                      />
+                    )) : (
+                      <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: surfaceTextMuted }}>
+                        <ShoppingBag size={48} strokeWidth={1} />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Thumbnails: video first */}
                 {(videoEmbed || detailImages.length > 1) && (
                   <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
                     {videoEmbed && (
-                      <button onClick={() => setShowVideo(true)} className="w-14 h-14 rounded overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ border: `2px solid ${showVideo ? accentColor : surfaceBorderColor}`, backgroundColor: '#000' }}>
+                      <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="w-14 h-14 rounded overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ border: `2px solid ${showVideo ? accentColor : surfaceBorderColor}`, backgroundColor: '#000' }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
                       </button>
                     )}
                     {detailImages.map((img, i) => (
-                      <button key={i} onClick={() => { setShowVideo(false); setActiveImageIndex(i); }} className="w-14 h-14 rounded overflow-hidden flex-shrink-0" style={{ border: `2px solid ${!showVideo && i === activeImageIndex ? accentColor : surfaceBorderColor}` }}>
+                      <button key={i} onClick={() => { setShowVideo(false); setActiveImageIndex(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="w-14 h-14 rounded overflow-hidden flex-shrink-0" style={{ border: `2px solid ${!showVideo && i === activeImageIndex ? accentColor : surfaceBorderColor}` }}>
                         <img src={img} className="w-full h-full object-cover" alt="" />
                       </button>
                     ))}
@@ -574,6 +577,7 @@ export default function Dz3ShopTemplate({
                       textColor={surfaceTextColor}
                       borderColor={surfaceBorderColor}
                       className="mb-4"
+                      hidePrice={true}
                     />
                   )}
 
@@ -616,64 +620,72 @@ export default function Dz3ShopTemplate({
                       </div>
                     </div>
 
-                    {/* Wilaya */}
-                    <div className="relative">
-                      <MapPin className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
-                      <select
-                        value={selectedWilayaId ?? ''}
-                        onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)}
-                        className="w-full py-2.5 pr-9 pl-3 rounded-lg text-right text-sm outline-none appearance-none transition-all"
-                        style={{
-                          backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff',
-                          color: surfaceTextColor,
-                          border: `1px solid ${surfaceBorderColor}`,
-                        }}
-                        onFocus={(e) => e.currentTarget.style.borderColor = accentColor}
-                        onBlur={(e) => e.currentTarget.style.borderColor = surfaceBorderColor}
-                      >
-                        <option value="">اختر ولايتك</option>
-                        {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
-                      </select>
+                    {/* Wilaya + Commune */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="relative">
+                        <MapPin className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
+                        <select
+                          value={selectedWilayaId ?? ''}
+                          onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)}
+                          className="w-full py-2.5 pr-9 pl-3 rounded-lg text-right text-sm outline-none appearance-none transition-all"
+                          style={{
+                            backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff',
+                            color: surfaceTextColor,
+                            border: `1px solid ${surfaceBorderColor}`,
+                          }}
+                          onFocus={(e) => e.currentTarget.style.borderColor = accentColor}
+                          onBlur={(e) => e.currentTarget.style.borderColor = surfaceBorderColor}
+                        >
+                          <option value="">اختر ولايتك</option>
+                          {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
+                        </select>
+                      </div>
+                      {showCommune && (
+                        <div className="relative">
+                          <input type="text" placeholder="البلدية" className="w-full py-2.5 px-3 rounded-lg text-sm outline-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff', color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} />
+                        </div>
+                      )}
                     </div>
-                    {showAddress && <div><label className="text-xs font-bold mb-1 block" style={{ color: surfaceTextMuted }}>العنوان</label><input type="text" placeholder="العنوان" className="w-full py-2.5 px-3 rounded-lg text-sm outline-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff', color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} /></div>}
-                    {showCommune && <div><label className="text-xs font-bold mb-1 block" style={{ color: surfaceTextMuted }}>البلدية</label><input type="text" placeholder="البلدية" className="w-full py-2.5 px-3 rounded-lg text-sm outline-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff', color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} /></div>}
-                    {showNotes && <div><label className="text-xs font-bold mb-1 block" style={{ color: surfaceTextMuted }}>ملاحظات</label><textarea placeholder="ملاحظات" rows={2} className="w-full py-2.5 px-3 rounded-lg text-sm outline-none resize-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff', color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} /></div>}
+                    {showAddress && <div><input type="text" placeholder="العنوان" className="w-full py-2.5 px-3 rounded-lg text-sm outline-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff', color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} /></div>}
+                    {showNotes && <div><textarea placeholder="ملاحظات" rows={2} className="w-full py-2.5 px-3 rounded-lg text-sm outline-none resize-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.06)' : '#fff', color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} /></div>}
+
+                    {/* Quantity */}
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm font-bold" style={{ color: surfaceTextColor }}>الكمية</span>
+                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${surfaceBorderColor}` }}>
+                        <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-3 py-1.5 text-lg font-bold hover:bg-black/5 transition-colors" style={{ color: surfaceTextMuted }}>−</button>
+                        <span className="px-4 py-1.5 font-bold text-sm" style={{ color: surfaceTextColor, borderLeft: `1px solid ${surfaceBorderColor}`, borderRight: `1px solid ${surfaceBorderColor}` }}>{quantity}</span>
+                        <button type="button" onClick={() => setQuantity(q => q + 1)} className="px-3 py-1.5 text-lg font-bold hover:bg-black/5 transition-colors" style={{ color: surfaceTextMuted }}>+</button>
+                      </div>
+                    </div>
 
                     {/* Delivery Type */}
                     <div className="py-2">
                       <div className="text-sm font-bold mb-2" style={{ color: surfaceTextColor }}>مكان التوصيل</div>
                       <div className="flex gap-6">
-                        <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: surfaceTextMuted }}>
-                          <input
-                            type="radio"
-                            name="delivery"
-                            checked={deliveryType === 'home'}
-                            onChange={() => setDeliveryType('home')}
-                            style={{ accentColor }}
-                          />
-                          <Home size={14} />
-                          <span>للمنزل</span>
-                        </label>
-                        <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: surfaceTextMuted }}>
-                          <input
-                            type="radio"
-                            name="delivery"
-                            checked={deliveryType === 'desk'}
-                            onChange={() => setDeliveryType('desk')}
-                            style={{ accentColor }}
-                          />
-                          <Building2 size={14} />
-                          <span>لمكتب التوصيل</span>
-                        </label>
+                        {showHomeDelivery && (
+                          <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: surfaceTextMuted }}>
+                            <input type="radio" name="delivery" checked={deliveryType === 'home'} onChange={() => setDeliveryType('home')} style={{ accentColor }} />
+                            <Home size={14} />
+                            <span>للمنزل</span>
+                          </label>
+                        )}
+                        {showDeskDelivery && (
+                          <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: surfaceTextMuted }}>
+                            <input type="radio" name="delivery" checked={deliveryType === 'desk'} onChange={() => setDeliveryType('desk')} style={{ accentColor }} />
+                            <Building2 size={14} />
+                            <span>لمكتب التوصيل</span>
+                          </label>
+                        )}
                       </div>
                     </div>
 
                     {/* Receipt + Buy button */}
                     <div className="pt-4 space-y-3">
                       <div className="rounded-xl p-3 space-y-1.5 text-sm" style={{ backgroundColor: accentColor + '08', border: `1px solid ${accentColor}20` }}>
-                        <div className="flex justify-between" style={{ color: surfaceTextMuted }}><span>سعر المنتج</span><span style={{ color: surfaceTextColor }}>{Math.round(detailPrice ?? 0).toLocaleString()} {currency}</span></div>
+                        <div className="flex justify-between" style={{ color: surfaceTextMuted }}><span>سعر المنتج {selectedOffer ? `(${selectedOffer.quantity} قطعة)` : `(${quantity})`}</span><span style={{ color: surfaceTextColor }}>{Math.round(productTotal ?? 0).toLocaleString()} {currency}</span></div>
                         <div className="flex justify-between" style={{ color: surfaceTextMuted }}><span>التوصيل</span><span style={{ color: deliveryFee > 0 ? surfaceTextColor : accentColor }}>{deliveryFee > 0 ? `${deliveryFee} ${currency}` : 'اختر الولاية'}</span></div>
-                        <div className="flex justify-between font-bold pt-1" style={{ borderTop: `1px solid ${accentColor}20`, color: surfaceTextColor }}><span>المجموع</span><span style={{ color: accentColor }}>{Math.round(total ?? 0).toLocaleString()} {currency}</span></div>
+                        <div className="flex justify-between font-bold pt-1" style={{ borderTop: `1px solid ${accentColor}20`, color: surfaceTextColor }}><span>المجموع</span><span style={{ color: accentColor }}>{Math.round(productTotal + deliveryFee).toLocaleString()} {currency}</span></div>
                       </div>
                       <button onClick={handleOrder} disabled={isSubmitting} className="w-full h-12 text-white font-bold rounded-lg transition-opacity disabled:opacity-50" style={{ backgroundColor: accentColor }}>
                         <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_button_text')}>{isSubmitting ? 'جاري المعالجة...' : buttonText}</span>

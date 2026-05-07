@@ -14,13 +14,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  EyeOff
+  EyeOff,
+  Home,
+  Building2
 } from 'lucide-react';
 import { TemplateProps } from '../types';
 
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
+import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
+import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 
 const FALLBACK_PRODUCTS = [
   {
@@ -34,6 +38,7 @@ const FALLBACK_PRODUCTS = [
       "https://images.unsplash.com/photo-1610944230741-9a9978434311?auto=format&fit=crop&q=80&w=600",
       "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&q=80&w=600"
     ],
+    videoUrl: '',
     features: ["65W Fast Charge", "Dual USB-C", "Safety Certified"]
   },
   {
@@ -47,6 +52,7 @@ const FALLBACK_PRODUCTS = [
       "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&q=80&w=600",
       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=600"
     ],
+    videoUrl: '',
     features: ["ANC Technology", "Waterproof IPX7", "Deep Bass"]
   }
 ];
@@ -62,6 +68,14 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
   const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+  const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerCommune, setCustomerCommune] = useState('');
+  const [customerNotes, setCustomerNotes] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
+  const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
 
   // Variant and Offer support
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -84,9 +98,18 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     badge: "شائع",
     description: p.description || "Un produit fantastique avec de superbes caractéristiques.",
     images: p.images && p.images.length > 0 ? p.images : FALLBACK_PRODUCTS[0].images,
+    videoUrl: (p as any)?.metadata?.video_url || '',
     features: ["جودة عالية", "توصيل سريع", "ضمان"],
     variants: p.variants || []
   })) : FALLBACK_PRODUCTS;
+
+const parseVideoEmbed = (videoUrl: string) => {
+  if (!videoUrl) return null;
+  const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (yt) return { type: 'youtube' as const, id: yt[1] };
+  if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
+  return { type: 'iframe' as const, url: videoUrl };
+};
 
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
     if (canManage) { window.parent.postMessage({ type: "TEMPLATE_UPDATE_SETTING", key, value: e.currentTarget.textContent || "" }, "*"); //
@@ -116,21 +139,25 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
         store_slug: storeSlug || settings?.store_name || "needdz",
         product_id: selectedProduct.id,
         ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
-        quantity: selectedOffer?.quantity || 1,
+        quantity: selectedOffer?.quantity || quantity,
         ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-        total_price: selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? selectedProduct.price ?? 0),
+        total_price: selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? selectedProduct.price ?? 0) * quantity,
         delivery_fee: deliveryFee,
-        delivery_type: 'desk',
+        delivery_type: selectedDeliveryType,
         customer_name: fd.get('name'),
         customer_phone: fd.get('phone'),
-        customer_address: [selectedWilaya?.labelAR, fd.get('commune')].filter(Boolean).join(' - ')
+        customer_address: [selectedWilaya?.labelAR, customerCommune || fd.get('commune'), customerAddress].filter(Boolean).join(' - '),
+        customer_notes: customerNotes,
       };
       const res = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      const data = await res.json();
       if (!res.ok) throw new Error('Order error');
+      setLastOrderId(data.order?.id || null);
+      setLastTelegramUrl(data.telegramStartUrl || null);
       setOrderStatus('success');
     } catch(err) {
       console.error(err);
@@ -149,7 +176,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
         
         {/* Urgent Header */}
         {(showCountdown || canManage) && (
-        <div className="text-white px-4 py-2 text-[11px] font-bold flex justify-between items-center sticky top-0 z-50 relative" style={{ backgroundColor: accentColor }} data-edit-path="countdown-header">
+        <div className="text-white px-4 py-2 text-[11px] font-bold flex justify-between items-center sticky top-0 z-50 relative overflow-visible" style={{ backgroundColor: accentColor }} data-edit-path="countdown-header">
           {canManage && (
               <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                   <button
@@ -199,7 +226,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
         <main className="flex-1 pb-32">
           {/* Trust Banner */}
           {(showTrustBanner || canManage) && (
-          <div className="flex overflow-x-auto py-4 px-6 gap-4 no-scrollbar bg-slate-50/50 relative" data-edit-path="trust-banner">
+          <div className="relative overflow-visible" data-edit-path="trust-banner">
             {canManage && (
                 <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                     <button
@@ -210,8 +237,8 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
                     </button>
                 </div>
             )}
-            {showTrustBanner && (
-            <>
+            {showTrustBanner ? (
+            <div className="flex overflow-x-auto py-4 px-6 gap-4 no-scrollbar bg-slate-50/50">
             {[
               { icon: <Truck size={16}/>, text: "توصيل 58 ولاية" },
               { icon: <ShieldCheck size={16}/>, text: "الدفع عند الاستلام" },
@@ -222,11 +249,10 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
                 <span className="text-[10px] font-bold text-slate-700 whitespace-nowrap">{item.text}</span>
               </div>
             ))}
-            </>
-            )}
-            {canManage && !showTrustBanner && (
-                <span className="text-slate-400 text-[10px]">🛡️ Trust banner hidden</span>
-            )}
+            </div>
+            ) : canManage ? (
+                <div className="py-4 px-6 bg-slate-50/50"><span className="text-slate-400 text-[10px]">🛡️ Trust banner hidden</span></div>
+            ) : null}
           </div>
           )}
 
@@ -236,11 +262,37 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
               <div key={product.id} className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm group">
                 {/* Image Gallery */}
                 <div className="relative aspect-square overflow-hidden bg-slate-100">
-                   <img
-                    src={product.images[currentImgIdx[product.id] || 0]}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    alt={product.name}
-                  />
+                  <div data-cr className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}
+                    onScroll={e => {
+                      const idx = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth);
+                      setCurrentImgIdx(prev => ({ ...prev, [product.id]: idx }));
+                    }}
+                  >
+                    {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
+                      const ve = parseVideoEmbed(product.videoUrl);
+                      return (
+                        <div className="w-full h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
+                          {ve.type === 'youtube' ? (
+                            <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ve.id}?autoplay=1&mute=1&loop=1&playlist=${ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                          ) : ve.type === 'video' ? (
+                            <video className="w-full h-full object-cover" src={ve.url} autoPlay muted loop playsInline />
+                          ) : (
+                            <iframe className="w-full h-full" src={ve.url} allowFullScreen />
+                          )}
+                        </div>
+                      );
+                    })()}
+                    {product.images.length > 0 ? product.images.map((img: string, i: number) => (
+                      <img key={i} src={img} alt={product.name}
+                        className="w-full h-full object-cover shrink-0"
+                        style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+                      />
+                    )) : (
+                      <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: '#94a3b8' }}>
+                        <ShoppingBag size={48} strokeWidth={1} />
+                      </div>
+                    )}
+                  </div>
                   
                   {/* Badge */}
                   <div className="absolute top-4 left-4 bg-black text-white px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1">
@@ -249,14 +301,17 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
 
                   {/* Slider Controls */}
                   <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
-                    {product.images.map((_: any, idx: number) => (
+                    {[...Array(product.images.length + (product.videoUrl ? 1 : 0))].map((_, idx) => (
                       <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${ (currentImgIdx[product.id] || 0) === idx ? 'w-6 bg-emerald-500' : 'w-1.5 bg-white/50'}`}></div>
                     ))}
                   </div>
 
                   {product.images.length > 1 && (
                       <button 
-                        onClick={() => nextImg(product.id, product.images.length)}
+                        onClick={e => {
+                          const carousel = (e.currentTarget as HTMLElement).parentElement?.querySelector('[data-cr]') as HTMLElement;
+                          if (carousel) carousel.scrollBy({ left: carousel.clientWidth, behavior: 'smooth' });
+                        }}
                         className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
                       >
                         <ChevronRight size={20} />
@@ -304,7 +359,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
 
           {/* Social Proof Section */}
           {(showSocialProof || canManage) && (
-          <section className="px-6 py-10 bg-slate-900 text-white rounded-t-[40px] mt-10 relative" data-edit-path="social-proof">
+          <section className="px-6 py-10 bg-slate-900 text-white rounded-t-[40px] mt-10 relative overflow-visible" data-edit-path="social-proof">
             {canManage && (
                 <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                     <button
@@ -357,18 +412,35 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
 
               {orderStatus === 'success' ? (
                 <div className="py-16 text-center space-y-6">
-                  <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                    <CheckCircle2 size={56} />
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: accentColor + '20' }}>
+                    <CheckCircle2 size={40} style={{ color: accentColor }} />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-black">مبروك!</h2>
-                    <p className="text-slate-500 mt-2 px-6">تم تسجيل طلبك. سنتصل بك على <span className="font-bold text-slate-900">رقم هاتفك</span> للتأكيد.</p>
+                    <h2 className="text-2xl font-black" style={{ color: accentColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
+                    <p className="text-slate-500 mt-2 px-6">سنتصل بك قريباً لتأكيد الطلب</p>
+                  </div>
+                  <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={String(new FormData(document.querySelector('form')!)?.get('phone') || '')} />
+                  <div className="text-right rounded-xl p-4 space-y-2 border border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                    <div className="flex justify-between text-sm">
+                      <span>{selectedProduct?.name || 'المنتج'} × {selectedOffer?.quantity || quantity}</span>
+                      <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">التوصيل</span>
+                      <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
+                    </div>
+                    <div className="h-px bg-slate-200 my-1" />
+                    <div className="flex justify-between font-black">
+                      <span>المجموع</span>
+                      <span style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                    </div>
                   </div>
                   <button 
                     onClick={() => setIsCheckoutOpen(false)}
-                    className="w-full bg-slate-900 text-white font-bold py-5 rounded-2xl"
+                    className="w-full text-white font-bold py-5 rounded-2xl"
+                    style={{ backgroundColor: accentColor }}
                   >
-                    العودة للمتجر
+                    تسوق مرة أخرى
                   </button>
                 </div>
               ) : (
@@ -404,21 +476,23 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
                       accentColor={accentColor} 
                       textColor="#1e293b" 
                       borderColor="#e2e8f0" 
+                      hidePrice={true}
                     />
                   )}
 
                   <form className="space-y-5" onSubmit={handleOrder}>
                     <div className="grid gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">الاسم واللقب</label>
-                        <input required name="name" type="text" placeholder="مثال: محمد علامي" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm focus:ring-2 ring-emerald-500/20 focus:border-emerald-500 outline-none" />
-                      </div>
-                      
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">رقم الهاتف (إلزامي)</label>
-                        <div className="relative">
-                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                          <input required name="phone" type="tel" placeholder="05 / 06 / 07 XX XX XX XX" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 pl-12 pr-5 text-sm focus:ring-2 ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">الاسم واللقب</label>
+                          <input required name="name" type="text" placeholder="مثال: محمد علامي" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm focus:ring-2 ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">رقم الهاتف</label>
+                          <div className="relative">
+                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input required name="phone" type="tel" placeholder="05 / 06 / 07 XX XX XX XX" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 pl-12 pr-5 text-sm focus:ring-2 ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                          </div>
                         </div>
                       </div>
 
@@ -430,28 +504,78 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
                             {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                           </select>
                         </div>
+                        {showCommune && (
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">البلدية</label>
+                            <input name="commune" type="text" placeholder="المدينة" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm outline-none" />
+                          </div>
+                        )}
+                      </div>
+
+                      {showAddress && (
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">البلدية</label>
-                          <input required name="commune" type="text" placeholder="المدينة" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm outline-none" />
+                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">العنوان</label>
+                          <input name="address" type="text" placeholder="أدخل عنوانك" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm outline-none" />
                         </div>
+                      )}
+
+                      {showNotes && (
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">ملاحظات</label>
+                          <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm outline-none resize-none" rows={2} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="pt-2">
+                      <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider mb-2 block">الكمية</label>
+                      <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-1">
+                        <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border border-slate-200 rounded-lg font-bold text-xl text-slate-600 active:bg-slate-100 flex items-center justify-center">−</button>
+                        <span className="font-black text-lg">{quantity}</span>
+                        <button type="button" onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 bg-white border border-slate-200 rounded-lg font-bold text-xl text-slate-600 active:bg-slate-100 flex items-center justify-center">+</button>
                       </div>
                     </div>
 
-                    <div className="bg-emerald-50 p-4 rounded-2xl flex items-start gap-3 border border-emerald-100">
-                      <Truck className="text-emerald-600 mt-0.5" size={18} />
-                      <div className="flex-1">
-                        {selectedWilayaId ? (
-                          <p className="text-[11px] text-emerald-800 leading-relaxed font-medium flex justify-between items-center">
-                            <span>سعر التوصيل:</span>
-                            <span className="font-black text-sm">{deliveryFee} دج</span>
-                          </p>
-                        ) : (
-                          <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
-                            الدفع عند الاستلام بعد التحقق من المنتج.
-                          </p>
-                        )}
+                    {/* Delivery Type Buttons */}
+                    {(showHomeDelivery || showDeskDelivery) && (
+                      <div>
+                        <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider mb-2 block">نوع التوصيل</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {showHomeDelivery && (
+                            <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'home' ? accentColor : '#374151' }}>
+                              <Home size={16} />
+                              <span>التوصيل للمنزل</span>
+                            </button>
+                          )}
+                          {showDeskDelivery && (
+                            <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'desk' ? accentColor : '#374151' }}>
+                              <Building2 size={16} />
+                              <span>الاستلام من المكتب</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Price Breakdown */}
+                    {selectedWilayaId && (
+                      <div className="bg-slate-50 p-4 rounded-2xl space-y-2 border border-slate-200">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-bold text-slate-700">سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
+                          <span className="font-black">{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="font-bold text-slate-700">التوصيل</span>
+                          <span className="font-black">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
+                        </div>
+                        <div className="h-px bg-slate-200" />
+                        <div className="flex justify-between">
+                          <span className="font-black text-lg">المجموع</span>
+                          <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                        </div>
+                      </div>
+                    )}
 
                     <button 
                       disabled={orderStatus === 'loading'}

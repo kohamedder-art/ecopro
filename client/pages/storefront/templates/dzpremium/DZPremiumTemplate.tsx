@@ -205,7 +205,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
             <section className="relative bg-white">
                 <div className="max-w-4xl mx-auto px-4 pt-8 pb-12 text-center">
                     {(showBadge || canManage) && (
-                    <div className="mb-4 flex justify-center relative" data-edit-path="badge">
+                    <div className="mb-4 flex justify-center relative overflow-visible" data-edit-path="badge">
                         {canManage && (
                             <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                                 <button
@@ -263,7 +263,7 @@ export default function DZPremiumTemplate({ settings, products, canManage, store
 
             {/* Why Us Section */}
             {(showBenefits || canManage) && (
-            <section className="bg-gray-50 py-12 px-4 relative" data-edit-path="benefits">
+            <section className="bg-gray-50 py-12 px-4 relative overflow-visible" data-edit-path="benefits">
                 {canManage && (
                     <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                         <button

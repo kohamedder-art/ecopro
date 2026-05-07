@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
@@ -134,7 +134,8 @@ export default function Bassem28Template({
   // ── Variant & pricing ──
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const productPrice = selectedVariant?.price ?? mainProduct?.price ?? 0;
-  const total = productPrice + deliveryFee;
+  const [quantity, setQuantity] = useState(1);
+  const total = (productPrice * quantity) + deliveryFee;
 
   // ── Order State ──
   const [customerName, setCustomerName] = useState('');
@@ -151,6 +152,8 @@ export default function Bassem28Template({
   const [selectedMainImage, setSelectedMainImage] = useState(0);
   const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   useEffect(() => {
@@ -175,14 +178,15 @@ export default function Bassem28Template({
           store_slug: storeSlug,
           product_id: mainProduct.id,
           ...(selectedVariant?.id ? { variant_id: selectedVariant.id } : {}),
-          quantity: selectedOffer?.quantity ?? 1,
+          quantity: selectedOffer?.quantity ?? quantity,
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: selectedOffer ? selectedOffer.bundle_price : total,
           delivery_fee: deliveryFee,
           delivery_type: selectedDeliveryType,
           customer_name: customerName,
           customer_phone: customerPhone,
-          customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune, customerNotes].filter(Boolean).join(' - '),
+          customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune].filter(Boolean).join(' - '),
+          customer_notes: customerNotes,
           shipping_wilaya_id: selectedWilayaId,
         }),
       });
@@ -237,12 +241,27 @@ export default function Bassem28Template({
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <Check size={32} style={{ color: accentColor }} />
           </div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: textColor }}>تم تأكيد طلبك!</h2>
-          <p className="mb-6" style={{ color: textMuted }}>سنتواصل معك قريباً لتأكيد الطلب</p>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: textColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
+          <p className="mb-6" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
           <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
+          <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: surfaceMuted }}>
+            <div className="flex justify-between text-sm">
+              <span>{mainProduct.title} × {quantity}</span>
+              <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || productPrice * quantity)).toLocaleString()} {currency}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: textMuted }}>التوصيل</span>
+              <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${currency}`}</span>
+            </div>
+            <div className="h-px bg-gray-200 my-1" />
+            <div className="flex justify-between font-black">
+              <span>المجموع</span>
+              <span style={{ color: accentColor }}>{Math.round(total).toLocaleString()} {currency}</span>
+            </div>
+          </div>
           <button
             onClick={() => { setOrderSuccess(false); setCustomerName(''); setCustomerPhone(''); setSelectedWilayaId(null); }}
-            className="mt-6 px-6 py-2 rounded-lg text-white"
+            className="px-6 py-2 rounded-lg text-white font-bold"
             style={{ backgroundColor: accentColor }}
           >
             تسوق مرة أخرى
@@ -317,32 +336,41 @@ export default function Bassem28Template({
             <div className="w-full lg:w-[48%] flex flex-col gap-3 lg:self-stretch">
               {/* Main display: video or image */}
               <div className="rounded-2xl overflow-hidden shadow-xl aspect-[4/5] lg:aspect-auto lg:flex-1 min-h-[300px] lg:max-h-[70vh]" style={{ backgroundColor: surfaceMuted }}>
-                {videoEmbed && showVideo ? (
-                  <div className="relative w-full h-full" style={{ paddingTop: videoEmbed.type !== 'video' ? '0' : undefined }}>
-                    {videoEmbed.type === 'youtube' ? (
-                      <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                    ) : videoEmbed.type === 'video' ? (
-                      <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                    ) : (
-                      <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                    )}
-                  </div>
-                ) : (
-                  <div className="w-full h-full cursor-pointer" onClick={() => setZoomState({ images: mainImages, idx: selectedMainImage })}>
-                    <img src={mainImages[selectedMainImage] || '/placeholder.png'} alt={mainProduct.title} className="w-full h-full object-cover transition-transform hover:scale-105 duration-700" />
-                  </div>
-                )}
+                <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
+                  {videoEmbed && (
+                    <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
+                      {videoEmbed.type === 'youtube' ? (
+                        <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                      ) : videoEmbed.type === 'video' ? (
+                        <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                      ) : (
+                        <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
+                      )}
+                    </div>
+                  )}
+                  {mainImages.length > 0 ? mainImages.map((img, i) => (
+                    <img key={i} src={img} alt={mainProduct.title}
+                      className="w-full h-full object-cover shrink-0 cursor-pointer"
+                      style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+                      onClick={() => setZoomState({ images: mainImages, idx: i })}
+                    />
+                  )) : (
+                    <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: textMuted }}>
+                      <ShoppingBag size={48} strokeWidth={1} />
+                    </div>
+                  )}
+                </div>
               </div>
               {/* Thumbnails: video first, then images */}
               {(videoEmbed || mainImages.length > 1) && (
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {videoEmbed && (
-                    <button onClick={() => setShowVideo(true)} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `2px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
+                    <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `2px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
                     </button>
                   )}
                   {mainImages.map((img, i) => (
-                    <button key={i} onClick={() => { setShowVideo(false); setSelectedMainImage(i); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden" style={{ border: `2px solid ${!showVideo && selectedMainImage === i ? accentColor : 'transparent'}` }}>
+                    <button key={i} onClick={() => { setShowVideo(false); setSelectedMainImage(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden" style={{ border: `2px solid ${!showVideo && selectedMainImage === i ? accentColor : 'transparent'}` }}>
                       <img src={img} className="w-full h-full object-cover" alt="" />
                     </button>
                   ))}
@@ -389,7 +417,7 @@ export default function Bassem28Template({
                 <h3 className="text-sm font-black text-center pb-2" style={{ color: surfaceTextColor, borderBottom: `1px solid ${surfaceBorderColor}` }}>إستمارة الطلب</h3>
 
                 {offers.length > 0 && (
-                  <OfferSelector offers={offers} unitPrice={mainProduct?.price || 0} currency={currency} selectedOfferId={selectedOffer?.offer_id ?? null} onSelect={handleOfferSelect} accentColor={accentColor} textColor={surfaceTextColor} borderColor={surfaceBorderColor} />
+                  <OfferSelector offers={offers} unitPrice={mainProduct?.price || 0} currency={currency} selectedOfferId={selectedOffer?.offer_id ?? null} onSelect={handleOfferSelect} accentColor={accentColor} textColor={surfaceTextColor} borderColor={surfaceBorderColor} hidePrice={true} />
                 )}
 
                 <div className="grid grid-cols-2 gap-2">
@@ -403,28 +431,66 @@ export default function Bassem28Template({
                   </div>
                 </div>
 
-                <div className="relative">
-                  <MapPin className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
-                  <select value={selectedWilayaId ?? ''} onChange={e => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full rounded-lg py-2 pr-9 pl-3 text-sm outline-none font-bold appearance-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
-                    <option value="">اختر الولاية</option>
-                    {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
-                  </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <MapPin className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
+                    <select value={selectedWilayaId ?? ''} onChange={e => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full rounded-lg py-2 pr-9 pl-3 text-sm outline-none font-bold appearance-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
+                      <option value="">اختر الولاية</option>
+                      {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
+                    </select>
+                  </div>
+                  {showCommune && (
+                    <div className="relative">
+                      <input type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full rounded-lg py-2 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                    </div>
+                  )}
                 </div>
 
                 {showAddress && <input type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full rounded-lg py-2 px-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />}
-                {showCommune && <input type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full rounded-lg py-2 px-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />}
                 {showNotes && <textarea placeholder="ملاحظات" rows={2} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full rounded-lg py-2 px-3 text-sm outline-none font-bold resize-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />}
+
+                {/* Quantity */}
+                <div className="pt-2">
+                  <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الكمية</label>
+                  <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, border: `1px solid ${surfaceBorderColor}` }}>
+                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center" style={{ borderColor: surfaceBorderColor }}>−</button>
+                    <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
+                    <button type="button" onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 bg-white border rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center" style={{ borderColor: surfaceBorderColor }}>+</button>
+                  </div>
+                </div>
+
+                {/* Delivery Type Buttons */}
+                {(showHomeDelivery || showDeskDelivery) && (
+                  <div>
+                    <label className="block text-sm font-bold mb-2" style={{ color: surfaceTextMuted }}>نوع التوصيل</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {showHomeDelivery && (
+                        <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : surfaceBorderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : surfaceColor, color: selectedDeliveryType === 'home' ? accentColor : surfaceTextColor }}>
+                          <Home size={16} />
+                          <span>التوصيل للمنزل</span>
+                        </button>
+                      )}
+                      {showDeskDelivery && (
+                        <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : surfaceBorderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : surfaceColor, color: selectedDeliveryType === 'desk' ? accentColor : surfaceTextColor }}>
+                          <Building2 size={16} />
+                          <span>الاستلام من المكتب</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Receipt */}
                 <div className="rounded-lg p-2.5 space-y-1.5 text-xs" style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : surfaceMuted }}>
                   <div className="flex justify-between font-bold" style={{ color: surfaceTextColor }}>
-                    <span>سعر المنتج</span><span>{Math.round(productPrice ?? 0).toLocaleString()} {currency}</span>
+                    <span>سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
+                    <span>{Math.round(Number(selectedOffer?.bundle_price || productPrice * quantity)).toLocaleString()} {currency}</span>
                   </div>
                   <div className="flex justify-between font-bold" style={{ color: surfaceTextColor }}>
                     <span>التوصيل</span><span>{selectedWilayaId ? `${deliveryFee} ${currency}` : '--'}</span>
                   </div>
                   <div className="flex justify-between font-black text-sm pt-1" style={{ color: accentColor, borderTop: `1px solid ${surfaceBorderColor}` }}>
-                    <span>المجموع</span><span>{selectedWilayaId ? `${total} ${currency}` : '--'}</span>
+                    <span>المجموع</span><span>{selectedWilayaId ? `${Math.round(Number(selectedOffer?.bundle_price || productPrice * quantity) + deliveryFee).toLocaleString()} ${currency}` : '--'}</span>
                   </div>
                 </div>
 

@@ -241,7 +241,7 @@ export default function ArtisanTemplate(props: TemplateProps) {
 
       {/* ── TRUST SECTION ── */}
       {(showTrustSection || canManage) && (
-      <section className="m-6 p-8 rounded-[2.5rem] relative" style={{ backgroundColor: '#3e2c23', color: bgColor }} data-edit-path="trust-section">
+      <section className="m-6 p-8 rounded-[2.5rem] relative overflow-visible" style={{ backgroundColor: '#3e2c23', color: bgColor }} data-edit-path="trust-section">
         {canManage && (
             <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                 <button

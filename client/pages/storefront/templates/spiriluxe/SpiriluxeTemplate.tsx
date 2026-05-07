@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
-import { Truck, Shield, Trash2, Plus } from 'lucide-react';
+import { Truck, Shield, Trash2, Plus, Home, Building2 } from 'lucide-react';
 import { uploadImage } from '@/lib/api';
 
 export default function SpiriluxeTemplate({ 
@@ -30,6 +30,9 @@ export default function SpiriluxeTemplate({
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
   const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const [showBanner, setShowBanner] = useState(settings?.show_promotional_banner !== false);
+  const [quantity, setQuantity] = useState(1);
+  const [customerCommune, setCustomerCommune] = useState('');
+  const [customerNotes, setCustomerNotes] = useState('');
 
   // ── Product Images State ──
   const [productImages, setProductImages] = useState<string[]>([]);
@@ -59,6 +62,16 @@ export default function SpiriluxeTemplate({
   const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug) : null) || (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
 
   useEffect(() => { if (mainProduct && onProductView) onProductView(mainProduct); }, [mainProduct?.id]);
+
+  // ── Video ──
+  const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
+  const videoEmbed = useMemo(() => {
+    if (!videoUrl) return null;
+    const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (yt) return { type: 'youtube' as const, id: yt[1] };
+    if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
+    return { type: 'iframe' as const, url: videoUrl };
+  }, [videoUrl]);
 
   // ─── Offer & Variant System ───
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -101,7 +114,7 @@ export default function SpiriluxeTemplate({
   }, [offers]);
 
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
-  const productTotal = selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? mainProduct?.price ?? 0);
+  const productTotal = selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? mainProduct?.price ?? 0) * quantity;
   const grandTotal = productTotal + deliveryFee;
 
   // ─── Order Handling ───
@@ -117,14 +130,15 @@ export default function SpiriluxeTemplate({
         store_slug: storeSlug || settings?.store_name || 'spiriluxe',
         product_id: mainProduct.id,
         ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
-        quantity: selectedOffer?.quantity || 1,
+        quantity: selectedOffer?.quantity || quantity,
         ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-        total_price: selectedOffer ? selectedOffer.bundle_price : (mainProduct.price || 0),
+        total_price: selectedOffer ? selectedOffer.bundle_price : (mainProduct.price || 0) * quantity,
         delivery_fee: deliveryFee,
         delivery_type: selectedDeliveryType,
         customer_name: fd.get('name'),
         customer_phone: fd.get('phone'),
-        customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address'), fd.get('notes')].filter(Boolean).join(' - '),
+        customer_address: [selectedWilaya?.labelAR || '', fd.get('commune') || customerCommune, fd.get('address')].filter(Boolean).join(' - '),
+        customer_notes: customerNotes || fd.get('notes') || '',
         shipping_wilaya_id: selectedWilayaId,
       };
       
@@ -305,6 +319,23 @@ export default function SpiriluxeTemplate({
     <div className="min-h-screen" style={{ backgroundColor: bgColor, color: textColor }}>
       <div className="max-w-md mx-auto">
 
+        {/* Video Embed (above images) */}
+        {videoEmbed && (
+          <div className="relative">
+            {videoEmbed.type === 'youtube' ? (
+              <div className="aspect-video w-full">
+                <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+              </div>
+            ) : videoEmbed.type === 'video' ? (
+              <video className="w-full block" src={videoEmbed.url} autoPlay muted loop playsInline />
+            ) : (
+              <div className="aspect-video w-full">
+                <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Images Above Form */}
         {aboveImages.length > 0 && renderImages(aboveImages, 0, 'above')}
 
@@ -343,8 +374,8 @@ export default function SpiriluxeTemplate({
                 <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Shield className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2 text-green-600">تم الطلب بنجاح! 🎉</h3>
-                <p className="text-gray-600 mb-4">شكراً لطلبك! سنتصل بك خلال 24 ساعة لتأكيد تفاصيل التوصيل.</p>
+                <h3 className="text-2xl font-bold mb-2 text-green-600">تم تسجيل طلبك بنجاح! 🎉</h3>
+                <p className="text-gray-600 mb-4">سنتصل بك قريباً لتأكيد الطلب</p>
                 <OrderSuccessConnect 
                   storeSlug={storeSlug} 
                   accentColor={accentColor} 
@@ -352,6 +383,24 @@ export default function SpiriluxeTemplate({
                   telegramStartUrl={lastTelegramUrl} 
                   customerPhone={lastCustomerPhone || undefined} 
                 />
+                <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: '#f9fafb' }}>
+                  <div className="flex justify-between text-sm">
+                    <span>{mainProduct?.title || 'المنتج'} × {quantity}</span>
+                    <span className="font-bold">{Math.round(productTotal).toLocaleString()} {currency}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">التوصيل</span>
+                    <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
+                  </div>
+                  <div className="h-px bg-gray-200 my-1" />
+                  <div className="flex justify-between font-black">
+                    <span>المجموع</span>
+                    <span className="text-base" style={{ color: accentColor }}>{Math.round(grandTotal).toLocaleString()} {currency}</span>
+                  </div>
+                </div>
+                <button onClick={() => setOrderSuccess(false)} className="px-6 py-2 rounded-lg text-white font-bold" style={{ backgroundColor: accentColor }}>
+                  تسوق مرة أخرى
+                </button>
               </div>
             ) : (
               <form onSubmit={handleOrder} className="space-y-5">
@@ -380,56 +429,61 @@ export default function SpiriluxeTemplate({
                     accentColor={accentColor}
                     textColor={textColor}
                     borderColor="#e5e7eb"
+                    hidePrice={true}
                   />
                 )}
-                <div>
-                  <label className="block text-sm font-semibold mb-2">الاسم الكامل *</label>
-                  <input 
-                    name="name" 
-                    type="text" 
-                    required 
-                    className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    placeholder="أدخل اسمك الكامل"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold mb-2">رقم الهاتف *</label>
-                  <input 
-                    name="phone" 
-                    type="tel" 
-                    required 
-                    className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    placeholder="رقم الواتساب الخاص بك"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold mb-2">ولاية التوصيل *</label>
-                  <select 
-                    value={selectedWilayaId || ''} 
-                    onChange={e => setSelectedWilayaId(Number(e.target.value))}
-                    required
-                    className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">اختر ولايتك</option>
-                    {wilayas.map(w => (
-                      <option key={w.id} value={w.id}>{w.labelAR}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {showCommune && (
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-semibold mb-2">البلدية</label>
+                    <label className="block text-sm font-semibold mb-2">الاسم الكامل *</label>
                     <input 
-                      name="commune" 
+                      name="name" 
                       type="text" 
+                      required 
                       className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                      placeholder="أدخل بلديتك"
+                      placeholder="أدخل اسمك الكامل"
                     />
                   </div>
-                )}
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">رقم الهاتف *</label>
+                    <input 
+                      name="phone" 
+                      type="tel" 
+                      required 
+                      className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="رقم الواتساب الخاص بك"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">ولاية التوصيل *</label>
+                    <select 
+                      value={selectedWilayaId || ''} 
+                      onChange={e => setSelectedWilayaId(Number(e.target.value))}
+                      required
+                      className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    >
+                      <option value="">اختر ولايتك</option>
+                      {wilayas.map(w => (
+                        <option key={w.id} value={w.id}>{w.labelAR}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {showCommune && (
+                    <div>
+                      <label className="block text-sm font-semibold mb-2">البلدية</label>
+                      <input 
+                        name="commune" 
+                        type="text" 
+                        value={customerCommune}
+                        onChange={e => setCustomerCommune(e.target.value)}
+                        className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        placeholder="أدخل بلديتك"
+                      />
+                    </div>
+                  )}
+                </div>
 
                 {showAddress && (
                   <div>
@@ -449,30 +503,40 @@ export default function SpiriluxeTemplate({
                     <textarea 
                       name="notes" 
                       rows={3}
+                      value={customerNotes}
+                      onChange={e => setCustomerNotes(e.target.value)}
                       className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
                       placeholder="أي طلبات خاصة أو ملاحظات (اختياري)"
                     />
                   </div>
                 )}
 
-                {showHomeDelivery && showDeskDelivery && (
+                {/* Quantity */}
+                <div className="pt-2">
+                  <label className="block text-sm font-semibold mb-2">الكمية</label>
+                  <div className="flex items-center justify-between bg-gray-50 border-2 border-gray-200 rounded-xl p-1">
+                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">−</button>
+                    <span className="font-black text-lg">{quantity}</span>
+                    <button type="button" onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">+</button>
+                  </div>
+                </div>
+
+                {(showHomeDelivery || showDeskDelivery) && (
                   <div>
                     <label className="block text-sm font-semibold mb-3">طريقة التوصيل *</label>
                     <div className="grid grid-cols-2 gap-3">
-                      <label className="flex items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb' }}>
-                        <input type="radio" name="delivery_type" value="home" checked={selectedDeliveryType === 'home'} onChange={() => setSelectedDeliveryType('home')} className="sr-only" />
-                        <div className="text-center">
-                          <Truck className="w-6 h-6 mx-auto mb-1" style={{ color: selectedDeliveryType === 'home' ? accentColor : '#6b7280' }} />
-                          <span className="text-sm font-medium">توصيل للمنزل</span>
-                        </div>
-                      </label>
-                      <label className="flex items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb' }}>
-                        <input type="radio" name="delivery_type" value="desk" checked={selectedDeliveryType === 'desk'} onChange={() => setSelectedDeliveryType('desk')} className="sr-only" />
-                        <div className="text-center">
-                          <span className="text-xl mb-1 block" style={{ color: selectedDeliveryType === 'desk' ? accentColor : '#6b7280' }}>🏢</span>
-                          <span className="text-sm font-medium">استلام من المكتب</span>
-                        </div>
-                      </label>
+                      {showHomeDelivery && (
+                        <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'home' ? accentColor : '#374151' }}>
+                          <Truck size={16} />
+                          <span>توصيل للمنزل</span>
+                        </button>
+                      )}
+                      {showDeskDelivery && (
+                        <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'desk' ? accentColor : '#374151' }}>
+                          <Building2 size={16} />
+                          <span>استلام من المكتب</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

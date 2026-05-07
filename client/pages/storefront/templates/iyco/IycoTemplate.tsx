@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
@@ -163,6 +163,7 @@ export default function IycoTemplate({
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerCommune, setCustomerCommune] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
+  const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
@@ -174,6 +175,8 @@ export default function IycoTemplate({
   const [selectedMainImage, setSelectedMainImage] = useState(0);
   const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
   const [selectedSize, setSelectedSize] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -205,7 +208,7 @@ export default function IycoTemplate({
     const orderCart = [{
       id: mainProduct.id,
       price: selectedVariant?.price ?? mainProduct.price,
-      qty: selectedOffer?.quantity ?? 1,
+      qty: selectedOffer?.quantity ?? quantity,
       variant_id: selectedVariant?.id ?? null,
     }];
 
@@ -227,7 +230,8 @@ export default function IycoTemplate({
             delivery_type: selectedDeliveryType,
             customer_name: customerName,
             customer_phone: customerPhone,
-            customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune, customerNotes].filter(Boolean).join(' - '),
+            customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune].filter(Boolean).join(' - '),
+            customer_notes: customerNotes,
             shipping_wilaya_id: selectedWilayaId,
           }),
         });
@@ -300,8 +304,8 @@ export default function IycoTemplate({
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <Check size={32} style={{ color: accentColor }} />
           </div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: textColor }}>تم تأكيد طلبك!</h2>
-          <p className="mb-6" style={{ color: textMuted }}>سنتواصل معك قريباً لتأكيد الطلب</p>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: textColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
+          <p className="mb-6" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
         <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
           <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: surfaceMuted }}>
             {cart.map(item => (
@@ -380,34 +384,40 @@ export default function IycoTemplate({
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4">
               <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[65vh]" style={{ backgroundColor: surfaceMuted }}>
-                {videoEmbed && showVideo ? (
-                  <div className="w-full h-full">
-                    {videoEmbed.type === 'youtube' ? (
-                      <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                    ) : videoEmbed.type === 'video' ? (
-                      <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                    ) : (
-                      <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                    )}
-                  </div>
-                ) : (
-                  <div className="w-full h-full group cursor-pointer" onClick={() => setZoomState({ images: mainImages, idx: selectedMainImage })}>
-                    <img src={mainImages[selectedMainImage] || '/placeholder.png'} alt={mainProduct.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
-                      {selectedMainImage + 1} / {mainImages.length}
+                <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
+                  {videoEmbed && (
+                    <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
+                      {videoEmbed.type === 'youtube' ? (
+                        <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                      ) : videoEmbed.type === 'video' ? (
+                        <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                      ) : (
+                        <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
+                      )}
                     </div>
-                  </div>
-                )}
+                  )}
+                  {mainImages.length > 0 ? mainImages.map((img, i) => (
+                    <img key={i} src={img} alt={mainProduct.title}
+                      className="w-full h-full object-cover shrink-0 cursor-pointer"
+                      style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+                      onClick={() => setZoomState({ images: mainImages, idx: i })}
+                    />
+                  )) : (
+                    <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: textMuted }}>
+                      <ShoppingBag size={48} strokeWidth={1} />
+                    </div>
+                  )}
+                </div>
               </div>
               {(videoEmbed || mainImages.length > 1) && (
                 <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
                   {videoEmbed && (
-                    <button onClick={() => setShowVideo(true)} className="w-20 h-24 shrink-0 rounded-lg overflow-hidden border-2 flex items-center justify-center transition-all" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}>
+                    <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="w-20 h-24 shrink-0 rounded-lg overflow-hidden border-2 flex items-center justify-center transition-all" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
                     </button>
                   )}
                   {mainImages.map((img, idx) => (
-                    <button key={idx} onClick={() => { setShowVideo(false); setSelectedMainImage(idx); }} className="w-20 h-24 shrink-0 rounded-lg overflow-hidden border-2 transition-all" style={{ borderColor: !showVideo && selectedMainImage === idx ? accentColor : 'transparent', opacity: !showVideo && selectedMainImage === idx ? 1 : 0.6 }}>
+                    <button key={idx} onClick={() => { setShowVideo(false); setSelectedMainImage(idx); scrollCarouselTo(videoEmbed ? idx + 1 : idx); }} className="w-20 h-24 shrink-0 rounded-lg overflow-hidden border-2 transition-all" style={{ borderColor: !showVideo && selectedMainImage === idx ? accentColor : 'transparent', opacity: !showVideo && selectedMainImage === idx ? 1 : 0.6 }}>
                       <img src={img} className="w-full h-full object-cover" alt="thumb" />
                     </button>
                   ))}
@@ -465,6 +475,7 @@ export default function IycoTemplate({
                     accentColor={accentColor}
                     textColor={surfaceTextColor}
                     borderColor={borderColor}
+                    hidePrice={true}
                   />
                 )}
 
@@ -482,65 +493,101 @@ export default function IycoTemplate({
                 )}
 
                 <div className="space-y-2">
-                  {/* Name */}
-                  <div className="relative">
-                    <input
-                      required
-                      type="text"
-                      placeholder="أدخل الإسم الكامل"
-                      className="w-full pl-4 pr-10 py-2 rounded-md text-sm outline-none transition-all"
-                      style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerName ? accentColor : borderColor}` }}
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                    />
-                    <div className="absolute right-0 top-0 h-full w-10 flex items-center justify-center rounded-r-md" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
-                      <User size={16} />
+                  {/* Name + Phone */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative">
+                      <input
+                        required
+                        type="text"
+                        placeholder="أدخل الإسم الكامل"
+                        className="w-full pl-4 pr-10 py-2 rounded-md text-sm outline-none transition-all"
+                        style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerName ? accentColor : borderColor}` }}
+                        value={customerName}
+                        onChange={e => setCustomerName(e.target.value)}
+                      />
+                      <div className="absolute right-0 top-0 h-full w-10 flex items-center justify-center rounded-r-md" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
+                        <User size={16} />
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <input
+                        required
+                        type="tel"
+                        placeholder="أدخل رقم الهاتف..."
+                        className="w-full pl-4 pr-10 py-2 rounded-md text-sm outline-none transition-all text-right"
+                        style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerPhone ? accentColor : borderColor}` }}
+                        value={customerPhone}
+                        onChange={e => setCustomerPhone(e.target.value)}
+                      />
+                      <div className="absolute right-0 top-0 h-full w-10 flex items-center justify-center rounded-r-md" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
+                        <Phone size={16} />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Phone */}
-                  <div className="relative">
-                    <input
-                      required
-                      type="tel"
-                      placeholder="أدخل رقم الهاتف..."
-                      className="w-full pl-4 pr-10 py-2 rounded-md text-sm outline-none transition-all text-right"
-                      style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerPhone ? accentColor : borderColor}` }}
-                      value={customerPhone}
-                      onChange={e => setCustomerPhone(e.target.value)}
-                    />
-                    <div className="absolute right-0 top-0 h-full w-10 flex items-center justify-center rounded-r-md" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
-                      <Phone size={16} />
+                  {/* Wilaya + Commune */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative">
+                      <select
+                        required
+                        className="w-full pl-4 pr-10 py-2 rounded-md text-sm outline-none transition-all appearance-none cursor-pointer"
+                        style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${selectedWilayaId ? accentColor : borderColor}` }}
+                        value={selectedWilayaId ?? ''}
+                        onChange={e => setSelectedWilayaId(Number(e.target.value) || null)}
+                      >
+                        <option value="">إختر الولاية</option>
+                        {wilayas.map(w => (
+                          <option key={w.id} value={w.id}>{w.labelAR}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-0 top-0 h-full w-10 flex items-center justify-center rounded-r-md pointer-events-none" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
+                        <MapPin size={16} />
+                      </div>
                     </div>
+                    {showCommune && <div className="relative">
+                      <input type="text" placeholder="البلدية" className="w-full pl-4 pr-4 py-2.5 rounded-md text-sm outline-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} />
+                    </div>}
                   </div>
 
-                  {/* Wilaya */}
-                  <div className="relative">
-                    <select
-                      required
-                      className="w-full pl-4 pr-10 py-2 rounded-md text-sm outline-none transition-all appearance-none cursor-pointer"
-                      style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${selectedWilayaId ? accentColor : borderColor}` }}
-                      value={selectedWilayaId ?? ''}
-                      onChange={e => setSelectedWilayaId(Number(e.target.value) || null)}
-                    >
-                      <option value="">إختر الولاية</option>
-                      {wilayas.map(w => (
-                        <option key={w.id} value={w.id}>{w.labelAR}</option>
-                      ))}
-                    </select>
-                    <div className="absolute right-0 top-0 h-full w-10 flex items-center justify-center rounded-r-md pointer-events-none" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
-                      <MapPin size={16} />
-                    </div>
-                  </div>
                   {showAddress && <input type="text" placeholder="العنوان" className="w-full pl-4 pr-4 py-2.5 rounded-md text-sm outline-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />}
-                  {showCommune && <input type="text" placeholder="البلدية" className="w-full pl-4 pr-4 py-2.5 rounded-md text-sm outline-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} />}
                   {showNotes && <textarea placeholder="ملاحظات" rows={2} className="w-full pl-4 pr-4 py-2.5 rounded-md text-sm outline-none resize-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />}
+
+                  {/* Quantity */}
+                  <div className="pt-2">
+                    <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الكمية</label>
+                    <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
+                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl" style={{ color: textColor, borderColor: borderColor }}>−</button>
+                      <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
+                      <button type="button" onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 bg-white border rounded-md font-bold text-xl" style={{ color: textColor, borderColor: borderColor }}>+</button>
+                    </div>
+                  </div>
+
+                  {/* Delivery Type Buttons */}
+                  {(showHomeDelivery || showDeskDelivery) && (
+                    <div>
+                      <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>نوع التوصيل</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {showHomeDelivery && (
+                          <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : surfaceColor, color: selectedDeliveryType === 'home' ? accentColor : surfaceTextColor }}>
+                            <Home size={16} />
+                            <span>التوصيل للمنزل</span>
+                          </button>
+                        )}
+                        {showDeskDelivery && (
+                          <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : surfaceColor, color: selectedDeliveryType === 'desk' ? accentColor : surfaceTextColor }}>
+                            <Building2 size={16} />
+                            <span>الاستلام من المكتب</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Receipt Box */}
                   <div className="p-2.5 rounded-md mt-2 space-y-1.5" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
                     <div className="flex justify-between items-center text-xs font-bold" style={{ color: surfaceTextColor }}>
-                      <span className="flex items-center gap-1.5"><ShoppingCart size={13} /> سعر المنتج</span>
-                      <span dir="ltr">{Math.round(((selectedVariant?.price ?? mainProduct.price)) ?? 0).toLocaleString()} {currency}</span>
+                      <span className="flex items-center gap-1.5"><ShoppingCart size={13} /> سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
+                      <span dir="ltr">{Math.round(Number(selectedOffer?.bundle_price || (selectedVariant?.price ?? mainProduct.price) * quantity)).toLocaleString()} {currency}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs font-bold pb-1.5" style={{ color: surfaceTextColor, borderBottom: `1px solid ${borderColor}` }}>
                       <span className="flex items-center gap-1.5"><Truck size={13} /> التوصيل</span>
@@ -549,7 +596,7 @@ export default function IycoTemplate({
                     <div className="flex justify-between items-center font-black text-sm" style={{ color: surfaceTextColor }}>
                       <span className="flex items-center gap-1.5"><Calculator size={13} /> المجموع</span>
                       <span dir="ltr" style={{ color: accentColor }}>
-                        {!selectedWilayaId ? '--' : `${(selectedVariant?.price ?? mainProduct.price) + deliveryFee} ${currency}`}
+                        {!selectedWilayaId ? '--' : `${Math.round(Number(selectedOffer?.bundle_price || (selectedVariant?.price ?? mainProduct.price) * quantity) + deliveryFee).toLocaleString()} ${currency}`}
                       </span>
                     </div>
                   </div>

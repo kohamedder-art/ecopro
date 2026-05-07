@@ -19,7 +19,7 @@ export function useOrderFields(settings: Record<string, any> | undefined, delive
     const isDesk = deliveryType === 'desk';
     return {
       showAddress: !isDesk && settings?.order_field_address === true,
-      showCommune: !isDesk && settings?.order_field_commune === true,
+      showCommune: settings?.order_field_commune === true,
       showNotes: settings?.order_field_notes === true,
       showHomeDelivery: settings?.delivery_type_home !== false,
       showDeskDelivery: settings?.delivery_type_desk !== false,

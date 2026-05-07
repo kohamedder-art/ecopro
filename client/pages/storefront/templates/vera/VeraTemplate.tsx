@@ -243,7 +243,7 @@ export default function VeraTemplate(props: TemplateProps) {
 
       {/* ── TRUST SECTION ── */}
       {(showTrustSection || canManage) && (
-      <section className="py-32 bg-white text-black rounded-[4rem] mx-4 mb-8 relative" data-edit-path="trust-section">
+      <section className="py-32 bg-white text-black rounded-[4rem] mx-4 mb-8 relative overflow-visible" data-edit-path="trust-section">
         {canManage && (
             <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                 <button

@@ -187,7 +187,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
             </p>
 
             {(showFeatures || canManage) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative" data-edit-path="feature-cards">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative overflow-visible" data-edit-path="feature-cards">
                 {canManage && (
                     <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                         <button
@@ -224,7 +224,7 @@ export default function NovaDzTemplate({ settings, products, canManage, storeSlu
 
           {/* Trust Sections */}
           {(showTrust || canManage) && (
-          <div className="bg-blue-50 border border-blue-100 rounded-3xl p-8 space-y-6 relative" data-edit-path="trust-section">
+          <div className="bg-blue-50 border border-blue-100 rounded-3xl p-8 space-y-6 relative overflow-visible" data-edit-path="trust-section">
             {canManage && (
                 <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                     <button

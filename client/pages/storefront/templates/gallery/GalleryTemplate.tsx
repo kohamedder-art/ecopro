@@ -241,7 +241,7 @@ export default function GalleryTemplate(props: TemplateProps) {
                 <span>{submitting ? 'جاري الإرسال...' : 'تأكيد الطلب الآن'}</span>
                 <span className="flex items-center gap-1">{fmtPrice(total)} <ArrowRight size={18} /></span>
               </button>
-              <div className="flex justify-center items-center gap-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest relative">
+              <div className="flex justify-center items-center gap-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest relative overflow-visible">
                 {(showTrustBadges || canManage) && (
                     <>
                     {canManage && (

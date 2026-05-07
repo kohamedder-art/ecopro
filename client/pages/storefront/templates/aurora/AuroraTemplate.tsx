@@ -306,7 +306,7 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
 
         {/* FOOTER STATS */}
         {(showTrustBadges || canManage) && (
-        <section className="mt-20 grid grid-cols-2 gap-4 relative" data-edit-path="trust-badges">
+        <section className="mt-20 grid grid-cols-2 gap-4 relative overflow-visible" data-edit-path="trust-badges">
             {canManage && (
                 <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                     <button

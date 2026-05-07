@@ -261,7 +261,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
 
                 {/* Countdown */}
                 {(showCountdown || canManage) && (
-                <div className="lux-glass-card rounded-2xl p-4 mb-8 text-center relative" data-edit-path="countdown">
+                <div className="lux-glass-card rounded-2xl p-4 mb-8 text-center relative overflow-visible" data-edit-path="countdown">
                     {canManage && (
                         <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                             <button
@@ -290,7 +290,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
 
                 {/* Quick Features */}
                 {(showFeatures || canManage) && (
-                <div className="space-y-3 mb-8 relative" data-edit-path="features">
+                <div className="space-y-3 mb-8 relative overflow-visible" data-edit-path="features">
                     {canManage && (
                         <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                             <button
@@ -360,7 +360,7 @@ export default function LuxeDropTemplate({ settings, products, canManage, storeS
 
             {/* Fake Social Proof Popup */}
             {(showSocialProof || canManage) && (
-            <div className={`fixed bottom-24 left-4 right-4 md:left-auto md:w-80 lux-glass-card p-3 rounded-2xl flex items-center gap-3 lux-notification-pop z-40 transition-all duration-300 relative ${socialProof.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`} data-edit-path="social-proof">
+            <div className={`fixed bottom-24 left-4 right-4 md:left-auto md:w-80 lux-glass-card p-3 rounded-2xl flex items-center gap-3 lux-notification-pop z-40 transition-all duration-300 relative overflow-visible ${socialProof.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`} data-edit-path="social-proof">
                 {canManage && (
                     <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                         <button

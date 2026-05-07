@@ -27,7 +27,8 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   const [idx, setIdx] = React.useState(0);
   const [showVideo, setShowVideo] = React.useState(true);
   const imgs: string[] = product.images?.filter(Boolean) || [];
-  const tsRef = useRef<number | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
   const videoUrl = product?.metadata?.video_url || '';
   const videoEmbed = useMemo(() => {
     if (!videoUrl) return null;
@@ -39,47 +40,37 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   React.useEffect(() => { setIdx(0); setShowVideo(!!videoEmbed); }, [product?.id]);
   return (
     <div className="boutique-gallery-wrap flex flex-col h-full">
-      <div className="boutique-gallery-img relative w-full aspect-square overflow-hidden shrink-0 select-none" style={{ backgroundColor: surfaceMuted }}
-        onTouchStart={e => { e.stopPropagation(); tsRef.current = e.touches[0].clientX; }}
-        onTouchMove={e => e.stopPropagation()}
-        onTouchEnd={e => {
-          e.stopPropagation();
-          if (videoEmbed && showVideo) return;
-          if (tsRef.current === null || imgs.length <= 1) return;
-          const d = tsRef.current - e.changedTouches[0].clientX;
-          tsRef.current = null;
-          if (Math.abs(d) < 40) return;
-          setIdx(i => d > 0 ? Math.min(i + 1, imgs.length - 1) : Math.max(i - 1, 0));
-        }}
-        onClick={() => { if (videoEmbed && showVideo) return; imgs[idx] && onZoom(imgs[idx]); }}
-      >
-        {videoEmbed && showVideo ? (
-          <div className="w-full h-full">
-            {videoEmbed.type === 'youtube' ? (
-              <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-            ) : videoEmbed.type === 'video' ? (
-              <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-            ) : (
-              <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-            )}
-          </div>
-        ) : imgs.length > 0 ? (
-          <img src={imgs[idx] || imgs[0]} alt="" className="w-full h-full object-cover transition-all duration-300 pointer-events-none" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ color: surfaceTextMuted }}><ShoppingBag size={48} strokeWidth={1} /></div>
-        )}
-        {(videoEmbed || imgs.length > 1) && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 items-center">
-            {videoEmbed && <button onClick={e => { e.stopPropagation(); setShowVideo(true); }} className="w-5 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: showVideo ? '#000' : 'rgba(0,0,0,0.4)', border: showVideo ? `1.5px solid ${accentColor}` : 'none' }}><svg width="8" height="8" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></button>}
-            {imgs.map((_, i) => <button key={i} onClick={e => { e.stopPropagation(); setShowVideo(false); setIdx(i); }} className="w-2 h-2 rounded-full transition-all" style={{ backgroundColor: !showVideo && i === idx ? accentColor : 'rgba(255,255,255,0.5)', transform: !showVideo && i === idx ? 'scale(1.3)' : 'scale(1)' }} />)}
-          </div>
-        )}
+      <div className="boutique-gallery-img relative w-full aspect-square overflow-hidden shrink-0" style={{ backgroundColor: surfaceMuted }}>
+        <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
+          {videoEmbed && (
+            <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
+              {videoEmbed.type === 'youtube' ? (
+                <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+              ) : videoEmbed.type === 'video' ? (
+                <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+              ) : (
+                <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
+              )}
+            </div>
+          )}
+          {imgs.length > 0 ? imgs.map((img, i) => (
+            <img key={i} src={img} alt=""
+              className="w-full h-full object-cover shrink-0 cursor-pointer"
+              style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+              onClick={() => onZoom(img)}
+            />
+          )) : (
+            <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: surfaceTextMuted }}>
+              <ShoppingBag size={48} strokeWidth={1} />
+            </div>
+          )}
+        </div>
       </div>
       {(videoEmbed || imgs.length > 1) && (
         <div className="flex gap-2 px-4 py-2 overflow-x-auto shrink-0" style={{ borderBottom: `1px solid ${surfaceBorderColor}` }}>
-          {videoEmbed && <button onClick={() => setShowVideo(true)} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 flex items-center justify-center transition-all" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></button>}
+          {videoEmbed && <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 flex items-center justify-center transition-all" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></button>}
           {imgs.map((img, i) => (
-            <button key={i} onClick={() => { setShowVideo(false); setIdx(i); }} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition-all" style={{ borderColor: !showVideo && i === idx ? accentColor : 'transparent', opacity: !showVideo && i === idx ? 1 : 0.6 }}>
+            <button key={i} onClick={() => { setShowVideo(false); setIdx(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition-all" style={{ borderColor: !showVideo && i === idx ? accentColor : 'transparent', opacity: !showVideo && i === idx ? 1 : 0.6 }}>
               <img src={img} alt="" className="w-full h-full object-cover" />
             </button>
           ))}
@@ -240,7 +231,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
     try {
       setIsSubmitting(true);
-      const address = [selectedWilaya?.labelAR || '', commune, customerAddress, customerNotes].filter(Boolean).join(' - ');
+      const address = [selectedWilaya?.labelAR || '', commune, customerAddress].filter(Boolean).join(' - ');
       const isOfferItem = selectedOffer && orderProduct.id === heroProduct?.id;
       const itemPrice = orderVariant?.price ?? orderProduct.price;
 
@@ -259,6 +250,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_address: address,
+          customer_notes: customerNotes,
           shipping_wilaya_id: selectedWilayaId,
         }),
       });
@@ -482,75 +474,84 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                   {/* COD FORM */}
                   <div className="border-t pt-4" style={{ borderColor: surfaceBorderColor }}>
                       {offers.length > 0 && orderProduct.id === heroProduct?.id && (
-                        <OfferSelector
-                          offers={offers}
-                          unitPrice={heroProduct?.price || 0}
-                          currency={currency}
-                          selectedOfferId={selectedOffer?.offer_id ?? null}
-                          onSelect={handleOfferSelect}
-                          accentColor={accentColor}
-                          textColor={surfaceTextColor}
-                          borderColor={surfaceBorderColor}
-                        />
-                      )}
-                      <h3 className="text-lg font-black mb-4 mt-2" style={{ color: surfaceTextColor }}>معلومات التوصيل</h3>
-                      <div className="space-y-4">
-                        <input
-                          type="text"
-                          required
-                          placeholder="الاسم الكامل"
-                          className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
-                          style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
-                          onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                          onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                        />
-                        <div className="relative">
-                          <input
-                            type="tel"
-                            required
-                            dir="ltr"
-                            placeholder="05 55 55 55 55"
-                            className="w-full border rounded-xl px-4 py-3 text-sm text-right outline-none focus:ring-2"
-                            style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
-                            onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                            onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
-                            value={customerPhone}
-                            onChange={(e) => setCustomerPhone(e.target.value)}
+                          <OfferSelector
+                            offers={offers}
+                            unitPrice={heroProduct?.price || 0}
+                            currency={currency}
+                            selectedOfferId={selectedOffer?.offer_id ?? null}
+                            onSelect={handleOfferSelect}
+                            accentColor={accentColor}
+                            textColor={surfaceTextColor}
+                            borderColor={surfaceBorderColor}
+                            hidePrice={true}
                           />
-                          <Phone size={16} className="absolute left-4 top-3.5" style={{ color: surfaceTextMuted }} />
-                        </div>
-                        <select
-                          required
-                          className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 appearance-none"
-                          style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
-                          onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                          onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
-                          value={selectedWilayaId ?? ''}
-                          onChange={(e) => setSelectedWilayaId(e.target.value ? Number(e.target.value) : null)}
-                        >
-                          <option value="">اختر الولاية</option>
-                          {wilayas.map((w) => (
-                            <option key={w.id} value={w.id}>
-                              {String(w.id).padStart(2, '0')} - {w.labelAR}
-                              {w.homePrice ? ` (${w.homePrice} ${currency})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                        {showCommune && <input
-                          type="text"
-                          placeholder="البلدية"
-                          className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
-                          style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
-                          onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                          onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
-                          value={commune}
-                          onChange={(e) => setCommune(e.target.value)}
-                        />}
-                        {showAddress && <input type="text" placeholder="العنوان" className="w-full border rounded-xl px-4 py-3 text-sm outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />}
-                        {showNotes && <textarea placeholder="ملاحظات" rows={2} className="w-full border rounded-xl px-4 py-3 text-sm outline-none resize-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />}
-                        {(showHomeDelivery && showDeskDelivery) && (
+                        )}
+                        <h3 className="text-lg font-black mb-4 mt-2" style={{ color: surfaceTextColor }}>معلومات التوصيل</h3>
+                        <div className="space-y-3">
+                          {/* Name + Phone */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="text"
+                              required
+                              placeholder="الاسم الكامل"
+                              className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
+                              style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
+                              onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                              onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                              value={customerName}
+                              onChange={(e) => setCustomerName(e.target.value)}
+                            />
+                            <div className="relative">
+                              <input
+                                type="tel"
+                                required
+                                dir="ltr"
+                                placeholder="05 55 55 55 55"
+                                className="w-full border rounded-xl px-4 py-3 text-sm text-right outline-none focus:ring-2"
+                                style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
+                                onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                                onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                                value={customerPhone}
+                                onChange={(e) => setCustomerPhone(e.target.value)}
+                              />
+                              <Phone size={16} className="absolute left-4 top-3.5" style={{ color: surfaceTextMuted }} />
+                            </div>
+                          </div>
+
+                          {/* Wilaya + Commune */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <select
+                              required
+                              className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 appearance-none"
+                              style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
+                              onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                              onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                              value={selectedWilayaId ?? ''}
+                              onChange={(e) => setSelectedWilayaId(e.target.value ? Number(e.target.value) : null)}
+                            >
+                              <option value="">اختر الولاية</option>
+                              {wilayas.map((w) => (
+                                <option key={w.id} value={w.id}>
+                                  {String(w.id).padStart(2, '0')} - {w.labelAR}
+                                  {w.homePrice ? ` (${w.homePrice} ${currency})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                            {showCommune && <input
+                              type="text"
+                              placeholder="البلدية"
+                              className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
+                              style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
+                              onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                              onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                              value={commune}
+                              onChange={(e) => setCommune(e.target.value)}
+                            />}
+                          </div>
+
+                          {showAddress && <input type="text" placeholder="العنوان" className="w-full border rounded-xl px-4 py-3 text-sm outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />}
+                          {showNotes && <textarea placeholder="ملاحظات" rows={2} className="w-full border rounded-xl px-4 py-3 text-sm outline-none resize-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />}
+                          {(showHomeDelivery || showDeskDelivery) && (
                           <div>
                             <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>نوع التوصيل</label>
                             <div className="flex gap-2">

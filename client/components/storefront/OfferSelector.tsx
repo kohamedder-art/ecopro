@@ -67,6 +67,8 @@ interface OfferSelectorProps {
   borderColor?: string;
   formatPrice?: (n: number) => string;
   className?: string;
+  /** Hide the price display, show only the label (useful when merchants write custom prices in labels) */
+  hidePrice?: boolean;
 }
 
 /**
@@ -86,6 +88,7 @@ export default function OfferSelector({
   borderColor = '#374151',
   formatPrice,
   className = '',
+  hidePrice = false,
 }: OfferSelectorProps) {
   if (!offers.length) return null;
 
@@ -135,14 +138,18 @@ export default function OfferSelector({
               </span>
             </div>
             <div className="text-left">
-              {offer.compare_price != null && offer.compare_price > offer.bundle_price && (
-                <span className="line-through text-[10px] block" style={{ color: '#ef4444' }}>
-                  {Math.round(offer.compare_price).toLocaleString()} {currency}
-                </span>
+              {!hidePrice && (
+                <>
+                  {offer.compare_price != null && offer.compare_price > offer.bundle_price && (
+                    <span className="line-through text-[10px] block" style={{ color: '#ef4444' }}>
+                      {Math.round(offer.compare_price).toLocaleString()} {currency}
+                    </span>
+                  )}
+                  <span className="font-bold text-sm" style={{ color: textColor }}>
+                    {Math.round(offer.bundle_price).toLocaleString()} {currency}
+                  </span>
+                </>
               )}
-              <span className="font-bold text-sm" style={{ color: textColor }}>
-                {Math.round(offer.bundle_price).toLocaleString()} {currency}
-              </span>
             </div>
           </label>
         );
