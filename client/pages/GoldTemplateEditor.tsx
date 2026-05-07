@@ -2443,21 +2443,21 @@ export default function GoldTemplateEditor() {
                      {t('editor.applyFramework')} — {TEMPLATE_PREVIEWS.find(tp => tp.id === normalizeTemplateId(previewTemplateId!))?.name || previewTemplateId}
                    </button>
                  )}
-                 <div className="grid gap-4">
-                   {TEMPLATE_PREVIEWS.map((template) => (
-                      <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden group rounded-2xl border transition-all text-left p-5 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]' : previewTemplateId === template.id ? 'border-violet-400 bg-violet-500/5 dark:bg-violet-500/10 shadow-[0_0_10px_-3px_rgba(139,92,246,0.2)]' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825] hover:border-slate-300 dark:hover:border-white/20'}`}>
-                        <div className="flex items-center gap-4 relative z-10">
-                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-inner ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : previewTemplateId === template.id ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:bg-slate-300 dark:group-hover:bg-white/5'}`}>
-                             <LayoutTemplate className="w-6 h-6" />
-                           </div>
-                           <div>
-                             <h4 className={`font-bold text-sm ${effectiveTemplateId === template.id ? 'text-indigo-400' : previewTemplateId === template.id ? 'text-violet-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
-                             <p className="text-xs text-slate-500 mt-1">{effectiveTemplateId === template.id ? t('editor.activeFramework') : previewTemplateId === template.id ? t('editor.previewingTemplate') : t('editor.applyFramework')}</p>
-                           </div>
-                        </div>
-                      </button>
-                   ))}
-                 </div>
+                  <div className="grid gap-2">
+                    {TEMPLATE_PREVIEWS.map((template) => (
+                       <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden group rounded-xl border transition-all text-left p-3 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]' : previewTemplateId === template.id ? 'border-violet-400 bg-violet-500/5 dark:bg-violet-500/10 shadow-[0_0_10px_-3px_rgba(139,92,246,0.2)]' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825] hover:border-slate-300 dark:hover:border-white/20'}`}>
+                         <div className="flex items-center gap-3 relative z-10">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shadow-inner ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : previewTemplateId === template.id ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:bg-slate-300 dark:group-hover:bg-white/5'}`}>
+                              <LayoutTemplate className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h4 className={`font-bold text-xs ${effectiveTemplateId === template.id ? 'text-indigo-400' : previewTemplateId === template.id ? 'text-violet-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
+                              <p className="text-[10px] text-slate-500 mt-0.5">{effectiveTemplateId === template.id ? t('editor.activeFramework') : previewTemplateId === template.id ? t('editor.previewingTemplate') : t('editor.applyFramework')}</p>
+                            </div>
+                         </div>
+                       </button>
+                    ))}
+                  </div>
               </div>
             )}
          </div>
