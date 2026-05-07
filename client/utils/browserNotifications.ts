@@ -81,11 +81,14 @@ export function showBrowserNotification(
 }
 
 // Show notification for new order
-export function notifyNewOrder(orderCount: number, onClick?: () => void): Notification | null {
-  const title = orderCount === 1 ? '🛒 New Order!' : `🛒 ${orderCount} New Orders!`;
-  const body = orderCount === 1 
-    ? 'You have a new order waiting for confirmation' 
-    : `You have ${orderCount} new orders waiting`;
+export function notifyNewOrder(orderCount: number, onClick?: () => void, locale?: string): Notification | null {
+  const isAr = locale === 'ar';
+  const title = isAr
+    ? orderCount === 1 ? '🛒 طلب جديد!' : `🛒 ${orderCount} طلبات جديدة!`
+    : orderCount === 1 ? '🛒 New Order!' : `🛒 ${orderCount} New Orders!`;
+  const body = isAr
+    ? orderCount === 1 ? 'لديك طلب جديد بانتظار التأكيد' : `لديك ${orderCount} طلبات جديدة بانتظار التأكيد`
+    : orderCount === 1 ? 'You have a new order waiting for confirmation' : `You have ${orderCount} new orders waiting`;
   
   return showBrowserNotification(title, {
     body,
@@ -96,11 +99,14 @@ export function notifyNewOrder(orderCount: number, onClick?: () => void): Notifi
 }
 
 // Show notification for new message
-export function notifyNewMessage(messageCount: number, onClick?: () => void): Notification | null {
-  const title = messageCount === 1 ? '💬 New Message!' : `💬 ${messageCount} New Messages!`;
-  const body = messageCount === 1 
-    ? 'You have a new message from support' 
-    : `You have ${messageCount} unread messages`;
+export function notifyNewMessage(messageCount: number, onClick?: () => void, locale?: string): Notification | null {
+  const isAr = locale === 'ar';
+  const title = isAr
+    ? messageCount === 1 ? '💬 رسالة جديدة!' : `💬 ${messageCount} رسائل جديدة!`
+    : messageCount === 1 ? '💬 New Message!' : `💬 ${messageCount} New Messages!`;
+  const body = isAr
+    ? messageCount === 1 ? 'لديك رسالة جديدة من الدعم' : `لديك ${messageCount} رسائل غير مقروءة`
+    : messageCount === 1 ? 'You have a new message from support' : `You have ${messageCount} unread messages`;
   
   return showBrowserNotification(title, {
     body,

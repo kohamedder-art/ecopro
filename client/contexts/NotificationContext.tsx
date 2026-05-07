@@ -88,10 +88,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         
         // Show browser notification if there are new orders
         if (newCount > prevOrdersCount.current && newCount > 0) {
-          notifyNewOrder(newCount, () => navigate('/dashboard/orders'));
+          notifyNewOrder(newCount, () => navigate('/dashboard/orders'), locale);
           toast({
-            title: newCount === 1 ? 'New order' : `${newCount} new orders`,
-            description: 'Open Orders to review them.',
+            title: newCount === 1
+              ? (locale === 'ar' ? 'طلب جديد' : 'New order')
+              : (locale === 'ar' ? `${newCount} طلبات جديدة` : `${newCount} new orders`),
+            description: locale === 'ar' ? 'افتح الطلبات لمراجعتها.' : 'Open Orders to review them.',
           });
         }
         
@@ -118,10 +120,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         
         // Show browser notification if there are new messages
         if (newCount > prevMessagesCount.current && newCount > 0) {
-          notifyNewMessage(newCount, () => navigate(chatPath));
+          notifyNewMessage(newCount, () => navigate(chatPath), locale);
           toast({
-            title: newCount === 1 ? 'New message' : `${newCount} unread messages`,
-            description: 'Open Support to reply.',
+            title: newCount === 1
+              ? (locale === 'ar' ? 'رسالة جديدة' : 'New message')
+              : (locale === 'ar' ? `${newCount} رسائل غير مقروءة` : `${newCount} unread messages`),
+            description: locale === 'ar' ? 'افتح الدعم للرد.' : 'Open Support to reply.',
           });
         }
         
