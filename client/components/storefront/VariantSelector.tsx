@@ -60,6 +60,22 @@ function resolveColor(color: string | null): string | null {
   return COLOR_MAP[lower] || COLOR_MAP[normalizeArabic(lower)] || null;
 }
 
+/** Split comma-separated multi-color string into individual color names */
+function splitColorNames(s: string): string[] {
+  return s.split(',').map(x => x.trim()).filter(Boolean);
+}
+
+/** Build a conic-gradient for multi-color swatches */
+function multiColorGradient(colorName: string): string | undefined {
+  const parts = splitColorNames(colorName);
+  if (parts.length < 2) return undefined;
+  const pct = 100 / parts.length;
+  return `conic-gradient(${parts.map((n, i) => {
+    const hex = resolveColor(n);
+    return `${hex || '#ccc'} ${i * pct}% ${(i + 1) * pct}%`;
+  }).join(', ')})`;
+}
+
 export default function VariantSelector({
   variants,
   selected,
@@ -216,11 +232,18 @@ export default function VariantSelector({
                     ) : (
                       <div 
                         className="w-full h-full flex items-center justify-center"
-                        style={{ backgroundColor: c.hex || '#ccc' }}
+                        style={{
+                          background: c.name.includes(',') && !c.hex
+                            ? multiColorGradient(c.name)
+                            : undefined,
+                          backgroundColor: c.name.includes(',') && !c.hex ? undefined : (c.hex || '#ccc'),
+                        }}
                       >
-                        <span className="text-[10px] font-bold text-white drop-shadow-sm">
-                          {c.name.slice(0, 2)}
-                        </span>
+                        {!c.name.includes(',') && (
+                          <span className="text-[10px] font-bold text-white drop-shadow-sm">
+                            {c.name.slice(0, 2)}
+                          </span>
+                        )}
                       </div>
                     )}
                     
@@ -269,9 +292,11 @@ export default function VariantSelector({
                     style={{
                       width: isActive ? 40 : 28,
                       height: isActive ? 40 : 28,
-                      backgroundColor: hex || '#ccc',
+                      backgroundColor: hex || (c.name.includes(',') ? undefined : '#ccc'),
                       backgroundImage: !hex
-                        ? `linear-gradient(135deg, #f87171 25%, #facc15 25%, #facc15 50%, #34d399 50%, #34d399 75%, #60a5fa 75%)`
+                        ? c.name.includes(',')
+                          ? multiColorGradient(c.name)
+                          : `linear-gradient(135deg, #f87171 25%, #facc15 25%, #facc15 50%, #34d399 50%, #34d399 75%, #60a5fa 75%)`
                         : undefined,
                       border: isActive ? `3px solid ${accentColor}` : '2px solid rgba(0,0,0,0.15)',
                       opacity: selectedColor && !isActive ? 0.35 : 1,
@@ -280,7 +305,7 @@ export default function VariantSelector({
                       boxShadow: isActive ? `0 0 0 2px white, 0 0 0 4px ${accentColor}40` : '0 1px 3px rgba(0,0,0,0.1)',
                     }}
                   >
-                    {!hex && (
+                    {!hex && !c.name.includes(',') && (
                       <span className="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-white drop-shadow-sm">
                         {c.name.slice(0, 2)}
                       </span>

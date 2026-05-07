@@ -2439,6 +2439,8 @@ export default function Store() {
               const existingColors = [...new Set(variantsDraft.map(v => (v.color || '').trim()).filter(Boolean))];
               const existingSizes = [...new Set(variantsDraft.map(v => (v.size || '').trim()).filter(Boolean))];
 
+              const splitColors = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean);
+
               // Helper: generate all combos from selected colors × sizes
               const generateCombos = (colors: string[], sizes: string[]) => {
                 const newVariants: typeof variantsDraft = [];
@@ -2573,7 +2575,29 @@ export default function Store() {
                           </button>
                         );
                       })}
-                      {/* Custom color */}
+                      {/* Custom palette colors (added by user, persist with product) */}
+                      {existingColors.filter(c => !COLORS.some(sc => sc.name === c)).map(customColor => (
+                        <button
+                          key={customColor}
+                          type="button"
+                          onClick={() => toggleColor(customColor)}
+                          className="group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-amber-200 dark:border-amber-700 hover:border-amber-400 dark:hover:border-amber-500 shadow-sm"
+                        >
+                          <span className="w-5 h-5 rounded-full bg-gradient-to-br from-pink-400 to-purple-400 flex-shrink-0" />
+                          <span className="text-amber-700 dark:text-amber-300">{customColor}</span>
+                          <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center shadow-sm">
+                            <Check className="h-3 w-3 text-white" />
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toggleColor(customColor); }}
+                            className="p-0.5 rounded-full hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors mr-1"
+                          >
+                            <X className="h-3 w-3 text-amber-500" />
+                          </button>
+                        </button>
+                      ))}
+                      {/* Custom color input */}
                       <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5">
                         <Plus className="h-4 w-4 text-slate-400" />
                         <Input
@@ -2594,7 +2618,7 @@ export default function Store() {
                     </div>
                   </div>
                 </div>
-
+                
                 {/* ═══ STEP 2: Pick Sizes ═══ */}
                 <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
                   <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
@@ -2708,6 +2732,19 @@ export default function Store() {
                         {color !== '—' && (
                           <div className="px-4 py-2 bg-slate-50/80 dark:bg-slate-800/50 flex items-center gap-2">
                             {(() => {
+                              const names = splitColors(color);
+                              if (names.length > 1) {
+                                return (
+                                  <div className="flex -space-x-1.5">
+                                    {names.map((n, i) => {
+                                      const def = COLORS.find(c => c.name === n);
+                                      return (
+                                        <span key={i} className={`w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 ${def?.tw || 'bg-slate-300'}`} />
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              }
                               const colorDef = COLORS.find(c => c.name === color);
                               return colorDef ? (
                                 <span className={`w-4 h-4 rounded-full ${colorDef.tw}`} />
