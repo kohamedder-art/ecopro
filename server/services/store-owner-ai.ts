@@ -378,12 +378,38 @@ export async function handleStoreOwnerMessage(
   // Build context-rich prompt
   const prompt = buildOwnerPrompt(ctx, intent, message);
 
+  // Load persona data for personalized AI behavior
+  const persona = await (async () => {
+    try {
+      const pool = await ensureConnection();
+      const res = await pool.query(
+        `SELECT persona_name, tone, personality_note, business_type,
+                primary_language, use_emojis, emoji_style,
+                response_length
+         FROM ai_personas WHERE client_id = $1 LIMIT 1`,
+        [clientId]
+      );
+      if (!res.rows.length) return null;
+      const r = res.rows[0];
+      return {
+        personaName: r.persona_name,
+        tone: r.tone,
+        personalityNote: r.personality_note,
+        businessType: r.business_type,
+        primaryLanguage: r.primary_language,
+        useEmojis: typeof r.use_emojis === 'boolean' ? r.use_emojis : undefined,
+        emojiStyle: r.emoji_style,
+        responseLength: r.response_length,
+      };
+    } catch { return null; }
+  })();
+
   // Generate response
   try {
     const response = await generateText(
       'store_owner',
       prompt,
-      { storeId: clientId, storeName: ctx.storeName },
+      { storeId: clientId, storeName: ctx.storeName, persona: persona || undefined },
       history // Pass history to AI!
     );
     

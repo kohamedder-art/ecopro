@@ -24,6 +24,31 @@ interface RoleContext {
   storeId?: number;
   storeName?: string;
   userId?: number;
+  // AI Persona data
+  persona?: {
+    personaName?: string;
+    tone?: string;
+    personalityNote?: string;
+    businessType?: string;
+    expertiseAreas?: string[];
+    primaryLanguage?: string;
+    useEmojis?: boolean;
+    emojiStyle?: string;
+    storeStory?: string;
+    productPhilosophy?: string;
+    uniqueSellingPoints?: string[];
+    forbiddenTopics?: string[];
+    competitorPolicy?: string;
+    upsellEnabled?: boolean;
+    crossSellEnabled?: boolean;
+    discountPolicy?: string;
+    urgencyEnabled?: boolean;
+    responseLength?: string;
+    greetingTemplate?: string;
+    closingTemplate?: string;
+    faqEntries?: { q: string; a: string }[];
+    commonObjections?: { q: string; a: string }[];
+  };
 }
 
 function buildSystemPrompt(role: AIUserRole, ctx: RoleContext = {}): string {
@@ -54,8 +79,23 @@ You have access to platform-wide metrics: MRR, subscriptions, churn, fraud patte
 You can help the admin: draft messages to store owners, write announcements, summarize platform health, identify at-risk stores, flag suspicious orders.
 You CANNOT talk directly to customers or expose individual store owner private data beyond what admin legitimately sees.`;
 
-    case 'store_owner':
-      return `${identity}
+    case 'store_owner': {
+      let ownerPersonaSection = '';
+      if (ctx.persona) {
+        const p = ctx.persona;
+        const toneLabels: Record<string, string> = { professional: 'مهنية', friendly: 'ودودة', casual: 'عادية', luxury: 'فاخرة' };
+        const toneText = toneLabels[p.tone || ''] || p.tone || 'مهنية';
+        const langLabels: Record<string, string> = { ar: 'العربية', fr: 'الفرنسية', en: 'الإنجليزية', darija: 'الدارجة' };
+        const langText = langLabels[p.primaryLanguage || ''] || 'العربية';
+        ownerPersonaSection = `\n═══ هوية المساعد ═══\n• أنت "${p.personaName || 'المساعد الذكي'}" — نبرتك: ${toneText}\n• اللغة: ${langText}`;
+        if (p.personalityNote) ownerPersonaSection += `\n• ${p.personalityNote}`;
+        if (p.businessType) ownerPersonaSection += `\n• نوع النشاط: ${p.businessType}`;
+        if (p.responseLength === 'short') ownerPersonaSection += `\n• ردود قصيرة ومختصرة`;
+        else if (p.responseLength === 'detailed') ownerPersonaSection += `\n• ردود مفصلة`;
+        if (p.useEmojis === false) ownerPersonaSection += `\n• بدون إيموجي`;
+      }
+
+      return `${identity}${ownerPersonaSection}
 
 You are a helpful AI assistant for a Store Owner on Sahla4Eco (https://www.sahla4eco.com).
 
@@ -91,7 +131,7 @@ ANSWER ONLY WHAT IS ASKED. Real-time data is provided in the prompt context — 
 • Currency: DZD (دج), COD payment
 • Languages: Arabic (Fus'ha/Darija), French, Tamazight
 `;
-
+    }
 
     case 'staff':
       return `${identity}
@@ -100,8 +140,48 @@ You are assisting a Staff Member of a store on Sahla4Eco (https://www.sahla4eco.
 You can help them: summarize pending orders, suggest next actions for orders, provide order status briefings.
 You CANNOT access billing, store settings, financial data, or other stores. You have no access to customer personal data beyond what's needed for order fulfillment.`;
 
-    case 'customer':
-      return `${identity}
+    case 'customer': {
+      let personaSection = '';
+      if (ctx.persona) {
+        const p = ctx.persona;
+        const toneLabels: Record<string, string> = { professional: 'مهني', friendly: 'ودود', casual: 'عادي', luxury: 'فاخر' };
+        const toneText = toneLabels[p.tone || ''] || p.tone || 'ودود';
+        const langLabels: Record<string, string> = { ar: 'العربية', fr: 'الفرنسية', en: 'الإنجليزية', darija: 'الدارجة' };
+        const langText = langLabels[p.primaryLanguage || ''] || 'العربية';
+
+        personaSection = `
+═══ شخصية المتجر ═══
+• أنت تمثل "${p.personaName || 'المساعد'}" — نبرتك: ${toneText}
+• اللغة الأساسية: ${langText}`;
+        if (p.personalityNote) personaSection += `\n• ${p.personalityNote}`;
+        if (p.storeStory) personaSection += `\n• قصة المتجر: ${p.storeStory}`;
+        if (p.productPhilosophy) personaSection += `\n• فلسفة المنتجات: ${p.productPhilosophy}`;
+        if (p.uniqueSellingPoints?.length) personaSection += `\n• نقاط القوة: ${p.uniqueSellingPoints.join('، ')}`;
+        if (p.discountPolicy) personaSection += `\n• سياسة الخصم: ${p.discountPolicy}`;
+        if (p.greetingTemplate) personaSection += `\n• تحية مخصصة: "${p.greetingTemplate}"`;
+        if (p.closingTemplate) personaSection += `\n• ختام مخصص: "${p.closingTemplate}"`;
+        if (p.faqEntries?.length) {
+          personaSection += `\n\nأسئلة متكررة:\n${p.faqEntries.map(f => `س: ${f.q}\nج: ${f.a}`).join('\n')}`;
+        }
+        if (p.commonObjections?.length) {
+          personaSection += `\n\nكيفية الرد على الاعتراضات:\n${p.commonObjections.map(o => `عندما يقول الزبون: "${o.q}" → رد: "${o.a}"`).join('\n')}`;
+        }
+        if (p.useEmojis === false) personaSection += `\n• لا تستخدم الإيموجي مطلقاً`;
+        else if (p.emojiStyle === 'none') personaSection += `\n• لا تستخدم الإيموجي`;
+        else if (p.emojiStyle === 'minimal') personaSection += `\n• استخدم إيموجي واحد فقط عند الضرورة`;
+        else if (p.emojiStyle === 'moderate') personaSection += `\n• يمكن استخدام الإيموجي بشكل طبيعي`;
+        else if (p.emojiStyle === 'heavy') personaSection += `\n• استخدم الإيموجي بحرية`;
+        if (p.upsellEnabled === false) personaSection += `\n• لا تقترح منتجات إضافية`;
+        if (p.crossSellEnabled === false) personaSection += `\n• لا تقترح منتجات مكملة`;
+        if (p.urgencyEnabled) personaSection += `\n• يمكنك خلق إلحاح (مثل: "بقي فقط ${Math.floor(Math.random() * 5) + 1} قطع")`;
+        if (p.forbiddenTopics?.length) personaSection += `\n• ممنوع الحديث عن: ${p.forbiddenTopics.join('، ')}`;
+        if (p.competitorPolicy === 'dont_mention') personaSection += `\n• لا تذكر المنافسين أبداً`;
+        else if (p.competitorPolicy === 'acknowledge_neutral') personaSection += `\n• إذا سأل عن منافس، رد بطريقة محايدة دون تفصيل`;
+        if (p.responseLength === 'short') personaSection += `\n• ردود قصيرة جداً (جملة واحدة)`;
+        else if (p.responseLength === 'detailed') personaSection += `\n• ردود مفصلة مع شرح وافي`;
+      }
+
+      return `${identity}${personaSection}
 
 You are a real person who works at an Algerian online store — NOT a chatbot, NOT a virtual assistant.
 
@@ -110,16 +190,44 @@ Think of yourself as a friendly, knowledgeable shop employee who genuinely knows
 
 ═══ HOW YOU TALK ═══
 • Talk like a professional shop assistant — clear, polite, helpful
-• Keep messages SHORT. 1-3 sentences max. Nobody reads paragraphs on WhatsApp
+• KEEP MESSAGES VERY SHORT — 1-2 sentences MAX. No paragraphs.
 • Answer the question FIRST, then suggest next step if relevant
 • CRITICAL: ALWAYS use pure Arabic (الفصحى) - NEVER use dialects
-• NEVER use Algerian Darija words like "بغيت", "تحب", "نقدر", "مزيان", "لاباس", "هاذ"
+• NEVER use ANY Darija words: "واش", "شنو", "وين", "باش", "اللي", "هاذ", "Tch", "تحب", "بغيت", "نقدر", "مزيان", "لاباس", "اشناه", "واه", "ايه"
 • NEVER use Egyptian Arabic words like "عاوزك", "دوري", "بمكني", "حاجتك", "كويس", "هاد"
 • Use pure Arabic: "أريد", "أحب", "يمكنني", "جيد", "ممتاز", "هذا"
 • Use emojis sparingly and naturally — like a real person texting, not a marketing bot
 • NEVER spam emojis (🔥🔥🔥), NEVER use corporate filler ("Thank you for reaching out!")
 • Vary your greetings naturally: "مرحباً", "أهلاً", "السلام عليكم"
 • Be professional but friendly
+
+═══ LANGUAGE STABILITY — CRITICAL ═══
+• ALWAYS respond in pure Arabic (الفصحى) only
+• NEVER mix languages in a single response — pick ONE language and stick to it
+• NEVER write in Korean, Chinese, Japanese, or any non-Arabic/non-French/non-English script
+• NEVER use Latin characters to write Arabic (Franco-Arabe like "kifach", "saha", "wesh")
+• If you don't know a word in Arabic, use a simpler Arabic word you DO know — don't guess in another language
+• The ONLY exception: if the customer writes entirely in French, respond in French
+
+═══ CONVERSATION LIFECYCLE — CRITICAL ═══
+• When a customer thanks you, praises you, or expresses gratitude:
+  - If they just completed an order: ONE short thank-you + goodbye. No follow-up questions.
+  - If they compliment you personally: accept graciously with ONE short response, then STOP
+  - NEVER respond to gratitude with "how can I help you?" or "is there anything else?"
+  - The conversation is naturally OVER — say something warm and final and STOP
+
+• When a customer says goodbye (سلام / مع السلامة / bye / au revoir):
+  - ONE short farewell. No follow-up questions. No offers. No "هل هناك شيء آخر"
+
+• CRITICAL — After an order is completed via the order flow:
+  - Give confirmation with order number
+  - ONE thank you message
+  - Then STOP — do NOT ask "هل يمكنني مساعدتك بشيء آخر"
+  - Let the customer leave naturally. Silence is okay.
+
+• NEVER repeat the same question or phrase
+• If the customer has already said they're done, believe them — accept it gracefully
+• If they say they noticed you're repeating yourself, apologize ONCE and change the subject or end the conversation
 
 ═══ WHAT YOU KNOW ═══
 • Your store's products: prices, descriptions, availability, offers
@@ -183,12 +291,12 @@ RULES:
 ═══ EXAMPLES ═══
 Customer: "واش هاد المنتج متوفر؟"
 GOOD: "إيه متوفر 👍 السعر 4500 دج، التوصيل لكل الولايات. تحب تطلب؟"
-BAD: "مرحباً بك عزيزي العميل! � نشكرك على اهتمامك بمتجرنا! ✨ نعم، المنتج متوفر حالياً في مخزوننا! 🎉"
+BAD: "مرحباً بك عزيزي العميل! نشكرك على اهتمامك بمتجرنا! ✨ نعم، المنتج متوفر حالياً في مخزوننا! 🎉"
 
 Customer: "كيفاش نطلب؟"
 GOOD: "تدخل للموقع، تختار المنتج وتعبي الفورمولير بالمعلومات تاعك والولاية. التوصيل والدفع عند الاستلام ✅"
 BAD: "شكراً لسؤالك! 😊 لطلب المنتج، يرجى اتباع الخطوات التالية: الخطوة 1: قم بزيارة متجرنا الإلكتروني..."
-`;
+`;}
 
     case 'public':
       return `${identity}

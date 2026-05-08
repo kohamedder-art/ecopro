@@ -1487,25 +1487,62 @@ Blacklisted customers: ${blacklistCount}
           prevHistory.map((m: HistoryMsg) => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`).join('\n')
         : '';
 
-      const actionInstruction = `
-═══ GOLDEN RULE ═══
-ANSWER ONLY WHAT THE USER ASKS. Be conversational, natural, and helpful — like ChatGPT.
-- If they say "مرحبا" or "hi", just greet them back warmly in 1 sentence. Do NOT dump store stats.
-- If they ask "what can you do?", briefly list your capabilities. Do NOT show numbers.
-- ONLY show stats, numbers, or data when the user EXPLICITLY asks for them (e.g. "how many orders", "show me revenue", "give me a report").
-- NEVER volunteer unsolicited advice, suggestions, or analysis. Answer the question asked, nothing more.
-- Keep responses SHORT: 1-3 sentences for simple questions. Expand only when asked for detail.
-- Match the user's language (Arabic, Darija, French, English) and tone naturally.
-- One emoji max per message, only when natural. No emoji spam.
+const actionInstruction = `
+CRITICAL SAFETY RULES — READ CAREFULLY BEFORE RESPONDING
+════════════════════════════════════════════════════════════
 
-═══ BEHAVIOR RULES ═══
-1. You have access to the store data above. Use it ONLY when the user asks about it.
-2. If data is missing, say "I don't see that in your store data — check [page]."
-3. NEVER say "I don't have authorization" — you have full access to this store's data.
-4. When the user uses ambiguous terms like "flagged orders", clarify: fake (${flaggedCounts.fake}), duplicate (${flaggedCounts.duplicate}), no-answer (${flaggedCounts.no_answer}), returned (${flaggedCounts.returned}).
-5. Be honest about problems when asked, but don't bring them up unprompted.
+🚨 FORBIDDEN — NEVER add ECOPRO_ACTION unless ALL 3 conditions are TRUE:
+1. User EXPLICITLY names a specific action (e.g., "cancel", "confirm", "change status to")
+2. User provides the exact order/product ID or it was just discussed
+3. User explicitly CONFIRMS (says "ok", "yes", "do it", "sure")
 
-STORE MANAGEMENT CAPABILITIES — append EXACTLY ONE action marker at the very end of your response when the user explicitly requests an action. Format: a single line starting with ECOPRO_ACTION: followed by JSON. Nothing after the marker.
+🚨 Situations where you MUST NOT add actions:
+• Any question (starting with "?", "what", "how", "كم", "شنو", "عطيني")
+• Requests without specific ID ("cancel an order" without order #)
+• Ambiguous requests ("أريد إلغاء طلب" - WHICH order?)
+• Any response that doesn't explicitly ask for an action
+• When you are uncertain — Ask first: "أي طلب تقصد؟"
+
+════════════════════════════════════════════════════
+MEMORY & CONTEXT — CRITICAL FOR CONFIRMATIONS
+════════════════════════════════════════════════════
+You have access to PRIOR CONVERSATION above. USE IT to track context:
+• If you asked user to confirm something, WAIT for their answer
+• After user confirms, THEN add the action
+• If user says "ok"/"نعم"/"yes" AFTER you asked confirmation → Execute the pending action
+• If context is unclear → Ask "ماذا تريد تأكيد؟" (what do you want to confirm?)
+
+════════════════════════════════════════════════════
+🚨 CONFIRMATION REQUIRED — ALWAYS ASK FIRST
+════════════════════════════════════════════════════
+NEVER execute an action immediately. ALWAYS ask confirmation first:
+✅ "هل أنت متأكد من إلغاء الطلب #149؟" → WAIT for answer
+✅ "تأكيد: تغيير الحالة إلى confirmed؟" → WAIT for answer
+
+Only add ECOPRO_ACTION AFTER user confirms with explicit intent.
+
+Examples of CORRECT confirmation:
+✅ User: "cancel order 149" → AI: "هل أنت متأكد؟" → User: "نعم" → AI adds action
+✅ User: "yes confirm order 149" → AI adds action immediately (user gave full command)
+✅ User: "ok" with prior context → AI checks history → adds action if clear
+
+════════════════════════════════════════════════════
+GOLDEN RULE: Answer only what the user asks. Keep it short.
+════════════════════════════════════════════════════════════
+• Greeting → Short greeting, no stats
+• Question → Answer only, no extra advice
+• Only show numbers when explicitly asked
+
+════════════════════════════════════════════════════
+BEHAVIOR RULES
+════════════════════════════════════════════════════
+• Use store data only when asked
+• If missing → say "لا أجد ذلك"
+• Never say "no authorization" — you have access
+
+FORMATTING: Only add action when explicitly requested:
+ECOPRO_ACTION:{"type":"update_order_status","orderId":149,"newStatus":"confirmed"}
+Nothing after the marker.
 
 ═══ ORDER STATUS UPDATES ═══
 If user asks to change/update an order status AND you know the order ID:
@@ -3228,6 +3265,43 @@ Write only the message text, no explanations.`;
 
     const message = await generateText('store_owner', prompt, { storeId: clientId, storeName });
     return res.json({ message: message.trim(), segment, campaignType, language: lang });
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+// ═════════════════════════════════════════════════════════════
+// AI CUSTOMER FLOW TEST — POST /api/ai/test-customer
+// ═════════════════════════════════════════════════════
+// Simulates how the AI talks to customers (WhatsApp/Telegram/Messenger)
+// Body: { message: string, clientId?: number }
+router.post('/test-customer', authAiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { message, clientId } = req.body;
+    if (!message) return res.status(400).json({ error: 'message is required' });
+
+    // Use logged-in user's store, or the provided clientId
+    const user = extractAiUser(req);
+    const effectiveClientId = clientId || (user?.id || user?.clientId);
+    if (!effectiveClientId) {
+      return res.status(401).json({ error: 'Store owner authentication required' });
+    }
+
+    // Import the customer handler
+    const { handleCustomerMessage } = await import('../services/ai-customer');
+    
+    // Test mode: prefix with /test tells the handler this is the store owner testing
+    const testMessage = '/test ' + message;
+    const response = await handleCustomerMessage(effectiveClientId, 'whatsapp', 'test_chat_id', testMessage);
+    
+    if (!response) {
+      return res.json({ 
+        answer: 'AI auto-reply is disabled for this store. Enable it in AI Settings.',
+        info: 'Customer AI auto-reply is turned off for this store or platform.'
+      });
+    }
+    
+    return res.json({ answer: response });
   } catch (err) {
     return serverError(res, err);
   }

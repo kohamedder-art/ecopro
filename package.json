@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "concurrently \"pnpm:dev:*\"",
     "dev:client": "vite --port 5173",
-    "dev:server": "node run-migrations.js && nodemon",
+    "dev:server": "nodemon",
     "build": "npm run build:client && npm run build:server",
     "prisma:generate": "prisma generate",
     "build:client": "vite build",

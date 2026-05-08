@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload, ChevronRight, Search, Copy, Check, StickyNote, AlertTriangle, Bell, Calendar, Phone, Edit3, User, MapPin, Package, Hash, Loader2, Save, Sparkles } from "lucide-react";
+import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload, ChevronRight, Search, Copy, Check, StickyNote, AlertTriangle, Bell, Calendar, Phone, Edit3, User, MapPin, Package, Hash, Loader2, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "@/lib/i18n";
 import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
@@ -7,7 +7,6 @@ import { RiskAlert } from "@/components/orders/RiskAlert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { getAlgeriaCommunesByWilayaId, getAlgeriaWilayas } from "@/lib/algeriaGeo";
-import { useAISettings } from "@/hooks/useAISettings";
 import { useToast } from "@/components/ui/use-toast";
 
 interface DeliveryCompany {
@@ -35,7 +34,6 @@ export default function OrdersAdmin() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { data: aiSettings } = useAISettings();
   const [orders, setOrders] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -871,43 +869,7 @@ export default function OrdersAdmin() {
               {t('orders.orders')}
             </h3>
             <div className="flex items-center gap-2">
-              {aiSettings?.order_priority && (
-                <button
-                  onClick={async () => {
-                    try {
-                      const res = await fetch('/api/ai/order/priority', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                          orders: getFilteredOrders().map(o => ({
-                            id: o.id,
-                            customer_name: o.customer_name,
-                            status: o.status,
-                            created_at: o.created_at,
-                            total_price: o.unit_price * o.quantity,
-                          })),
-                        }),
-                      });
-                      if (!res.ok) throw new Error();
-                      const data = await res.json();
-                      if (data.priorityOrders) {
-                        toast({ title: 'Priority analyzed', description: `${data.priorityOrders.length} urgent orders flagged` });
-                        setOrders(prev => prev.map(o => {
-                          const priority = data.priorityOrders.find((p: any) => p.id === o.id);
-                          return { ...o, aiPriority: priority?.priority || null, aiReason: priority?.reason || null };
-                        }));
-                      }
-                    } catch {
-                      toast({ title: 'Error', description: 'Failed to analyze priorities', variant: 'destructive' });
-                    }
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {t('orders.analyzePriority') || 'Analyze Priority'}
-                </button>
-              )}
+
             </div>
             <div className="flex items-center gap-1.5 flex-wrap justify-end">
               <button 

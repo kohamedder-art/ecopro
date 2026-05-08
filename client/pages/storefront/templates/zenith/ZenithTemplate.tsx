@@ -153,7 +153,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     <div className="min-h-screen font-sans text-gray-900" style={{ backgroundColor: settings?.template_bg_color || '#f3f4f6' }} dir="rtl">
 
       {/* Mobile Container */}
-      <div className="max-w-md mx-auto bg-white min-h-screen relative shadow-2xl">
+      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-md mx-auto'} bg-white min-h-screen relative shadow-2xl`}>
 
         {/* ── STICKY HEADER ── */}
         <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between">

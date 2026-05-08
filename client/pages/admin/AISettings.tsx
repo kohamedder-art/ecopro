@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react";
-import {
-  Save, Loader2, MessageSquareText, ShieldAlert,
-  FileText, DollarSign, ImageIcon, BarChart3, Package,
-  ClipboardList, Store, Brain, ScanEye, AlertTriangle,
-  TrendingDown, MessageCircleReply, Radio, Radar,
-  RefreshCw, PlusCircle, Pencil, Trash2, Palette, BotMessageSquare, Sparkles,
-  Zap, CheckCheck, XCircle, ChevronRight, Info,
-  Send, MessageCircle, Instagram, Phone
-} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
+import {
+  MkrAiBrain, MkrAiShield, MkrAiStore,
+  MkrAiFile, MkrAiDollar, MkrAiImage, MkrAiScan,
+  MkrAiChart, MkrAiBox, MkrAiClipboard, MkrAiAlert,
+  MkrAiTrendDown, MkrAiReply, MkrAiBroadcast, MkrAiRadar,
+  MkrAiRefresh, MkrAiPlus, MkrAiPencil, MkrAiTrash,
+  MkrAiPalette, MkrAiBot, MkrAiZap,
+  MkrAiSave, MkrAiSpinner, MkrAiCheck, MkrAiX,
+  MkrAiMsg, MkrAiSend, MkrAiInsta, MkrAiPhone,
+  MkrAiSparkle, MkrAiInfo,
+} from "@/components/icons/AIIcons";
 
 interface AISettings {
   ai_chat_enabled: boolean;
@@ -99,7 +101,7 @@ const CATEGORIES: Category[] = [
     items: [
       {
         key: "ai_chat_enabled",
-        icon: <MessageSquareText className="h-5 w-5" />,
+        icon: <MkrAiBrain className="h-[13px] w-[13px]" />,
         titleAr: "مساعد الذكاء الاصطناعي",
         titleEn: "AI Chat Assistant",
         descAr: "فقاعة المساعد الذكي في لوحة التحكم",
@@ -107,7 +109,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "guardian_enabled",
-        icon: <ShieldAlert className="h-5 w-5" />,
+        icon: <MkrAiShield className="h-[13px] w-[13px]" />,
         titleAr: "حارس المتجر",
         titleEn: "Store Guardian",
         descAr: "تنبيهات تلقائية: طلبات معلقة، مخزون منخفض",
@@ -115,7 +117,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "storefront_assistant",
-        icon: <Store className="h-5 w-5" />,
+        icon: <MkrAiStore className="h-[13px] w-[13px]" />,
         titleAr: "مساعد الزبائن",
         titleEn: "Storefront Assistant",
         descAr: "يردّ على أسئلة الزبائن حول المنتجات",
@@ -131,7 +133,7 @@ const CATEGORIES: Category[] = [
     items: [
       {
         key: "auto_descriptions",
-        icon: <FileText className="h-5 w-5" />,
+        icon: <MkrAiFile className="h-[13px] w-[13px]" />,
         titleAr: "وصف المنتجات تلقائياً",
         titleEn: "Auto Descriptions",
         descAr: "الذكاء الاصطناعي يكتب الوصف عند إضافة منتج",
@@ -139,7 +141,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "auto_pricing",
-        icon: <DollarSign className="h-5 w-5" />,
+        icon: <MkrAiDollar className="h-[13px] w-[13px]" />,
         titleAr: "اقتراح الأسعار",
         titleEn: "Price Suggestions",
         descAr: "اقتراحات تسعير بناءً على السوق",
@@ -147,7 +149,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "auto_alt_text",
-        icon: <ImageIcon className="h-5 w-5" />,
+        icon: <MkrAiImage className="h-[13px] w-[13px]" />,
         titleAr: "وصف الصور تلقائياً",
         titleEn: "Auto Alt Text",
         descAr: "نصوص بديلة للصور لتحسين SEO",
@@ -155,7 +157,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "image_analysis",
-        icon: <ScanEye className="h-5 w-5" />,
+        icon: <MkrAiScan className="h-[13px] w-[13px]" />,
         titleAr: "تحليل صور المنتجات",
         titleEn: "Image Analysis",
         descAr: "الذكاء الاصطناعي يحلل صور المنتجات",
@@ -171,7 +173,7 @@ const CATEGORIES: Category[] = [
     items: [
       {
         key: "analytics_narration",
-        icon: <BarChart3 className="h-5 w-5" />,
+        icon: <MkrAiChart className="h-[13px] w-[13px]" />,
         titleAr: "تحليل الأداء",
         titleEn: "Analytics Narration",
         descAr: "ملخصات أسبوعية عن أداء المتجر",
@@ -179,7 +181,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "inventory_forecast",
-        icon: <Package className="h-5 w-5" />,
+        icon: <MkrAiBox className="h-[13px] w-[13px]" />,
         titleAr: "توقعات المخزون",
         titleEn: "Inventory Forecast",
         descAr: "تنبؤات بالمنتجات التي تنفد قريباً",
@@ -187,7 +189,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "order_suggestions",
-        icon: <ClipboardList className="h-5 w-5" />,
+        icon: <MkrAiClipboard className="h-[13px] w-[13px]" />,
         titleAr: "اقتراحات الطلبات",
         titleEn: "Order Suggestions",
         descAr: "الخطوة التالية لكل طلب",
@@ -195,7 +197,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "order_priority",
-        icon: <AlertTriangle className="h-5 w-5" />,
+        icon: <MkrAiAlert className="h-[13px] w-[13px]" />,
         titleAr: "أولوية الطلبات",
         titleEn: "Order Priority",
         descAr: "يحدد الطلبات العاجلة والمتأخرة",
@@ -203,7 +205,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "churn_warning",
-        icon: <TrendingDown className="h-5 w-5" />,
+        icon: <MkrAiTrendDown className="h-[13px] w-[13px]" />,
         titleAr: "تحذير انخفاض المبيعات",
         titleEn: "Churn Warning",
         descAr: "يكشف انخفاض الإيرادات ويقترح حلول",
@@ -219,7 +221,7 @@ const CATEGORIES: Category[] = [
     items: [
       {
         key: "reply_suggestions",
-        icon: <MessageCircleReply className="h-5 w-5" />,
+        icon: <MkrAiReply className="h-[13px] w-[13px]" />,
         titleAr: "اقتراحات الردود",
         titleEn: "Reply Suggestions",
         descAr: "ردود جاهزة للرسائل على واتساب",
@@ -227,7 +229,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "broadcast_composer",
-        icon: <Radio className="h-5 w-5" />,
+        icon: <MkrAiBroadcast className="h-[13px] w-[13px]" />,
         titleAr: "كاتب الحملات",
         titleEn: "Broadcast Composer",
         descAr: "صياغة رسائل حملات واتساب بالذكاء الاصطناعي",
@@ -235,7 +237,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "omni_intelligence",
-        icon: <Radar className="h-5 w-5" />,
+        icon: <MkrAiRadar className="h-[13px] w-[13px]" />,
         titleAr: "تحليل السلوك العميق",
         titleEn: "Omni Intelligence",
         descAr: "تحليل عميق: عقبات الشراء، أداء الإعلانات",
@@ -251,7 +253,7 @@ const CATEGORIES: Category[] = [
     items: [
       {
         key: "action_order_status",
-        icon: <RefreshCw className="h-5 w-5" />,
+        icon: <MkrAiRefresh className="h-[13px] w-[13px]" />,
         titleAr: "تعديل حالة الطلبات",
         titleEn: "Update Order Status",
         descAr: "السماح للذكاء الاصطناعي بتغيير حالة الطلبات",
@@ -259,7 +261,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "action_create_product",
-        icon: <PlusCircle className="h-5 w-5" />,
+        icon: <MkrAiPlus className="h-[13px] w-[13px]" />,
         titleAr: "إنشاء منتجات",
         titleEn: "Create Products",
         descAr: "السماح للذكاء الاصطناعي بإضافة منتجات جديدة",
@@ -267,7 +269,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "action_edit_product",
-        icon: <Pencil className="h-5 w-5" />,
+        icon: <MkrAiPencil className="h-[13px] w-[13px]" />,
         titleAr: "تعديل المنتجات",
         titleEn: "Edit Products",
         descAr: "تعديل الأسعار، المخزون، الوصف، العناوين",
@@ -275,7 +277,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "action_delete_product",
-        icon: <Trash2 className="h-5 w-5" />,
+        icon: <MkrAiTrash className="h-[13px] w-[13px]" />,
         titleAr: "حذف المنتجات",
         titleEn: "Remove Products",
         descAr: "السماح للذكاء الاصطناعي بإلغاء تفعيل المنتجات",
@@ -283,7 +285,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "action_store_design",
-        icon: <Palette className="h-5 w-5" />,
+        icon: <MkrAiPalette className="h-[13px] w-[13px]" />,
         titleAr: "تعديل تصميم المتجر",
         titleEn: "Edit Store Design",
         descAr: "تغيير الألوان، الخطوط، النصوص، التصميم",
@@ -291,7 +293,7 @@ const CATEGORIES: Category[] = [
       },
       {
         key: "action_bot_control",
-        icon: <BotMessageSquare className="h-5 w-5" />,
+        icon: <MkrAiBot className="h-[13px] w-[13px]" />,
         titleAr: "التحكم بالبوت",
         titleEn: "Bot Control",
         descAr: "تشغيل/إيقاف البوت وتعديل قوالب الرسائل",
@@ -301,63 +303,29 @@ const CATEGORIES: Category[] = [
   },
 ];
 
-const COLOR_MAP: Record<string, {
-  tab: string; tabActive: string; badge: string; icon: string; glow: string; border: string; ring: string;
-}> = {
-  violet: {
-    tab: "text-violet-500",
-    tabActive: "border-b-2 border-violet-500 text-violet-600 dark:text-violet-400",
-    badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
-    icon: "bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400",
-    glow: "bg-violet-50/60 dark:bg-violet-950/20 border-violet-200/60 dark:border-violet-800/40",
-    border: "border-violet-200 dark:border-violet-800/50",
-    ring: "ring-violet-300 dark:ring-violet-700",
-  },
-  blue: {
-    tab: "text-blue-500",
-    tabActive: "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400",
-    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-    icon: "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400",
-    glow: "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200/60 dark:border-blue-800/40",
-    border: "border-blue-200 dark:border-blue-800/50",
-    ring: "ring-blue-300 dark:ring-blue-700",
-  },
-  emerald: {
-    tab: "text-emerald-500",
-    tabActive: "border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400",
-    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-    icon: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400",
-    glow: "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-800/40",
-    border: "border-emerald-200 dark:border-emerald-800/50",
-    ring: "ring-emerald-300 dark:ring-emerald-700",
-  },
-  amber: {
-    tab: "text-amber-500",
-    tabActive: "border-b-2 border-amber-500 text-amber-600 dark:text-amber-400",
-    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-    icon: "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400",
-    glow: "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40",
-    border: "border-amber-200 dark:border-amber-800/50",
-    ring: "ring-amber-300 dark:ring-amber-700",
-  },
-  rose: {
-    tab: "text-rose-500",
-    tabActive: "border-b-2 border-rose-500 text-rose-600 dark:text-rose-400",
-    badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-    icon: "bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400",
-    glow: "bg-rose-50/60 dark:bg-rose-950/20 border-rose-200/60 dark:border-rose-800/40",
-    border: "border-rose-200 dark:border-rose-800/50",
-    ring: "ring-rose-300 dark:ring-rose-700",
-  },
+const TAB_COLORS: Record<string, { badge: string; border: string; dot: string }> = {
+  violet: { badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300", border: "border-violet-200 dark:border-violet-800", dot: "bg-violet-500" },
+  blue:   { badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800", dot: "bg-blue-500" },
+  emerald: { badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300", border: "border-emerald-200 dark:border-emerald-800", dot: "bg-emerald-500" },
+  amber:  { badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", border: "border-amber-200 dark:border-amber-800", dot: "bg-amber-500" },
+  rose:   { badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300", border: "border-rose-200 dark:border-rose-800", dot: "bg-rose-500" },
 };
 
 const TAB_ICONS: Record<string, React.ReactNode> = {
-  core: <Brain className="h-4 w-4" />,
-  product: <Package className="h-4 w-4" />,
-  analytics: <BarChart3 className="h-4 w-4" />,
-  messaging: <Radio className="h-4 w-4" />,
-  actions: <Zap className="h-4 w-4" />,
+  core: <MkrAiBrain className="h-[13px] w-[13px]" />,
+  product: <MkrAiBox className="h-[13px] w-[13px]" />,
+  analytics: <MkrAiChart className="h-[13px] w-[13px]" />,
+  messaging: <MkrAiBroadcast className="h-[13px] w-[13px]" />,
+  actions: <MkrAiZap className="h-[13px] w-[13px]" />,
 };
+
+const PLATFORM_TOGGLES = [
+  { key: 'ai_reply_telegram' as keyof AISettings, icon: <MkrAiSend className="h-[13px] w-[13px]" />, label: 'Telegram', labelAr: 'تيليغرام', color: 'text-sky-500' },
+  { key: 'ai_reply_messenger' as keyof AISettings, icon: <MkrAiMsg className="h-[13px] w-[13px]" />, label: 'Messenger', labelAr: 'ماسنجر', color: 'text-blue-500' },
+  { key: 'ai_reply_instagram' as keyof AISettings, icon: <MkrAiInsta className="h-[13px] w-[13px]" />, label: 'Instagram', labelAr: 'إنستغرام', color: 'text-pink-500' },
+  { key: 'ai_reply_whatsapp' as keyof AISettings, icon: <MkrAiPhone className="h-[13px] w-[13px]" />, label: 'WhatsApp', labelAr: 'واتساب', color: 'text-emerald-500' },
+  { key: 'ai_reply_viber' as keyof AISettings, icon: <MkrAiMsg className="h-[13px] w-[13px]" />, label: 'Viber', labelAr: 'فايبر', color: 'text-purple-500' },
+];
 
 export default function AISettingsPage() {
   const { locale } = useTranslation();
@@ -420,20 +388,14 @@ export default function AISettingsPage() {
   const platformKeys = new Set(["ai_reply_telegram", "ai_reply_messenger", "ai_reply_instagram", "ai_reply_whatsapp", "ai_reply_viber"]);
   const enabledCount = Object.entries(settings).filter(([k, v]) => k !== "ai_instructions" && !platformKeys.has(k) && v === true).length;
   const totalCount = Object.keys(settings).filter((k) => k !== "ai_instructions" && !platformKeys.has(k)).length;
-  const progressPct = Math.round((enabledCount / totalCount) * 100);
+  const progressPct = totalCount > 0 ? Math.round((enabledCount / totalCount) * 100) : 0;
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-32">
-        <div className="relative">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-            <Brain className="h-8 w-8 text-white" />
-          </div>
-          <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-background border-2 border-background flex items-center justify-center">
-            <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground animate-pulse">
+      <div className="flex flex-col items-center justify-center gap-[9px] py-32">
+        <MkrAiBrain className="h-10 w-10 text-primary" />
+        <MkrAiSpinner className="h-5 w-5 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
           {isRTL ? "جارٍ التحميل..." : "Loading AI settings..."}
         </p>
       </div>
@@ -441,243 +403,195 @@ export default function AISettingsPage() {
   }
 
   const activeCat = CATEGORIES.find((c) => c.id === activeTab)!;
-  const colors = COLOR_MAP[activeCat.color];
+  const colors = TAB_COLORS[activeCat.color];
   const enabledInActive = activeCat.items.filter((i) => settings[i.key]).length;
   const allEnabled = enabledInActive === activeCat.items.length;
-  const noneEnabled = enabledInActive === 0;
+
+  const FeatureCard = ({ item, isOn }: { item: ToggleItem; isOn: boolean }) => (
+    <div className="relative">
+      <button
+        onClick={() => toggle(item.key)}
+        className={`w-full text-start rounded-xl border p-[11px] transition-all ${
+          isOn
+            ? `bg-card ${colors.border}`
+            : "bg-card border-border hover:border-muted-foreground/30"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-[9px]">
+          <div className="flex items-start gap-[9px] min-w-0">
+            <div className={`flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-lg ${isOn ? colors.badge : "bg-muted text-muted-foreground"}`}>
+              {item.icon}
+            </div>
+            <div className="min-w-0 pt-[3px]">
+              <p className="text-xs font-bold leading-tight">
+                {isRTL ? item.titleAr : item.titleEn}
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-snug mt-[3px]">
+                {isRTL ? item.descAr : item.descEn}
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 pt-[3px]">
+            <Switch checked={isOn} onCheckedChange={() => toggle(item.key)} onClick={(e) => e.stopPropagation()} />
+          </div>
+        </div>
+        {isOn && (
+          <div className="mt-[7px] flex items-center gap-[5px] text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className={`h-[5px] w-[5px] rounded-full ${colors.dot}`} />
+            {isRTL ? "مفعّل" : "Active"}
+          </div>
+        )}
+      </button>
+
+      {item.key === "storefront_assistant" && isOn && (
+        <div className="space-y-[7px] mt-[7px]">
+          <div className={`rounded-xl border p-[11px] ${colors.border} bg-card`}>
+            <div className="flex items-center gap-[7px] mb-[7px]">
+              <MkrAiMsg className="h-[13px] w-[13px] text-blue-500" />
+              <p className="text-xs font-bold">{isRTL ? "منصات الرد التلقائي" : "Auto-Reply Platforms"}</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-[7px]">
+              {isRTL ? "اختر المنصات التي يرد عليها الذكاء الاصطناعي تلقائياً" : "Choose which platforms AI auto-replies on"}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[7px]">
+              {PLATFORM_TOGGLES.map(p => (
+                <div
+                  key={p.key}
+                  className={`flex items-center justify-between gap-[7px] px-[9px] py-[9px] rounded-lg border transition-colors cursor-pointer ${
+                    settings[p.key] ? 'bg-card border-border' : 'bg-muted/30 border-border/50'
+                  }`}
+                  onClick={() => toggle(p.key)}
+                >
+                  <div className="flex items-center gap-[7px]">
+                    <span className={p.color}>{p.icon}</span>
+                    <span className="text-xs font-semibold">{isRTL ? p.labelAr : p.label}</span>
+                  </div>
+                  <Switch checked={settings[p.key] as boolean} onCheckedChange={() => toggle(p.key)} onClick={(e) => e.stopPropagation()} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen pb-24" dir={isRTL ? "rtl" : "ltr"}>
-
-      {/* ── Hero Banner ──────────────────────────────────── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 px-6 pt-4 pb-4">
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
-        <div className="relative max-w-5xl mx-auto">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-lg ring-1 ring-white/30">
-                <Brain className="h-7 w-7 text-white" />
+      <div className="max-w-5xl mx-auto px-4 pt-4 space-y-[9px]">
+        {/* ── Flat header ── */}
+        <div className="bg-card border border-border rounded-xl p-[13px]">
+          <div className="flex items-start justify-between gap-[13px]">
+            <div className="relative">
+              <div className="flex items-center gap-[9px]">
+                <MkrAiBrain className="w-[18px] h-[18px] text-primary" />
+                <div>
+                  <h1 className="text-[15px] font-extrabold tracking-tight text-foreground">
+                    {isRTL ? "إعدادات الذكاء الاصطناعي" : "AI Autopilot"}
+                  </h1>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    {isRTL
+                      ? `${enabledCount} من ${totalCount} ميزة مفعّلة`
+                      : `${enabledCount} of ${totalCount} features active`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-extrabold tracking-tight text-white">
-                  {isRTL ? "إعدادات الذكاء الاصطناعي" : "AI Autopilot"}
-                </h1>
-                <p className="text-sm text-white/70 mt-0.5">
-                  {isRTL
-                    ? `${enabledCount} من ${totalCount} ميزة مفعّلة — التحكم الكامل بالذكاء الاصطناعي`
-                    : `${enabledCount} of ${totalCount} features active — full AI control`}
-                </p>
-              </div>
+              <div className="w-[27px] h-[3px] rounded-full mt-[7px] bg-primary" />
             </div>
             <button
               onClick={save}
               disabled={saving || !dirty}
-              className="flex shrink-0 items-center gap-2 h-10 px-5 rounded-xl text-sm font-bold bg-white text-violet-700 hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md"
+              className="flex shrink-0 items-center gap-[5px] h-[31px] px-[11px] rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? <MkrAiSpinner className="h-[11px] w-[11px]" /> : <MkrAiSave className="h-[11px] w-[11px]" />}
               {isRTL ? "حفظ" : "Save"}
             </button>
           </div>
-
-          {/* Progress bar */}
-          <div className="mt-5">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
-                {isRTL ? "نسبة التفعيل" : "Activation rate"}
-              </span>
-              <span className="text-xs font-bold text-white">{progressPct}%</span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-white/20 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-500"
-                style={{ width: `${progressPct}%` }}
-              />
+          <div className="mt-[11px]">
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
+        </div>
 
-          {/* Category stat pills */}
-          <div className="flex flex-wrap gap-2 mt-4">
+        {/* ── Tab bar ── */}
+        <div className="border-b border-border">
+          <div className="flex overflow-x-auto">
             {CATEGORIES.map((cat) => {
-              const en = cat.items.filter((i) => settings[i.key]).length;
+              const isActive = activeTab === cat.id;
+              const tc = TAB_COLORS[cat.color];
               return (
                 <button
                   key={cat.id}
                   onClick={() => setActiveTab(cat.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                    activeTab === cat.id
-                      ? "bg-white text-violet-700 shadow-md"
-                      : "bg-white/15 text-white/80 hover:bg-white/25"
+                  className={`flex items-center gap-[5px] text-xs font-bold px-[11px] py-[9px] transition-all flex-shrink-0 whitespace-nowrap ${
+                    isActive
+                      ? `text-foreground shadow-[inset_0_-2px_0_0] ${tc.dot === 'bg-violet-500' ? 'shadow-violet-500' : tc.dot === 'bg-blue-500' ? 'shadow-blue-500' : tc.dot === 'bg-emerald-500' ? 'shadow-emerald-500' : tc.dot === 'bg-amber-500' ? 'shadow-amber-500' : 'shadow-rose-500'}`
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {TAB_ICONS[cat.id]}
-                  {isRTL ? cat.titleAr : cat.titleEn}
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                    activeTab === cat.id ? "bg-violet-100 text-violet-700" : "bg-white/20 text-white"
-                  }`}>{en}/{cat.items.length}</span>
+                  <span>{isRTL ? cat.titleAr : cat.titleEn}</span>
+                  <span className={`text-[10px] rounded-full px-[7px] py-[1px] ${isActive ? tc.badge : 'bg-muted text-muted-foreground'}`}>
+                    {cat.items.filter((i) => settings[i.key]).length}/{cat.items.length}
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
-      </div>
 
-      {/* ── Main Content ─────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
-
-        {/* Category panel */}
-        <div className={`rounded-2xl border overflow-hidden shadow-sm transition-colors ${colors.glow}`}>
-
-          {/* Panel header */}
-          <div className={`flex items-center justify-between px-5 py-4 border-b ${colors.border}`}>
-            <div className="flex items-center gap-3">
-              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${colors.icon}`}>
+        {/* ── Category panel ── */}
+        <div className="rounded-xl border border-border bg-card">
+          <div className="flex items-center justify-between p-[13px] border-b border-border">
+            <div className="flex items-center gap-[9px]">
+              <div className={`flex h-[31px] w-[31px] items-center justify-center rounded-lg ${colors.badge}`}>
                 {TAB_ICONS[activeCat.id]}
               </div>
               <div>
-                <h2 className="text-sm font-extrabold">
-                  {isRTL ? activeCat.titleAr : activeCat.titleEn}
-                </h2>
+                <h2 className="text-sm font-extrabold">{isRTL ? activeCat.titleAr : activeCat.titleEn}</h2>
                 <p className="text-[11px] text-muted-foreground">
-                  {isRTL
-                    ? `${enabledInActive} من ${activeCat.items.length} مفعّل`
-                    : `${enabledInActive} of ${activeCat.items.length} enabled`}
+                  {isRTL ? `${enabledInActive} من ${activeCat.items.length} مفعّل` : `${enabledInActive} of ${activeCat.items.length} enabled`}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-[7px]">
               {activeCat.id === "actions" && (
-                <div className="flex items-center gap-1.5 text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 rounded-lg px-2.5 py-1 font-medium">
-                  <ShieldAlert className="h-3.5 w-3.5" />
+                <div className="flex items-center gap-[5px] text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 rounded-lg px-[9px] py-[3px] font-medium">
+                  <MkrAiInfo className="h-[11px] w-[11px]" />
                   {isRTL ? "صلاحيات حساسة" : "Sensitive permissions"}
                 </div>
               )}
               <button
                 onClick={() => toggleAllInCategory(activeCat, !allEnabled)}
-                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${
+                className={`flex items-center gap-[5px] text-xs font-bold px-[9px] py-[5px] rounded-lg border transition-colors ${
                   allEnabled
                     ? "border-border text-muted-foreground hover:bg-muted/50"
                     : `${colors.badge} border-transparent`
                 }`}
               >
                 {allEnabled
-                  ? <><XCircle className="h-3.5 w-3.5" />{isRTL ? "تعطيل الكل" : "Disable all"}</>
-                  : <><CheckCheck className="h-3.5 w-3.5" />{isRTL ? "تفعيل الكل" : "Enable all"}</>
+                  ? <><MkrAiX className="h-[11px] w-[11px]" />{isRTL ? "تعطيل الكل" : "Disable all"}</>
+                  : <><MkrAiCheck className="h-[11px] w-[11px]" />{isRTL ? "تفعيل الكل" : "Enable all"}</>
                 }
               </button>
             </div>
           </div>
 
-          {/* Feature cards grid */}
-          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="p-[13px] grid grid-cols-1 sm:grid-cols-2 gap-[9px]">
             {activeCat.items.map((item) => {
               const isOn = settings[item.key] as boolean;
-              return (
-                <div key={item.key}>
-                  <button
-                    onClick={() => toggle(item.key)}
-                    className={`w-full text-start rounded-xl border p-4 transition-all duration-200 group ${
-                      isOn
-                        ? `${colors.glow} ${colors.border} shadow-sm ring-1 ${colors.ring}`
-                        : "bg-card border-border hover:border-muted-foreground/30 hover:bg-muted/20"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                          isOn ? colors.icon : "bg-muted text-muted-foreground group-hover:bg-muted/70"
-                        }`}>
-                          {item.icon}
-                        </div>
-                        <div className="min-w-0 pt-0.5">
-                          <p className={`text-sm font-bold leading-tight ${isOn ? "" : "text-foreground"}`}>
-                            {isRTL ? item.titleAr : item.titleEn}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground leading-snug mt-1">
-                            {isRTL ? item.descAr : item.descEn}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 pt-0.5">
-                        <Switch
-                          checked={isOn}
-                          onCheckedChange={() => toggle(item.key)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                    </div>
-
-                    {isOn && (
-                      <div className={`mt-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${colors.tab}`}>
-                        <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
-                        {isRTL ? "مفعّل" : "Active"}
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Inline AI Instructions + Platform Toggles under storefront_assistant */}
-                  {item.key === "storefront_assistant" && isOn && (
-                    <div className="space-y-2 mt-2">
-                      {/* Per-platform AI toggles */}
-                      <div className={`rounded-xl border p-4 ${colors.glow} ${colors.border}`}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <MessageCircle className="h-4 w-4 text-blue-500" />
-                          <p className="text-xs font-bold">
-                            {isRTL ? "منصات الرد التلقائي" : "Auto-Reply Platforms"}
-                          </p>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mb-3">
-                          {isRTL
-                            ? "اختر المنصات التي يرد عليها الذكاء الاصطناعي تلقائياً"
-                            : "Choose which platforms AI auto-replies on"}
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {([
-                            { key: 'ai_reply_telegram' as keyof AISettings, icon: <Send className="h-4 w-4" />, label: 'Telegram', labelAr: 'تيليغرام', color: 'text-sky-500' },
-                            { key: 'ai_reply_messenger' as keyof AISettings, icon: <MessageCircle className="h-4 w-4" />, label: 'Messenger', labelAr: 'ماسنجر', color: 'text-blue-500' },
-                            { key: 'ai_reply_instagram' as keyof AISettings, icon: <Instagram className="h-4 w-4" />, label: 'Instagram', labelAr: 'إنستغرام', color: 'text-pink-500' },
-                            { key: 'ai_reply_whatsapp' as keyof AISettings, icon: <Phone className="h-4 w-4" />, label: 'WhatsApp', labelAr: 'واتساب', color: 'text-green-500' },
-                            { key: 'ai_reply_viber' as keyof AISettings, icon: <MessageCircle className="h-4 w-4" />, label: 'Viber', labelAr: 'فايبر', color: 'text-purple-500' },
-                          ]).map(p => (
-                            <div
-                              key={p.key}
-                              className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border transition-colors cursor-pointer ${
-                                settings[p.key] ? 'bg-background/80 border-border' : 'bg-muted/30 border-border/50 opacity-60'
-                              }`}
-                              onClick={() => toggle(p.key)}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className={p.color}>{p.icon}</span>
-                                <span className="text-xs font-semibold">{isRTL ? p.labelAr : p.label}</span>
-                              </div>
-                              <Switch
-                                checked={settings[p.key] as boolean}
-                                onCheckedChange={() => toggle(p.key)}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
+              return <FeatureCard key={item.key} item={item} isOn={isOn} />;
             })}
 
-            {/* AI Instructions as separate card in grid */}
             {activeTab === "core" && settings.storefront_assistant && (
-              <div className={`rounded-xl border p-6 ${colors.glow} ${colors.border} row-span-2 flex flex-col`}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-amber-500" />
-                    <p className="text-xs font-bold">
-                      {isRTL ? "تعليمات الذكاء الاصطناعي" : "AI Instructions"}
-                    </p>
+              <div className={`rounded-xl border p-[13px] ${colors.border} bg-card flex flex-col`}>
+                <div className="flex items-center justify-between mb-[9px]">
+                  <div className="flex items-center gap-[7px]">
+                    <MkrAiSparkle className="h-[13px] w-[13px] text-amber-500" />
+                    <p className="text-xs font-bold">{isRTL ? "تعليمات الذكاء الاصطناعي" : "AI Instructions"}</p>
                   </div>
-                  <span className="text-[10px] text-muted-foreground font-medium">
-                    {settings.ai_instructions?.length || 0}/500
-                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium">{settings.ai_instructions?.length || 0}/500</span>
                 </div>
                 <Textarea
                   value={settings.ai_instructions || ""}
@@ -685,59 +599,51 @@ export default function AISettingsPage() {
                     setSettings((s) => ({ ...s, ai_instructions: e.target.value.slice(0, 500) }));
                     setDirty(true);
                   }}
-                  rows={12}
-                  placeholder={
-                    isRTL
-                      ? "مثال: ركز على بيع المنتجات الجديدة، رحب بالزبائن باسم المتجر، لا تعطي خصومات..."
-                      : "E.g. Focus on new products, greet by store name, never offer discounts..."
-                  }
-                  className="bg-background/60 border-border/60 rounded-xl text-xs resize-none flex-1"
+                  rows={10}
+                  placeholder={isRTL ? "مثال: ركز على بيع المنتجات الجديدة، رحب بالزبائن باسم المتجر، لا تعطي خصومات..." : "E.g. Focus on new products, greet by store name, never offer discounts..."}
+                  className="bg-muted/30 border-border/60 rounded-xl text-xs resize-none flex-1"
                 />
               </div>
             )}
           </div>
         </div>
 
-        {/* ── Category navigation footer ───────────────── */}
-        <div className="flex items-center gap-1 rounded-2xl border border-border bg-card p-1.5 overflow-x-auto">
+        {/* ── Bottom tab nav ── */}
+        <div className="rounded-xl border border-border bg-card p-[9px] flex overflow-x-auto gap-[5px]">
           {CATEGORIES.map((cat) => {
             const en = cat.items.filter((i) => settings[i.key]).length;
-            const c = COLOR_MAP[cat.color];
             const isActive = activeTab === cat.id;
+            const tc = TAB_COLORS[cat.color];
             return (
               <button
                 key={cat.id}
                 onClick={() => setActiveTab(cat.id)}
-                className={`flex-1 flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-bold transition-all min-w-[70px] ${
-                  isActive
-                    ? `${c.badge} shadow-sm`
-                    : "text-muted-foreground hover:bg-muted/50"
+                className={`flex-1 flex flex-col items-center gap-[5px] px-[9px] py-[9px] rounded-lg text-xs font-bold transition-all min-w-[60px] ${
+                  isActive ? tc.badge : "text-muted-foreground hover:bg-muted/50"
                 }`}
               >
                 <span className={isActive ? "" : "opacity-60"}>{TAB_ICONS[cat.id]}</span>
                 <span className="hidden sm:block truncate">{isRTL ? cat.titleAr : cat.titleEn}</span>
-                <span className={`text-[9px] font-bold rounded-full px-1.5 ${
-                  isActive ? "bg-white/40 dark:bg-black/20" : "bg-muted"
-                }`}>{en}/{cat.items.length}</span>
+                <span className="text-[9px] font-bold">{en}/{cat.items.length}</span>
               </button>
             );
           })}
         </div>
 
-        {/* ── Unsaved changes bar ───────────────────────── */}
+        {/* ── Unsaved changes bar ── */}
         {dirty && (
           <div className="fixed bottom-6 inset-x-4 max-w-md mx-auto z-50">
-            <div className="flex items-center justify-between gap-3 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl px-5 py-3.5 shadow-xl shadow-black/30 border border-slate-700">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+            <div className="flex items-center justify-between gap-[9px] bg-foreground text-background rounded-xl px-[13px] py-[11px] border border-border">
+              <div className="flex items-center gap-[7px] text-sm font-medium">
+                <div className="h-[7px] w-[7px] rounded-full bg-amber-400" />
                 {isRTL ? "لديك تغييرات غير محفوظة" : "Unsaved changes"}
               </div>
               <button
                 onClick={save}
                 disabled={saving}
-                className="flex items-center gap-1.5 text-sm font-bold bg-violet-500 hover:bg-violet-400 text-white px-4 py-1.5 rounded-xl transition-colors disabled:opacity-60"
+                className="flex items-center gap-[5px] text-xs font-bold bg-primary text-primary-foreground px-[11px] py-[5px] rounded-lg transition-colors disabled:opacity-60"
               >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                {saving ? <MkrAiSpinner className="h-[11px] w-[11px]" /> : <MkrAiSave className="h-[11px] w-[11px]" />}
                 {isRTL ? "حفظ" : "Save now"}
               </button>
             </div>

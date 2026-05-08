@@ -296,7 +296,41 @@ export default function Integrations() {
       });
 
       if (response.ok) {
-        toast({ title: isRTL ? 'تم الحفظ' : 'Saved', description: isRTL ? 'تم حفظ إعدادات الربط بنجاح' : 'Integration settings saved successfully' });
+        // Test WhatsApp connection if credentials were provided
+        if (payload.whatsappPhoneId && payload.whatsappToken) {
+          try {
+            const testResponse = await fetch('/api/whatsapp/test-connection', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                phoneId: payload.whatsappPhoneId,
+                token: payload.whatsappToken
+              })
+            });
+            const testData = await testResponse.json();
+            if (testData.success) {
+              toast({ 
+                title: isRTL ? 'تم الحفظ' : 'Saved', 
+                description: isRTL ? 'تم حفظ إعدادات الربط بنجاح. اتصال واتساب يعمل!' : 'Integration settings saved successfully. WhatsApp connection is working!' 
+              });
+            } else {
+              toast({ 
+                title: isRTL ? 'تم الحفظ مع تحذير' : 'Saved with warning', 
+                description: isRTL ? 'تم حفظ الإعدادات لكن اتصال واتساب فشل. تحقق من بيانات الاعتماد.' : 'Settings saved but WhatsApp connection failed. Please check your credentials.',
+                variant: 'destructive' 
+              });
+            }
+          } catch (testError) {
+            toast({ 
+              title: isRTL ? 'تم الحفظ مع تحذير' : 'Saved with warning', 
+              description: isRTL ? 'تم حفظ الإعدادات لكن لم يتم التحقق من اتصال واتساب.' : 'Settings saved but could not verify WhatsApp connection.',
+              variant: 'destructive' 
+            });
+          }
+        } else {
+          toast({ title: isRTL ? 'تم الحفظ' : 'Saved', description: isRTL ? 'تم حفظ إعدادات الربط بنجاح' : 'Integration settings saved successfully' });
+        }
+        await loadSettings();
       } else {
         const errJson = await response.json().catch(() => null);
         throw new Error(errJson?.error || 'Failed to save settings');
