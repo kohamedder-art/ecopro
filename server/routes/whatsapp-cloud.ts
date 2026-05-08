@@ -425,9 +425,51 @@ const getConfig: RequestHandler = (_req, res) => {
   });
 };
 
+/**
+ * POST /api/whatsapp/test-connection — Test user-provided WhatsApp credentials
+ */
+const testConnection: RequestHandler = async (req, res) => {
+  try {
+    const { phoneId, token } = req.body;
+    
+    if (!phoneId || !token) {
+      return res.status(400).json({ success: false, error: 'Missing phoneId or token' });
+    }
+
+    // Test by fetching phone number info from WhatsApp Cloud API
+    const response = await fetch(`https://graph.facebook.com/v18.0/${phoneId}?fields=name,verified_name`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return res.json({ 
+        success: true, 
+        phoneNumberName: data.name || data.verified_name 
+      });
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      return res.status(400).json({ 
+        success: false, 
+        error: errorData.error?.message || 'Invalid credentials' 
+      });
+    }
+  } catch (error) {
+    console.error('[WhatsApp] Test connection error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to test connection' 
+    });
+  }
+};
+
 // Register routes
 router.get('/webhook', verifyWebhook);
 router.post('/webhook', handleWebhook);
 router.get('/config', getConfig);
+router.post('/test-connection', testConnection);
 
 export default router;
