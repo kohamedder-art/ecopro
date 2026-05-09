@@ -1441,38 +1441,69 @@ export default function Store() {
     <div className="min-h-screen bg-background p-2 md:p-4 overflow-x-hidden">
       <div className="max-w-7xl mx-auto space-y-2 md:space-y-3">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              {t('store.privateStore')}
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm md:text-base">
-              {t('store.manageExclusive')}
-            </p>
+        <div className="bg-card border border-slate-200 dark:border-slate-700 rounded-xl p-3 md:p-4 space-y-3">
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center flex-shrink-0 border border-primary/10">
+                {storeSettings?.store_logo ? (
+                  <img src={storeSettings.store_logo} alt="" className="w-full h-full rounded-xl object-cover" />
+                ) : (
+                  <StoreIcon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg md:text-xl font-bold truncate">
+                    {storeSettings?.store_name || t('store.privateStore')}
+                  </h1>
+                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 font-semibold border-0 ${stats.active > 0 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full mr-1 ${stats.active > 0 ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                    {stats.active > 0 ? (isRTL ? 'نشط' : 'Active') : (isRTL ? 'بدون منتجات' : 'No Products')}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <LinkIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                  <div className="flex items-center gap-1 min-w-0 max-w-[260px] md:max-w-[400px]">
+                    <span className="text-xs text-muted-foreground truncate">{getStorefrontFullUrl(storeSettings) || (isRTL ? 'لم يتم إنشاء المتجر بعد' : 'Store not yet created')}</span>
+                    {getStorefrontPath(storeSettings) && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); copyStoreLink(); }}
+                        className="flex-shrink-0 p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        title={isRTL ? 'نسخ الرابط' : 'Copy link'}
+                      >
+                        {storeLinkCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const url = getStorefrontPath(storeSettings);
+                  if (url) window.open(url, '_blank');
+                }}
+                disabled={!getStorefrontPath(storeSettings)}
+                size="sm"
+                className="h-8 px-2.5 text-xs"
+              >
+                <ExternalLink className="w-3.5 h-3.5 md:mr-1.5" />
+                <span className="hidden md:inline">{t('store.viewStorefront')}</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowStoreSettingsModal(true)}
+                size="sm"
+                className="h-8 px-2.5 text-xs"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button 
-              variant="outline"
-              onClick={() => {
-                const url = getStorefrontPath(storeSettings);
-                if (url) {
-                  window.open(url, '_blank');
-                }
-              }}
-              disabled={!getStorefrontPath(storeSettings)}
-              className="h-9 px-2 md:px-3 text-xs md:text-sm"
-            >
-              <StoreIcon className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">{t('store.viewStorefront')}</span>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/template-editor')}
-              className="h-9 px-2 md:px-3 text-xs md:text-sm"
-            >
-              <Settings className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">{t('store.templateEditor')}</span>
-            </Button>
+
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
             <Button
               onClick={() => {
                 setSelectedProduct(null);
@@ -1484,10 +1515,11 @@ export default function Store() {
                 setProductFormServerError(null);
                 setShowAddModal(true);
               }}
-              className="bg-gradient-to-r from-primary to-purple-600 h-9 px-2 md:px-3 text-xs md:text-sm"
+              size="sm"
+              className="h-8 px-3 text-xs bg-gradient-to-r from-primary to-purple-600"
             >
-              <Plus className="w-4 h-4 md:mr-2" />
-              <span className="hidden sm:inline">{t('store.createProduct')}</span>
+              <Plus className="w-3.5 h-3.5 md:mr-1.5" />
+              <span>{t('store.createProduct')}</span>
             </Button>
             <Button
               variant="outline"
@@ -1496,10 +1528,20 @@ export default function Store() {
                 setSelectedInventoryProduct(null);
                 setInventoryStockQuantity(1);
               }}
-              className="h-9 px-2 md:px-3 text-xs md:text-sm"
+              size="sm"
+              className="h-8 px-3 text-xs"
             >
-              <Package className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">{t('store.selectFromInventory')}</span>
+              <Package className="w-3.5 h-3.5 md:mr-1.5" />
+              <span className="hidden sm:inline">{t('store.selectFromInventory')}</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/template-editor')}
+              size="sm"
+              className="h-8 px-3 text-xs"
+            >
+              <Palette className="w-3.5 h-3.5 md:mr-1.5" />
+              <span className="hidden sm:inline">{t('store.templateEditor')}</span>
             </Button>
           </div>
         </div>

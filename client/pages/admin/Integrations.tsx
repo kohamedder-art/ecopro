@@ -151,6 +151,7 @@ export default function Integrations() {
       if (!useCustom) { payload.telegramBotToken = ''; payload.telegramBotUsername = ''; }
     } else if (platform === 'facebook') {
       payload.usePlatformMessenger = !useCustom;
+      payload.messengerEnabled = true;
       if (!useCustom) { payload.fbPageId = ''; payload.fbPageAccessToken = ''; }
     } else if (platform === 'whatsapp_cloud') {
       payload.usePlatformWhatsapp = !useCustom;
@@ -168,7 +169,7 @@ export default function Integrations() {
     else if (platform === 'whatsapp_cloud') { payload.whatsappToken = ''; payload.whatsappPhoneId = ''; payload.usePlatformWhatsapp = false; }
     else if (platform === 'viber') { payload.viberAuthToken = ''; payload.usePlatformViber = false; }
     else if (platform === 'instagram') { payload.instagramAccountId = ''; payload.instagramPageAccessToken = ''; payload.usePlatformInstagram = false; }
-    else if (platform === 'facebook') { payload.fbPageId = ''; payload.fbPageAccessToken = ''; payload.usePlatformMessenger = false; }
+    else if (platform === 'facebook') { payload.fbPageId = ''; payload.fbPageAccessToken = ''; payload.usePlatformMessenger = false; payload.messengerEnabled = false; }
     saveSettings(payload, platform);
   }
 
@@ -178,7 +179,7 @@ export default function Integrations() {
       saveSettings({ telegramBotToken: settings.telegramBotToken, telegramBotUsername: settings.telegramBotUsername, usePlatformTelegram: false }, platform);
     } else if (platform === 'facebook') {
       if (!settings.fbPageId?.trim() || !settings.fbPageAccessToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال بيانات الصفحة' : 'Please enter page credentials', variant: 'destructive' }); return; }
-      saveSettings({ fbPageId: settings.fbPageId, fbPageAccessToken: settings.fbPageAccessToken, usePlatformMessenger: false }, platform);
+      saveSettings({ fbPageId: settings.fbPageId, fbPageAccessToken: settings.fbPageAccessToken, usePlatformMessenger: false, messengerEnabled: true }, platform);
     } else if (platform === 'whatsapp_cloud') {
       if (!settings.whatsappPhoneId?.trim() || !settings.whatsappToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال بيانات واتساب' : 'Please enter WhatsApp credentials', variant: 'destructive' }); return; }
       saveSettings({ whatsappPhoneId: settings.whatsappPhoneId, whatsappToken: settings.whatsappToken, usePlatformWhatsapp: false }, platform);
@@ -246,11 +247,13 @@ export default function Integrations() {
 
         {/* ── Page Header ── */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-800 dark:bg-slate-700 flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <rect x="2" y="2" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.5"/>
-              <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
-              <path d="M18 13l-4-4-9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
             </svg>
           </div>
           <div>
