@@ -2868,15 +2868,14 @@ router.get('/chat-history', authAiLimiter, async (req: Request, res: Response) =
     if (!who) return res.status(401).json({ error: 'Authentication required.' });
 
     const result = await pool.query(
-      `SELECT role, content, created_at
+      `SELECT role, content
          FROM ai_chat_history
         WHERE user_id = $1 AND user_type = $2
-        ORDER BY created_at DESC
+        ORDER BY id ASC
         LIMIT 60`,
       [who.userId, who.userType]
     );
-    // Return oldest-first so the UI can render in order
-    const messages = result.rows.reverse().map(r => ({ role: r.role, content: r.content }));
+    const messages = result.rows.map(r => ({ role: r.role, content: r.content }));
     return res.json({ messages });
   } catch (err) {
     return serverError(res, err);
