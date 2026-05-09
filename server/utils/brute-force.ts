@@ -14,12 +14,12 @@ const loginAttempts = new Map<string, { count: number; firstAttempt: number; blo
 // Configuration
 const CONFIG = {
   // Per-IP limits
-  maxAttemptsPerIp: 5,           // Max failed attempts per IP
+  maxAttemptsPerIp: 10,           // Max failed attempts per IP
   ipWindowMs: 15 * 60 * 1000,    // 15 minute window
   ipBlockDurationMs: 30 * 60 * 1000, // Block for 30 minutes after exceeding
   
   // Per-account limits (by email)
-  maxAttemptsPerAccount: 10,     // Max failed attempts per email
+  maxAttemptsPerAccount: 20,     // Max failed attempts per email
   accountWindowMs: 60 * 60 * 1000,  // 1 hour window
   accountBlockDurationMs: 60 * 60 * 1000, // Block account for 1 hour
   
