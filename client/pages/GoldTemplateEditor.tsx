@@ -979,7 +979,7 @@ export default function GoldTemplateEditor() {
       const availH = rect.height;
       const naturalW = previewDevice === 'mobile' ? 375 : 768;
       const naturalH = previewDevice === 'mobile' ? 812 : 1024;
-      const s = availH / (naturalH + 28);
+      const s = (availH / (naturalH + 28)) * 1.15;
       setDeviceScale(Math.max(0.25, Math.min(2, s)));
     };
 
@@ -2479,6 +2479,7 @@ export default function GoldTemplateEditor() {
                 height: (previewDevice === 'mobile' ? (812 + 28) : (1024 + 28)) * deviceScale,
                 flexShrink: 0,
                 position: 'relative',
+                marginTop: '2%',
               }}>
                 <div
                   ref={previewFitRef}
