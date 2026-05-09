@@ -1170,7 +1170,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
           const pinInstructionsTemplate = botRes.rows[0].template_pin_instructions || defaultPinInstructions;
           
           // Replace variables
-          const orderMessage = replaceTemplateVariables(instantOrderTemplate, {
+          const templateVars = {
             customerName: customer_name,
             productName: productTitle,
             totalPrice: orderTotalPrice.toLocaleString(),
@@ -1180,7 +1180,9 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
             address: customer_address || 'غير محدد',
             storeName: storeName,
             companyName: storeName,
-          });
+          };
+          const orderMessage = replaceTemplateVariables(instantOrderTemplate, templateVars);
+          const pinMessage = replaceTemplateVariables(pinInstructionsTemplate, templateVars);
 
           // Send instant order notification (NO buttons - just info)
           const orderId = result.rows[0].id;
@@ -1192,7 +1194,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
           
           // Send pinning instruction as separate message
           if (msgResult.success) {
-            const pinResult = await sendTelegramMessage(botToken, chatId, pinInstructionsTemplate);
+            const pinResult = await sendTelegramMessage(botToken, chatId, pinMessage);
             if (!isProduction) {
               console.log('[createPublicStoreOrder] Pin instructions send result:', pinResult);
             }

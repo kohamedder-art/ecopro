@@ -186,7 +186,19 @@ async function sendLateConnectOrderMessages(opts: {
   });
 
   await sendTelegramMessage(botToken, chatId, orderMessage);
-  await sendTelegramMessage(botToken, chatId, String(pinInstructionsTemplate));
+
+  const pinMessage = replaceTemplateVariables(String(pinInstructionsTemplate), {
+    customerName,
+    productName,
+    totalPrice: totalPrice.toLocaleString(),
+    quantity,
+    orderId,
+    customerPhone,
+    address,
+    storeName,
+    companyName: storeName,
+  });
+  await sendTelegramMessage(botToken, chatId, pinMessage);
 }
 
 /**

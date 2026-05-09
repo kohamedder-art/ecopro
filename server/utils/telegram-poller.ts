@@ -282,7 +282,16 @@ async function processTelegramUpdate(pool: Pool, update: TelegramUpdate, botToke
                   }
                 );
                 await sendTelegramMessage(botToken, String(chatId), orderMsg);
-                await sendTelegramMessage(botToken, String(chatId), String(tplRes.rows[0]?.template_pin_instructions || defaultPin));
+                const pinMsg = replaceTemplateVariables(
+                  String(tplRes.rows[0]?.template_pin_instructions || defaultPin),
+                  {
+                    customerName: row.customer_name, productName: row.product_title || 'Product',
+                    totalPrice: row.total_price, quantity: row.quantity, orderId: row.id,
+                    customerPhone: row.customer_phone, address: row.shipping_address || 'غير محدد',
+                    storeName: row.store_name, companyName: row.store_name,
+                  }
+                );
+                await sendTelegramMessage(botToken, String(chatId), pinMsg);
               }
             } catch (e) {
               console.warn('[TelegramPoller] Failed to send order details after /start:', (e as any).message);

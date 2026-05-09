@@ -45,6 +45,7 @@ const createOrderBodySchema = z
     customer_email: z.string().trim().email().max(255).optional().nullable(),
     customer_phone: z.string().trim().min(7).max(50),
     customer_address: z.string().trim().max(1000).optional().nullable(),
+    customer_notes: z.string().trim().max(2000).optional().nullable(),
     shipping_wilaya_id: z.preprocess(
       (v) => (v === '' || v === null || v === undefined ? undefined : typeof v === 'string' ? Number(v) : v),
       z.number().int().positive()
@@ -130,6 +131,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       shipping_commune_id,
       shipping_hai,
       offer_id,
+      customer_notes,
     } = parsed.data;
 
     const normalizedPhone = String(customer_phone).replace(/\s/g, '');
@@ -294,6 +296,7 @@ export const createOrder: RequestHandler = async (req, res) => {
     addCol('customer_email', customer_email || null);
     addCol('customer_phone', normalizedPhone || null);
     addCol('shipping_address', customer_address || null);
+    addCol('notes', customer_notes || null);
     addCol('shipping_wilaya_id', shipping_wilaya_id || null);
     addCol('shipping_commune_id', shipping_commune_id || null);
     addCol('shipping_hai', shipping_hai || null);
@@ -526,10 +529,11 @@ export const createOrder: RequestHandler = async (req, res) => {
             const instantOrderTemplate = bot.template_instant_order || defaultInstantOrder;
             const pinTemplate = bot.template_pin_instructions || defaultPinInstructions;
             const orderMessage = replaceTemplateVariables(String(instantOrderTemplate), orderVars);
+            const pinMessage = replaceTemplateVariables(String(pinTemplate), orderVars);
 
             const sent = await sendTelegramMessage(botToken, telegramChatId, orderMessage);
             if (sent.success) {
-              await sendTelegramMessage(botToken, telegramChatId, String(pinTemplate));
+              await sendTelegramMessage(botToken, telegramChatId, pinMessage);
             }
           }
 

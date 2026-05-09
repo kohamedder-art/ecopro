@@ -979,8 +979,8 @@ export default function GoldTemplateEditor() {
       const availH = rect.height;
       const naturalW = previewDevice === 'mobile' ? 375 : 768;
       const naturalH = previewDevice === 'mobile' ? 812 : 1024;
-      const s = Math.min((availW * 0.92) / naturalW, (availH * 0.92) / naturalH);
-      setDeviceScale(Math.max(0.25, s));
+      const s = availH / (naturalH + 28);
+      setDeviceScale(Math.max(0.25, Math.min(2, s)));
     };
 
     compute();
@@ -2475,8 +2475,8 @@ export default function GoldTemplateEditor() {
             {previewDevice !== 'desktop' ? (
               /* Compensating wrapper: layout footprint = visual (scaled) size */
               <div style={{
-                width: (previewDevice === 'mobile' ? 375 : 768) * deviceScale,
-                height: (previewDevice === 'mobile' ? 812 : 1024) * deviceScale,
+                width: (previewDevice === 'mobile' ? (375 + 28) : (768 + 28)) * deviceScale,
+                height: (previewDevice === 'mobile' ? (812 + 28) : (1024 + 28)) * deviceScale,
                 flexShrink: 0,
                 position: 'relative',
               }}>

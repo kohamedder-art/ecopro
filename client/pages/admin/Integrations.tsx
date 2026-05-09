@@ -1,32 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Globe, Save, Loader2, Phone, MessageSquare, Check, ExternalLink, Unplug, CheckCircle, Instagram, Send, Smartphone, ChevronDown, HelpCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
 
-interface FbOAuthStatus {
-  connected: boolean;
-  pageId?: string;
-  pageName?: string;
-  instagramConnected?: boolean;
-  instagramUsername?: string;
-  tokenExpiresAt?: string;
-}
-
-interface FbPage {
-  id: string;
-  name: string;
-  hasInstagram: boolean;
-}
-
 interface IntegrationSettings {
   provider: string;
-  // Telegram
   telegramBotToken?: string;
   telegramTokenConfigured?: boolean;
   telegramBotUsername?: string;
@@ -34,317 +16,216 @@ interface IntegrationSettings {
   platformTelegramAvailable?: boolean;
   usePlatformTelegram?: boolean;
   telegramUsingPlatform?: boolean;
-  // WhatsApp
   whatsappPhoneId?: string;
   whatsappToken?: string;
   whatsappTokenConfigured?: boolean;
   whatsappDelayMinutes?: number;
   platformWhatsappAvailable?: boolean;
   usePlatformWhatsapp?: boolean;
-  // Facebook / Messenger
+  whatsappUsingPlatform?: boolean;
   fbPageId?: string;
   fbPageAccessToken?: string;
   fbPageAccessTokenConfigured?: boolean;
   messengerDelayMinutes?: number;
   platformMessengerAvailable?: boolean;
-  platformMessengerPageId?: string;
   usePlatformMessenger?: boolean;
   messengerUsingPlatform?: boolean;
-  // Instagram
   platformInstagramAvailable?: boolean;
   usePlatformInstagram?: boolean;
-  instagramUsingPlatform?: boolean;
   instagramAccountId?: string;
   instagramPageAccessToken?: string;
   instagramTokenConfigured?: boolean;
-  // Viber
   viberAuthToken?: string;
   viberSenderName?: string;
   viberDelayMinutes?: number;
   platformViberAvailable?: boolean;
   usePlatformViber?: boolean;
   viberUsingPlatform?: boolean;
-  // General
   autoExpireHours?: number;
+  messengerEnabled?: boolean;
 }
 
 type Platform = 'facebook' | 'instagram' | 'telegram' | 'whatsapp_cloud' | 'viber';
+
+interface PlatformDef {
+  value: Platform;
+  label: string;
+  desc: string;
+  color: string;
+  bgColor: string;
+}
+
+const ICONS: Record<string, () => JSX.Element> = {
+  facebook: () => <svg width="22" height="22" viewBox="0 0 640 640" fill="none"><path d="M240 363.3L240 576L356 576L356 363.3L442.5 363.3L460.5 265.5L356 265.5L356 230.9C356 179.2 376.3 159.4 428.7 159.4C445 159.4 458.1 159.8 465.7 160.6L465.7 71.9C451.4 68 416.4 64 396.2 64C289.3 64 240 114.5 240 223.4L240 265.5L174 265.5L174 363.3L240 363.3z" fill="currentColor"/></svg>,
+  instagram: () => <svg width="22" height="22" viewBox="0 0 640 640" fill="none"><path d="M320.3 205C256.8 204.8 205.2 256.2 205 319.7C204.8 383.2 256.2 434.8 319.7 435C383.2 435.2 434.8 383.8 435 320.3C435.2 256.8 383.8 205.2 320.3 205zM319.7 245.4C360.9 245.2 394.4 278.5 394.6 319.7C394.8 360.9 361.5 394.4 320.3 394.6C279.1 394.8 245.6 361.5 245.4 320.3C245.2 279.1 278.5 245.6 319.7 245.4zM413.1 200.3C413.1 185.5 425.1 173.5 439.9 173.5C454.7 173.5 466.7 185.5 466.7 200.3C466.7 215.1 454.7 227.1 439.9 227.1C425.1 227.1 413.1 215.1 413.1 200.3zM542.8 227.5C541.1 191.6 532.9 159.8 506.6 133.6C480.4 107.4 448.6 99.2 412.7 97.4C375.7 95.3 264.8 95.3 227.8 97.4C192 99.1 160.2 107.3 133.9 133.5C107.6 159.7 99.5 191.5 97.7 227.4C95.6 264.4 95.6 375.3 97.7 412.3C99.4 448.2 107.6 480 133.9 506.2C160.2 532.4 191.9 540.6 227.8 542.4C264.8 544.5 375.7 544.5 412.7 542.4C448.6 540.7 480.4 532.5 506.6 506.2C532.8 480 541 448.2 542.8 412.3C544.9 375.3 544.9 264.5 542.8 227.5zM495 452C487.2 471.6 472.1 486.7 452.4 494.6C422.9 506.3 352.9 503.6 320.3 503.6C287.7 503.6 217.6 506.2 188.2 494.6C168.6 486.8 153.5 471.7 145.6 452C133.9 422.5 136.6 352.5 136.6 319.9C136.6 287.3 134 217.2 145.6 187.8C153.4 168.2 168.5 153.1 188.2 145.2C217.7 133.5 287.7 136.2 320.3 136.2C352.9 136.2 423 133.6 452.4 145.2C472 153 487.1 168.1 495 187.8C506.7 217.3 504 287.3 504 319.9C504 352.5 506.7 422.6 495 452z" fill="currentColor"/></svg>,
+  telegram: () => <svg width="22" height="22" viewBox="0 0 496 512" fill="none"><path d="M248,8C111.033,8,0,119.033,0,256S111.033,504,248,504,496,392.967,496,256,384.967,8,248,8ZM362.952,176.66c-3.732,39.215-19.881,134.378-28.1,178.3-3.476,18.584-10.322,24.816-16.948,25.425-14.4,1.326-25.338-9.517-39.287-18.661-21.827-14.308-34.158-23.215-55.346-37.177-24.485-16.135-8.612-25,5.342-39.5,3.652-3.793,67.107-61.51,68.335-66.746.153-.655.3-3.1-1.154-4.384s-3.59-.849-5.135-.5q-3.283.746-104.608,69.142-14.845,10.194-26.894,9.934c-8.855-.191-25.888-5.006-38.551-9.123-15.531-5.048-27.875-7.717-26.8-16.291q.84-6.7,18.45-13.7,108.446-47.248,144.628-62.3c68.872-28.647,83.183-33.623,92.511-33.789,2.052-.034,6.639.474,9.61,2.885a10.452,10.452,0,0,1,3.53,6.716A43.765,43.765,0,0,1,362.952,176.66Z" fill="currentColor"/></svg>,
+  whatsapp_cloud: () => <svg width="22" height="22" viewBox="0 0 448 512" fill="none"><path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z" fill="currentColor"/></svg>,
+  viber: () => <svg width="22" height="22" viewBox="0 0 512 512" fill="none"><path d="M444 49.9C431.3 38.2 379.9.9 265.3.4c0 0-135.1-8.1-200.9 52.3C27.8 89.3 14.9 143 13.5 209.5c-1.4 66.5-3.1 191.1 117 224.9h.1l-.1 51.6s-.8 20.9 13 25.1c16.6 5.2 26.4-10.7 42.3-27.8 8.7-9.4 20.7-23.2 29.8-33.7 82.2 6.9 145.3-8.9 152.5-11.2 16.6-5.4 110.5-17.4 125.7-142 15.8-128.6-7.6-209.8-49.8-246.5zM457.9 287c-12.9 104-89 110.6-103 115.1-6 1.9-61.5 15.7-131.2 11.2 0 0-52 62.7-68.2 79-5.3 5.3-11.1 4.8-11-5.7 0-6.9.4-85.7.4-85.7-.1 0-.1 0 0 0-101.8-28.2-95.8-134.3-94.7-189.8 1.1-55.5 11.6-101 42.6-131.6 55.7-50.5 170.4-43 170.4-43 96.9.4 143.3 29.6 154.1 39.4 35.7 30.6 53.9 103.8 40.6 211.1zm-139-80.8c.4 8.6-12.5 9.2-12.9.6-1.1-22-11.4-32.7-32.6-33.9-8.6-.5-7.8-13.4.7-12.9 27.9 1.5 43.4 17.5 44.8 46.2zm20.3 11.3c1-42.4-25.5-75.6-75.8-79.3-8.5-.6-7.6-13.5.9-12.9 58 4.2 88.9 44.1 87.8 92.5-.1 8.6-13.1 8.2-12.9-.3zm47 13.4c.1 8.6-12.9 8.7-12.9.1-.6-81.5-54.9-125.9-120.8-126.4-8.5-.1-8.5-12.9 0-12.9 73.7.5 133 51.4 133.7 139.2zM374.9 329v.2c-10.8 19-31 40-51.8 33.3l-.2-.3c-21.1-5.9-70.8-31.5-102.2-56.5-16.2-12.8-31-27.9-42.4-42.4-10.3-12.9-20.7-28.2-30.8-46.6-21.3-38.5-26-55.7-26-55.7-6.7-20.8 14.2-41 33.3-51.8h.2c9.2-4.8 18-3.2 23.9 3.9 0 0 12.4 14.8 17.7 22.1 5 6.8 11.7 17.7 15.2 23.8 6.1 10.9 2.3 22-3.7 26.6l-12 9.6c-6.1 4.9-5.3 14-5.3 14s17.8 67.3 84.3 84.3c0 0 9.1.8 14-5.3l9.6-12c4.6-6 15.7-9.8 26.6-3.7 14.7 8.3 33.4 21.2 45.8 32.9 7 5.7 8.6 14.4 3.8 23.6z" fill="currentColor"/></svg>,
+};
+
+const PLATFORM_DEFS: PlatformDef[] = [
+  { value: 'facebook', label: 'Facebook', desc: 'Messenger', color: '#1877F2', bgColor: '#1877F2' },
+  { value: 'instagram', label: 'Instagram', desc: 'Instagram DMs', color: '#E4405F', bgColor: '#E4405F' },
+  { value: 'telegram', label: 'Telegram', desc: 'Chat Bot', color: '#08c', bgColor: '#08c' },
+  { value: 'whatsapp_cloud', label: 'WhatsApp', desc: 'Cloud API', color: '#25D366', bgColor: '#25D366' },
+  { value: 'viber', label: 'Viber', desc: 'Viber Messages', color: '#7360F2', bgColor: '#7360F2' },
+];
 
 export default function Integrations() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
-  const [params, setParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
   const [activePlatform, setActivePlatform] = useState<Platform>('telegram');
-
-  // Advanced mode toggles (custom bot vs platform bot)
-  const [showMessengerAdvanced, setShowMessengerAdvanced] = useState(false);
-  const [showTelegramAdvanced, setShowTelegramAdvanced] = useState(false);
-  const [showWhatsappAdvanced, setShowWhatsappAdvanced] = useState(false);
-  const [showViberAdvanced, setShowViberAdvanced] = useState(false);
-  const [showInstagramAdvanced, setShowInstagramAdvanced] = useState(false);
-
-  // Facebook OAuth state
-  const [fbStatus, setFbStatus] = useState<FbOAuthStatus | null>(null);
-  const [fbLoading, setFbLoading] = useState(true);
-  const [fbConnecting, setFbConnecting] = useState(false);
-  const [fbDisconnecting, setFbDisconnecting] = useState(false);
-  const [disconnectingPlatform, setDisconnectingPlatform] = useState<string | null>(null);
-  const [fbPages, setFbPages] = useState<FbPage[]>([]);
-  const [showPagePicker, setShowPagePicker] = useState(false);
-  const [selectedPageId, setSelectedPageId] = useState<string>('');
-  const [savingPage, setSavingPage] = useState(false);
 
   const [settings, setSettings] = useState<IntegrationSettings>({
     provider: 'telegram',
     autoExpireHours: 24,
   });
 
-  useEffect(() => {
-    loadSettings();
-    loadFbStatus();
-  }, []);
+  useEffect(() => { loadSettings(false); }, []);
 
-  // Handle Facebook OAuth callback params
-  useEffect(() => {
-    const fb = params.get('fb');
-    if (fb === 'connected') {
-      toast({ title: t('platforms.facebook.connectedToast'), description: t('platforms.facebook.connectedDesc') });
-      loadFbStatus();
-      params.delete('fb');
-      setParams(params, { replace: true });
-    } else if (fb === 'select-page') {
-      loadFbPages();
-      params.delete('fb');
-      setParams(params, { replace: true });
-    } else if (fb === 'error') {
-      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
-      params.delete('fb');
-      setParams(params, { replace: true });
-    }
-  }, [params]);
-
-  // ── Facebook OAuth helpers ─────────────────────────────────
-  async function loadFbStatus() {
-    try {
-      setFbLoading(true);
-      const data = await apiFetch<FbOAuthStatus>('/api/facebook/status');
-      setFbStatus(data);
-    } catch {
-      setFbStatus({ connected: false });
-    } finally {
-      setFbLoading(false);
-    }
-  }
-
-  async function loadFbPages() {
-    try {
-      const data = await apiFetch<{ pages: FbPage[] }>('/api/facebook/pages');
-      if (data?.pages?.length) {
-        setFbPages(data.pages);
-        setShowPagePicker(true);
-      }
-    } catch {
-      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
-    }
-  }
-
-  async function connectFacebook() {
-    try {
-      setFbConnecting(true);
-      const data = await apiFetch<{ url: string }>('/api/facebook/auth-url');
-      if (data?.url) window.location.href = data.url;
-    } catch {
-      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
-      setFbConnecting(false);
-    }
-  }
-
-  async function disconnectFacebook() {
-    try {
-      setFbDisconnecting(true);
-      await apiFetch('/api/facebook/disconnect', { method: 'POST' });
-      setFbStatus({ connected: false });
-      toast({ title: t('platforms.facebook.disconnectedToast') });
-    } catch {
-      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
-    } finally {
-      setFbDisconnecting(false);
-    }
-  }
-
-  // Generic disconnect handler for platforms that store credentials in settings
-  async function disconnectPlatform(platform: 'telegram' | 'whatsapp' | 'viber' | 'instagram') {
-    const platformNames: Record<string, string> = {
-      telegram: 'Telegram',
-      whatsapp: 'WhatsApp',
-      viber: 'Viber',
-      instagram: 'Instagram'
-    };
-    try {
-      setDisconnectingPlatform(platform);
-      await apiFetch('/api/settings', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...(platform === 'telegram' && { telegramToken: '', telegramBotUsername: '', telegramUsingPlatform: false }),
-          ...(platform === 'whatsapp' && { whatsappApiToken: '', whatsappPhoneNumberId: '', whatsappBusinessAccountId: '' }),
-          ...(platform === 'viber' && { viberAuthToken: '', viberUsingPlatform: false }),
-          ...(platform === 'instagram' && { instagramAccountId: '', instagramUsingPlatform: false })
-        })
-      });
-      await loadSettings();
-      toast({ title: `${platformNames[platform]} ${isRTL ? 'تم فصله بنجاح' : 'disconnected successfully'}` });
-    } catch {
-      toast({ title: `${isRTL ? 'خطأ في فصل' : 'Error disconnecting'} ${platformNames[platform]}`, variant: 'destructive' });
-    } finally {
-      setDisconnectingPlatform(null);
-    }
-  }
-
-  async function selectFbPage() {
-    if (!selectedPageId) return;
-    try {
-      setSavingPage(true);
-      const data = await apiFetch<{ success: boolean; pageName: string; instagramConnected: boolean }>(
-        '/api/facebook/select-page',
-        { method: 'POST', body: JSON.stringify({ pageId: selectedPageId }) }
-      );
-      if (data?.success) {
-        setShowPagePicker(false);
-        setFbPages([]);
-        toast({ title: t('platforms.facebook.connectedToast'), description: data.pageName });
-        loadFbStatus();
-      }
-    } catch {
-      toast({ title: t('platforms.facebook.errorToast'), variant: 'destructive' });
-    } finally {
-      setSavingPage(false);
-    }
-  }
-
-  const loadSettings = async () => {
-    setLoading(true);
+  const loadSettings = async (background = false) => {
+    if (!background) setLoading(true);
+    else setRefreshing(true);
     try {
       const response = await fetch('/api/bot/settings');
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => null);
-        throw new Error(errJson?.error || `Failed to load settings (HTTP ${response.status})`);
-      }
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || `HTTP ${response.status}`);
       const data = await response.json();
       setSettings(data);
-
-      if (data?.platformMessengerAvailable)
-        setShowMessengerAdvanced(!(data?.usePlatformMessenger ?? data?.messengerUsingPlatform ?? true));
-      if (data?.platformTelegramAvailable)
-        setShowTelegramAdvanced(!(data?.usePlatformTelegram ?? data?.telegramUsingPlatform ?? true));
-      if (data?.platformWhatsappAvailable)
-        setShowWhatsappAdvanced(!(data?.usePlatformWhatsapp ?? data?.whatsappUsingPlatform ?? true));
-      if (data?.platformViberAvailable)
-        setShowViberAdvanced(!(data?.usePlatformViber ?? data?.viberUsingPlatform ?? true));
-      if (data?.platformInstagramAvailable)
-        setShowInstagramAdvanced(!(data?.usePlatformInstagram ?? data?.instagramUsingPlatform ?? true));
-
-      // Set active platform to whichever is currently configured
       if (data?.provider) setActivePlatform(data.provider as Platform);
     } catch (error) {
       console.error('Failed to load integration settings:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load settings",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const payload: any = { ...settings };
-
-      payload.usePlatformMessenger = Boolean(settings.platformMessengerAvailable) && !showMessengerAdvanced;
-      payload.usePlatformTelegram = Boolean(settings.platformTelegramAvailable) && !showTelegramAdvanced;
-      payload.usePlatformWhatsapp = Boolean(settings.platformWhatsappAvailable) && !showWhatsappAdvanced;
-      payload.usePlatformViber = Boolean(settings.platformViberAvailable) && !showViberAdvanced;
-      payload.usePlatformInstagram = Boolean(settings.platformInstagramAvailable) && !showInstagramAdvanced;
-
-      const maybeDeleteEmpty = (key: string) => {
-        const v = payload[key];
-        if (typeof v !== 'string' || !v.trim()) delete payload[key];
-      };
-      maybeDeleteEmpty('whatsappToken');
-      maybeDeleteEmpty('telegramBotToken');
-      maybeDeleteEmpty('telegramBotUsername');
-      maybeDeleteEmpty('fbPageAccessToken');
-      maybeDeleteEmpty('fbPageId');
-      maybeDeleteEmpty('instagramAccountId');
-      maybeDeleteEmpty('instagramPageAccessToken');
-
-      if (payload.usePlatformMessenger) { delete payload.fbPageId; delete payload.fbPageAccessToken; }
-      if (payload.usePlatformTelegram) { delete payload.telegramBotToken; delete payload.telegramBotUsername; }
-      if (payload.usePlatformViber) { delete payload.viberAuthToken; delete payload.viberSenderName; }
-      if (payload.usePlatformInstagram) { delete payload.instagramAccountId; delete payload.instagramPageAccessToken; }
-      if (payload.usePlatformWhatsapp) { delete payload.whatsappPhoneId; delete payload.whatsappToken; }
-
-      const response = await fetch('/api/bot/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        // Test WhatsApp connection if credentials were provided
-        if (payload.whatsappPhoneId && payload.whatsappToken) {
-          try {
-            const testResponse = await fetch('/api/whatsapp/test-connection', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                phoneId: payload.whatsappPhoneId,
-                token: payload.whatsappToken
-              })
-            });
-            const testData = await testResponse.json();
-            if (testData.success) {
-              toast({ 
-                title: isRTL ? 'تم الحفظ' : 'Saved', 
-                description: isRTL ? 'تم حفظ إعدادات الربط بنجاح. اتصال واتساب يعمل!' : 'Integration settings saved successfully. WhatsApp connection is working!' 
-              });
-            } else {
-              toast({ 
-                title: isRTL ? 'تم الحفظ مع تحذير' : 'Saved with warning', 
-                description: isRTL ? 'تم حفظ الإعدادات لكن اتصال واتساب فشل. تحقق من بيانات الاعتماد.' : 'Settings saved but WhatsApp connection failed. Please check your credentials.',
-                variant: 'destructive' 
-              });
-            }
-          } catch (testError) {
-            toast({ 
-              title: isRTL ? 'تم الحفظ مع تحذير' : 'Saved with warning', 
-              description: isRTL ? 'تم حفظ الإعدادات لكن لم يتم التحقق من اتصال واتساب.' : 'Settings saved but could not verify WhatsApp connection.',
-              variant: 'destructive' 
-            });
-          }
-        } else {
-          toast({ title: isRTL ? 'تم الحفظ' : 'Saved', description: isRTL ? 'تم حفظ إعدادات الربط بنجاح' : 'Integration settings saved successfully' });
-        }
-        await loadSettings();
-      } else {
-        const errJson = await response.json().catch(() => null);
-        throw new Error(errJson?.error || 'Failed to save settings');
-      }
-    } catch (error) {
-      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to save", variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to load settings", variant: "destructive" });
+    } finally { if (!background) setLoading(false); else setRefreshing(false); }
   };
 
   const updateSetting = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
+
+  async function saveSettings(payload: any, platformName: string) {
+    setSaving(platformName);
+    try {
+      // Test WhatsApp connection before saving
+      if (payload.whatsappPhoneId && payload.whatsappToken) {
+        const test = await fetch('/api/whatsapp/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneId: payload.whatsappPhoneId, token: payload.whatsappToken })
+        });
+        const testData = await test.json();
+        if (!testData.success) {
+          toast({ title: isRTL ? 'خطأ في الاتصال' : 'Connection Failed', description: isRTL ? 'بيانات واتساب غير صحيحة، لم يتم الحفظ' : 'Invalid WhatsApp credentials, not saved', variant: 'destructive' });
+          return;
+        }
+      }
+      const response = await fetch('/api/bot/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || 'Failed to save');
+      const result = await response.json().catch(() => ({}));
+      if (payload.whatsappPhoneId && payload.whatsappToken) {
+        toast({ title: isRTL ? 'تم الحفظ' : 'Saved', description: isRTL ? 'واتساب يعمل!' : 'WhatsApp working!' });
+      } else {
+        toast({ title: isRTL ? 'تم الحفظ' : 'Saved' });
+      }
+      if (result?.webhookWarning) {
+        toast({ title: isRTL ? 'تحذير الـ Webhook' : 'Webhook Warning', description: result.webhookWarning, variant: 'destructive' });
+      }
+      await loadSettings(true);
+    } catch (error) {
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to save", variant: "destructive" });
+    } finally { setSaving(null); }
+  }
+
+  function handleUseCustom(platform: Platform, useCustom: boolean) {
+    if (platform === 'instagram') return;
+    const payload: Record<string, any> = {};
+    if (platform === 'telegram') {
+      payload.usePlatformTelegram = !useCustom;
+      if (!useCustom) { payload.telegramBotToken = ''; payload.telegramBotUsername = ''; }
+    } else if (platform === 'facebook') {
+      payload.usePlatformMessenger = !useCustom;
+      if (!useCustom) { payload.fbPageId = ''; payload.fbPageAccessToken = ''; }
+    } else if (platform === 'whatsapp_cloud') {
+      payload.usePlatformWhatsapp = !useCustom;
+      if (!useCustom) { payload.whatsappToken = ''; payload.whatsappPhoneId = ''; }
+    } else if (platform === 'viber') {
+      payload.usePlatformViber = !useCustom;
+      if (!useCustom) { payload.viberAuthToken = ''; }
+    }
+    saveSettings(payload, platform);
+  }
+
+  function handleDisconnect(platform: Platform) {
+    const payload: Record<string, any> = {};
+    if (platform === 'telegram') { payload.telegramBotToken = ''; payload.telegramBotUsername = ''; payload.usePlatformTelegram = false; }
+    else if (platform === 'whatsapp_cloud') { payload.whatsappToken = ''; payload.whatsappPhoneId = ''; payload.usePlatformWhatsapp = false; }
+    else if (platform === 'viber') { payload.viberAuthToken = ''; payload.usePlatformViber = false; }
+    else if (platform === 'instagram') { payload.instagramAccountId = ''; payload.instagramPageAccessToken = ''; payload.usePlatformInstagram = false; }
+    else if (platform === 'facebook') { payload.fbPageId = ''; payload.fbPageAccessToken = ''; payload.usePlatformMessenger = false; }
+    saveSettings(payload, platform);
+  }
+
+  function handleSaveCustomCredentials(platform: Platform) {
+    if (platform === 'telegram') {
+      if (!settings.telegramBotToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال رمز البوت' : 'Please enter bot token', variant: 'destructive' }); return; }
+      saveSettings({ telegramBotToken: settings.telegramBotToken, telegramBotUsername: settings.telegramBotUsername, usePlatformTelegram: false }, platform);
+    } else if (platform === 'facebook') {
+      if (!settings.fbPageId?.trim() || !settings.fbPageAccessToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال بيانات الصفحة' : 'Please enter page credentials', variant: 'destructive' }); return; }
+      saveSettings({ fbPageId: settings.fbPageId, fbPageAccessToken: settings.fbPageAccessToken, usePlatformMessenger: false }, platform);
+    } else if (platform === 'whatsapp_cloud') {
+      if (!settings.whatsappPhoneId?.trim() || !settings.whatsappToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال بيانات واتساب' : 'Please enter WhatsApp credentials', variant: 'destructive' }); return; }
+      saveSettings({ whatsappPhoneId: settings.whatsappPhoneId, whatsappToken: settings.whatsappToken, usePlatformWhatsapp: false }, platform);
+    } else if (platform === 'viber') {
+      if (!settings.viberAuthToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال رمز فايبر' : 'Please enter Viber token', variant: 'destructive' }); return; }
+      saveSettings({ viberAuthToken: settings.viberAuthToken, usePlatformViber: false }, platform);
+    }
+  }
+
+  function isUsingPlatform(platform: Platform): boolean {
+    if (platform === 'facebook') return !!(settings.usePlatformMessenger ?? settings.messengerUsingPlatform ?? false);
+    if (platform === 'instagram') return false;
+    if (platform === 'telegram') return !!(settings.usePlatformTelegram ?? settings.telegramUsingPlatform ?? true);
+    if (platform === 'whatsapp_cloud') return false;
+    if (platform === 'viber') return false;
+    return false;
+  }
+
+  function isConnected(platform: Platform): boolean {
+    if (platform === 'facebook') return !!(settings.fbPageAccessTokenConfigured || settings.usePlatformMessenger || settings.messengerUsingPlatform);
+    if (platform === 'instagram') return !!(settings.instagramTokenConfigured || settings.usePlatformInstagram || settings.instagramUsingPlatform);
+    if (platform === 'telegram') return !!(settings.telegramTokenConfigured || settings.telegramUsingPlatform);
+    if (platform === 'whatsapp_cloud') return !!settings.whatsappTokenConfigured;
+    if (platform === 'viber') return !!settings.viberAuthToken;
+    return false;
+  }
+
+  function getStatus(platform: Platform): string | null {
+    if (platform === 'telegram') return isUsingPlatform('telegram') ? (isRTL ? 'عبر المنصة' : 'via Platform') : (settings.telegramBotUsername ? `@${settings.telegramBotUsername}` : null);
+    if (platform === 'whatsapp_cloud') return null;
+    if (platform === 'viber') return null;
+    return null;
+  }
+
+  function platformAvailableFor(platform: Platform): boolean {
+    if (platform === 'facebook') return !!settings.platformMessengerAvailable;
+    if (platform === 'telegram') return !!settings.platformTelegramAvailable;
+    return false;
+  }
+
+  const validPlatforms = PLATFORM_DEFS;
+  const current = validPlatforms.find(p => p.value === activePlatform)!;
+  const usingPlatform = isUsingPlatform(activePlatform);
+  const platformAvailable = platformAvailableFor(activePlatform);
+  const connected = isConnected(activePlatform);
+  const status = getStatus(activePlatform);
+  const plat = current;
 
   if (loading) {
     return (
@@ -353,529 +234,297 @@ export default function Integrations() {
           <div className="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center mx-auto">
             <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
           </div>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{isRTL ? 'جاري التحميل...' : 'Loading integrations...'}</p>
+          <p className="text-sm font-medium text-slate-500">{isRTL ? 'جاري التحميل...' : 'Loading integrations...'}</p>
         </div>
       </div>
     );
   }
 
-  const platforms: { value: Platform; label: string; desc: string; icon: React.ReactNode; color: string; activeGradient: string; iconBg: string; connected: boolean; status: string | null }[] = [
-    { value: 'facebook', label: 'Facebook', desc: isRTL ? 'ماسنجر' : 'Messenger',
-      icon: <MessageSquare className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400',
-      activeGradient: 'from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-blue-600/10 border-blue-500/40 dark:border-blue-400/30',
-      iconBg: 'bg-blue-100 dark:bg-blue-500/20',
-      connected: !!fbStatus?.connected, status: fbStatus?.pageName || null },
-    { value: 'instagram', label: 'Instagram', desc: isRTL ? 'الرسائل المباشرة' : 'Direct Messages',
-      icon: <Instagram className="w-5 h-5" />, color: 'text-pink-600 dark:text-pink-400',
-      activeGradient: 'from-pink-500/10 to-fuchsia-600/5 dark:from-pink-500/20 dark:to-fuchsia-600/10 border-pink-500/40 dark:border-pink-400/30',
-      iconBg: 'bg-pink-100 dark:bg-pink-500/20',
-      connected: !!(fbStatus?.instagramConnected || settings.instagramUsingPlatform || settings.instagramTokenConfigured), status: fbStatus?.instagramUsername ? `@${fbStatus.instagramUsername}` : null },
-    { value: 'telegram', label: 'Telegram', desc: isRTL ? 'بوت المحادثة' : 'Chat Bot',
-      icon: <Send className="w-5 h-5" />, color: 'text-sky-600 dark:text-sky-400',
-      activeGradient: 'from-sky-500/10 to-cyan-600/5 dark:from-sky-500/20 dark:to-cyan-600/10 border-sky-500/40 dark:border-sky-400/30',
-      iconBg: 'bg-sky-100 dark:bg-sky-500/20',
-      connected: !!(settings.telegramTokenConfigured || settings.telegramUsingPlatform), status: settings.telegramBotUsername ? `@${settings.telegramBotUsername}` : null },
-    { value: 'whatsapp_cloud', label: 'WhatsApp', desc: isRTL ? 'واتساب سحابي' : 'Cloud API',
-      icon: <Phone className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400',
-      activeGradient: 'from-emerald-500/10 to-green-600/5 dark:from-emerald-500/20 dark:to-green-600/10 border-emerald-500/40 dark:border-emerald-400/30',
-      iconBg: 'bg-emerald-100 dark:bg-emerald-500/20',
-      connected: !!settings.whatsappTokenConfigured, status: null },
-    { value: 'viber', label: 'Viber', desc: isRTL ? 'رسائل فايبر' : 'Viber Messages',
-      icon: <Smartphone className="w-5 h-5" />, color: 'text-violet-600 dark:text-violet-400',
-      activeGradient: 'from-violet-500/10 to-purple-600/5 dark:from-violet-500/20 dark:to-purple-600/10 border-violet-500/40 dark:border-violet-400/30',
-      iconBg: 'bg-violet-100 dark:bg-violet-500/20',
-      connected: !!(settings.viberAuthToken || settings.viberUsingPlatform), status: null },
-  ];
-
-  const activePlatformData = platforms.find(p => p.value === activePlatform)!;
-
-  // Reusable platform mode toggle
-  const PlatformModeToggle = ({ available, showAdvanced, setShowAdvanced }: { available?: boolean; showAdvanced: boolean; setShowAdvanced: (fn: (v: boolean) => boolean) => void }) => {
-    if (!available) return null;
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.06]">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-            !showAdvanced ? 'bg-emerald-100 dark:bg-emerald-500/20' : 'bg-amber-100 dark:bg-amber-500/20'
-          }`}>
-            {!showAdvanced ? <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> : <Unplug className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">
-              {!showAdvanced ? (isRTL ? 'وضع المنصة' : 'Platform Mode') : (isRTL ? 'وضع مخصص' : 'Custom Mode')}
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {!showAdvanced
-                ? (isRTL ? 'EcoPro يدير هذه المنصة تلقائياً' : 'EcoPro manages this platform automatically')
-                : (isRTL ? 'أدخل بيانات البوت الخاص بك' : 'Enter your own bot credentials')}
-            </p>
-          </div>
-          <button type="button" onClick={() => setShowAdvanced(v => !v)}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shrink-0 active:scale-95">
-            {showAdvanced ? (isRTL ? 'استخدام بوت المنصة' : 'Use Platform Bot') : (isRTL ? 'استخدام بوتي الخاص' : 'Use My Own Bot')}
-          </button>
-        </div>
-        {!showAdvanced && (
-          <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/[0.08] border border-emerald-200/80 dark:border-emerald-500/20">
-            <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-            <p className="text-sm text-emerald-800 dark:text-emerald-200">
-              {isRTL ? 'EcoPro سيستخدم البوت الخاص بالمنصة لمتجرك.' : 'EcoPro will use its own bot for your store.'}
-            </p>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Delay / expiry settings row — reused across all platforms
-  const DelaySettings = ({ delayKey, delayValue }: { delayKey: string; delayValue: number }) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/[0.04]">
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{isRTL ? 'تأخير الرسالة (دقائق)' : 'Message Delay (min)'}</Label>
-        <Input type="number" min={0} max={60} value={delayValue}
-          className="h-11 rounded-xl"
-          onChange={(e) => updateSetting(delayKey, parseInt(e.target.value, 10) || 5)} placeholder="5" />
-      </div>
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{isRTL ? 'انتهاء تلقائي (ساعات)' : 'Auto-expire (hours)'}</Label>
-        <Input type="number" min={1} max={72} value={settings.autoExpireHours ?? 24}
-          className="h-11 rounded-xl"
-          onChange={(e) => updateSetting('autoExpireHours', parseInt(e.target.value, 10) || 24)} placeholder="24" />
-      </div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-transparent text-slate-900 dark:text-gray-100 transition-colors duration-300">
-      {/* ── Mobile: app-like top bar ── */}
-      <div className="lg:hidden sticky top-0 z-20 bg-white/80 dark:bg-[#0a0e1a]/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/[0.06] px-4 pt-4 pb-3 -mx-px">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Globe className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-slate-900 dark:text-white">{isRTL ? 'ربط المنصات' : 'Integrations'}</h1>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">{isRTL ? 'اربط منصات التواصل' : 'Connect your platforms'}</p>
-            </div>
-          </div>
-        </div>
-        {/* Horizontal scrollable platform pills */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-          {platforms.map(p => (
-            <button key={p.value} onClick={() => setActivePlatform(p.value)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border whitespace-nowrap transition-all active:scale-95 shrink-0 ${
-                activePlatform === p.value
-                  ? `bg-gradient-to-r ${p.activeGradient} shadow-sm`
-                  : p.connected
-                    ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-500/[0.06]'
-                    : 'border-slate-200 dark:border-slate-700/60 bg-white dark:bg-white/[0.03]'
-              }`}>
-              {p.connected && activePlatform !== p.value && (
-                <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              )}
-              <span className={activePlatform === p.value ? p.color : 'text-slate-500 dark:text-slate-400'}>{p.icon}</span>
-              <span className={`text-xs font-bold ${activePlatform === p.value ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                {p.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="min-h-screen bg-transparent text-slate-900 dark:text-gray-100">
+      <div className="max-w-5xl mx-auto p-3 sm:p-4 lg:p-6 space-y-5">
 
-      {/* ── Desktop & Mobile content ── */}
-      <div className="max-w-6xl mx-auto p-3 sm:p-4 lg:p-6">
-        {/* Desktop header — hidden on mobile */}
-        <div className="hidden lg:flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Globe className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900 dark:text-white">{isRTL ? 'ربط المنصات' : 'Integrations'}</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">{isRTL ? 'اربط منصات التواصل الاجتماعي لاستقبال الرسائل تلقائياً' : 'Connect social platforms to receive messages automatically'}</p>
-            </div>
+        {/* ── Page Header ── */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-800 dark:bg-slate-700 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect x="2" y="2" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+              <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
+              <path d="M18 13l-4-4-9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
-          <button onClick={handleSave} disabled={saving}
-            className="h-11 px-6 bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-500 text-white rounded-2xl text-sm font-bold flex items-center gap-2.5 disabled:opacity-50 transition-all hover:shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98] shrink-0">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {isRTL ? 'حفظ التغييرات' : 'Save Changes'}
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-4 lg:gap-5">
-          {/* ── Horizontal Platform Cards ── */}
-          <div className="hidden lg:block">
-            <div className="grid grid-cols-5 gap-3">
-              {platforms.map(p => {
-                const isActive = activePlatform === p.value;
-                return (
-                  <button
-                    key={p.value}
-                    onClick={() => setActivePlatform(p.value)}
-                    className={`group relative p-4 rounded-2xl border-2 text-center transition-all ${
-                      isActive
-                        ? `${p.value === 'facebook' ? 'border-blue-400 bg-blue-50/80' : p.value === 'instagram' ? 'border-pink-400 bg-pink-50/80' : p.value === 'telegram' ? 'border-sky-400 bg-sky-50/80' : p.value === 'whatsapp_cloud' ? 'border-emerald-400 bg-emerald-50/80' : 'border-violet-400 bg-violet-50/80'} shadow-md scale-[1.02]`
-                        : p.connected
-                          ? 'border-emerald-300 bg-emerald-50/50 dark:bg-emerald-900/20 hover:border-emerald-400'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} w-2 h-2 rounded-full ${p.connected ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-md ${
-                      p.value === 'facebook' ? 'bg-blue-500' :
-                      p.value === 'instagram' ? 'bg-gradient-to-br from-pink-500 via-purple-500 to-orange-400' :
-                      p.value === 'telegram' ? 'bg-sky-500' :
-                      p.value === 'whatsapp_cloud' ? 'bg-emerald-500' :
-                      'bg-violet-500'
-                    }`}>
-                      <span className="text-white">{p.icon}</span>
-                    </div>
-                    <p className="font-bold text-slate-900 dark:text-white text-sm">{p.label}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">{p.connected ? (isRTL ? 'متصل' : 'Connected') : (isRTL ? 'غير متصل' : 'Not connected')}</p>
-                    {p.connected && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
-                        <Check className="w-3 h-3 text-white" />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── Settings panel ── */}
           <div>
-            {/* Platform header inside settings panel */}
-            <div className={`p-5 rounded-2xl bg-gradient-to-r ${activePlatformData.activeGradient} mb-4`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-2xl ${activePlatformData.iconBg} flex items-center justify-center`}>
-                  <span className={activePlatformData.color}>{activePlatformData.icon}</span>
+            <h1 className="text-base font-bold text-slate-900 dark:text-white">{isRTL ? 'ربط المنصات' : 'Integrations'}</h1>
+            <p className="text-xs text-slate-500">{isRTL ? 'اربط منصات التواصل الاجتماعي لاستقبال الطلبات' : 'Connect social platforms to receive orders'}</p>
+          </div>
+        </div>
+
+        {/* ── Desktop Platform Cards ── */}
+        <div className="hidden sm:grid grid-cols-5 gap-3">
+          {validPlatforms.map(p => {
+            const c = isConnected(p.value);
+            const active = activePlatform === p.value;
+            return (
+              <button key={p.value} onClick={() => setActivePlatform(p.value)}
+                className={`relative p-4 rounded-xl border-2 text-center transition-all ${
+                  active
+                    ? 'border-slate-400 dark:border-slate-500 bg-slate-50 dark:bg-slate-800'
+                    : c
+                      ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-900/20'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/30 hover:border-slate-300'
+                }`}
+              >
+                {c && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />}
+                <div className="w-11 h-11 rounded-lg flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: p.bgColor }}>
+                  <span className="text-white">{ICONS[p.value]()}</span>
                 </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white">{activePlatformData.label}</h2>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">{activePlatformData.desc}</p>
-                </div>
-                {activePlatformData.connected && (
-                  <div className="ml-auto flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                      <CheckCircle className="w-3.5 h-3.5" />{isRTL ? 'متصل' : 'Connected'}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 px-3 rounded-lg text-xs text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
-                      onClick={() => {
-                        if (activePlatform === 'facebook' || activePlatform === 'instagram') {
-                          disconnectFacebook();
-                        } else if (activePlatform === 'telegram') {
-                          disconnectPlatform('telegram');
-                        } else if (activePlatform === 'whatsapp_cloud') {
-                          disconnectPlatform('whatsapp');
-                        } else if (activePlatform === 'viber') {
-                          disconnectPlatform('viber');
-                        }
-                      }}
-                      disabled={fbDisconnecting || disconnectingPlatform === activePlatform}
-                    >
-                      {fbDisconnecting || disconnectingPlatform === activePlatform ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Unplug className="h-3 w-3" />
-                      )}
-                      <span className="mx-1">{t('platforms.disconnect')}</span>
-                    </Button>
-                  </div>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{p.label}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  {c ? (isRTL ? 'متصل' : 'Connected') : (isRTL ? 'غير متصل' : 'Not connected')}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Mobile Platform Tabs ── */}
+        <div className="sm:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {validPlatforms.map(p => {
+            const c = isConnected(p.value);
+            const active = activePlatform === p.value;
+            return (
+              <button key={p.value} onClick={() => setActivePlatform(p.value)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border whitespace-nowrap transition-all shrink-0 ${
+                  active
+                    ? 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800'
+                    : c
+                      ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50'
+                }`}>
+                {c && <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                <span className="text-slate-600 dark:text-slate-300">{ICONS[p.value]()}</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{p.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Active Platform Settings Panel ── */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/20 overflow-hidden">
+          {/* Platform header */}
+          <div className="flex items-center gap-4 p-5 border-b border-slate-100 dark:border-slate-700/50">
+            <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: plat.bgColor }}>
+              <span className="text-white">{ICONS[plat.value]('#fff')}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">{plat.label}</h2>
+                {connected && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
+                    {isRTL ? 'متصل' : 'Connected'}
+                  </span>
                 )}
               </div>
+              <p className="text-xs text-slate-500">{plat.desc}{status ? ` — ${status}` : ''}</p>
             </div>
+            {connected && (
+              <button onClick={() => handleDisconnect(activePlatform)} disabled={saving === activePlatform}
+                className="h-8 px-4 rounded-lg text-xs font-semibold text-red-600 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0">
+                {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin" /> : isRTL ? 'إلغاء الربط' : 'Disconnect'}
+              </button>
+            )}
+          </div>
 
-            <div className="space-y-4">
-              {/* ── Facebook ── */}
-              {activePlatform === 'facebook' && (
-                <>
-                  {fbLoading ? (
-                    <div className="flex items-center justify-center py-10">
-                      <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-                    </div>
-                  ) : !fbStatus?.connected ? (
-                    <div className="flex flex-col items-center justify-center py-10 px-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                      <div className="w-16 h-16 rounded-3xl bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center mb-4">
-                        <MessageSquare className="w-8 h-8 text-blue-500" />
-                      </div>
-                      <p className="text-sm font-bold mb-1">{t('platforms.facebook.notConnected')}</p>
-                      <p className="text-xs text-slate-500 max-w-sm text-center mb-5">{t('platforms.facebook.connectHint')}</p>
-                      <Button
-                        className="h-11 px-8 rounded-2xl font-bold text-white bg-[#1877F2] hover:bg-[#166FE5] shadow-lg shadow-blue-500/20 gap-2.5 text-sm active:scale-[0.98] transition-all"
-                        onClick={connectFacebook} disabled={fbConnecting}>
-                        {fbConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-                        {t('platforms.facebook.connectBtn')}
-                      </Button>
-                    </div>
-                  ) : null}
+          <div className="p-5 space-y-5">
+            {/* ── Instagram (manual credentials only) ── */}
+            {activePlatform === 'instagram' && (
+              <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/50">
+                <div className="flex items-center gap-2">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="5" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4 5V4a3 3 0 016 0v1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{isRTL ? 'بيانات إنستغرام' : 'Instagram Credentials'}</p>
+                </div>
+                <p className="text-xs text-slate-500">{isRTL ? 'أدخل معرّف حساب إنستغرام ورمز الوصول من Meta Developer Dashboard.' : 'Enter your Instagram Account ID and Access Token from Meta Developer Dashboard.'}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">{isRTL ? 'معرّف الحساب' : 'Account ID'}</Label>
+                    <Input className="h-10 rounded-lg" value={settings.instagramAccountId || ''} onChange={e => updateSetting('instagramAccountId', e.target.value)} placeholder="17841405822304914" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">{isRTL ? 'رمز الوصول' : 'Access Token'}</Label>
+                    <Input className="h-10 rounded-lg" type="password" value={settings.instagramPageAccessToken || ''} onChange={e => updateSetting('instagramPageAccessToken', e.target.value)} placeholder="Paste access token" />
+                    {settings.instagramTokenConfigured && !String(settings.instagramPageAccessToken || '').trim() && (
+                      <p className="text-[10px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
+                    )}
+                  </div>
+                </div>
+                <Button onClick={() => {
+                  if (!settings.instagramAccountId?.trim() || !settings.instagramPageAccessToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال البيانات' : 'Please enter credentials', variant: 'destructive' }); return; }
+                  saveSettings({ instagramAccountId: settings.instagramAccountId, instagramPageAccessToken: settings.instagramPageAccessToken, usePlatformInstagram: false }, 'instagram');
+                }} disabled={saving === 'instagram'} className="h-9 px-5 rounded-lg text-sm font-bold bg-pink-600 hover:bg-pink-700 text-white">
+                  {saving === 'instagram' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'حفظ' : 'Save'}
+                </Button>
+              </div>
+            )}
 
-                  {/* Page picker */}
-                  {showPagePicker && fbPages.length > 0 && (
-                    <div className="rounded-2xl border-2 border-blue-300 dark:border-blue-700 overflow-hidden">
-                      <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-950/20">
-                        <p className="text-sm font-bold">{t('platforms.facebook.selectPage')}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{t('platforms.facebook.selectPageDesc')}</p>
-                      </div>
-                      <div className="p-4 space-y-2">
-                        {fbPages.map((page) => (
-                          <button key={page.id} onClick={() => setSelectedPageId(page.id)}
-                            className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all text-start active:scale-[0.98] ${
-                              selectedPageId === page.id
-                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
-                                : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
-                            }`}>
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                              selectedPageId === page.id ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                            }`}>
-                              <MessageSquare className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold">{page.name}</p>
-                              {page.hasInstagram && (
-                                <p className="text-xs text-pink-600 flex items-center gap-1 mt-0.5">
-                                  <Instagram className="w-3 h-3" /> Instagram {t('platforms.connected')}
-                                </p>
-                              )}
-                            </div>
-                            {selectedPageId === page.id && <CheckCircle className="w-5 h-5 text-blue-500 shrink-0" />}
-                          </button>
-                        ))}
-                        <Button className="w-full h-11 rounded-2xl font-bold mt-3 bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2.5 text-sm"
-                          disabled={!selectedPageId || savingPage} onClick={selectFbPage}>
-                          {savingPage ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                          {t('platforms.facebook.confirmPage')}
-                        </Button>
-                      </div>
+            {/* ── Telegram / Facebook / WhatsApp / Viber ── */}
+            {(activePlatform === 'telegram' || activePlatform === 'facebook' || activePlatform === 'whatsapp_cloud' || activePlatform === 'viber') && (
+              <>
+                {/* Platform / Custom mode toggle */}
+                {platformAvailable && (activePlatform === 'telegram' || activePlatform === 'facebook') && (
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/50">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${usingPlatform ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
+                      {usingPlatform
+                        ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" fill="#059669"/><path d="M4.5 7l2 2 3-3.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                        : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" fill="#d97706"/><path d="M7 4.5v5M4.5 7h5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      }
                     </div>
-                  )}
-
-                  <PlatformModeToggle available={settings.platformMessengerAvailable} showAdvanced={showMessengerAdvanced} setShowAdvanced={setShowMessengerAdvanced} />
-                  {(showMessengerAdvanced || !settings.platformMessengerAvailable) && (
-                    <div className="space-y-4 p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06]">
-                      <p className="text-xs text-slate-500">
-                        {isRTL ? 'أدخل معرّف صفحة فيسبوك ورمز وصول الصفحة من Meta Developer Dashboard.' : 'Enter your Facebook Page ID and Page Access Token from Meta Developer Dashboard.'}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {usingPlatform ? (isRTL ? 'بوت المنصة (يديره EcoPro)' : 'Platform Bot (EcoPro-managed)') : (isRTL ? 'بوت مخصص' : 'Custom Bot')}
                       </p>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{isRTL ? 'معرّف صفحة فيسبوك' : 'Facebook Page ID'}</Label>
-                        <Input className="h-11 rounded-xl" value={settings.fbPageId || ''} onChange={(e) => updateSetting('fbPageId', e.target.value)} placeholder="e.g. 123456789012345" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{isRTL ? 'رمز وصول الصفحة' : 'Page Access Token'}</Label>
-                        <Input className="h-11 rounded-xl" type="password" value={settings.fbPageAccessToken || ''} onChange={(e) => updateSetting('fbPageAccessToken', e.target.value)} placeholder="Paste page access token" />
-                        {settings.fbPageAccessTokenConfigured && !String(settings.fbPageAccessToken || '').trim() && (
-                          <p className="text-[11px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
-                        )}
-                      </div>
+                      <p className="text-xs text-slate-500">
+                        {usingPlatform
+                          ? (isRTL ? 'لا تحتاج إلى إعداد أي شيء، EcoPro يدير البوت تلقائياً' : 'No setup needed — EcoPro manages the bot for you')
+                          : (isRTL ? 'أدخل بيانات البوت الخاص بك أدناه' : 'Enter your own bot credentials below')}
+                      </p>
                     </div>
-                  )}
-                  <DelaySettings delayKey="messengerDelayMinutes" delayValue={settings.messengerDelayMinutes ?? 5} />
-                </>
-              )}
+                    <button onClick={() => handleUseCustom(activePlatform, usingPlatform)} disabled={saving === activePlatform}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shrink-0">
+                      {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin" /> :
+                        usingPlatform ? (isRTL ? 'استخدام بوتي الخاص' : 'Use My Own Bot') : (isRTL ? 'استخدام بوت المنصة' : 'Use Platform Bot')}
+                    </button>
+                  </div>
+                )}
 
-              {/* ── Instagram ── */}
-              {activePlatform === 'instagram' && (
-                <>
-                  <PlatformModeToggle available={settings.platformInstagramAvailable} showAdvanced={showInstagramAdvanced} setShowAdvanced={setShowInstagramAdvanced} />
-                  {showInstagramAdvanced && (
-                    fbLoading ? (
-                      <div className="flex items-center justify-center py-10">
-                        <Loader2 className="h-6 w-6 animate-spin text-pink-500" />
-                      </div>
-                    ) : !(fbStatus?.connected && fbStatus?.instagramConnected) ? (
-                      <div className="flex flex-col items-center justify-center py-10 px-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                        <div className="w-16 h-16 rounded-3xl bg-pink-100 dark:bg-pink-500/15 flex items-center justify-center mb-4">
-                          <Instagram className="w-8 h-8 text-pink-500" />
+                {/* Custom credentials form */}
+                {(!platformAvailable || !usingPlatform) && (
+                  <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/50">
+                    <div className="flex items-center gap-2">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="5" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4 5V4a3 3 0 016 0v1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{isRTL ? 'بيانات الاعتماد' : 'Credentials'}</p>
+                    </div>
+
+                    {activePlatform === 'telegram' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">{t('bot.telegramBotToken')}</Label>
+                          <Input className="h-10 rounded-lg" type="password" value={settings.telegramBotToken || ''} onChange={e => updateSetting('telegramBotToken', e.target.value)} placeholder="123456:ABCDEF..." />
+                          {settings.telegramTokenConfigured && !String(settings.telegramBotToken || '').trim() && (
+                            <p className="text-[10px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
+                          )}
                         </div>
-                        <p className="text-sm font-bold mb-1">
-                          {isRTL ? 'غير متصل بـ Instagram' : 'Not connected to Instagram'}
-                        </p>
-                        <p className="text-xs text-slate-500 max-w-sm text-center">
-                          {isRTL
-                            ? 'يرجى الاتصال أولاً بحساب فيسبوك من علامة التبويب "فيسبوك". سيتم اكتشاف Instagram تلقائياً.'
-                            : 'Please connect your Facebook account first from the "Facebook" tab. Instagram will be auto-detected.'}
-                        </p>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">{t('bot.telegramBotUsername')}</Label>
+                          <Input className="h-10 rounded-lg" value={settings.telegramBotUsername || ''} onChange={e => updateSetting('telegramBotUsername', e.target.value)} placeholder="@YourBotUsername" />
+                        </div>
                       </div>
-                    ) : null
-                  )}
+                    )}
 
-                  {showInstagramAdvanced && (
-                    <div className="space-y-4 p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06]">
-                      <p className="text-xs text-slate-500">
-                        {isRTL ? 'أدخل معرّف حساب Instagram Business ورمز وصول الصفحة المرتبطة من Meta Developer Dashboard.' : 'Enter your Instagram Business Account ID and the linked Page Access Token from Meta Developer Dashboard.'}
-                      </p>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{isRTL ? 'معرّف حساب Instagram' : 'Instagram Account ID'}</Label>
-                        <Input className="h-11 rounded-xl" value={settings.instagramAccountId || ''} onChange={(e) => updateSetting('instagramAccountId', e.target.value)} placeholder="e.g. 17841400123456789" />
+                    {activePlatform === 'facebook' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">{isRTL ? 'معرّف الصفحة' : 'Page ID'}</Label>
+                          <Input className="h-10 rounded-lg" value={settings.fbPageId || ''} onChange={e => updateSetting('fbPageId', e.target.value)} placeholder="123456789012345" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">{isRTL ? 'رمز الوصول' : 'Access Token'}</Label>
+                          <Input className="h-10 rounded-lg" type="password" value={settings.fbPageAccessToken || ''} onChange={e => updateSetting('fbPageAccessToken', e.target.value)} placeholder="Paste page access token" />
+                          {settings.fbPageAccessTokenConfigured && !String(settings.fbPageAccessToken || '').trim() && (
+                            <p className="text-[10px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{isRTL ? 'رمز وصول الصفحة' : 'Page Access Token'}</Label>
-                        <Input className="h-11 rounded-xl" type="password" value={settings.instagramPageAccessToken || ''} onChange={(e) => updateSetting('instagramPageAccessToken', e.target.value)} placeholder="Paste page access token" />
-                        {settings.instagramTokenConfigured && !String(settings.instagramPageAccessToken || '').trim() && (
-                          <p className="text-[11px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <DelaySettings delayKey="messengerDelayMinutes" delayValue={settings.messengerDelayMinutes ?? 5} />
-                </>
-              )}
+                    )}
 
-              {/* ── Telegram ── */}
-              {activePlatform === 'telegram' && (
-                <>
-                  <PlatformModeToggle available={settings.platformTelegramAvailable} showAdvanced={showTelegramAdvanced} setShowAdvanced={setShowTelegramAdvanced} />
-                  {(showTelegramAdvanced || !settings.platformTelegramAvailable) && (
-                    <div className="space-y-4 p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06]">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{t('bot.telegramBotToken')}</Label>
-                        <Input className="h-11 rounded-xl" type="password" value={settings.telegramBotToken || ''} onChange={(e) => updateSetting('telegramBotToken', e.target.value)} placeholder="123456:ABCDEF..." />
-                        {settings.telegramTokenConfigured && !String(settings.telegramBotToken || '').trim() && (
-                          <p className="text-[11px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
-                        )}
+                    {activePlatform === 'whatsapp_cloud' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">{t('bot.whatsappPhoneId')}</Label>
+                          <Input className="h-10 rounded-lg" value={settings.whatsappPhoneId || ''} onChange={e => updateSetting('whatsappPhoneId', e.target.value)} placeholder="123456789012345" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">{t('bot.whatsappAccessToken')}</Label>
+                          <Input className="h-10 rounded-lg" type="password" value={settings.whatsappToken || ''} onChange={e => updateSetting('whatsappToken', e.target.value)} placeholder="Paste access token" />
+                          {settings.whatsappTokenConfigured && !String(settings.whatsappToken || '').trim() && (
+                            <p className="text-[10px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{t('bot.telegramBotUsername')}</Label>
-                        <Input className="h-11 rounded-xl" value={settings.telegramBotUsername || ''} onChange={(e) => updateSetting('telegramBotUsername', e.target.value)} placeholder="@YourBotUsername" />
-                      </div>
-                    </div>
-                  )}
-                  <DelaySettings delayKey="telegramDelayMinutes" delayValue={settings.telegramDelayMinutes ?? 5} />
-                </>
-              )}
+                    )}
 
-              {/* ── WhatsApp ── */}
-              {activePlatform === 'whatsapp_cloud' && (
-                <>
-                  <PlatformModeToggle available={settings.platformWhatsappAvailable} showAdvanced={showWhatsappAdvanced} setShowAdvanced={setShowWhatsappAdvanced} />
-                  {(showWhatsappAdvanced || !settings.platformWhatsappAvailable) && (
-                    <div className="space-y-4 p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06]">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{t('bot.whatsappPhoneId')}</Label>
-                        <Input className="h-11 rounded-xl" value={settings.whatsappPhoneId || ''} onChange={(e) => updateSetting('whatsappPhoneId', e.target.value)} placeholder="e.g. 123456789012345" />
+                    {activePlatform === 'viber' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">{t('bot.viberAuthToken')}</Label>
+                          <Input className="h-10 rounded-lg" value={settings.viberAuthToken || ''} onChange={e => updateSetting('viberAuthToken', e.target.value)} placeholder="viber-auth-token" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">{t('bot.viberSenderName')}</Label>
+                          <Input className="h-10 rounded-lg" value={settings.viberSenderName || ''} onChange={e => updateSetting('viberSenderName', e.target.value)} placeholder="Sahla4Eco" />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{t('bot.whatsappAccessToken')}</Label>
-                        <Input className="h-11 rounded-xl" type="password" value={settings.whatsappToken || ''} onChange={(e) => updateSetting('whatsappToken', e.target.value)} placeholder="Paste access token" />
-                        {settings.whatsappTokenConfigured && !String(settings.whatsappToken || '').trim() && (
-                          <p className="text-[11px] text-slate-500">{t('bot.tokenSavedHidden')}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <DelaySettings delayKey="whatsappDelayMinutes" delayValue={(settings as any).whatsappDelayMinutes ?? 5} />
-                </>
-              )}
+                    )}
 
-              {/* ── Viber ── */}
-              {activePlatform === 'viber' && (
-                <>
-                  <PlatformModeToggle available={settings.platformViberAvailable} showAdvanced={showViberAdvanced} setShowAdvanced={setShowViberAdvanced} />
-                  {(showViberAdvanced || !settings.platformViberAvailable) && (
-                    <div className="space-y-4 p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06]">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{t('bot.viberAuthToken')}</Label>
-                        <Input className="h-11 rounded-xl" value={settings.viberAuthToken || ''} onChange={(e) => updateSetting('viberAuthToken', e.target.value)} placeholder="viber-auth-token" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold">{t('bot.viberSenderName')}</Label>
-                        <Input className="h-11 rounded-xl" value={settings.viberSenderName || ''} onChange={(e) => updateSetting('viberSenderName', e.target.value)} placeholder="Sahla4Eco" />
-                      </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Button onClick={() => handleSaveCustomCredentials(activePlatform)} disabled={saving === activePlatform}
+                        className="h-9 px-5 rounded-lg text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white">
+                        {saving === activePlatform ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'حفظ البيانات' : 'Save Credentials'}
+                      </Button>
+                      {platformAvailable && (
+                        <p className="text-[10px] text-slate-400">{isRTL ? 'أو استخدم زر التبديل أعلاه للعودة إلى بوت المنصة' : 'Or use the toggle above to switch back to Platform Bot'}</p>
+                      )}
                     </div>
-                  )}
-                  <DelaySettings delayKey="viberDelayMinutes" delayValue={(settings as any).viberDelayMinutes ?? 5} />
-                </>
-              )}
-            </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ── Delay & Expiry Settings (all platforms including Instagram) ── */}
+            {(activePlatform === 'telegram' || activePlatform === 'facebook' || activePlatform === 'whatsapp_cloud' || activePlatform === 'viber' || activePlatform === 'instagram') && (
+              <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2"/><path d="M7 4v3.5L9.5 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{isRTL ? 'إعدادات إضافية' : 'Additional Settings'}</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-semibold text-slate-500">{isRTL ? 'تأخير الرد (دقائق)' : 'Reply Delay (min)'}</Label>
+                    <Input type="number" min={0} max={60}
+                      value={activePlatform === 'telegram' ? settings.telegramDelayMinutes ?? 5 : activePlatform === 'facebook' ? settings.messengerDelayMinutes ?? 5 : activePlatform === 'whatsapp_cloud' ? (settings as any).whatsappDelayMinutes ?? 5 : activePlatform === 'viber' ? (settings as any).viberDelayMinutes ?? 5 : 5}
+                      className="h-9 rounded-lg text-sm"
+                      onChange={e => {
+                        const key = activePlatform === 'telegram' ? 'telegramDelayMinutes' : activePlatform === 'facebook' ? 'messengerDelayMinutes' : activePlatform === 'whatsapp_cloud' ? 'whatsappDelayMinutes' : activePlatform === 'viber' ? 'viberDelayMinutes' : null;
+                        if (key) updateSetting(key, parseInt(e.target.value, 10) || 5);
+                      }} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-semibold text-slate-500">{isRTL ? 'انتهاء الطلب (ساعات)' : 'Order Expiry (h)'}</Label>
+                    <Input type="number" min={1} max={72} value={settings.autoExpireHours ?? 24}
+                      className="h-9 rounded-lg text-sm"
+                      onChange={e => updateSetting('autoExpireHours', parseInt(e.target.value, 10) || 24)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-semibold text-slate-500">{isRTL ? 'حفظ التغييرات' : 'Save Changes'}</Label>
+                    <Button onClick={() => {
+                      const payload: any = {};
+                      if (activePlatform === 'telegram') { payload.telegramDelayMinutes = settings.telegramDelayMinutes ?? 5; }
+                      else if (activePlatform === 'facebook') { payload.messengerDelayMinutes = settings.messengerDelayMinutes ?? 5; }
+                      else if (activePlatform === 'whatsapp_cloud') { payload.whatsappDelayMinutes = (settings as any).whatsappDelayMinutes ?? 5; }
+                      else if (activePlatform === 'viber') { payload.viberDelayMinutes = (settings as any).viberDelayMinutes ?? 5; }
+                      payload.autoExpireHours = settings.autoExpireHours ?? 24;
+                      saveSettings(payload, 'delay');
+                    }} disabled={saving === 'delay'}
+                      className="h-9 w-full rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">
+                      {saving === 'delay' ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : isRTL ? 'حفظ' : 'Save'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* ── Help & FAQ Section ── */}
-      <div className="mt-8 p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
-            <HelpCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <h3 className="font-bold text-slate-900 dark:text-white">{isRTL ? 'كيف تعمل التكاملات؟' : 'How do integrations work?'}</h3>
-        </div>
-        
-        <div className="space-y-2">
-          <details className="group">
-            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو الغرض من التكاملات؟' : 'What is the purpose of integrations?'}</span>
-              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              {isRTL 
-                ? 'تتيح لك التكاملات استقبال طلبات العملاء تلقائياً من منصات التواصل الاجتماعي مثل فيسبوك وإنستغرام وتلغرام. عندما يرسل أحد العملاء رسالة إلى صفحتك، يقوم البوت تلقائياً بالرد وتأكيد الطلب.'
-                : 'Integrations allow you to automatically receive customer orders from social media platforms like Facebook, Instagram, and Telegram. When a customer sends a message to your page, the bot automatically responds and confirms the order.'}
-            </div>
-          </details>
-
-          <details className="group">
-            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما الفرق بين "بوت المنصة" و"بوتي الخاص"؟' : 'What is the difference between "Platform Bot" and "My Own Bot"?'}</span>
-              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              {isRTL 
-                ? 'بوت المنصة: يستخدم EcoPro بوته الخاص للرد على العملاء. بوتي الخاص: يمكنك استخدام بوتك الشخصي (مثل بوت Telegram الخاص بك) للرد على الرسائل. هذا يعطيك مزيداً من التحكم والمرونة.'
-                : 'Platform Bot: EcoPro uses its own bot to respond to customers. My Own Bot: You can use your personal bot (like your own Telegram bot) to reply to messages. This gives you more control and flexibility.'}
-            </div>
-          </details>
-
-          <details className="group">
-            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'هل يمكنني ربط عدة منصات في نفس الوقت؟' : 'Can I connect multiple platforms at the same time?'}</span>
-              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              {isRTL 
-                ? 'نعم! يمكنك ربط جميع المنصات (فيسبوك، إنستغرام، تلغرام، واتساب، فايبر) في نفس الوقت. سيتلقى متجرك الطلبات من جميع هذه المنصات.'
-                : 'Yes! You can connect all platforms (Facebook, Instagram, Telegram, WhatsApp, Viber) at the same time. Your store will receive orders from all these platforms.'}
-            </div>
-          </details>
-
-          <details className="group">
-            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'كيف يمكنني الحصول على رموز الوصول (Tokens)؟' : 'How do I get access tokens?'}</span>
-              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              {isRTL 
-                ? 'لكل منصة طريقة مختلفة: فيسبوك/إنستغرام من خلال Meta Developer Dashboard، تلغرام عبر @BotFather، واتساب عبر Meta for Developers، وفايبر من خلال إعدادات Public Account.'
-                : 'Each platform has a different method: Facebook/Instagram through Meta Developer Dashboard, Telegram via @BotFather, WhatsApp via Meta for Developers, and Viber through Public Account settings.'}
-            </div>
-          </details>
-
-          <details className="group">
-            <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'هل التكاملات آمنة؟' : 'Are integrations secure?'}</span>
-              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              {isRTL 
-                ? 'نعم، جميع الرموز والبيانات الحساسة تُخزن بشكل آمن ومشفّر. لا نشارك بياناتك مع أي طرف ثالث.'
-                : 'Yes, all tokens and sensitive data are stored securely and encrypted. We do not share your data with any third parties.'}
-            </div>
-          </details>
-        </div>
-      </div>
-
-      {/* ── Mobile bottom save bar ── */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 p-3 bg-white/90 dark:bg-[#0a0e1a]/90 backdrop-blur-xl border-t border-slate-200/60 dark:border-white/[0.06] safe-area-bottom">
-        <button onClick={handleSave} disabled={saving}
-          className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2.5 disabled:opacity-50 transition-all active:scale-[0.98] shadow-lg shadow-indigo-500/20">
-          {saving ? <><Loader2 className="h-4 w-4 animate-spin" />{isRTL ? 'جاري الحفظ...' : 'Saving...'}</> : <><Save className="h-4 w-4" />{isRTL ? 'حفظ التغييرات' : 'Save Changes'}</>}
-        </button>
-      </div>
-      {/* Bottom padding to prevent content from being hidden behind mobile save bar */}
-      <div className="lg:hidden h-20" />
     </div>
   );
 }

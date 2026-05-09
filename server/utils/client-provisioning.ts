@@ -70,6 +70,23 @@ export async function ensureBotSettingsRow(
       updates.push(`fb_page_id = $${idx++}`, `messenger_enabled = $${idx++}`);
       values.push(getPlatformFbPageId(), true);
     }
+    // Backfill NULL template fields with defaults for existing rows
+    updates.push(
+      `template_greeting = COALESCE(NULLIF(template_greeting, ''), $${idx++})`,
+      `template_instant_order = COALESCE(NULLIF(template_instant_order, ''), $${idx++})`,
+      `template_pin_instructions = COALESCE(NULLIF(template_pin_instructions, ''), $${idx++})`,
+      `template_order_confirmation = COALESCE(NULLIF(template_order_confirmation, ''), $${idx++})`,
+      `template_payment = COALESCE(NULLIF(template_payment, ''), $${idx++})`,
+      `template_shipping = COALESCE(NULLIF(template_shipping, ''), $${idx++})`
+    );
+    values.push(
+      DEFAULT_TEMPLATES.greeting,
+      DEFAULT_TEMPLATES.instantOrder,
+      DEFAULT_TEMPLATES.pinInstructions,
+      DEFAULT_TEMPLATES.orderConfirmation,
+      DEFAULT_TEMPLATES.payment,
+      DEFAULT_TEMPLATES.shipping
+    );
 
     if (updates.length > 0) {
       values.push(clientId);

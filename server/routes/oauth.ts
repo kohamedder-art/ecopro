@@ -46,7 +46,7 @@ function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
     secure,
     sameSite,
     domain,
-    path: '/api/auth',
+    path: '/',
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 
