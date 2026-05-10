@@ -73,6 +73,7 @@ import messengerRouter from "./routes/messenger";
 import facebookOAuthRouter from "./routes/facebook-oauth";
 import whatsappCloudRouter from "./routes/whatsapp-cloud";
 import legalRouter from "./routes/legal";
+import * as platformBillsRoutes from "./routes/platform-bills";
 import deliveryPricesRouter, { getStorefrontDeliveryPrices } from "./routes/delivery-prices";
 import {
   validate,
@@ -1147,6 +1148,39 @@ export function createServer(options?: { skipDbInit?: boolean }) {
     requireAdmin,
     billingRoutes.retryPayment
   );
+
+  // Platform Bills routes (admin)
+  app.get(
+    "/api/admin/bills/summary",
+    authenticate,
+    requireAdmin,
+    platformBillsRoutes.getBillsSummary
+  );
+  app.get(
+    "/api/admin/bills",
+    authenticate,
+    requireAdmin,
+    platformBillsRoutes.listBills
+  );
+  app.post(
+    "/api/admin/bills",
+    authenticate,
+    requireAdmin,
+    platformBillsRoutes.createBill
+  );
+  app.put(
+    "/api/admin/bills/:id",
+    authenticate,
+    requireAdmin,
+    platformBillsRoutes.updateBill
+  );
+  app.delete(
+    "/api/admin/bills/:id",
+    authenticate,
+    requireAdmin,
+    platformBillsRoutes.deleteBill
+  );
+
   // RedotPay webhook (public, signature verified, with raw body parser)
   app.post(
     "/api/billing/webhook/redotpay",

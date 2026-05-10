@@ -615,6 +615,8 @@ export const fr = {
   "platformAdmin.tabs.staff": "Personnel",
   "platformAdmin.tabs.audit": "Journal d'Audit",
   "platformAdmin.tabs.health": "Santé",
+  "platformAdmin.tabs.bills": "Factures",
+  "platformAdmin.tabs.billsShort": "F",
 
   // Platform Admin - Health
   "platformAdmin.health.title": "Santé du Serveur",
@@ -640,6 +642,30 @@ export const fr = {
   "platformAdmin.health.trends.points": "Échantillons",
   "platformAdmin.health.trends.delta": "Delta",
   "platformAdmin.health.trends.minAvgMax": "Min / Moy / Max",
+
+  // Platform Admin - Bills
+  "platformAdmin.bills.total": "Total Factures",
+  "platformAdmin.bills.paid": "Payé",
+  "platformAdmin.bills.unpaid": "Impayé",
+  "platformAdmin.bills.upcoming30": "À venir (30j)",
+  "platformAdmin.bills.byCategory": "Par Catégorie",
+  "platformAdmin.bills.monthly": "Tendance Mensuelle",
+  "platformAdmin.bills.noData": "Aucune donnée",
+  "platformAdmin.bills.addBill": "Ajouter une Facture",
+  "platformAdmin.bills.editBill": "Modifier la Facture",
+  "platformAdmin.bills.search": "Rechercher...",
+  "platformAdmin.bills.allCategories": "Toutes les Catégories",
+  "platformAdmin.bills.noBills": "Aucune facture",
+  "platformAdmin.bills.name": "Nom",
+  "platformAdmin.bills.category": "Catégorie",
+  "platformAdmin.bills.amount": "Montant",
+  "platformAdmin.bills.dueDate": "Date d'Échéance",
+  "platformAdmin.bills.status": "Statut",
+  "platformAdmin.bills.actions": "Actions",
+  "platformAdmin.bills.paidLabel": "Payé",
+  "platformAdmin.bills.unpaidLabel": "Impayé",
+  "platformAdmin.bills.confirmDelete": "Supprimer cette facture ?",
+  "platformAdmin.bills.notes": "Notes",
   
   // Platform Admin - Stats
   "platformAdmin.stats.totalUsers": "Total Utilisateurs",

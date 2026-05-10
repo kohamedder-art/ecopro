@@ -2452,8 +2452,8 @@ export default function GoldTemplateEditor() {
                      {t('editor.applyFramework')} — {TEMPLATE_PREVIEWS.find(tp => tp.id === normalizeTemplateId(previewTemplateId!))?.name || previewTemplateId}
                    </button>
                  )}
-                  <div className="grid gap-3">
-                    {TEMPLATE_PREVIEWS.map((template) => (
+                   <div className="grid gap-3">
+                     {TEMPLATE_PREVIEWS.map((template) => (
                        <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden group rounded-xl border transition-all text-left p-4 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]' : previewTemplateId === template.id ? 'border-violet-400 bg-violet-500/5 dark:bg-violet-500/10 shadow-[0_0_10px_-3px_rgba(139,92,246,0.2)]' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825] hover:border-slate-300 dark:hover:border-white/20'}`}>
                          <div className="flex items-center gap-3 relative z-10">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-inner ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : previewTemplateId === template.id ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:bg-slate-300 dark:group-hover:bg-white/5'}`}>
@@ -2538,19 +2538,21 @@ export default function GoldTemplateEditor() {
                 </div>
               </div>
             ) : (
-              /* Desktop — fill entire available space */
+              /* Desktop — fill entire available space, min 1024px for lg: breakpoints */
               <div
                 ref={previewFitRef}
                 className="w-full h-full"
-                style={{ overflow: 'hidden', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.2)' }}
+                style={{ overflow: 'auto', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.2)' }}
               >
-                <iframe
-                  ref={previewIframeRef}
-                  title="Storefront Preview"
-                  srcDoc={IFRAME_SRC_DOC}
-                  onLoad={() => setIframeReady(true)}
-                  style={{ border: 0, width: '100%', height: '100%', display: 'block', background: '#ffffff', pointerEvents: 'auto' }}
-                />
+                <div style={{ minWidth: '1024px', height: '100%' }}>
+                  <iframe
+                    ref={previewIframeRef}
+                    title="Storefront Preview"
+                    srcDoc={IFRAME_SRC_DOC}
+                    onLoad={() => setIframeReady(true)}
+                    style={{ border: 0, width: '100%', height: '100%', display: 'block', background: '#ffffff', pointerEvents: 'auto' }}
+                  />
+                </div>
               </div>
             )}
           </div>

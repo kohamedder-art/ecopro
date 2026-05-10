@@ -326,7 +326,9 @@ export const getPlatformStats: RequestHandler = async (_req, res) => {
           COUNT(*) FILTER (WHERE status = 'active') as active_subscriptions,
           COUNT(*) FILTER (WHERE status = 'trial') as trial_subscriptions,
           COUNT(*) FILTER (WHERE status = 'expired' OR status = 'cancelled') as expired_subscriptions
-        FROM subscriptions
+        FROM subscriptions s
+        WHERE EXISTS (SELECT 1 FROM clients WHERE id = s.user_id)
+           OR EXISTS (SELECT 1 FROM admins WHERE id = s.user_id)
       `).catch(() => ({ rows: [{ total_subscriptions: 0, active_subscriptions: 0, trial_subscriptions: 0, expired_subscriptions: 0 }] })),
       pool.query(`
         SELECT 

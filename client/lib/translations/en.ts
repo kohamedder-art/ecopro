@@ -1045,6 +1045,8 @@ export const en = {
   "platformAdmin.tabs.staff": "Staff",
   "platformAdmin.tabs.audit": "Audit Log",
   "platformAdmin.tabs.health": "Health",
+  "platformAdmin.tabs.bills": "Bills",
+  "platformAdmin.tabs.billsShort": "B",
 
   // Platform Admin - Health
   "platformAdmin.health.title": "Server Health",
@@ -1070,6 +1072,30 @@ export const en = {
   "platformAdmin.health.trends.points": "Samples",
   "platformAdmin.health.trends.delta": "Delta",
   "platformAdmin.health.trends.minAvgMax": "Min / Avg / Max",
+
+  // Platform Admin - Bills
+  "platformAdmin.bills.total": "Total Bills",
+  "platformAdmin.bills.paid": "Paid",
+  "platformAdmin.bills.unpaid": "Unpaid",
+  "platformAdmin.bills.upcoming30": "Upcoming (30d)",
+  "platformAdmin.bills.byCategory": "By Category",
+  "platformAdmin.bills.monthly": "Monthly Trend",
+  "platformAdmin.bills.noData": "No data",
+  "platformAdmin.bills.addBill": "Add Bill",
+  "platformAdmin.bills.editBill": "Edit Bill",
+  "platformAdmin.bills.search": "Search bills...",
+  "platformAdmin.bills.allCategories": "All Categories",
+  "platformAdmin.bills.noBills": "No bills yet",
+  "platformAdmin.bills.name": "Name",
+  "platformAdmin.bills.category": "Category",
+  "platformAdmin.bills.amount": "Amount",
+  "platformAdmin.bills.dueDate": "Due Date",
+  "platformAdmin.bills.status": "Status",
+  "platformAdmin.bills.actions": "Actions",
+  "platformAdmin.bills.paidLabel": "Paid",
+  "platformAdmin.bills.unpaidLabel": "Unpaid",
+  "platformAdmin.bills.confirmDelete": "Delete this bill?",
+  "platformAdmin.bills.notes": "Notes",
   
   // Platform Admin - Stats
   "platformAdmin.stats.totalUsers": "Total Users",

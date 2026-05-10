@@ -30,6 +30,7 @@ import {
   PieChart as PieChartIcon,
   Pin,
   Plus,
+  Receipt,
   RefreshCw,
   Search,
   Settings,
@@ -65,6 +66,7 @@ import AITab from '@/components/platform-admin/tabs/AITab';
 import ToolsTab from '@/components/platform-admin/tabs/ToolsTab';
 import SettingsTab from '@/components/platform-admin/tabs/SettingsTab';
 import NotesTab from '@/components/platform-admin/tabs/NotesTab';
+import BillsTab from '@/components/platform-admin/tabs/BillsTab';
 
 interface AdminNote {
   id: number;
@@ -905,7 +907,7 @@ export default function PlatformAdmin() {
   const [adminAuditLogs, setAdminAuditLogs] = useState<AdminAuditLog[]>([]);
   const [logMode, setLogMode] = useState<'staff' | 'admin'>('staff');
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'stores' | 'products' | 'activity' | 'errors' | 'health' | 'settings' | 'billing' | 'payment-failures' | 'codes' | 'tools' | 'affiliates' | 'notes' | 'ai'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'stores' | 'products' | 'activity' | 'errors' | 'health' | 'settings' | 'billing' | 'payment-failures' | 'codes' | 'tools' | 'affiliates' | 'notes' | 'ai' | 'bills'>('overview');
 
   const [platformErrorDays, setPlatformErrorDays] = useState(3);
   const [platformErrorSource, setPlatformErrorSource] = useState<'all' | 'client' | 'server'>('all');
@@ -1976,6 +1978,16 @@ export default function PlatformAdmin() {
             <CreditCard style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
             <span className="hidden sm:inline">{t('platformAdmin.tabs.subscriptions')}</span>
             <span className="sm:hidden">B</span>
+          </Button>
+          <Button
+            variant={activeTab === 'bills' ? 'default' : 'ghost'}
+            onClick={() => setActiveTab('bills')}
+            className="whitespace-nowrap text-gray-700 dark:text-slate-200"
+            style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)', padding: 'clamp(0.375rem, 0.8vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)', height: 'clamp(2rem, 4vh, 2.5rem)' }}
+          >
+            <Receipt style={{ width: 'clamp(0.875rem, 1.8vh, 1rem)', height: 'clamp(0.875rem, 1.8vh, 1rem)', marginRight: 'clamp(0.375rem, 0.75vh, 0.5rem)' }} />
+            <span className="hidden md:inline">{t('platformAdmin.tabs.bills')}</span>
+            <span className="md:hidden">{t('platformAdmin.tabs.billsShort')}</span>
           </Button>
           <Button
             variant={activeTab === 'health' ? 'default' : 'ghost'}
@@ -3149,6 +3161,11 @@ export default function PlatformAdmin() {
         {/* Subscriptions Tab */}
         {activeTab === 'billing' && (
           <SubscriptionsTab billingMetrics={billingMetrics} stats={stats} />
+        )}
+
+        {/* Platform Bills Tab */}
+        {activeTab === 'bills' && (
+          <BillsTab />
         )}
 
         {/* Flag Product Modal */}

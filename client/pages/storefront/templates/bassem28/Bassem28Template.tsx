@@ -9,8 +9,6 @@ import {
   Truck,
   ShieldCheck,
   Package,
-  ChevronDown,
-  ChevronUp,
   CheckCircle2,
   Phone,
   User,
@@ -154,65 +152,6 @@ export default function Bassem28Template({
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-  useEffect(() => {
-    setSelectedMainImage(0);
-    setShowVideo(!!videoEmbed);
-    setSelectedVariant(null);
-  }, [mainProduct?.id]);
-
-  // ── Order Submission ──
-  const handleOrder = async () => {
-    if (!customerName || !customerPhone || !selectedWilayaId) {
-      alert('يرجى ملء جميع الحقول');
-      return;
-    }
-    if (!mainProduct) return;
-    try {
-      setIsSubmitting(true);
-      const res = await fetch('/api/orders/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          store_slug: storeSlug,
-          product_id: mainProduct.id,
-          ...(selectedVariant?.id ? { variant_id: selectedVariant.id } : {}),
-          quantity: selectedOffer?.quantity ?? quantity,
-          ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-          total_price: selectedOffer ? selectedOffer.bundle_price : total,
-          delivery_fee: deliveryFee,
-          delivery_type: selectedDeliveryType,
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune].filter(Boolean).join(' - '),
-          customer_notes: customerNotes,
-          shipping_wilaya_id: selectedWilayaId,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'خطأ في الطلب');
-        return;
-      }
-      setLastOrderId(data.order?.id || null);
-      setLastTelegramUrl(data.telegramStartUrl || null);
-      setOrderSuccess(true);
-    } catch {
-      alert('خطأ في الطلب');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ── ContentEditable ──
-  const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
-    const text = e.currentTarget.textContent || '';
-    if (typeof window !== 'undefined' && window.parent !== window) {
-      window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key, value: text }, '*');
-    }
-  };
-
   // ── Google Font ──
   useEffect(() => {
     if (!document.getElementById('cairo-font')) {
@@ -223,13 +162,6 @@ export default function Bassem28Template({
       document.head.appendChild(link);
     }
   }, []);
-
-  // ── FAQ Data ──
-  const faqs = [
-    { q: settings?.bassem28_faq1_q || 'وصف المنتج بالتفصيل', a: settings?.bassem28_faq1_a || 'عطر مميز جداً يجمع بين الفخامة والحضور. نوتات عليا من الحليب والفواكه، قلب من الفانيليا الدافئة، وقاعدة من العود والمسك.' },
-    { q: settings?.bassem28_faq2_q || 'سياسة التوصيل والاسترجاع', a: settings?.bassem28_faq2_a || 'توصيل سريع خلال 24 إلى 48 ساعة. الاسترجاع متاح في حال وجود أي خلل مصنعي أو عدم مطابقة للمواصفات.' },
-    { q: settings?.bassem28_faq3_q || 'طريقة الاستخدام والنصائح', a: settings?.bassem28_faq3_a || 'يفضل رشه على مناطق النبض للحصول على أفضل ثبات وفواحان يدوم طويلاً.' },
-  ];
 
   // ══════════════════════════════════════
   // ORDER SUCCESS SCREEN
@@ -538,28 +470,6 @@ export default function Bassem28Template({
             </section>
           )}
 
-          {/* ═══════════════════════════════════
-              FAQ ACCORDION
-              ═══════════════════════════════════ */}
-          <section className="mt-12 space-y-4">
-            {faqs.map((item, i) => (
-              <div key={i} className="rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
-                  className="w-full p-6 flex items-center justify-between font-black"
-                  style={{ color: surfaceTextColor }}
-                >
-                  <span>{item.q}</span>
-                  {openFaq === i ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </button>
-                {openFaq === i && (
-                  <div className="px-6 pb-6 leading-relaxed font-medium" style={{ color: surfaceTextMuted }}>
-                    {item.a}
-                  </div>
-                )}
-              </div>
-            ))}
-          </section>
         </main>
       )}
 

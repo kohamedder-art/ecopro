@@ -70,8 +70,6 @@ export default function LeRoiShopTemplate({
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProduct(p); setView('product'); } } }, [initialProductSlug, products]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -453,31 +451,33 @@ export default function LeRoiShopTemplate({
 
               {/* Image */}
               <div className="w-full md:w-1/2 flex flex-col">
-                <div className="rounded-xl overflow-hidden shadow-sm aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh]" style={{ backgroundColor: surfaceMuted }}>
-                  <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
-                    {videoEmbed && (
-                      <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
-                        {videoEmbed.type === 'youtube' ? (
-                          <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                        ) : videoEmbed.type === 'video' ? (
-                          <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                        ) : (
-                          <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                        )}
-                      </div>
-                    )}
-                    {activeProduct.images?.length > 0 ? activeProduct.images?.map((img: string, i: number) => (
-                      <img key={i} src={img} alt={activeProduct.title}
-                        className="w-full h-full object-cover shrink-0 cursor-pointer"
-                        style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
-                        onClick={() => setLightboxOpen(true)}
-                      />
-                    )) : (
-                      <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: textMuted }}>
-                        <span>لا توجد صور</span>
-                      </div>
-                    )}
-                  </div>
+                <div className="rounded-xl overflow-hidden shadow-sm aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] relative" style={{ backgroundColor: surfaceMuted }}>
+                  {showVideo && videoEmbed ? (
+                    videoEmbed.type === 'youtube' ? (
+                      <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                    ) : videoEmbed.type === 'video' ? (
+                      <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                    ) : (
+                      <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
+                    )
+                  ) : activeProduct.images?.length > 0 ? (
+                    <img
+                      src={activeProduct.images[activeImageIndex] ?? activeProduct.images[0]}
+                      alt={activeProduct.title}
+                      className="w-full h-full object-contain cursor-pointer"
+                      onClick={() => setLightboxOpen(true)}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center" style={{ color: textMuted }}>
+                      <span>لا توجد صور</span>
+                    </div>
+                  )}
+                  {activeProduct.images?.length > 1 && !showVideo && (
+                    <>
+                      <button className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold opacity-70 hover:opacity-100 transition-opacity z-10" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }} onClick={() => setActiveImageIndex(i => (i - 1 + activeProduct.images.length) % activeProduct.images.length)}>‹</button>
+                      <button className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold opacity-70 hover:opacity-100 transition-opacity z-10" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }} onClick={() => setActiveImageIndex(i => (i + 1) % activeProduct.images.length)}>›</button>
+                    </>
+                  )}
                 </div>
                 {/* Thumbnails: video first */}
                 {(videoEmbed || activeProduct.images?.length > 1) && (
@@ -488,7 +488,7 @@ export default function LeRoiShopTemplate({
                       </button>
                     )}
                     {activeProduct.images?.map((img: string, i: number) => (
-                      <button key={i} onClick={() => { setShowVideo(false); setActiveImageIndex(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${!showVideo && i === activeImageIndex ? accentColor : 'transparent'}`, opacity: !showVideo && i === activeImageIndex ? 1 : 0.6 }}>
+                      <button key={i} onClick={() => { setShowVideo(false); setActiveImageIndex(i); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${!showVideo && i === activeImageIndex ? accentColor : 'transparent'}`, opacity: !showVideo && i === activeImageIndex ? 1 : 0.6 }}>
                         <img src={img} alt="" className="w-full h-full object-contain" />
                       </button>
                     ))}
