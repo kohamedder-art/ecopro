@@ -305,7 +305,7 @@ export default function LeRoiShopTemplate({
      RENDER
      ══════════════════════════════════════════════════════ */
   return (
-    <div style={{ fontFamily: "'Cairo', sans-serif", backgroundColor: bgColor, color: textColor }} dir="rtl">
+    <div style={{ fontFamily: "'Cairo', sans-serif", backgroundColor: bgColor, color: textColor, minHeight: '100dvh' }} dir="rtl">
       <style>{`
         [contenteditable="true"]:focus { outline: 2px solid ${accentColor}; border-radius: 4px; }
         .lrs-card { transition: all 0.3s ease; }

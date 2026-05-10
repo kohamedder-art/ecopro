@@ -39,7 +39,7 @@ Rules:
 - End with one clear dashboard action they can take RIGHT NOW (e.g. "Go to your Orders page to confirm them.").
 - No technical jargon. No mentions of APIs, databases, or code.
 - Do NOT start with "Alert:" or any label.
-- Respond in French (default for Algerian market). If the store name is in Arabic or Darija, switch to Arabic/Darija accordingly.
+- Respond in Arabic or Darija (default for Algerian market). Only use French if the store name is clearly in French.
 
 Store name: "${storeName}"
 Alert type: ${type}

@@ -2798,120 +2798,65 @@ export default function Store() {
                             <span className="text-[10px] text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
                               {variants.length}
                             </span>
-                            
-                            {/* Image upload for this color */}
-                            <div className="flex-1 flex justify-end">
-                              <label className="cursor-pointer group flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 transition-colors">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    
-                                    // Upload the image
-                                    const uploadVariantImage = async () => {
-                                      const formData = new FormData();
-                                      formData.append('image', file);
-                                      
-                                      try {
-                                        const res = await fetch('/api/upload', {
-                                          method: 'POST',
-                                          credentials: 'include',
-                                          body: formData,
-                                        });
-                                        
-                                        if (!res.ok) throw new Error('Upload failed');
-                                        const data = await res.json();
-                                        const imageUrl = data.url;
-                                        
-                                        // Update all variants of this color with the image
-                                        setVariantsDraft(prev =>
-                                          prev.map((row, i) => {
-                                            // Check if this variant matches the current color
-                                            const rowColor = (row.color || '').trim();
-                                            if (rowColor === color) {
-                                              const currentImages = row.images || [];
-                                              // Add image to the beginning of the array (primary image)
-                                              if (!currentImages.includes(imageUrl)) {
-                                                return { ...row, images: [imageUrl, ...currentImages] };
-                                              }
-                                            }
-                                            return row;
-                                          })
-                                        );
-                                        setVariantsDirty(true);
-                                        toast({ title: 'تم رفع الصورة', description: `تمت إضافة صورة للون ${color}` });
-                                      } catch (err) {
-                                        toast({ variant: 'destructive', title: 'فشل الرفع', description: 'حدث خطأ أثناء رفع الصورة' });
-                                      }
-                                    };
-                                    
-                                    uploadVariantImage();
-                                    e.target.value = ''; // Reset input
-                                  }}
-                                />
-                                <ImageIcon className="h-3.5 w-3.5" />
-                                <span>صورة اللون</span>
-                              </label>
-                              
-                              {/* Show image preview and remove button if variants have images */}
-                              {(() => {
-                                const colorVariantsWithImages = variants.filter(v => (v.images?.length || 0) > 0);
-                                const firstImage = colorVariantsWithImages[0]?.images?.[0];
-                                if (firstImage) {
-                                  return (
-                                    <div className="flex items-center gap-2">
-                                      {/* Image preview */}
-                                      <div className="relative group">
-                                        <img 
-                                          src={firstImage} 
-                                          alt={color}
-                                          className="w-8 h-8 rounded object-cover border border-slate-200"
-                                        />
-                                        {/* Remove button on hover */}
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            // Remove this image from all variants of this color
-                                            setVariantsDraft(prev =>
-                                              prev.map((row) => {
-                                                const rowColor = (row.color || '').trim();
-                                                if (rowColor === color && row.images) {
-                                                  return { 
-                                                    ...row, 
-                                                    images: row.images.filter(img => img !== firstImage)
-                                                  };
-                                                }
-                                                return row;
-                                              })
-                                            );
-                                            setVariantsDirty(true);
-                                            toast({ title: 'تم الحذف', description: `تم حذف صورة اللون ${color}` });
-                                          }}
-                                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                          title="حذف الصورة"
-                                        >
-                                          <X className="h-2.5 w-2.5" />
-                                        </button>
-                                      </div>
-                                      <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded">
-                                        {colorVariantsWithImages[0].images?.length} صورة
-                                      </span>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </div>
                           </div>
                         )}
                         {/* Individual variants */}
                         {variants.map((v) => (
                           <div key={v.originalIndex} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                            {/* Image thumbnail + upload for this color */}
+                            <div className="relative group flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700">
+                              {v.images?.[0] ? (
+                                <>
+                                  <img src={v.images[0]} alt="" className="w-full h-full object-cover" />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const firstImage = v.images![0];
+                                      const rowColor = (v.color || '').trim();
+                                      setVariantsDraft(prev =>
+                                        prev.map((r) => {
+                                          if ((r.color || '').trim() === rowColor && r.images) {
+                                            return { ...r, images: r.images.filter(img => img !== firstImage) };
+                                          }
+                                          return r;
+                                        })
+                                      );
+                                      setVariantsDirty(true);
+                                    }}
+                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </>
+                              ) : (
+                                <label className="cursor-pointer w-full h-full flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const upload = async () => {
+                                      const form = new FormData();
+                                      form.append('image', file);
+                                      const res = await fetch('/api/upload', { method: 'POST', credentials: 'include', body: form });
+                                      if (!res.ok) return;
+                                      const data = await res.json();
+                                      const rowColor = (v.color || '').trim();
+                                      setVariantsDraft(prev =>
+                                        prev.map((r) => {
+                                          if ((r.color || '').trim() === rowColor) {
+                                            return { ...r, images: [data.url, ...(r.images || [])] };
+                                          }
+                                          return r;
+                                        })
+                                      );
+                                      setVariantsDirty(true);
+                                    };
+                                    upload();
+                                    e.target.value = '';
+                                  }} />
+                                  <ImageIcon className="w-5 h-5" />
+                                </label>
+                              )}
+                            </div>
                             {/* Size badge */}
                             <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${
                               v.size ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
@@ -2927,7 +2872,8 @@ export default function Store() {
                                 min={0}
                                 value={v.stock_quantity ?? ''}
                                 onChange={(e) => {
-                                  const next = Number(e.target.value || 0);
+                                  const raw = e.target.value;
+                                  const next = raw === '' ? undefined : Number(raw);
                                   const idx = v.originalIndex;
                                   setVariantsDraft(prev =>
                                     prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row))

@@ -1793,7 +1793,8 @@ export default function StockManagement() {
                                 type="number" min={0}
                                 value={v.stock_quantity ?? ''}
                                 onChange={(e) => {
-                                  const next = Number(e.target.value || 0);
+                                  const raw = e.target.value;
+                                  const next = raw === '' ? undefined : Number(raw);
                                   const idx = v.originalIndex;
                                   setVariantsDraft(prev => prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row)));
                                   setVariantsDirty(true);
