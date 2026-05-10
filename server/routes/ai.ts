@@ -1389,6 +1389,10 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
         .map(([s, c]) => `${s}: ${c}`)
         .join(', ') || 'no orders yet';
 
+      // Detect if the question needs live store data or is a how-to/feature question
+      const dataKeywords = ['طلب','طلبية','طلبيات','revenue','إيراد','مبيعات','منتج','مخزون','stock','orders','أرباح','زبون','زبائن','إحصاء','تقرير','كم','عدد','قيمة','أجمالي','status','حالة','delivery','توصيل','اشتراك','subscription','دفع','payment','موظف','staff','بيكسل','pixel'];
+      const needsData = dataKeywords.some(kw => question.toLowerCase().includes(kw));
+
       const storeContext = `
 === PROFILE ===
 Name: ${profileName || 'N/A'} | Email: ${profileEmail || 'N/A'} | Phone: ${profilePhone || 'N/A'}
@@ -1411,6 +1415,7 @@ Font: ${storeDesign.font || 'Inter'}
 Border radius: ${storeDesign.borderRadius || '(default)'}px
 (You can change ANY of these via update_store_settings or update_store_design actions)
 
+${needsData ? `
 === BILLING ===
 Plan: ${subTier || 'N/A'} | Status: ${subStatus || 'N/A'}
 ${subTrialEnds ? `Trial ends: ${subTrialEnds}` : ''}${subPeriodEnd ? ` | Period ends: ${subPeriodEnd}` : ''}
@@ -1461,12 +1466,8 @@ ${pixelStats.length > 0
   ? pixelStats.map(ps => `  ${ps.pixel_type}: ${ps.views || 0} views | ${ps.purchases || 0} purchases | ${parseFloat(ps.revenue || '0').toLocaleString()} ${currency} revenue`).join('\n')
   : '  (no data)'}
 
-=== PLATFORM INFO ===
-EcoPro: Algerian e-commerce SaaS. Subscription $7/month. Delivery: COD, Wilaya-based. Orders confirmed via WhatsApp/Telegram/Messenger. Staff permissions can be customized.
-
 === FLAGGED / PROBLEMATIC ORDERS ===
 Fake orders: ${flaggedCounts.fake} | Duplicate orders: ${flaggedCounts.duplicate} | No-answer orders: ${flaggedCounts.no_answer} | Returned: ${flaggedCounts.returned}
-(When user asks about "flagged", "problematic", "bad", or "suspicious" orders, use these categories to answer.)
 
 === DELIVERY ZONES ===
 ${deliveryZones.length > 0
@@ -1480,6 +1481,9 @@ ${staffActivity.length > 0
 
 === CUSTOMER BLACKLIST ===
 Blacklisted customers: ${blacklistCount}
+` : ''}
+=== PLATFORM INFO ===
+EcoPro: Algerian e-commerce SaaS. Subscription $7/month. Delivery: COD, Wilaya-based. Orders confirmed via WhatsApp/Telegram/Messenger. Staff permissions can be customized.
       `.trim();
 
       const historyText = prevHistory.length > 0
