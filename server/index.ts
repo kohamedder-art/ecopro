@@ -101,11 +101,15 @@ export function createServer(options?: { skipDbInit?: boolean }) {
       process.exit(1);
     }
   }
-  // Compression early to reduce payload size
+  // Compression — max level for slow Algerian connections
   app.use(
     compression({
-      threshold: 0,
-      level: 6,
+      threshold: 0,    // compress everything, no minimum size
+      level: 9,        // maximum gzip compression
+      filter: (req, res) => {
+        // Always compress — override default text-only filter
+        return compression.filter(req, res);
+      },
     })
   );
   // Single body parsers with elevated limits BEFORE routes
@@ -1654,7 +1658,9 @@ export function createServer(options?: { skipDbInit?: boolean }) {
             const injected = nonce
               ? withMeta.replace(/<script\s+type="module"\s+/g, `<script type="module" nonce="${nonce}" `)
               : withMeta;
-            res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+            res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=60, stale-while-revalidate=300');
+            res.setHeader('Vary', 'Accept-Encoding');
+            res.setHeader('X-Content-Type-Options', 'nosniff');
             res.type('html').send(injected);
           })
           .catch(() => {

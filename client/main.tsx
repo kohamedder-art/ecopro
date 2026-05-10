@@ -79,6 +79,13 @@ if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
   };
 }
 
+// Register service worker for asset caching (production only)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+  });
+}
+
 const container = document.getElementById("root");
 if (container) {
   const buildId = getBuildIdFromImportMetaUrl();

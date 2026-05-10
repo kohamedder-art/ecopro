@@ -1,24 +1,24 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { TemplateProps } from './types';
-// NOTE: Disabled templates (files kept but not selectable):
-// dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, luxedrop, streetwear, novadz, lumina
-// To re-enable, add imports and add to validIds array below
 
-import DZShopTemplate from './dzshop/DZShopTemplate';
-// NOTE: luxedrop, novadz, lumina disabled - see validIds array below
-// import LuxeDropTemplate from './luxedrop/LuxeDropTemplate';
-// import NovaDzTemplate from './novadz/NovaDzTemplate';
-// import LuminaTemplate from './lumina/LuminaTemplate';
-import NeedDZTemplate from './needdz/NeedDZTemplate';
-import ZenithTemplate from './zenith/ZenithTemplate';
-import BoutiqueTemplate from './boutique/BoutiqueTemplate';
-// NOTE: streetwear disabled - see validIds array below
-// import StreetwearTemplate from './streetwear/StreetwearTemplate';
-import IycoTemplate from './iyco/IycoTemplate';
-import Bassem28Template from './bassem28/Bassem28Template';
-import Dz3ShopTemplate from './dz3shop/Dz3ShopTemplate';
-import SpiriluxeTemplate from './spiriluxe/SpiriluxeTemplate';
-import LeRoiShopTemplate from './leroishop/LeRoiShopTemplate';
+// Lazy-load every template — each becomes its own chunk loaded only when needed
+const DZShopTemplate    = lazy(() => import('./dzshop/DZShopTemplate'));
+const NeedDZTemplate    = lazy(() => import('./needdz/NeedDZTemplate'));
+const ZenithTemplate    = lazy(() => import('./zenith/ZenithTemplate'));
+const BoutiqueTemplate  = lazy(() => import('./boutique/BoutiqueTemplate'));
+const IycoTemplate      = lazy(() => import('./iyco/IycoTemplate'));
+const Bassem28Template  = lazy(() => import('./bassem28/Bassem28Template'));
+const Dz3ShopTemplate   = lazy(() => import('./dz3shop/Dz3ShopTemplate'));
+const SpiriluxeTemplate = lazy(() => import('./spiriluxe/SpiriluxeTemplate'));
+const LeRoiShopTemplate = lazy(() => import('./leroishop/LeRoiShopTemplate'));
+
+function TemplateFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-gray-600 animate-spin" />
+    </div>
+  );
+}
 
 export type TemplateId = 'dzshop' | 'dzpremium' | 'luxedrop' | string;
 
@@ -56,48 +56,20 @@ export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
     setCategoryFilter: () => {},
   };
 
+  let template: React.ReactElement;
   switch (id) {
-      // Active templates
-      case 'zenith':
-          return <ZenithTemplate {...sanitizedProps} />;
-      case 'boutique':
-          return <BoutiqueTemplate {...sanitizedProps} />;
-      // NOTE: streetwear disabled - redirect to dzshop
-      // case 'streetwear':
-      //     return <StreetwearTemplate {...sanitizedProps} />;
-      case 'iyco':
-          return <IycoTemplate {...sanitizedProps} />;
-      case 'bassem28':
-          return <Bassem28Template {...sanitizedProps} />;
-      case 'dz3shop':
-          return <Dz3ShopTemplate {...sanitizedProps} />;
-      case 'spiriluxe':
-          return <SpiriluxeTemplate {...sanitizedProps} />;
-      case 'leroishop':
-          return <LeRoiShopTemplate {...sanitizedProps} />;
-      // NOTE: luxedrop disabled - redirect to dzshop
-      // case 'luxedrop':
-      //     return <LuxeDropTemplate {...sanitizedProps} />;
-      case 'needdz':
-          return <NeedDZTemplate {...sanitizedProps} />;
-      // Disabled templates redirect to dzshop:
-      case 'dzpremium':
-      case 'minimalist':
-      case 'aurora':
-      case 'sculptor':
-      case 'artisan':
-      case 'gallery':
-      case 'jewelheart':
-      case 'classicshop':
-      case 'vera':
-      case 'novadz':
-      case 'lumina':
-      case 'luxedrop':
-      case 'streetwear':
+      case 'zenith':      template = <ZenithTemplate {...sanitizedProps} />; break;
+      case 'boutique':    template = <BoutiqueTemplate {...sanitizedProps} />; break;
+      case 'iyco':        template = <IycoTemplate {...sanitizedProps} />; break;
+      case 'bassem28':    template = <Bassem28Template {...sanitizedProps} />; break;
+      case 'dz3shop':     template = <Dz3ShopTemplate {...sanitizedProps} />; break;
+      case 'spiriluxe':   template = <SpiriluxeTemplate {...sanitizedProps} />; break;
+      case 'leroishop':   template = <LeRoiShopTemplate {...sanitizedProps} />; break;
+      case 'needdz':      template = <NeedDZTemplate {...sanitizedProps} />; break;
       case 'dzshop':
-      default:
-          return <DZShopTemplate {...sanitizedProps} />;
+      default:            template = <DZShopTemplate {...sanitizedProps} />; break;
   }
+  return <Suspense fallback={<TemplateFallback />}>{template}</Suspense>;
 }
 
 // Only exporting active templates

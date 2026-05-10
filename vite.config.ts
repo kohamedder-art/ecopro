@@ -45,6 +45,10 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist/spa",
+    // Raise chunk size warning threshold — we do manual splitting
+    chunkSizeWarningLimit: 600,
+    // Enable CSS code splitting
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks(id: string) {
@@ -64,7 +68,10 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('node_modules/lucide-react')) {
             return 'lucide-icons';
           }
-          // NOTE: recharts/d3 NOT split — they have circular deps that break manual chunking
+          // Recharts + D3 — only needed for analytics pages
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') || id.includes('node_modules/victory-')) {
+            return 'charts';
+          }
           // Framer Motion — animation library
           if (id.includes('node_modules/framer-motion')) {
             return 'framer-motion';
@@ -72,6 +79,10 @@ export default defineConfig(({ mode }) => ({
           // TanStack Query
           if (id.includes('node_modules/@tanstack')) {
             return 'tanstack';
+          }
+          // Algeria geodata — large, only needed for delivery/checkout
+          if (id.includes('algeriaGeo') || id.includes('algeria-geo') || id.includes('wilayas')) {
+            return 'algeria-geo';
           }
         },
       },

@@ -1024,8 +1024,17 @@ export const forgotPassword: RequestHandler = async (req, res) => {
     const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    // Store reset token in database
+    // Store reset token in database (ensure table exists in case migration hasn't run)
     const pool = await ensureConnection();
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        token_hash VARCHAR(64) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
     await pool.query(`
       INSERT INTO password_resets (email, token_hash, expires_at)
       VALUES ($1, $2, $3)
@@ -1089,10 +1098,11 @@ export const resetPassword: RequestHandler = async (req, res) => {
       return jsonError(res, 400, 'Invalid reset request');
     }
 
-    await updateUser(String((user as any).id), {
-      password: hashedPassword,
-      updated_at: new Date() as any,
-    } as any);
+    const updated = await updateUser(String((user as any).id), { password: hashedPassword });
+    if (!updated) {
+      console.error('[AUTH] updateUser returned null for id:', (user as any).id);
+      return jsonError(res, 500, 'Failed to update password');
+    }
 
     // Delete used reset token
     await pool.query('DELETE FROM password_resets WHERE email = $1', [normalizedEmail]);

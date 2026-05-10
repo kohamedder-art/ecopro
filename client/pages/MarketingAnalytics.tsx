@@ -156,19 +156,17 @@ export default function MarketingAnalytics() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="border-b border-slate-200 dark:border-slate-700">
-          <TabsList className="w-full bg-transparent p-0 h-auto gap-0 flex">
-            {tabs.map(({ value, icon: Icon, labelKey }) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className="rounded-none text-xs font-semibold gap-[5px] px-[11px] py-[9px] data-[state=active]:text-blue-600 data-[state=active]:dark:text-blue-400 data-[state=active]:shadow-[inset_0_-2px_0_0] data-[state=active]:shadow-blue-600 dark:data-[state=active]:shadow-blue-400 transition-all flex-shrink-0 text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100"
-              >
-                <Icon className="h-[13px] w-[13px]" /> {t(labelKey)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+        <TabsList className="w-full bg-muted/60 border border-border rounded-xl p-1 gap-1 flex flex-nowrap overflow-x-auto">
+          {tabs.map(({ value, icon: Icon, labelKey }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="text-xs font-bold gap-[5px] px-3 py-2 rounded-lg data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm flex-1 text-muted-foreground hover:text-foreground transition-all min-w-0"
+            >
+              <Icon className="h-[13px] w-[13px] shrink-0" /> <span className="truncate">{t(labelKey)}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
         <TabsContent value="dashboard" className="mt-[9px] space-y-[9px]">
           {snapshotLoading ? (

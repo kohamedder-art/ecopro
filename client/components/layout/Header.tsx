@@ -44,10 +44,17 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
-      authApi.logout();
+      const wasAdmin = user?.role === 'admin';
+      void fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => null);
       localStorage.removeItem("user");
-      navigate("/");
-      window.location.reload();
+      localStorage.removeItem("isAdmin");
+      localStorage.removeItem("isStaff");
+      if (wasAdmin) {
+        window.location.href = '/login?logged_out=1';
+      } else {
+        navigate("/");
+        window.location.reload();
+      }
     } catch (error) {
       console.error("Logout failed:", error);
     }

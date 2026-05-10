@@ -126,14 +126,16 @@ if (typeof window !== 'undefined') {
 // import SellerDashboard from "@/pages/SellerDashboard";
 // import BuyerInfo from "@/pages/BuyerInfo";
 
-// Configure QueryClient with aggressive caching for faster navigation
+// Configure QueryClient with aggressive caching — critical for slow Algerian connections
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30 * 1000, // Data stays fresh for 30 seconds
-      gcTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes
+      staleTime: 2 * 60 * 1000,   // Data stays fresh for 2 minutes — avoid refetches
+      gcTime: 15 * 60 * 1000,     // Keep unused data in cache for 15 minutes
       refetchOnWindowFocus: false, // Don't refetch when user returns to tab
-      retry: 1, // Only retry once on failure
+      refetchOnReconnect: false,   // Don't auto-refetch on reconnect — user can refresh
+      retry: 1,                    // Only retry once on failure
+      networkMode: 'offlineFirst', // Use cache immediately, fetch in background
     },
   },
 });

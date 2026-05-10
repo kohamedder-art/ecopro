@@ -321,7 +321,7 @@ export default function LeRoiShopTemplate({
 
       {/* ── HEADER ────────────────────────────────────── */}
       <header className="shadow-sm sticky top-0 z-40" style={{ backgroundColor: headerColor, borderBottom: `1px solid ${surfaceBorderColor}` }}>
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-screen-xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <button onClick={goToCatalog} className="font-bold text-sm transition-colors hover:opacity-80" style={{ color: surfaceTextColor }}>
               الرئيسية
@@ -344,7 +344,7 @@ export default function LeRoiShopTemplate({
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8 mb-20">
+      <main className="max-w-screen-xl mx-auto px-2 sm:px-3 py-6 mb-20">
 
         {/* ════════════════════════════════════════════════
             CATALOG VIEW
@@ -370,7 +370,7 @@ export default function LeRoiShopTemplate({
             )}
 
             {/* Product Grid - Temu Style */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {(products || []).map((product) => {
                 const discount = product.original_price 
                   ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
@@ -380,11 +380,12 @@ export default function LeRoiShopTemplate({
                 return (
                   <div
                     key={product.id}
-                    className="group cursor-pointer transition-transform hover:-translate-y-1"
+                    className="group cursor-pointer rounded-xl overflow-hidden transition-all hover:-translate-y-1 hover:shadow-lg"
+                    style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                     onClick={() => openProduct(product)}
                   >
-                    {/* Image Container - fills card like Temu */}
-                    <div className="relative overflow-hidden rounded-lg mb-2" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+                    {/* Image Container */}
+                    <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
                       <img
                         src={product.images?.[0] || '/placeholder.png'}
                         alt={product.title}
@@ -392,27 +393,27 @@ export default function LeRoiShopTemplate({
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                       
-                      {/* Top-left badges like Temu */}
+                      {/* Top-left badges */}
                       <div className="absolute top-2 left-2 flex flex-col gap-1">
                         {discount > 0 && (
-                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow">
                             -{discount}%
                           </span>
                         )}
                         {isLowStock && (
-                          <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow">
                             ⚡ {product.stock_quantity} left
                           </span>
                         )}
                       </div>
                     </div>
                     
-                    {/* Compact info - like Temu */}
-                    <div className="px-0.5">
-                      <h3 className="text-xs font-medium truncate mb-0.5 text-right" style={{ color: textColor }}>
+                    {/* Card Info */}
+                    <div className="p-2.5">
+                      <h3 className="text-xs font-semibold truncate mb-1.5 text-right leading-tight" style={{ color: textColor }}>
                         {product.title}
                       </h3>
-                      <div className="flex items-center gap-1.5 justify-end">
+                      <div className="flex items-center gap-1.5 justify-end flex-wrap">
                         <span className="font-bold text-sm" style={{ color: accentColor }}>
                           {Math.round(product.price ?? 0).toLocaleString()} {currency}
                         </span>
@@ -423,9 +424,8 @@ export default function LeRoiShopTemplate({
                         )}
                       </div>
                       {product.views > 0 && (
-                        <div className="text-[10px] mt-0.5 text-right" style={{ color: textMuted }}>
-                          <span className="text-orange-500">🔥</span>
-                          {product.views > 1000 ? `${Math.floor(product.views/1000)}K+ sold` : `${product.views}+ sold`}
+                        <div className="text-[10px] mt-1 text-right" style={{ color: textMuted }}>
+                          sold +{product.views > 1000 ? `${Math.floor(product.views/1000)}K` : product.views} <span>🔥</span>
                         </div>
                       )}
                     </div>
@@ -705,7 +705,7 @@ export default function LeRoiShopTemplate({
                     {settings?.lrs_related_subtitle || 'توصيل مجاني عند طلب أكثر من منتج'}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
                   {relatedProducts.map((product) => {
                     const discount = product.original_price 
                       ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
@@ -715,38 +715,39 @@ export default function LeRoiShopTemplate({
                     return (
                       <div
                         key={product.id}
-                        className="group cursor-pointer transition-transform hover:-translate-y-1"
+                        className="group cursor-pointer rounded-xl overflow-hidden transition-all hover:-translate-y-1 hover:shadow-lg"
+                        style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                         onClick={() => { openProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       >
-                        {/* Image Container - fills card like Temu */}
-                        <div className="relative overflow-hidden rounded-lg mb-2" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+                        {/* Image Container */}
+                        <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
                           <img 
                             src={product.images?.[0] || '/placeholder.png'} 
                             alt={product.title} 
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
                           />
                           
-                          {/* Top-left badges like Temu */}
+                          {/* Top-left badges */}
                           <div className="absolute top-2 left-2 flex flex-col gap-1">
                             {discount > 0 && (
-                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow">
                                 -{discount}%
                               </span>
                             )}
                             {isLowStock && (
-                              <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow">
                                 ⚡ {product.stock_quantity} left
                               </span>
                             )}
                           </div>
                         </div>
                         
-                        {/* Compact info - like Temu */}
-                        <div className="px-0.5">
-                          <h3 className="text-xs font-medium truncate mb-0.5 text-right" style={{ color: textColor }}>
+                        {/* Card Info */}
+                        <div className="p-2.5">
+                          <h3 className="text-xs font-semibold truncate mb-1.5 text-right leading-tight" style={{ color: textColor }}>
                             {product.title}
                           </h3>
-                          <div className="flex items-center gap-1.5 justify-end">
+                          <div className="flex items-center gap-1.5 justify-end flex-wrap">
                             <span className="font-bold text-sm" style={{ color: accentColor }}>
                               {Math.round(product.price ?? 0).toLocaleString()} {currency}
                             </span>
@@ -757,7 +758,7 @@ export default function LeRoiShopTemplate({
                             )}
                           </div>
                           {product.views > 0 && (
-                            <div className="text-[10px] mt-0.5 text-right" style={{ color: textMuted }}>
+                            <div className="text-[10px] mt-1 text-right" style={{ color: textMuted }}>
                               <span className="text-orange-500">🔥</span>
                               {product.views > 1000 ? `${Math.floor(product.views/1000)}K+ sold` : `${product.views}+ sold`}
                             </div>

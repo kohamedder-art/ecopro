@@ -13,7 +13,7 @@ import {
 } from './helpers';
 import {
   MkrPerson, MkrCart, MkrCheck, MkrDollar, MkrPackage, MkrTarget, MkrMegaphone,
-  MkrDownload, MkrRefresh,
+  MkrRefresh,
 } from '@/components/icons/MarketingIcons';
 
 interface OverviewData {
@@ -48,31 +48,10 @@ export function OverviewTab({ overview, funnel, sources, statuses, onRefresh }: 
   const convRate = overview.sessions > 0 ? (overview.totalOrders / overview.sessions) * 100 : 0;
   const deliveredRate = overview.totalOrders > 0 ? (overview.deliveredOrders / overview.totalOrders) * 100 : 0;
 
-  const handleExport = () => {
-    const data = {
-      overview,
-      funnel,
-      sources,
-      statuses,
-      exportedAt: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `analytics-export-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="space-y-[9px]">
       {/* Quick actions */}
       <div className="flex items-center gap-[7px]">
-        <Button size="sm" variant="outline" className="h-8 rounded-lg text-xs gap-[5px]" onClick={handleExport}>
-          <MkrDownload className="h-[11px] w-[11px]" />
-          {t('marketing.export') || 'Export'}
-        </Button>
         {onRefresh && (
           <Button size="sm" variant="outline" className="h-8 rounded-lg text-xs gap-[5px]" onClick={onRefresh}>
             <MkrRefresh className="h-[11px] w-[11px]" />

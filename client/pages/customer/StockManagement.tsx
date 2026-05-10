@@ -1041,27 +1041,28 @@ export default function StockManagement() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="max-w-screen-xl mx-auto px-3 sm:px-5 lg:px-6 py-4 space-y-3">
       {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg md:text-xl font-bold tracking-tight flex items-center gap-2">
-            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 text-primary">
-              <Package className="w-4 h-4" />
+          <h1 className="text-lg font-black tracking-tight flex items-center gap-2 text-slate-900 dark:text-white">
+            <span className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/30 shrink-0">
+              <Package className="w-4 h-4 text-white" />
             </span>
             {t('stock.title')}
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">{t('stock.subtitle')}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 mr-9 hidden sm:block">{t('stock.subtitle')}</p>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Button variant="outline" size="sm" onClick={loadStock} className="h-8 w-8 p-0">
+          <Button variant="outline" size="sm" onClick={loadStock} className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700">
             <RefreshCw className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium">
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded-lg border-slate-200 dark:border-slate-700">
             <Download className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('stock.export')}</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowCategoryModal(true)} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium">
+          <Button variant="outline" size="sm" onClick={() => setShowCategoryModal(true)} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded-lg border-slate-200 dark:border-slate-700">
             <Tag className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('stock.categories')}</span>
           </Button>
@@ -1075,7 +1076,7 @@ export default function StockManagement() {
               setVariantsDirty(false);
               setShowAddModal(true);
             }}
-            className="h-8 gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90 text-white px-2.5 sm:px-3"
+            className="h-8 gap-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 sm:px-3 rounded-lg shadow-sm shadow-indigo-500/30"
           >
             <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('stock.addNewProduct')}</span>
@@ -1085,48 +1086,48 @@ export default function StockManagement() {
 
       {/* ── Stats Row ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-        <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-            <Package className="w-[18px] h-[18px] text-blue-600 dark:text-blue-400" />
+        <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center shrink-0">
+            <Package className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.items')}</p>
-            <p className="text-xl font-bold leading-tight">{stock.length}</p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{t('stock.items')}</p>
+            <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">{stock.length}</p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-400" />
+        <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.totalValue')}</p>
-            <p className="text-xl font-bold leading-tight">{Math.round(totalValue).toLocaleString()} <span className="text-xs font-normal text-muted-foreground">DA</span></p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{t('stock.totalValue')}</p>
+            <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">{Math.round(totalValue).toLocaleString()} <span className="text-xs font-normal text-slate-400">DA</span></p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="w-[18px] h-[18px] text-amber-600 dark:text-amber-400" />
+        <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.lowStock')}</p>
-            <p className="text-xl font-bold leading-tight text-amber-600 dark:text-amber-400">{lowStockCount}</p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{t('stock.lowStock')}</p>
+            <p className="text-xl font-black text-amber-600 dark:text-amber-400 leading-tight">{lowStockCount}</p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
-            <PackageX className="w-[18px] h-[18px] text-red-600 dark:text-red-400" />
+        <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
+            <PackageX className="w-4 h-4 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.outOfStock')}</p>
-            <p className="text-xl font-bold leading-tight text-red-600 dark:text-red-400">{outOfStockCount}</p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{t('stock.outOfStock')}</p>
+            <p className="text-xl font-black text-red-600 dark:text-red-400 leading-tight">{outOfStockCount}</p>
           </div>
         </div>
       </div>
 
       {/* ── Table Card ── */}
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
           <div className="relative flex-1 min-w-[120px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
             <Input
@@ -1372,7 +1373,7 @@ export default function StockManagement() {
 
         {/* Footer */}
         {filteredStock.length > 0 && (
-          <div className="px-3 py-2 border-t border-border bg-muted/20 flex items-center gap-4 text-[11px] text-muted-foreground">
+          <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 flex items-center gap-4 text-[11px] text-slate-400">
             <span><span className="font-semibold text-foreground">{inStockCount}</span> {t('stock.active')}</span>
             <span><span className="font-semibold text-amber-600">{lowStockCount}</span> {t('stock.low')}</span>
             <span><span className="font-semibold text-red-600">{outOfStockCount}</span> {t('stock.outOfStock')}</span>
@@ -1380,6 +1381,7 @@ export default function StockManagement() {
           </div>
         )}
       </div>
+    </div>
 
       {/* Add/Edit Product Modal */}
       <Dialog open={showAddModal || showEditModal} onOpenChange={(open) => {

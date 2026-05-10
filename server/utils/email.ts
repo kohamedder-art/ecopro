@@ -16,9 +16,18 @@ const getResendClient = () => {
   return new Resend(apiKey);
 };
 
-// Default from address - Resend requires a verified domain or use onboarding@resend.dev for testing
+// Default from address - Resend requires a verified domain
+// WARNING: onboarding@resend.dev only delivers to the Resend account owner's email
+// Set EMAIL_FROM to a verified domain address e.g. "Sahla4Eco <noreply@sahla4eco.com>"
 const getFromAddress = () => {
-  return process.env.EMAIL_FROM || 'Sahla4Eco <onboarding@resend.dev>';
+  const from = process.env.EMAIL_FROM;
+  if (!from) {
+    if (isProduction()) {
+      console.error('[EMAIL] ⚠️  EMAIL_FROM env var not set! Using onboarding@resend.dev which only delivers to the Resend account owner. Set EMAIL_FROM to a verified domain address.');
+    }
+    return 'Sahla4Eco <onboarding@resend.dev>';
+  }
+  return from;
 };
 
 export async function sendPasswordResetEmail(email: string, resetToken: string, resetUrl: string): Promise<boolean> {
@@ -60,14 +69,14 @@ export async function sendPasswordResetEmail(email: string, resetToken: string, 
     });
 
     if (error) {
-      console.error('[EMAIL] Resend error:', error);
+      console.error(`[EMAIL] Resend rejected password reset to ${email}:`, JSON.stringify(error));
       return false;
     }
 
     console.log(`[EMAIL] Password reset email sent to ${email}, id: ${data?.id}`);
     return true;
   } catch (error) {
-    console.error('[EMAIL] Failed to send password reset:', error);
+    console.error(`[EMAIL] Failed to send password reset to ${email}:`, (error as any)?.message || error);
     return false;
   }
 }

@@ -192,31 +192,40 @@ export default function Index() {
         }} />
 
         {/* Hero Section */}
-        <section className="relative pt-28 pb-16 px-6 z-10">
+        <section className="relative pt-24 pb-14 px-6 z-10">
           <div className="max-w-5xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-800/50 px-3 py-1.5 rounded-full mb-6">
-              <span className="w-2 h-2 rounded-full bg-indigo-500" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700 dark:text-indigo-300">{t('index.badge')}</span>
+            <div className="inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-700/40 px-3.5 py-1.5 rounded-full mb-7 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-300">{t('index.badge')}</span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-extrabold mb-5 leading-[1.1] text-gradient">
-              {t('index.heroLine1')} <br/>
-              <span className="text-indigo-600 dark:text-indigo-400">{t('index.heroHighlight')}</span>
+            <h1 className="text-5xl md:text-[72px] font-extrabold mb-5 leading-[1.08] tracking-tight text-gradient">
+              {t('index.heroLine1')}<br/>
+              <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-500 bg-clip-text text-transparent">{t('index.heroHighlight')}</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
+            <p className="text-base md:text-lg text-slate-500 dark:text-slate-400 max-w-xl mx-auto mb-9 leading-relaxed">
               {t('index.heroDesc')}
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/signup" className="btn-primary gap-2 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link to="/signup" className="btn-primary gap-2 w-full sm:w-auto text-sm">
                 {t('index.ctaCreate')}
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4" />
               </Link>
-              <button className="btn-secondary gap-2 w-full sm:w-auto">
-                <PlayCircle className="w-5 h-5 text-indigo-600" />
+              <button className="btn-secondary gap-2 w-full sm:w-auto text-sm">
+                <PlayCircle className="w-4 h-4 text-indigo-500" />
                 {t('index.ctaDemo')}
               </button>
+            </div>
+
+            {/* Trust badges */}
+            <div className="flex items-center justify-center gap-5 mt-8 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> {t('index.ctaTrial', { n: trialDays })}</span>
+              <span className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> No credit card</span>
+              <span className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Cancel anytime</span>
             </div>
           </div>
 
@@ -423,24 +432,20 @@ export default function Index() {
         </section>
 
         {/* Stats Section */}
-        <section className="py-12 px-6 bg-slate-50 dark:bg-slate-900/50 border-y border-slate-100 dark:border-slate-800">
-          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <p className="text-4xl font-extrabold text-indigo-600 mb-1">{t('index.stat1')}</p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('index.stat1Label')}</p>
-            </div>
-            <div>
-              <p className="text-4xl font-extrabold text-slate-800 dark:text-slate-200 mb-1">{t('index.stat2')}</p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('index.stat2Label')}</p>
-            </div>
-            <div>
-              <p className="text-4xl font-extrabold text-indigo-600 mb-1">{t('index.stat3')}</p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('index.stat3Label')}</p>
-            </div>
-            <div>
-              <p className="text-4xl font-extrabold text-slate-800 dark:text-slate-200 mb-1">{t('index.stat4')}</p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('index.stat4Label')}</p>
-            </div>
+        <section className="py-10 px-6 bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900/80 border-y border-slate-100 dark:border-slate-800">
+          <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {[
+              { value: t('index.stat1'), label: t('index.stat1Label'), color: 'text-indigo-600' },
+              { value: t('index.stat2'), label: t('index.stat2Label'), color: 'text-slate-800 dark:text-slate-200' },
+              { value: t('index.stat3'), label: t('index.stat3Label'), color: 'text-indigo-600' },
+              { value: t('index.stat4'), label: t('index.stat4Label'), color: 'text-slate-800 dark:text-slate-200' },
+            ].map((s, i) => (
+              <div key={i} className="group">
+                <p className={`text-4xl md:text-5xl font-extrabold ${s.color} mb-1.5 tabular-nums`}>{s.value}</p>
+                <div className="w-6 h-0.5 bg-indigo-300 dark:bg-indigo-700 mx-auto mb-1.5 rounded-full" />
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{s.label}</p>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -473,22 +478,22 @@ export default function Index() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 px-6">
-          <div className="max-w-4xl mx-auto rounded-[1.5rem] bg-gradient-to-br from-indigo-600 to-purple-700 p-10 md:p-14 text-center relative overflow-hidden text-white border border-indigo-500/30">
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none" />
+        <section className="py-14 px-6">
+          <div className="max-w-3xl mx-auto rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-indigo-700 p-8 md:p-12 text-center relative overflow-hidden text-white shadow-2xl shadow-indigo-500/25">
+            <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+            <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/5 rounded-full blur-2xl" />
             <div className="relative z-10">
-              <h2 className="text-3xl md:text-5xl font-extrabold mb-4 leading-tight">{t('index.ctaTitle')}</h2>
-              <p className="text-indigo-200 text-sm md:text-base mb-8 max-w-lg mx-auto leading-relaxed">{t('index.ctaDesc')}</p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/signup" className="bg-white text-indigo-700 hover:bg-slate-50 transition-colors px-10 py-4 rounded-xl text-base font-extrabold inline-block w-full sm:w-auto">
-                  {t('index.ctaCta')}
-                </Link>
-                <div className="bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl px-5 py-4 text-xs font-bold flex items-center justify-center gap-2 w-full sm:w-auto">
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  {t('index.ctaTrial', { n: trialDays })}
-                </div>
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-5">
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                {t('index.ctaTrial', { n: trialDays })}
               </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold mb-3 leading-tight">{t('index.ctaTitle')}</h2>
+              <p className="text-indigo-200 text-sm mb-7 max-w-md mx-auto leading-relaxed">{t('index.ctaDesc')}</p>
+              <Link to="/signup" className="inline-flex items-center gap-2 bg-white text-indigo-700 hover:bg-indigo-50 transition-all px-8 py-3.5 rounded-xl text-sm font-extrabold shadow-lg shadow-black/20 active:scale-[0.98]">
+                {t('index.ctaCta')}
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         </section>
