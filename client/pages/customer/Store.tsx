@@ -428,6 +428,8 @@ export default function Store() {
       }
     };
     fetchData();
+    // Silently repair Arabic store slug + bad product slugs in the background
+    fetch('/api/client/store/repair-slugs', { method: 'POST' }).catch(() => {});
   }, []);
   // Product action states
   const [showShareModal, setShowShareModal] = useState(false);

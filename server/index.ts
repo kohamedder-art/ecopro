@@ -547,7 +547,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
       const result = await db.query(
         `SELECT store_slug FROM client_settings WHERE store_slug IS NOT NULL AND store_slug != '' ORDER BY updated_at DESC LIMIT 5000`
       );
-      const base = 'https://sahla4eco.com';
+      const base = 'https://www.sahla4eco.com';
       const staticPages = [
         { loc: base, priority: '1.0', changefreq: 'weekly' },
         { loc: `${base}/pricing`, priority: '0.9', changefreq: 'monthly' },
@@ -555,7 +555,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
         { loc: `${base}/about`, priority: '0.7', changefreq: 'monthly' },
       ];
       const storePages = result.rows.map((r: any) => ({
-        loc: `${base}/store/${r.store_slug}`,
+        loc: `${base}/store/${encodeURIComponent(r.store_slug)}`,
         priority: '0.8',
         changefreq: 'daily',
       }));
@@ -1450,6 +1450,50 @@ ${urls}
     requireClient,
     clientStoreRoutes.getProductShareLink
   );
+
+  // One-time repair: fix Arabic store slug + bad product slugs for authenticated client
+  app.post("/api/client/store/repair-slugs", authenticate, requireClient, async (req: any, res) => {
+    try {
+      const clientId = req.user.id;
+      const db = await ensureConnection();
+      const arabicMap: Record<string, string> = {
+        'ا':'a','أ':'a','إ':'i','آ':'aa','ب':'b','ت':'t','ث':'th','ج':'j','ح':'h','خ':'kh',
+        'د':'d','ذ':'dh','ر':'r','ز':'z','س':'s','ش':'sh','ص':'s','ض':'d','ط':'t','ظ':'z',
+        'ع':'a','غ':'gh','ف':'f','ق':'q','ك':'k','ل':'l','م':'m','ن':'n','ه':'h','و':'w',
+        'ي':'y','ء':'','ئ':'y','ؤ':'w','ة':'h','ى':'a',
+      };
+      const toLatinSlug = (s: string) => {
+        let r = s.toLowerCase();
+        for (const [ar, lat] of Object.entries(arabicMap)) r = r.split(ar).join(lat);
+        return r.replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60) || 'store';
+      };
+      // Fix store slug
+      const storeRes = await db.query(`SELECT store_name, store_slug, is_custom_slug FROM client_store_settings WHERE client_id=$1`,[clientId]);
+      let storeFixed = false;
+      if (storeRes.rows.length && !storeRes.rows[0].is_custom_slug) {
+        const newSlug = toLatinSlug(storeRes.rows[0].store_name || `store-${clientId}`);
+        if (newSlug !== storeRes.rows[0].store_slug) {
+          await db.query(`UPDATE client_store_settings SET store_slug=$1 WHERE client_id=$2`,[newSlug,clientId]);
+          storeFixed = true;
+        }
+      }
+      // Fix product slugs
+      const prods = await db.query(`SELECT id, title, slug FROM client_store_products WHERE client_id=$1`,[clientId]);
+      let productFixed = 0;
+      for (const p of prods.rows) {
+        const isBad = !p.slug || /^-+\d+$/.test(p.slug) || p.slug.includes('%');
+        if (isBad) {
+          const latinTitle = toLatinSlug(p.title || '') || 'product';
+          const newSlug = `${latinTitle}-${p.id}`;
+          await db.query(`UPDATE client_store_products SET slug=$1 WHERE id=$2`,[newSlug,p.id]);
+          productFixed++;
+        }
+      }
+      res.json({ success: true, storeFixed, productFixed });
+    } catch(e:any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
 
   // Client image management routes
   app.get(

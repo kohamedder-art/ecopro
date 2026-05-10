@@ -32,6 +32,7 @@ export default function Dz3ShopTemplate({
   primaryColor: propPrimaryColor,
   onProductView,
   initialProductSlug,
+  navigate,
 }: TemplateProps) {
   // ── Settings Wiring ──
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#c21d1d';
@@ -153,12 +154,16 @@ export default function Dz3ShopTemplate({
     setShowVideo(!!videoEmbed);
     window.scrollTo(0, 0);
     const product = products?.find(p => p.id === productId);
-    if (product) onProductView?.(product);
+    if (product) {
+      onProductView?.(product);
+      if (product.slug && navigate) navigate(`/store/${storeSlug}/${product.slug}`);
+    }
   };
 
   const openCatalog = () => {
     setViewMode('catalog');
     window.scrollTo(0, 0);
+    if (navigate) navigate(`/store/${storeSlug}`);
   };
 
   // ── Delivery System ──

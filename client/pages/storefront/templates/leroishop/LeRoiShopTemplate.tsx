@@ -19,6 +19,7 @@ export default function LeRoiShopTemplate({
   primaryColor: propPrimaryColor,
   onProductView,
   initialProductSlug,
+  navigate,
 }: TemplateProps) {
 
   /* ── Colors ───────────────────────────────────────────── */
@@ -207,12 +208,14 @@ export default function LeRoiShopTemplate({
     setQuantity(1);
     setOrderSuccess(false);
     setSelectedWilayaId(null);
+    if (product?.slug && navigate) navigate(`/store/${storeSlug}/${product.slug}`);
   };
 
   const goToCatalog = () => {
     setView('catalog');
     setSelectedProduct(null);
     setOrderSuccess(false);
+    if (navigate) navigate(`/store/${storeSlug}`);
   };
 
   const scrollToForm = () => {

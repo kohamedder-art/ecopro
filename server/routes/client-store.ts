@@ -1364,11 +1364,23 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
 
       // Auto-update store_slug from new name if user hasn't set a custom slug
       if (!updatedRow?.is_custom_slug) {
-        const baseName = String(columnUpdates.store_name).trim().toLowerCase()
-          .replace(/[^\p{L}\p{N}\s-]/gu, '')   // keep letters, numbers, spaces, hyphens
+        const arabicMap: Record<string, string> = {
+          'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'aa', 'ب': 'b', 'ت': 't', 'ث': 'th',
+          'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
+          'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
+          'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+          'ه': 'h', 'و': 'w', 'ي': 'y', 'ء': '', 'ئ': 'y', 'ؤ': 'w', 'ة': 'h', 'ى': 'a',
+        };
+        let nameForSlug = String(columnUpdates.store_name).trim().toLowerCase();
+        for (const [arabic, latin] of Object.entries(arabicMap)) {
+          nameForSlug = nameForSlug.split(arabic).join(latin);
+        }
+        const baseName = nameForSlug
+          .replace(/[^a-z0-9\s-]/g, '')        // keep only latin letters, numbers, spaces, hyphens
           .replace(/[\s]+/g, '-')               // spaces → hyphens
           .replace(/-+/g, '-')                  // collapse hyphens
           .replace(/^-|-$/g, '')                // trim leading/trailing hyphens
+          .slice(0, 50)
           || `store-${clientId}`;
         let candidate = baseName;
         let suffix = 1;
