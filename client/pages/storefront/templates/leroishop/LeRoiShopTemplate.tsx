@@ -488,7 +488,7 @@ export default function LeRoiShopTemplate({
                 {(videoEmbed || activeProduct.images?.length > 1) && (
                   <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
                     {videoEmbed && (
-                      <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `3px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
+                      <button onClick={() => { setShowVideo(true); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `3px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
                       </button>
                     )}
