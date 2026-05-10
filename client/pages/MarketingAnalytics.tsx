@@ -155,14 +155,14 @@ export default function MarketingAnalytics() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-[9px]">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="border-b border-slate-200 dark:border-slate-700">
-          <TabsList className="overflow-x-auto overflow-y-hidden w-full bg-transparent p-0 h-auto gap-0 flex justify-center">
+          <TabsList className="w-full bg-transparent p-0 h-auto gap-0 flex">
             {tabs.map(({ value, icon: Icon, labelKey }) => (
               <TabsTrigger
                 key={value}
                 value={value}
-                className="rounded-none text-xs font-semibold gap-[5px] px-[11px] py-[9px] data-[state=active]:text-blue-600 data-[state=active]:dark:text-blue-400 data-[state=active]:shadow-[inset_0_-2px_0_0] data-[state=active]:shadow-blue-600 dark:data-[state=active]:shadow-blue-400 transition-all flex-shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                className="rounded-none text-xs font-semibold gap-[5px] px-[11px] py-[9px] data-[state=active]:text-blue-600 data-[state=active]:dark:text-blue-400 data-[state=active]:shadow-[inset_0_-2px_0_0] data-[state=active]:shadow-blue-600 dark:data-[state=active]:shadow-blue-400 transition-all flex-shrink-0 text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100"
               >
                 <Icon className="h-[13px] w-[13px]" /> {t(labelKey)}
               </TabsTrigger>
@@ -170,7 +170,7 @@ export default function MarketingAnalytics() {
           </TabsList>
         </div>
 
-        <TabsContent value="dashboard" className="space-y-[9px]">
+        <TabsContent value="dashboard" className="mt-[9px] space-y-[9px]">
           {snapshotLoading ? (
             <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
           ) : !overview ? (
@@ -186,7 +186,7 @@ export default function MarketingAnalytics() {
           )}
         </TabsContent>
 
-        <TabsContent value="insights" className="space-y-[9px]">
+        <TabsContent value="insights" className="mt-[9px] space-y-[9px]">
           {snapshotLoading ? (
             <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
           ) : (
@@ -194,7 +194,7 @@ export default function MarketingAnalytics() {
           )}
         </TabsContent>
 
-        <TabsContent value="campaigns">
+        <TabsContent value="campaigns" className="mt-[9px]">
           {snapshotLoading ? (
             <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
           ) : (
@@ -202,7 +202,7 @@ export default function MarketingAnalytics() {
           )}
         </TabsContent>
 
-        <TabsContent value="audience">
+        <TabsContent value="audience" className="mt-[9px]">
           {customersLoading || genderLoading ? (
             <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
           ) : (
@@ -210,7 +210,7 @@ export default function MarketingAnalytics() {
           )}
         </TabsContent>
 
-        <TabsContent value="configure">
+        <TabsContent value="configure" className="mt-[9px]">
           {inputsLoading || settingsLoading ? (
             <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
           ) : (
