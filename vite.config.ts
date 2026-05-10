@@ -68,10 +68,7 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('node_modules/lucide-react')) {
             return 'lucide-icons';
           }
-          // Recharts + D3 — only needed for analytics pages
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') || id.includes('node_modules/victory-')) {
-            return 'charts';
-          }
+          // NOTE: recharts/D3 intentionally NOT split — circular deps break manual chunking
           // Framer Motion — animation library
           if (id.includes('node_modules/framer-motion')) {
             return 'framer-motion';
