@@ -413,13 +413,17 @@ export default function AISettingsPage() {
         onClick={() => toggle(item.key)}
         className={`w-full text-start rounded-xl border p-[11px] transition-all ${
           isOn
-            ? `bg-card ${colors.border}`
-            : "bg-card border-border hover:border-muted-foreground/30"
+            ? `bg-gradient-to-br from-card to-primary/5 ${colors.border} shadow-sm`
+            : "bg-card border-border hover:border-muted-foreground/30 hover:shadow-sm"
         }`}
       >
         <div className="flex items-start justify-between gap-[9px]">
           <div className="flex items-start gap-[9px] min-w-0">
-            <div className={`flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-lg ${isOn ? colors.badge : "bg-muted text-muted-foreground"}`}>
+            <div className={`flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-lg transition-all ${
+              isOn
+                ? `${colors.badge} shadow-sm`
+                : "bg-muted text-muted-foreground"
+            }`}>
               {item.icon}
             </div>
             <div className="min-w-0 pt-[3px]">
@@ -436,9 +440,9 @@ export default function AISettingsPage() {
           </div>
         </div>
         {isOn && (
-          <div className="mt-[7px] flex items-center gap-[5px] text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            <span className={`h-[5px] w-[5px] rounded-full ${colors.dot}`} />
-            {isRTL ? "مفعّل" : "Active"}
+          <div className="mt-[7px] flex items-center gap-[5px] text-[10px] font-bold uppercase tracking-wider">
+            <span className={`h-[5px] w-[5px] rounded-full animate-pulse ${colors.dot}`} />
+            <span className={colors.badge.split(' ')[1]}>{isRTL ? "مفعّل" : "Active"}</span>
           </div>
         )}
       </button>
@@ -479,66 +483,76 @@ export default function AISettingsPage() {
   return (
     <div className="min-h-screen pb-24" dir={isRTL ? "rtl" : "ltr"}>
       <div className="max-w-5xl mx-auto px-4 pt-4 space-y-[9px]">
-        {/* ── Flat header ── */}
-        <div className="bg-card border border-border rounded-xl p-[13px]">
-          <div className="flex items-start justify-between gap-[13px]">
-            <div className="relative">
-              <div className="flex items-center gap-[9px]">
-                <MkrAiBrain className="w-[18px] h-[18px] text-primary" />
-                <div>
-                  <h1 className="text-[15px] font-extrabold tracking-tight text-foreground">
-                    {isRTL ? "إعدادات الذكاء الاصطناعي" : "AI Autopilot"}
-                  </h1>
-                  <p className="text-[11px] text-muted-foreground font-medium">
-                    {isRTL
-                      ? `${enabledCount} من ${totalCount} ميزة مفعّلة`
-                      : `${enabledCount} of ${totalCount} features active`}
-                  </p>
-                </div>
+        {/* ── Hero header ── */}
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-[18px] shadow-sm">
+          <div className="absolute -top-8 -right-8 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-violet-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="relative flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-10 w-10 items-center justify-center shrink-0">
+                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted/40" />
+                  <circle cx="18" cy="18" r="15" fill="none" stroke="url(#pg)" strokeWidth="2.5"
+                    strokeDasharray={`${progressPct * 0.942} 94.2`} strokeLinecap="round" />
+                  <defs>
+                    <linearGradient id="pg" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="var(--primary)" />
+                      <stop offset="100%" stopColor="var(--accent, #8b5cf6)" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <MkrAiBrain className="w-4 h-4 text-primary relative z-10" />
               </div>
-              <div className="w-[27px] h-[3px] rounded-full mt-[7px] bg-primary" />
+              <div>
+                <h1 className="text-base font-extrabold tracking-tight text-foreground">
+                  {isRTL ? "إعدادات الذكاء الاصطناعي" : "AI Autopilot"}
+                </h1>
+                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                  {isRTL
+                    ? `${enabledCount} من ${totalCount} ميزة مفعّلة — ${progressPct}%`
+                    : `${enabledCount} of ${totalCount} features active — ${progressPct}%`}
+                </p>
+              </div>
             </div>
             <button
               onClick={save}
               disabled={saving || !dirty}
-              className="flex shrink-0 items-center gap-[5px] h-[31px] px-[11px] rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="flex shrink-0 items-center gap-[5px] h-9 px-4 rounded-xl text-xs font-bold bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-primary/20"
             >
               {saving ? <MkrAiSpinner className="h-[11px] w-[11px]" /> : <MkrAiSave className="h-[11px] w-[11px]" />}
               {isRTL ? "حفظ" : "Save"}
             </button>
           </div>
-          <div className="mt-[11px]">
-            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-              <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progressPct}%` }} />
+          <div className="relative mt-3">
+            <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-700" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
         </div>
 
         {/* ── Tab bar ── */}
-        <div className="border-b border-border">
-          <div className="flex overflow-x-auto">
-            {CATEGORIES.map((cat) => {
-              const isActive = activeTab === cat.id;
-              const tc = TAB_COLORS[cat.color];
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveTab(cat.id)}
-                  className={`flex items-center gap-[5px] text-xs font-bold px-[11px] py-[9px] transition-all flex-shrink-0 whitespace-nowrap ${
-                    isActive
-                      ? `text-foreground shadow-[inset_0_-2px_0_0] ${tc.dot === 'bg-violet-500' ? 'shadow-violet-500' : tc.dot === 'bg-blue-500' ? 'shadow-blue-500' : tc.dot === 'bg-emerald-500' ? 'shadow-emerald-500' : tc.dot === 'bg-amber-500' ? 'shadow-amber-500' : 'shadow-rose-500'}`
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {TAB_ICONS[cat.id]}
-                  <span>{isRTL ? cat.titleAr : cat.titleEn}</span>
-                  <span className={`text-[10px] rounded-full px-[7px] py-[1px] ${isActive ? tc.badge : 'bg-muted text-muted-foreground'}`}>
-                    {cat.items.filter((i) => settings[i.key]).length}/{cat.items.length}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        <div className="bg-card border border-border rounded-xl p-1 flex overflow-x-auto gap-1 shadow-sm">
+          {CATEGORIES.map((cat) => {
+            const isActive = activeTab === cat.id;
+            const tc = TAB_COLORS[cat.color];
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveTab(cat.id)}
+                className={`flex items-center gap-[5px] text-xs font-bold px-3 py-2 rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
+                  isActive
+                    ? `bg-gradient-to-br from-primary to-accent text-white shadow-md`
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                {TAB_ICONS[cat.id]}
+                <span>{isRTL ? cat.titleAr : cat.titleEn}</span>
+                <span className={`text-[10px] rounded-full px-[7px] py-[1px] ${isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
+                  {cat.items.filter((i) => settings[i.key]).length}/{cat.items.length}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Category panel ── */}
@@ -609,7 +623,7 @@ export default function AISettingsPage() {
         </div>
 
         {/* ── Bottom tab nav ── */}
-        <div className="rounded-xl border border-border bg-card p-[9px] flex overflow-x-auto gap-[5px]">
+        <div className="rounded-2xl border border-border bg-card p-2 flex overflow-x-auto gap-1.5 shadow-sm">
           {CATEGORIES.map((cat) => {
             const en = cat.items.filter((i) => settings[i.key]).length;
             const isActive = activeTab === cat.id;
@@ -618,13 +632,17 @@ export default function AISettingsPage() {
               <button
                 key={cat.id}
                 onClick={() => setActiveTab(cat.id)}
-                className={`flex-1 flex flex-col items-center gap-[5px] px-[9px] py-[9px] rounded-lg text-xs font-bold transition-all min-w-[60px] ${
-                  isActive ? tc.badge : "text-muted-foreground hover:bg-muted/50"
+                className={`flex-1 flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-bold transition-all min-w-[60px] ${
+                  isActive
+                    ? 'bg-gradient-to-br from-primary to-accent text-white shadow-md'
+                    : "text-muted-foreground hover:bg-muted/50"
                 }`}
               >
-                <span className={isActive ? "" : "opacity-60"}>{TAB_ICONS[cat.id]}</span>
+                <span className={isActive ? "opacity-100" : "opacity-50"}>{TAB_ICONS[cat.id]}</span>
                 <span className="hidden sm:block truncate">{isRTL ? cat.titleAr : cat.titleEn}</span>
-                <span className="text-[9px] font-bold">{en}/{cat.items.length}</span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                  isActive ? 'bg-white/20' : 'bg-muted'
+                }`}>{en}/{cat.items.length}</span>
               </button>
             );
           })}

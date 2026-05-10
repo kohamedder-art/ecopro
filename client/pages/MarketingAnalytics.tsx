@@ -123,21 +123,24 @@ export default function MarketingAnalytics() {
 
   return (
     <div className={`space-y-[9px] pb-8 ${isRTL ? 'text-right' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="bg-card border border-border rounded-xl p-[13px]">
-        <div className="flex items-start justify-between gap-[13px]">
-          <div className="relative">
-            <div className="flex items-center gap-[9px]">
-              <MkrBrain className="w-[18px] h-[18px] text-primary" />
-              <div>
-                <h1 className="text-[15px] font-extrabold tracking-tight text-foreground">{t('marketing.title')}</h1>
-                <p className="text-[11px] text-muted-foreground font-medium">{t('marketing.subtitle')}</p>
-              </div>
+      {/* ── Hero header ── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-[18px] shadow-sm">
+        <div className="absolute inset-0 bg-grid-white/[0.02] pointer-events-none" />
+        <div className="absolute -top-8 -right-8 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-accent/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20 shrink-0">
+              <MkrBrain className="w-5 h-5 text-white" />
             </div>
-            <div className="w-[27px] h-[3px] rounded-full mt-[7px] bg-primary" />
+            <div>
+              <h1 className="text-base font-extrabold tracking-tight text-foreground">{t('marketing.title')}</h1>
+              <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('marketing.subtitle')}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-[7px] flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Select value={selectedDays} onValueChange={setSelectedDays}>
-              <SelectTrigger className="w-[110px] h-[31px] rounded-lg bg-muted border-border text-foreground text-[11px] font-bold">
+              <SelectTrigger className="w-[100px] h-8 rounded-lg bg-background/80 border-border text-foreground text-[11px] font-bold backdrop-blur-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -148,20 +151,41 @@ export default function MarketingAnalytics() {
                 <SelectItem value="90">{t('marketing.last90')}</SelectItem>
               </SelectContent>
             </Select>
-            <button className="flex items-center justify-center w-[31px] h-[31px] rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors" onClick={() => refetchSnapshot()}>
+            <button
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-background/80 border border-border text-muted-foreground hover:text-foreground hover:bg-background transition-all backdrop-blur-sm shadow-sm"
+              onClick={() => refetchSnapshot()}
+            >
               <MkrRefresh className="w-[13px] h-[13px]" />
             </button>
           </div>
         </div>
+
+        {/* Live stat pills */}
+        {overview && (
+          <div className="relative flex flex-wrap gap-2 mt-4">
+            <div className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full px-3 py-1 text-[11px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              {overview.sessions?.toLocaleString() ?? 0} {t('marketing.kpi.sessions')}
+            </div>
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full px-3 py-1 text-[11px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              {overview.totalOrders?.toLocaleString() ?? 0} {t('marketing.kpi.orders')}
+            </div>
+            <div className="flex items-center gap-1.5 bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 rounded-full px-3 py-1 text-[11px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+              {overview.netProfit > 0 ? `+${overview.netProfit.toLocaleString()} DA` : `${overview.netProfit.toLocaleString()} DA`}
+            </div>
+          </div>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full bg-muted/60 border border-border rounded-xl p-1 gap-1 flex flex-nowrap overflow-x-auto">
+        <TabsList className="w-full bg-card border border-border rounded-xl p-1 gap-1 flex flex-nowrap overflow-x-auto shadow-sm">
           {tabs.map(({ value, icon: Icon, labelKey }) => (
             <TabsTrigger
               key={value}
               value={value}
-              className="text-xs font-bold gap-[5px] px-3 py-2 rounded-lg data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm flex-1 text-muted-foreground hover:text-foreground transition-all min-w-0"
+              className="text-xs font-bold gap-1.5 px-3 py-2 rounded-lg data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white data-[state=active]:shadow-md flex-1 text-muted-foreground hover:text-foreground transition-all min-w-0"
             >
               <Icon className="h-[13px] w-[13px] shrink-0" /> <span className="truncate">{t(labelKey)}</span>
             </TabsTrigger>
