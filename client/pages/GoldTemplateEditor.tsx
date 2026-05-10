@@ -131,11 +131,20 @@ export default function GoldTemplateEditor() {
   useEffect(() => {
     const prevBody = document.body.style.overflow;
     const prevHtml = document.documentElement.style.overflow;
+    const prevBodyW = document.body.style.width;
+    const prevHtmlW = document.documentElement.style.width;
+    const prevDir = document.documentElement.dir;
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
+    document.body.style.width = '100%';
+    document.documentElement.style.width = '100%';
+    document.documentElement.dir = 'ltr';
     return () => {
       document.body.style.overflow = prevBody;
       document.documentElement.style.overflow = prevHtml;
+      document.body.style.width = prevBodyW;
+      document.documentElement.style.width = prevHtmlW;
+      document.documentElement.dir = prevDir;
     };
   }, []);
 
