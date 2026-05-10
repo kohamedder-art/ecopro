@@ -1495,6 +1495,60 @@ ${urls}
     }
   });
 
+  // Admin: one-time migration to fix ALL clients' Arabic store slugs + bad product slugs
+  app.post("/api/admin/migrate/repair-all-slugs", authenticate, requireAdmin, async (_req: any, res) => {
+    try {
+      const db = await ensureConnection();
+      const arabicMap: Record<string, string> = {
+        'ا':'a','أ':'a','إ':'i','آ':'aa','ب':'b','ت':'t','ث':'th','ج':'j','ح':'h','خ':'kh',
+        'د':'d','ذ':'dh','ر':'r','ز':'z','س':'s','ش':'sh','ص':'s','ض':'d','ط':'t','ظ':'z',
+        'ع':'a','غ':'gh','ف':'f','ق':'q','ك':'k','ل':'l','م':'m','ن':'n','ه':'h','و':'w',
+        'ي':'y','ء':'','ئ':'y','ؤ':'w','ة':'h','ى':'a',
+      };
+      const toLatinSlug = (s: string, fallback: string) => {
+        let r = (s || '').toLowerCase();
+        for (const [ar, lat] of Object.entries(arabicMap)) r = r.split(ar).join(lat);
+        return r.replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60) || fallback;
+      };
+
+      // Fix store slugs
+      const stores = await db.query(`SELECT client_id, store_name, store_slug, is_custom_slug FROM client_store_settings WHERE is_custom_slug IS NOT TRUE`);
+      let storesFixed = 0;
+      for (const s of stores.rows) {
+        const hasNonLatin = /[^\x00-\x7F]/.test(s.store_slug || '');
+        if (hasNonLatin) {
+          const newSlug = toLatinSlug(s.store_name || '', `store-${s.client_id}`);
+          // Ensure uniqueness
+          let candidate = newSlug;
+          let suffix = 1;
+          while (true) {
+            const dup = await db.query(`SELECT 1 FROM client_store_settings WHERE store_slug=$1 AND client_id!=$2 LIMIT 1`, [candidate, s.client_id]);
+            if (dup.rows.length === 0) break;
+            candidate = `${newSlug}-${suffix++}`;
+          }
+          await db.query(`UPDATE client_store_settings SET store_slug=$1 WHERE client_id=$2`, [candidate, s.client_id]);
+          storesFixed++;
+        }
+      }
+
+      // Fix product slugs
+      const prods = await db.query(`SELECT id, title, slug FROM client_store_products`);
+      let productsFixed = 0;
+      for (const p of prods.rows) {
+        const isBad = !p.slug || /^-+\d+$/.test(p.slug) || /[^\x00-\x7F]/.test(p.slug);
+        if (isBad) {
+          const newSlug = `${toLatinSlug(p.title || '', 'product')}-${p.id}`;
+          await db.query(`UPDATE client_store_products SET slug=$1 WHERE id=$2`, [newSlug, p.id]);
+          productsFixed++;
+        }
+      }
+
+      res.json({ success: true, storesFixed, productsFixed });
+    } catch(e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Client image management routes
   app.get(
     "/api/client/images",
