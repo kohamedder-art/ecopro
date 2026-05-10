@@ -288,6 +288,7 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                                         src={img}
                                         alt={`${product.title} ${idx + 1}`}
                                         className="snap-center"
+                                        loading="lazy"
                                         style={{ flex: '0 0 100%', height: '100%', objectFit: 'cover', scrollSnapAlign: 'center' }}
                                     />
                                 ))}
@@ -314,7 +315,7 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                                 )}
                                 {galleryImages.map((img, idx) => (
                                     <div key={idx} onClick={() => handleThumbClick(idx)} className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer" style={{ border: selectedImageIndex === idx ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
-                                        <img src={img} className="w-full h-full object-cover" />
+                                        <img src={img} className="w-full h-full object-cover" loading="lazy" />
                                     </div>
                                 ))}
                             </>

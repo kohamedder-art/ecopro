@@ -275,7 +275,7 @@ export default function SpiriluxeTemplate({
         const globalIndex = startIndex + i;
         return (
           <div key={url + globalIndex} className="relative group">
-            <img src={url} alt="" className="w-full block" />
+            <img src={url} alt="" className="w-full block" loading="lazy" />
             {canManage && (
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                 {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}

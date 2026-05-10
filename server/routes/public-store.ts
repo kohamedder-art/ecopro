@@ -133,6 +133,9 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
     return res.status(400).json({ error: 'Invalid store ID' });
   }
 
+  // CDN-friendly caching: allow browser/CDN to cache for 5 min, serve stale for 1 day
+  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400');
+
   const cacheKey = `products:${storeSlug}`;
   const cached = getCached(storefrontProductsCache, cacheKey);
   if (cached) {
@@ -231,8 +234,15 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
           slug: p.slug || `${String(p.title || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${p.id}`,
           variants: variantsByProduct[p.id] || [],
         }));
-        setCached(storefrontProductsCache, cacheKey, productsWithSlugs, PRODUCTS_CACHE_TTL_MS);
-        return productsWithSlugs;
+        // Strip base64 data URIs from images to keep payload small on slow connections.
+        // Only keep URL-based images (Cloudinary, etc.) that load lazily in the browser.
+        const isDataUri = (s: string) => typeof s === 'string' && s.startsWith('data:');
+        const cleanProducts = productsWithSlugs.map((p: any) => ({
+          ...p,
+          images: Array.isArray(p.images) ? p.images.filter((img: string) => !isDataUri(img)) : p.images,
+        }));
+        setCached(storefrontProductsCache, cacheKey, cleanProducts, PRODUCTS_CACHE_TTL_MS);
+        return cleanProducts;
       }
 
       // Otherwise try seller storefronts (seller_store_settings) and return marketplace_products
@@ -300,6 +310,9 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
   } catch {
     return res.status(400).json({ error: 'Invalid store ID' });
   }
+
+  // CDN-friendly caching: allow browser/CDN to cache for 5 min, serve stale for 1 day
+  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400');
 
   try {
     if (!isProduction) {

@@ -56,6 +56,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
           {imgs.length > 0 ? imgs.map((img, i) => (
             <img key={i} src={img} alt=""
               className="w-full h-full object-cover shrink-0 cursor-pointer"
+              loading="lazy"
               style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
               onClick={() => onZoom(img)}
             />
@@ -71,7 +72,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
           {videoEmbed && <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 flex items-center justify-center transition-all" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></button>}
           {imgs.map((img, i) => (
             <button key={i} onClick={() => { setShowVideo(false); setIdx(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition-all" style={{ borderColor: !showVideo && i === idx ? accentColor : 'transparent', opacity: !showVideo && i === idx ? 1 : 0.6 }}>
-              <img src={img} alt="" className="w-full h-full object-cover" />
+              <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
             </button>
           ))}
         </div>
@@ -324,6 +325,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           <img
             src={heroProduct.images?.[0] || ''}
             alt={heroProduct.title}
+            loading="lazy"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent, transparent)' }} />

@@ -399,6 +399,7 @@ export default function IycoTemplate({
                   {mainImages.length > 0 ? mainImages.map((img, i) => (
                     <img key={i} src={img} alt={mainProduct.title}
                       className="w-full h-full object-cover shrink-0 cursor-pointer"
+                      loading="lazy"
                       style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
@@ -418,7 +419,7 @@ export default function IycoTemplate({
                   )}
                   {mainImages.map((img, idx) => (
                     <button key={idx} onClick={() => { setShowVideo(false); setSelectedMainImage(idx); scrollCarouselTo(videoEmbed ? idx + 1 : idx); }} className="w-20 h-24 shrink-0 rounded-lg overflow-hidden border-2 transition-all" style={{ borderColor: !showVideo && selectedMainImage === idx ? accentColor : 'transparent', opacity: !showVideo && selectedMainImage === idx ? 1 : 0.6 }}>
-                      <img src={img} className="w-full h-full object-cover" alt="thumb" />
+                      <img src={img} className="w-full h-full object-cover" alt="thumb" loading="lazy" />
                     </button>
                   ))}
                 </div>
@@ -669,6 +670,7 @@ export default function IycoTemplate({
                     <img
                       src={prod.images?.[0] || '/placeholder.png'}
                       alt={prod.title}
+                      loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
                     {prod.original_price && (
@@ -727,7 +729,7 @@ export default function IycoTemplate({
               <div className="space-y-3">
                 {cart.map(item => (
                   <div key={item.id} className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: surfaceMuted }}>
-                    <img src={item.image} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                    <img src={item.image} alt="" className="w-16 h-16 rounded-lg object-cover" loading="lazy" />
                     <div className="flex-1">
                       <p className="font-bold text-sm truncate" style={{ color: textColor }}>{item.title}</p>
                       <p className="text-sm" style={{ color: accentColor }}>{Math.round(item.price ?? 0).toLocaleString()} {currency}</p>

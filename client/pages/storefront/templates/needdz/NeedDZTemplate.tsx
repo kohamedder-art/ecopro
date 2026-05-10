@@ -285,6 +285,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                     {product.images.length > 0 ? product.images.map((img: string, i: number) => (
                       <img key={i} src={img} alt={product.name}
                         className="w-full h-full object-cover shrink-0"
+                        loading="lazy"
                         style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
                       />
                     )) : (
@@ -446,7 +447,7 @@ const parseVideoEmbed = (videoUrl: string) => {
               ) : (
                 <div className="space-y-6">
                   <div className="flex items-center gap-4 border-b border-slate-100 pb-6">
-                    <img src={selectedProduct?.images[0]} className="w-20 h-20 rounded-2xl object-cover border border-slate-100" alt="" />
+                    <img src={selectedProduct?.images[0]} className="w-20 h-20 rounded-2xl object-cover border border-slate-100" alt="" loading="lazy" />
                     <div>
                       <h4 className="font-bold text-slate-900">{selectedProduct?.name}</h4>
                       <p className="font-black" style={{ color: accentColor }}>{selectedProduct?.price} DA</p>

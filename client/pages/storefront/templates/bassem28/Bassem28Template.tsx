@@ -283,6 +283,7 @@ export default function Bassem28Template({
                   {mainImages.length > 0 ? mainImages.map((img, i) => (
                     <img key={i} src={img} alt={mainProduct.title}
                       className="w-full h-full object-cover shrink-0 cursor-pointer"
+                      loading="lazy"
                       style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
@@ -303,7 +304,7 @@ export default function Bassem28Template({
                   )}
                   {mainImages.map((img, i) => (
                     <button key={i} onClick={() => { setShowVideo(false); setSelectedMainImage(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden" style={{ border: `2px solid ${!showVideo && selectedMainImage === i ? accentColor : 'transparent'}` }}>
-                      <img src={img} className="w-full h-full object-cover" alt="" />
+                      <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" />
                     </button>
                   ))}
                 </div>
@@ -449,6 +450,7 @@ export default function Bassem28Template({
                       <img
                         src={product.images?.[0] || '/placeholder.png'}
                         alt={product.title}
+                        loading="lazy"
                         className="w-full h-full object-cover transition-transform hover:scale-105 duration-500"
                       />
                     </div>

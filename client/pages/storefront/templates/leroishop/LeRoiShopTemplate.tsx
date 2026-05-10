@@ -388,6 +388,7 @@ export default function LeRoiShopTemplate({
                       <img
                         src={product.images?.[0] || '/placeholder.png'}
                         alt={product.title}
+                        loading="lazy"
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                       
@@ -464,6 +465,7 @@ export default function LeRoiShopTemplate({
                     <img
                       src={activeProduct.images[activeImageIndex] ?? activeProduct.images[0]}
                       alt={activeProduct.title}
+                      loading="lazy"
                       className="w-full h-full object-contain cursor-pointer"
                       onClick={() => setLightboxOpen(true)}
                     />
@@ -489,7 +491,7 @@ export default function LeRoiShopTemplate({
                     )}
                     {activeProduct.images?.map((img: string, i: number) => (
                       <button key={i} onClick={() => { setShowVideo(false); setActiveImageIndex(i); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${!showVideo && i === activeImageIndex ? accentColor : 'transparent'}`, opacity: !showVideo && i === activeImageIndex ? 1 : 0.6 }}>
-                        <img src={img} alt="" className="w-full h-full object-contain" />
+                        <img src={img} alt="" className="w-full h-full object-contain" loading="lazy" />
                       </button>
                     ))}
                   </div>

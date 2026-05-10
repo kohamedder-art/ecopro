@@ -298,6 +298,7 @@ export default function Dz3ShopTemplate({
           <img
             src={product.images?.[0] || '/placeholder.png'}
             alt={product.title}
+            loading="lazy"
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
           

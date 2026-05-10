@@ -1654,7 +1654,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
             const injected = nonce
               ? withMeta.replace(/<script\s+type="module"\s+/g, `<script type="module" nonce="${nonce}" `)
               : withMeta;
-            res.setHeader('Cache-Control', 'no-store');
+            res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
             res.type('html').send(injected);
           })
           .catch(() => {
