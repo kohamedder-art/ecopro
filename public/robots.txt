@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Block private dashboard and API routes from indexing
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+
+# Allow store pages — these should be indexed
+Allow: /store/
+
+Sitemap: https://sahla4eco.com/sitemap.xml

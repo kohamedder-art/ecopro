@@ -540,6 +540,44 @@ export function createServer(options?: { skipDbInit?: boolean }) {
     res.json({ message: ping });
   });
 
+  // Dynamic sitemap.xml — includes all public store pages for SEO
+  app.get('/sitemap.xml', async (_req, res) => {
+    try {
+      const db = await ensureConnection();
+      const result = await db.query(
+        `SELECT store_slug FROM client_settings WHERE store_slug IS NOT NULL AND store_slug != '' ORDER BY updated_at DESC LIMIT 5000`
+      );
+      const base = 'https://sahla4eco.com';
+      const staticPages = [
+        { loc: base, priority: '1.0', changefreq: 'weekly' },
+        { loc: `${base}/pricing`, priority: '0.9', changefreq: 'monthly' },
+        { loc: `${base}/features`, priority: '0.8', changefreq: 'monthly' },
+        { loc: `${base}/about`, priority: '0.7', changefreq: 'monthly' },
+      ];
+      const storePages = result.rows.map((r: any) => ({
+        loc: `${base}/store/${r.store_slug}`,
+        priority: '0.8',
+        changefreq: 'daily',
+      }));
+      const allPages = [...staticPages, ...storePages];
+      const urls = allPages.map(p => `
+  <url>
+    <loc>${p.loc}</loc>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`).join('');
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>`;
+      res.setHeader('Content-Type', 'application/xml');
+      res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+      res.send(xml);
+    } catch (e) {
+      res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+    }
+  });
+
   // Privacy Policy page for Facebook App verification
   app.get("/privacy-policy", (_req, res) => {
     res.setHeader('Content-Type', 'text/html');
