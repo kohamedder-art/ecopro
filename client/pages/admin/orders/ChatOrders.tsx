@@ -315,7 +315,7 @@ export default function ChatOrders() {
           </div>
           <div>
             <div className="text-xl font-black tabular-nums leading-none">{total}</div>
-            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">طلبيات الدردشة</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">طلبيات الرسائل</div>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-emerald-500/50 transition-all shadow-sm">
@@ -344,7 +344,7 @@ export default function ChatOrders() {
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base md:text-lg font-black bg-gradient-to-r from-violet-500 to-indigo-500 bg-clip-text text-transparent flex items-center gap-2">
               <span className="inline-block w-1 h-5 rounded-full bg-gradient-to-b from-violet-500 to-indigo-500"></span>
-              طلبيات الدردشة
+              طلبيات الرسائل
             </h3>
             <div className="flex items-center gap-1.5 flex-wrap justify-end">
               <button

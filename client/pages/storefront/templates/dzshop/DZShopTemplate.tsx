@@ -200,7 +200,22 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     };
 
     // Image Gallery State
-    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const carouselRef = useRef<HTMLDivElement>(null);
+
+    const handleThumbClick = (idx: number) => {
+        setSelectedImageIndex(idx);
+    };
+    
+    // Scroll carousel when selectedImageIndex changes
+    useEffect(() => {
+        if (!carouselRef.current || selectedImageIndex < 0) return;
+        const container = carouselRef.current;
+        // Video is at index 0 in carousel when present
+        const hasVideo = videoEmbed !== null;
+        const scrollIdx = selectedImageIndex + (hasVideo ? 1 : 0);
+        container.children[scrollIdx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    }, [selectedImageIndex, videoEmbed]);
 
     return (
         <div className="bg-gray-50 text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || undefined }} dir="rtl">
@@ -255,7 +270,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     {/* Main Product Image (Swipeable Carousel) */}
                     <div className="aspect-square rounded-2xl overflow-hidden shadow-sm bg-white relative group">
                         {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory' }}>
+                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory' }}>
                                 {videoEmbed && (
                                     <div key="video" className="snap-center" style={{ flex: '0 0 100%', height: '100%', scrollSnapAlign: 'center' }}>
                                         {videoEmbed.type === 'youtube' ? (
@@ -293,12 +308,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         {hasProductImages && galleryImages.length > 0 ? (
                             <>
                                 {videoEmbed && (
-                                    <div key="video" onClick={() => setSelectedImageIndex(-1)} className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-900 overflow-hidden cursor-pointer flex items-center justify-center" style={{ border: selectedImageIndex === -1 ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
+                                    <div key="video" onClick={() => handleThumbClick(-1)} className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-900 overflow-hidden cursor-pointer flex items-center justify-center" style={{ border: selectedImageIndex === -1 ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
                                         <i className="ph ph-play-circle text-white text-2xl"></i>
                                     </div>
                                 )}
                                 {galleryImages.map((img, idx) => (
-                                    <div key={idx} onClick={() => setSelectedImageIndex(idx)} className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer" style={{ border: selectedImageIndex === idx ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
+                                    <div key={idx} onClick={() => handleThumbClick(idx)} className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer" style={{ border: selectedImageIndex === idx ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
                                         <img src={img} className="w-full h-full object-cover" />
                                     </div>
                                 ))}

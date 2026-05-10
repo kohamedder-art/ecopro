@@ -28,8 +28,6 @@ import {
   ShoppingCart,
   Brain,
   Tag,
-  Image,
-  Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -117,9 +115,6 @@ const FEATURES: { icon: React.ReactNode; label: string }[] = [
   { icon: <BarChart3 className="h-3.5 w-3.5" />,    label: 'admin.billing.advancedAnalytics' },
   { icon: <Brain className="h-3.5 w-3.5" />,        label: 'admin.billing.aiFeatures' },
   { icon: <Tag className="h-3.5 w-3.5" />,          label: 'admin.billing.vouchersDiscounts' },
-  { icon: <Image className="h-3.5 w-3.5" />,        label: 'admin.billing.imageGallery' },
-  { icon: <Globe className="h-3.5 w-3.5" />,        label: 'admin.billing.customDomain' },
-  { icon: <CreditCard className="h-3.5 w-3.5" />,   label: 'admin.billing.codZeroCommissions' },
   { icon: <Shield className="h-3.5 w-3.5" />,       label: 'admin.billing.automatedNotifications' },
   { icon: <Headphones className="h-3.5 w-3.5" />,   label: 'admin.billing.prioritySupport' },
 ];

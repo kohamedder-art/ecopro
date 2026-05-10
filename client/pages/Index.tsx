@@ -4,9 +4,8 @@ import {
   Zap, 
   ArrowLeft, 
   PlayCircle, 
-  CheckCircle, 
   Layout, 
-    BarChart3,
+  BarChart3,
   Truck, 
   CheckCircle2, 
   Check, 
@@ -14,7 +13,10 @@ import {
   Instagram, 
   Twitter,
   Sparkles,
-  ClipboardList
+  ClipboardList,
+  Bot,
+  Brain,
+  Package
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
@@ -40,467 +42,506 @@ export default function Index() {
   }, []);
 
   return (
-    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden relative">
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden">
       <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&family=Noto+Sans+Arabic:wght@400;600;700;900&display=swap');
-        
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700;800&display=swap');
+
         :root {
-            --primary: #6366f1;
-            --magic-glow: rgba(99, 102, 241, 0.15);
+          --primary: #4f46e5;
+          --primary-light: #6366f1;
+          --surface: #ffffff;
+          --border: #e2e8f0;
+        }
+
+        .dark {
+          --surface: #0f172a;
+          --border: #1e293b;
         }
 
         .index-page-wrapper {
-            font-family: 'Noto Sans Arabic', 'Plus Jakarta Sans', sans-serif;
-            scroll-behavior: smooth;
+          font-family: 'Noto Sans Arabic', 'Plus Jakarta Sans', sans-serif;
         }
 
-        .magic-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            background: 
-                radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 35%),
-                radial-gradient(circle at 90% 90%, rgba(168, 85, 247, 0.05) 0%, transparent 35%),
-                #f8fafc;
+        .feature-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .hero-glow {
-            position: absolute;
-            top: 20%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 50vw;
-            height: 40vh;
-            background: radial-gradient(circle, var(--magic-glow) 0%, transparent 60%);
-            filter: blur(80px);
-            z-index: 0;
-            opacity: 0.8;
-            pointer-events: none;
-        }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            border-radius: 24px;
-            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-        }
-
-        .glass-card:hover {
-            border-color: rgba(99, 102, 241, 0.2);
-            background: rgba(255, 255, 255, 0.95);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px -10px rgba(99, 102, 241, 0.15);
-        }
-
-        .btn-magic {
-            position: relative;
-            background: #0f172a;
-            color: #fff;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            z-index: 1;
-        }
-
-        .btn-magic::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: 0.5s;
-        }
-
-        .btn-magic:hover::before {
-            left: 100%;
-        }
-
-        .btn-magic:hover {
-            transform: scale(1.03);
-            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.4);
-        }
-
-        .floating {
-            animation: floating 6s ease-in-out infinite;
-        }
-
-        @keyframes floating {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-
-        .text-gradient {
-            background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .feature-card:hover {
+          border-color: var(--primary-light);
+          box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15);
         }
 
         .bento-grid {
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            gap: 1.25rem;
+          display: grid;
+          grid-template-columns: repeat(12, 1fr);
+          gap: 1.25rem;
         }
 
         .bento-item,
         .bento-item-4,
         .bento-item-6,
         .bento-item-8 {
-            grid-column: span 12;
+          grid-column: span 12;
         }
 
         @media (min-width: 768px) {
-            .bento-item-4 { grid-column: span 4; }
-            .bento-item-8 { grid-column: span 8; }
-            .bento-item-6 { grid-column: span 6; }
+          .bento-item-4 { grid-column: span 4; }
+          .bento-item-6 { grid-column: span 6; }
+          .bento-item-8 { grid-column: span 8; }
         }
 
-        /* Dark mode overrides */
-        .dark .magic-bg {
-            background:
-                radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.15) 0%, transparent 35%),
-                radial-gradient(circle at 90% 90%, rgba(168, 85, 247, 0.10) 0%, transparent 35%),
-                #020617;
+        .btn-primary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.875rem 2rem;
+          font-weight: 700;
+          border-radius: 12px;
+          background: #0f172a;
+          color: white;
+          transition: background 0.2s ease;
+          cursor: pointer;
+          border: none;
         }
-        .dark .glass-card {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+
+        .btn-primary:hover {
+          background: #1e293b;
         }
-        .dark .glass-card:hover {
-            border-color: rgba(99, 102, 241, 0.3);
-            background: rgba(15, 23, 42, 0.95);
+
+        .dark .btn-primary {
+          background: linear-gradient(135deg, #6366f1, #4f46e5);
         }
+
+        .dark .btn-primary:hover {
+          opacity: 0.9;
+        }
+
+        .btn-secondary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.875rem 2rem;
+          font-weight: 600;
+          border-radius: 12px;
+          background: white;
+          color: #334155;
+          border: 1px solid #e2e8f0;
+          transition: border-color 0.2s ease, background 0.2s ease;
+          cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+          background: #f8fafc;
+          border-color: #cbd5e1;
+        }
+
+        .dark .btn-secondary {
+          background: #1e293b;
+          color: #e2e8f0;
+          border-color: #334155;
+        }
+
+        .dark .btn-secondary:hover {
+          background: #334155;
+          border-color: #475569;
+        }
+
+        .text-gradient {
+          background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
         .dark .text-gradient {
-            background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+          background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
-        .dark .btn-magic {
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+
+        .icon-box {
+          width: 3rem;
+          height: 3rem;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .step-number {
+          width: 3.5rem;
+          height: 3.5rem;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 1.25rem;
+          margin: 0 auto 1.25rem;
         }
       `}} />
 
-      <div className="index-page-wrapper relative min-h-screen">
-        <div className="magic-bg fixed"></div>
-
+      <div className="index-page-wrapper">
+        {/* Simple background gradient */}
+        <div className="fixed inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 60%)'
+        }} />
 
         {/* Hero Section */}
-        <section className="relative pt-32 pb-16 px-6 overflow-hidden z-10">
-            <div className="hero-glow"></div>
-            <div className="max-w-5xl mx-auto text-center relative z-10">
-                <div className="inline-flex items-center space-x-2 space-x-reverse bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-800 px-3 py-1.5 rounded-full mb-6">
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                    </span>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-300">{t('index.badge')}</span>
-                </div>
-                
-                <h1 className="text-5xl md:text-7xl font-black mb-6 leading-[1.1] text-gradient">
-                    {t('index.heroLine1')} <br/>
-                    <span className="text-indigo-600">{t('index.heroHighlight')}</span>
-                </h1>
-                
-                <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
-                    {t('index.heroDesc')}
-                </p>
-
-                <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4 sm:space-x-reverse">
-                    <Link to="/signup" className="btn-magic px-8 py-4 rounded-xl text-button font-black shadow-lg flex items-center group w-full sm:w-auto justify-center">
-                        {t('index.ctaCreate')}
-                        <ArrowLeft className="mr-2 w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                    </Link>
-                    <button className="px-8 py-4 rounded-xl text-button font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-sm transition-all flex items-center w-full sm:w-auto justify-center">
-                        <PlayCircle className="ml-2 w-5 h-5 text-indigo-600" />
-                        {t('index.ctaDemo')}
-                    </button>
-                </div>
+        <section className="relative pt-28 pb-16 px-6 z-10">
+          <div className="max-w-5xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-800/50 px-3 py-1.5 rounded-full mb-6">
+              <span className="w-2 h-2 rounded-full bg-indigo-500" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700 dark:text-indigo-300">{t('index.badge')}</span>
             </div>
 
-            {/* Floating UI Preview with Statistics Dashboard Image */}
-            <div className="max-w-4xl mx-auto mt-16 relative z-10">
-                <div className="floating relative z-20">
-                    <div className="glass-card p-3 pb-0 overflow-hidden shadow-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-3 px-3 pt-1">
-                            <div className="flex space-x-2 space-x-reverse">
-                                <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                                <div className="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
-                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
-                            </div>
-                            <div className="bg-slate-50 dark:bg-slate-700 px-6 py-1.5 rounded-md border border-slate-200 dark:border-slate-600 text-[10px] text-slate-500 dark:text-slate-400 font-mono tracking-tighter flex items-center">
-                                <Sparkles className="w-3 h-3 text-indigo-500 mr-2" />
-                                store.sahla4eco.com/dashboard
-                            </div>
-                            <div className="w-8"></div>
-                        </div>
-                        <div className="rounded-t-lg overflow-hidden border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-                            <img src="/screenshots/home-admin-analytics.png" className="w-full transition-transform hover:scale-[1.02] duration-700 object-cover object-top max-h-[450px]" alt="لوحة الإحصائيات والتحليلات" onError={(e) => { e.currentTarget.src = "/screenshots/main-dashboard.png"; }} />
-                        </div>
-                    </div>
-                </div>
-                
-                {/* Secondary Decorative Elements */}
-                <div className="absolute -left-8 top-24 glass-card p-4 w-60 floating z-30" style={{ animationDelay: '-2s' }}>
-                    <div className="flex items-center space-x-3 space-x-reverse mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-                            <CheckCircle className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('index.orderConfirmed')}</p>
-                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">10,500 DZD</p>
-                        </div>
-                    </div>
-                    <div className="h-1 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 w-3/4 animate-pulse"></div>
-                    </div>
-                </div>
+            <h1 className="text-5xl md:text-7xl font-extrabold mb-5 leading-[1.1] text-gradient">
+              {t('index.heroLine1')} <br/>
+              <span className="text-indigo-600 dark:text-indigo-400">{t('index.heroHighlight')}</span>
+            </h1>
+
+            <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
+              {t('index.heroDesc')}
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link to="/signup" className="btn-primary gap-2 w-full sm:w-auto">
+                {t('index.ctaCreate')}
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <button className="btn-secondary gap-2 w-full sm:w-auto">
+                <PlayCircle className="w-5 h-5 text-indigo-600" />
+                {t('index.ctaDemo')}
+              </button>
             </div>
+          </div>
+
+          {/* Product screenshot */}
+          <div className="max-w-5xl mx-auto mt-14">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800 px-4 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-[10px] text-slate-400 font-mono flex items-center gap-1.5 ml-4">
+                  <Sparkles className="w-3 h-3 text-indigo-500" />
+                  store.yourstore.com/dashboard
+                </div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/50">
+                <img
+                  src="/screenshots/home-admin-analytics.png"
+                  className="w-full object-cover object-top max-h-[420px]"
+                  alt="لوحة الإحصائيات"
+                  onError={(e) => { e.currentTarget.src = "/screenshots/main-dashboard.png"; }}
+                />
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* Features Bento Grid */}
-        <section id="features" className="py-16 px-6 max-w-6xl mx-auto relative z-10">
-            <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-black mb-4 text-gradient">{t('index.featuresSectionTitle')} <br/> {t('index.featuresSectionSub')}</h2>
-                <p className="text-slate-600 dark:text-slate-400 max-w-lg mx-auto text-sm">{t('index.featuresSectionDesc')}</p>
+        {/* Features Section */}
+        <section id="features" className="py-16 px-6 max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-3 text-gradient">
+              {t('index.featuresSectionTitle')} <br className="md:hidden" /> {t('index.featuresSectionSub')}
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto text-sm">{t('index.featuresSectionDesc')}</p>
+          </div>
+
+          <div className="bento-grid">
+            {/* AI Store Manager - col 8 */}
+            <div className="bento-item-8 feature-card p-6 md:p-8 flex flex-col md:flex-row items-start gap-6">
+              <div className="flex-1">
+                <div className="icon-box bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 mb-5 border border-violet-200 dark:border-violet-800">
+                  <Brain className="w-5 h-5" />
+                </div>
+                <h3 className="text-2xl font-extrabold mb-3 text-slate-900 dark:text-white leading-snug">{t('index.featAiTitle')}</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{t('index.featAiDesc')}</p>
+              </div>
+              <div className="w-full md:w-[45%] bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden flex-shrink-0">
+                <div className="p-4 space-y-3">
+                  {[
+                    { icon: '📝', label: 'Auto Descriptions', color: 'text-violet-600' },
+                    { icon: '🖼️', label: 'Image Analysis', color: 'text-blue-600' },
+                    { icon: '💬', label: 'Chatbot 24/7', color: 'text-emerald-600' },
+                    { icon: '📊', label: 'Analytics Narration', color: 'text-amber-600' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-lg px-3 py-2.5 border border-slate-100 dark:border-slate-700">
+                      <span className="text-lg">{item.icon}</span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{item.label}</span>
+                      <span className="ml-auto text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">AI</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="bento-grid">
-                {/* Feature 1 - Templates Image */}
-                <div className="bento-item-8 glass-card p-6 md:p-8 flex flex-col justify-between group overflow-hidden relative">
-                    <div className="relative z-10 w-full md:w-[38%]">
-                        <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-950/50 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6 border border-indigo-200 dark:border-indigo-800 group-hover:scale-110 transition-transform shadow-sm">
-                            <Layout className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-2xl font-black mb-3 text-slate-900 dark:text-white leading-snug">{t('index.feat1Title')}</h3>
-                        <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{t('index.feat1Desc')}</p>
-                    </div>
-                    
-                    <div className="mt-8 md:mt-0 md:absolute md:left-0 md:top-4 md:bottom-0 md:w-[68%] flex items-end justify-end">
-                        <div className="bg-white dark:bg-slate-800 p-2 rounded-t-2xl shadow-[-10px_0_30px_rgba(0,0,0,0.05)] border border-slate-200 dark:border-slate-700 border-b-0 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 w-full overflow-hidden">
-                            <img src="/screenshots/home-template-mobile-editor.png" className="w-full object-cover object-top rounded-t-xl" alt="معاينة محرر القوالب على الهاتف" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Feature 2 - Delivery Integration */}
-                <div className="bento-item-4 glass-card p-6 md:p-8 group flex flex-col">
-                    <div>
-                        <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/50 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6 border border-emerald-200 dark:border-emerald-800 group-hover:-translate-y-1 transition-transform shadow-sm">
-                            <Truck className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-xl font-black mb-2 text-slate-900 dark:text-white">{t('index.feat2Title')}</h3>
-                        <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">{t('index.feat2Desc')}</p>
-                    </div>
-                    <div className="mt-6 flex-1 grid grid-cols-3 gap-3 content-start">
-                        {[
-                          { src: '/delivery-logos/yalidine.png', name: 'Yalidine' },
-                          { src: '/delivery-logos/ZR-Express-1.webp', name: 'ZR Express' },
-                          { src: '/delivery-logos/NOEST.png', name: 'Nord et Ouest' },
-                          { src: '/delivery-logos/maystro.png', name: 'Maystro' },
-                          { src: '/delivery-logos/EMS.png', name: 'EMS' },
-                          { src: '/delivery-logos/dolivroo.png', name: 'Dolivroo' },
-                        ].map((c) => (
-                          <div key={c.name} className="flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 group-hover:shadow-md transition-shadow aspect-square">
-                            <img src={c.src} alt={c.name} className="w-10 h-10 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                            <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 mt-1.5 text-center leading-tight">{c.name}</span>
-                          </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Feature 3 - Analytics Image */}
-                <div className="bento-item-4 glass-card p-6 md:p-8 group flex flex-col">
-                    <div>
-                        <div className="w-12 h-12 bg-sky-100 dark:bg-sky-950/50 rounded-xl flex items-center justify-center text-sky-600 dark:text-sky-400 mb-6 border border-sky-200 dark:border-sky-800 group-hover:-translate-y-1 transition-transform shadow-sm">
-                            <BarChart3 className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-xl font-black mb-2 text-slate-900 dark:text-white">{t('index.feat3Title')}</h3>
-                        <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">{t('index.feat3Desc')}</p>
-                    </div>
-                    <div className="mt-6 flex-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                        <img src="/screenshots/home-admin-analytics.png" className="w-full h-full object-contain object-top opacity-95 group-hover:scale-[1.02] transition-transform duration-500" alt="لوحة تحليلات المتجر" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                    </div>
-                </div>
-
-                {/* Feature 5 - Orders Management */}
-                <div className="bento-item-8 glass-card p-6 md:p-8 flex flex-col justify-between group overflow-hidden relative">
-                    <div className="relative z-10 w-full md:w-[38%]">
-                        <div className="w-12 h-12 bg-amber-100 dark:bg-amber-950/50 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-6 border border-amber-200 dark:border-amber-800 group-hover:scale-110 transition-transform shadow-sm">
-                            <ClipboardList className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-2xl font-black mb-3 text-slate-900 dark:text-white leading-snug">{t('index.feat5Title')}</h3>
-                        <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{t('index.feat5Desc')}</p>
-                    </div>
-                    <div className="mt-8 md:mt-0 md:absolute md:left-0 md:top-4 md:bottom-0 md:w-[68%] flex items-end justify-end">
-                        <div className="bg-white dark:bg-slate-800 p-2 rounded-t-2xl shadow-[-10px_0_30px_rgba(0,0,0,0.05)] border border-slate-200 dark:border-slate-700 border-b-0 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 w-full overflow-hidden">
-                            <img src="/screenshots/home-orders-management.png" className="w-full object-cover object-top rounded-t-xl" alt="إدارة الطلبات" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Feature 4 - Store Products */}
-                <div className="bento-item-8 glass-card p-6 md:p-8 flex flex-col md:flex-row items-center group overflow-hidden gap-6">
-                    <div className="flex-1 w-full relative z-10">
-                        <h3 className="text-2xl font-black mb-6 text-slate-900 dark:text-white">{t('index.feat4Title')}</h3>
-                        <ul className="space-y-4">
-                            <li className="flex items-center space-x-3 space-x-reverse bg-white/50 dark:bg-white/5 p-3 rounded-lg border border-slate-100 dark:border-white/10">
-                                <CheckCircle2 className="text-indigo-500 w-5 h-5 flex-shrink-0" />
-                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('index.feat4Li1')}</span>
-                            </li>
-                            <li className="flex items-center space-x-3 space-x-reverse bg-white/50 dark:bg-white/5 p-3 rounded-lg border border-slate-100 dark:border-white/10">
-                                <CheckCircle2 className="text-indigo-500 w-5 h-5 flex-shrink-0" />
-                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('index.feat4Li2')}</span>
-                            </li>
-                            <li className="flex items-center space-x-3 space-x-reverse bg-white/50 dark:bg-white/5 p-3 rounded-lg border border-slate-100 dark:border-white/10">
-                                <CheckCircle2 className="text-indigo-500 w-5 h-5 flex-shrink-0" />
-                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('index.feat4Li3')}</span>
-                            </li>
-                        </ul>
-                    </div>
-                    <div className="w-full md:w-[45%] h-64 md:h-full bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden relative shadow-inner group-hover:-translate-y-2 transition-transform duration-500">
-                        <div className="absolute inset-x-0 top-0 h-4 bg-slate-200/50 dark:bg-slate-700/50 flex space-x-1 space-x-reverse px-2 items-center z-10 border-b border-slate-200 dark:border-slate-600">
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
-                        </div>
-                        <img src="/screenshots/home-store-catalog.png" className="w-full h-full object-contain object-top pt-4" alt="إدارة منتجات المتجر" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                    </div>
-                </div>
+            {/* Multi-Platform Bot - col 4 */}
+            <div className="bento-item-4 feature-card p-6 md:p-8 flex flex-col">
+              <div className="icon-box bg-sky-100 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 mb-5 border border-sky-200 dark:border-sky-800">
+                <Bot className="w-5 h-5" />
+              </div>
+              <h3 className="text-xl font-extrabold mb-3 text-slate-900 dark:text-white">{t('index.featBotTitle')}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed mb-5">{t('index.featBotDesc')}</p>
+              <div className="mt-auto grid grid-cols-5 gap-2">
+                {['Telegram', 'WhatsApp', 'Messenger', 'Instagram', 'Viber'].map((name) => (
+                  <div key={name} className="flex flex-col items-center gap-1.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2">
+                    <span className="text-lg">{
+                      name === 'Telegram' ? '✈️' :
+                      name === 'WhatsApp' ? '💬' :
+                      name === 'Messenger' ? '💙' :
+                      name === 'Instagram' ? '📸' : '📞'
+                    }</span>
+                    <span className="text-[8px] font-semibold text-slate-500 dark:text-slate-400 text-center leading-tight">{name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Delivery Integration - col 4 */}
+            <div className="bento-item-4 feature-card p-6 md:p-8 flex flex-col">
+              <div className="icon-box bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 mb-5 border border-emerald-200 dark:border-emerald-800">
+                <Truck className="w-5 h-5" />
+              </div>
+              <h3 className="text-xl font-extrabold mb-3 text-slate-900 dark:text-white">{t('index.feat2Title')}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">{t('index.feat2Desc')}</p>
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                {[
+                  { src: '/delivery-logos/yalidine.png', name: 'Yalidine' },
+                  { src: '/delivery-logos/ZR-Express-1.webp', name: 'ZR Express' },
+                  { src: '/delivery-logos/NOEST.png', name: 'Noest' },
+                  { src: '/delivery-logos/maystro.png', name: 'Maystro' },
+                  { src: '/delivery-logos/EMS.png', name: 'EMS' },
+                  { src: '/delivery-logos/dolivroo.png', name: 'Dolivroo' },
+                ].map((c) => (
+                  <div key={c.name} className="flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2.5">
+                    <img src={c.src} alt={c.name} className="w-8 h-8 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <span className="text-[8px] font-semibold text-slate-500 dark:text-slate-400 mt-1 text-center leading-tight">{c.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Analytics Dashboard - col 4 */}
+            <div className="bento-item-4 feature-card p-6 md:p-8 flex flex-col">
+              <div className="icon-box bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 mb-5 border border-blue-200 dark:border-blue-800">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <h3 className="text-xl font-extrabold mb-3 text-slate-900 dark:text-white">{t('index.feat3Title')}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed mb-5">{t('index.feat3Desc')}</p>
+              <div className="mt-auto bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-slate-500">Revenue</span>
+                  <span className="text-sm font-extrabold text-emerald-600">+32%</span>
+                </div>
+                <div className="h-20 flex items-end gap-1">
+                  {[35, 50, 42, 68, 55, 78, 90].map((h, i) => (
+                    <div key={i} className="flex-1 bg-indigo-200 dark:bg-indigo-800 rounded-t" style={{ height: `${h}%` }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Order Management - col 4 */}
+            <div className="bento-item-4 feature-card p-6 md:p-8 flex flex-col">
+              <div className="icon-box bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 mb-5 border border-amber-200 dark:border-amber-800">
+                <ClipboardList className="w-5 h-5" />
+              </div>
+              <h3 className="text-xl font-extrabold mb-3 text-slate-900 dark:text-white">{t('index.feat5Title')}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">{t('index.feat5Desc')}</p>
+              <div className="mt-5 space-y-2">
+                {[
+                  { status: 'Delivered', count: '156', color: 'bg-emerald-500' },
+                  { status: 'Processing', count: '23', color: 'bg-amber-500' },
+                  { status: 'Pending', count: '12', color: 'bg-slate-400' },
+                ].map((s) => (
+                  <div key={s.status} className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${s.color}`} />
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{s.status}</span>
+                    </div>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Template Editor - col 6 */}
+            <div className="bento-item-6 feature-card p-6 md:p-8 flex flex-col md:flex-row items-start gap-6">
+              <div className="flex-1">
+                <div className="icon-box bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 mb-5 border border-indigo-200 dark:border-indigo-800">
+                  <Layout className="w-5 h-5" />
+                </div>
+                <h3 className="text-xl font-extrabold mb-3 text-slate-900 dark:text-white">{t('index.feat1Title')}</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{t('index.feat1Desc')}</p>
+              </div>
+              <div className="w-full md:w-[55%] bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <img src="/screenshots/home-template-mobile-editor.png" className="w-full object-cover object-top" alt="محرر القوالب" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              </div>
+            </div>
+
+            {/* Store & Support - col 6 */}
+            <div className="bento-item-6 feature-card p-6 md:p-8 flex flex-col md:flex-row items-start gap-6">
+              <div className="flex-1">
+                <div className="icon-box bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 mb-5 border border-rose-200 dark:border-rose-800">
+                  <Package className="w-5 h-5" />
+                </div>
+                <h3 className="text-xl font-extrabold mb-4 text-slate-900 dark:text-white">{t('index.feat4Title')}</h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="text-emerald-500 w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{t('index.feat4Li1')}</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="text-emerald-500 w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{t('index.feat4Li2')}</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="text-emerald-500 w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{t('index.feat4Li3')}</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="w-full md:w-[40%] bg-indigo-50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/50 p-5 flex-shrink-0">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center mx-auto mb-3 border border-indigo-200 dark:border-indigo-800">
+                    <span className="text-2xl">🇩🇿</span>
+                  </div>
+                  <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">24/7 Support</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Arabic + Darija</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Stats Section */}
-        <section className="py-12 px-6 bg-indigo-50/50 dark:bg-slate-900/50 border-y border-indigo-100/50 dark:border-slate-800/50 relative z-10">
-            <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                <div>
-                    <p className="text-4xl font-black text-indigo-600 mb-1">{t('index.stat1')}</p>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('index.stat1Label')}</p>
-                </div>
-                <div>
-                    <p className="text-4xl font-black text-slate-800 dark:text-slate-200 mb-1">{t('index.stat2')}</p>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('index.stat2Label')}</p>
-                </div>
-                <div>
-                    <p className="text-4xl font-black text-indigo-600 mb-1">{t('index.stat3')}</p>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('index.stat3Label')}</p>
-                </div>
-                <div>
-                    <p className="text-4xl font-black text-slate-800 dark:text-slate-200 mb-1">{t('index.stat4')}</p>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('index.stat4Label')}</p>
-                </div>
+        <section className="py-12 px-6 bg-slate-50 dark:bg-slate-900/50 border-y border-slate-100 dark:border-slate-800">
+          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <p className="text-4xl font-extrabold text-indigo-600 mb-1">{t('index.stat1')}</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('index.stat1Label')}</p>
             </div>
+            <div>
+              <p className="text-4xl font-extrabold text-slate-800 dark:text-slate-200 mb-1">{t('index.stat2')}</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('index.stat2Label')}</p>
+            </div>
+            <div>
+              <p className="text-4xl font-extrabold text-indigo-600 mb-1">{t('index.stat3')}</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('index.stat3Label')}</p>
+            </div>
+            <div>
+              <p className="text-4xl font-extrabold text-slate-800 dark:text-slate-200 mb-1">{t('index.stat4')}</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('index.stat4Label')}</p>
+            </div>
+          </div>
         </section>
 
         {/* Workflow Section */}
-        <section id="workflow" className="py-16 px-6 relative z-10">
-            <div className="max-w-3xl mx-auto text-center mb-12">
-                <h2 className="text-3xl font-black mb-4 text-gradient">{t('index.howTitle')}</h2>
-                <p className="text-slate-600 dark:text-slate-400 text-sm">{t('index.howDesc')}</p>
+        <section id="workflow" className="py-16 px-6">
+          <div className="max-w-3xl mx-auto text-center mb-12">
+            <h2 className="text-3xl font-extrabold mb-3 text-gradient">{t('index.howTitle')}</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('index.howDesc')}</p>
+          </div>
+
+          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="feature-card p-8 text-center">
+              <div className="step-number bg-slate-900 dark:bg-slate-700 text-white">01</div>
+              <h4 className="text-lg font-extrabold mb-2 text-slate-900 dark:text-white">{t('index.step1Title')}</h4>
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">{t('index.step1Desc')}</p>
             </div>
 
-            <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-                <div className="hidden md:block absolute top-[40%] left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-100 to-transparent -z-10 bg-[length:10px_10px]" style={{backgroundImage: 'linear-gradient(90deg, #e0e7ff 50%, transparent 50%)'}}></div>
-                
-                <div className="glass-card p-8 text-center relative border-white sm:hover:scale-[1.02] transition-transform">
-                    <div className="w-14 h-14 bg-slate-900 dark:bg-slate-700 text-white font-black text-xl rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">01</div>
-                    <h4 className="text-lg font-black mb-2 text-slate-900 dark:text-white">{t('index.step1Title')}</h4>
-                    <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">{t('index.step1Desc')}</p>
-                </div>
-
-                <div className="glass-card p-8 text-center relative border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 sm:hover:scale-[1.02] transition-transform shadow-[0_4px_20px_-2px_rgba(99,102,241,0.1)]">
-                    <div className="w-14 h-14 bg-indigo-600 text-white font-black text-xl rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-[0_0_15px_rgba(99,102,241,0.4)]">02</div>
-                    <h4 className="text-lg font-black mb-2 text-slate-900 dark:text-white">{t('index.step2Title')}</h4>
-                    <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">{t('index.step2Desc')}</p>
-                </div>
-
-                <div className="glass-card p-8 text-center relative border-white sm:hover:scale-[1.02] transition-transform">
-                    <div className="w-14 h-14 bg-slate-900 dark:bg-slate-700 text-white font-black text-xl rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">03</div>
-                    <h4 className="text-lg font-black mb-2 text-slate-900 dark:text-white">{t('index.step3Title')}</h4>
-                    <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">{t('index.step3Desc')}</p>
-                </div>
+            <div className="feature-card p-8 text-center border-indigo-200 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/20">
+              <div className="step-number bg-indigo-600 text-white">02</div>
+              <h4 className="text-lg font-extrabold mb-2 text-slate-900 dark:text-white">{t('index.step2Title')}</h4>
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">{t('index.step2Desc')}</p>
             </div>
+
+            <div className="feature-card p-8 text-center">
+              <div className="step-number bg-slate-900 dark:bg-slate-700 text-white">03</div>
+              <h4 className="text-lg font-extrabold mb-2 text-slate-900 dark:text-white">{t('index.step3Title')}</h4>
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">{t('index.step3Desc')}</p>
+            </div>
+          </div>
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 px-6 relative z-10">
-            <div className="max-w-4xl mx-auto rounded-[2rem] bg-gradient-to-br from-indigo-600 to-purple-700 p-10 md:p-14 text-center shadow-[0_20px_50px_-12px_rgba(99,102,241,0.3)] relative overflow-hidden text-white border border-indigo-500/50">
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-cyan-400/20 rounded-full blur-3xl pointer-events-none"></div>
-                
-                <div className="relative z-10">
-                    <h2 className="text-3xl md:text-5xl font-black mb-5 leading-tight">{t('index.ctaTitle')}</h2>
-                    <p className="text-indigo-100 text-sm md:text-base mb-10 max-w-lg mx-auto leading-relaxed">{t('index.ctaDesc')}</p>
-                    
-                    <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 sm:space-x-reverse">
-                        <Link to="/signup" className="bg-white text-indigo-700 hover:bg-slate-50 transition-colors px-10 py-4 rounded-xl text-base font-black shadow-xl inline-block w-full sm:w-auto transform hover:-translate-y-1">
-                            {t('index.ctaCta')}
-                        </Link>
-                        <div className="bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl px-6 py-4 text-xs font-bold flex items-center justify-center w-full sm:w-auto">
-                            <Check className="ml-2 w-4 h-4 text-emerald-400" />
-                            {t('index.ctaTrial', { n: trialDays })}
-                        </div>
-                    </div>
+        <section className="py-16 px-6">
+          <div className="max-w-4xl mx-auto rounded-[1.5rem] bg-gradient-to-br from-indigo-600 to-purple-700 p-10 md:p-14 text-center relative overflow-hidden text-white border border-indigo-500/30">
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none" />
+            <div className="relative z-10">
+              <h2 className="text-3xl md:text-5xl font-extrabold mb-4 leading-tight">{t('index.ctaTitle')}</h2>
+              <p className="text-indigo-200 text-sm md:text-base mb-8 max-w-lg mx-auto leading-relaxed">{t('index.ctaDesc')}</p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link to="/signup" className="bg-white text-indigo-700 hover:bg-slate-50 transition-colors px-10 py-4 rounded-xl text-base font-extrabold inline-block w-full sm:w-auto">
+                  {t('index.ctaCta')}
+                </Link>
+                <div className="bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl px-5 py-4 text-xs font-bold flex items-center justify-center gap-2 w-full sm:w-auto">
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  {t('index.ctaTrial', { n: trialDays })}
                 </div>
+              </div>
             </div>
+          </div>
         </section>
 
         {/* Footer */}
-        <footer className="py-12 px-6 border-t border-slate-200 dark:border-slate-800 relative z-10 bg-white dark:bg-slate-950">
-            <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div className="col-span-1 md:col-span-1 border-b md:border-b-0 border-slate-100 pb-8 md:pb-0">
-                    <div className="flex items-center space-x-2 space-x-reverse mb-4">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
-                            <Zap className="text-white w-4 h-4" />
-                        </div>
-                        <span className="text-lg font-black tracking-tighter uppercase text-slate-900 dark:text-white">Sahla<span className="text-indigo-500">4</span>Eco</span>
-                    </div>
-                    <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed max-w-xs">{t('index.footerTagline')}</p>
+        <footer className="py-12 px-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="md:col-span-1 border-b md:border-b-0 border-slate-100 pb-8 md:pb-0">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                  <Zap className="text-white w-4 h-4" />
                 </div>
-                
-                <div>
-                    <h5 className="font-black mb-4 text-slate-900 dark:text-slate-200 uppercase tracking-widest text-[11px]">{t('index.footerProduct')}</h5>
-                    <ul className="space-y-3 text-xs text-slate-600 dark:text-slate-400 font-medium">
-                        <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerFeatures')}</a></li>
-                        <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerTemplates')}</a></li>
-                        <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerUpdates')}</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h5 className="font-black mb-4 text-slate-900 dark:text-slate-200 uppercase tracking-widest text-[11px]">{t('index.footerCompany')}</h5>
-                    <ul className="space-y-3 text-xs text-slate-600 dark:text-slate-400 font-medium">
-                        <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerAbout')}</a></li>
-                        <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerBlog')}</a></li>
-                        <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerContact')}</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h5 className="font-black mb-4 text-slate-900 dark:text-slate-200 uppercase tracking-widest text-[11px]">{t('index.footerFollow')}</h5>
-                    <div className="flex space-x-3 space-x-reverse">
-                        <a href="#" className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
-                            <Facebook className="w-4 h-4" />
-                        </a>
-                        <a href="#" className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
-                            <Instagram className="w-4 h-4" />
-                        </a>
-                        <a href="#" className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
-                            <Twitter className="w-4 h-4" />
-                        </a>
-                    </div>
-                </div>
+                <span className="text-lg font-extrabold tracking-tight uppercase text-slate-900 dark:text-white">Sahla<span className="text-indigo-500">4</span>Eco</span>
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed max-w-xs">{t('index.footerTagline')}</p>
             </div>
-            <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-slate-100 dark:border-slate-800 text-center text-slate-500 dark:text-slate-500 text-[11px] font-bold">
+
+            <div>
+              <h5 className="font-extrabold mb-4 text-slate-900 dark:text-slate-200 uppercase tracking-widest text-[11px]">{t('index.footerProduct')}</h5>
+              <ul className="space-y-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                <li><a href="#features" className="hover:text-indigo-600 transition-colors">{t('index.footerFeatures')}</a></li>
+                <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerTemplates')}</a></li>
+                <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerUpdates')}</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h5 className="font-extrabold mb-4 text-slate-900 dark:text-slate-200 uppercase tracking-widest text-[11px]">{t('index.footerCompany')}</h5>
+              <ul className="space-y-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerAbout')}</a></li>
+                <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerBlog')}</a></li>
+                <li><a href="#" className="hover:text-indigo-600 transition-colors">{t('index.footerContact')}</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h5 className="font-extrabold mb-4 text-slate-900 dark:text-slate-200 uppercase tracking-widest text-[11px]">{t('index.footerFollow')}</h5>
+              <div className="flex gap-3">
+                <a href="#" className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-indigo-600 hover:text-white transition-colors">
+                  <Facebook className="w-4 h-4" />
+                </a>
+                <a href="#" className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-indigo-600 hover:text-white transition-colors">
+                  <Instagram className="w-4 h-4" />
+                </a>
+                <a href="#" className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-indigo-600 hover:text-white transition-colors">
+                  <Twitter className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-slate-100 dark:border-slate-800 text-center text-slate-400 text-[11px] font-bold">
             {t('index.footerCopyright')}
-            </div>
+          </div>
         </footer>
       </div>
     </div>

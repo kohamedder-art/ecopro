@@ -27,11 +27,11 @@ export function normalizeTemplateId(id: string): string {
     // Disabled: dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina, luxedrop, streetwear
     const validIds = ['dzshop', 'needdz', 'zenith', 'boutique', 'iyco', 'bassem28', 'dz3shop', 'spiriluxe', 'leroishop'];
     if (validIds.includes(id)) return id;
-    return 'dzshop'; // Fallback
+    return 'leroishop'; // Fallback
 }
 
 export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
-  const id = normalizeTemplateId(String(t || (props.settings as any)?.template || 'dzshop'));
+  const id = normalizeTemplateId(String(t || (props.settings as any)?.template || 'leroishop'));
 
 
   // If a main product is selected, move it to the front of the products array so single-product templates pick it up automatically

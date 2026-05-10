@@ -13,7 +13,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useStoreProducts } from '@/hooks/useStoreProducts';
 
-const DEFAULT_TEMPLATE_ID = 'dzshop';
+const DEFAULT_TEMPLATE_ID = 'leroishop';
 
 // Templates that are considered 100% editable + verified against TEMPLATE_EDITS_CONTRACT.
 // These are the only templates shown by default in the picker.

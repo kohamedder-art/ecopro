@@ -18,6 +18,61 @@ import { performance } from 'perf_hooks';
 import v8 from 'v8';
 import path from 'path';
 
+// Render API helper for database metrics
+const getRenderDbMetrics = async (): Promise<{
+  connectionsActive: number | null;
+  connectionsMax: number | null;
+  cpuPercentage: number | null;
+  memoryMB: number | null;
+  readIOPS: number | null;
+  writeIOPS: number | null;
+  pgVersion: string | null;
+  latencyMs50: number | null;
+  latencyMs95: number | null;
+} | null> => {
+  const renderApiKey = process.env.RENDER_API_KEY;
+  const databaseId = process.env.RENDER_DATABASE_ID;
+  
+  if (!renderApiKey || !databaseId) {
+    return null;
+  }
+  
+  try {
+    const response = await fetch(
+      `https://api.render.com/v1/databases/${databaseId}/metrics`,
+      {
+        headers: {
+          'Authorization': `Bearer ${renderApiKey}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      console.error('Render API error:', response.status, await response.text());
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Parse metrics from Render response
+    return {
+      connectionsActive: data.metrics?.database?.connections?.active ?? null,
+      connectionsMax: data.metrics?.database?.connections?.max ?? null,
+      cpuPercentage: data.metrics?.database?.cpu?.pct ?? null,
+      memoryMB: data.metrics?.database?.memory?.mb ?? null,
+      readIOPS: data.metrics?.database?.read_iops ?? null,
+      writeIOPS: data.metrics?.database?.write_iops ?? null,
+      pgVersion: data.metrics?.database?.pg_version ?? null,
+      latencyMs50: data.metrics?.database?.latency?.p50 ?? null,
+      latencyMs95: data.metrics?.database?.latency?.p95 ?? null,
+    };
+  } catch (e) {
+    console.error('Failed to fetch Render DB metrics:', e);
+    return null;
+  }
+};
+
 const isProduction = process.env.NODE_ENV === 'production';
 
 const ACCESS_COOKIE = cookieNames.ACCESS_COOKIE;
@@ -628,6 +683,9 @@ export const getSystemCapacity: RequestHandler = async (_req, res) => {
       const end = process.hrtime.bigint();
       dbLatencyMs = Number(end - start) / 1e6;
       
+      // Get real Render DB metrics if configured
+      const renderDbMetrics = await getRenderDbMetrics();
+      
       currentUsers = usersResult.rows[0]?.total || 0;
       activeUsers15m = usersResult.rows[0]?.active15m || 0;
       activeUsersToday = usersResult.rows[0]?.activeToday || 0;
@@ -849,6 +907,8 @@ export const getSystemCapacity: RequestHandler = async (_req, res) => {
           poolTotal,
           poolIdle: (pool as any).idleCount ?? 0,
           poolWaiting,
+          // Real Render DB metrics
+          render: renderDbMetrics || undefined,
         },
         eventLoop: {
           utilization: eventLoopUtil.utilization,

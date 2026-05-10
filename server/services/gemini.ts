@@ -313,7 +313,7 @@ The sidebar navigation is organized as follows. Each section below corresponds t
 • Subscription Card: Current plan tier, status pill (trial/active/expired/cancelled with color), period end date, days remaining, auto-renew status
 • Trial countdown banner with "Contact Support to Pay" button
 • Payment History Table: Date, Amount, Status (completed/pending/failed with dot indicator), Payment Method
-• Features List: 15 feature items (Unlimited Products, Orders, Order Management, WhatsApp/SMS Bot, Delivery Zones, Staff Management, Store Customization, Advanced Analytics, AI Features, Vouchers, Image Gallery, Custom Domain, COD Zero Commissions, Automated Notifications, Priority Support)
+• Features List: 12 feature items (Unlimited Products & Orders, Order & Status Management, Inventory & Variant Management, WhatsApp/Telegram/Viber/Messenger Bots, Algerian Delivery Company Integration, Multi-Staff Accounts with Permissions, Store Customization: Colors/Fonts/Templates, Advanced Analytics & Dashboards, AI: Descriptions/Pricing/Alerts, Vouchers & Discount Codes, Automated Notifications & Store Protection, Priority Technical Support)
 • RedotPay checkout for subscription payment
 • Invoice download, Auto-renewal toggle
 • Voucher code redemption (format: XXXX-XXXX-XXXX-XXXX)

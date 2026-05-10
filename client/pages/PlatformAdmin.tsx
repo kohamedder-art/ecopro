@@ -553,7 +553,7 @@ function LockedAccountsManager() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(1rem, 2vh, 1.5rem)' }}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 backdrop-blur-md rounded-xl border border-amber-500/30 shadow-lg"
+      <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 backdrop-blur-sm rounded-xl border border-amber-500/20"
         style={{ padding: 'clamp(1rem, 2vh, 1.5rem)' }}>
         <h2 className="font-bold text-amber-300 flex items-center" style={{ fontSize: 'clamp(1.25rem, 2.5vh, 1.5rem)', gap: 'clamp(0.5rem, 1vh, 0.75rem)', marginBottom: 'clamp(0.375rem, 0.75vh, 0.5rem)' }}>
           <Lock style={{ width: 'clamp(1.25rem, 2.5vh, 1.5rem)', height: 'clamp(1.25rem, 2.5vh, 1.5rem)' }} />
@@ -566,23 +566,23 @@ function LockedAccountsManager() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5" style={{ gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700/50" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+        <div className="bg-white/40 dark:bg-slate-800/40 rounded-lg border border-gray-200/50 dark:border-slate-700/50" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="text-gray-500 dark:text-slate-400" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>{t('platformAdmin.subscription.total')}</div>
           <div className="font-bold text-gray-900 dark:text-white" style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{allAccounts.length}</div>
         </div>
-        <div className="bg-red-500/10 rounded-lg border border-red-500/30" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+        <div className="bg-red-500/5 rounded-lg border border-red-500/20" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="text-red-300" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>🔒 {t('platformAdmin.subscription.locked')}</div>
           <div className="font-bold text-red-400" style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{lockedCount}</div>
         </div>
-        <div className="bg-green-500/10 rounded-lg border border-green-500/30" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+        <div className="bg-green-500/5 rounded-lg border border-green-500/20" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="text-green-300" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>✅ {t('platformAdmin.subscription.active')}</div>
           <div className="font-bold text-green-400" style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{activeCount}</div>
         </div>
-        <div className={`rounded-lg border ${expiringCount > 0 ? 'bg-yellow-500/20 border-yellow-500/50' : 'bg-white/80 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700/50'}`} style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+        <div className={`rounded-lg border ${expiringCount > 0 ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-white/40 dark:bg-slate-800/40 border-gray-200/50 dark:border-slate-700/50'}`} style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="text-yellow-300" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>⚠️ {t('platformAdmin.subscription.expiring')}</div>
           <div className={`font-bold ${expiringCount > 0 ? 'text-yellow-400' : 'text-gray-500 dark:text-slate-500'}`} style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{expiringCount}</div>
         </div>
-        <div className={`rounded-lg border ${hackerCount > 0 ? 'bg-orange-500/20 border-orange-500/50 animate-pulse' : 'bg-white/80 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700/50'}`} style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+        <div className={`rounded-lg border ${hackerCount > 0 ? 'bg-orange-500/10 border-orange-500/30 animate-pulse' : 'bg-white/40 dark:bg-slate-800/40 border-gray-200/50 dark:border-slate-700/50'}`} style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="text-orange-300" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>🚨 {t('platformAdmin.subscription.hackers')}</div>
           <div className={`font-bold ${hackerCount > 0 ? 'text-orange-400' : 'text-gray-500 dark:text-slate-500'}`} style={{ fontSize: 'clamp(1.5rem, 3vh, 2rem)' }}>{hackerCount}</div>
         </div>
@@ -598,7 +598,7 @@ function LockedAccountsManager() {
             placeholder={t('platformAdmin.subscription.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/80 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
+            className="w-full bg-white/40 dark:bg-slate-800/40 border border-gray-200/50 dark:border-slate-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
             style={{ fontSize: 'clamp(0.875rem, 1.75vh, 1rem)', padding: 'clamp(0.5rem, 1vh, 0.75rem) clamp(0.5rem, 1vh, 0.75rem) clamp(0.5rem, 1vh, 0.75rem) clamp(2.5rem, 5vh, 3rem)' }}
           />
         </div>
@@ -618,7 +618,7 @@ function LockedAccountsManager() {
               className={`rounded-lg font-medium transition-all ${
                 filterStatus === f.key
                   ? `bg-${f.color}-600 text-gray-900 dark:text-white`
-                  : 'bg-slate-700/50 text-gray-600 dark:text-slate-300 hover:bg-slate-600'
+                  : 'bg-slate-700/30 text-gray-600 dark:text-slate-300 hover:bg-slate-600/30'
               }`}
               style={{ fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)', padding: 'clamp(0.375rem, 0.75vh, 0.5rem) clamp(0.75rem, 1.5vh, 1rem)' }}
             >
@@ -630,7 +630,7 @@ function LockedAccountsManager() {
 
       {/* Bulk Actions */}
       {selectedAccounts.length > 0 && (
-        <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-lg border border-cyan-500/30 shadow-lg" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
+        <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm rounded-lg border border-cyan-500/20" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
           <div className="flex items-center justify-between flex-wrap" style={{ gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
             <span className="text-cyan-300 font-medium" style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1.1rem)' }}>
               {t('platformAdmin.subscription.selected', { count: selectedAccounts.length })}
@@ -658,7 +658,7 @@ function LockedAccountsManager() {
       )}
 
       {/* Accounts Table */}
-      <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-lg border border-gray-200 dark:border-slate-700/50 shadow-lg overflow-hidden">
+      <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm rounded-lg border border-gray-200/50 dark:border-slate-700/50 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -668,7 +668,7 @@ function LockedAccountsManager() {
                     type="checkbox"
                     checked={selectedAccounts.length === filteredAccounts.length && filteredAccounts.length > 0}
                     onChange={toggleSelectAll}
-                    className="rounded border-slate-600"
+                    className="rounded border-slate-500/50"
                     style={{ width: 'clamp(1rem, 2vh, 1.25rem)', height: 'clamp(1rem, 2vh, 1.25rem)' }}
                   />
                 </th>
@@ -699,7 +699,7 @@ function LockedAccountsManager() {
                   return (
                     <tr
                       key={account.id}
-                      className={`border-b border-gray-200/40 dark:border-slate-700/20 hover:bg-gray-50/30 dark:bg-slate-900/30 transition-colors ${
+                      className={`border-b border-gray-200/20 dark:border-slate-700/20 hover:bg-gray-50/30 dark:bg-slate-900/30 transition-colors ${
                         isHoneypot ? 'bg-orange-500/10' : account.is_locked ? 'bg-red-500/5' : isExpiring ? 'bg-yellow-500/5' : ''
                       }`}
                     >
@@ -708,7 +708,7 @@ function LockedAccountsManager() {
                           type="checkbox"
                           checked={selectedAccounts.includes(account.id)}
                           onChange={() => toggleSelect(account.id)}
-                          className="rounded border-slate-600"
+className="rounded border-slate-500/50"
                           style={{ width: 'clamp(1rem, 2vh, 1.25rem)', height: 'clamp(1rem, 2vh, 1.25rem)' }}
                         />
                       </td>
@@ -786,8 +786,8 @@ function LockedAccountsManager() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 dark:bg-black/80 z-50 flex items-center justify-center" style={{ padding: 'clamp(1rem, 2vh, 1.5rem)' }}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-2xl w-full" style={{ maxWidth: '480px', padding: 'clamp(1.25rem, 2.5vh, 1.75rem)' }}>
+        <div className="fixed inset-0 bg-black/20 dark:bg-black/40 z-50 flex items-center justify-center" style={{ padding: 'clamp(1rem, 2vh, 1.5rem)' }}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200/50 dark:border-slate-700/50 w-full" style={{ maxWidth: '480px', padding: 'clamp(1.25rem, 2.5vh, 1.75rem)' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: 'clamp(1rem, 2vh, 1.25rem)' }}>
               <h3 className="font-bold text-gray-900 dark:text-white" style={{ fontSize: 'clamp(1.1rem, 2.2vh, 1.35rem)' }}>
                 {modalMode === 'unlock' ? t('platformAdmin.modal.unlockAndExtend') : t('platformAdmin.modal.lockAccount')}
@@ -804,7 +804,7 @@ function LockedAccountsManager() {
                   <div>
                     <label className="block font-medium text-gray-600 dark:text-slate-300" style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', marginBottom: 'clamp(0.5rem, 1vh, 0.75rem)' }}>{t('platformAdmin.modal.action')}</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
-                      <label className={`flex items-center gap-3 rounded-lg border border-gray-300 dark:border-slate-600 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-200 dark:hover:bg-slate-700/50 ${action === 'extend' ? 'bg-blue-500/10 border-blue-500/50' : ''}`}
+                      <label className={`flex items-center gap-3 rounded-lg border border-gray-300/50 dark:border-slate-600/50 cursor-pointer hover:bg-gray-200/30 dark:hover:bg-gray-200/20 dark:hover:bg-slate-700/30 ${action === 'extend' ? 'bg-blue-500/10 border-blue-500/30' : ''}`}
                         style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
                         <input type="radio" checked={action === 'extend'} onChange={() => setAction('extend')} name="action" style={{ width: 'clamp(1rem, 2vh, 1.25rem)', height: 'clamp(1rem, 2vh, 1.25rem)' }} />
                         <div>
@@ -812,7 +812,7 @@ function LockedAccountsManager() {
                           <div className="text-gray-500 dark:text-slate-400" style={{ fontSize: 'clamp(0.75rem, 1.5vh, 0.875rem)' }}>{t('platformAdmin.modal.addDays')}</div>
                         </div>
                       </label>
-                      <label className={`flex items-center gap-3 rounded-lg border border-gray-300 dark:border-slate-600 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-200 dark:hover:bg-slate-700/50 ${action === 'mark_paid' ? 'bg-green-500/10 border-green-500/50' : ''}`}
+                      <label className={`flex items-center gap-3 rounded-lg border border-gray-300/50 dark:border-slate-600/50 cursor-pointer hover:bg-gray-200/30 dark:hover:bg-gray-200/20 dark:hover:bg-slate-700/30 ${action === 'mark_paid' ? 'bg-green-500/10 border-green-500/30' : ''}`}
                         style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
                         <input type="radio" checked={action === 'mark_paid'} onChange={() => setAction('mark_paid')} name="action" style={{ width: 'clamp(1rem, 2vh, 1.25rem)', height: 'clamp(1rem, 2vh, 1.25rem)' }} />
                         <div>
@@ -833,7 +833,7 @@ function LockedAccountsManager() {
                         onChange={(e) => setExtendDays(Math.min(365, Math.max(1, parseInt(e.target.value) || 1)))}
                         min="1"
                         max="365"
-                        className="w-full bg-gray-100/50 dark:bg-slate-900/50 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white"
+                        className="w-full bg-gray-100/30 dark:bg-slate-900/30 border border-gray-300/50 dark:border-slate-600/50 rounded-lg text-gray-900 dark:text-white"
                         style={{ fontSize: 'clamp(0.9rem, 1.8vh, 1.05rem)', padding: 'clamp(0.5rem, 1vh, 0.75rem)' }}
                       />
                     </div>
@@ -850,7 +850,7 @@ function LockedAccountsManager() {
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder={modalMode === 'unlock' ? t('platformAdmin.modal.unlockPlaceholder') : t('platformAdmin.modal.lockPlaceholder')}
-                  className="w-full bg-gray-100/50 dark:bg-slate-900/50 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
+                  className="w-full bg-gray-100/30 dark:bg-slate-900/30 border border-gray-300/50 dark:border-slate-600/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                   style={{ fontSize: 'clamp(0.85rem, 1.7vh, 1rem)', padding: 'clamp(0.5rem, 1vh, 0.75rem)' }}
                   rows={2}
                 />
@@ -2154,7 +2154,7 @@ export default function PlatformAdmin() {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-gray-200 dark:border-slate-700/50 bg-gray-100/50 dark:bg-slate-900/50">
+<tr className="border-b border-gray-200/30 dark:border-slate-700/30 bg-gray-100/20 dark:bg-slate-900/20">
                         <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.codeRequests.id')}</th>
                         <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.codeRequests.client')}</th>
                         <th className="p-4 text-left text-xs font-semibold text-gray-600 dark:text-slate-300">{t('platformAdmin.codeRequests.tier')}</th>
@@ -2353,6 +2353,50 @@ export default function PlatformAdmin() {
                             trend="higher-is-worse"
                             icon={<Database className="w-5 h-5" />}
                           />
+                          {/* Render DB Real Metrics */}
+                          {serverHealth.db?.render && (
+                            <div className="col-span-2 mt-2 p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
+                              <div className="text-xs font-semibold text-green-400 mb-2">🚀 Render Database (Real)</div>
+                              <div className="grid grid-cols-4 gap-2 text-[10px]">
+                                {serverHealth.db.render.connectionsActive != null && (
+                                  <div className="text-center">
+                                    <div className="text-green-300">{serverHealth.db.render.connectionsActive}</div>
+                                    <div className="text-gray-500">Active</div>
+                                  </div>
+                                )}
+                                {serverHealth.db.render.connectionsMax != null && (
+                                  <div className="text-center">
+                                    <div className="text-green-300">{serverHealth.db.render.connectionsMax}</div>
+                                    <div className="text-gray-500">Max</div>
+                                  </div>
+                                )}
+                                {serverHealth.db.render.cpuPercentage != null && (
+                                  <div className="text-center">
+                                    <div className="text-green-300">{serverHealth.db.render.cpuPercentage.toFixed(1)}%</div>
+                                    <div className="text-gray-500">CPU</div>
+                                  </div>
+                                )}
+                                {serverHealth.db.render.memoryMB != null && (
+                                  <div className="text-center">
+                                    <div className="text-green-300">{Math.round(serverHealth.db.render.memoryMB)}MB</div>
+                                    <div className="text-gray-500">RAM</div>
+                                  </div>
+                                )}
+                                {serverHealth.db.render.latencyMs50 != null && (
+                                  <div className="text-center">
+                                    <div className="text-green-300">{serverHealth.db.render.latencyMs50.toFixed(0)}ms</div>
+                                    <div className="text-gray-500">Latency</div>
+                                  </div>
+                                )}
+                                {serverHealth.db.render.pgVersion && (
+                                  <div className="text-center col-span-2">
+                                    <div className="text-green-300">{serverHealth.db.render.pgVersion}</div>
+                                    <div className="text-gray-500">PostgreSQL</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </>
                       );
                     })()}

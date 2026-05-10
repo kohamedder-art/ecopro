@@ -107,7 +107,7 @@ function makeSettings(overrides: Partial<StoreSettings> = {}): StoreSettings {
     primary_color: '#16a34a',
     secondary_color: '#0ea5e9',
     currency_code: 'د.ج',
-    template: 'dzshop',
+    template: 'leroishop',
     ...overrides,
   };
 }
@@ -202,8 +202,8 @@ describe('Template ID normalization', () => {
   });
 
   it('falls back to dzshop for unknown IDs', () => {
-    expect(normalizeTemplateId('nonexistent')).toBe('dzshop');
-    expect(normalizeTemplateId('')).toBe('dzshop');
+    expect(normalizeTemplateId('nonexistent')).toBe('leroishop');
+    expect(normalizeTemplateId('')).toBe('leroishop');
   });
 
   it('redirects removed template luxedark to luxedrop', () => {

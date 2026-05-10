@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { MessageCircle, Loader2, Check, Rocket, Gift, Shield, Sparkles, Zap, ArrowLeft,
-  Package, ShoppingCart, Bot, BarChart3, Users, Palette, Truck, Tag, Brain, Globe, Headphones, Layers, Image, CreditCard } from 'lucide-react';
+  Package, ShoppingCart, Bot, BarChart3, Users, Palette, Truck, Tag, Brain, Headphones, Layers } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
@@ -52,9 +52,6 @@ export default function Pricing() {
     { icon: <BarChart3 className="w-4 h-4" />, text: t('pricing.f8') },
     { icon: <Brain className="w-4 h-4" />, text: t('pricing.f9') },
     { icon: <Tag className="w-4 h-4" />, text: t('pricing.f10') },
-    { icon: <Image className="w-4 h-4" />, text: t('pricing.f11') },
-    { icon: <Globe className="w-4 h-4" />, text: t('pricing.f12') },
-    { icon: <CreditCard className="w-4 h-4" />, text: t('pricing.f13') },
     { icon: <Shield className="w-4 h-4" />, text: t('pricing.f14') },
     { icon: <Headphones className="w-4 h-4" />, text: t('pricing.f15') },
   ];
