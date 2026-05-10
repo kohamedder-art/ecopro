@@ -66,16 +66,7 @@ export function validateProductionEnv(): void {
       description: 'PostgreSQL connection string (Render External Database URL)',
       canGenerate: false,
     },
-    {
-      name: 'RENDER_API_KEY',
-      description: 'Render API key for real database metrics (from Render Dashboard → API Tokens)',
-      canGenerate: false,
-    },
-    {
-      name: 'RENDER_DATABASE_ID',
-      description: 'Render database ID (from Render Dashboard → Your Database → ID)',
-      canGenerate: false,
-    },
+
     {
       name: 'JWT_SECRET',
       description: 'JWT signing secret for session cookies/refresh tokens',
