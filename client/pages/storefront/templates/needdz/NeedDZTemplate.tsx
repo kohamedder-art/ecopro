@@ -57,10 +57,30 @@ const FALLBACK_PRODUCTS = [
   }
 ];
 
-export default function NeedDZTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
+export default function NeedDZTemplate({ settings, products, canManage, storeSlug, navigate, initialProductSlug }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#059669';
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  // Pre-select product from URL slug on mount
+  useEffect(() => {
+    if (initialProductSlug && products?.length) {
+      const match = products.find((p: any) => p.slug === initialProductSlug);
+      if (match) { setSelectedProduct(match); setIsCheckoutOpen(true); }
+    }
+  }, [initialProductSlug, products]);
+
+  // Update URL when product is selected
+  const handleSelectProduct = (product: any) => {
+    setSelectedProduct(product);
+    setIsCheckoutOpen(true);
+    if (product?.slug && navigate) navigate(`/store/${storeSlug}/${product.slug}`);
+  };
+
+  const handleCloseCheckout = () => {
+    setIsCheckoutOpen(false);
+    if (navigate) navigate(`/store/${storeSlug}`);
+  };
   const [orderStatus, setOrderStatus] = useState('idle');
   const [timeLeft, setTimeLeft] = useState({ hours: 0, mins: 45, secs: 12 });
   const [currentImgIdx, setCurrentImgIdx] = useState<Record<number, number>>({});
@@ -341,7 +361,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </div>
 
                   <button 
-                    onClick={() => { setSelectedProduct(product); setIsCheckoutOpen(true); }}
+                    onClick={() => handleSelectProduct(product)}
                     className="w-full text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg transition-all active:scale-95"
                     style={{ backgroundColor: accentColor }}
                   >
@@ -405,7 +425,7 @@ const parseVideoEmbed = (videoUrl: string) => {
             <div className="w-full max-w-[480px] bg-white rounded-t-[40px] p-8 animate-slide-up relative max-h-[90vh] overflow-y-auto [scrollbar-hide::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               
               <button 
-                onClick={() => { setIsCheckoutOpen(false); setOrderStatus('idle'); }}
+                onClick={() => { handleCloseCheckout(); setOrderStatus('idle'); }}
                 className="absolute top-6 right-8 text-slate-400 hover:text-black transition-colors"
               >
                 <X size={28} />
@@ -437,7 +457,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                     </div>
                   </div>
                   <button 
-                    onClick={() => setIsCheckoutOpen(false)}
+                    onClick={handleCloseCheckout}
                     className="w-full text-white font-bold py-5 rounded-2xl"
                     style={{ backgroundColor: accentColor }}
                   >

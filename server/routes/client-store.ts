@@ -318,7 +318,14 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
       }
     }
 
-    const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${product.id}`;
+    const latinTitle = title
+      .toLowerCase()
+      .replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+/g, '') // strip Arabic script
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60)
+      || 'product';
+    const slug = `${latinTitle}-${product.id}`;
 
     await client.query(
       `UPDATE client_store_products SET slug = $1 WHERE id = $2 AND client_id = $3`,
@@ -1744,13 +1751,29 @@ export const getProductShareLink: RequestHandler = async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT slug FROM client_store_products 
+      `SELECT id, title, slug FROM client_store_products 
        WHERE id = $1 AND client_id = $2`,
       [id, clientId]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Product not found" });
+    }
+
+    let { slug, title } = result.rows[0];
+
+    // Repair bad slugs — Arabic-only titles strip to nothing leaving '---42'
+    const isBadSlug = !slug || /^-+\d+$/.test(slug) || slug === `product-${id}` && !slug;
+    if (!slug || isBadSlug) {
+      const latinTitle = (title || '')
+        .toLowerCase()
+        .replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60)
+        || 'product';
+      slug = `${latinTitle}-${id}`;
+      await pool.query(`UPDATE client_store_products SET slug = $1 WHERE id = $2`, [slug, id]);
     }
 
     // Fetch store slug to build human-friendly URL
@@ -1760,9 +1783,9 @@ export const getProductShareLink: RequestHandler = async (req, res) => {
     );
     const storeSlug = settingsRes.rows[0]?.store_slug || clientId;
     const baseUrl = getPublicBaseUrl(req);
-    const shareLink = `${baseUrl}/store/${storeSlug}/${result.rows[0].slug}`;
+    const shareLink = `${baseUrl}/store/${storeSlug}/${slug}`;
 
-    res.json({ shareLink, slug: result.rows[0].slug, store_slug: storeSlug });
+    res.json({ shareLink, slug, store_slug: storeSlug });
   } catch (error) {
     console.error("Get share link error:", error);
     res.status(500).json({ error: "Failed to generate share link" });
