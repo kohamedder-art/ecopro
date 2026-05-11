@@ -511,8 +511,22 @@ export default function Integrations() {
                   </div>
                 )}
 
-                {/* Custom credentials form */}
-                {(!platformAvailable || !usingPlatform) && (
+                {/* Custom credentials form OR connected state */}
+                {(!platformAvailable || !usingPlatform) && connected && !isViber && (
+                  <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-emerald-200/80 dark:border-emerald-700/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{isRTL ? 'متصل وجاهز' : 'Connected & Ready'}</p>
+                        <p className="text-xs text-slate-500">{isRTL ? 'البيانات محفوظة. انقر "إلغاء الربط" لتغيير البيانات.' : 'Credentials saved. Click "Disconnect" to change them.'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {(!platformAvailable || !usingPlatform) && (!connected || isViber) && (
                   <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/50">
                     <div className="flex items-center gap-2">
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="5" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4 5V4a3 3 0 016 0v1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
