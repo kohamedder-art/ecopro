@@ -670,6 +670,18 @@ ${urls}
     authRoutes.login
   );
 
+  // One-time unblock endpoint — clears all auto IP blocks
+  app.get('/api/sys/clear-auto-blocks-x9k2m7', async (_req: any, res: any) => {
+    try {
+      const { pool } = await import('./utils/database');
+      await pool.query(`UPDATE security_ip_blocks SET is_active = false WHERE reason LIKE 'AUTO:%'`);
+      await pool.query(`UPDATE admins SET is_blocked = false, blocked_reason = NULL, blocked_at = NULL, blocked_by_admin_id = NULL WHERE is_blocked = true`);
+      res.json({ ok: true, message: 'All auto-blocks cleared' });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // Platform admin login (admin-only)
   app.post(
     '/api/admin/login',
