@@ -157,31 +157,33 @@ export const updatePixelSettings: RequestHandler = async (req, res) => {
       tiktok_pixel_id,
       tiktok_access_token,
       is_facebook_enabled,
-      is_tiktok_enabled
+      is_tiktok_enabled,
+      additional_pixels
     } = req.body;
     
     const pool = await getPool();
     
-    // Simple upsert approach
     const upsertResult = await pool.query(
       `INSERT INTO client_pixel_settings (
-        client_id, facebook_pixel_id, facebook_access_token, 
+        client_id, facebook_pixel_id, facebook_access_token,
         tiktok_pixel_id, tiktok_access_token,
-        is_facebook_enabled, is_tiktok_enabled
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        is_facebook_enabled, is_tiktok_enabled,
+        additional_pixels
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
       ON CONFLICT (client_id) DO UPDATE SET
-        facebook_pixel_id = COALESCE(EXCLUDED.facebook_pixel_id, client_pixel_settings.facebook_pixel_id),
-        facebook_access_token = CASE 
-          WHEN EXCLUDED.facebook_access_token IS NOT NULL THEN EXCLUDED.facebook_access_token 
-          ELSE client_pixel_settings.facebook_access_token 
+        facebook_pixel_id = EXCLUDED.facebook_pixel_id,
+        facebook_access_token = CASE
+          WHEN EXCLUDED.facebook_access_token IS NOT NULL THEN EXCLUDED.facebook_access_token
+          ELSE client_pixel_settings.facebook_access_token
         END,
-        tiktok_pixel_id = COALESCE(EXCLUDED.tiktok_pixel_id, client_pixel_settings.tiktok_pixel_id),
-        tiktok_access_token = CASE 
-          WHEN EXCLUDED.tiktok_access_token IS NOT NULL THEN EXCLUDED.tiktok_access_token 
-          ELSE client_pixel_settings.tiktok_access_token 
+        tiktok_pixel_id = EXCLUDED.tiktok_pixel_id,
+        tiktok_access_token = CASE
+          WHEN EXCLUDED.tiktok_access_token IS NOT NULL THEN EXCLUDED.tiktok_access_token
+          ELSE client_pixel_settings.tiktok_access_token
         END,
         is_facebook_enabled = EXCLUDED.is_facebook_enabled,
         is_tiktok_enabled = EXCLUDED.is_tiktok_enabled,
+        additional_pixels = EXCLUDED.additional_pixels,
         updated_at = NOW()
       RETURNING *`,
       [
@@ -191,7 +193,8 @@ export const updatePixelSettings: RequestHandler = async (req, res) => {
         tiktok_pixel_id || null,
         tiktok_access_token === '***configured***' ? null : (tiktok_access_token || null),
         is_facebook_enabled ?? false,
-        is_tiktok_enabled ?? false
+        is_tiktok_enabled ?? false,
+        JSON.stringify(additional_pixels || [])
       ]
     );
     
@@ -893,7 +896,7 @@ export const getPublicPixelConfig: RequestHandler = async (req, res) => {
     
     // Get pixel settings
     const pixelSettings = await pool.query(
-      `SELECT facebook_pixel_id, tiktok_pixel_id, is_facebook_enabled, is_tiktok_enabled 
+      `SELECT facebook_pixel_id, tiktok_pixel_id, is_facebook_enabled, is_tiktok_enabled, additional_pixels
        FROM client_pixel_settings WHERE client_id = $1`,
       [clientId]
     );
@@ -908,9 +911,26 @@ export const getPublicPixelConfig: RequestHandler = async (req, res) => {
     }
     
     const settings = pixelSettings.rows[0];
+    
+    // Merge additional_pixels into the main pixel IDs (comma-separated)
+    let fbIds = settings.is_facebook_enabled ? (settings.facebook_pixel_id || '') : '';
+    let ttIds = settings.is_tiktok_enabled ? (settings.tiktok_pixel_id || '') : '';
+    
+    if (settings.additional_pixels && Array.isArray(settings.additional_pixels)) {
+      for (const px of settings.additional_pixels) {
+        if (px.enabled !== false && px.pixel_id) {
+          if (px.type === 'facebook' && settings.is_facebook_enabled) {
+            fbIds = fbIds ? `${fbIds},${px.pixel_id}` : px.pixel_id;
+          } else if (px.type === 'tiktok' && settings.is_tiktok_enabled) {
+            ttIds = ttIds ? `${ttIds},${px.pixel_id}` : px.pixel_id;
+          }
+        }
+      }
+    }
+    
     res.json({
-      facebook_pixel_id: settings.is_facebook_enabled ? settings.facebook_pixel_id : null,
-      tiktok_pixel_id: settings.is_tiktok_enabled ? settings.tiktok_pixel_id : null,
+      facebook_pixel_id: fbIds || null,
+      tiktok_pixel_id: ttIds || null,
       is_facebook_enabled: settings.is_facebook_enabled,
       is_tiktok_enabled: settings.is_tiktok_enabled
     });

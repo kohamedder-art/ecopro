@@ -1,50 +1,32 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTranslation } from '@/lib/i18n';
 import { apiFetch } from '@/lib/api';
-import { useToast } from '@/components/ui/use-toast';
 import {
   MkrBrain, MkrMegaphone, MkrRefresh, MkrDashboard, MkrBulb,
-  MkrAudience, MkrConfigure,
+  MkrAudience,
 } from '@/components/icons/MarketingIcons';
 import { OverviewTab } from '@/components/marketing/OverviewTab';
 import { InsightsTab } from '@/components/marketing/InsightsTab';
 import { CreativesTab } from '@/components/marketing/CreativesTab';
 import { AudienceTab } from '@/components/marketing/AudienceTab';
-import { ConfigureTab } from '@/components/marketing/ConfigureTab';
 
 type OmniSnapshot = any;
-type OmniInputs = any;
-type PixelSettings = any;
 type CustomerAnalytics = any;
 type GenderAnalytics = any;
 
 export default function MarketingAnalytics() {
   const { t, locale } = useTranslation();
-  const { toast } = useToast();
   const isRTL = locale === 'ar';
-  const queryClient = useQueryClient();
   const [selectedDays, setSelectedDays] = useState('30');
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const { data: snapshot, isLoading: snapshotLoading, refetch: refetchSnapshot } = useQuery<OmniSnapshot>({
     queryKey: ['omni-overview', selectedDays],
     queryFn: () => apiFetch<OmniSnapshot>(`/api/pixels/omni/overview?days=${selectedDays}`),
-  });
-
-  const { data: inputs, isLoading: inputsLoading } = useQuery<OmniInputs>({
-    queryKey: ['omni-inputs'],
-    queryFn: () => apiFetch<OmniInputs>('/api/pixels/omni/inputs'),
-    enabled: activeTab === 'configure',
-  });
-
-  const { data: settings, isLoading: settingsLoading } = useQuery<PixelSettings>({
-    queryKey: ['pixel-settings'],
-    queryFn: () => apiFetch<PixelSettings>('/api/pixels/settings'),
-    enabled: activeTab === 'configure',
   });
 
   const { data: customerData, isLoading: customersLoading } = useQuery<CustomerAnalytics>({
@@ -57,52 +39,6 @@ export default function MarketingAnalytics() {
     queryKey: ['omni-gender', selectedDays],
     queryFn: () => apiFetch<GenderAnalytics>(`/api/pixels/omni/gender?days=${selectedDays}`),
     enabled: activeTab === 'audience',
-  });
-
-  const saveEconomics = useMutation({
-    mutationFn: (payload: any) => apiFetch('/api/pixels/omni/product-economics', { method: 'PUT', body: JSON.stringify(payload) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['omni-inputs'] });
-      queryClient.invalidateQueries({ queryKey: ['omni-overview'] });
-      toast({ title: t('marketing.toast.saved'), description: t('marketing.toast.economicsUpdated') });
-    },
-    onError: () => toast({ title: t('marketing.toast.error'), description: t('marketing.toast.economicsFailed'), variant: 'destructive' }),
-  });
-
-  const saveSpend = useMutation({
-    mutationFn: (payload: any) => apiFetch('/api/pixels/omni/creative-spend', { method: 'POST', body: JSON.stringify(payload) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['omni-inputs'] });
-      queryClient.invalidateQueries({ queryKey: ['omni-overview'] });
-      toast({ title: t('marketing.toast.saved'), description: t('marketing.toast.spendSaved') });
-    },
-    onError: () => toast({ title: t('marketing.toast.error'), description: t('marketing.toast.spendFailed'), variant: 'destructive' }),
-  });
-
-  const deleteSpend = useMutation({
-    mutationFn: (id: number) => apiFetch(`/api/pixels/omni/creative-spend/${id}`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['omni-inputs'] });
-      queryClient.invalidateQueries({ queryKey: ['omni-overview'] });
-    },
-  });
-
-  const runBackfill = useMutation({
-    mutationFn: (days: number) => apiFetch<any>('/api/pixels/omni/import-historical-sessions', { method: 'POST', body: JSON.stringify({ days }) }),
-    onSuccess: (data: any) => {
-      toast({ title: t('marketing.toast.backfillDone'), description: t('marketing.toast.backfillProcessed', { count: String(data.processedRows ?? 0) }) });
-      queryClient.invalidateQueries({ queryKey: ['omni-overview'] });
-    },
-    onError: () => toast({ title: t('marketing.toast.error'), description: t('marketing.toast.backfillFailed'), variant: 'destructive' }),
-  });
-
-  const updatePixelSettings = useMutation({
-    mutationFn: (payload: any) => apiFetch('/api/pixels/settings', { method: 'PUT', body: JSON.stringify(payload) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pixel-settings'] });
-      toast({ title: t('marketing.toast.settingsSaved') });
-    },
-    onError: () => toast({ title: t('marketing.toast.error'), description: t('marketing.toast.settingsFailed'), variant: 'destructive' }),
   });
 
   const overview = snapshot?.overview;
@@ -118,7 +54,6 @@ export default function MarketingAnalytics() {
     { value: 'insights', icon: MkrBulb, labelKey: 'marketing.tab.insights' },
     { value: 'campaigns', icon: MkrMegaphone, labelKey: 'marketing.tab.creatives' },
     { value: 'audience', icon: MkrAudience, labelKey: 'marketing.tab.audience' },
-    { value: 'configure', icon: MkrConfigure, labelKey: 'marketing.tab.configure' },
   ] as const;
 
   return (
@@ -229,25 +164,6 @@ export default function MarketingAnalytics() {
             <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
           ) : (
             <AudienceTab customerData={customerData} genderData={genderData} clusters={clusters} sessions={sessions} />
-          )}
-        </TabsContent>
-
-        <TabsContent value="configure" className="mt-[9px]">
-          {inputsLoading || settingsLoading ? (
-            <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
-          ) : (
-            <ConfigureTab
-              inputs={inputs}
-              settings={settings}
-              onSaveEconomics={(payload) => saveEconomics.mutate(payload)}
-              onSaveSpend={(payload) => saveSpend.mutate(payload)}
-              onDeleteSpend={(id) => deleteSpend.mutate(id)}
-              onRunBackfill={(days) => runBackfill.mutate(days)}
-              onSaveSettings={(payload) => updatePixelSettings.mutate(payload)}
-              savingSpend={saveSpend.isPending}
-              runningBackfill={runBackfill.isPending}
-              savingSettings={updatePixelSettings.isPending}
-            />
           )}
         </TabsContent>
       </Tabs>

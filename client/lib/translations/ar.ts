@@ -2781,6 +2781,10 @@ export const ar = {
   "pixels.mainTiktokPixel": "بكسل تيك توك الرئيسي",
   "pixels.pixelAdded": "تم إضافة البكسل بنجاح",
   "pixels.pixelRemoved": "تم حذف البكسل بنجاح",
+  "pixels.facebook": "فيسبوك",
+  "pixels.tiktok": "تيك توك",
+  "pixels.total": "إجمالي",
+  "pixels.addFirstPixelDesc": "أضف بيكسل فيسبوك أو تيك توك أدناه لبدء تتبع التحويلات وبناء الجماهير.",
 
   // Storefront PC Builder
   "buildPage.backToStore": "العودة إلى المتجر",

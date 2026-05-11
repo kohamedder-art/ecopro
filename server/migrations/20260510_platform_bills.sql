@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS platform_bills (
   due_date DATE,
   paid_at TIMESTAMP,
   notes TEXT,
-  created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  created_by BIGINT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -39,6 +39,7 @@ const Profile = lazy(() => import("./pages/admin/Profile"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
 const CustomerBot = lazy(() => import("./pages/CustomerBot"));
 const MarketingAnalytics = lazy(() => import("./pages/MarketingAnalytics"));
+const PixelSettings = lazy(() => import("./pages/PixelSettings"));
 const LogoDemo = lazy(() => import("./pages/LogoDemo"));
 const DataMigration = lazy(() => import("./pages/DataMigration"));
 
@@ -531,6 +532,7 @@ const App = () => (
                     <Route path="ai-settings" element={<SubscriptionPageLock><AdminAISettings /></SubscriptionPageLock>} />
                     <Route path="wasselni-settings" element={<Navigate to="/dashboard/bot-settings" replace />} />
                     <Route path="marketing-analytics" element={<MarketingAnalytics />} />
+                    <Route path="pixel-settings" element={<PixelSettings />} />
                     <Route path="pixel-statistics" element={<Navigate to="/dashboard/marketing-analytics" replace />} />
                     <Route path="billing" element={<Billing />} />
                   </Route>

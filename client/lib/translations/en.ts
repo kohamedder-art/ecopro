@@ -2178,6 +2178,10 @@ export const en = {
   "pixels.mainTiktokPixel": "Main TikTok Pixel",
   "pixels.pixelAdded": "Pixel added successfully",
   "pixels.pixelRemoved": "Pixel removed successfully",
+  "pixels.facebook": "Facebook",
+  "pixels.tiktok": "TikTok",
+  "pixels.total": "total",
+  "pixels.addFirstPixelDesc": "Add your Facebook or TikTok pixel below to start tracking conversions and building audiences.",
 
   // Storefront PC Builder
   "buildPage.backToStore": "Back to Store",
