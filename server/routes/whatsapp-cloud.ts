@@ -437,7 +437,7 @@ const testConnection: RequestHandler = async (req, res) => {
     }
 
     // Test by fetching phone number info from WhatsApp Cloud API
-    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneId}?fields=name,verified_name,display_phone_number`, {
+    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneId}?fields=verified_name,display_phone_number`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -449,7 +449,7 @@ const testConnection: RequestHandler = async (req, res) => {
       const data = await response.json();
       return res.json({ 
         success: true, 
-        phoneNumberName: data.name || data.verified_name 
+        phoneNumberName: data.verified_name || data.display_phone_number 
       });
     } else {
       const errorData = await response.json().catch(() => ({}));
