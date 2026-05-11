@@ -1037,11 +1037,19 @@ ${effectiveMessage}`;
       history
     );
 
+    // Clean garbled Latin/non-Arabic characters that Llama sometimes mixes in
+    let cleanResponse = response
+      .replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, '') // Polish chars
+      .replace(/[àâäéèêëïîôùûüÿçœæ]/g, '')     // French accented chars mixed in Arabic
+      .replace(/(?<=[\u0600-\u06FF])[a-zA-Z]{1,3}(?=[\u0600-\u06FF])/g, '') // stray Latin chars between Arabic
+      .replace(/\s{2,}/g, ' ')                   // collapse double spaces
+      .trim();
+
     // Save the conversation turn (non-blocking — don't let a DB error kill the reply)
-    saveConversationTurn(clientId, platform, platformChatId, effectiveMessage, response)
+    saveConversationTurn(clientId, platform, platformChatId, effectiveMessage, cleanResponse)
       .catch(err => console.error(`[AI-Customer] Failed to save conversation:`, err));
 
-    return response;
+    return cleanResponse;
   } catch (err: any) {
     console.error(`[AI-Customer] Error generating response for client ${clientId}:`, err);
     // ✅ CRITICAL FIX: Always return a fallback message instead of null
