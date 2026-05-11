@@ -499,7 +499,7 @@ export function securityMiddleware(options: {
         const n = bumpCounter(adminProbeCounters, ip, now, windowMs);
         // Threshold: 12 failed hits within 10 minutes => block
         if (n >= 12) {
-          void autoBlockIp(ip, 'AUTO:admin_kernel_probe');
+          // void autoBlockIp(ip, 'AUTO:admin_kernel_probe'); // disabled
           void logSecurityEvent({
             event_type: 'ip_block',
             severity: 'error',
@@ -548,7 +548,7 @@ export function securityMiddleware(options: {
           const instant = linuxUa && !isLikelyBrowserUserAgent(userAgent);
           const threshold = instant ? 1 : 3;
           if (n >= threshold) {
-            void autoBlockIp(ip, 'AUTO:suspicious_probe');
+            // void autoBlockIp(ip, 'AUTO:suspicious_probe'); // disabled
             void logSecurityEvent({
               event_type: 'ip_block',
               severity: 'error',
