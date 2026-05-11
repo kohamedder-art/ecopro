@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { Loader2, AlertTriangle, CheckCircle2, XCircle, Wifi, WifiOff, Clock, Save, Zap } from "lucide-react";
+import { Loader2, AlertTriangle, CheckCircle2, XCircle, WifiOff, Clock, Save, Zap } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
+
+const surfaceCard = "rounded-2xl bg-white/90 dark:bg-slate-900/45 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/70 ring-1 ring-black/5 dark:ring-white/10 shadow-lg shadow-slate-200/60 dark:shadow-black/40";
 
 interface IntegrationSettings {
   provider: string;
@@ -288,14 +290,14 @@ export default function Integrations() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-slate-900 dark:text-gray-100">
-      <div className="max-w-5xl mx-auto p-3 sm:p-4 lg:p-6 space-y-5">
+    <div className="max-w-4xl mx-auto space-y-6 pb-8 text-slate-900 dark:text-gray-100">
+      <div className="space-y-5">
 
         {/* ── Page Header ── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/30">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="18" cy="5" r="3"/>
                 <circle cx="6" cy="12" r="3"/>
                 <circle cx="18" cy="19" r="3"/>
@@ -304,8 +306,8 @@ export default function Integrations() {
               </svg>
             </div>
             <div>
-              <h1 className="text-base font-bold text-slate-900 dark:text-white">{isRTL ? 'ربط المنصات' : 'Integrations'}</h1>
-              <p className="text-xs text-slate-500">{isRTL ? 'اربط منصات التواصل الاجتماعي لاستقبال الطلبات' : 'Connect social platforms to receive orders'}</p>
+              <h1 className="text-xl font-extrabold tracking-tight">{isRTL ? 'ربط المنصات' : 'Integrations'}</h1>
+              <p className="text-sm text-muted-foreground">{isRTL ? 'اربط منصات التواصل الاجتماعي لاستقبال الطلبات' : 'Connect social platforms to receive orders'}</p>
             </div>
           </div>
           {refreshing && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
@@ -323,7 +325,9 @@ export default function Integrations() {
         )}
 
         {/* ── Desktop Platform Cards ── */}
-        <div className="hidden sm:grid grid-cols-5 gap-3">
+        <div className={surfaceCard + " p-5"}
+        >
+        <div className="grid grid-cols-5 gap-3">
           {validPlatforms.map(p => {
             const c = isConnected(p.value);
             const active = activePlatform === p.value;
@@ -354,7 +358,7 @@ export default function Integrations() {
               </button>
             );
           })}
-        </div>
+        </div></div>
 
         {/* ── Mobile Platform Tabs ── */}
         <div className="sm:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -379,7 +383,7 @@ export default function Integrations() {
         </div>
 
         {/* ── Active Platform Settings Panel ── */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/20 overflow-hidden">
+        <div className={surfaceCard + " overflow-hidden"}>
           {/* Platform header */}
           <div className="flex items-center gap-4 p-5 border-b border-slate-100 dark:border-slate-700/50">
             <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0 relative" style={{ backgroundColor: plat.bgColor, opacity: isViber ? 0.7 : 1 }}>
