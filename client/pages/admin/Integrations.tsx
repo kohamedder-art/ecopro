@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, AlertTriangle, CheckCircle2, XCircle, Wifi, WifiOff, Clock, Save, Zap } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -79,6 +79,14 @@ export default function Integrations() {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [activePlatform, setActivePlatform] = useState<Platform>('telegram');
+  const [pingState, setPingState] = useState<Record<Platform, 'idle' | 'loading' | 'ok' | 'fail'>>({
+    telegram: 'idle', facebook: 'idle', instagram: 'idle', whatsapp_cloud: 'idle', viber: 'idle',
+  });
+  const [lastSaved, setLastSaved] = useState<Record<Platform, string | null>>({
+    telegram: null, facebook: null, instagram: null, whatsapp_cloud: null, viber: null,
+  });
+  const savedSettingsRef = useRef<IntegrationSettings | null>(null);
+  const [hasUnsaved, setHasUnsaved] = useState(false);
 
   const [settings, setSettings] = useState<IntegrationSettings>({
     provider: 'telegram',
@@ -95,6 +103,8 @@ export default function Integrations() {
       if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || `HTTP ${response.status}`);
       const data = await response.json();
       setSettings(data);
+      savedSettingsRef.current = data;
+      setHasUnsaved(false);
       if (data?.provider) setActivePlatform(data.provider as Platform);
     } catch (error) {
       console.error('Failed to load integration settings:', error);
@@ -103,7 +113,14 @@ export default function Integrations() {
   };
 
   const updateSetting = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    setSettings(prev => {
+      const next = { ...prev, [key]: value };
+      if (savedSettingsRef.current) {
+        const changed = Object.keys(next).some(k => (next as any)[k] !== (savedSettingsRef.current as any)[k]);
+        setHasUnsaved(changed);
+      }
+      return next;
+    });
   };
 
   async function saveSettings(payload: any, platformName: string) {
@@ -137,10 +154,37 @@ export default function Integrations() {
       if (result?.webhookWarning) {
         toast({ title: isRTL ? 'تحذير الـ Webhook' : 'Webhook Warning', description: result.webhookWarning, variant: 'destructive' });
       }
+      setLastSaved(prev => ({ ...prev, [platformName]: new Date().toLocaleTimeString() }));
+      setHasUnsaved(false);
       await loadSettings(true);
     } catch (error) {
       toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to save", variant: "destructive" });
     } finally { setSaving(null); }
+  }
+
+  async function pingPlatform(platform: Platform) {
+    setPingState(prev => ({ ...prev, [platform]: 'loading' }));
+    try {
+      let ok = false;
+      if (platform === 'telegram' && settings.telegramBotToken) {
+        const r = await fetch(`https://api.telegram.org/bot${settings.telegramBotToken}/getMe`);
+        ok = r.ok && (await r.json()).ok === true;
+      } else if (platform === 'whatsapp_cloud' && settings.whatsappPhoneId && settings.whatsappToken) {
+        const r = await fetch('/api/whatsapp/test-connection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phoneId: settings.whatsappPhoneId, token: settings.whatsappToken }) });
+        ok = (await r.json()).success === true;
+      } else if (platform === 'facebook' && (settings.fbPageId || settings.usePlatformMessenger)) {
+        ok = !!(settings.fbPageAccessTokenConfigured || settings.usePlatformMessenger || settings.messengerUsingPlatform);
+      } else if (platform === 'instagram') {
+        ok = !!(settings.instagramTokenConfigured || settings.usePlatformInstagram);
+      } else {
+        ok = isConnected(platform);
+      }
+      setPingState(prev => ({ ...prev, [platform]: ok ? 'ok' : 'fail' }));
+      setTimeout(() => setPingState(prev => ({ ...prev, [platform]: 'idle' })), 4000);
+    } catch {
+      setPingState(prev => ({ ...prev, [platform]: 'fail' }));
+      setTimeout(() => setPingState(prev => ({ ...prev, [platform]: 'idle' })), 4000);
+    }
   }
 
   function handleUseCustom(platform: Platform, useCustom: boolean) {
@@ -227,6 +271,8 @@ export default function Integrations() {
   const connected = isConnected(activePlatform);
   const status = getStatus(activePlatform);
   const plat = current;
+  const ping = pingState[activePlatform];
+  const isViber = activePlatform === 'viber';
 
   if (loading) {
     return (
@@ -246,27 +292,42 @@ export default function Integrations() {
       <div className="max-w-5xl mx-auto p-3 sm:p-4 lg:p-6 space-y-5">
 
         {/* ── Page Header ── */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3"/>
-              <circle cx="6" cy="12" r="3"/>
-              <circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-slate-900 dark:text-white">{isRTL ? 'ربط المنصات' : 'Integrations'}</h1>
+              <p className="text-xs text-slate-500">{isRTL ? 'اربط منصات التواصل الاجتماعي لاستقبال الطلبات' : 'Connect social platforms to receive orders'}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 dark:text-white">{isRTL ? 'ربط المنصات' : 'Integrations'}</h1>
-            <p className="text-xs text-slate-500">{isRTL ? 'اربط منصات التواصل الاجتماعي لاستقبال الطلبات' : 'Connect social platforms to receive orders'}</p>
-          </div>
+          {refreshing && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
         </div>
+
+        {/* ── Unsaved Changes Banner ── */}
+        {hasUnsaved && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 animate-in slide-in-from-top-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 flex-1">
+              {isRTL ? 'لديك تغييرات غير محفوظة — لا تنسَ الضغط على حفظ!' : 'You have unsaved changes — don\'t forget to save!'}
+            </p>
+            <Save className="h-4 w-4 text-amber-500" />
+          </div>
+        )}
 
         {/* ── Desktop Platform Cards ── */}
         <div className="hidden sm:grid grid-cols-5 gap-3">
           {validPlatforms.map(p => {
             const c = isConnected(p.value);
             const active = activePlatform === p.value;
+            const isVib = p.value === 'viber';
             return (
               <button key={p.value} onClick={() => setActivePlatform(p.value)}
                 className={`relative p-4 rounded-xl border-2 text-center transition-all ${
@@ -277,13 +338,18 @@ export default function Integrations() {
                       : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/30 hover:border-slate-300'
                 }`}
               >
-                {c && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />}
-                <div className="w-11 h-11 rounded-lg flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: p.bgColor }}>
+                {c && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                {isVib && !c && (
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full bg-slate-400 text-white text-[8px] font-bold whitespace-nowrap">
+                    {isRTL ? 'قريباً' : 'Soon'}
+                  </div>
+                )}
+                <div className="w-11 h-11 rounded-lg flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: p.bgColor, opacity: isVib ? 0.6 : 1 }}>
                   <span className="text-white">{ICONS[p.value]()}</span>
                 </div>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">{p.label}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  {c ? (isRTL ? 'متصل' : 'Connected') : (isRTL ? 'غير متصل' : 'Not connected')}
+                <p className={`text-[10px] mt-0.5 ${c ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : isVib ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {isVib ? (isRTL ? 'قريباً' : 'Coming soon') : c ? (isRTL ? '● متصل' : '● Connected') : (isRTL ? 'غير متصل' : 'Not connected')}
                 </p>
               </button>
             );
@@ -316,27 +382,65 @@ export default function Integrations() {
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/20 overflow-hidden">
           {/* Platform header */}
           <div className="flex items-center gap-4 p-5 border-b border-slate-100 dark:border-slate-700/50">
-            <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: plat.bgColor }}>
+            <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0 relative" style={{ backgroundColor: plat.bgColor, opacity: isViber ? 0.7 : 1 }}>
               <span className="text-white">{ICONS[plat.value]('#fff')}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">{plat.label}</h2>
-                {connected && (
+                {isViber ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500">
+                    🚧 {isRTL ? 'قريباً' : 'Coming Soon'}
+                  </span>
+                ) : connected ? (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
                     {isRTL ? 'متصل' : 'Connected'}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500">
+                    <WifiOff className="w-3 h-3" />
+                    {isRTL ? 'غير متصل' : 'Not connected'}
+                  </span>
+                )}
+                {/* Ping result badge */}
+                {ping === 'ok' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-[10px] font-bold text-emerald-600">
+                    <CheckCircle2 className="w-3 h-3" /> {isRTL ? 'يعمل!' : 'Working!'}
+                  </span>
+                )}
+                {ping === 'fail' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-[10px] font-bold text-red-600">
+                    <XCircle className="w-3 h-3" /> {isRTL ? 'لا يستجيب' : 'Not responding'}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500">{plat.desc}{status ? ` — ${status}` : ''}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-xs text-slate-500">{plat.desc}{status ? ` — ${status}` : ''}</p>
+                {lastSaved[activePlatform] && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+                    <Clock className="w-2.5 h-2.5" />
+                    {isRTL ? `حُفظ الساعة ${lastSaved[activePlatform]}` : `Saved at ${lastSaved[activePlatform]}`}
+                  </span>
+                )}
+              </div>
             </div>
-            {connected && (
-              <button onClick={() => handleDisconnect(activePlatform)} disabled={saving === activePlatform}
-                className="h-8 px-4 rounded-lg text-xs font-semibold text-red-600 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0">
-                {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin" /> : isRTL ? 'إلغاء الربط' : 'Disconnect'}
-              </button>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Test connection button */}
+              {connected && !isViber && (
+                <button onClick={() => pingPlatform(activePlatform)} disabled={ping === 'loading'}
+                  className="h-8 px-3 rounded-lg text-xs font-semibold text-indigo-600 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 flex items-center gap-1.5">
+                  {ping === 'loading' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                  {isRTL ? 'اختبار' : 'Test'}
+                </button>
+              )}
+              {connected && !isViber && (
+                <button onClick={() => handleDisconnect(activePlatform)} disabled={saving === activePlatform}
+                  className="h-8 px-4 rounded-lg text-xs font-semibold text-red-600 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30">
+                  {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin" /> : isRTL ? 'إلغاء الربط' : 'Disconnect'}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="p-5 space-y-5">
