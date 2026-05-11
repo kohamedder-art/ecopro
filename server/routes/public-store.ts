@@ -1631,8 +1631,8 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
       }
     }
 
-    // WhatsApp - support_phone, whatsapp_phone_id (Cloud API number), or platform display phone
-    const whatsappPhone = String(bot.support_phone || bot.whatsapp_phone_id || '').replace(/[^0-9]/g, '');
+    // WhatsApp - support_phone or platform display phone (NOT whatsapp_phone_id which is an API ID)
+    const whatsappPhone = String(bot.support_phone || '').replace(/[^0-9]/g, '');
     const platformWaPhone = String(process.env.PLATFORM_WHATSAPP_DISPLAY_PHONE || '').replace(/[^0-9]/g, '');
     const effectiveWaPhone = whatsappPhone || platformWaPhone;
     if (effectiveWaPhone) {
