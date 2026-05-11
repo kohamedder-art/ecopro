@@ -2372,28 +2372,28 @@ export default function PlatformAdmin() {
                 );
               };
 
-              const ArcGauge = ({ pct, size = 80, stroke = 8, color = '#22c55e', bg = '#1e293b' }: { pct: number | null; size?: number; stroke?: number; color?: string; bg?: string }) => {
+              const ArcGauge = ({ pct, size = 80, stroke = 8, color = '#22c55e' }: { pct: number | null; size?: number; stroke?: number; color?: string }) => {
                 const r = (size - stroke) / 2;
                 const circ = 2 * Math.PI * r;
                 const dash = pct != null ? (pct / 100) * circ * 0.75 : 0;
                 return (
                   <svg width={size} height={size * 0.55} viewBox={`0 0 ${size} ${size * 0.55}`}>
-                    <path d={`M ${stroke / 2} ${size * 0.55 - stroke / 2} A ${r} ${r} 0 0 1 ${size - stroke / 2} ${size * 0.55 - stroke / 2}`} fill="none" stroke={bg} strokeWidth={stroke} strokeLinecap="round" />
+                    <path d={`M ${stroke / 2} ${size * 0.55 - stroke / 2} A ${r} ${r} 0 0 1 ${size - stroke / 2} ${size * 0.55 - stroke / 2}`} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth={stroke} strokeLinecap="round" />
                     <path d={`M ${stroke / 2} ${size * 0.55 - stroke / 2} A ${r} ${r} 0 0 1 ${size - stroke / 2} ${size * 0.55 - stroke / 2}`} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${dash} ${circ * 0.75}`} strokeDashoffset={circ * 0.75 * 0.25} style={{ filter: `drop-shadow(0 0 4px ${color})`, transition: 'stroke-dasharray 0.6s ease' }} />
                   </svg>
                 );
               };
 
               const MetricCard = ({ label, value, unit, pct, color, sub, spark }: { label: string; value: string; unit?: string; pct?: number | null; color: string; sub?: string; spark?: React.ReactNode }) => (
-                <div className="bg-slate-900/70 backdrop-blur rounded-xl border border-slate-700/60 p-3 hover:border-slate-600/80 transition-all group" style={{ boxShadow: `inset 0 1px 0 rgba(255,255,255,0.03)` }}>
+                <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-xl border border-gray-200 dark:border-slate-700/60 p-3 hover:border-gray-300 dark:hover:border-slate-600/80 transition-all group" style={{ boxShadow: `inset 0 1px 0 rgba(255,255,255,0.03)` }}>
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 w-[72px]">
                       <ArcGauge pct={pct} color={color} />
                     </div>
                     <div className="flex-1 min-w-0 pt-1">
-                      <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{label}</div>
-                      <div className="text-lg font-bold text-white font-mono mt-0.5 leading-tight">{value}<span className="text-xs text-slate-400 font-normal ml-0.5">{unit}</span></div>
-                      {sub && <div className="text-[10px] text-slate-500 mt-0.5 truncate">{sub}</div>}
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-500">{label}</div>
+                      <div className="text-lg font-bold text-gray-900 dark:text-white font-mono mt-0.5 leading-tight">{value}<span className="text-xs text-gray-400 dark:text-slate-400 font-normal ml-0.5">{unit}</span></div>
+                      {sub && <div className="text-[10px] text-gray-500 dark:text-slate-500 mt-0.5 truncate">{sub}</div>}
                       {spark && <div className="mt-1 h-8 -mx-1">{spark}</div>}
                     </div>
                   </div>
@@ -2445,11 +2445,11 @@ export default function PlatformAdmin() {
                   {/* SPLIT: Database (left) + Web Service (right) */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     {/* ─── DATABASE ─── */}
-                    <div className="bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-700/60 p-4">
+                    <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-gray-200 dark:border-slate-700/60 p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <Database className="w-4 h-4 text-purple-400" />
-                        <span className="text-sm font-bold text-white tracking-tight">DATABASE</span>
-                        {serverHealth.db.render?.pgVersion && <span className="text-[10px] text-slate-500 font-mono">PG {serverHealth.db.render.pgVersion}</span>}
+                        <span className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">DATABASE</span>
+                        {serverHealth.db.render?.pgVersion && <span className="text-[10px] text-gray-500 dark:text-slate-500 font-mono">PG {serverHealth.db.render.pgVersion}</span>}
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <BigCarGauge
