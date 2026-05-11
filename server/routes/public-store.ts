@@ -1571,7 +1571,7 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
 
     // Fetch bot settings for connected platforms
     const botRes = await pool.query(
-      `SELECT enabled, provider, whatsapp_phone_id, whatsapp_token, 
+      `SELECT enabled, provider, whatsapp_phone_id, whatsapp_token, whatsapp_display_phone,
               telegram_bot_token, telegram_bot_username,
               viber_auth_token, viber_sender_name, support_phone,
               messenger_enabled, fb_page_id
@@ -1631,10 +1631,9 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
       }
     }
 
-    // WhatsApp - support_phone or platform display phone (NOT whatsapp_phone_id which is an API ID)
-    const whatsappPhone = String(bot.support_phone || '').replace(/[^0-9]/g, '');
-    const platformWaPhone = String(process.env.PLATFORM_WHATSAPP_DISPLAY_PHONE || '').replace(/[^0-9]/g, '');
-    const effectiveWaPhone = whatsappPhone || platformWaPhone;
+    // WhatsApp - support_phone or whatsapp_display_phone (actual number stored when credentials saved)
+    const whatsappPhone = String(bot.support_phone || bot.whatsapp_display_phone || '').replace(/[^0-9]/g, '');
+    const effectiveWaPhone = whatsappPhone;
     if (effectiveWaPhone) {
       channels.push({
         platform: 'whatsapp',

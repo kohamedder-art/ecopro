@@ -380,6 +380,20 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     }
     // else: keep existing
 
+    // Fetch real phone number from Graph API for wa.me links
+    let finalWhatsappDisplayPhone: string | null = null;
+    if (finalWhatsappPhoneId && finalWhatsappToken) {
+      try {
+        const waRes = await fetch(`https://graph.facebook.com/v25.0/${finalWhatsappPhoneId}?fields=display_phone_number`, {
+          headers: { 'Authorization': `Bearer ${finalWhatsappToken}` }
+        });
+        if (waRes.ok) {
+          const waData = await waRes.json();
+          finalWhatsappDisplayPhone = String(waData.display_phone_number || '').replace(/[^0-9]/g, '') || null;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     // ── Telegram ──
     let finalTelegramBotToken: string | null = existingSecrets.telegram_bot_token ?? null;
     let finalTelegramBotUsername: string | null = existingSecrets.telegram_bot_username ?? null;
@@ -438,13 +452,13 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
       // Insert new settings
       await pool.query(
         `INSERT INTO bot_settings (
-          client_id, enabled, updates_enabled, tracking_enabled, provider, whatsapp_phone_id, whatsapp_token,
+          client_id, enabled, updates_enabled, tracking_enabled, provider, whatsapp_phone_id, whatsapp_token, whatsapp_display_phone,
           telegram_bot_token, telegram_delay_minutes, auto_expire_hours, viber_auth_token, viber_sender_name,
           telegram_bot_username, telegram_webhook_secret,
           template_greeting, template_instant_order, template_pin_instructions, template_order_confirmation, template_payment, template_shipping,
           messenger_enabled, fb_page_id, fb_page_access_token, messenger_delay_minutes,
           created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, NOW(), NOW())`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NOW(), NOW())`,
         [
           clientId,
           effectiveEnabled,
@@ -453,6 +467,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           effectiveProvider,
           finalWhatsappPhoneId,
           finalWhatsappToken,
+          finalWhatsappDisplayPhone,
           finalTelegramBotToken,
           telegramDelayMinutes ?? 5,
           autoExpireHours ?? 24,
@@ -500,6 +515,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           messenger_delay_minutes = $23,
           delivery_notifications_enabled = $24,
           delivery_status_template = $25,
+          whatsapp_display_phone = $26,
           updated_at = NOW()
         WHERE client_id = $1`,
         [
@@ -528,6 +544,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           messengerDelayMinutes ?? 5,
           deliveryNotificationsEnabled ?? true,
           deliveryStatusTemplate ?? null,
+          finalWhatsappDisplayPhone,
         ]
       );
     }
