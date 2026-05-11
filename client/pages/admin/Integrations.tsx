@@ -636,95 +636,107 @@ export default function Integrations() {
           </div>
         </div>
 
-        {/* ── WhatsApp Setup FAQ ── */}
-        {activePlatform === 'whatsapp_cloud' && (
-          <WhatsAppFaq isRTL={isRTL} />
-        )}
+        {/* ── Platform Setup FAQs ── */}
+        {activePlatform === 'whatsapp_cloud' && <WhatsAppFaq isRTL={isRTL} />}
+        {activePlatform === 'facebook' && <FacebookFaq isRTL={isRTL} />}
+        {activePlatform === 'instagram' && <InstagramFaq isRTL={isRTL} />}
+        {activePlatform === 'telegram' && <TelegramFaq isRTL={isRTL} />}
       </div>
     </div>
   );
 }
 
-function WhatsAppFaq({ isRTL }: { isRTL: boolean }) {
+function FaqAccordion({ title, faqs }: { title: string; faqs: { q: string; a: string }[] }) {
   const [open, setOpen] = useState<number | null>(null);
-  const faqs = isRTL ? [
-    {
-      q: 'كيف أنشئ تطبيق WhatsApp Business على Meta؟',
-      a: 'اذهب إلى developers.facebook.com ← My Apps ← Create App ← اختر Business ← أضف منتج WhatsApp. ستجد Phone Number ID و Access Token في صفحة API Setup.'
-    },
-    {
-      q: 'ما هو الـ Callback URL الذي أضعه في Meta؟',
-      a: `ضع هذا الرابط في إعدادات Webhook على Meta:\nhttps://www.sahla4eco.com/api/whatsapp/webhook\n\nوضع هذا كـ Verify Token:\necopro_whatsapp_verify`
-    },
-    {
-      q: 'أين أجد الـ Phone Number ID؟',
-      a: 'في Meta Developers ← تطبيقك ← WhatsApp ← API Setup ← ستجد Phone Number ID تحت قائمة From.'
-    },
-    {
-      q: 'أين أجد الـ Access Token؟',
-      a: 'في نفس الصفحة (API Setup) ستجد Temporary access token. لإنشاء توكن دائم اذهب إلى business.facebook.com ← Users ← System Users ← Generate Token.'
-    },
-    {
-      q: 'ما الأذونات المطلوبة لتطبيقي؟',
-      a: 'تأكد من تفعيل هذه الأذونات:\n• whatsapp_business_messaging\n• whatsapp_business_management\n\nيمكنك إضافتها من App Review ← Permissions.'
-    },
-    {
-      q: 'كيف أختبر أن البوت يعمل؟',
-      a: 'بعد الحفظ اضغط زر "اختبار" في الأعلى. يمكنك أيضاً إرسال رسالة لرقمك التجاري وستصلك ردود تلقائية من الذكاء الاصطناعي.'
-    },
-  ] : [
-    {
-      q: 'How do I create a WhatsApp Business app on Meta?',
-      a: 'Go to developers.facebook.com → My Apps → Create App → choose Business → add WhatsApp product. You\'ll find Phone Number ID and Access Token on the API Setup page.'
-    },
-    {
-      q: 'What Callback URL do I paste into Meta?',
-      a: `Paste this as your Webhook URL in Meta:\nhttps://www.sahla4eco.com/api/whatsapp/webhook\n\nAnd use this as the Verify Token:\necopro_whatsapp_verify`
-    },
-    {
-      q: 'Where do I find the Phone Number ID?',
-      a: 'In Meta Developers → Your App → WhatsApp → API Setup → find the Phone Number ID under the "From" dropdown.'
-    },
-    {
-      q: 'Where do I find the Access Token?',
-      a: 'On the same API Setup page you\'ll see a Temporary access token. For a permanent token go to business.facebook.com → Users → System Users → Generate Token.'
-    },
-    {
-      q: 'What permissions does my app need?',
-      a: 'Make sure these are enabled:\n• whatsapp_business_messaging\n• whatsapp_business_management\n\nAdd them from App Review → Permissions.'
-    },
-    {
-      q: 'How do I test that the bot is working?',
-      a: 'After saving, click the "Test" button above. You can also send a message to your business number and you\'ll receive AI-powered auto-replies.'
-    },
-  ];
-
   return (
     <div className="rounded-2xl bg-white/90 dark:bg-slate-900/45 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/70 ring-1 ring-black/5 dark:ring-white/10 shadow-lg p-5">
       <div className="flex items-center gap-2 mb-4">
         <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm">❓</span>
-        <h3 className="text-sm font-bold text-slate-800 dark:text-white">
-          {isRTL ? 'كيف أربط WhatsApp؟' : 'How to set up WhatsApp?'}
-        </h3>
+        <h3 className="text-sm font-bold text-slate-800 dark:text-white">{title}</h3>
       </div>
       <div className="space-y-2">
         {faqs.map((faq, i) => (
           <div key={i} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <button
-              className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-white text-right bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors"
-              onClick={() => setOpen(open === i ? null : i)}
-            >
-              <span className={isRTL ? 'text-right w-full' : 'text-left w-full'}>{faq.q}</span>
+            <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-white bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors" onClick={() => setOpen(open === i ? null : i)}>
+              <span className="text-right w-full">{faq.q}</span>
               <svg className={`w-4 h-4 shrink-0 ml-2 transition-transform ${open === i ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </button>
             {open === i && (
-              <div className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700">
-                {faq.a}
-              </div>
+              <div className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700">{faq.a}</div>
             )}
           </div>
         ))}
       </div>
     </div>
   );
+}
+
+function FacebookFaq({ isRTL }: { isRTL: boolean }) {
+  const faqs = isRTL ? [
+    { q: 'كيف أنشئ تطبيق Messenger على Meta؟', a: 'اذهب إلى developers.facebook.com ← My Apps ← Create App ← اختر Business ← أضف منتج Messenger. ستحتاج إلى صفحة Facebook نشطة.' },
+    { q: 'أين أجد الـ Page ID؟', a: 'اذهب إلى صفحتك على Facebook ← عن الصفحة (About) ← مرر للأسفل ستجد Page ID.' },
+    { q: 'كيف أحصل على Access Token؟', a: 'في Meta Developers ← Messenger ← API Setup ← أضف صفحتك ← انقر Generate Token. احفظه لأنه لن يظهر مرة أخرى.' },
+    { q: 'ما هو الـ Webhook الذي أضعه؟', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/messenger/webhook\n\nVerify Token:\necopro_messenger_verify\n\nاشترك في: messages, messaging_postbacks' },
+    { q: 'ما الأذونات المطلوبة؟', a: '• pages_messaging\n• pages_read_engagement\n• pages_manage_metadata\n\nأضفها من App Review ← Permissions.' },
+  ] : [
+    { q: 'How do I create a Messenger app on Meta?', a: 'Go to developers.facebook.com → My Apps → Create App → choose Business → add Messenger product. You\'ll need an active Facebook Page.' },
+    { q: 'Where do I find the Page ID?', a: 'Go to your Facebook Page → About → scroll down to find Page ID.' },
+    { q: 'How do I get the Access Token?', a: 'In Meta Developers → Messenger → API Setup → add your page → click Generate Token. Save it as it won\'t be shown again.' },
+    { q: 'What Webhook URL do I use?', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/messenger/webhook\n\nVerify Token:\necopro_messenger_verify\n\nSubscribe to: messages, messaging_postbacks' },
+    { q: 'What permissions does my app need?', a: '• pages_messaging\n• pages_read_engagement\n• pages_manage_metadata\n\nAdd them from App Review → Permissions.' },
+  ];
+  return <FaqAccordion title={isRTL ? 'كيف أربط Facebook Messenger؟' : 'How to set up Facebook Messenger?'} faqs={faqs} />;
+}
+
+function InstagramFaq({ isRTL }: { isRTL: boolean }) {
+  const faqs = isRTL ? [
+    { q: 'ما المتطلبات لربط Instagram؟', a: '• حساب Instagram Business أو Creator\n• صفحة Facebook مرتبطة بحسابك\n• تطبيق Meta Developer مع منتج Instagram' },
+    { q: 'كيف أنشئ التطبيق وأحصل على البيانات؟', a: 'اذهب إلى developers.facebook.com ← My Apps ← Create App ← أضف Instagram ← اربط صفحتك على Facebook ← احصل على Instagram Account ID و Access Token من صفحة API Setup.' },
+    { q: 'أين أجد الـ Instagram Account ID؟', a: 'في Meta Developers ← Instagram ← API Setup ← ستجد Instagram Business Account ID بجانب اسم حسابك.' },
+    { q: 'ما الأذونات المطلوبة؟', a: '• instagram_basic\n• instagram_manage_messages\n• pages_manage_metadata\n\nأضفها من App Review.' },
+    { q: 'هل يمكنني الرد تلقائياً على DMs؟', a: 'نعم! بعد الربط، يقوم الذكاء الاصطناعي بالرد التلقائي على رسائل العملاء عبر Instagram DMs وتحويل الطلبات تلقائياً.' },
+  ] : [
+    { q: 'What are the requirements to connect Instagram?', a: '• Instagram Business or Creator account\n• Facebook Page linked to your account\n• Meta Developer app with Instagram product' },
+    { q: 'How do I create the app and get credentials?', a: 'Go to developers.facebook.com → My Apps → Create App → add Instagram → link your Facebook Page → get Instagram Account ID and Access Token from API Setup page.' },
+    { q: 'Where do I find the Instagram Account ID?', a: 'In Meta Developers → Instagram → API Setup → find the Instagram Business Account ID next to your account name.' },
+    { q: 'What permissions does my app need?', a: '• instagram_basic\n• instagram_manage_messages\n• pages_manage_metadata\n\nAdd from App Review.' },
+    { q: 'Can I auto-reply to DMs?', a: 'Yes! After connecting, the AI auto-replies to customer messages via Instagram DMs and automatically processes orders.' },
+  ];
+  return <FaqAccordion title={isRTL ? 'كيف أربط Instagram؟' : 'How to set up Instagram?'} faqs={faqs} />;
+}
+
+function TelegramFaq({ isRTL }: { isRTL: boolean }) {
+  const faqs = isRTL ? [
+    { q: 'كيف أنشئ بوت Telegram؟', a: 'افتح Telegram وابحث عن @BotFather ← أرسل /newbot ← اختر اسماً وusername للبوت ← ستحصل على Bot Token.' },
+    { q: 'ما هو الـ Bot Token؟', a: 'هو رمز من @BotFather يبدو هكذا: 123456789:ABCdefGHI... الصقه في حقل Bot Token في الأعلى.' },
+    { q: 'ما هو الـ Bot Username؟', a: 'هو اسم المستخدم للبوت الذي اخترته عند الإنشاء ويبدأ بـ @ مثل @MystoreBot.' },
+    { q: 'هل يمكنني استخدام بوت المنصة بدلاً من إنشاء بوت خاص؟', a: 'نعم! إذا كان بوت المنصة متاحاً، انقر "استخدام بوت المنصة" وسيعمل تلقائياً بدون أي إعداد.' },
+    { q: 'كيف أختبر البوت؟', a: 'بعد الحفظ، افتح بوتك في Telegram وأرسل /start. يجب أن يرد البوت تلقائياً. يمكنك أيضاً الضغط على زر "اختبار" في الأعلى.' },
+  ] : [
+    { q: 'How do I create a Telegram bot?', a: 'Open Telegram and search for @BotFather → send /newbot → choose a name and username → you\'ll receive a Bot Token.' },
+    { q: 'What is the Bot Token?', a: 'It\'s a token from @BotFather that looks like: 123456789:ABCdefGHI... Paste it in the Bot Token field above.' },
+    { q: 'What is the Bot Username?', a: 'It\'s the username you chose when creating the bot, starting with @ like @MystoreBot.' },
+    { q: 'Can I use the Platform Bot instead of creating my own?', a: 'Yes! If the Platform Bot is available, click "Use Platform Bot" and it works automatically with no setup needed.' },
+    { q: 'How do I test the bot?', a: 'After saving, open your bot in Telegram and send /start. It should reply automatically. You can also click the "Test" button above.' },
+  ];
+  return <FaqAccordion title={isRTL ? 'كيف أربط Telegram؟' : 'How to set up Telegram?'} faqs={faqs} />;
+}
+
+function WhatsAppFaq({ isRTL }: { isRTL: boolean }) {
+  const faqs = isRTL ? [
+    { q: 'كيف أنشئ تطبيق WhatsApp Business على Meta؟', a: 'اذهب إلى developers.facebook.com ← My Apps ← Create App ← اختر Business ← أضف منتج WhatsApp. ستجد Phone Number ID و Access Token في صفحة API Setup.' },
+    { q: 'ما هو الـ Callback URL الذي أضعه في Meta؟', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/whatsapp/webhook\n\nVerify Token:\necopro_whatsapp_verify\n\nاشترك في: messages' },
+    { q: 'أين أجد الـ Phone Number ID؟', a: 'في Meta Developers ← تطبيقك ← WhatsApp ← API Setup ← ستجد Phone Number ID تحت قائمة From.' },
+    { q: 'أين أجد الـ Access Token؟', a: 'في نفس الصفحة (API Setup) ستجد Temporary access token. لإنشاء توكن دائم اذهب إلى business.facebook.com ← Users ← System Users ← Generate Token.' },
+    { q: 'ما الأذونات المطلوبة؟', a: '• whatsapp_business_messaging\n• whatsapp_business_management\n\nأضفها من App Review ← Permissions.' },
+    { q: 'كيف أختبر أن البوت يعمل؟', a: 'بعد الحفظ اضغط زر "اختبار" في الأعلى. يمكنك أيضاً إرسال رسالة لرقمك التجاري وستصلك ردود تلقائية من الذكاء الاصطناعي.' },
+  ] : [
+    { q: 'How do I create a WhatsApp Business app on Meta?', a: 'Go to developers.facebook.com → My Apps → Create App → choose Business → add WhatsApp product. You\'ll find Phone Number ID and Access Token on the API Setup page.' },
+    { q: 'What Callback URL do I paste into Meta?', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/whatsapp/webhook\n\nVerify Token:\necopro_whatsapp_verify\n\nSubscribe to: messages' },
+    { q: 'Where do I find the Phone Number ID?', a: 'In Meta Developers → Your App → WhatsApp → API Setup → find the Phone Number ID under the "From" dropdown.' },
+    { q: 'Where do I find the Access Token?', a: 'On the same API Setup page you\'ll see a Temporary access token. For a permanent token go to business.facebook.com → Users → System Users → Generate Token.' },
+    { q: 'What permissions does my app need?', a: '• whatsapp_business_messaging\n• whatsapp_business_management\n\nAdd them from App Review → Permissions.' },
+    { q: 'How do I test that the bot is working?', a: 'After saving, click the "Test" button above. You can also send a message to your business number and you\'ll receive AI-powered auto-replies.' },
+  ];
+  return <FaqAccordion title={isRTL ? 'كيف أربط WhatsApp؟' : 'How to set up WhatsApp?'} faqs={faqs} />;
 }
