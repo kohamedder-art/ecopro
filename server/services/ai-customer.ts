@@ -793,22 +793,25 @@ export async function handleCustomerMessage(
     }
     
     const msg = effectiveMessage.trim().toLowerCase();
-    const isCancel = /إلغ|cancel|لا حاجة|مبقيتش|بطل|stop|ألغي|ألغى|cancel/i.test(effectiveMessage);
+    // Broad cancel detection — any refusal, frustration, or stop intent
+    const isCancel = /إلغ|cancel|لا حاجة|مبقيتش|بطل|stop|ألغي|ألغى|توقف|لا اريد|لا أريد|مش حاب|ما حبيتش|خلاص|كفى|بلاش|لا شكرا|no|non|arrête|مجنون|تبا/i.test(effectiveMessage);
     if (isCancel) {
       pendingOrderSessions.delete(sKey);
-      return 'حسناً، تم إلغاء الطلب. إذا غيرت رأيك، قولي وأساعدك 😊\n\nلو حاب تطلب منتج آخر، قولي شنو هو!';
+      return 'تم الإلغاء. كيف نقدر نعاونك؟';
+    }
+
+    // Detect if the message is clearly NOT order-related (question, confusion, tracking)
+    const isNotOrderInput = /من أنت|ماذا|لماذا|ما هذا|متابعة|تتبع|#\d+|طلبي رقم|مجنون|ما تقول|شنو هاد/i.test(effectiveMessage);
+    if (isNotOrderInput) {
+      pendingOrderSessions.delete(sKey);
+      // Fall through to normal AI handling below
     }
     
+    if (pendingOrderSessions.has(sKey)) {
     // ✅ FIX 10: Handle change/modification requests
     const isChangeRequest = /بدل|غير|بدلة|تغيير|تبديل|modif|change/i.test(effectiveMessage);
     if (isChangeRequest && activeSession.step !== 'confirm') {
-      return `ماشي مشكل! شنو تبي تبدل؟\n\n• المنتج: ${activeSession.productTitle}\n• الاسم: ${activeSession.customerName || 'مازال ما عطيتوش'}\n• الهاتف: ${activeSession.customerPhone || 'مازال ما عطيتوش'}\n• الولاية: ${activeSession.wilayaName || 'مازال ما عطيتهاش'}\n• العنوان: ${activeSession.customerAddress || 'مازال ما عطيتوش'}\n\nقلي شنو تبي تبدل ونعدله لك 👍`;
-    }
-    
-    // ✅ FIX 8: Handle multi-product intent during session
-    const multiProductIntent = /منتج.*ثاني|منتج.*آخر|كذلك|أيضا| aussi |also/i.test(effectiveMessage);
-    if (multiProductIntent) {
-      return `حالياً نقدر نسجل منتج واحد فقط في الطلب 😔\n\nلكن تقدر تطلب المنتج الثاني في طلب منفصل مباشرة بعد ما نكمل هذا الطلب!\n\nكمل معي هذا الطلب أولا: ${activeSession.productTitle}`;
+      return `شنو تبي تبدل؟\n• المنتج: ${activeSession.productTitle}\n• الاسم: ${activeSession.customerName || '-'}\n• الهاتف: ${activeSession.customerPhone || '-'}\n\nقلي شنو تبي تبدل 👍`;
     }
 
     const isConfirm = /نعم|أكيد|موافق|تأكيد|confirm|اطلب|أطلب|اتمام|أتمم|واه|ايه|اه|ok|oui/i.test(effectiveMessage);
@@ -948,10 +951,11 @@ export async function handleCustomerMessage(
 
       return `تأكيد الطلب:\n\n📦 المنتج: ${activeSession.productTitle}\n💰 السعر: ${activeSession.productPrice} دج\n🚚 التوصيل: ${deliveryFee} دج\n💳 المجموع: ${total} دج\n👤 الاسم: ${activeSession.customerName}\n📱 الهاتف: ${activeSession.customerPhone}\n📍 الولاية: ${activeSession.wilayaName}\n🏠 العنوان: ${activeSession.customerAddress}\n\n✅ الدفع عند الاستلام\n\nاكتب "تأكيد" للتسجيل أو "إلغاء" للإلغاء`;
     }
-  }
+    } // end if (pendingOrderSessions.has(sKey))
+  } // end if (activeSession)
 
   // ── Detect new order intent from the message ──────────────────────────────
-  const orderIntentRegex = /(?:حاب|حابة|بغيت|نطلب|أطلب|اطلب|نشري|أشري|بغيت نشري|حابة نطلب|نحب نطلب|انشاء|طلبية|طلب|نشاء|أريد|أريد|أريد طلب|أريد طلبية|اريد|اريد طلب|اريد طلبية|ابغى|يبغى|نشاء طلب|انشاء طلبية|أبغى|أبغى طلب|نشاء طلبية|نشاء طلب|طلب منك|طلب من عندك|حاب نطلب|حابة نشري|حابة نطلب|نحب نشري|نحب نطلب|je veux commander|je veux acheter|i want to order|i want to buy|i want to purchase|want to order|want to buy|want to purchase|أريد الشراء|اريد الشراء|أبغى الشراء)/i;
+  const orderIntentRegex = /(?:حاب نطلب|حابة نطلب|بغيت نشري|نطلب|أطلب|اطلب|نشري|أشري|نحب نطلب|نحب نشري|حابة نشري|أريد طلب|أريد طلبية|اريد طلب|اريد طلبية|أريد الشراء|اريد الشراء|أبغى طلب|أبغى الشراء|طلب منك|طلب من عندك|je veux commander|je veux acheter|i want to order|i want to buy|want to order|want to buy)/i;
   // Don't trigger order flow if customer is asking about an existing order (tracking/follow-up)
   const trackingIntentRegex = /متابعة|تتبع|وين طلب|اين طلب|فين طلب|حالة الطلب|رقم.*#\d+|#\d+|طلبي رقم|track|suivi|وصل|شحن|وصلني/i;
   const isTrackingIntent = trackingIntentRegex.test(effectiveMessage);
