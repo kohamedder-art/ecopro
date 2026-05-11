@@ -383,54 +383,52 @@ export default function LeRoiShopTemplate({
                 return (
                   <div
                     key={product.id}
-                    className="group cursor-pointer rounded-xl overflow-hidden transition-all hover:-translate-y-1 hover:shadow-lg"
-                    style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+                    className="group cursor-pointer rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+                    style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
                     onClick={() => openProduct(product)}
                   >
-                    {/* Image Container */}
-                    <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+                    {/* Image */}
+                    <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 4', backgroundColor: surfaceMuted }}>
                       <img
                         src={product.images?.[0] || '/placeholder.png'}
                         alt={product.title}
                         loading="lazy"
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
-                      
-                      {/* Top-left badges */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="absolute top-2 left-2 flex flex-col gap-1">
                         {discount > 0 && (
-                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow">
+                          <span className="bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow">
                             -{discount}%
                           </span>
                         )}
                         {isLowStock && (
-                          <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow">
+                          <span className="bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow">
                             ⚡ {product.stock_quantity} left
                           </span>
                         )}
                       </div>
                     </div>
-                    
-                    {/* Card Info */}
-                    <div className="p-2.5">
-                      <h3 className="text-xs font-semibold truncate mb-1.5 text-right leading-tight" style={{ color: textColor }}>
+                    {/* Info */}
+                    <div className="p-3">
+                      <h3 className="text-xs font-semibold leading-snug mb-2 line-clamp-2 text-right" style={{ color: textColor }}>
                         {product.title}
                       </h3>
-                      <div className="flex items-center gap-1.5 justify-end flex-wrap">
-                        <span className="font-bold text-sm" style={{ color: accentColor }}>
-                          {Math.round(product.price ?? 0).toLocaleString()} {currency}
+                      {product.original_price && (
+                        <div className="text-[10px] line-through text-right mb-0.5" style={{ color: textMuted }}>
+                          {Math.round(product.original_price).toLocaleString()} {currency}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-base" style={{ color: accentColor }}>
+                          {Math.round(product.price ?? 0).toLocaleString()} <span className="text-xs font-semibold">{currency}</span>
                         </span>
-                        {product.original_price && (
-                          <span className="text-[10px] line-through" style={{ color: textMuted }}>
-                            {Math.round(product.original_price).toLocaleString()}
+                        {product.views > 0 && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: '#ea580c' }}>
+                            🔥 {product.views > 1000 ? `${Math.floor(product.views/1000)}K+` : `${product.views}+`} sold
                           </span>
                         )}
                       </div>
-                      {product.views > 0 && (
-                        <div className="text-[10px] mt-1 text-right" style={{ color: textMuted }}>
-                          sold +{product.views > 1000 ? `${Math.floor(product.views/1000)}K` : product.views} <span>🔥</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
@@ -718,54 +716,51 @@ export default function LeRoiShopTemplate({
                     return (
                       <div
                         key={product.id}
-                        className="group cursor-pointer rounded-xl overflow-hidden transition-all hover:-translate-y-1 hover:shadow-lg"
-                        style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+                        className="group cursor-pointer rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+                        style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
                         onClick={() => { openProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       >
-                        {/* Image Container */}
-                        <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
-                          <img 
-                            src={product.images?.[0] || '/placeholder.png'} 
-                            alt={product.title} 
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                        {/* Image */}
+                        <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 4', backgroundColor: surfaceMuted }}>
+                          <img
+                            src={product.images?.[0] || '/placeholder.png'}
+                            alt={product.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           />
-                          
-                          {/* Top-left badges */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                           <div className="absolute top-2 left-2 flex flex-col gap-1">
                             {discount > 0 && (
-                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow">
+                              <span className="bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow">
                                 -{discount}%
                               </span>
                             )}
                             {isLowStock && (
-                              <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow">
+                              <span className="bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow">
                                 ⚡ {product.stock_quantity} left
                               </span>
                             )}
                           </div>
                         </div>
-                        
-                        {/* Card Info */}
-                        <div className="p-2.5">
-                          <h3 className="text-xs font-semibold truncate mb-1.5 text-right leading-tight" style={{ color: textColor }}>
+                        {/* Info */}
+                        <div className="p-3">
+                          <h3 className="text-xs font-semibold leading-snug mb-2 line-clamp-2 text-right" style={{ color: textColor }}>
                             {product.title}
                           </h3>
-                          <div className="flex items-center gap-1.5 justify-end flex-wrap">
-                            <span className="font-bold text-sm" style={{ color: accentColor }}>
-                              {Math.round(product.price ?? 0).toLocaleString()} {currency}
+                          {product.original_price && (
+                            <div className="text-[10px] line-through text-right mb-0.5" style={{ color: textMuted }}>
+                              {Math.round(product.original_price).toLocaleString()} {currency}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="font-extrabold text-base" style={{ color: accentColor }}>
+                              {Math.round(product.price ?? 0).toLocaleString()} <span className="text-xs font-semibold">{currency}</span>
                             </span>
-                            {product.original_price && (
-                              <span className="text-[10px] line-through" style={{ color: textMuted }}>
-                                {Math.round(product.original_price).toLocaleString()}
+                            {product.views > 0 && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: '#ea580c' }}>
+                                🔥 {product.views > 1000 ? `${Math.floor(product.views/1000)}K+` : `${product.views}+`} sold
                               </span>
                             )}
                           </div>
-                          {product.views > 0 && (
-                            <div className="text-[10px] mt-1 text-right" style={{ color: textMuted }}>
-                              <span className="text-orange-500">🔥</span>
-                              {product.views > 1000 ? `${Math.floor(product.views/1000)}K+ sold` : `${product.views}+ sold`}
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
