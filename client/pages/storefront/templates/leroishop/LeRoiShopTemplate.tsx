@@ -453,7 +453,7 @@ export default function LeRoiShopTemplate({
 
               {/* Image */}
               <div className="w-full md:w-1/2 flex flex-col">
-                <div className="rounded-xl overflow-hidden shadow-sm aspect-[4/5] md:aspect-square md:max-h-[420px] relative" style={{ backgroundColor: surfaceMuted }}>
+                <div className="rounded-xl overflow-hidden shadow-sm aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] relative" style={{ backgroundColor: surfaceMuted }}>
                   {showVideo && videoEmbed ? (
                     videoEmbed.type === 'youtube' ? (
                       <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
