@@ -128,17 +128,20 @@ export default function Integrations() {
   async function saveSettings(payload: any, platformName: string) {
     setSaving(platformName);
     try {
-      // Test WhatsApp connection before saving
+      // Test WhatsApp connection before saving (non-blocking — save even if test fails)
       if (payload.whatsappPhoneId && payload.whatsappToken) {
-        const test = await fetch('/api/whatsapp/test-connection', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phoneId: payload.whatsappPhoneId, token: payload.whatsappToken })
-        });
-        const testData = await test.json();
-        if (!testData.success) {
-          toast({ title: isRTL ? 'خطأ في الاتصال' : 'Connection Failed', description: isRTL ? 'بيانات واتساب غير صحيحة، لم يتم الحفظ' : 'Invalid WhatsApp credentials, not saved', variant: 'destructive' });
-          return;
+        try {
+          const test = await fetch('/api/whatsapp/test-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phoneId: payload.whatsappPhoneId, token: payload.whatsappToken })
+          });
+          const testData = await test.json();
+          if (!testData.success) {
+            console.warn('[Integrations] WhatsApp test failed but saving anyway:', testData.error);
+          }
+        } catch (e) {
+          console.warn('[Integrations] WhatsApp test error, saving anyway:', e);
         }
       }
       const response = await fetch('/api/bot/settings', {
