@@ -794,7 +794,7 @@ export async function handleCustomerMessage(
     
     const msg = effectiveMessage.trim().toLowerCase();
     // Broad cancel detection — any refusal, frustration, or stop intent
-    const isCancel = /إلغ|cancel|لا حاجة|مبقيتش|بطل|stop|ألغي|ألغى|توقف|لا اريد|لا أريد|مش حاب|ما حبيتش|خلاص|كفى|بلاش|لا شكرا|no|non|arrête|مجنون|تبا/i.test(effectiveMessage);
+    const isCancel = /إلغ|cancel|لا حاجة|مبقيتش|بطل|stop|ألغي|ألغى|توقف|لا اريد|لا أريد|مش حاب|ما حبيتش|خلاص|كفى|بلاش|لا شكرا|no|non|arrête|مجنون|تبا|منيش|منشريش|ما نشريش|مهبول|لا الشراء|ما نبغيش|ما حابش/i.test(effectiveMessage);
     if (isCancel) {
       pendingOrderSessions.delete(sKey);
       return 'تم الإلغاء. كيف نقدر نعاونك؟';
@@ -959,7 +959,9 @@ export async function handleCustomerMessage(
   // Don't trigger order flow if customer is asking about an existing order (tracking/follow-up)
   const trackingIntentRegex = /متابعة|تتبع|وين طلب|اين طلب|فين طلب|حالة الطلب|رقم.*#\d+|#\d+|طلبي رقم|track|suivi|وصل|شحن|وصلني/i;
   const isTrackingIntent = trackingIntentRegex.test(effectiveMessage);
-  const hasOrderIntent = !isTrackingIntent && orderIntentRegex.test(effectiveMessage) && ctx.products.length > 0;
+  // Don't trigger order if message contains negation (لا اريد, منيش حاب, ما نشريش, etc.)
+  const isNegated = /لا اريد|لا أريد|منيش|ما.*ش|مش حاب|ما حبيتش|ما نشريش|منشريش|ما نطلبش|مش باغي|لا أبغى|لا ابغى|don't want|je ne veux pas/i.test(effectiveMessage);
+  const hasOrderIntent = !isTrackingIntent && !isNegated && orderIntentRegex.test(effectiveMessage) && ctx.products.length > 0;
   let orderIntentInstructions = '';
   if (hasOrderIntent && !activeSession) {
     // Pick the most likely product if mentioned in current message
