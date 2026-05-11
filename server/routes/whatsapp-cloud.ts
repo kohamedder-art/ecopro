@@ -437,12 +437,13 @@ const testConnection: RequestHandler = async (req, res) => {
     }
 
     // Test by fetching phone number info from WhatsApp Cloud API
-    const response = await fetch(`https://graph.facebook.com/v18.0/${phoneId}?fields=name,verified_name`, {
+    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneId}?fields=name,verified_name,display_phone_number`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
       },
     });
+    console.log('[WhatsApp] Test connection response status:', response.status);
 
     if (response.ok) {
       const data = await response.json();
