@@ -140,25 +140,29 @@ async function handleWhatsAppMessage(phoneNumberId: string, from: string, text: 
 
   try {
     const pool = await ensureConnection();
-    const accessToken = getWaAccessToken();
-    if (!accessToken) {
-      console.warn('[WhatsApp] No access token configured');
-      return;
-    }
 
     // Resolve client: check bot_settings for whatsapp_phone_id match, 
     // or fall back to platform-level phone number
     let clientId: number | null = null;
+    let accessToken = getWaAccessToken(); // platform-level token
 
     // Priority 1: per-store phone number ID match
     const storeRes = await pool.query(
-      `SELECT client_id FROM bot_settings
+      `SELECT client_id, whatsapp_token FROM bot_settings
        WHERE whatsapp_phone_id = $1 AND enabled = true
        LIMIT 1`,
       [phoneNumberId]
     );
     if (storeRes.rows.length) {
       clientId = Number(storeRes.rows[0].client_id);
+      // Use per-store token if available
+      const storeToken = String(storeRes.rows[0].whatsapp_token || '').trim();
+      if (storeToken) accessToken = storeToken;
+    }
+
+    if (!accessToken) {
+      console.warn('[WhatsApp] No access token configured (neither env var nor store DB)');
+      return;
     }
 
     // Priority 2: check subscriber mapping
