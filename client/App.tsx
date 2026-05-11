@@ -488,7 +488,7 @@ const App = () => (
                   <Route path="/platform-admin/chats" element={<RequireAdmin><AdminChats /></RequireAdmin>} />
                   <Route path="/platform-admin/chat" element={<RequireAdmin><AdminChat /></RequireAdmin>} />
                   {/* Hidden kernel page (root-only auth inside page) */}
-                  <Route path="/kernel-portal-k7r2n9x5p3" element={<Kernel />} />
+                  <Route path="/kernel-portal-k7r2n9x5p3" element={<NotFound />} />
                   {/* /seller-signup removed */}
                   {/* /quick-sell removed */}
                   {/* /my-items removed */}
