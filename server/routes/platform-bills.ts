@@ -1,10 +1,9 @@
-import { pool as poolMaybe } from "../utils/database";
+import { getPool } from "../utils/database";
 import { RequestHandler } from "express";
-
-const pool = poolMaybe!;
 
 export const listBills: RequestHandler = async (req, res) => {
   try {
+    const pool = await getPool();
     const result = await pool.query(
       'SELECT * FROM platform_bills ORDER BY COALESCE(due_date, created_at) DESC'
     );
@@ -17,6 +16,7 @@ export const listBills: RequestHandler = async (req, res) => {
 
 export const createBill: RequestHandler = async (req, res) => {
   try {
+    const pool = await getPool();
     const { name, category, amount, currency, due_date, paid_at, notes } = req.body;
     if (!name) {
       res.status(400).json({ error: 'Name is required' });
@@ -46,6 +46,7 @@ export const createBill: RequestHandler = async (req, res) => {
 
 export const updateBill: RequestHandler = async (req, res) => {
   try {
+    const pool = await getPool();
     const { id } = req.params;
     const { name, category, amount, currency, due_date, paid_at, notes } = req.body;
     const result = await pool.query(
@@ -75,6 +76,7 @@ export const updateBill: RequestHandler = async (req, res) => {
 
 export const deleteBill: RequestHandler = async (req, res) => {
   try {
+    const pool = await getPool();
     const { id } = req.params;
     const result = await pool.query(
       'DELETE FROM platform_bills WHERE id = $1 RETURNING id',
@@ -93,6 +95,7 @@ export const deleteBill: RequestHandler = async (req, res) => {
 
 export const getBillsSummary: RequestHandler = async (req, res) => {
   try {
+    const pool = await getPool();
     const totalResult = await pool.query(
       "SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count FROM platform_bills"
     );

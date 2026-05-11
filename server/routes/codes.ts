@@ -509,8 +509,8 @@ export const adminListCodes: RequestHandler = async (req, res) => {
         ru.email as redeemed_by_email,
         ru.name as redeemed_by_name
        FROM code_requests cr
-       LEFT JOIN users u ON cr.client_id = u.id
-       LEFT JOIN users ru ON cr.redeemed_by_client_id = ru.id
+       LEFT JOIN clients u ON cr.client_id = u.id
+       LEFT JOIN clients ru ON cr.redeemed_by_client_id = ru.id
        ORDER BY cr.created_at DESC
        LIMIT $1 OFFSET $2`,
       [limitNum, offsetNum]

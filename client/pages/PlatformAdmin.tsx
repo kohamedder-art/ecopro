@@ -50,9 +50,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
 import { Badge } from '@/components/ui/badge';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { Button } from '@/components/ui/button';
-import GlobalAnnouncementsManager from '@/components/platform-admin/GlobalAnnouncementsManager';
-import SpeedometerGauge from '@/components/platform-admin/SpeedometerGauge';
 import BigCarGauge from '@/components/platform-admin/BigCarGauge';
+import GlobalAnnouncementsManager from '@/components/platform-admin/GlobalAnnouncementsManager';
 import AdminAffiliatesPage from '@/pages/admin/AdminAffiliatesPage';
 import Header from '@/components/layout/Header';
 import OverviewTab from '@/components/platform-admin/tabs/OverviewTab';
@@ -205,7 +204,41 @@ interface ServerHealth {
       idleCount: number | null;
       waitingCount: number | null;
     };
+    render?: {
+      connectionsActive: number | null;
+      connectionsMax: number | null;
+      cpuPercentage: number | null;
+      memoryMB: number | null;
+      memoryPct: number | null;
+      readIOPS: number | null;
+      writeIOPS: number | null;
+      pgVersion: string | null;
+      pgPlan: string | null;
+      pgRegion: string | null;
+      latencyMs50: number | null;
+      latencyMs95: number | null;
+      diskUsedMb: number | null;
+      diskCapacityMb: number | null;
+      diskUsedPct: number | null;
+      txVolume: number | null;
+      replicationLag: number | null;
+      latestBackupAt: string | null;
+    } | null;
   };
+  service?: {
+    serviceId: string | null;
+    serviceName: string | null;
+    serviceType: string | null;
+    serviceRegion: string | null;
+    cpuPct: number | null;
+    memoryMb: number | null;
+    memoryPct: number | null;
+    bandwidthBps: number | null;
+    latestDeployDuration: number | null;
+    latestDeployAt: string | null;
+    latestDeployStatus: string | null;
+    instanceCount: number | null;
+  } | null;
   users?: {
     total: number;
     recent15m: number;
@@ -2295,832 +2328,331 @@ export default function PlatformAdmin() {
           </div>
         )}
 
-        {/* Health Tab */}
+        {/* Health Tab — engineered visual dashboard */}
         {activeTab === 'health' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.875rem, 1.75vh, 1.25rem)' }}>
-            <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-lg border border-gray-200 dark:border-slate-700/50 shadow-md"
-              style={{ padding: 'clamp(0.875rem, 1.75vh, 1.25rem)' }}>
-              <div className="flex items-start justify-between" style={{ gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-                <div className="min-w-0">
-                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center"
-                    style={{ fontSize: 'clamp(1rem, 2vh, 1.15rem)', gap: 'clamp(0.5rem, 1vh, 0.625rem)' }}>
-                    <HeartPulse className="text-red-400" style={{ width: 'clamp(1.125rem, 2.25vh, 1.375rem)', height: 'clamp(1.125rem, 2.25vh, 1.375rem)' }} />
-                    {t('platformAdmin.health.title')}
-                  </h3>
-                  <p className="text-gray-500 dark:text-slate-400" style={{ fontSize: 'clamp(0.8rem, 1.6vh, 0.95rem)' }}>{t('platformAdmin.health.desc')}</p>
+          <div className="space-y-3">
+            {/* Error banner */}
+            {healthError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-300 text-xs">{healthError}</div>
+            )}
+
+            {serverHealth && (() => {
+              const cpuPct = serverHealth.htop?.cpu?.totalPct ?? null;
+              const memPct = serverHealth.htop?.memory?.pctUsed ?? null;
+              const dbMs = serverHealth.db.latencyMs ?? null;
+              const dbOk = serverHealth.db.ok;
+              const eluPct = serverHealth.eventLoop?.utilization != null ? serverHealth.eventLoop.utilization * 100 : null;
+              const uploadsTotal = serverHealth.disk?.uploads?.total ?? null;
+              const uploadsAvail = serverHealth.disk?.uploads?.available ?? null;
+              const uploadsUsedPct = uploadsTotal != null && uploadsAvail != null && uploadsTotal > 0 ? (1 - uploadsAvail / uploadsTotal) * 100 : null;
+              const rxBps = serverHealth.network?.totals?.rxBps ?? null;
+              const txBps = serverHealth.network?.totals?.txBps ?? null;
+              const totalMbps = rxBps != null && txBps != null ? ((rxBps + txBps) * 8) / 1_000_000 : null;
+              const activeNow = activeUsers?.active?.total ?? null;
+              const load1 = serverHealth.os.loadavg?.[0] ?? null;
+              const cpuCount = serverHealth.os.cpuCount;
+              const loadPerCpu = cpuCount && cpuCount > 0 && load1 != null ? load1 / cpuCount : null;
+              const rssPct = serverHealth.derived?.rssPctOfLimit ?? null;
+
+              const sparkW = 120; const sparkH = 32;
+              const trend = serverHealth.trend?.series;
+              const makeSpark = (data: (number | null)[] | undefined, color: string, baseline = 0) => {
+                if (!data || data.length < 2) return null;
+                const vals = data.map(v => v ?? baseline);
+                const mn = Math.min(...vals); const mx = Math.max(...vals);
+                const range = mx - mn || 1;
+                const w = sparkW, h = sparkH;
+                const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * w},${h - ((v - mn) / range) * (h - 4) - 2}`).join(' ');
+                const fillPts = `0,${h} ${pts} ${w},${h}`;
+                return (
+                  <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full">
+                    <polyline points={fillPts} fill={`${color}15`} />
+                    <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                );
+              };
+
+              const ArcGauge = ({ pct, size = 80, stroke = 8, color = '#22c55e', bg = '#1e293b' }: { pct: number | null; size?: number; stroke?: number; color?: string; bg?: string }) => {
+                const r = (size - stroke) / 2;
+                const circ = 2 * Math.PI * r;
+                const dash = pct != null ? (pct / 100) * circ * 0.75 : 0;
+                return (
+                  <svg width={size} height={size * 0.55} viewBox={`0 0 ${size} ${size * 0.55}`}>
+                    <path d={`M ${stroke / 2} ${size * 0.55 - stroke / 2} A ${r} ${r} 0 0 1 ${size - stroke / 2} ${size * 0.55 - stroke / 2}`} fill="none" stroke={bg} strokeWidth={stroke} strokeLinecap="round" />
+                    <path d={`M ${stroke / 2} ${size * 0.55 - stroke / 2} A ${r} ${r} 0 0 1 ${size - stroke / 2} ${size * 0.55 - stroke / 2}`} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${dash} ${circ * 0.75}`} strokeDashoffset={circ * 0.75 * 0.25} style={{ filter: `drop-shadow(0 0 4px ${color})`, transition: 'stroke-dasharray 0.6s ease' }} />
+                  </svg>
+                );
+              };
+
+              const MetricCard = ({ label, value, unit, pct, color, sub, spark }: { label: string; value: string; unit?: string; pct?: number | null; color: string; sub?: string; spark?: React.ReactNode }) => (
+                <div className="bg-slate-900/70 backdrop-blur rounded-xl border border-slate-700/60 p-3 hover:border-slate-600/80 transition-all group" style={{ boxShadow: `inset 0 1px 0 rgba(255,255,255,0.03)` }}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-[72px]">
+                      <ArcGauge pct={pct} color={color} />
+                    </div>
+                    <div className="flex-1 min-w-0 pt-1">
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{label}</div>
+                      <div className="text-lg font-bold text-white font-mono mt-0.5 leading-tight">{value}<span className="text-xs text-slate-400 font-normal ml-0.5">{unit}</span></div>
+                      {sub && <div className="text-[10px] text-slate-500 mt-0.5 truncate">{sub}</div>}
+                      {spark && <div className="mt-1 h-8 -mx-1">{spark}</div>}
+                    </div>
+                  </div>
                 </div>
-                <Button
-                  onClick={loadServerHealth}
-                  disabled={healthLoading}
-                  className="bg-white/10 hover:bg-white/20 border border-white/10 text-gray-900 dark:text-white"
-                >
-                  {healthLoading ? '...' : t('platformAdmin.health.refresh')}
-                </Button>
-              </div>
+              );
 
-              {healthError && (
-                <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-200 text-sm">
-                  {healthError}
-                </div>
-              )}
+              const BadgeDot = ({ color }: { color: string }) => (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40" style={{ background: color }} />
+                  <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: color }} />
+                </span>
+              );
 
-              {serverHealth && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.625rem, 1.25vh, 0.875rem)', marginTop: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-                  {/* Big Car Gauges - Server & Database */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(() => {
-                      const cpuPct = serverHealth.htop?.cpu?.totalPct ?? null;
-                      const memPct = serverHealth.htop?.memory?.pctUsed ?? null;
-                      const dbMs = serverHealth.db.latencyMs ?? null;
-                      const dbSlowMs = serverHealth.thresholds?.dbSlowMs ?? 150;
-                      const dbPoolWaiting = serverHealth.db.pool?.waitingCount ?? 0;
-                      const dbPoolTotal = serverHealth.db.pool?.totalCount ?? 10;
-                      const dbPoolPct = (dbPoolWaiting / dbPoolTotal) * 100;
-                      
-                      return (
-                        <>
-                          <BigCarGauge
-                            title={t('platformAdmin.health.serverTitle')}
-                            mainValue={cpuPct}
-                            mainLabel={t('platformAdmin.health.cpuUsage')}
-                            mainUnit="%"
-                            secondaryValue={memPct}
-                            secondaryLabel={t('platformAdmin.health.ram')}
-                            secondaryUnit="%"
-                            goodThreshold={50}
-                            warnThreshold={80}
-                            trend="higher-is-worse"
-                            icon={<Cpu className="w-5 h-5" />}
-                          />
-                          <BigCarGauge
-                            title={t('platformAdmin.health.dbTitle')}
-                            mainValue={dbMs !== null ? Math.min(100, (dbMs / (dbSlowMs * 2)) * 100) : null}
-                            mainLabel={dbMs !== null ? t('platformAdmin.health.latency', { ms: dbMs.toFixed(0) }) : t('platformAdmin.health.latency', { ms: '-' })}
-                            mainUnit="%"
-                            secondaryValue={dbPoolPct}
-                            secondaryLabel={t('platformAdmin.health.poolLoad')}
-                            secondaryUnit="%"
-                            goodThreshold={50}
-                            warnThreshold={75}
-                            trend="higher-is-worse"
-                            icon={<Database className="w-5 h-5" />}
-                          />
-                          {/* Render DB Real Metrics */}
-                          {serverHealth.db?.render && (
-                            <div className="col-span-2 mt-2 p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
-                              <div className="text-xs font-semibold text-green-400 mb-2">🚀 Render Database (Real)</div>
-                              <div className="grid grid-cols-4 gap-2 text-[10px]">
-                                {serverHealth.db.render.connectionsActive != null && (
-                                  <div className="text-center">
-                                    <div className="text-green-300">{serverHealth.db.render.connectionsActive}</div>
-                                    <div className="text-gray-500">Active</div>
-                                  </div>
-                                )}
-                                {serverHealth.db.render.connectionsMax != null && (
-                                  <div className="text-center">
-                                    <div className="text-green-300">{serverHealth.db.render.connectionsMax}</div>
-                                    <div className="text-gray-500">Max</div>
-                                  </div>
-                                )}
-                                {serverHealth.db.render.cpuPercentage != null && (
-                                  <div className="text-center">
-                                    <div className="text-green-300">{serverHealth.db.render.cpuPercentage.toFixed(1)}%</div>
-                                    <div className="text-gray-500">CPU</div>
-                                  </div>
-                                )}
-                                {serverHealth.db.render.memoryMB != null && (
-                                  <div className="text-center">
-                                    <div className="text-green-300">{Math.round(serverHealth.db.render.memoryMB)}MB</div>
-                                    <div className="text-gray-500">RAM</div>
-                                  </div>
-                                )}
-                                {serverHealth.db.render.latencyMs50 != null && (
-                                  <div className="text-center">
-                                    <div className="text-green-300">{serverHealth.db.render.latencyMs50.toFixed(0)}ms</div>
-                                    <div className="text-gray-500">Latency</div>
-                                  </div>
-                                )}
-                                {serverHealth.db.render.pgVersion && (
-                                  <div className="text-center col-span-2">
-                                    <div className="text-green-300">{serverHealth.db.render.pgVersion}</div>
-                                    <div className="text-gray-500">PostgreSQL</div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Smaller Speedometer Gauges */}
-                  <div className="bg-slate-950/60 rounded-lg border border-gray-200 dark:border-slate-700/50" style={{ padding: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.otherMetrics')}</div>
-                      <div className="text-gray-500 dark:text-slate-500 text-[10px]">{t('platformAdmin.health.serverDiskNote')}</div>
-                    </div>
-                    {(() => {
-                      const eluPct = serverHealth.eventLoop?.utilization != null ? serverHealth.eventLoop.utilization * 100 : null;
-
-                      const uploadsTotal = serverHealth.disk?.uploads?.total ?? null;
-                      const uploadsAvail = serverHealth.disk?.uploads?.available ?? null;
-                      const uploadsUsedPct =
-                        uploadsTotal != null && uploadsAvail != null && uploadsTotal > 0
-                          ? (1 - uploadsAvail / uploadsTotal) * 100
-                          : null;
-
-                      const rxBps = serverHealth.network?.totals?.rxBps ?? null;
-                      const txBps = serverHealth.network?.totals?.txBps ?? null;
-                      const totalMbps =
-                        rxBps != null && txBps != null
-                          ? ((rxBps + txBps) * 8) / 1_000_000
-                          : null;
-
-                      const activeNow = activeUsers?.active?.total ?? null;
-                      const capacityMax = systemCapacity?.capacity?.estimated ?? null;
-
-                      const browserStoragePct =
-                        browserStorage?.usage != null && browserStorage?.quota != null && browserStorage.quota > 0
-                          ? (browserStorage.usage / browserStorage.quota) * 100
-                          : null;
-
-                      return (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                          <SpeedometerGauge
-                            title={t('platformAdmin.health.runtime')}
-                            subtitle={t('platformAdmin.health.eventLoop')}
-                            value={eluPct}
-                            min={0}
-                            max={100}
-                            unit="%"
-                            decimals={1}
-                            goodThreshold={((serverHealth.thresholds?.eventLoopHighUtil ?? 0.7) * 100) * 0.6}
-                            warnThreshold={(serverHealth.thresholds?.eventLoopHighUtil ?? 0.7) * 100}
-                            trend="higher-is-worse"
-                            tone="emerald"
-                          />
-                          <SpeedometerGauge
-                            title={t('platformAdmin.health.serverDisk')}
-                            subtitle={t('platformAdmin.health.renderEphemeral')}
-                            value={uploadsUsedPct}
-                            min={0}
-                            max={100}
-                            unit="%"
-                            decimals={1}
-                            goodThreshold={70}
-                            warnThreshold={85}
-                            trend="higher-is-worse"
-                            tone="cyan"
-                          />
-                          <SpeedometerGauge
-                            title={t('platformAdmin.health.network')}
-                            subtitle={t('platformAdmin.health.serverRxTx')}
-                            value={totalMbps}
-                            min={0}
-                            max={200}
-                            unit="Mbps"
-                            decimals={1}
-                            trend="neutral"
-                            tone="violet"
-                          />
-                          <SpeedometerGauge
-                            title={t('platformAdmin.health.internet')}
-                            subtitle={t('platformAdmin.health.browserDownlink') || 'Browser downlink'}
-                            value={browserDownlinkMbps}
-                            min={0}
-                            max={200}
-                            unit="Mbps"
-                            decimals={1}
-                            goodThreshold={10}
-                            warnThreshold={40}
-                            trend="higher-is-better"
-                            tone="emerald"
-                          />
-                          <SpeedometerGauge
-                            title={t('platformAdmin.health.browserStorage')}
-                            subtitle={browserStorage?.usage != null && browserStorage?.quota != null ? `${formatBytesShort(browserStorage.usage)}/${formatBytesShort(browserStorage.quota)}` : t('platformAdmin.health.browserStorage')}
-                            value={browserStoragePct}
-                            min={0}
-                            max={100}
-                            unit="%"
-                            decimals={1}
-                            goodThreshold={50}
-                            warnThreshold={80}
-                            trend="higher-is-worse"
-                            tone="amber"
-                          />
-                          <SpeedometerGauge
-                            title={t('platformAdmin.health.activeUsers')}
-                            subtitle={capacityMax != null ? t('platformAdmin.health.capacity', { max: Math.round(capacityMax) }) : t('platformAdmin.health.activeUsers')}
-                            value={activeNow}
-                            min={0}
-                            max={capacityMax != null && Number.isFinite(capacityMax) && capacityMax > 0 ? capacityMax : 200}
-                            decimals={0}
-                            compactValue
-                            trend="neutral"
-                            tone="cyan"
-                          />
+              return (
+                <>
+                  {/* Hero status bar */}
+                  <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-slate-700/60 p-4 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.08),transparent_60%)]" />
+                    <div className="flex items-center justify-between relative">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <HeartPulse className="w-5 h-5 text-red-400" />
+                          <span className="text-sm font-bold text-white tracking-tight">SERVER HEALTH</span>
                         </div>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-4" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                  <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.status')}</div>
-                      <Badge className={serverHealth.ok ? 'bg-emerald-600/20 text-emerald-200 border border-emerald-500/30' : 'bg-amber-600/20 text-amber-200 border border-amber-500/30'}>
-                        {serverHealth.ok ? t('platformAdmin.health.status.ok') : t('platformAdmin.health.status.degraded')}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">
-                      {t('platformAdmin.health.uptime')}: <span className="font-semibold">{formatDuration(serverHealth.uptimeSec)}</span>
-                    </div>
-                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                      {t('platformAdmin.health.updated')}: {new Date(serverHealth.timestamp).toLocaleString()}
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-br from-violet-900/40 to-fuchsia-900/40 rounded-lg border border-violet-500/30 p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-violet-200 font-medium text-sm">👥 {t('platformAdmin.health.activeUsers')}</div>
-                      <Badge className="bg-violet-600/20 text-violet-200 border border-violet-500/30">
-                        {t('platformAdmin.health.live')}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 text-gray-700 dark:text-slate-200 text-2xl font-bold">{serverHealth.users?.total ?? 0}</div>
-                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.totalRegistered')}</div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                      </span>
-                      <span className="text-emerald-300 text-sm font-semibold">{serverHealth.users?.recent15m ?? 0}</span>
-                      <span className="text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.activeIn15m')}</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                    <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.memory')}</div>
-                    <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">
-                      {t('platformAdmin.health.memory.processRss')}: <span className="font-semibold">{formatBytes(serverHealth.process.memory.rss)}</span>
-                    </div>
-                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                      RSS: {formatPercent(serverHealth.derived?.rssPctOfLimit)}
-                    </div>
-                    <div className="mt-1 text-gray-700 dark:text-slate-200 text-sm">
-                      {t('platformAdmin.health.memory.heapUsed')}: <span className="font-semibold">{formatBytes(serverHealth.process.memory.heapUsed)}</span>
-                    </div>
-                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                      Heap: {formatPercent(serverHealth.derived?.heapPctOfHeapTotal)}
-                    </div>
-                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                      {t('platformAdmin.health.memory.limit')}: {formatBytes(serverHealth.derived?.memoryLimitBytes ?? serverHealth.cgroup?.memoryLimitBytes ?? serverHealth.os.totalmem)}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                    <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.db')}</div>
-                    <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">
-                      {serverHealth.db.ok ? t('platformAdmin.health.db.connected') : t('platformAdmin.health.db.disconnected')}
-                    </div>
-                    <div className="mt-1 text-gray-700 dark:text-slate-200 text-sm">
-                      {t('platformAdmin.health.db.ping')}: <span className="font-semibold">{serverHealth.db.latencyMs != null ? `${serverHealth.db.latencyMs.toFixed(0)} ms` : '-'}</span>
-                    </div>
-                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                      {t('platformAdmin.health.poolInfo', { total: serverHealth.db.pool?.totalCount ?? '-', idle: serverHealth.db.pool?.idleCount ?? '-', waiting: serverHealth.db.pool?.waitingCount ?? '-' })}
-                    </div>
-                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                      {t('platformAdmin.health.eventLoop')}: {formatPercent((serverHealth.eventLoop?.utilization ?? 0) * 100)}
-                    </div>
-                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                      {t('platformAdmin.health.loadAvg')}: {Array.isArray(serverHealth.os.loadavg) ? serverHealth.os.loadavg.map((n) => n.toFixed(2)).join(' / ') : '-'}
-                    </div>
-                    <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                      {t('platformAdmin.health.loadAvg')}/CPU: {Array.isArray(serverHealth.derived?.loadPerCpu) ? serverHealth.derived!.loadPerCpu!.map((n) => n.toFixed(2)).join(' / ') : '-'}
-                    </div>
-                  </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.node')}</div>
-                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">v{serverHealth.node.version}</div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">PID: {serverHealth.node.pid} / PPID: {serverHealth.node.ppid}</div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">ENV: {serverHealth.node.env ?? '-'}</div>
-                      <div className="mt-2 text-gray-500 dark:text-slate-400 text-xs">
-                        v8: {serverHealth.node.versions?.v8 ?? '-'} / openssl: {serverHealth.node.versions?.openssl ?? '-'}
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.system')}</div>
-                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">{serverHealth.os.platform} / {serverHealth.os.arch}</div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">المضيف: {serverHealth.os.hostname ?? '-'}</div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">المعالج: {serverHealth.os.cpuModel ?? '-'} ({serverHealth.os.cpuCount ?? '-'} أنوية)</div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">حد المعالج: {serverHealth.cgroup?.cpu?.cpus != null ? serverHealth.cgroup.cpu.cpus.toFixed(2) : '-'} أنوية</div>
-                    </div>
-
-                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.disk')}</div>
-                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">{t('platformAdmin.health.cwdFree')} <span className="font-semibold">{formatBytes(serverHealth.disk?.cwd?.available)}</span></div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.cwdTotal')} {formatBytes(serverHealth.disk?.cwd?.total)}</div>
-                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">{t('platformAdmin.health.uploadsFree')} <span className="font-semibold">{formatBytes(serverHealth.disk?.uploads?.available)}</span></div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.uploadsTotal')} {formatBytes(serverHealth.disk?.uploads?.total)}</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.network')}</div>
-                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">{t('platformAdmin.health.interfaces')} <span className="font-semibold">{serverHealth.network?.interfaces?.length ?? '-'}</span></div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                        {t('platformAdmin.health.speedRxTx')}{serverHealth.network?.totals?.intervalSec != null ? ` (${serverHealth.network.totals.intervalSec.toFixed(1)}s)` : ''}: <span className="font-semibold">{formatBps(serverHealth.network?.totals?.rxBps)}</span> / <span className="font-semibold">{formatBps(serverHealth.network?.totals?.txBps)}</span>
-                      </div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">
-                        {Array.isArray(serverHealth.network?.interfaces)
-                          ? serverHealth.network!.interfaces!
-                              .slice(0, 6)
-                              .map((i) => `${i.name} (${i.addresses})${i.rxBps != null || i.txBps != null ? ` RX ${formatBps(i.rxBps)} / TX ${formatBps(i.txBps)}` : ''}`)
-                              .join(' · ')
-                          : '-'}
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.runtime')}</div>
-                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">ELU: <span className="font-semibold">{formatPercent((serverHealth.eventLoop?.utilization ?? 0) * 100)}</span></div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">نشط: {serverHealth.eventLoop?.active != null ? `${serverHealth.eventLoop.active.toFixed(0)}ms` : '-'}</div>
-                      <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">خامل: {serverHealth.eventLoop?.idle != null ? `${serverHealth.eventLoop.idle.toFixed(0)}ms` : '-'}</div>
-                    </div>
-
-                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.alerts')}</div>
-                      <div className="mt-2 text-gray-700 dark:text-slate-200 text-sm">
-                        {serverHealth.alerts && serverHealth.alerts.length > 0 ? serverHealth.alerts.join(' · ') : t('platformAdmin.health.none')}
-                      </div>
-                      {Array.isArray(serverHealth.recommendations) && serverHealth.recommendations.length > 0 && (
-                        <div className="mt-3 space-y-1">
-                          {serverHealth.recommendations.slice(0, 6).map((r) => (
-                            <div
-                              key={r.code}
-                              className={
-                                r.severity === 'critical'
-                                  ? 'text-red-200 text-xs'
-                                  : r.severity === 'warn'
-                                    ? 'text-amber-200 text-xs'
-                                    : 'text-gray-600 dark:text-slate-300 text-xs'
-                              }
-                            >
-                              <span className="text-gray-500 dark:text-slate-500">[{r.code}]</span> {r.message}
-                            </div>
-                          ))}
+                        <div className="hidden sm:flex items-center gap-2 text-[10px]">
+                          <BadgeDot color={dbOk ? '#22c55e' : '#f59e0b'} />
+                          <span className="text-slate-400 font-mono">{dbOk ? 'ONLINE' : 'DEGRADED'}</span>
+                          <span className="text-slate-600">|</span>
+                          <span className="text-slate-500 font-mono">UP {formatDuration(serverHealth.uptimeSec)}</span>
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!dbOk && <span className="text-[10px] bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20 font-medium">{t('platformAdmin.health.status.degraded')}</span>}
+                        <button onClick={loadServerHealth} disabled={healthLoading} className="text-slate-500 hover:text-white transition-colors p-1">
+                          <RefreshCw className={`w-3.5 h-3.5 ${healthLoading ? 'animate-spin' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+                    {/* Quick status row */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[10px] font-mono text-slate-500">
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: cpuPct != null && cpuPct > 80 ? '#ef4444' : cpuPct != null && cpuPct > 50 ? '#f59e0b' : '#22c55e' }} /> CPU {cpuPct != null ? `${cpuPct.toFixed(1)}%` : '-'}</span>
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: rssPct != null && rssPct > 80 ? '#ef4444' : rssPct != null && rssPct > 50 ? '#f59e0b' : '#22c55e' }} /> RAM {rssPct != null ? `${rssPct.toFixed(1)}%` : '-'}</span>
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: dbMs != null && dbMs > 500 ? '#ef4444' : dbMs != null && dbMs > 200 ? '#f59e0b' : '#22c55e' }} /> DB {dbMs != null ? `${dbMs.toFixed(0)}ms` : '-'}</span>
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: loadPerCpu != null && loadPerCpu > 1 ? '#ef4444' : loadPerCpu != null && loadPerCpu > 0.7 ? '#f59e0b' : '#22c55e' }} /> LOAD {loadPerCpu != null ? loadPerCpu.toFixed(2) : '-'}</span>
+                      <span className="flex items-center gap-1"><BadgeDot color="#22c55e" /> {activeNow != null ? activeNow : '-'} USERS</span>
+                    </div>
+                  </div>
+
+                  {/* SPLIT: Database (left) + Web Service (right) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    {/* ─── DATABASE ─── */}
+                    <div className="bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-700/60 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Database className="w-4 h-4 text-purple-400" />
+                        <span className="text-sm font-bold text-white tracking-tight">DATABASE</span>
+                        {serverHealth.db.render?.pgVersion && <span className="text-[10px] text-slate-500 font-mono">PG {serverHealth.db.render.pgVersion}</span>}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <BigCarGauge
+                          title="CPU"
+                          mainValue={serverHealth.db.render?.cpuPercentage ?? null}
+                          mainLabel="Database CPU"
+                          mainUnit="%"
+                          icon={<Cpu className="w-4 h-4" />}
+                          goodThreshold={50}
+                          warnThreshold={80}
+                        />
+                        <BigCarGauge
+                          title="RAM"
+                          mainValue={serverHealth.db.render?.memoryPct ?? null}
+                          mainLabel="Database RAM"
+                          mainUnit="%"
+                          secondaryValue={serverHealth.db.render?.memoryMB ?? null}
+                          secondaryLabel="Used"
+                          secondaryUnit=" MB"
+                          icon={<MemoryStick className="w-4 h-4" />}
+                          goodThreshold={50}
+                          warnThreshold={80}
+                        />
+                      </div>
+                      {serverHealth.db.render ? (
+                        <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-slate-400 mt-3 pt-3 border-t border-slate-700/40">
+                          {serverHealth.db.render.connectionsActive != null && <div>conn <span className="text-white">{serverHealth.db.render.connectionsActive}/{serverHealth.db.render.connectionsMax ?? '?'}</span></div>}
+                          {serverHealth.db.render.latencyMs50 != null && <div>p50 <span className="text-white">{serverHealth.db.render.latencyMs50.toFixed(0)}ms</span></div>}
+                          {serverHealth.db.render.latencyMs95 != null && <div>p95 <span className="text-white">{serverHealth.db.render.latencyMs95.toFixed(0)}ms</span></div>}
+                          {serverHealth.db.render.diskUsedMb != null && <div>disk <span className="text-white">{formatBytes(serverHealth.db.render.diskUsedMb * 1024 * 1024)}</span></div>}
+                          {serverHealth.db.render.diskCapacityMb != null && <div>capacity <span className="text-white">{formatBytes(serverHealth.db.render.diskCapacityMb * 1024 * 1024)}</span></div>}
+                          {serverHealth.db.render.replicationLag != null && <div>repl <span className="text-white">{serverHealth.db.render.replicationLag}ms</span></div>}
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-slate-500 mt-2">Set RENDER_API_KEY + RENDER_DATABASE_ID</div>
                       )}
-                      {serverHealth.thresholds && (
-                        <div className="mt-3 text-gray-500 dark:text-slate-400 text-xs">
-                          {t('platformAdmin.health.thresholdsLabel')} DB &gt; {serverHealth.thresholds.dbSlowMs}ms · {t('platformAdmin.health.memHighLabel')} {serverHealth.thresholds.memoryHighPct}% · ELU &gt; {(serverHealth.thresholds.eventLoopHighUtil * 100).toFixed(0)}% · CPU &gt; {serverHealth.thresholds.cpuPressureLoadPerCpu}
+                    </div>
+
+                    {/* ─── WEB SERVICE ─── */}
+                    <div className="bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-700/60 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Activity className="w-4 h-4 text-cyan-400" />
+                        <span className="text-sm font-bold text-white tracking-tight">WEB SERVICE</span>
+                        {serverHealth.service?.serviceName && <span className="text-[10px] text-slate-500 font-mono truncate max-w-[200px]" title={serverHealth.service.serviceName}>{serverHealth.service.serviceName}</span>}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <BigCarGauge
+                          title="CPU"
+                          mainValue={serverHealth.service?.cpuPct ?? null}
+                          mainLabel="Web CPU"
+                          mainUnit="%"
+                          icon={<Cpu className="w-4 h-4" />}
+                          goodThreshold={50}
+                          warnThreshold={80}
+                        />
+                        <BigCarGauge
+                          title="RAM"
+                          mainValue={serverHealth.service?.memoryPct ?? null}
+                          mainLabel="Web RAM"
+                          mainUnit="%"
+                          secondaryValue={serverHealth.service?.memoryMb ?? null}
+                          secondaryLabel="Used"
+                          secondaryUnit=" MB"
+                          icon={<MemoryStick className="w-4 h-4" />}
+                          goodThreshold={50}
+                          warnThreshold={80}
+                        />
+                      </div>
+                      {serverHealth.service ? (
+                        <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-slate-400 mt-3 pt-3 border-t border-slate-700/40">
+                          {serverHealth.service.instanceCount != null && <div>instances <span className="text-white">{serverHealth.service.instanceCount}</span></div>}
+                          {serverHealth.service.bandwidthBps != null && <div>bandwidth <span className="text-white">{formatBps(serverHealth.service.bandwidthBps)}</span></div>}
+                          {serverHealth.service.latestDeployStatus && <div>deploy <span className={`${serverHealth.service.latestDeployStatus === 'live' ? 'text-emerald-400' : 'text-amber-400'}`}>{serverHealth.service.latestDeployStatus}</span></div>}
+                          {serverHealth.service.latestDeployDuration != null && <div>duration <span className="text-white">{serverHealth.service.latestDeployDuration.toFixed(0)}s</span></div>}
+                          {serverHealth.service.latestDeployAt && <div className="col-span-2">last deploy <span className="text-white">{new Date(serverHealth.service.latestDeployAt).toLocaleDateString()}</span></div>}
                         </div>
-                      )}
-                      {!serverHealth.ok && serverHealth.db.error && (
-                        <div className="mt-1 text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.dbError')} {serverHealth.db.error}</div>
+                      ) : (
+                        <div className="text-[10px] text-slate-500 mt-2">Set RENDER_API_KEY + RENDER_SERVICE_ID</div>
                       )}
                     </div>
                   </div>
 
-                  {serverHealth.trend && (
-                    <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-3">
-                      <div className="flex items-start justify-between" style={{ gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-                        <div className="min-w-0">
-                          <div className="text-gray-600 dark:text-slate-300 font-medium text-sm">{t('platformAdmin.health.trends.title')}</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.desc')}</div>
-                        </div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs">
-                          {t('platformAdmin.health.trends.points')}: {serverHealth.trend.points}
-                        </div>
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">DB Ping (ms)</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.dbLatencyMs.min, 0)} / {formatNumber(serverHealth.trend.summary.dbLatencyMs.avg, 0)} / {formatNumber(serverHealth.trend.summary.dbLatencyMs.max, 0)}</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.dbLatencyMs != null ? `${serverHealth.trend.delta.dbLatencyMs.toFixed(0)} ms` : '-'}</div>
-                        </div>
-
-                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">Memory RSS (%)</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.rssPct.min, 1)} / {formatNumber(serverHealth.trend.summary.rssPct.avg, 1)} / {formatNumber(serverHealth.trend.summary.rssPct.max, 1)}</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.rssPct != null ? `${serverHealth.trend.delta.rssPct.toFixed(1)}%` : '-'}</div>
-                        </div>
-
-                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">Event Loop Utilization</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {serverHealth.trend.summary.elu.min != null ? formatPercent(serverHealth.trend.summary.elu.min * 100) : '-'} / {serverHealth.trend.summary.elu.avg != null ? formatPercent(serverHealth.trend.summary.elu.avg * 100) : '-'} / {serverHealth.trend.summary.elu.max != null ? formatPercent(serverHealth.trend.summary.elu.max * 100) : '-'}</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.elu != null ? `${(serverHealth.trend.delta.elu * 100).toFixed(1)}%` : '-'}</div>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">Load / CPU (1m)</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.load1PerCpu.min)} / {formatNumber(serverHealth.trend.summary.load1PerCpu.avg)} / {formatNumber(serverHealth.trend.summary.load1PerCpu.max)}</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {formatNumber(serverHealth.trend.delta.load1PerCpu)}</div>
-                        </div>
-
-                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">DB Pool Waiting</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.dbPoolWaiting.min, 0)} / {formatNumber(serverHealth.trend.summary.dbPoolWaiting.avg, 1)} / {formatNumber(serverHealth.trend.summary.dbPoolWaiting.max, 0)}</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {formatNumber(serverHealth.trend.delta.dbPoolWaiting, 0)}</div>
-                        </div>
-
-                        <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-3">
-                          <div className="text-gray-600 dark:text-slate-300 text-sm font-medium">Heap Used (%)</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.minAvgMax')}: {formatNumber(serverHealth.trend.summary.heapPct.min, 1)} / {formatNumber(serverHealth.trend.summary.heapPct.avg, 1)} / {formatNumber(serverHealth.trend.summary.heapPct.max, 1)}</div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.trends.delta')}: {serverHealth.trend.delta.heapPct != null ? `${serverHealth.trend.delta.heapPct.toFixed(1)}%` : '-'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* {t('platformAdmin.health.activeUsersTitle')} */}
-              <div className="bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 backdrop-blur-md rounded-xl border border-emerald-500/30 shadow-lg" style={{ padding: 'clamp(1rem, 2vh, 1.25rem)' }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center" style={{ fontSize: 'clamp(1rem, 2vh, 1.15rem)', gap: 'clamp(0.5rem, 1vh, 0.625rem)' }}>
-                    <Users className="text-emerald-400" style={{ width: 'clamp(1.125rem, 2.25vh, 1.375rem)', height: 'clamp(1.125rem, 2.25vh, 1.375rem)' }} />
-                    {t('platformAdmin.health.activeUsersTitle')}
-                    <span className="ml-2 flex items-center gap-1">
-                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                      <span className="text-emerald-400 text-xs font-normal">Live</span>
-                    </span>
-                  </h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={loadActiveUsers}
-                    disabled={activeUsersLoading}
-                    className="text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-900 dark:text-white"
-                  >
-                    {activeUsersLoading ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-
-                {activeUsersLoading && !activeUsers ? (
-                  <div className="flex items-center justify-center py-8">
-                    <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
-                    <span className="ml-2 text-gray-500 dark:text-slate-400">{t('platformAdmin.health.trackingUsers')}</span>
+                  {/* 8 Metric Cards Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    <MetricCard label="CPU" value={cpuPct != null ? cpuPct.toFixed(1) : '-'} unit="%" pct={cpuPct} color={cpuPct != null && cpuPct > 80 ? '#ef4444' : cpuPct != null && cpuPct > 50 ? '#f59e0b' : '#22c55e'} sub={`${serverHealth.os.cpuModel?.split(' ')[0] ?? ''} ×${cpuCount ?? '?'} · load ${load1 != null ? load1.toFixed(2) : '-'}`} spark={makeSpark(trend?.map(s => s.load1PerCpu != null ? s.load1PerCpu! * 100 : null) as any, '#3b82f6')} />
+                    <MetricCard label="MEMORY" value={rssPct != null ? rssPct.toFixed(1) : '-'} unit="%" pct={rssPct} color={rssPct != null && rssPct > 80 ? '#ef4444' : rssPct != null && rssPct > 50 ? '#f59e0b' : '#22c55e'} sub={`${formatBytes(serverHealth.process.memory.rss)} / ${formatBytes(serverHealth.derived?.memoryLimitBytes ?? serverHealth.os.totalmem)}`} spark={makeSpark(trend?.map(s => s.rssPct) as any, '#22c55e')} />
+                    <MetricCard label="DATABASE" value={dbMs != null ? dbMs.toFixed(0) : '-'} unit="ms" pct={dbMs != null ? Math.min(100, (dbMs / 10)) : null} color={dbMs != null && dbMs > 500 ? '#ef4444' : dbMs != null && dbMs > 200 ? '#f59e0b' : '#a855f7'} sub={`pool ${serverHealth.db.pool?.totalCount ?? '-'} · wait ${serverHealth.db.pool?.waitingCount ?? '-'}`} spark={makeSpark(trend?.map(s => s.dbLatencyMs) as any, '#a855f7')} />
+                    <MetricCard label="DISK" value={uploadsUsedPct != null ? uploadsUsedPct.toFixed(1) : '-'} unit="%" pct={uploadsUsedPct} color={uploadsUsedPct != null && uploadsUsedPct > 85 ? '#ef4444' : uploadsUsedPct != null && uploadsUsedPct > 70 ? '#f59e0b' : '#06b6d4'} sub={`${formatBytes(serverHealth.disk?.uploads?.available)} free`} />
+                    <MetricCard label="EVENT LOOP" value={eluPct != null ? eluPct.toFixed(1) : '-'} unit="%" pct={eluPct} color={eluPct != null && eluPct > 80 ? '#ef4444' : eluPct != null && eluPct > 48 ? '#f59e0b' : '#22c55e'} sub={`active ${serverHealth.eventLoop?.active != null ? `${(serverHealth.eventLoop.active / 1000).toFixed(1)}s` : '-'}`} spark={makeSpark(trend?.map(s => s.elu != null ? s.elu * 100 : null) as any, '#22c55e')} />
+                    <MetricCard label="HEAP" value={serverHealth.derived?.heapPctOfHeapTotal != null ? serverHealth.derived.heapPctOfHeapTotal.toFixed(1) : '-'} unit="%" pct={serverHealth.derived?.heapPctOfHeapTotal ?? null} color={serverHealth.derived?.heapPctOfHeapTotal != null && serverHealth.derived.heapPctOfHeapTotal > 90 ? '#ef4444' : serverHealth.derived?.heapPctOfHeapTotal != null && serverHealth.derived.heapPctOfHeapTotal > 70 ? '#f59e0b' : '#22c55e'} sub={`${formatBytes(serverHealth.process.memory.heapUsed)} / ${formatBytes(serverHealth.process.memory.heapTotal)}`} spark={makeSpark(trend?.map(s => s.heapPct) as any, '#f59e0b')} />
+                    <MetricCard label="NETWORK" value={totalMbps != null ? totalMbps.toFixed(1) : '-'} unit="Mbps" pct={totalMbps != null ? Math.min(100, totalMbps / 2) : null} color="#6366f1" sub={`RX ${formatBps(rxBps)} / TX ${formatBps(txBps)}`} />
+                    <MetricCard label="USERS" value={activeNow != null ? `${activeNow}` : '-'} unit="" pct={activeNow != null ? Math.min(100, activeNow * 5) : null} color="#ec4899" sub={`${serverHealth.users?.total ?? 0} registered · ${serverHealth.users?.recent15m ?? 0} active`} />
                   </div>
-                ) : activeUsers ? (
-                  <div className="space-y-4">
-                    {/* Main Stats */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="bg-gray-100/50 dark:bg-slate-900/50 rounded-lg p-4 text-center border border-emerald-500/20">
-                        <div className="text-3xl font-bold text-emerald-400">{activeUsers.active?.total || 0}</div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.activeNow')}</div>
-                        <div className="text-gray-500 dark:text-slate-500 text-xs">{t('platformAdmin.health.lastSeconds', { seconds: activeUsers.windowSeconds })}</div>
-                      </div>
-                      <div className="bg-gray-100/50 dark:bg-slate-900/50 rounded-lg p-4 text-center border border-blue-500/20">
-                        <div className="text-2xl font-bold text-blue-400">{activeUsers.active?.authenticated || 0}</div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.loggedIn')}</div>
-                      </div>
-                      <div className="bg-gray-100/50 dark:bg-slate-900/50 rounded-lg p-4 text-center border border-slate-500/20">
-                        <div className="text-2xl font-bold text-gray-600 dark:text-slate-300">{activeUsers.active?.anonymous || 0}</div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.visitors')}</div>
-                      </div>
-                      <div className="bg-gray-100/50 dark:bg-slate-900/50 rounded-lg p-4 text-center border border-amber-500/20">
-                        <div className="text-2xl font-bold text-amber-400">{activeUsers.traffic?.requestsPerSecond || 0}</div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.reqPerSec')}</div>
-                      </div>
-                    </div>
 
-                    {/* User Breakdown */}
-                    {activeUsers.active?.breakdown && (
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-2 text-center">
-                          <div className="text-purple-400 font-semibold">{activeUsers.active.breakdown.admins || 0}</div>
-                          <div className="text-gray-500 dark:text-slate-500 text-xs">{t('platformAdmin.health.admins')}</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-2 text-center">
-                          <div className="text-cyan-400 font-semibold">{activeUsers.active.breakdown.clients || 0}</div>
-                          <div className="text-gray-500 dark:text-slate-500 text-xs">{t('platformAdmin.health.clients')}</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-2 text-center">
-                          <div className="text-gray-600 dark:text-slate-300 font-semibold">{activeUsers.active.breakdown.visitors || 0}</div>
-                          <div className="text-gray-500 dark:text-slate-500 text-xs">{t('platformAdmin.health.other')}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Top Active Pages */}
-                    {activeUsers.topPages && activeUsers.topPages.length > 0 && (
-                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg p-3">
-                        <div className="text-gray-500 dark:text-slate-400 text-xs font-medium mb-2">{t('platformAdmin.health.activePages')}</div>
+                  {/* Alerts + Trends row */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                    {/* Alerts & Recommendations */}
+                    <div className="bg-slate-900/70 backdrop-blur rounded-xl border border-slate-700/60 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">⚠️ ALERTS ({serverHealth.alerts?.length ?? 0})</div>
+                      {Array.isArray(serverHealth.recommendations) && serverHealth.recommendations.length > 0 ? (
                         <div className="space-y-1">
-                          {activeUsers.topPages.slice(0, 5).map((page: any, idx: number) => (
-                            <div key={idx} className="flex items-center justify-between text-xs">
-                              <span className="text-gray-600 dark:text-slate-300 truncate max-w-[70%]">{page.path}</span>
-                              <span className="text-emerald-400 font-mono">{page.count}</span>
+                          {serverHealth.recommendations.slice(0, 4).map(r => (
+                            <div key={r.code} className={`text-[10px] leading-tight ${r.severity === 'critical' ? 'text-red-400' : r.severity === 'warn' ? 'text-amber-400' : 'text-slate-400'}`}>
+                              <span className="text-slate-600">[{r.code}]</span> {r.message}
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      ) : <div className="text-slate-500 text-[10px]">No active alerts</div>}
+                      {!serverHealth.ok && serverHealth.db.error && <div className="text-red-400 text-[10px] mt-1">DB: {serverHealth.db.error}</div>}
+                    </div>
 
-                    {/* Active Visitors List */}
-                    {activeUsers.visitors && activeUsers.visitors.length > 0 && (
-                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg p-3">
-                        <div className="text-gray-500 dark:text-slate-400 text-xs font-medium mb-2">{t('platformAdmin.health.activeSessions', { count: activeUsers.visitors.length })}</div>
-                        <div className="max-h-40 overflow-y-auto space-y-1">
-                          {activeUsers.visitors.slice(0, 10).map((v: any, idx: number) => (
-                            <div key={idx} className="flex items-center justify-between text-xs bg-white/80 dark:bg-slate-800/50 rounded px-2 py-1">
-                              <div className="flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full ${v.userId ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                                <span className="text-gray-500 dark:text-slate-400 font-mono">{v.fingerprint}</span>
-                                {v.countryCode && <span className="text-gray-500 dark:text-slate-500">{v.countryCode}</span>}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-500 dark:text-slate-500">{v.requestCount} req</span>
-                                <span className="text-slate-600">{v.activeFor}s</span>
-                              </div>
+                    {/* Trend Sparklines */}
+                    <div className="bg-slate-900/70 backdrop-blur rounded-xl border border-slate-700/60 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">📈 TRENDS ({serverHealth.trend?.points ?? 0} pts)</div>
+                      {trend && trend.length > 1 ? (
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                          {[
+                            { label: 'DB ms', data: trend.map(s => s.dbLatencyMs), color: '#a855f7' },
+                            { label: 'RSS %', data: trend.map(s => s.rssPct), color: '#22c55e' },
+                            { label: 'ELU %', data: trend.map(s => s.elu != null ? s.elu * 100 : null), color: '#f59e0b' },
+                            { label: 'Load/CPU', data: trend.map(s => s.load1PerCpu), color: '#3b82f6' },
+                          ].map(t => (
+                            <div key={t.label}>
+                              <div className="text-[9px] text-slate-600 font-mono">{t.label}</div>
+                              <div className="h-7">{makeSpark(t.data as any, t.color)}</div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
-
-                    {/* Capacity vs Current */}
-                    {systemCapacity && (
-                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg p-3 border border-slate-600/20">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-500 dark:text-slate-400 text-xs">{t('platformAdmin.health.currentLoadVsCapacity')}</span>
-                          <span className="text-xs font-mono">
-                            <span className="text-emerald-400">{activeUsers.active?.total || 0}</span>
-                            <span className="text-gray-500 dark:text-slate-500"> / </span>
-                            <span className="text-gray-600 dark:text-slate-300">{systemCapacity.capacity?.estimated?.toLocaleString() || '?'}</span>
-                          </span>
-                        </div>
-                        <div className="mt-2 h-2 bg-slate-700 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-500"
-                            style={{ 
-                              width: `${Math.min(100, ((activeUsers.active?.total || 0) / (systemCapacity.capacity?.estimated || 1)) * 100)}%` 
-                            }}
-                          />
-                        </div>
-                        <div className="text-gray-500 dark:text-slate-500 text-xs mt-1 text-right">
-                          {((activeUsers.active?.total || 0) / (systemCapacity.capacity?.estimated || 1) * 100).toFixed(1)}{t('platformAdmin.health.ofCapacity')}
-                        </div>
-                      </div>
-                    )}
+                      ) : <div className="text-slate-500 text-[10px]">Collecting data...</div>}
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500 dark:text-slate-500">
-                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>{t('platformAdmin.health.noActiveData')}</p>
-                  </div>
-                )}
-              </div>
 
-              {/* {t('platformAdmin.health.systemCapacity')} */}
-              <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-xl border border-gray-200 dark:border-slate-700/50 shadow-lg" style={{ padding: 'clamp(1rem, 2vh, 1.25rem)' }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center" style={{ fontSize: 'clamp(1rem, 2vh, 1.15rem)', gap: 'clamp(0.5rem, 1vh, 0.625rem)' }}>
-                    <Gauge className="text-purple-400" style={{ width: 'clamp(1.125rem, 2.25vh, 1.375rem)', height: 'clamp(1.125rem, 2.25vh, 1.375rem)' }} />
-                    {t('platformAdmin.health.systemCapacity')}
-                  </h3>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={loadSystemCapacity}
-                    disabled={capacityLoading}
-                    className="text-xs border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
-                  >
-                    {capacityLoading ? (
-                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                    ) : (
-                      <RefreshCw className="w-3 h-3 mr-1" />
-                    )}
-                    {t('platformAdmin.health.refresh')}
-                  </Button>
-                </div>
-
-                {capacityLoading && !systemCapacity ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
-                    <span className="ml-2 text-gray-500 dark:text-slate-400">{t('platformAdmin.health.analyzingCapacity')}</span>
-                  </div>
-                ) : systemCapacity ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.75rem, 1.5vh, 1rem)' }}>
-                    {/* Health Score Gauge */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: 'clamp(0.625rem, 1.25vh, 0.875rem)' }}>
-                      {/* Health Score */}
-                      <div className={`bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border p-4 text-center ${
-                        systemCapacity.health.status === 'healthy' ? 'border-emerald-500/50' :
-                        systemCapacity.health.status === 'degraded' ? 'border-yellow-500/50' :
-                        'border-red-500/50'
-                      }`}>
-                        <div className={`text-4xl font-bold ${
-                          systemCapacity.health.status === 'healthy' ? 'text-emerald-400' :
-                          systemCapacity.health.status === 'degraded' ? 'text-yellow-400' :
-                          'text-red-400'
-                        }`}>
-                          {systemCapacity.health.score}
-                        </div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.healthScore')}</div>
-                        <div className={`text-xs mt-2 px-2 py-1 rounded-full inline-block ${
-                          systemCapacity.health.status === 'healthy' ? 'bg-emerald-500/20 text-emerald-300' :
-                          systemCapacity.health.status === 'degraded' ? 'bg-yellow-500/20 text-yellow-300' :
-                          'bg-red-500/20 text-red-300'
-                        }`}>
-                          {systemCapacity.health.status.toUpperCase()}
-                        </div>
+                  {/* System Info row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { label: 'NODE', value: `v${serverHealth.node.version}`, sub: `PID ${serverHealth.node.pid} · ${serverHealth.node.env ?? '-'}` },
+                      { label: 'HOST', value: serverHealth.os.hostname?.split('-')[0] ?? '-', sub: `${serverHealth.os.platform} / ${serverHealth.os.arch}` },
+                      { label: 'CPU', value: serverHealth.os.cpuModel?.split(' ').slice(0, 2).join(' ') ?? '-', sub: `${cpuCount ?? '?'} cores · ${serverHealth.cgroup?.cpu?.cpus?.toFixed(1) ?? '?'} limit` },
+                      { label: 'UPTIME', value: formatDuration(serverHealth.uptimeSec), sub: `${serverHealth.os.loadavg.map(n => n.toFixed(2)).join(' / ')} load` },
+                    ].map(item => (
+                      <div key={item.label} className="bg-slate-900/70 backdrop-blur rounded-xl border border-slate-700/60 p-3">
+                        <div className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">{item.label}</div>
+                        <div className="text-xs font-bold text-white font-mono mt-0.5">{item.value}</div>
+                        <div className="text-[9px] text-slate-500 truncate">{item.sub}</div>
                       </div>
+                    ))}
+                  </div>
 
-                      {/* Capacity Estimate */}
-                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-4 text-center">
-                        <div className="text-3xl font-bold text-blue-400">
-                          {systemCapacity.capacity.estimated.toLocaleString()}
-                        </div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.estimatedMaxUsers')}</div>
-                        <div className="text-gray-500 dark:text-slate-500 text-xs mt-2">
-                          {t('platformAdmin.health.current', { users: systemCapacity.current.users, pct: systemCapacity.capacity.utilizationPct.toFixed(1) })}
-                        </div>
+                  {/* Active Users */}
+                  <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-slate-700/60 p-4 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.06),transparent_60%)]" />
+                    <div className="flex items-center justify-between relative mb-3">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-emerald-400" />
+                        <span className="text-sm font-bold text-white">{t('platformAdmin.health.activeUsersTitle')}</span>
+                        <BadgeDot color="#22c55e" />
+                        <span className="text-[10px] text-emerald-400 font-mono">LIVE</span>
                       </div>
-
-                      {/* Current Tier */}
-                      <div className="bg-gray-50/30 dark:bg-slate-900/30 rounded-lg border border-slate-600/30 p-4 text-center">
-                        <div className={`text-2xl font-bold ${
-                          systemCapacity.scaling.currentTier === 'starter' ? 'text-gray-500 dark:text-slate-400' :
-                          systemCapacity.scaling.currentTier === 'growth' ? 'text-blue-400' :
-                          systemCapacity.scaling.currentTier === 'business' ? 'text-purple-400' :
-                          'text-amber-400'
-                        }`}>
-                          {String(systemCapacity.scaling.currentTier || '').charAt(0).toUpperCase() + String(systemCapacity.scaling.currentTier || '').slice(1)}
+                      <button onClick={loadActiveUsers} disabled={activeUsersLoading} className="text-slate-500 hover:text-white transition-colors p-1">
+                        <RefreshCw className={`w-3 h-3 ${activeUsersLoading ? 'animate-spin' : ''}`} />
+                      </button>
+                    </div>
+                    {activeUsers ? (
+                      <div className="relative space-y-3">
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="text-center bg-slate-800/60 rounded-xl p-3 border border-emerald-500/20"><div className="text-xl font-bold text-emerald-400">{activeUsers.active?.total ?? 0}</div><div className="text-[9px] text-slate-500">ACTIVE</div></div>
+                          <div className="text-center bg-slate-800/60 rounded-xl p-3 border border-blue-500/20"><div className="text-lg font-bold text-blue-400">{activeUsers.active?.authenticated ?? 0}</div><div className="text-[9px] text-slate-500">LOGGED IN</div></div>
+                          <div className="text-center bg-slate-800/60 rounded-xl p-3 border border-slate-600/30"><div className="text-lg font-bold text-slate-300">{activeUsers.active?.anonymous ?? 0}</div><div className="text-[9px] text-slate-500">VISITORS</div></div>
+                          <div className="text-center bg-slate-800/60 rounded-xl p-3 border border-amber-500/20"><div className="text-lg font-bold text-amber-400">{activeUsers.traffic?.requestsPerSecond ?? 0}</div><div className="text-[9px] text-slate-500">REQ/S</div></div>
                         </div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">{t('platformAdmin.health.currentTier')}</div>
-                        {systemCapacity.scaling.nextTier && (
-                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-2">
-                            {t('platformAdmin.health.upgradeAt', { count: systemCapacity.scaling.upgradeAt })}
+                        {activeUsers.active?.breakdown && (
+                          <div className="flex gap-4 text-[10px] font-mono text-slate-500">
+                            <span>admins <span className="text-purple-400">{activeUsers.active.breakdown.admins ?? 0}</span></span>
+                            <span>clients <span className="text-cyan-400">{activeUsers.active.breakdown.clients ?? 0}</span></span>
+                            <span>other <span className="text-slate-400">{activeUsers.active.breakdown.visitors ?? 0}</span></span>
+                          </div>
+                        )}
+                        {activeUsers.visitors && activeUsers.visitors.length > 0 && (
+                          <div className="max-h-24 overflow-y-auto space-y-0.5">
+                            {activeUsers.visitors.slice(0, 5).map((v: any, i: number) => (
+                              <div key={i} className="flex items-center justify-between text-[9px] font-mono text-slate-500 bg-slate-800/30 rounded px-2 py-0.5">
+                                <span className="flex items-center gap-1"><span className={`w-1.5 h-1.5 rounded-full ${v.userId ? 'bg-emerald-500' : 'bg-slate-600'}`} />{v.fingerprint?.slice(0, 10)}…</span>
+                                <span>{v.requestCount} req · {v.activeFor}s</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {systemCapacity && (
+                          <div>
+                            <div className="flex justify-between text-[9px] text-slate-500 font-mono"><span>CAPACITY</span><span className="text-emerald-400">{(activeUsers.active?.total ?? 0)}</span><span className="text-slate-600">/ {systemCapacity.capacity?.estimated?.toLocaleString() ?? '?'}</span></div>
+                            <div className="mt-0.5 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full transition-all" style={{ width: `${Math.min(100, ((activeUsers.active?.total ?? 0) / (systemCapacity.capacity?.estimated ?? 1)) * 100)}%` }} />
+                            </div>
                           </div>
                         )}
                       </div>
-                    </div>
-
-                    {/* Resource Capacity Breakdown */}
-                    <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-4">
-                      <h4 className="text-gray-600 dark:text-slate-300 text-sm font-medium mb-3">{t('platformAdmin.health.resourceLimits')}</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
-                        <div className="flex items-center justify-between bg-white/80 dark:bg-slate-800/50 rounded-lg p-3">
-                          <div className="flex items-center gap-2">
-                            <MemoryStick className="w-4 h-4 text-green-400" />
-                            <span className="text-gray-600 dark:text-slate-300 text-sm">{t('platformAdmin.health.ram')}</span>
-                          </div>
-                          <span className="text-green-400 font-mono text-sm">{systemCapacity.capacity.byResource.ram.toLocaleString()} users</span>
-                        </div>
-                        <div className="flex items-center justify-between bg-white/80 dark:bg-slate-800/50 rounded-lg p-3">
-                          <div className="flex items-center gap-2">
-                            <Cpu className="w-4 h-4 text-blue-400" />
-                            <span className="text-gray-600 dark:text-slate-300 text-sm">{t('platformAdmin.health.cpuCores')}</span>
-                          </div>
-                          <span className="text-blue-400 font-mono text-sm">{systemCapacity.capacity.byResource.cpu.toLocaleString()} users</span>
-                        </div>
-                        <div className="flex items-center justify-between bg-white/80 dark:bg-slate-800/50 rounded-lg p-3">
-                          <div className="flex items-center gap-2">
-                            <Database className="w-4 h-4 text-purple-400" />
-                            <span className="text-gray-600 dark:text-slate-300 text-sm">{t('platformAdmin.health.db')}</span>
-                          </div>
-                          <span className="text-purple-400 font-mono text-sm">{systemCapacity.capacity.byResource.db.toLocaleString()} users</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottlenecks */}
-                    {systemCapacity.health.bottlenecks.length > 0 && (
-                      <div className="bg-gray-50/20 dark:bg-slate-900/20 rounded-lg border border-slate-600/20 p-4">
-                        <h4 className="text-gray-600 dark:text-slate-300 text-sm font-medium mb-3 flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                          {t('platformAdmin.health.bottlenecksDetected', { count: systemCapacity.health.bottlenecks.length })}
-                        </h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
-                          {systemCapacity.health.bottlenecks.map((bottleneck: any, idx: number) => (
-                            <div
-                              key={idx}
-                              className={`rounded-lg p-3 border ${
-                                bottleneck.severity === 'critical' ? 'bg-red-500/10 border-red-500/30' :
-                                bottleneck.severity === 'high' ? 'bg-orange-500/10 border-orange-500/30' :
-                                bottleneck.severity === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30' :
-                                'bg-blue-500/10 border-blue-500/30'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                    bottleneck.severity === 'critical' ? 'bg-red-500/20 text-red-300' :
-                                    bottleneck.severity === 'high' ? 'bg-orange-500/20 text-orange-300' :
-                                    bottleneck.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
-                                    'bg-blue-500/20 text-blue-300'
-                                  }`}>
-                                    {bottleneck.severity.toUpperCase()}
-                                  </span>
-                                  <span className="text-gray-900 dark:text-white font-medium text-sm">{bottleneck.resource}</span>
-                                </div>
-                                <span className="text-gray-500 dark:text-slate-400 text-xs font-mono">
-                                  {bottleneck.current}{bottleneck.unit} / {bottleneck.threshold}{bottleneck.unit}
-                                </span>
-                              </div>
-                              <div className="text-gray-600 dark:text-slate-300 text-xs">{bottleneck.recommendation}</div>
-                              {bottleneck.upgradeSpec && (
-                                <div className="text-emerald-400 text-xs mt-1">
-                                  ↑ Upgrade to: {bottleneck.upgradeSpec}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Recommended Specs */}
-                    <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-lg border border-purple-500/30 p-4">
-                      <h4 className="text-gray-600 dark:text-slate-300 text-sm font-medium mb-3 flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-purple-400" />
-                        {t('platformAdmin.health.recommendedSpecs')}
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: 'clamp(0.5rem, 1vh, 0.75rem)' }}>
-                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-3 text-center">
-                          <div className="text-purple-400 font-bold">{systemCapacity.scaling.recommended.ram}</div>
-                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-1">{t('platformAdmin.health.ram')}</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-3 text-center">
-                          <div className="text-blue-400 font-bold">{systemCapacity.scaling.recommended.cpu}</div>
-                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-1">{t('platformAdmin.health.cpuCores')}</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-3 text-center">
-                          <div className="text-emerald-400 font-bold">{systemCapacity.scaling.recommended.db}</div>
-                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-1">{t('platformAdmin.health.dbConnections')}</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-slate-800/50 rounded-lg p-3 text-center">
-                          <div className="text-amber-400 font-bold">{systemCapacity.scaling.recommended.users.toLocaleString()}</div>
-                          <div className="text-gray-500 dark:text-slate-500 text-xs mt-1">{t('platformAdmin.health.targetUsers')}</div>
-                        </div>
-                      </div>
-                      {systemCapacity.scaling.nextTier && (
-                        <div className="mt-3 text-center">
-                          <span className="text-gray-500 dark:text-slate-400 text-xs">
-                            {t('platformAdmin.health.nextTier')}<span className="text-purple-300 font-medium">{String(systemCapacity.scaling.nextTier || '').charAt(0).toUpperCase() + String(systemCapacity.scaling.nextTier || '').slice(1)}</span>
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Primary Bottleneck Callout */}
-                    {systemCapacity.health.primaryBottleneck && (
-                      <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-lg border border-red-500/30 p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-red-500/20 rounded-full p-2">
-                            <AlertTriangle className="w-5 h-5 text-red-400" />
-                          </div>
-                          <div>
-                            <div className="text-gray-900 dark:text-white font-medium text-sm">{t('platformAdmin.health.primaryBottleneckLabel', { resource: systemCapacity.health.primaryBottleneck.resource })}</div>
-                            <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">
-                              {t('platformAdmin.health.mainLimitingFactor', { rec: systemCapacity.health.primaryBottleneck.recommendation })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* No Bottlenecks - All Good */}
-                    {systemCapacity.health.bottlenecks.length === 0 && (
-                      <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded-lg border border-emerald-500/30 p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-emerald-500/20 rounded-full p-2">
-                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                          </div>
-                          <div>
-                            <div className="text-gray-900 dark:text-white font-medium text-sm">{t('platformAdmin.health.systemOptimal')}</div>
-                            <div className="text-gray-500 dark:text-slate-400 text-xs mt-1">
-                              {t('platformAdmin.health.noBottlenecks', { count: systemCapacity.capacity.estimated.toLocaleString() })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    ) : (
+                      <div className="text-slate-500 text-[10px] text-center py-4">{t('platformAdmin.health.noActiveData')}</div>
                     )}
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500 dark:text-slate-400">
-                    <Gauge className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">{t('platformAdmin.health.clickRefreshCapacity')}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+                </>
+              );
+            })()}
           </div>
         )}
 

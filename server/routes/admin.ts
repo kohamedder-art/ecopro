@@ -18,59 +18,123 @@ import { performance } from 'perf_hooks';
 import v8 from 'v8';
 import path from 'path';
 
-// Render API helper for database metrics
-const getRenderDbMetrics = async (): Promise<{
-  connectionsActive: number | null;
-  connectionsMax: number | null;
-  cpuPercentage: number | null;
-  memoryMB: number | null;
-  readIOPS: number | null;
-  writeIOPS: number | null;
-  pgVersion: string | null;
-  latencyMs50: number | null;
-  latencyMs95: number | null;
-} | null> => {
-  const renderApiKey = process.env.RENDER_API_KEY;
-  const databaseId = process.env.RENDER_DATABASE_ID;
-  
-  if (!renderApiKey || !databaseId) {
-    return null;
-  }
-  
+// Generic Render API fetch helper
+const renderApiGet = async (path: string): Promise<any | null> => {
+  const key = process.env.RENDER_API_KEY;
+  if (!key) return null;
   try {
-    const response = await fetch(
-      `https://api.render.com/v1/databases/${databaseId}/metrics`,
-      {
-        headers: {
-          'Authorization': `Bearer ${renderApiKey}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    
-    if (!response.ok) {
-      console.error('Render API error:', response.status, await response.text());
-      return null;
-    }
-    
-    const data = await response.json();
-    
-    // Parse metrics from Render response
-    return {
-      connectionsActive: data.metrics?.database?.connections?.active ?? null,
-      connectionsMax: data.metrics?.database?.connections?.max ?? null,
-      cpuPercentage: data.metrics?.database?.cpu?.pct ?? null,
-      memoryMB: data.metrics?.database?.memory?.mb ?? null,
-      readIOPS: data.metrics?.database?.read_iops ?? null,
-      writeIOPS: data.metrics?.database?.write_iops ?? null,
-      pgVersion: data.metrics?.database?.pg_version ?? null,
-      latencyMs50: data.metrics?.database?.latency?.p50 ?? null,
-      latencyMs95: data.metrics?.database?.latency?.p95 ?? null,
-    };
-  } catch (e) {
-    console.error('Failed to fetch Render DB metrics:', e);
-    return null;
-  }
+    const res = await fetch(`https://api.render.com/v1${path}`, {
+      headers: { 'Authorization': `Bearer ${key}`, 'Accept': 'application/json' }
+    });
+    if (!res.ok) { console.error(`Render API ${path}: ${res.status}`); return null; }
+    return res.json();
+  } catch (e) { console.error(`Render API fetch error ${path}:`, e); return null; }
+};
+
+// Comprehensive Render DB metrics — fetches ALL available Postgres endpoints
+const getRenderDbMetrics = async (): Promise<{
+  connectionsActive: number | null; connectionsMax: number | null;
+  cpuPercentage: number | null; memoryMB: number | null; memoryPct: number | null;
+  readIOPS: number | null; writeIOPS: number | null;
+  pgVersion: string | null; pgPlan: string | null; pgRegion: string | null;
+  latencyMs50: number | null; latencyMs95: number | null;
+  diskUsedMb: number | null; diskCapacityMb: number | null; diskUsedPct: number | null;
+  txVolume: number | null; replicationLag: number | null;
+  latestBackupAt: string | null;
+} | null> => {
+  const dbId = process.env.RENDER_DATABASE_ID;
+  if (!process.env.RENDER_API_KEY || !dbId) return null;
+
+  const [metrics, info, connSeries, diskSeries, txSeries, replSeries] = await Promise.all([
+    renderApiGet(`/databases/${dbId}/metrics`),
+    renderApiGet(`/datastores/${dbId}`),
+    renderApiGet(`/datastores/${dbId}/connections?limit=1`),
+    renderApiGet(`/datastores/${dbId}/disk-usage?limit=1`),
+    renderApiGet(`/datastores/${dbId}/transaction-volume?limit=1`),
+    renderApiGet(`/datastores/${dbId}/replication-lag?limit=1`),
+  ]);
+
+  // Aggregate metrics (existing endpoint)
+  const m = metrics?.metrics?.database;
+  // Disk: take latest data point
+  const diskPoint = Array.isArray(diskSeries?.data) ? diskSeries.data[diskSeries.data.length - 1] : null;
+  const connPoint = Array.isArray(connSeries?.data) ? connSeries.data[connSeries.data.length - 1] : null;
+  const txPoint = Array.isArray(txSeries?.data) ? txSeries.data[txSeries.data.length - 1] : null;
+  const replPoint = Array.isArray(replSeries?.data) ? replSeries.data[replSeries.data.length - 1] : null;
+
+  const memoryMB = m?.memory?.mb ?? null;
+  // Estimate max RAM from plan name for percentage calculation
+  const planName = (info?.plan ?? '').toLowerCase();
+  const planRamMaxMb: Record<string, number> = {
+    starter: 1024, basic: 2048, standard: 4096,
+    pro: 8192, pro_plus: 16384, 'pro max': 16384, ultra: 32768,
+  };
+  const maxRamMb = Object.entries(planRamMaxMb).find(([key]) => planName.includes(key))?.[1] ?? null;
+  const memoryPct = memoryMB != null && maxRamMb != null ? (memoryMB / maxRamMb) * 100 : null;
+
+  return {
+    connectionsActive: m?.connections?.active ?? connPoint?.value ?? null,
+    connectionsMax: m?.connections?.max ?? info?.connectionLimit ?? null,
+    cpuPercentage: m?.cpu?.pct ?? null,
+    memoryMB,
+    memoryPct,
+    readIOPS: m?.read_iops ?? null,
+    writeIOPS: m?.write_iops ?? null,
+    pgVersion: m?.pg_version ?? info?.postgresVersion ?? null,
+    pgPlan: info?.plan ?? null,
+    pgRegion: info?.region ?? null,
+    latencyMs50: m?.latency?.p50 ?? null,
+    latencyMs95: m?.latency?.p95 ?? null,
+    diskUsedMb: diskPoint?.usedMb ?? diskPoint?.value ?? null,
+    diskCapacityMb: diskPoint?.capacityMb ?? null,
+    diskUsedPct: diskPoint?.usedMb != null && diskPoint?.capacityMb ? (diskPoint.usedMb / diskPoint.capacityMb) * 100 : null,
+    txVolume: txPoint?.value ?? null,
+    replicationLag: replPoint?.value ?? null,
+    latestBackupAt: info?.latestBackupAt ?? null,
+  };
+};
+
+// Render web service metrics
+const getRenderServiceMetrics = async (): Promise<{
+  serviceId: string | null; serviceName: string | null;
+  serviceType: string | null; serviceRegion: string | null;
+  cpuPct: number | null; memoryMb: number | null; memoryPct: number | null;
+  bandwidthBps: number | null;
+  latestDeployDuration: number | null; latestDeployAt: string | null; latestDeployStatus: string | null;
+  instanceCount: number | null;
+} | null> => {
+  const serviceId = process.env.RENDER_SERVICE_ID;
+  if (!process.env.RENDER_API_KEY || !serviceId) return null;
+
+  const [info, cpuSeries, memSeries, bwSeries, deploys] = await Promise.all([
+    renderApiGet(`/services/${serviceId}`),
+    renderApiGet(`/services/${serviceId}/cpu-usage?limit=1`),
+    renderApiGet(`/services/${serviceId}/memory-usage?limit=1`),
+    renderApiGet(`/services/${serviceId}/bandwidth-usage?limit=1`),
+    renderApiGet(`/services/${serviceId}/deploys?limit=1`),
+  ]);
+
+  const cpuPoint = Array.isArray(cpuSeries?.data) ? cpuSeries.data[cpuSeries.data.length - 1] : null;
+  const memPoint = Array.isArray(memSeries?.data) ? memSeries.data[memSeries.data.length - 1] : null;
+  const bwPoint = Array.isArray(bwSeries?.data) ? bwSeries.data[bwSeries.data.length - 1] : null;
+  const deploy = Array.isArray(deploys) ? deploys[0] : null;
+
+  return {
+    serviceId: info?.id ?? serviceId,
+    serviceName: info?.name ?? null,
+    serviceType: info?.type ?? null,
+    serviceRegion: info?.region ?? null,
+    cpuPct: cpuPoint?.value ?? cpuPoint?.pct ?? null,
+    memoryMb: memPoint?.value ?? memPoint?.mb ?? null,
+    memoryPct: memPoint?.pct ?? null,
+    bandwidthBps: bwPoint?.value ?? null,
+    latestDeployDuration: deploy?.finishedAt && deploy?.createdAt
+      ? (new Date(deploy.finishedAt).getTime() - new Date(deploy.createdAt).getTime()) / 1000
+      : null,
+    latestDeployAt: deploy?.finishedAt ?? null,
+    latestDeployStatus: deploy?.status ?? null,
+    instanceCount: info?.instanceCount ?? null,
+  };
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -668,6 +732,7 @@ export const getSystemCapacity: RequestHandler = async (_req, res) => {
     let totalProducts = 0;
     let totalOrders = 0;
     let dbLatencyMs: number | null = null;
+    let renderDbMetrics: Awaited<ReturnType<typeof getRenderDbMetrics>> = null;
     
     try {
       const start = process.hrtime.bigint();
@@ -675,8 +740,9 @@ export const getSystemCapacity: RequestHandler = async (_req, res) => {
         pool.query(`
           SELECT 
             COUNT(*)::int as total,
-            COUNT(*) FILTER (WHERE last_login > NOW() - INTERVAL '15 minutes')::int as active15m,
-            COUNT(*) FILTER (WHERE last_login > NOW() - INTERVAL '24 hours')::int as activeToday
+            (SELECT COUNT(*)::int FROM admins) + (SELECT COUNT(*)::int FROM clients) as total_users,
+            0::int as active15m,
+            0::int as activeToday
           FROM clients
         `),
         pool.query(`SELECT COUNT(*)::int as count FROM client_store_products WHERE status = 'active'`),
@@ -686,7 +752,7 @@ export const getSystemCapacity: RequestHandler = async (_req, res) => {
       dbLatencyMs = Number(end - start) / 1e6;
       
       // Get real Render DB metrics if configured
-      const renderDbMetrics = await getRenderDbMetrics();
+      renderDbMetrics = await getRenderDbMetrics();
       
       currentUsers = usersResult.rows[0]?.total || 0;
       activeUsers15m = usersResult.rows[0]?.active15m || 0;
@@ -1074,6 +1140,9 @@ export const getServerHealth: RequestHandler = async (_req, res) => {
     let dbError: string | null = null;
     let activeUsers = { total: 0, recent15m: 0 };
 
+    const renderDbMetrics = getRenderDbMetrics();
+    const renderServiceMetrics = getRenderServiceMetrics();
+
     try {
       const start = process.hrtime.bigint();
       await pool.query('SELECT 1');
@@ -1081,12 +1150,16 @@ export const getServerHealth: RequestHandler = async (_req, res) => {
       dbLatencyMs = Number(end - start) / 1e6;
       dbOk = true;
 
-      // Get active users stats
+      // Get active users stats (clients + admins)
       const userCountResult = await pool.query(`
         SELECT 
           COUNT(*)::int as total,
-          COUNT(*) FILTER (WHERE last_login > NOW() - INTERVAL '15 minutes')::int as recent15m
-        FROM users
+          COUNT(*) FILTER (WHERE updated_at > NOW() - INTERVAL '15 minutes')::int as recent15m
+        FROM (
+          SELECT updated_at FROM clients
+          UNION ALL
+          SELECT updated_at FROM admins
+        ) all_users
       `);
       if (userCountResult.rows[0]) {
         activeUsers = {
@@ -1098,6 +1171,8 @@ export const getServerHealth: RequestHandler = async (_req, res) => {
       dbOk = false;
       dbError = err instanceof Error ? err.message : 'DB ping failed';
     }
+
+    const [resolvedRenderDb, resolvedRenderService] = await Promise.all([renderDbMetrics, renderServiceMetrics]);
 
     const thresholds = {
       dbSlowMs: 500,
@@ -1320,7 +1395,9 @@ export const getServerHealth: RequestHandler = async (_req, res) => {
           idleCount: (pool as any).idleCount ?? null,
           waitingCount: poolWaiting ?? null,
         },
+        render: resolvedRenderDb,
       },
+      service: resolvedRenderService,
       users: activeUsers,
       alerts: (() => {
         const list: string[] = [];
