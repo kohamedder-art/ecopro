@@ -45,51 +45,48 @@ const getRenderDbMetrics = async (): Promise<{
   const dbId = process.env.RENDER_DATABASE_ID;
   if (!process.env.RENDER_API_KEY || !dbId) return null;
 
-  const [metrics, info, connSeries, diskSeries, txSeries, replSeries] = await Promise.all([
-    renderApiGet(`/databases/${dbId}/metrics`),
-    renderApiGet(`/datastores/${dbId}`),
-    renderApiGet(`/datastores/${dbId}/connections?limit=1`),
-    renderApiGet(`/datastores/${dbId}/disk-usage?limit=1`),
-    renderApiGet(`/datastores/${dbId}/transaction-volume?limit=1`),
-    renderApiGet(`/datastores/${dbId}/replication-lag?limit=1`),
+  const now2 = Math.floor(Date.now() / 1000);
+  const from2 = now2 - 300;
+
+  const [info, cpuSeries, memSeries, cpuLimit, memLimit] = await Promise.all([
+    renderApiGet(`/postgres/${dbId}`),
+    renderApiGet(`/metrics/cpu?resource=${dbId}&startTime=${from2}&endTime=${now2}`),
+    renderApiGet(`/metrics/memory?resource=${dbId}&startTime=${from2}&endTime=${now2}`),
+    renderApiGet(`/metrics/cpu-limit?resource=${dbId}`),
+    renderApiGet(`/metrics/memory-limit?resource=${dbId}`),
   ]);
+  const dbCpuValues = cpuSeries?.data?.[0]?.values ?? cpuSeries?.data ?? [];
+  const dbMemValues = memSeries?.data?.[0]?.values ?? memSeries?.data ?? [];
+  const dbCpuPoint = Array.isArray(dbCpuValues) && dbCpuValues.length > 0 ? dbCpuValues[dbCpuValues.length - 1] : null;
+  const dbMemPoint = Array.isArray(dbMemValues) && dbMemValues.length > 0 ? dbMemValues[dbMemValues.length - 1] : null;
 
-  // Aggregate metrics (existing endpoint)
-  const m = metrics?.metrics?.database;
-  // Disk: take latest data point
-  const diskPoint = Array.isArray(diskSeries?.data) ? diskSeries.data[diskSeries.data.length - 1] : null;
-  const connPoint = Array.isArray(connSeries?.data) ? connSeries.data[connSeries.data.length - 1] : null;
-  const txPoint = Array.isArray(txSeries?.data) ? txSeries.data[txSeries.data.length - 1] : null;
-  const replPoint = Array.isArray(replSeries?.data) ? replSeries.data[replSeries.data.length - 1] : null;
+  const dbCpuLimitVal = cpuLimit?.data?.[0]?.values?.[0]?.value ?? null;
+  const dbMemLimitBytes = memLimit?.data?.[0]?.values?.[0]?.value ?? null;
 
-  const memoryMB = m?.memory?.mb ?? null;
-  // Estimate max RAM from plan name for percentage calculation
-  const planName = (info?.plan ?? '').toLowerCase();
-  const planRamMaxMb: Record<string, number> = {
-    starter: 1024, basic: 2048, standard: 4096,
-    pro: 8192, pro_plus: 16384, 'pro max': 16384, ultra: 32768,
-  };
-  const maxRamMb = Object.entries(planRamMaxMb).find(([key]) => planName.includes(key))?.[1] ?? null;
-  const memoryPct = memoryMB != null && maxRamMb != null ? (memoryMB / maxRamMb) * 100 : null;
+  const dbCpuRaw = dbCpuPoint?.value ?? null;
+  const dbMemBytes = dbMemPoint?.value ?? null;
+  const memoryMB = dbMemBytes != null ? Math.round(dbMemBytes / 1024 / 1024) : null;
+  const memoryPct = dbMemBytes != null && dbMemLimitBytes ? (dbMemBytes / dbMemLimitBytes) * 100 : null;
+  const cpuPercentage = dbCpuRaw != null && dbCpuLimitVal ? (dbCpuRaw / dbCpuLimitVal) * 100 : dbCpuRaw;
 
   return {
-    connectionsActive: m?.connections?.active ?? connPoint?.value ?? null,
-    connectionsMax: m?.connections?.max ?? info?.connectionLimit ?? null,
-    cpuPercentage: m?.cpu?.pct ?? null,
+    connectionsActive: info?.connectionLimit ?? null,
+    connectionsMax: info?.connectionLimit ?? null,
+    cpuPercentage: cpuPercentage ?? null,
     memoryMB,
     memoryPct,
-    readIOPS: m?.read_iops ?? null,
-    writeIOPS: m?.write_iops ?? null,
-    pgVersion: m?.pg_version ?? info?.postgresVersion ?? null,
+    readIOPS: null,
+    writeIOPS: null,
+    pgVersion: info?.postgresVersion ?? info?.version ?? null,
     pgPlan: info?.plan ?? null,
     pgRegion: info?.region ?? null,
-    latencyMs50: m?.latency?.p50 ?? null,
-    latencyMs95: m?.latency?.p95 ?? null,
-    diskUsedMb: diskPoint?.usedMb ?? diskPoint?.value ?? null,
-    diskCapacityMb: diskPoint?.capacityMb ?? null,
-    diskUsedPct: diskPoint?.usedMb != null && diskPoint?.capacityMb ? (diskPoint.usedMb / diskPoint.capacityMb) * 100 : null,
-    txVolume: txPoint?.value ?? null,
-    replicationLag: replPoint?.value ?? null,
+    latencyMs50: null,
+    latencyMs95: null,
+    diskUsedMb: null,
+    diskCapacityMb: null,
+    diskUsedPct: null,
+    txVolume: null,
+    replicationLag: null,
     latestBackupAt: info?.latestBackupAt ?? null,
   };
 };
@@ -106,17 +103,32 @@ const getRenderServiceMetrics = async (): Promise<{
   const serviceId = process.env.RENDER_SERVICE_ID;
   if (!process.env.RENDER_API_KEY || !serviceId) return null;
 
-  const [info, cpuSeries, memSeries, bwSeries, deploys] = await Promise.all([
+  const now = Math.floor(Date.now() / 1000);
+  const from = now - 300;
+
+  const [info, cpuSeries, memSeries, cpuLimit, memLimit, deploys] = await Promise.all([
     renderApiGet(`/services/${serviceId}`),
-    renderApiGet(`/services/${serviceId}/cpu-usage?limit=1`),
-    renderApiGet(`/services/${serviceId}/memory-usage?limit=1`),
-    renderApiGet(`/services/${serviceId}/bandwidth-usage?limit=1`),
+    renderApiGet(`/metrics/cpu?resource=${serviceId}&startTime=${from}&endTime=${now}`),
+    renderApiGet(`/metrics/memory?resource=${serviceId}&startTime=${from}&endTime=${now}`),
+    renderApiGet(`/metrics/cpu-limit?resource=${serviceId}`),
+    renderApiGet(`/metrics/memory-limit?resource=${serviceId}`),
     renderApiGet(`/services/${serviceId}/deploys?limit=1`),
   ]);
 
-  const cpuPoint = Array.isArray(cpuSeries?.data) ? cpuSeries.data[cpuSeries.data.length - 1] : null;
-  const memPoint = Array.isArray(memSeries?.data) ? memSeries.data[memSeries.data.length - 1] : null;
-  const bwPoint = Array.isArray(bwSeries?.data) ? bwSeries.data[bwSeries.data.length - 1] : null;
+  const cpuValues = cpuSeries?.data?.[0]?.values ?? cpuSeries?.data ?? [];
+  const memValues = memSeries?.data?.[0]?.values ?? memSeries?.data ?? [];
+  const cpuPoint = Array.isArray(cpuValues) && cpuValues.length > 0 ? cpuValues[cpuValues.length - 1] : null;
+  const memPoint = Array.isArray(memValues) && memValues.length > 0 ? memValues[memValues.length - 1] : null;
+
+  const cpuLimitVal = cpuLimit?.data?.[0]?.values?.[0]?.value ?? null;
+  const memLimitBytes = memLimit?.data?.[0]?.values?.[0]?.value ?? null;
+
+  const cpuRaw = cpuPoint?.value ?? null;
+  const memBytes = memPoint?.value ?? null;
+  const memMb = memBytes != null ? Math.round(memBytes / 1024 / 1024) : null;
+  const memPct = memBytes != null && memLimitBytes ? (memBytes / memLimitBytes) * 100 : null;
+  const cpuPct = cpuRaw != null && cpuLimitVal ? (cpuRaw / cpuLimitVal) * 100 : cpuRaw;
+
   const deploy = Array.isArray(deploys) ? deploys[0] : null;
 
   return {
@@ -124,10 +136,10 @@ const getRenderServiceMetrics = async (): Promise<{
     serviceName: info?.name ?? null,
     serviceType: info?.type ?? null,
     serviceRegion: info?.region ?? null,
-    cpuPct: cpuPoint?.value ?? cpuPoint?.pct ?? null,
-    memoryMb: memPoint?.value ?? memPoint?.mb ?? null,
-    memoryPct: memPoint?.pct ?? null,
-    bandwidthBps: bwPoint?.value ?? null,
+    cpuPct: cpuPct ?? null,
+    memoryMb: memMb,
+    memoryPct: memPct,
+    bandwidthBps: null,
     latestDeployDuration: deploy?.finishedAt && deploy?.createdAt
       ? (new Date(deploy.finishedAt).getTime() - new Date(deploy.createdAt).getTime()) / 1000
       : null,
