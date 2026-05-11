@@ -952,7 +952,10 @@ export async function handleCustomerMessage(
 
   // ── Detect new order intent from the message ──────────────────────────────
   const orderIntentRegex = /(?:حاب|حابة|بغيت|نطلب|أطلب|اطلب|نشري|أشري|بغيت نشري|حابة نطلب|نحب نطلب|انشاء|طلبية|طلب|نشاء|أريد|أريد|أريد طلب|أريد طلبية|اريد|اريد طلب|اريد طلبية|ابغى|يبغى|نشاء طلب|انشاء طلبية|أبغى|أبغى طلب|نشاء طلبية|نشاء طلب|طلب منك|طلب من عندك|حاب نطلب|حابة نشري|حابة نطلب|نحب نشري|نحب نطلب|je veux commander|je veux acheter|i want to order|i want to buy|i want to purchase|want to order|want to buy|want to purchase|أريد الشراء|اريد الشراء|أبغى الشراء)/i;
-  const hasOrderIntent = orderIntentRegex.test(effectiveMessage) && ctx.products.length > 0;
+  // Don't trigger order flow if customer is asking about an existing order (tracking/follow-up)
+  const trackingIntentRegex = /متابعة|تتبع|وين طلب|اين طلب|فين طلب|حالة الطلب|رقم.*#\d+|#\d+|طلبي رقم|track|suivi|وصل|شحن|وصلني/i;
+  const isTrackingIntent = trackingIntentRegex.test(effectiveMessage);
+  const hasOrderIntent = !isTrackingIntent && orderIntentRegex.test(effectiveMessage) && ctx.products.length > 0;
   let orderIntentInstructions = '';
   if (hasOrderIntent && !activeSession) {
     // Pick the most likely product if mentioned in current message
