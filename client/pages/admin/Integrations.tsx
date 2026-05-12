@@ -328,9 +328,9 @@ export default function Integrations() {
         )}
 
         {/* ── Desktop Platform Cards ── */}
-        <div className={surfaceCard + " p-5"}
+        <div className={surfaceCard + " p-5 hidden sm:block"}
         >
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
           {validPlatforms.map(p => {
             const c = isConnected(p.value);
             const active = activePlatform === p.value;

@@ -1504,8 +1504,8 @@ export default function OrdersAdmin() {
 
       {/* Edit Order Modal (store owner) */}
       {showEditOrder && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-2 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full my-4 sm:my-0 max-h-none sm:max-h-[90vh] sm:overflow-y-auto">
             {/* Header */}
             <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center justify-between z-10">
               <div className="flex items-center gap-2">

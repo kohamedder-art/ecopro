@@ -533,3 +533,59 @@ html.dark body[data-profile-wallpaper="true"] .profile-glass {
   direction: ltr;
   unicode-bidi: embed;
 }
+
+/* ── Native App Feel ─────────────────────────────── */
+
+/* No overscroll bounce (iOS/Android rubber-banding) */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Smooth scrolling everywhere */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent text selection on UI elements (buttons, nav, etc) */
+button, a, nav, aside, header, [role="button"], [data-sidebar] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Allow text selection in content areas */
+input, textarea, p, span, h1, h2, h3, h4, h5, h6, td, th, li, pre, code, article, main {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* Faster touch response — no 300ms delay */
+* {
+  touch-action: manipulation;
+}
+
+/* Safe area padding for notched phones (iPhone X+) */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Prevent pull-to-refresh on the main page */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Standalone PWA: hide browser chrome artifacts */
+@media (display-mode: standalone) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input, textarea {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+}

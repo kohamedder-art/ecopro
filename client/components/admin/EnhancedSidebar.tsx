@@ -477,7 +477,7 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
             onClick={() => setMobileOpen(false)}
           />
           <aside className={cn(
-            "lg:hidden fixed top-0 h-screen w-[270px] z-[110] border-r transition-all duration-300",
+            "lg:hidden fixed top-0 h-screen w-[270px] max-w-[85vw] z-[110] border-r transition-all duration-300 overflow-x-hidden",
             isRTL ? "right-0" : "left-0"
           )}
           style={{

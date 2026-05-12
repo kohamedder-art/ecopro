@@ -2258,7 +2258,7 @@ export default function Store() {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {(
                 [
                   { key: 'product', label: t('store.productForm.sections.product') },
@@ -2278,7 +2278,7 @@ export default function Store() {
                   variant={productFormSection === sec.key ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setProductFormSection(sec.key)}
-                  className={productFormSection === sec.key ? 'bg-gradient-to-r from-primary to-purple-600 text-white' : 'border-primary/30 hover:bg-primary/10'}
+                  className={`shrink-0 ${productFormSection === sec.key ? 'bg-gradient-to-r from-primary to-purple-600 text-white' : 'border-primary/30 hover:bg-primary/10'}`}
                 >
                   {sec.label}
                 </Button>
