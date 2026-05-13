@@ -101,17 +101,6 @@ export default function SpiriluxeTemplate({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.[`spiriluxe_above_count_${mainProduct?.id}`]]);
   
-  useEffect(() => { 
-    if (offers.length > 0 && !selectedOffer) { 
-      const f = offers[0]; 
-      setSelectedOffer({ 
-        offer_id: f.id, 
-        quantity: f.quantity, 
-        bundle_price: f.bundle_price, 
-        free_delivery: f.free_delivery 
-      }); 
-    } 
-  }, [offers]);
 
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
   const productTotal = selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? mainProduct?.price ?? 0) * quantity;
