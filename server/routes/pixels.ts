@@ -542,6 +542,21 @@ export const getPixelStats: RequestHandler = async (req, res) => {
     // Calculate conversion rates
     const facebookTotals = totalsResult.rows.find(r => r.pixel_type === 'facebook') || {};
     const tiktokTotals = totalsResult.rows.find(r => r.pixel_type === 'tiktok') || {};
+    const platformTotals = totalsResult.rows.find(r => r.pixel_type === 'platform') || {};
+
+    // Merge platform into facebook+tiktok so dashboard always shows data
+    // even when no external pixel is configured
+    const mergeTotals = (specific: any, platform: any) => ({
+      total_page_views: (parseInt(specific.total_page_views) || 0) + (parseInt(platform.total_page_views) || 0),
+      total_view_content: (parseInt(specific.total_view_content) || 0) + (parseInt(platform.total_view_content) || 0),
+      total_add_to_cart: (parseInt(specific.total_add_to_cart) || 0) + (parseInt(platform.total_add_to_cart) || 0),
+      total_initiate_checkout: (parseInt(specific.total_initiate_checkout) || 0) + (parseInt(platform.total_initiate_checkout) || 0),
+      total_purchases: (parseInt(specific.total_purchases) || 0) + (parseInt(platform.total_purchases) || 0),
+      total_revenue: (parseFloat(specific.total_revenue) || 0) + (parseFloat(platform.total_revenue) || 0),
+    });
+
+    const fbMerged = Object.keys(facebookTotals).length > 0 ? mergeTotals(facebookTotals, {}) : mergeTotals({}, platformTotals);
+    const ttMerged = Object.keys(tiktokTotals).length > 0 ? mergeTotals(tiktokTotals, {}) : mergeTotals({}, platformTotals);
     
     const calcConversionRate = (purchases: number, pageViews: number) => {
       if (!pageViews || pageViews === 0) return 0;
@@ -556,27 +571,26 @@ export const getPixelStats: RequestHandler = async (req, res) => {
     res.json({
       period_days: numDays,
       daily_stats: statsResult.rows,
-      facebook: {
-        ...facebookTotals,
+      platform: {
+        ...platformTotals,
         conversion_rate: calcConversionRate(
-          parseInt(facebookTotals.total_purchases) || 0,
-          parseInt(facebookTotals.total_page_views) || 0
+          parseInt(platformTotals.total_purchases) || 0,
+          parseInt(platformTotals.total_page_views) || 0
         ),
         cart_rate: calcCartRate(
-          parseInt(facebookTotals.total_add_to_cart) || 0,
-          parseInt(facebookTotals.total_view_content) || 0
+          parseInt(platformTotals.total_add_to_cart) || 0,
+          parseInt(platformTotals.total_view_content) || 0
         )
       },
+      facebook: {
+        ...fbMerged,
+        conversion_rate: calcConversionRate(fbMerged.total_purchases, fbMerged.total_page_views),
+        cart_rate: calcCartRate(fbMerged.total_add_to_cart, fbMerged.total_view_content)
+      },
       tiktok: {
-        ...tiktokTotals,
-        conversion_rate: calcConversionRate(
-          parseInt(tiktokTotals.total_purchases) || 0,
-          parseInt(tiktokTotals.total_page_views) || 0
-        ),
-        cart_rate: calcCartRate(
-          parseInt(tiktokTotals.total_add_to_cart) || 0,
-          parseInt(tiktokTotals.total_view_content) || 0
-        )
+        ...ttMerged,
+        conversion_rate: calcConversionRate(ttMerged.total_purchases, ttMerged.total_page_views),
+        cart_rate: calcCartRate(ttMerged.total_add_to_cart, ttMerged.total_view_content)
       }
     });
   } catch (error) {
