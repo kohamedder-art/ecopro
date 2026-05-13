@@ -81,8 +81,11 @@ export default function Integrations() {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [activePlatform, setActivePlatform] = useState<Platform>('telegram');
-  const [pingState, setPingState] = useState<Record<Platform, 'idle' | 'loading' | 'ok' | 'fail'>>({
-    telegram: 'idle', facebook: 'idle', instagram: 'idle', whatsapp_cloud: 'idle', viber: 'idle',
+  const [pingDetail, setPingDetail] = useState<Record<Platform, { errorType?: string; pageName?: string } | null>>({
+    telegram: null, facebook: null, instagram: null, whatsapp_cloud: null, viber: null,
+  });
+  const [pingState, setPingState] = useState<Record<Platform, 'idle' | 'loading' | 'ok' | 'fail' | 'warn'>>({
+    telegram: 'idle', facebook: 'idle', instagram: 'idle', whatsapp_cloud: 'idle', viber: 'idle' as const,
   });
   const [lastSaved, setLastSaved] = useState<Record<Platform, string | null>>({
     telegram: null, facebook: null, instagram: null, whatsapp_cloud: null, viber: null,
@@ -126,6 +129,8 @@ export default function Integrations() {
   };
 
   async function saveSettings(payload: any, platformName: string) {
+    // Critical: preserve activePlatform across saves — loadSettings will set it from server's 'provider' field,
+    // so we must always send 'provider' in every payload. Callers are responsible for including it.
     setSaving(platformName);
     try {
       // Test WhatsApp connection before saving (non-blocking — save even if test fails)
@@ -159,9 +164,13 @@ export default function Integrations() {
       if (result?.webhookWarning) {
         toast({ title: isRTL ? 'تحذير الـ Webhook' : 'Webhook Warning', description: result.webhookWarning, variant: 'destructive' });
       }
-      setLastSaved(prev => ({ ...prev, [platformName]: new Date().toLocaleTimeString() }));
+      setLastSaved(prev => ({ ...prev, [platformName as Platform]: new Date().toLocaleTimeString() }));
       setHasUnsaved(false);
+      // Preserve active tab — don't let loadSettings jump to a different platform
+      const currentPlatform = activePlatform;
       await loadSettings(true);
+      // Re-apply the current platform in case server 'provider' differs
+      setActivePlatform(currentPlatform);
     } catch (error) {
       toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to save", variant: "destructive" });
     } finally { setSaving(null); }
@@ -170,50 +179,45 @@ export default function Integrations() {
   async function pingPlatform(platform: Platform) {
     setPingState(prev => ({ ...prev, [platform]: 'loading' }));
     try {
-      let ok = false;
-      if (platform === 'telegram' && settings.telegramBotToken) {
-        const r = await fetch(`https://api.telegram.org/bot${settings.telegramBotToken}/getMe`);
-        ok = r.ok && (await r.json()).ok === true;
-      } else if (platform === 'whatsapp_cloud' && settings.whatsappPhoneId && settings.whatsappToken) {
+      let data: any = {};
+      if (platform === 'whatsapp_cloud') {
         const r = await fetch('/api/whatsapp/test-connection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phoneId: settings.whatsappPhoneId, token: settings.whatsappToken }) });
-        ok = (await r.json()).success === true;
-      } else if (platform === 'facebook' && (settings.fbPageId || settings.usePlatformMessenger)) {
-        ok = !!(settings.fbPageAccessTokenConfigured || settings.usePlatformMessenger || settings.messengerUsingPlatform);
-      } else if (platform === 'instagram') {
-        ok = !!(settings.instagramTokenConfigured || settings.usePlatformInstagram);
+        data = await r.json();
       } else {
-        ok = isConnected(platform);
+        const r = await fetch('/api/bot/test-connection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ platform }) });
+        data = await r.json();
       }
-      setPingState(prev => ({ ...prev, [platform]: ok ? 'ok' : 'fail' }));
-      setTimeout(() => setPingState(prev => ({ ...prev, [platform]: 'idle' })), 4000);
+      const ok: boolean = data.success === true;
+      const errorType: string | undefined = data.errorType;
+      // 'warn' = token is valid but missing permissions (bot won't work but is technically "connected")
+      const state: 'ok' | 'fail' | 'warn' = ok ? 'ok' : errorType === 'missing_permissions' ? 'warn' : 'fail';
+      setPingState(prev => ({ ...prev, [platform]: state }));
+      setPingDetail(prev => ({ ...prev, [platform]: ok ? { pageName: data.pageName || data.botName } : { errorType } }));
+      if (ok) {
+        const name = data.pageName || data.botName || data.username;
+        toast({ title: isRTL ? 'يعمل! ✓' : 'Working! ✓', description: name ? (isRTL ? `متصل بـ: ${name}` : `Connected to: ${name}`) : (isRTL ? 'الاتصال ناجح' : 'Connection successful') });
+      } else {
+        toast({ title: isRTL ? 'فشل الاختبار' : 'Test Failed', description: data.error || 'Unknown error', variant: 'destructive' });
+      }
+      setTimeout(() => setPingState(prev => ({ ...prev, [platform]: 'idle' })), 8000);
     } catch {
       setPingState(prev => ({ ...prev, [platform]: 'fail' }));
       setTimeout(() => setPingState(prev => ({ ...prev, [platform]: 'idle' })), 4000);
     }
   }
 
-  function handleUseCustom(platform: Platform, useCustom: boolean) {
-    if (platform === 'instagram') return;
-    const payload: Record<string, any> = {};
-    if (platform === 'telegram') {
-      payload.usePlatformTelegram = !useCustom;
-      if (!useCustom) { payload.telegramBotToken = ''; payload.telegramBotUsername = ''; }
-    } else if (platform === 'facebook') {
-      payload.usePlatformMessenger = !useCustom;
-      payload.messengerEnabled = true;
-      if (!useCustom) { payload.fbPageId = ''; payload.fbPageAccessToken = ''; }
-    } else if (platform === 'whatsapp_cloud') {
-      payload.usePlatformWhatsapp = !useCustom;
-      if (!useCustom) { payload.whatsappToken = ''; payload.whatsappPhoneId = ''; }
-    } else if (platform === 'viber') {
-      payload.usePlatformViber = !useCustom;
-      if (!useCustom) { payload.viberAuthToken = ''; }
-    }
+  function handleUsePlatformBot(platform: Platform) {
+    // Switch back to platform bot — always include provider to prevent tab-switching
+    const payload: Record<string, any> = { provider: platform === 'whatsapp_cloud' ? 'whatsapp_cloud' : platform };
+    if (platform === 'telegram') { payload.usePlatformTelegram = true; }
+    else if (platform === 'facebook') { payload.usePlatformMessenger = true; payload.messengerEnabled = true; }
+    else if (platform === 'whatsapp_cloud') { payload.usePlatformWhatsapp = true; }
     saveSettings(payload, platform);
   }
 
   function handleDisconnect(platform: Platform) {
-    const payload: Record<string, any> = {};
+    // Always include provider matching the active platform so the backend doesn't reset to 'telegram'
+    const payload: Record<string, any> = { provider: platform };
     if (platform === 'telegram') { payload.telegramBotToken = ''; payload.telegramBotUsername = ''; payload.usePlatformTelegram = false; }
     else if (platform === 'whatsapp_cloud') { payload.whatsappToken = ''; payload.whatsappPhoneId = ''; payload.usePlatformWhatsapp = false; }
     else if (platform === 'viber') { payload.viberAuthToken = ''; payload.usePlatformViber = false; }
@@ -223,33 +227,39 @@ export default function Integrations() {
   }
 
   function handleSaveCustomCredentials(platform: Platform) {
+    // Always include provider so backend doesn't reset active tab to 'telegram'
     if (platform === 'telegram') {
       if (!settings.telegramBotToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال رمز البوت' : 'Please enter bot token', variant: 'destructive' }); return; }
-      saveSettings({ telegramBotToken: settings.telegramBotToken, telegramBotUsername: settings.telegramBotUsername, usePlatformTelegram: false }, platform);
+      saveSettings({ provider: 'telegram', telegramBotToken: settings.telegramBotToken, telegramBotUsername: settings.telegramBotUsername, usePlatformTelegram: false }, platform);
     } else if (platform === 'facebook') {
       if (!settings.fbPageId?.trim() || !settings.fbPageAccessToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال بيانات الصفحة' : 'Please enter page credentials', variant: 'destructive' }); return; }
-      saveSettings({ fbPageId: settings.fbPageId, fbPageAccessToken: settings.fbPageAccessToken, usePlatformMessenger: false, messengerEnabled: true }, platform);
+      saveSettings({ provider: 'facebook', fbPageId: settings.fbPageId, fbPageAccessToken: settings.fbPageAccessToken, usePlatformMessenger: false, messengerEnabled: true }, platform);
     } else if (platform === 'whatsapp_cloud') {
       if (!settings.whatsappPhoneId?.trim() || !settings.whatsappToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال بيانات واتساب' : 'Please enter WhatsApp credentials', variant: 'destructive' }); return; }
-      saveSettings({ whatsappPhoneId: settings.whatsappPhoneId, whatsappToken: settings.whatsappToken, usePlatformWhatsapp: false }, platform);
+      saveSettings({ provider: 'whatsapp_cloud', whatsappPhoneId: settings.whatsappPhoneId, whatsappToken: settings.whatsappToken, usePlatformWhatsapp: false }, platform);
     } else if (platform === 'viber') {
       if (!settings.viberAuthToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال رمز فايبر' : 'Please enter Viber token', variant: 'destructive' }); return; }
-      saveSettings({ viberAuthToken: settings.viberAuthToken, usePlatformViber: false }, platform);
+      saveSettings({ provider: 'viber', viberAuthToken: settings.viberAuthToken, usePlatformViber: false }, platform);
     }
   }
 
   function isUsingPlatform(platform: Platform): boolean {
-    if (platform === 'facebook') return !!(settings.usePlatformMessenger ?? settings.messengerUsingPlatform ?? false);
+    // Prefer explicit usePlatform flags; fall back to *UsingPlatform computed flags
+    if (platform === 'facebook') return !!(settings.usePlatformMessenger || settings.messengerUsingPlatform);
     if (platform === 'instagram') return false;
-    if (platform === 'telegram') return !!(settings.usePlatformTelegram ?? settings.telegramUsingPlatform ?? true);
+    if (platform === 'telegram') return !!(settings.usePlatformTelegram || settings.telegramUsingPlatform);
     if (platform === 'whatsapp_cloud') return false;
     if (platform === 'viber') return false;
     return false;
   }
 
   function isConnected(platform: Platform): boolean {
-    if (platform === 'facebook') return !!(settings.fbPageAccessTokenConfigured || settings.usePlatformMessenger || settings.messengerUsingPlatform);
-    if (platform === 'instagram') return !!(settings.instagramTokenConfigured || settings.usePlatformInstagram || settings.instagramUsingPlatform);
+    if (platform === 'facebook') {
+      const viaOwn = !!settings.fbPageAccessTokenConfigured && !settings.messengerUsingPlatform;
+      const viaPlatform = !!(settings.usePlatformMessenger || settings.messengerUsingPlatform);
+      return viaOwn || viaPlatform;
+    }
+    if (platform === 'instagram') return !!(settings.instagramTokenConfigured || settings.usePlatformInstagram || (settings as any).instagramUsingPlatform);
     if (platform === 'telegram') return !!(settings.telegramTokenConfigured || settings.telegramUsingPlatform);
     if (platform === 'whatsapp_cloud') return !!settings.whatsappTokenConfigured;
     if (platform === 'viber') return !!settings.viberAuthToken;
@@ -390,7 +400,7 @@ export default function Integrations() {
           {/* Platform header */}
           <div className="flex items-center gap-4 p-5 border-b border-slate-100 dark:border-slate-700/50">
             <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0 relative" style={{ backgroundColor: plat.bgColor, opacity: isViber ? 0.7 : 1 }}>
-              <span className="text-white">{ICONS[plat.value]('#fff')}</span>
+              <span className="text-white">{ICONS[plat.value]()}</span>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -416,6 +426,11 @@ export default function Integrations() {
                     <CheckCircle2 className="w-3 h-3" /> {isRTL ? 'يعمل!' : 'Working!'}
                   </span>
                 )}
+                {ping === 'warn' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-[10px] font-bold text-amber-600">
+                    <AlertTriangle className="w-3 h-3" /> {isRTL ? 'أذونات ناقصة' : 'Missing permissions'}
+                  </span>
+                )}
                 {ping === 'fail' && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-[10px] font-bold text-red-600">
                     <XCircle className="w-3 h-3" /> {isRTL ? 'لا يستجيب' : 'Not responding'}
@@ -434,7 +449,7 @@ export default function Integrations() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {/* Test connection button */}
-              {connected && !isViber && (
+              {connected && !isViber && !usingPlatform && (
                 <button onClick={() => pingPlatform(activePlatform)} disabled={ping === 'loading'}
                   className="h-8 px-3 rounded-lg text-xs font-semibold text-indigo-600 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 flex items-center gap-1.5">
                   {ping === 'loading' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
@@ -474,7 +489,7 @@ export default function Integrations() {
                 </div>
                 <Button onClick={() => {
                   if (!settings.instagramAccountId?.trim() || !settings.instagramPageAccessToken?.trim()) { toast({ title: isRTL ? 'الرجاء إدخال البيانات' : 'Please enter credentials', variant: 'destructive' }); return; }
-                  saveSettings({ instagramAccountId: settings.instagramAccountId, instagramPageAccessToken: settings.instagramPageAccessToken, usePlatformInstagram: false }, 'instagram');
+                  saveSettings({ provider: 'instagram', instagramAccountId: settings.instagramAccountId, instagramPageAccessToken: settings.instagramPageAccessToken, usePlatformInstagram: false }, 'instagram');
                 }} disabled={saving === 'instagram'} className="h-9 px-5 rounded-lg text-sm font-bold bg-pink-600 hover:bg-pink-700 text-white">
                   {saving === 'instagram' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'حفظ' : 'Save'}
                 </Button>
@@ -484,8 +499,8 @@ export default function Integrations() {
             {/* ── Telegram / Facebook / WhatsApp / Viber ── */}
             {(activePlatform === 'telegram' || activePlatform === 'facebook' || activePlatform === 'whatsapp_cloud' || activePlatform === 'viber') && (
               <>
-                {/* Platform / Custom mode toggle */}
-                {platformAvailable && (activePlatform === 'telegram' || activePlatform === 'facebook') && (
+                {/* Platform bot info card — show when using platform bot */}
+                {platformAvailable && (activePlatform === 'telegram' || activePlatform === 'facebook') && usingPlatform && (
                   <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/50">
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${usingPlatform ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
                       {usingPlatform
@@ -511,22 +526,55 @@ export default function Integrations() {
                   </div>
                 )}
 
-                {/* Custom credentials form OR connected state */}
-                {(!platformAvailable || !usingPlatform) && connected && !isViber && (
+                {/* Connected state — show when connected (own credentials OR platform bot) */}
+                {connected && !isViber && (
                   <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-emerald-200/80 dark:border-emerald-700/50">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{isRTL ? 'متصل وجاهز' : 'Connected & Ready'}</p>
-                        <p className="text-xs text-slate-500">{isRTL ? 'البيانات محفوظة. انقر "إلغاء الربط" لتغيير البيانات.' : 'Credentials saved. Click "Disconnect" to change them.'}</p>
+                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                          {isRTL ? 'متصل وجاهز' : 'Connected & Ready'}
+                          {usingPlatform
+                            ? <span className="mr-2 text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-full">{isRTL ? 'بوت المنصة' : 'Platform Bot'}</span>
+                            : <span className="mr-2 text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full">{isRTL ? 'حسابك الخاص' : 'Your Account'}</span>
+                          }
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {usingPlatform
+                            ? (isRTL ? 'EcoPro تدير البوت تلقائياً. انقر "إلغاء الربط" لإيقاف الخدمة.' : 'EcoPro manages the bot automatically. Click "Disconnect" to stop.')
+                            : (isRTL ? 'بياناتك محفوظة. انقر "إلغاء الربط" لإزالة الربط.' : 'Your credentials are saved. Click "Disconnect" to remove them.')}
+                        </p>
                       </div>
                     </div>
+                    {/* Show permissions warning if last test returned missing_permissions */}
+                    {pingDetail[activePlatform]?.errorType === 'missing_permissions' && (
+                      <div className="flex items-start gap-2 mt-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-800 dark:text-amber-200">
+                          {isRTL
+                            ? 'الرمز صالح لكن تطبيقك على Meta يفتقر للأذونات. اذهب إلى Meta Developers ← تطبيقك ← App Review وأضف: pages_messaging و pages_read_engagement و pages_manage_metadata'
+                            : 'Token is valid but your Meta App is missing permissions. Go to Meta Developers → Your App → App Review and add: pages_messaging, pages_read_engagement, pages_manage_metadata'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {(!platformAvailable || !usingPlatform) && (!connected || isViber) && (
+                {/* "Use Platform Bot" button — only show when disconnected AND platform is available */}
+                {!connected && platformAvailable && (activePlatform === 'telegram' || activePlatform === 'facebook') && (
+                  <div className="flex items-center justify-end">
+                    <button onClick={() => handleUsePlatformBot(activePlatform)} disabled={saving === activePlatform}
+                      className="h-9 px-4 rounded-lg text-xs font-semibold border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 flex items-center gap-2">
+                      {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                      {isRTL ? 'استخدام بوت المنصة' : 'Use Platform Bot'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Credentials form — show when: not connected, OR using platform (no own creds saved), OR Viber */}
+                {(!connected || usingPlatform || isViber) && (
                   <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/50">
                     <div className="flex items-center gap-2">
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="5" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4 5V4a3 3 0 016 0v1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
@@ -599,8 +647,8 @@ export default function Integrations() {
                         className="h-9 px-5 rounded-lg text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white">
                         {saving === activePlatform ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'حفظ البيانات' : 'Save Credentials'}
                       </Button>
-                      {platformAvailable && (
-                        <p className="text-[10px] text-slate-400">{isRTL ? 'أو استخدم زر التبديل أعلاه للعودة إلى بوت المنصة' : 'Or use the toggle above to switch back to Platform Bot'}</p>
+                      {platformAvailable && !connected && (
+                        <p className="text-[10px] text-slate-400">{isRTL ? 'أو انقر "استخدام بوت المنصة" أعلاه' : 'Or click "Use Platform Bot" above'}</p>
                       )}
                     </div>
                   </div>
@@ -635,16 +683,16 @@ export default function Integrations() {
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-semibold text-slate-500">{isRTL ? 'حفظ التغييرات' : 'Save Changes'}</Label>
                     <Button onClick={() => {
-                      const payload: any = {};
+                      const payload: any = { provider: activePlatform };
                       if (activePlatform === 'telegram') { payload.telegramDelayMinutes = settings.telegramDelayMinutes ?? 5; }
                       else if (activePlatform === 'facebook') { payload.messengerDelayMinutes = settings.messengerDelayMinutes ?? 5; }
                       else if (activePlatform === 'whatsapp_cloud') { payload.whatsappDelayMinutes = (settings as any).whatsappDelayMinutes ?? 5; }
                       else if (activePlatform === 'viber') { payload.viberDelayMinutes = (settings as any).viberDelayMinutes ?? 5; }
                       payload.autoExpireHours = settings.autoExpireHours ?? 24;
-                      saveSettings(payload, 'delay');
-                    }} disabled={saving === 'delay'}
+                      saveSettings(payload, activePlatform);
+                    }} disabled={saving === activePlatform}
                       className="h-9 w-full rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">
-                      {saving === 'delay' ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : isRTL ? 'حفظ' : 'Save'}
+                      {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : isRTL ? 'حفظ' : 'Save'}
                     </Button>
                   </div>
                 </div>
@@ -694,13 +742,13 @@ function FacebookFaq({ isRTL }: { isRTL: boolean }) {
     { q: 'أين أجد الـ Page ID؟', a: 'اذهب إلى صفحتك على Facebook ← عن الصفحة (About) ← مرر للأسفل ستجد Page ID.' },
     { q: 'كيف أحصل على Access Token؟', a: 'في Meta Developers ← Messenger ← API Setup ← أضف صفحتك ← انقر Generate Token. احفظه لأنه لن يظهر مرة أخرى.' },
     { q: 'ما هو الـ Webhook الذي أضعه؟', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/messenger/webhook\n\nVerify Token:\necopro_messenger_verify\n\nاشترك في: messages, messaging_postbacks' },
-    { q: 'ما الأذونات المطلوبة؟', a: '• pages_messaging\n• pages_read_engagement\n• pages_manage_metadata\n\nأضفها من App Review ← Permissions.' },
+    { q: 'ما الأذونات المطلوبة؟', a: '• pages_messaging — لإرسال واستقبال الرسائل عبر Messenger\n• pages_read_engagement — لقراءة الرسائل الواردة من العملاء\n• pages_manage_metadata — للاشتراك في أحداث Webhook (رسائل، postbacks)\n\nبدون أي واحدة منها لن يعمل البوت بشكل صحيح.\n\nكيفية الإضافة:\nMeta Developers ← تطبيقك ← App Review ← Permissions and Features ← ابحث عن كل إذن واضغط Request.' },
   ] : [
     { q: 'How do I create a Messenger app on Meta?', a: 'Go to developers.facebook.com → My Apps → Create App → choose Business → add Messenger product. You\'ll need an active Facebook Page.' },
     { q: 'Where do I find the Page ID?', a: 'Go to your Facebook Page → About → scroll down to find Page ID.' },
     { q: 'How do I get the Access Token?', a: 'In Meta Developers → Messenger → API Setup → add your page → click Generate Token. Save it as it won\'t be shown again.' },
     { q: 'What Webhook URL do I use?', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/messenger/webhook\n\nVerify Token:\necopro_messenger_verify\n\nSubscribe to: messages, messaging_postbacks' },
-    { q: 'What permissions does my app need?', a: '• pages_messaging\n• pages_read_engagement\n• pages_manage_metadata\n\nAdd them from App Review → Permissions.' },
+    { q: 'What permissions does my app need?', a: '• pages_messaging — to send and receive messages via Messenger\n• pages_read_engagement — to read incoming messages from customers\n• pages_manage_metadata — to subscribe to Webhook events (messages, postbacks)\n\nWithout any one of these the bot will not work correctly.\n\nHow to add them:\nMeta Developers → Your App → App Review → Permissions and Features → search each permission → click Request.' },
   ];
   return <FaqAccordion title={isRTL ? 'كيف أربط Facebook Messenger؟' : 'How to set up Facebook Messenger?'} faqs={faqs} />;
 }

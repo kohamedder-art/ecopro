@@ -123,8 +123,10 @@ export default function JewelHeartTemplate({
 
   // ── Variant & Pricing ──
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
-  const productPrice = selectedVariant?.price ?? mainProduct?.price ?? 0;
-  const total = productPrice + deliveryFee;
+  const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
+  const productPrice = variantPrice ?? mainProduct?.price ?? 0;
+  const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : productPrice * quantity;
+  const total = productTotal + deliveryFee;
 
   // ── Image Gallery State ──
   const [selectedMainImage, setSelectedMainImage] = useState(0);
@@ -159,7 +161,7 @@ export default function JewelHeartTemplate({
           ...(selectedVariant?.id ? { variant_id: selectedVariant.id } : {}),
           quantity: selectedOffer?.quantity ?? 1,
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-          total_price: selectedOffer ? selectedOffer.bundle_price : total,
+          total_price: productTotal,
           delivery_fee: deliveryFee,
           delivery_type: selectedDeliveryType,
           customer_name: customerName,

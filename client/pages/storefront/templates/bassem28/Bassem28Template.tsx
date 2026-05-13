@@ -131,9 +131,11 @@ export default function Bassem28Template({
 
   // ── Variant & pricing ──
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
-  const productPrice = selectedVariant?.price ?? mainProduct?.price ?? 0;
+  const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
+  const productPrice = variantPrice ?? mainProduct?.price ?? 0;
   const [quantity, setQuantity] = useState(1);
-  const total = (productPrice * quantity) + deliveryFee;
+  const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : productPrice * quantity;
+  const total = productTotal + deliveryFee;
 
   // ── Order State ──
   const [customerName, setCustomerName] = useState('');
@@ -179,7 +181,7 @@ export default function Bassem28Template({
           <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: surfaceMuted }}>
             <div className="flex justify-between text-sm">
               <span>{mainProduct.title} × {quantity}</span>
-              <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || productPrice * quantity)).toLocaleString()} {currency}</span>
+              <span className="font-bold">{Math.round(productTotal).toLocaleString()} {currency}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span style={{ color: textMuted }}>التوصيل</span>
@@ -268,7 +270,7 @@ export default function Bassem28Template({
             <div className="w-full lg:w-[48%] flex flex-col gap-3 lg:self-stretch">
               {/* Main display: video or image */}
               <div className="rounded-2xl overflow-hidden shadow-xl aspect-[4/5] lg:aspect-auto lg:flex-1 min-h-[300px] lg:max-h-[70vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
                   {videoEmbed && (
                     <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
                       {videoEmbed.type === 'youtube' ? (
@@ -417,13 +419,13 @@ export default function Bassem28Template({
                 <div className="rounded-lg p-2.5 space-y-1.5 text-xs" style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : surfaceMuted }}>
                   <div className="flex justify-between font-bold" style={{ color: surfaceTextColor }}>
                     <span>سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
-                    <span>{Math.round(Number(selectedOffer?.bundle_price || productPrice * quantity)).toLocaleString()} {currency}</span>
+                    <span>{Math.round(productTotal).toLocaleString()} {currency}</span>
                   </div>
                   <div className="flex justify-between font-bold" style={{ color: surfaceTextColor }}>
                     <span>التوصيل</span><span>{selectedWilayaId ? `${deliveryFee} ${currency}` : '--'}</span>
                   </div>
                   <div className="flex justify-between font-black text-sm pt-1" style={{ color: accentColor, borderTop: `1px solid ${surfaceBorderColor}` }}>
-                    <span>المجموع</span><span>{selectedWilayaId ? `${Math.round(Number(selectedOffer?.bundle_price || productPrice * quantity) + deliveryFee).toLocaleString()} ${currency}` : '--'}</span>
+                    <span>المجموع</span><span>{selectedWilayaId ? `${Math.round(total).toLocaleString()} ${currency}` : '--'}</span>
                   </div>
                 </div>
 

@@ -2258,7 +2258,7 @@ export default function Store() {
               </div>
             )}
 
-            <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex flex-wrap gap-2">
               {(
                 [
                   { key: 'product', label: t('store.productForm.sections.product') },
@@ -3110,44 +3110,58 @@ export default function Store() {
                             />
                           </div>
 
-                          {/* Compare Price */}
-                          <div className="hidden sm:flex items-center gap-1.5">
+                          {/* Quantity × Bundle Price */}
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={o.quantity}
+                              onChange={(e) => {
+                                setOffersDraft((prev) =>
+                                  prev.map((row, i) => (i === idx ? { ...row, quantity: Number(e.target.value) } : row))
+                                );
+                                setOffersDirty(true);
+                              }}
+                              className="h-8 w-14 text-sm text-center"
+                            />
+                            <span className="text-xs text-slate-400">×</span>
                             <Input
                               type="number"
                               min={0}
                               step="0.01"
-                              value={formatPriceForInput(o.compare_price)}
+                              value={formatPriceForInput(o.bundle_price)}
                               onChange={(e) => {
-                                const raw = e.target.value;
-                                const next = raw === '' ? undefined : Number(raw);
+                                const n = e.target.value === '' ? 0 : Number(e.target.value);
                                 setOffersDraft((prev) =>
-                                  prev.map((row, i) => (i === idx ? { ...row, compare_price: next } : row))
+                                  prev.map((row, i) => (i === idx ? { ...row, bundle_price: n } : row))
                                 );
                                 setOffersDirty(true);
                               }}
-                              placeholder="—"
-                              className="h-8 w-24 text-center text-sm text-slate-400 line-through"
+                              className="h-8 w-24 text-sm text-center"
                             />
                           </div>
 
-                          {/* Free delivery chip */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOffersDraft((prev) =>
-                                prev.map((row, i) => (i === idx ? { ...row, free_delivery: !row.free_delivery } : row))
-                              );
-                              setOffersDirty(true);
-                            }}
-                            className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                              o.free_delivery
-                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600'
-                                : 'bg-slate-100 dark:bg-slate-700 text-slate-400 border border-transparent hover:border-slate-300'
-                            }`}
-                          >
-                            <Truck className="h-3 w-3" />
-                            {o.free_delivery ? '✓' : 'مجاني'}
-                          </button>
+                          {/* Free delivery toggle */}
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-[9px] text-slate-400 font-medium">توصيل مجاني</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOffersDraft((prev) =>
+                                  prev.map((row, i) => (i === idx ? { ...row, free_delivery: !row.free_delivery } : row))
+                                );
+                                setOffersDirty(true);
+                              }}
+                              className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                                o.free_delivery
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600'
+                                  : 'bg-slate-100 dark:bg-slate-700 text-slate-400 border border-slate-200 dark:border-slate-600'
+                              }`}
+                            >
+                              <Truck className="h-3 w-3" />
+                              {o.free_delivery ? 'نعم ✓' : 'لا'}
+                            </button>
+                          </div>
 
                           {/* Discount badge */}
                           {discountPercent > 0 && (

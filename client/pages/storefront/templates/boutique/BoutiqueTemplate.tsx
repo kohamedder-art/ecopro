@@ -41,7 +41,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   return (
     <div className="boutique-gallery-wrap flex flex-col h-full">
       <div className="boutique-gallery-img relative w-full aspect-square overflow-hidden shrink-0" style={{ backgroundColor: surfaceMuted }}>
-        <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
+        <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
           {videoEmbed && (
             <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
               {videoEmbed.type === 'youtube' ? (

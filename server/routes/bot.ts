@@ -285,6 +285,81 @@ export const getBotSettings: RequestHandler = async (req, res) => {
   }
 };
 
+// Test bot connection for the current client
+export const testBotConnection: RequestHandler = async (req, res) => {
+  try {
+    const clientId = (req as any).user?.id;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { platform } = req.body;
+    if (!platform) return res.status(400).json({ error: 'platform required' });
+
+    const row = await pool.query(
+      `SELECT telegram_bot_token, fb_page_id, fb_page_access_token FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+    const s = row.rows[0];
+    if (!s) return res.json({ success: false, error: 'No bot settings found' });
+
+    if (platform === 'telegram') {
+      const token = String(s.telegram_bot_token || '').trim();
+      if (!token) return res.json({ success: false, error: 'No Telegram bot token configured' });
+      try {
+        const r = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+        const d = await r.json() as any;
+        if (d.ok) return res.json({ success: true, botName: d.result?.first_name, username: d.result?.username });
+        return res.json({ success: false, error: d.description || 'Telegram API error' });
+      } catch (e: any) {
+        return res.json({ success: false, error: e.message || 'Network error reaching Telegram' });
+      }
+    }
+
+    if (platform === 'facebook') {
+      const token = String(s.fb_page_access_token || '').trim();
+      const effectiveToken = token || getPlatformFbPageAccessToken();
+      if (!effectiveToken) return res.json({ success: false, error: 'No Facebook token configured' });
+      try {
+        // /me with a Page Access Token returns the page info — no special permissions required
+        const r = await fetch(`https://graph.facebook.com/v20.0/me?fields=id,name&access_token=${effectiveToken}`);
+        const d = await r.json() as any;
+        if (d.id) return res.json({ success: true, pageName: d.name, pageId: d.id });
+        // Distinguish token expiry vs missing permissions
+        const code = d.error?.code;
+        const msg = d.error?.message || 'Facebook API error';
+        if (code === 190) return res.json({ success: false, error: 'رمز الوصول منتهي الصلاحية — يجب تجديده من Meta Developers', errorType: 'token_expired' });
+        if (code === 100 || code === 200 || code === 10) return res.json({ success: false, error: 'الرمز صالح لكن التطبيق يفتقر للأذونات المطلوبة (pages_messaging, pages_read_engagement). تأكد من App Review في Meta Developers.', errorType: 'missing_permissions' });
+        return res.json({ success: false, error: msg });
+      } catch (e: any) {
+        return res.json({ success: false, error: e.message || 'Network error reaching Facebook' });
+      }
+    }
+
+    if (platform === 'instagram') {
+      const fbRow = await pool.query(
+        `SELECT instagram_account_id, page_access_token_encrypted FROM facebook_tokens WHERE client_id = $1 AND is_active = TRUE LIMIT 1`,
+        [clientId]
+      );
+      if (!fbRow.rows[0]?.instagram_account_id) return res.json({ success: false, error: 'No Instagram credentials configured' });
+      const igId = fbRow.rows[0].instagram_account_id;
+      const { decryptData } = await import('../utils/encryption');
+      const token = decryptData(fbRow.rows[0].page_access_token_encrypted);
+      try {
+        const r = await fetch(`https://graph.facebook.com/v20.0/${igId}?fields=name,username&access_token=${token}`);
+        const d = await r.json() as any;
+        if (d.id) return res.json({ success: true, username: d.username });
+        return res.json({ success: false, error: d.error?.message || 'Invalid Instagram token or Account ID' });
+      } catch (e: any) {
+        return res.json({ success: false, error: e.message || 'Network error reaching Instagram' });
+      }
+    }
+
+    return res.json({ success: false, error: 'Unsupported platform' });
+  } catch (error) {
+    console.error('[testBotConnection] error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
 // Update bot settings for the current client
 export const updateBotSettings: RequestHandler = async (req, res) => {
   try {

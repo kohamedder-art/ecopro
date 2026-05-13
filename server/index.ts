@@ -871,6 +871,14 @@ ${urls}
     botRoutes.updateBotSettings
   );
 
+  app.post(
+    "/api/bot/test-connection",
+    authenticate,
+    requireClient,
+    apiLimiter,
+    botRoutes.testBotConnection
+  );
+
   // AI autopilot settings
   app.get(
     "/api/ai-settings",

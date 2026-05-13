@@ -184,8 +184,9 @@ export default function Dz3ShopTemplate({
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
 
   // ── Pricing ──
-  const detailPrice = detailVariant?.price ?? detailProduct?.price ?? 0;
-  const productTotal = selectedOffer ? selectedOffer.bundle_price : detailPrice * quantity;
+  const variantPrice = (detailVariant?.price != null && detailVariant.price > 0) ? detailVariant.price : null;
+  const detailPrice = variantPrice ?? detailProduct?.price ?? 0;
+  const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : detailPrice * quantity;
   const total = productTotal + deliveryFee;
 
   // ── Order State ──
@@ -213,7 +214,7 @@ export default function Dz3ShopTemplate({
           ...(detailVariant?.id ? { variant_id: detailVariant.id } : {}),
           quantity,
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-          total_price: selectedOffer ? selectedOffer.bundle_price : productTotal,
+          total_price: productTotal,
           delivery_fee: deliveryFee,
           delivery_type: deliveryType,
           customer_name: customerName,
@@ -496,7 +497,7 @@ export default function Dz3ShopTemplate({
 
                 {/* Main display: video or image */}
                 <div className="rounded-xl overflow-hidden shadow-sm relative aspect-[4/5] lg:aspect-auto lg:flex-1 lg:max-h-[70vh]" style={{ backgroundColor: surfaceColor }}>
-                  <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
+                  <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
                     {videoEmbed && (
                       <div className="h-full shrink-0 relative group" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
                         onClick={() => {

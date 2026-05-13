@@ -113,6 +113,7 @@ export default function IycoTemplate({
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
   const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
+
   // Offers system
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
@@ -207,7 +208,7 @@ export default function IycoTemplate({
 
     const orderCart = [{
       id: mainProduct.id,
-      price: selectedVariant?.price ?? mainProduct.price,
+      price: ((selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null) ?? mainProduct.price,
       qty: selectedOffer?.quantity ?? quantity,
       variant_id: selectedVariant?.id ?? null,
     }];
@@ -384,7 +385,7 @@ export default function IycoTemplate({
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4">
               <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[65vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory' }}>
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
                   {videoEmbed && (
                     <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
                       {videoEmbed.type === 'youtube' ? (
@@ -588,7 +589,7 @@ export default function IycoTemplate({
                   <div className="p-2.5 rounded-md mt-2 space-y-1.5" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
                     <div className="flex justify-between items-center text-xs font-bold" style={{ color: surfaceTextColor }}>
                       <span className="flex items-center gap-1.5"><ShoppingCart size={13} /> سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
-                      <span dir="ltr">{Math.round(Number(selectedOffer?.bundle_price || (selectedVariant?.price ?? mainProduct.price) * quantity)).toLocaleString()} {currency}</span>
+                      <span dir="ltr">{Math.round(selectedOffer ? selectedOffer.bundle_price * quantity : ((selectedVariant?.price != null && selectedVariant.price > 0 ? selectedVariant.price : null) ?? mainProduct.price) * quantity).toLocaleString()} {currency}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs font-bold pb-1.5" style={{ color: surfaceTextColor, borderBottom: `1px solid ${borderColor}` }}>
                       <span className="flex items-center gap-1.5"><Truck size={13} /> التوصيل</span>
@@ -597,7 +598,7 @@ export default function IycoTemplate({
                     <div className="flex justify-between items-center font-black text-sm" style={{ color: surfaceTextColor }}>
                       <span className="flex items-center gap-1.5"><Calculator size={13} /> المجموع</span>
                       <span dir="ltr" style={{ color: accentColor }}>
-                        {!selectedWilayaId ? '--' : `${Math.round(Number(selectedOffer?.bundle_price || (selectedVariant?.price ?? mainProduct.price) * quantity) + deliveryFee).toLocaleString()} ${currency}`}
+                        {!selectedWilayaId ? '--' : `${Math.round((selectedOffer ? selectedOffer.bundle_price * quantity : ((selectedVariant?.price != null && selectedVariant.price > 0 ? selectedVariant.price : null) ?? mainProduct.price) * quantity) + deliveryFee).toLocaleString()} ${currency}`}
                       </span>
                     </div>
                   </div>

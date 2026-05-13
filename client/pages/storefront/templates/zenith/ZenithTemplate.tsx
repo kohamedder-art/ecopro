@@ -44,7 +44,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   // Safe fallbacks after mainProduct declaration
   const safeProduct = mainProduct || { id: 0, title: 'منتج مميز', price: 3900, original_price: 6500, images: [], variants: [] };
-  const productPrice = safeProduct.price ?? 3900;
+  const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
+  const productPrice = variantPrice ?? safeProduct.price ?? 3900;
   const productImages = safeProduct.images && safeProduct.images.length > 0 ? safeProduct.images : [];
   const currency = settings?.currency_code || 'د.ج';
 
@@ -67,7 +68,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   })();
 
   const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
-  const totalCost = (productPrice * quantity) + deliveryFee;
+  const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : productPrice * quantity;
+  const totalCost = productTotal + deliveryFee;
 
   const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: 'smooth' });
 
@@ -98,7 +100,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
           quantity: selectedOffer?.quantity || quantity,
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-          total_price: selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? mainProduct.price ?? 0),
+          total_price: productTotal,
           delivery_fee: deliveryFee,
           delivery_type: selectedDeliveryType,
           customer_name: customerName,

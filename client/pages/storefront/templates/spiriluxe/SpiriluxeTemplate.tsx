@@ -103,7 +103,12 @@ export default function SpiriluxeTemplate({
   
 
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
-  const productTotal = selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? mainProduct?.price ?? 0) * quantity;
+  // bundle_price is the fixed total for one instance of the offer.
+  // Multiply by quantity so user can order e.g. 4× offer1.
+  const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
+  const productTotal = selectedOffer
+    ? selectedOffer.bundle_price * quantity
+    : (variantPrice ?? mainProduct?.price ?? 0) * quantity;
   const grandTotal = productTotal + deliveryFee;
 
   // ─── Order Handling ───
@@ -121,7 +126,7 @@ export default function SpiriluxeTemplate({
         ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
         quantity: selectedOffer?.quantity || quantity,
         ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-        total_price: selectedOffer ? selectedOffer.bundle_price : (mainProduct.price || 0) * quantity,
+        total_price: selectedOffer ? selectedOffer.bundle_price * quantity : (variantPrice ?? mainProduct.price ?? 0) * quantity,
         delivery_fee: deliveryFee,
         delivery_type: selectedDeliveryType,
         customer_name: fd.get('name'),
@@ -530,23 +535,24 @@ export default function SpiriluxeTemplate({
                   </div>
                 )}
 
-                {/* Order Summary */}
-                {selectedWilayaId && (
-                  <div className="p-3 rounded-xl text-sm space-y-2" style={{ backgroundColor: accentColor + '10', border: `1px solid ${accentColor}30` }}>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">سعر المنتجات</span>
-                      <span className="font-bold">{Math.round(productTotal).toLocaleString()} {currency}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">سعر التوصيل</span>
-                      <span className="font-bold" style={{ color: accentColor }}>{Math.round(deliveryFee).toLocaleString()} {currency}</span>
-                    </div>
-                    <div className="flex justify-between pt-2" style={{ borderTop: `1px solid ${accentColor}40` }}>
-                      <span className="font-bold">التكلفة الإجمالية</span>
-                      <span className="font-black text-base" style={{ color: accentColor }}>{Math.round(grandTotal).toLocaleString()} {currency}</span>
-                    </div>
+                {/* Order Summary — always visible */}
+                <div className="p-3 rounded-xl text-sm space-y-2" style={{ backgroundColor: accentColor + '10', border: `1px solid ${accentColor}30` }}>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">سعر المنتجات</span>
+                    <span className="font-bold">{Math.round(productTotal).toLocaleString()} {currency}</span>
                   </div>
-                )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">سعر التوصيل</span>
+                    {selectedWilayaId
+                      ? <span className="font-bold" style={{ color: accentColor }}>{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
+                      : <span className="text-gray-400 text-xs">يُحدد عند اختيار الولاية</span>
+                    }
+                  </div>
+                  <div className="flex justify-between pt-2" style={{ borderTop: `1px solid ${accentColor}40` }}>
+                    <span className="font-bold">التكلفة الإجمالية</span>
+                    <span className="font-black text-base" style={{ color: accentColor }}>{Math.round(selectedWilayaId ? grandTotal : productTotal).toLocaleString()} {currency}</span>
+                  </div>
+                </div>
 
                 <button 
                   type="submit" 

@@ -141,7 +141,7 @@ export default function LeRoiShopTemplate({
   const comparePrice = (activeProduct as any)?.compare_at_price;
   const unitPrice = activeProduct?.price || 0;
   const deliveryFee = resolveDeliveryFee(activeProduct, selectedOffer, baseDeliveryFee);
-  const productTotal = selectedOffer ? selectedOffer.bundle_price : unitPrice * quantity;
+  const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : unitPrice * quantity;
   const grandTotal = productTotal + deliveryFee;
 
   // Related products (exclude active product) - show more like Temu

@@ -50,6 +50,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     }, [offers]);
 
     const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
+    const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
+    const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : (variantPrice ?? product?.price ?? 0) * quantity;
 
     const handleDefaultOrder = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -63,7 +65,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
                 quantity: quantity,
                 ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-                total_price: selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? product.price ?? 0),
+                total_price: productTotal,
                 delivery_fee: deliveryFee,
                 delivery_type: 'desk',
                 customer_name: fd.get('name'),
@@ -270,7 +272,7 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                     {/* Main Product Image (Swipeable Carousel) */}
                     <div className="aspect-square rounded-2xl overflow-hidden shadow-sm bg-white relative group">
                         {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory' }}>
+                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
                                 {videoEmbed && (
                                     <div key="video" className="snap-center" style={{ flex: '0 0 100%', height: '100%', scrollSnapAlign: 'center' }}>
                                         {videoEmbed.type === 'youtube' ? (

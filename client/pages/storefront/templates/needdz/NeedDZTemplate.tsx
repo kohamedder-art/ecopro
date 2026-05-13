@@ -103,6 +103,8 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(selectedProduct, selectedOffer, baseDeliveryFee);
+  const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
+  const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : (variantPrice ?? selectedProduct?.price ?? 0) * quantity;
 
   // Section visibility toggles
   const showCountdown = settings?.needdz_show_countdown !== false;
@@ -161,7 +163,7 @@ const parseVideoEmbed = (videoUrl: string) => {
         ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
         quantity: selectedOffer?.quantity || quantity,
         ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
-        total_price: selectedOffer ? selectedOffer.bundle_price : (selectedVariant?.price ?? selectedProduct.price ?? 0) * quantity,
+        total_price: productTotal,
         delivery_fee: deliveryFee,
         delivery_type: selectedDeliveryType,
         customer_name: fd.get('name'),
