@@ -155,40 +155,37 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
             // House/delivered icon
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="10" fill="#d1fae5" stroke="#6ee7b7" strokeWidth="1"/><path d="M5 11L11 5L17 11" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><rect x="8" y="12" width="6" height="5" rx="0.8" fill="#059669"/><rect x="9.5" y="13.5" width="3" height="3.5" rx="0.5" fill="#d1fae5"/></svg>
           ) : (
-            // 3D-style truck facing left (RTL: moving toward delivery on left)
+            // 3D truck facing LEFT (RTL: moving toward delivery on left)
             <svg width="22" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* Shadow */}
-              <ellipse cx="16" cy="21" rx="12" ry="1.5" fill="#00000018"/>
-              {/* Trailer body */}
-              <rect x="1" y="5" width="18" height="12" rx="2" fill="#1d4ed8"/>
-              {/* Trailer top highlight */}
-              <rect x="1" y="5" width="18" height="3" rx="2" fill="#3b82f6"/>
-              {/* Trailer side panel lines */}
-              <line x1="7" y1="5" x2="7" y2="17" stroke="#1e40af" strokeWidth="0.8"/>
-              {/* Cab */}
-              <path d="M19 9 H26 Q29 9 30 12 L31 17 H19 Z" fill="#2563eb"/>
-              {/* Cab top highlight */}
-              <path d="M19 9 H25 Q27 9 28 11 H19 Z" fill="#3b82f6"/>
-              {/* Windshield */}
-              <path d="M22 10.5 H25.5 Q27 10.5 28 12.5 H22 Z" fill="#bfdbfe" stroke="#93c5fd" strokeWidth="0.5"/>
-              {/* Cab door */}
-              <rect x="19.5" y="11" width="2" height="4" rx="0.4" fill="#1e40af" stroke="#3b82f6" strokeWidth="0.4"/>
-              {/* Exhaust */}
-              <rect x="18.5" y="3" width="1.5" height="4" rx="0.5" fill="#374151"/>
-              <circle cx="19.2" cy="3" r="1" fill="#6b7280" opacity="0.6"/>
-              {/* Rear wheels */}
-              <circle cx="5" cy="18" r="3" fill="#1f2937"/>
-              <circle cx="5" cy="18" r="1.5" fill="#374151"/>
-              <circle cx="5" cy="18" r="0.6" fill="#9ca3af"/>
-              <circle cx="11" cy="18" r="3" fill="#1f2937"/>
-              <circle cx="11" cy="18" r="1.5" fill="#374151"/>
-              <circle cx="11" cy="18" r="0.6" fill="#9ca3af"/>
-              {/* Front wheel */}
-              <circle cx="26" cy="18" r="3" fill="#1f2937"/>
-              <circle cx="26" cy="18" r="1.5" fill="#374151"/>
-              <circle cx="26" cy="18" r="0.6" fill="#9ca3af"/>
-              {/* Headlight */}
-              <rect x="29.5" y="13" width="1.5" height="2" rx="0.4" fill="#fef08a"/>
+              <defs>
+                <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2563eb"/><stop offset="100%" stopColor="#1d4ed8"/></linearGradient>
+                <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6"/><stop offset="100%" stopColor="#2563eb"/></linearGradient>
+              </defs>
+              <ellipse cx="16" cy="21" rx="13" ry="1.8" fill="#00000022"/>
+              <rect x="12" y="5" width="19" height="12" rx="2" fill="url(#tg)"/>
+              <rect x="12" y="5" width="19" height="3.5" rx="2" fill="#3b82f6"/>
+              <line x1="19" y1="5" x2="19" y2="17" stroke="#1e40af" strokeWidth="0.6"/>
+              <line x1="26" y1="5" x2="26" y2="17" stroke="#1e40af" strokeWidth="0.6"/>
+              <rect x="12" y="15.5" width="19" height="0.7" fill="#f87171" opacity="0.5"/>
+              <path d="M1 8 H11 Q13 8 13 10 L13 17 H1 Z" fill="url(#cg)"/>
+              <path d="M1 8 H9.5 Q11 8 11.5 9.5 L11.5 10 H1 Z" fill="#3b82f6"/>
+              <path d="M4 10 H10 Q11 10 11.5 11.5 V12.5 H4 Z" fill="#bfdbfe" stroke="#93c5fd" strokeWidth="0.4"/>
+              <path d="M6 10.3 H9 Q9.5 10.3 10 11 H6 Z" fill="#fff" opacity="0.35"/>
+              <rect x="2.5" y="12" width="3.2" height="3.5" rx="0.4" fill="#1e40af" stroke="#3b82f6" strokeWidth="0.4"/>
+              <rect x="2.8" y="13" width="0.8" height="0.5" rx="0.2" fill="#93c5fd"/>
+              <rect x="0.5" y="7.5" width="1" height="1.2" rx="0.3" fill="#374151" stroke="#1f2937" strokeWidth="0.3"/>
+              <rect x="0.5" y="12.8" width="1" height="2" rx="0.3" fill="#fef08a"/>
+              <rect x="0.5" y="12.8" width="1" height="2" rx="0.3" fill="#fff" opacity="0.25"/>
+              <path d="M0 13.5 L-2 12 L-2 16 Z" fill="#fef08a" opacity="0.1"/>
+              <rect x="11" y="3" width="1.5" height="4" rx="0.4" fill="#374151"/>
+              <circle cx="11.75" cy="3" r="0.8" fill="#6b7280" opacity="0.4"/>
+              <rect x="1" y="16.5" width="30" height="0.8" fill="#1f2937"/>
+              <circle cx="6" cy="18" r="3.2" fill="#1f2937"/><circle cx="6" cy="18" r="1.8" fill="#374151"/><circle cx="6" cy="18" r="1" fill="#4b5563"/><circle cx="6" cy="18" r="0.4" fill="#9ca3af"/>
+              <line x1="6" y1="16.2" x2="6" y2="19.8" stroke="#6b7280" strokeWidth="0.3"/><line x1="4.2" y1="18" x2="7.8" y2="18" stroke="#6b7280" strokeWidth="0.3"/>
+              <circle cx="17" cy="18" r="3.2" fill="#1f2937"/><circle cx="17" cy="18" r="1.8" fill="#374151"/><circle cx="17" cy="18" r="1" fill="#4b5563"/><circle cx="17" cy="18" r="0.4" fill="#9ca3af"/>
+              <line x1="17" y1="16.2" x2="17" y2="19.8" stroke="#6b7280" strokeWidth="0.3"/><line x1="15.2" y1="18" x2="18.8" y2="18" stroke="#6b7280" strokeWidth="0.3"/>
+              <circle cx="24" cy="18" r="3.2" fill="#1f2937"/><circle cx="24" cy="18" r="1.8" fill="#374151"/><circle cx="24" cy="18" r="1" fill="#4b5563"/><circle cx="24" cy="18" r="0.4" fill="#9ca3af"/>
+              <line x1="24" y1="16.2" x2="24" y2="19.8" stroke="#6b7280" strokeWidth="0.3"/><line x1="22.2" y1="18" x2="25.8" y2="18" stroke="#6b7280" strokeWidth="0.3"/>
             </svg>
           )}
         </div>
