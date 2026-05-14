@@ -1524,12 +1524,11 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
     if (linkedViaToken) return;
 
     // ── AI-FIRST approach: try AI auto-reply for ALL messages ──
-    // The AI has full store context, product catalog, delivery info, and customer orders.
-    // It handles questions like "اين طلبي", "هل تم شحن طلبي", "مرحبا", pricing questions, etc.
-    // Only fall through to static commands if AI is disabled or fails.
     if (client_id && message.text) {
+      console.log(`[Messenger] Attempting AI reply for client=${client_id} sender=${hashPsid(senderId)} tokenLen=${pageAccessToken?.length || 0}`);
       try {
         const aiResponse = await handleCustomerMessage(client_id, 'messenger', senderId, String(message.text));
+        console.log(`[Messenger] AI reply result: ${aiResponse ? 'got response' : 'null/empty'}`);
         if (aiResponse) {
           await sendMessengerMessage(pageAccessToken, senderId, aiResponse);
           return;
