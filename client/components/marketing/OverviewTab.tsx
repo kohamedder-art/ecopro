@@ -65,6 +65,12 @@ export function OverviewTab({ overview, funnel, sources, customerData, genderDat
     fill: PIE_COLORS[i % PIE_COLORS.length],
   })), [sources]);
 
+  const genderChartData = useMemo(() => genderData ? [
+    { name: t('marketing.customers.gender.male'), value: genderData.male, fill: '#3b82f6' },
+    { name: t('marketing.customers.gender.female'), value: genderData.female, fill: '#ec4899' },
+    { name: t('marketing.customers.gender.unknown'), value: genderData.unknown, fill: '#94a3b8' },
+  ].filter(d => d.value > 0) : [], [genderData, t]);
+
   if (!overview) return null;
 
   const convRate = overview.sessions > 0 ? (overview.totalOrders / overview.sessions) * 100 : 0;
@@ -249,14 +255,10 @@ export function OverviewTab({ overview, funnel, sources, customerData, genderDat
                       <ResponsiveContainer width="100%" height={180}>
                         <PieChart>
                           <Pie
-                            data={[
-                              { name: t('marketing.customers.gender.male'), value: genderData.male, color: '#3b82f6' },
-                              { name: t('marketing.customers.gender.female'), value: genderData.female, color: '#ec4899' },
-                              { name: t('marketing.customers.gender.unknown'), value: genderData.unknown, color: '#94a3b8' },
-                            ].filter(d => d.value > 0)}
+                            data={genderChartData}
                             cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value"
                           >
-                            {[{ color: '#3b82f6' }, { color: '#ec4899' }, { color: '#94a3b8' }].map((e, i) => (<Cell key={i} fill={e.color} />))}
+                            {genderChartData.map((entry, i) => (<Cell key={i} fill={entry.fill} />))}
                           </Pie>
                           <RechartsTooltip
                             contentStyle={{ fontSize: 12, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--background)' }}
