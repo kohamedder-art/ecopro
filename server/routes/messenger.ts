@@ -1007,13 +1007,24 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
     if (settingsResult.rows.length > 0) {
       client_id = Number(settingsResult.rows[0].client_id);
       postbackGreeting = settingsResult.rows[0].template_greeting || null;
-      
-      // Prefer platform env token when this event is for the shared platform Page.
-      pageAccessToken = isPlatformPage(pageId)
-        ? getPlatformFbPageAccessToken()
-        : (settingsResult.rows[0].fb_page_access_token
-            ? String(settingsResult.rows[0].fb_page_access_token).trim()
-            : '');
+
+      // Priority 1: OAuth token from facebook_tokens
+      try {
+        const oauthRes = await pool.query(
+          `SELECT page_access_token_encrypted FROM facebook_tokens WHERE client_id = $1 AND is_active = TRUE LIMIT 1`,
+          [client_id]
+        );
+        if (oauthRes.rows[0]?.page_access_token_encrypted) {
+          pageAccessToken = decryptData(oauthRes.rows[0].page_access_token_encrypted);
+        }
+      } catch { /* best-effort */ }
+
+      // Priority 2: token in bot_settings
+      if (!pageAccessToken) {
+        pageAccessToken = settingsResult.rows[0].fb_page_access_token
+          ? String(settingsResult.rows[0].fb_page_access_token).trim()
+          : '';
+      }
     } else if (isPlatformPage(pageId)) {
       // Platform page: resolve client by existing subscriber mapping, or by uniquely claiming
       // the latest pending preconnect token (safe fallback).
@@ -1319,13 +1330,24 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
     if (settingsResult.rows.length > 0) {
       client_id = Number(settingsResult.rows[0].client_id);
       const fetchedGreeting: string | null = settingsResult.rows[0].template_greeting || null;
-      
-      // Prefer platform env token when this event is for the shared platform Page.
-      pageAccessToken = isPlatformPage(pageId)
-        ? getPlatformFbPageAccessToken()
-        : (settingsResult.rows[0].fb_page_access_token
-            ? String(settingsResult.rows[0].fb_page_access_token).trim()
-            : '');
+
+      // Priority 1: OAuth token from facebook_tokens (encrypted, per-client)
+      try {
+        const oauthRes = await pool.query(
+          `SELECT page_access_token_encrypted FROM facebook_tokens WHERE client_id = $1 AND is_active = TRUE LIMIT 1`,
+          [client_id]
+        );
+        if (oauthRes.rows[0]?.page_access_token_encrypted) {
+          pageAccessToken = decryptData(oauthRes.rows[0].page_access_token_encrypted);
+        }
+      } catch { /* best-effort */ }
+
+      // Priority 2: token stored directly in bot_settings
+      if (!pageAccessToken) {
+        pageAccessToken = settingsResult.rows[0].fb_page_access_token
+          ? String(settingsResult.rows[0].fb_page_access_token).trim()
+          : '';
+      }
     } else if (isPlatformPage(pageId)) {
       // Platform page: resolve client by previously stored mapping
       const subRes = await pool.query(
