@@ -541,6 +541,11 @@ Be concise and informative. No emojis unless specifically requested.`;
 
 // ─── Core fetch wrapper (OpenAI-compatible) ────────────────────────────────
 
+/** Strip <think>...</think> reasoning blocks from model output */
+function stripThinkTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+}
+
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -675,68 +680,7 @@ async function callAIWithSearch(
   conversationHistory: GeminiContent[] = [],
 ): Promise<SearchGroundedResult> {
   const aiResponse = await callAI(systemPrompt, userMessage, conversationHistory);
-  return { text: aiResponse.text, sources: [] };
-}
-
-// ─── Public API ─────────────────────────────────────────────────────────────
-
-/**
- * Generate a plain text response (most features use this).
- * Automatically selects model based on role: owner/staff/admin use 70B, customer uses 8B.
- * Checks quota before calling AI and records usage after successful response.
- */
-export async function generateText(
-  role: AIUserRole,
-  prompt: string,
-  ctx: RoleContext = {},
-  history: GeminiContent[] = [],
-  images?: { mimeType: string; base64: string }[]
-): Promise<string> {
-  const systemPrompt = buildSystemPrompt(role, ctx);
-  // Customer-facing conversations use higher temperature for more natural, human-like responses
-  const temp = role === 'customer' ? 0.9 : 0.7;
-  // Select model based on role
-  const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
-
-  // Limit chat history to last 5 messages for customers to reduce token burn
-  const limitedHistory = role === 'customer' ? history.slice(-5) : history;
-
-  // Set max_tokens to 200 for customer replies to prevent verbose responses
-  const maxTokens = role === 'customer' ? 200 : undefined;
-
-  // Check quota if clientId and userType are provided
-  if (ctx.clientId && ctx.userType) {
-    const quotaStatus = await checkQuota(ctx.clientId, ctx.userType);
-    if (!quotaStatus.allowed) {
-      // Quota exceeded - return fallback message
-      if (ctx.userType === 'customer') {
-        return 'عذراً، تم تجاوز الحد الشهري للردود الآلية. يرجى التواصل مع المتجر مباشرة.';
-      } else {
-        return 'تم تجاوز الحد الشهري لاستخدام المساعد الذكي. يرجى ترقية حسابك للحصول على المزيد.';
-      }
-    }
-  }
-
-  const startTime = Date.now();
-  const aiResponse = await callAI(systemPrompt, prompt, limitedHistory, images, temp, model, maxTokens);
-  const duration = Date.now() - startTime;
-
-  // Record usage if clientId and userType are provided
-  if (ctx.clientId && ctx.userType) {
-    await recordUsage({
-      clientId: ctx.clientId,
-      userType: ctx.userType,
-      platformChatId: ctx.platformChatId,
-      modelUsed: model,
-      tokensInput: aiResponse.tokensInput,
-      tokensOutput: aiResponse.tokensOutput,
-      totalTokens: aiResponse.totalTokens,
-      costUsd: aiResponse.costUsd,
-      messagePreview: prompt,
-    });
-  }
-
-  return aiResponse.text;
+  return { text: stripThinkTags(aiResponse.text), sources: [] };
 }
 
 /**
@@ -753,7 +697,7 @@ export async function generateTextWithSearch(
   const systemPrompt = buildSystemPrompt(role, ctx);
   const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
   const aiResponse = await callAI(systemPrompt, prompt, history, undefined, 0.7, model);
-  return { text: aiResponse.text, sources: [] };
+  return { text: stripThinkTags(aiResponse.text), sources: [] };
 }
 
 /**
