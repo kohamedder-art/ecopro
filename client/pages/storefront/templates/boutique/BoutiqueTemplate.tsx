@@ -28,7 +28,12 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   const [showVideo, setShowVideo] = React.useState(true);
   const imgs: string[] = product.images?.filter(Boolean) || [];
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
+  const scrollCarouselTo = (i: number) => {
+    const container = carouselRef.current;
+    if (!container) return;
+    const target = container.children[i] as HTMLElement | undefined;
+    if (target) container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+  };
   const videoUrl = product?.metadata?.video_url || '';
   const videoEmbed = useMemo(() => {
     if (!videoUrl) return null;

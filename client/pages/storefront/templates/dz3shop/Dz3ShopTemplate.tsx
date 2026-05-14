@@ -96,7 +96,12 @@ export default function Dz3ShopTemplate({
   const [detailVariant, setDetailVariant] = useState<SelectedVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
+  const scrollCarouselTo = (i: number) => {
+    const container = carouselRef.current;
+    if (!container) return;
+    const target = container.children[i] as HTMLElement | undefined;
+    if (target) container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+  };
 
   // ── Main Product ──
   const mainProduct = useMemo(() => {
