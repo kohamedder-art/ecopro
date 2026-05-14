@@ -177,7 +177,12 @@ export default function IycoTemplate({
   const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
+  const scrollCarouselTo = (i: number) => {
+    const container = carouselRef.current;
+    if (!container) return;
+    const target = container.children[i] as HTMLElement | undefined;
+    if (target) container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+  };
   const [selectedSize, setSelectedSize] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
