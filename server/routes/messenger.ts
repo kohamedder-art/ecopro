@@ -1330,6 +1330,7 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
     if (settingsResult.rows.length > 0) {
       client_id = Number(settingsResult.rows[0].client_id);
       const fetchedGreeting: string | null = settingsResult.rows[0].template_greeting || null;
+      console.log(`[Messenger] handleMessage: found client=${client_id} bot_settings_token_len=${String(settingsResult.rows[0].fb_page_access_token||'').length}`);
 
       // Priority 1: OAuth token from facebook_tokens (encrypted, per-client)
       try {
@@ -1337,16 +1338,21 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
           `SELECT page_access_token_encrypted FROM facebook_tokens WHERE client_id = $1 AND is_active = TRUE LIMIT 1`,
           [client_id]
         );
+        console.log(`[Messenger] handleMessage: facebook_tokens rows=${oauthRes.rows.length} has_enc=${!!oauthRes.rows[0]?.page_access_token_encrypted}`);
         if (oauthRes.rows[0]?.page_access_token_encrypted) {
           pageAccessToken = decryptData(oauthRes.rows[0].page_access_token_encrypted);
+          console.log(`[Messenger] handleMessage: decrypted oauth token len=${pageAccessToken.length}`);
         }
-      } catch { /* best-effort */ }
+      } catch (e: any) {
+        console.error(`[Messenger] handleMessage: facebook_tokens lookup error:`, e?.message || e);
+      }
 
       // Priority 2: token stored directly in bot_settings
       if (!pageAccessToken) {
         pageAccessToken = settingsResult.rows[0].fb_page_access_token
           ? String(settingsResult.rows[0].fb_page_access_token).trim()
           : '';
+        console.log(`[Messenger] handleMessage: using bot_settings token len=${pageAccessToken.length}`);
       }
     } else if (isPlatformPage(pageId)) {
       // Platform page: resolve client by previously stored mapping
