@@ -84,6 +84,7 @@ export default function Bassem28Template({
 
   // ── Main Product ──
   const [activeMainProduct, setActiveMainProduct] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'catalog' | 'product'>('catalog');
   const baseMainProduct = useMemo(() => {
     if (initialProductSlug) {
       const bySlug = products?.find((p: any) => p.slug === initialProductSlug);
@@ -101,6 +102,14 @@ export default function Bassem28Template({
     if (!products) return [];
     return mainProduct ? products.filter(p => p.id !== mainProduct.id) : products;
   }, [products, mainProduct]);
+
+  const openProduct = (product: any) => {
+    setActiveMainProduct(product);
+    setViewMode('product');
+    setSelectedMainImage(0);
+    onProductView?.(product);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const mainImages = mainProduct?.images?.length ? mainProduct.images : ['/placeholder.png'];
 
@@ -313,7 +322,85 @@ export default function Bassem28Template({
         </div>
       )}
 
-      {mainProduct && (
+      {/* ══════════════════════════════════════
+          CATALOG VIEW
+          ══════════════════════════════════════ */}
+      {viewMode === 'catalog' && products && products.length > 0 && (
+        <main className="max-w-6xl mx-auto px-4 py-6">
+          {/* Hero */}
+          <div className="relative overflow-hidden rounded-3xl mb-10 p-8 md:p-12" style={{ background: `linear-gradient(145deg, ${accentColor}, ${accentColor}dd)`, color: '#fff' }}>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-60 h-60 bg-black/10 rounded-full translate-y-1/3 -translate-x-1/3" />
+            <div className="relative">
+              <h1 className="text-3xl md:text-4xl font-black mb-3">
+                <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>{heroTitle}</span>
+              </h1>
+              <p className="text-sm md:text-base opacity-90 max-w-lg">
+                <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('bassem28_banner_text')}>{settings?.bassem28_banner_text || 'تخفيضات حصرية لفترة محدودة ⚡ شحن سريع لـ 58 ولاية'}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Product Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+            {products.map(product => {
+              const discount = product.original_price ? Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
+              const isPopular = product.views > 200;
+              return (
+                <div
+                  key={product.id}
+                  className="group cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]"
+                  style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}
+                  onClick={() => openProduct(product)}
+                >
+                  <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+                    <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    {discount > 0 && (
+                      <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-lg">
+                        -{discount}%
+                      </span>
+                    )}
+                    {isPopular && (
+                      <span className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-lg shadow-lg flex items-center gap-0.5">
+                        <span>🔥</span> الأكثر مبيعاً
+                      </span>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-5">
+                      <span className="text-white text-xs font-bold px-5 py-2 rounded-full backdrop-blur-sm shadow-lg" style={{ backgroundColor: accentColor }}>
+                        تسوق الآن
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <h3 className="text-sm font-bold leading-snug mb-1.5 line-clamp-2 text-right" style={{ color: surfaceTextColor }}>
+                      {product.title}
+                    </h3>
+                    <div className="flex items-center justify-between">
+                      <div className="text-right">
+                        <span className="font-extrabold text-base" style={{ color: accentColor }}>
+                          {Math.round(product.price ?? 0).toLocaleString()} <span className="text-[10px]">{currency}</span>
+                        </span>
+                        {product.original_price && (
+                          <div className="text-[10px] line-through text-right" style={{ color: textMuted }}>
+                            {Math.round(product.original_price).toLocaleString()} {currency}
+                          </div>
+                        )}
+                      </div>
+                      {product.views > 0 && (
+                        <span className="text-[10px] font-semibold" style={{ color: textMuted }}>
+                          {product.views > 1000 ? `${Math.floor(product.views/1000)}K` : product.views}+
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </main>
+      )}
+
+      {viewMode === 'product' && mainProduct && (
         <main className="max-w-6xl mx-auto px-4 py-4 lg:py-6">
 
           {/* ── SPLIT LAYOUT: Images LEFT, Form RIGHT ── */}
@@ -521,7 +608,7 @@ export default function Bassem28Template({
               <h3 className="text-2xl font-black mb-8" style={{ color: textColor }}>منتجات أخرى</h3>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {otherProducts.map(product => {
-                  const swapProduct = () => { setActiveMainProduct(product); setSelectedMainImage(0); onProductView?.(product); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+                  const swapProduct = () => { setActiveMainProduct(product); setSelectedMainImage(0); setViewMode('product'); onProductView?.(product); window.scrollTo({ top: 0, behavior: 'smooth' }); };
                   return (
                   <div key={product.id} className="rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
                     <div className="overflow-hidden cursor-pointer" style={{ aspectRatio: '4 / 5' }} onClick={swapProduct}>

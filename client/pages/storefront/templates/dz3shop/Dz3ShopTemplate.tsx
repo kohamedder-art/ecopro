@@ -84,7 +84,7 @@ export default function Dz3ShopTemplate({
   const surfaceBorderColor = isHeaderDark ? '#334155' : '#e5e7eb';
 
   // ── Page View State: catalog vs product detail ──
-  const [viewMode, setViewMode] = useState<'catalog' | 'product'>('product');
+  const [viewMode, setViewMode] = useState<'catalog' | 'product'>('catalog');
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProductId(p.id); setViewMode('product'); } } }, [initialProductSlug, products]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -298,48 +298,38 @@ export default function Dz3ShopTemplate({
     const discount = product.original_price 
       ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
       : 0;
-    const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
     
     return (
       <div
-        className="group cursor-pointer transition-transform hover:-translate-y-1"
+        className="group cursor-pointer rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+        style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}
         onClick={() => openProduct(product.id)}
       >
-        {/* Image Container - fills card edge-to-edge like Temu */}
-        <div className="relative overflow-hidden rounded-lg mb-2" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+        <div className="relative overflow-hidden" style={{ aspectRatio: '1 / 1', backgroundColor: surfaceMuted }}>
           <img
             src={product.images?.[0] || '/placeholder.png'}
             alt={product.title}
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
-          
-          {/* Top-left badges like Temu */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {discount > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                -{discount}%
-              </span>
-            )}
-            {isLowStock && (
-              <span className="bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                ⚡ {product.stock_quantity} left
-              </span>
-            )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+            <span className="text-white text-xs font-bold px-4 py-1.5 rounded-full backdrop-blur-sm" style={{ backgroundColor: accentColor }}>
+              عرض المنتج
+            </span>
           </div>
+          {discount > 0 && (
+            <span className="absolute top-2 right-2 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow" style={{ backgroundColor: accentColor }}>
+              -{discount}%
+            </span>
+          )}
         </div>
-        
-        {/* Compact info below - like Temu */}
-        <div className="px-0.5">
-          {/* Title - single line truncated */}
-          <h3 className="text-xs font-medium truncate mb-0.5 text-right" style={{ color: surfaceTextColor }}>
+        <div className="p-2.5">
+          <h3 className="text-xs font-semibold truncate mb-1 text-right" style={{ color: surfaceTextColor }}>
             {product.title}
           </h3>
-          
-          {/* Price row with original price strikethrough */}
           <div className="flex items-center gap-1.5 justify-end">
             <span className="font-bold text-sm" style={{ color: accentColor }}>
-              {Math.round(product.price ?? 0).toLocaleString()} {currency}
+              {Math.round(product.price ?? 0).toLocaleString()} <span className="text-[10px]">{currency}</span>
             </span>
             {product.original_price && (
               <span className="text-[10px] line-through" style={{ color: textMuted }}>
@@ -347,14 +337,6 @@ export default function Dz3ShopTemplate({
               </span>
             )}
           </div>
-          
-          {/* Sales count like Temu */}
-          {product.views > 0 && (
-            <div className="text-[10px] mt-0.5 text-right" style={{ color: textMuted }}>
-              <span className="text-orange-500">🔥</span>
-              {product.views > 1000 ? `${Math.floor(product.views/1000)}K+ sold` : `${product.views}+ sold`}
-            </div>
-          )}
         </div>
       </div>
     );
@@ -435,49 +417,43 @@ export default function Dz3ShopTemplate({
             ══════════════════════════════════════ */}
         {viewMode === 'catalog' && (
           <div>
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-bold flex items-center justify-center gap-2" style={{ color: textColor }}>
-                <span
-                  contentEditable={canManage}
-                  suppressContentEditableWarning
-                  onBlur={handleTextEdit('template_hero_heading')}
-                >
-                  {heroTitle}
-                </span>
+            {/* Hero Section */}
+            <div className="relative overflow-hidden rounded-2xl mb-8 p-8 md:p-12 text-center" style={{ background: `linear-gradient(135deg, ${accentColor}15, ${accentColor}05)`, border: `1px solid ${accentColor}20` }}>
+              <div className="absolute top-0 left-0 w-32 h-32 rounded-full opacity-10" style={{ background: accentColor, transform: 'translate(-30%, -30%)' }} />
+              <div className="absolute bottom-0 right-0 w-48 h-48 rounded-full opacity-10" style={{ background: accentColor, transform: 'translate(30%, 30%)' }} />
+              <h2 className="text-2xl md:text-3xl font-black mb-2" style={{ color: textColor }}>
+                <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>{heroTitle}</span>
               </h2>
-              {showBanner ? (
-                <div className="relative border p-4 rounded-xl mb-4" style={{ backgroundColor: accentColor + '10', borderColor: accentColor + '30' }}>
-                  {canManage && (
-                    <button
-                      onClick={() => setShowBanner(false)}
-                      className="absolute top-2 right-2 p-1 rounded-full hover:bg-black/10 transition-colors"
-                      style={{ color: accentColor }}
-                      title="إزالة اللافتة"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                  <p className="text-sm font-semibold" style={{ color: accentColor }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_subtitle')}>
-                    {heroSubtitle}
-                  </p>
-                </div>
-              ) : canManage && (
-                <div className="mb-4">
-                  <button
-                    onClick={() => setShowBanner(true)}
-                    className="w-full border-2 border-dashed rounded-xl p-3 text-center hover:border-solid transition-colors"
-                    style={{ borderColor: accentColor + '50', color: accentColor }}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-xl">🎯</span>
-                      <span className="font-semibold text-sm">Add Promotional Banner</span>
-                    </div>
-                  </button>
-                </div>
-              )}
+              <p className="text-sm max-w-lg mx-auto" style={{ color: textMuted }}>
+                <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_subtitle')}>{heroSubtitle}</span>
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+            {/* Search + Filter */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute right-4 top-1/2 -translate-y-1/2" size={16} style={{ color: textMuted }} />
+                <input
+                  type="text"
+                  placeholder="ابحث عن منتج..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); if (e.target.value) setViewMode('catalog'); }}
+                  className="w-full py-2.5 px-10 text-right outline-none rounded-xl text-sm"
+                  style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}`, color: textColor }}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: textMuted }}>
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-medium" style={{ color: textMuted }}>{filteredProducts.length} منتج</span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
