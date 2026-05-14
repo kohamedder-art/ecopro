@@ -684,6 +684,65 @@ async function callAIWithSearch(
 }
 
 /**
+ * Generate a plain text response (most features use this).
+ * Automatically selects model based on role: owner/staff/admin use 70B, customer uses 8B.
+ * Checks quota before calling AI and records usage after successful response.
+ */
+export async function generateText(
+  role: AIUserRole,
+  prompt: string,
+  ctx: RoleContext = {},
+  history: GeminiContent[] = [],
+  images?: { mimeType: string; base64: string }[]
+): Promise<string> {
+  const systemPrompt = buildSystemPrompt(role, ctx);
+  // Customer-facing conversations use higher temperature for more natural, human-like responses
+  const temp = role === 'customer' ? 0.9 : 0.7;
+  // Select model based on role
+  const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
+
+  // Limit chat history to last 5 messages for customers to reduce token burn
+  const limitedHistory = role === 'customer' ? history.slice(-5) : history;
+
+  // Set max_tokens to 200 for customer replies to prevent verbose responses
+  const maxTokens = role === 'customer' ? 200 : undefined;
+
+  // Check quota if clientId and userType are provided
+  if (ctx.clientId && ctx.userType) {
+    const quotaStatus = await checkQuota(ctx.clientId, ctx.userType);
+    if (!quotaStatus.allowed) {
+      // Quota exceeded - return fallback message
+      if (ctx.userType === 'customer') {
+        return 'عذراً، تم تجاوز الحد الشهري للردود الآلية. يرجى التواصل مع المتجر مباشرة.';
+      } else {
+        return 'تم تجاوز الحد الشهري لاستخدام المساعد الذكي. يرجى ترقية حسابك للحصول على المزيد.';
+      }
+    }
+  }
+
+  const startTime = Date.now();
+  const aiResponse = await callAI(systemPrompt, prompt, limitedHistory, images, temp, model, maxTokens);
+  const duration = Date.now() - startTime;
+
+  // Record usage if clientId and userType are provided
+  if (ctx.clientId && ctx.userType) {
+    await recordUsage({
+      clientId: ctx.clientId,
+      userType: ctx.userType,
+      platformChatId: ctx.platformChatId,
+      modelUsed: model,
+      tokensInput: aiResponse.tokensInput,
+      tokensOutput: aiResponse.tokensOutput,
+      totalTokens: aiResponse.totalTokens,
+      costUsd: aiResponse.costUsd,
+      messagePreview: prompt,
+    });
+  }
+
+  return stripThinkTags(aiResponse.text);
+}
+
+/**
  * Generate a text response with search-grounded knowledge.
  * DeepInfra/Llama relies on training data rather than live search.
  * Returns both the text and any web sources used (empty for Llama).
