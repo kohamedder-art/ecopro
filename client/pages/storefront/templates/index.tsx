@@ -11,6 +11,7 @@ const Bassem28Template  = lazy(() => import('./bassem28/Bassem28Template'));
 const Dz3ShopTemplate   = lazy(() => import('./dz3shop/Dz3ShopTemplate'));
 const SpiriluxeTemplate = lazy(() => import('./spiriluxe/SpiriluxeTemplate'));
 const LeRoiShopTemplate = lazy(() => import('./leroishop/LeRoiShopTemplate'));
+const DZPremiumTemplate  = lazy(() => import('./dzpremium/DZPremiumTemplate'));
 
 function TemplateFallback() {
   return (
@@ -24,8 +25,8 @@ export type TemplateId = 'dzshop' | 'dzpremium' | 'luxedrop' | string;
 
 export function normalizeTemplateId(id: string): string {
     if (id === 'luxedark') return 'dzshop'; // luxedrop disabled, redirect to dzshop
-    // Disabled: dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina, luxedrop, streetwear
-    const validIds = ['dzshop', 'needdz', 'zenith', 'boutique', 'iyco', 'bassem28', 'dz3shop', 'spiriluxe', 'leroishop'];
+    // Disabled: minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina, luxedrop, streetwear
+    const validIds = ['dzshop', 'dzpremium', 'needdz', 'zenith', 'boutique', 'iyco', 'bassem28', 'dz3shop', 'spiriluxe', 'leroishop'];
     if (validIds.includes(id)) return id;
     return 'leroishop'; // Fallback
 }
@@ -66,6 +67,7 @@ export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
       case 'spiriluxe':   template = <SpiriluxeTemplate {...sanitizedProps} />; break;
       case 'leroishop':   template = <LeRoiShopTemplate {...sanitizedProps} />; break;
       case 'needdz':      template = <NeedDZTemplate {...sanitizedProps} />; break;
+      case 'dzpremium':   template = <DZPremiumTemplate {...sanitizedProps} />; break;
       case 'dzshop':
       default:            template = <DZShopTemplate {...sanitizedProps} />; break;
   }
@@ -74,4 +76,4 @@ export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
 
 // Only exporting active templates
 // NOTE: LuxeDropTemplate, NovaDzTemplate, LuminaTemplate, StreetwearTemplate disabled
-export { DZShopTemplate, NeedDZTemplate, ZenithTemplate, BoutiqueTemplate, IycoTemplate, Bassem28Template, Dz3ShopTemplate, SpiriluxeTemplate, LeRoiShopTemplate };
+export { DZShopTemplate, DZPremiumTemplate, NeedDZTemplate, ZenithTemplate, BoutiqueTemplate, IycoTemplate, Bassem28Template, Dz3ShopTemplate, SpiriluxeTemplate, LeRoiShopTemplate };
