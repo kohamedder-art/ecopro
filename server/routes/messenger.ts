@@ -22,10 +22,10 @@ const router = Router();
 function getFbVerifyToken() { return process.env.FB_MESSENGER_VERIFY_TOKEN || 'ecopro_messenger_verify'; }
 function getFbAppSecret() { return process.env.FB_APP_SECRET || ''; }
 
-function getPlatformFbPageId() { return ''; }
-function getPlatformFbPageAccessToken() { return ''; }
-function getPlatformMessengerEnabled() { return false; }
-function isPlatformPage(_pageId: string): boolean { return false; }
+function getPlatformFbPageId() { return String(process.env.PLATFORM_FB_PAGE_ID || '').trim(); }
+function getPlatformFbPageAccessToken() { return String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim(); }
+function getPlatformMessengerEnabled() { return !!getPlatformFbPageId() && !!getPlatformFbPageAccessToken(); }
+function isPlatformPage(pageId: string): boolean { return !!getPlatformFbPageId() && String(pageId) === getPlatformFbPageId(); }
 
 function resolveEffectivePageConfig(botRow: any, oauthToken?: string): { enabled: boolean; pageId: string; pageAccessToken: string; usingPlatform: boolean; reason?: string } {
   const storePageId = botRow?.fb_page_id ? String(botRow.fb_page_id).trim() : '';
