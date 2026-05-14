@@ -151,45 +151,50 @@ async function loadStoreOwnerContext(clientId: number): Promise<StoreOwnerContex
 /**
  * Detect intent from store owner message
  */
-function detectIntent(message: string): 'orders' | 'revenue' | 'products' | 'delivery' | 'subscription' | 'help' | 'urgent' | 'general' {
+function detectIntent(message: string): 'orders' | 'revenue' | 'products' | 'delivery' | 'subscription' | 'help' | 'urgent' | 'greeting' | 'general' {
   const lower = message.toLowerCase();
-  
+
+  // Simple greetings - respond warmly without stats
+  if (/^(مرحبا|سلام|هلا|صباح|مساء|hey|hi|hello|bonjour|salam|slm)/i.test(lower.trim())) {
+    return 'greeting';
+  }
+
   // Urgent issues
-  if (/مشكل|مشكلة|عاجل|urgent|problem|issue|error|bug|خطأ|واقع/i.test(lower) && 
+  if (/مشكل|مشكلة|عاجل|urgent|problem|issue|error|bug|خطأ|واقع/i.test(lower) &&
       /كبير|big|serious|major|critical|Down|not working|ماشي/i.test(lower)) {
     return 'urgent';
   }
-  
+
   // Orders
   if (/طلب|طلبات|order|orders|مبيعات|sales/i.test(lower)) {
     return 'orders';
   }
-  
+
   // Revenue
   if (/فلوس|فلوس|فلوس|revenue|income|earnings|profit|دخل|مبيعات|فلوس/i.test(lower)) {
     return 'revenue';
   }
-  
+
   // Products
   if (/منتج|منتجات|product|stock|مخزون|كمية|inventory/i.test(lower)) {
     return 'products';
   }
-  
+
   // Delivery
   if (/توصيل|delivery|shipping|wilaya|ولاية|yalidine|bsr/i.test(lower)) {
     return 'delivery';
   }
-  
+
   // Subscription
   if (/اشتراك|subscription|تجديد|renew|فلوس|payment|code|كود/i.test(lower)) {
     return 'subscription';
   }
-  
+
   // Help
   if (/كيف|how|explain|شرح|help|مساعدة|what is|شنو/i.test(lower)) {
     return 'help';
   }
-  
+
   return 'general';
 }
 
@@ -198,7 +203,17 @@ function detectIntent(message: string): 'orders' | 'revenue' | 'products' | 'del
  */
 function buildOwnerPrompt(ctx: StoreOwnerContext, intent: string, message: string): string {
   let contextSection = '';
-  
+
+  // For greetings, don't include any stats - just respond warmly
+  if (intent === 'greeting') {
+    return `[متجر: ${ctx.storeName}]
+
+═══ رسالة صاحب المتجر ═══
+${message}
+
+[هام: هذه محادثة ودية. رد بترحيب دافئ من 1-2 جمل فقط. لا تذكر أي إحصائيات أو أرقام.]`;
+  }
+
   switch (intent) {
     case 'orders':
       contextSection = `
