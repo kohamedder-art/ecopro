@@ -327,66 +327,92 @@ export default function Bassem28Template({
           ══════════════════════════════════════ */}
       {viewMode === 'catalog' && products && products.length > 0 && (
         <main className="max-w-6xl mx-auto px-4 py-6">
-          {/* Hero */}
-          <div className="rounded-2xl mb-8 p-6 md:p-8 text-center" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
-            <h1 className="text-xl md:text-2xl font-bold mb-1" style={{ color: textColor }}>
-              <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>{heroTitle}</span>
-            </h1>
-            <p className="text-sm" style={{ color: textMuted }}>
-              <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('bassem28_banner_text')}>{settings?.bassem28_banner_text || 'شحن سريع لجميع الولايات - الدفع عند الاستلام'}</span>
-            </p>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-lg md:text-xl font-bold" style={{ color: textColor }}>
+                <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>{heroTitle}</span>
+              </h1>
+              <p className="text-xs mt-0.5" style={{ color: textMuted }}>{products.length} منتج متوفر</p>
+            </div>
           </div>
 
+          {/* Best Sellers Horizontal Scroll */}
+          {products.filter(p => p.views > 100).length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: textColor }}>
+                <span className="w-1 h-4 rounded-full" style={{ backgroundColor: accentColor }} />
+                الأكثر طلباً
+              </h3>
+              <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                {products.filter(p => p.views > 100).slice(0, 8).map(product => {
+                  const discount = product.original_price ? Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
+                  return (
+                    <div key={product.id} className="flex-shrink-0 w-40 cursor-pointer rounded-xl overflow-hidden transition-all hover:shadow-lg" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }} onClick={() => openProduct(product)}>
+                      <div className="relative" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+                        <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-cover" />
+                        {discount > 0 && (
+                          <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
+                            -{discount}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[11px] font-semibold truncate" style={{ color: surfaceTextColor }}>{product.title}</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-sm font-extrabold" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()}</span>
+                          <span className="text-[10px]" style={{ color: textMuted }}>{currency}</span>
+                          {discount > 0 && <span className="text-[9px] line-through mr-auto" style={{ color: textMuted }}>{Math.round(product.original_price).toLocaleString()}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Product Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {products.map(product => {
               const discount = product.original_price ? Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
-              const isPopular = product.views > 200;
+              const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
               return (
                 <div
                   key={product.id}
-                  className="group cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]"
+                  className="group cursor-pointer rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md active:scale-[0.98]"
                   style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}
                   onClick={() => openProduct(product)}
                 >
-                  <div className="relative overflow-hidden" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
-                    <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <div className="relative" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+                    <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     {discount > 0 && (
-                      <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-lg">
+                      <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
                         -{discount}%
                       </span>
                     )}
-                    {isPopular && (
-                      <span className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-lg shadow-lg flex items-center gap-0.5">
-                        <span>🔥</span> الأكثر مبيعاً
+                    {isLowStock && (
+                      <span className="absolute bottom-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-md" style={{ backgroundColor: '#dc2626cc', color: '#fff' }}>
+                        {product.stock_quantity} قطع متبقية
                       </span>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-5">
-                      <span className="text-white text-xs font-bold px-5 py-2 rounded-full backdrop-blur-sm shadow-lg" style={{ backgroundColor: accentColor }}>
-                        تسوق الآن
-                      </span>
-                    </div>
                   </div>
-                  <div className="p-3">
-                    <h3 className="text-sm font-bold leading-snug mb-1.5 line-clamp-2 text-right" style={{ color: surfaceTextColor }}>
+                  <div className="p-2.5">
+                    <h3 className="text-xs font-semibold leading-snug mb-1.5 line-clamp-2 text-right" style={{ color: surfaceTextColor }}>
                       {product.title}
                     </h3>
-                    <div className="flex items-center justify-between">
-                      <div className="text-right">
-                        <span className="font-extrabold text-base" style={{ color: accentColor }}>
-                          {Math.round(product.price ?? 0).toLocaleString()} <span className="text-[10px]">{currency}</span>
+                    <div className="text-right">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-sm" style={{ color: accentColor }}>
+                          {Math.round(product.price ?? 0).toLocaleString()}
                         </span>
-                        {product.original_price && (
-                          <div className="text-[10px] line-through text-right" style={{ color: textMuted }}>
-                            {Math.round(product.original_price).toLocaleString()} {currency}
-                          </div>
+                        <span className="text-[10px]" style={{ color: textMuted }}>{currency}</span>
+                        {discount > 0 && (
+                          <span className="text-[10px] line-through mr-auto" style={{ color: textMuted }}>
+                            {Math.round(product.original_price).toLocaleString()}
+                          </span>
                         )}
                       </div>
-                      {product.views > 0 && (
-                        <span className="text-[10px] font-semibold" style={{ color: textMuted }}>
-                          {product.views > 1000 ? `${Math.floor(product.views/1000)}K` : product.views}+
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
