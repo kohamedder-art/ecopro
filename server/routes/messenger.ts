@@ -1344,9 +1344,8 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
       if (settingsResult.rows[0].page_access_token_encrypted) {
         try {
           pageAccessToken = decryptData(settingsResult.rows[0].page_access_token_encrypted);
-          console.log(`[Messenger] handleMessage: using oauth token len=${pageAccessToken.length}`);
-        } catch (e: any) {
-          console.error(`[Messenger] handleMessage: decrypt error:`, e?.message);
+        } catch {
+          // Decrypt failed (key mismatch) — fall through to bot_settings token
         }
       }
 
@@ -1355,7 +1354,6 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
         pageAccessToken = settingsResult.rows[0].fb_page_access_token
           ? String(settingsResult.rows[0].fb_page_access_token).trim()
           : '';
-        console.log(`[Messenger] handleMessage: using bot_settings token len=${pageAccessToken.length}`);
       }
     } else if (isPlatformPage(pageId)) {
       // Platform page: resolve client by previously stored mapping
@@ -1471,10 +1469,11 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
         [linkClientId, customer_phone, senderId]
       );
 
-      // Mark token as used
+      // Mark ALL pending tokens for this client+page as used to prevent re-triggering
       await pool.query(
-        `UPDATE messenger_preconnect_tokens SET used_at = NOW() WHERE ref_token = $1`,
-        [ref_token]
+        `UPDATE messenger_preconnect_tokens SET used_at = NOW()
+         WHERE client_id = $1 AND page_id = $2 AND used_at IS NULL`,
+        [linkClientId, String(pageId)]
       );
 
       // Override client_id to the correct store
