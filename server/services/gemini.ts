@@ -16,8 +16,8 @@ const DEEPINFRA_API_BASE = 'https://api.deepinfra.com/v1/openai';
 
 // Dual-AI Model Strategy
 const OWNER_AI_MODEL = 'meta-llama/Meta-Llama-3.1-70B-Instruct'; // Powerful model for business advice
-const CUSTOMER_AI_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'; // Fast, cheap model for customer chat
-const AI_FALLBACK_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'; // Fallback if primary fails
+const CUSTOMER_AI_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Cheaper model for customer chat ($0.02/1M tokens)
+const AI_FALLBACK_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Fallback if primary fails
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 3000, 6000]; // ms
 
@@ -559,7 +559,8 @@ async function callAI(
   conversationHistory: GeminiContent[] = [],
   images?: { mimeType: string; base64: string }[],
   temperature: number = 0.7,
-  model?: string
+  model?: string,
+  maxTokens?: number
 ): Promise<{ text: string; tokensInput: number; tokensOutput: number; totalTokens: number; costUsd: number }> {
   const apiKey = process.env.DEEPINFRA_API_KEY;
   if (!apiKey) throw new Error('DEEPINFRA_API_KEY is not configured');
@@ -580,7 +581,7 @@ async function callAI(
   const buildBody = (model: string) => ({
     model,
     messages,
-    max_tokens: 1024,
+    max_tokens: maxTokens || 1024,
     temperature,
     top_p: 0.95,
   });
@@ -612,7 +613,8 @@ async function callAI(
       const totalTokens = usage.total_tokens || (tokensInput + tokensOutput);
       
       // Calculate actual cost based on model
-      const costPerToken = useModel === OWNER_AI_MODEL ? 0.0000004 : 0.00000003; // Updated rates
+      // Owner (70B): $0.40/1M tokens, Customer (Qwen 7B): $0.02/1M tokens
+      const costPerToken = useModel === OWNER_AI_MODEL ? 0.0000004 : 0.00000002;
       const costUsd = totalTokens * costPerToken;
       
       return { 
@@ -687,6 +689,12 @@ export async function generateText(
   // Select model based on role
   const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
 
+  // Limit chat history to last 5 messages for customers to reduce token burn
+  const limitedHistory = role === 'customer' ? history.slice(-5) : history;
+
+  // Set max_tokens to 200 for customer replies to prevent verbose responses
+  const maxTokens = role === 'customer' ? 200 : undefined;
+
   // Check quota if clientId and userType are provided
   if (ctx.clientId && ctx.userType) {
     const quotaStatus = await checkQuota(ctx.clientId, ctx.userType);
@@ -701,7 +709,7 @@ export async function generateText(
   }
 
   const startTime = Date.now();
-  const aiResponse = await callAI(systemPrompt, prompt, history, images, temp, model);
+  const aiResponse = await callAI(systemPrompt, prompt, limitedHistory, images, temp, model, maxTokens);
   const duration = Date.now() - startTime;
 
   // Record usage if clientId and userType are provided
