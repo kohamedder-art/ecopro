@@ -153,7 +153,18 @@ export default function Bassem28Template({
   const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number) => carouselRef.current?.scrollTo({ left: carouselRef.current.clientWidth * i, behavior: 'smooth' });
+  const scrollCarouselTo = (i: number) => {
+    const container = carouselRef.current;
+    if (!container) return;
+    const target = container.children[i] as HTMLElement | undefined;
+    if (target) container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+  };
+  const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
+    const text = e.currentTarget.textContent || '';
+    if (typeof window !== 'undefined' && window.parent !== window) {
+      window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key, value: text }, '*');
+    }
+  };
   // ── Google Font ──
   useEffect(() => {
     if (!document.getElementById('cairo-font')) {
@@ -358,31 +369,31 @@ export default function Bassem28Template({
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
                     <User className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
-                    <input type="text" placeholder="الاسم الكامل" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full rounded-lg py-2 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                    <input type="text" placeholder="الاسم الكامل" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
                   </div>
                   <div className="relative">
                     <Phone className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
-                    <input type="tel" placeholder="رقم الهاتف" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full rounded-lg py-2 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                    <input type="tel" placeholder="رقم الهاتف" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
                     <MapPin className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
-                    <select value={selectedWilayaId ?? ''} onChange={e => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full rounded-lg py-2 pr-9 pl-3 text-sm outline-none font-bold appearance-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
+                    <select value={selectedWilayaId ?? ''} onChange={e => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold appearance-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
                       <option value="">اختر الولاية</option>
                       {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                     </select>
                   </div>
                   {showCommune && (
                     <div className="relative">
-                      <input type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full rounded-lg py-2 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                      <input type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
                     </div>
                   )}
                 </div>
 
-                {showAddress && <input type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full rounded-lg py-2 px-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />}
-                {showNotes && <textarea placeholder="ملاحظات" rows={2} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full rounded-lg py-2 px-3 text-sm outline-none font-bold resize-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />}
+                {showAddress && <input type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full rounded-lg py-2.5 px-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />}
+                {showNotes && <textarea placeholder="ملاحظات" rows={2} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full rounded-lg py-2.5 px-3 text-sm outline-none font-bold resize-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />}
 
                 {/* Quantity */}
                 <div className="pt-2">
