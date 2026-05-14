@@ -272,7 +272,7 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                     {/* Main Product Image (Swipeable Carousel) */}
                     <div className="aspect-square rounded-2xl overflow-hidden shadow-sm bg-white relative group">
                         {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'hidden', touchAction: 'none' }}
+                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
                               onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                               onTouchEnd={e => {
                                 const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;

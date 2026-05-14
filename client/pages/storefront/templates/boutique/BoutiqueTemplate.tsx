@@ -46,7 +46,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   return (
     <div className="boutique-gallery-wrap flex flex-col h-full">
       <div className="boutique-gallery-img relative w-full aspect-square overflow-hidden shrink-0" style={{ backgroundColor: surfaceMuted }}>
-        <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'hidden', touchAction: 'none' }}
+        <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
           onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
           onTouchEnd={e => {
             const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;

@@ -286,7 +286,7 @@ const parseVideoEmbed = (videoUrl: string) => {
               <div key={product.id} className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm group">
                 {/* Image Gallery */}
                 <div className="relative aspect-square overflow-hidden bg-slate-100">
-                  <div data-cr className="flex h-full overflow-x-hidden" style={{ touchAction: 'none' }}
+                  <div data-cr className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none', touchAction: 'none' }}
                     onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                     onTouchEnd={e => {
                       const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;

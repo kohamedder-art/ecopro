@@ -390,7 +390,7 @@ export default function IycoTemplate({
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4">
               <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[65vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'hidden', touchAction: 'none' }}
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
                   onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                   onTouchEnd={e => {
                     const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;

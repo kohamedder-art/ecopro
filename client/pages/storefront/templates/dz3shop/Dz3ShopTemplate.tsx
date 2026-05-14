@@ -502,7 +502,7 @@ export default function Dz3ShopTemplate({
 
                 {/* Main display: video or image */}
                 <div className="rounded-xl overflow-hidden shadow-sm relative aspect-[4/5] lg:aspect-auto lg:flex-1 lg:max-h-[70vh]" style={{ backgroundColor: surfaceColor }}>
-                  <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'hidden', scrollSnapType: 'x mandatory', touchAction: 'none' }}
+                  <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
                     onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                     onTouchEnd={e => {
                       const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
