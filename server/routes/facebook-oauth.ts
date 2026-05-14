@@ -410,6 +410,7 @@ async function savePageToken(
   expiresIn: number,
   page: { id: string; name: string; accessToken: string; instagramId?: string | null }
 ) {
+  console.log(`[FB OAuth] savePageToken: clientId=${clientId} pageId=${page.id} pageName=${page.name}`);
   const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
   // Fetch Instagram username if connected
@@ -428,50 +429,61 @@ async function savePageToken(
   const encUserToken = encryptData(userAccessToken);
   const encPageToken = encryptData(page.accessToken);
 
-  await pool.query(
-    `INSERT INTO facebook_tokens
-       (client_id, fb_user_id, user_access_token_encrypted, page_id, page_name,
-        page_access_token_encrypted, instagram_account_id, instagram_username,
-        scopes, token_expires_at, is_active, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, NOW())
-     ON CONFLICT (client_id) DO UPDATE SET
-       fb_user_id = $2,
-       user_access_token_encrypted = $3,
-       page_id = $4,
-       page_name = $5,
-       page_access_token_encrypted = $6,
-       instagram_account_id = $7,
-       instagram_username = $8,
-       scopes = $9,
-       token_expires_at = $10,
-       is_active = TRUE,
-       last_refreshed_at = NOW(),
-       updated_at = NOW()`,
-    [
-      clientId,
-      fbUserId,
-      encUserToken,
-      page.id,
-      page.name,
-      encPageToken,
-      page.instagramId || null,
-      igUsername,
-      SCOPES,
-      expiresAt,
-    ]
-  );
+  try {
+    await pool.query(
+      `INSERT INTO facebook_tokens
+         (client_id, fb_user_id, user_access_token_encrypted, page_id, page_name,
+          page_access_token_encrypted, instagram_account_id, instagram_username,
+          scopes, token_expires_at, is_active, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, NOW())
+       ON CONFLICT (client_id) DO UPDATE SET
+         fb_user_id = $2,
+         user_access_token_encrypted = $3,
+         page_id = $4,
+         page_name = $5,
+         page_access_token_encrypted = $6,
+         instagram_account_id = $7,
+         instagram_username = $8,
+         scopes = $9,
+         token_expires_at = $10,
+         is_active = TRUE,
+         updated_at = NOW()`,
+      [
+        clientId,
+        fbUserId,
+        encUserToken,
+        page.id,
+        page.name,
+        encPageToken,
+        page.instagramId || null,
+        igUsername,
+        SCOPES,
+        expiresAt,
+      ]
+    );
+    console.log(`[FB OAuth] facebook_tokens saved for client ${clientId}`);
+  } catch (err: any) {
+    console.error(`[FB OAuth] FAILED to save facebook_tokens for client ${clientId}:`, err?.message || err);
+    throw err;
+  }
 
-  // Also upsert bot_settings so the messenger route picks up the new OAuth token
-  await pool.query(
-    `INSERT INTO bot_settings (client_id, fb_page_id, fb_page_access_token, messenger_enabled, updated_at)
-     VALUES ($1, $2, $3, TRUE, NOW())
-     ON CONFLICT (client_id) DO UPDATE SET
-       fb_page_id = $2,
-       fb_page_access_token = $3,
-       messenger_enabled = TRUE,
-       updated_at = NOW()`,
-    [clientId, page.id, page.accessToken]
-  );
+  try {
+    // Also upsert bot_settings so the messenger route picks up the new OAuth token
+    await pool.query(
+      `INSERT INTO bot_settings (client_id, fb_page_id, fb_page_access_token, messenger_enabled, updated_at)
+       VALUES ($1, $2, $3, TRUE, NOW())
+       ON CONFLICT (client_id) DO UPDATE SET
+         fb_page_id = $2,
+         fb_page_access_token = $3,
+         messenger_enabled = TRUE,
+         updated_at = NOW()`,
+      [clientId, page.id, page.accessToken]
+    );
+    console.log(`[FB OAuth] bot_settings updated for client ${clientId} page ${page.id}`);
+  } catch (err: any) {
+    console.error(`[FB OAuth] FAILED to update bot_settings for client ${clientId}:`, err?.message || err);
+    throw err;
+  }
 }
 
 export default router;
