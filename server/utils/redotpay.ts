@@ -13,7 +13,7 @@ const REDOTPAY_API_KEY = process.env.REDOTPAY_API_KEY || '';
 const REDOTPAY_SECRET_KEY = process.env.REDOTPAY_SECRET_KEY || '';
 const REDOTPAY_WEBHOOK_SECRET = process.env.REDOTPAY_WEBHOOK_SECRET || '';
 const REDOTPAY_API_URL = process.env.REDOTPAY_API_URL || 'https://api.redotpay.com/v1';
-const REDOTPAY_REDIRECT_URL = process.env.REDOTPAY_REDIRECT_URL || 'https://ecopro.com/billing/success';
+const REDOTPAY_REDIRECT_URL = process.env.REDOTPAY_REDIRECT_URL || 'https://sahla4eco.com/billing/success';
 
 // Pricing (in cents: 700 = 7.00 DZD)
 const SUBSCRIPTION_PRICE_CENTS = 700;
@@ -94,7 +94,7 @@ export async function createCheckoutSession(
         ...params.metadata,
       },
       success_url: `${REDOTPAY_REDIRECT_URL}?session=${sessionToken}`,
-      cancel_url: `${process.env.VITE_API_URL || 'https://ecopro.com'}/billing/cancelled`,
+      cancel_url: `${process.env.VITE_API_URL || 'https://sahla4eco.com'}/billing/cancelled`,
     });
 
     // Store checkout session in database

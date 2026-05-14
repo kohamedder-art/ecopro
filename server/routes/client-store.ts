@@ -1355,8 +1355,9 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
 
     const updatedRow = result.rows[0];
     
-    // Sync store_name to clients.business_name
-    if (columnUpdates.store_name) {
+    // Sync store_name to clients.business_name (only if changed)
+    if (columnUpdates.store_name && columnUpdates.store_name !== existingRow?.store_name) {
+      const startSync = Date.now();
       await pool.query(
         `UPDATE clients SET business_name = $1, updated_at = NOW() WHERE id = $2`,
         [columnUpdates.store_name, clientId]
@@ -1376,21 +1377,21 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
           nameForSlug = nameForSlug.split(arabic).join(latin);
         }
         const baseName = nameForSlug
-          .replace(/[^a-z0-9\s-]/g, '')        // keep only latin letters, numbers, spaces, hyphens
-          .replace(/[\s]+/g, '-')               // spaces → hyphens
-          .replace(/-+/g, '-')                  // collapse hyphens
-          .replace(/^-|-$/g, '')                // trim leading/trailing hyphens
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/[\s]+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
           .slice(0, 50)
           || `store-${clientId}`;
+        // Single query: find all taken slugs that match baseName prefix
+        const taken = await pool.query(
+          `SELECT store_slug FROM client_store_settings WHERE store_slug ~ $1 AND client_id != $2`,
+          [`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(-\\d+)?$`, clientId]
+        );
+        const takenSet = new Set(taken.rows.map((r: any) => r.store_slug));
         let candidate = baseName;
         let suffix = 1;
-        // Ensure uniqueness
-        while (true) {
-          const dup = await pool.query(
-            `SELECT 1 FROM client_store_settings WHERE store_slug = $1 AND client_id != $2 LIMIT 1`,
-            [candidate, clientId]
-          );
-          if (dup.rows.length === 0) break;
+        while (takenSet.has(candidate)) {
           candidate = `${baseName}-${suffix++}`;
         }
         await pool.query(
@@ -1399,6 +1400,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
         );
         updatedRow.store_slug = candidate;
       }
+      logStoreSettings('updateStoreSettings:syncName', { clientId, durationMs: Date.now() - startSync });
     }
     
     // Verify template was saved correctly
@@ -1429,16 +1431,12 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
     
     logStoreSettings('updateStoreSettings:success', { clientId, keys: Object.keys(updates), store_slug: merged.store_slug, template: merged.template });
 
-    // Audit log settings update
+    // Audit log (fire-and-forget, don't block response)
     const changedSettings = Object.keys(updates);
-    try {
-      await pool.query(
-        'INSERT INTO audit_logs(actor_id, action, target_type, target_id, details) VALUES ($1,$2,$3,$4,$5)',
-        [clientId, 'update_store_settings', 'client_store_settings', clientId, JSON.stringify({ changed: changedSettings })]
-      );
-    } catch (e) {
-      console.error('Audit log (update_store_settings) failed:', (e as any).message);
-    }
+    pool.query(
+      'INSERT INTO audit_logs(actor_id, action, target_type, target_id, details) VALUES ($1,$2,$3,$4,$5)',
+      [clientId, 'update_store_settings', 'client_store_settings', clientId, JSON.stringify({ changed: changedSettings })]
+    ).catch((e: any) => console.error('Audit log failed:', e?.message));
     res.json(merged);
   } catch (error) {
     // Log full error for debugging

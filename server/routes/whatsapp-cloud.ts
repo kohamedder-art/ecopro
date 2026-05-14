@@ -24,7 +24,7 @@ const router = Router();
 // ─── Env (read lazily) ──────────────────────────────────────────
 function getWaPhoneNumberId() { return String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim(); }
 function getWaAccessToken() { return String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim(); }
-function getWaVerifyToken() { return String(process.env.WHATSAPP_VERIFY_TOKEN || 'ecopro_whatsapp_verify').trim(); }
+function getWaVerifyToken() { return String(process.env.WHATSAPP_VERIFY_TOKEN || 'sahla4eco_wa_verify').trim(); }
 function getWaBusinessAccountId() { return String(process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '').trim(); }
 function getFbAppSecret() { return String(process.env.FB_APP_SECRET || '').trim(); }
 

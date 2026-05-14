@@ -40,8 +40,8 @@ function escapeHtml(input: string): string {
 }
 
 const privacyPolicy: RequestHandler = (_req, res) => {
-  const companyName = process.env.COMPANY_NAME || 'EcoPro';
-  const supportEmail = process.env.SUPPORT_EMAIL || 'support@ecopro.com';
+  const companyName = process.env.COMPANY_NAME || 'Sahla4Eco';
+  const supportEmail = process.env.SUPPORT_EMAIL || 'support@sahla4eco.com';
   const baseUrl = process.env.BASE_URL || 'https://sahla4eco.com';
 
   const body = `
@@ -98,8 +98,8 @@ const privacyPolicy: RequestHandler = (_req, res) => {
 };
 
 const terms: RequestHandler = (_req, res) => {
-  const companyName = process.env.COMPANY_NAME || 'EcoPro';
-  const supportEmail = process.env.SUPPORT_EMAIL || 'support@ecopro.com';
+  const companyName = process.env.COMPANY_NAME || 'Sahla4Eco';
+  const supportEmail = process.env.SUPPORT_EMAIL || 'support@sahla4eco.com';
   const body = `
     <h1>Terms of Service</h1>
     <p class="muted">Last updated: ${new Date().toISOString().slice(0, 10)}</p>
@@ -136,8 +136,8 @@ const terms: RequestHandler = (_req, res) => {
 };
 
 const dataDeletion: RequestHandler = (_req, res) => {
-  const companyName = process.env.COMPANY_NAME || 'EcoPro';
-  const supportEmail = process.env.SUPPORT_EMAIL || 'support@ecopro.com';
+  const companyName = process.env.COMPANY_NAME || 'Sahla4Eco';
+  const supportEmail = process.env.SUPPORT_EMAIL || 'support@sahla4eco.com';
 
   const body = `
     <h1>Data Deletion Instructions</h1>

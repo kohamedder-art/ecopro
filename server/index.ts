@@ -174,7 +174,7 @@ export function createServer(options?: { skipDbInit?: boolean }) {
   // - Never auto-create an admin with a hardcoded password in production.
   // - In dev only, you may opt-in via env to simplify local testing.
   if (process.env.CREATE_DEFAULT_ADMIN === 'true') {
-    const email = (process.env.DEFAULT_ADMIN_EMAIL || 'admin@ecopro.com').trim();
+    const email = (process.env.DEFAULT_ADMIN_EMAIL || 'admin@sahla4eco.com').trim();
     const password = (process.env.DEFAULT_ADMIN_PASSWORD || '').trim();
 
     if (!password) {

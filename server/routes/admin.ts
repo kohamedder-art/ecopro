@@ -1851,7 +1851,7 @@ export const exportDbSnapshot: RequestHandler = async (req, res) => {
 
     const safeDate = nowIso.replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="ecopro-export-${safeDate}.json"`);
+    res.setHeader('Content-Disposition', `attachment; filename="sahla4eco-export-${safeDate}.json"`);
     return res.status(200).send(JSON.stringify(payload, null, 2));
   } catch (err) {
     console.error('Failed to export DB snapshot:', err);

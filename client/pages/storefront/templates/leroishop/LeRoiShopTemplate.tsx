@@ -5,6 +5,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
+import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 
 /* ═══════════════════════════════════════════════════════════
    LeRoi Shop — Multi-product catalog + product detail + order form
@@ -78,6 +79,10 @@ export default function LeRoiShopTemplate({
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
   const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [emblaApi, setEmblaApi] = useState<any>(null);
+  const galleryStripRef = useRef<HTMLDivElement>(null);
+  const galleryIdxRef = useRef(0);
+  galleryIdxRef.current = activeImageIndex;
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
@@ -449,72 +454,85 @@ export default function LeRoiShopTemplate({
             </div>
 
             {/* Main Product Area */}
-            <div className="flex flex-col md:flex-row md:items-stretch gap-8 p-4 md:p-8 rounded-xl shadow-sm" style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}>
+            <div className="flex flex-col md:flex-row md:items-stretch gap-8 md:p-8 rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}>
 
               {/* Image */}
-              <div className="w-full md:w-1/2 flex flex-col">
-                {(() => {
-                  const imgs: string[] = activeProduct.images?.filter(Boolean) || [];
-                  return (
-                    <>
-                      <div className="rounded-xl overflow-hidden shadow-sm aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] relative select-none" style={{ backgroundColor: surfaceMuted }}
-                        onTouchStart={e => { if (showVideo) return; (e.currentTarget as any)._tx = e.touches[0].clientX; (e.currentTarget as any)._drag = 0; }}
-                        onTouchMove={e => { if (showVideo) return; const tx = (e.currentTarget as any)._tx; if (tx == null) return; const drag = e.touches[0].clientX - tx; (e.currentTarget as any)._drag = drag; const strip = (e.currentTarget as any)._strip as HTMLDivElement | null; if (strip) strip.style.transition = 'none'; if (strip) strip.style.transform = `translateX(calc(-${activeImageIndex * 100}% + ${drag}px))`; }}
-                        onTouchEnd={e => { if (showVideo) return; const drag: number = (e.currentTarget as any)._drag ?? 0; const strip = (e.currentTarget as any)._strip as HTMLDivElement | null; if (strip) { strip.style.transition = 'transform 0.3s ease'; } if (Math.abs(drag) > 40) { if (drag < 0) setActiveImageIndex(i => Math.min(i + 1, imgs.length - 1)); else setActiveImageIndex(i => Math.max(i - 1, 0)); } else { if (strip) strip.style.transform = `translateX(-${activeImageIndex * 100}%)`; } (e.currentTarget as any)._drag = 0; }}>
-                        {showVideo && videoEmbed ? (
-                          <div className="w-full h-full">
-                            {videoEmbed.type === 'youtube' ? (
-                              <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                            ) : videoEmbed.type === 'video' ? (
-                              <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                            ) : (
-                              <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                            )}
-                          </div>
-                        ) : imgs.length > 0 ? (
-                          <div className="w-full h-full" ref={el => { if (el && el.parentElement) (el.parentElement as any)._strip = el; }}
-                            style={{ display: 'flex', transform: `translateX(-${activeImageIndex * 100}%)`, transition: 'transform 0.3s ease', willChange: 'transform', width: `${imgs.length * 100}%` }}>
-                            {imgs.map((img, i) => (
-                              <div key={i} style={{ width: `${100 / imgs.length}%`, flexShrink: 0 }} className="h-full" onClick={() => setLightboxOpen(true)}>
-                                <img src={img} alt="" className="w-full h-full object-contain cursor-pointer" loading="lazy" />
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center" style={{ color: textMuted }}><span>لا توجد صور</span></div>
-                        )}
-                        {imgs.length > 1 && !showVideo && (
-                          <>
-                            <button className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold opacity-70 hover:opacity-100 transition-opacity z-10" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }} onClick={() => setActiveImageIndex(i => Math.max(i - 1, 0))}>‹</button>
-                            <button className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold opacity-70 hover:opacity-100 transition-opacity z-10" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }} onClick={() => setActiveImageIndex(i => Math.min(i + 1, imgs.length - 1))}>›</button>
-                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                              {imgs.map((_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full transition-all" style={{ backgroundColor: i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.4)', transform: i === activeImageIndex ? 'scale(1.4)' : 'scale(1)' }} />)}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {/* Thumbnails */}
-                      {(videoEmbed || imgs.length > 1) && (
-                        <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
-                          {videoEmbed && (
-                            <button onClick={() => setShowVideo(true)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `3px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
-                            </button>
+              {(() => {
+                const imgs: string[] = activeProduct.images?.filter(Boolean) || [];
+
+                const goTo = (idx: number) => {
+                  const clamped = Math.max(0, Math.min(idx, imgs.length - 1));
+                  console.log('[LeRoiGallery] goTo', { idx, clamped, imgsLen: imgs.length, stripEl: !!galleryStripRef.current });
+                  galleryIdxRef.current = clamped;
+                  setActiveImageIndex(clamped);
+                };
+
+                return (
+                  <div className="w-full md:w-1/2 flex flex-col">
+                    {/* Main image viewport */}
+                    <div className="overflow-hidden aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] md:rounded-xl select-none" style={{ backgroundColor: surfaceMuted, position: 'relative' }}
+                      onTouchStart={e => {
+                        if (showVideo) return;
+                        (e.currentTarget as any)._ts = e.touches[0].clientX;
+                      }}
+                      onTouchEnd={e => {
+                        if (showVideo) return;
+                        const ts = (e.currentTarget as any)._ts;
+                        if (ts == null) return;
+                        const d = ts - e.changedTouches[0].clientX;
+                        if (Math.abs(d) > 50) {
+                          d > 0 ? goTo(galleryIdxRef.current + 1) : goTo(galleryIdxRef.current - 1);
+                        }
+                      }}>
+                      {showVideo && videoEmbed ? (
+                        <div style={{ position: 'absolute', inset: 0 }}>
+                          {videoEmbed.type === 'youtube' ? (
+                            <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                          ) : videoEmbed.type === 'video' ? (
+                            <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                          ) : (
+                            <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
                           )}
+                        </div>
+                      ) : imgs.length > 0 ? (
+                        <div ref={galleryStripRef}
+                          style={{ position: 'absolute', top: 0, left: 0, bottom: 0, display: 'flex', transform: `translateX(-${(activeImageIndex * 100) / imgs.length}%)`, transition: 'transform 0.3s ease', willChange: 'transform', width: `${imgs.length * 100}%` }}>
                           {imgs.map((img, i) => (
-                            <button key={i} onClick={() => { setShowVideo(false); setActiveImageIndex(i); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${!showVideo && i === activeImageIndex ? accentColor : 'transparent'}`, opacity: !showVideo && i === activeImageIndex ? 1 : 0.6 }}>
-                              <img src={img} alt="" className="w-full h-full object-contain" loading="lazy" />
-                            </button>
+                            <div key={i} style={{ width: `${100 / imgs.length}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }} onClick={() => setLightboxOpen(true)}>
+                              <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', cursor: 'pointer' }} loading="lazy" />
+                            </div>
                           ))}
                         </div>
+                      ) : (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textMuted }}><span>لا توجد صور</span></div>
                       )}
-                    </>
-                  );
-                })()}
-              </div>
+                      {imgs.length > 1 && !showVideo && (
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                          {imgs.map((_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full transition-all" style={{ backgroundColor: i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.4)', transform: i === activeImageIndex ? 'scale(1.4)' : 'scale(1)' }} />)}
+                        </div>
+                      )}
+                    </div>
+                    {/* Thumbnails */}
+                    {(videoEmbed || imgs.length > 1) && (
+                      <div className="flex gap-3 mt-4 overflow-x-auto pb-1 px-4 md:px-0">
+                        {videoEmbed && (
+                          <button onClick={() => setShowVideo(true)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `3px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+                          </button>
+                        )}
+                        {imgs.map((img, i) => (
+                          <button key={i} onClick={() => { setShowVideo(false); goTo(i); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${!showVideo && i === activeImageIndex ? accentColor : 'transparent'}`, opacity: !showVideo && i === activeImageIndex ? 1 : 0.6 }}>
+                            <img src={img} alt="" className="w-full h-full object-contain" loading="lazy" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Details + Form */}
-              <div className="w-full md:w-1/2 flex flex-col justify-center">
+              <div className="w-full md:w-1/2 flex flex-col justify-center px-4 pb-4 md:px-0 md:pb-0">
                 <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: textColor }}>
                   {activeProduct.title}
                 </h1>

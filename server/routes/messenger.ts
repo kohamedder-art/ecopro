@@ -19,7 +19,7 @@ import { decryptData } from '../utils/encryption';
 const router = Router();
 
 // Environment variables – read lazily so dotenv has loaded by the time they're accessed
-function getFbVerifyToken() { return process.env.FB_MESSENGER_VERIFY_TOKEN || 'ecopro_messenger_verify'; }
+function getFbVerifyToken() { return process.env.FB_MESSENGER_VERIFY_TOKEN || 'sahla4eco_messenger_verify'; }
 function getFbAppSecret() { return process.env.FB_APP_SECRET || ''; }
 
 function getPlatformFbPageId() { return String(process.env.PLATFORM_FB_PAGE_ID || '').trim(); }

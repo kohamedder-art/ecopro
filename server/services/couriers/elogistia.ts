@@ -43,7 +43,7 @@ export class ElogistiaService implements CourierService {
         apiKey,
         name,
         firstname,
-        mail: shipment.customer_email || 'noreply@ecopro.com',
+        mail: shipment.customer_email || 'noreply@sahla4eco.com',
         phone: shipment.customer_phone || '',
         address: shipment.delivery_address || '',
         commune,

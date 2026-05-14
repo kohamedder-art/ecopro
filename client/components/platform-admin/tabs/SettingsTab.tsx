@@ -103,13 +103,13 @@ export default function SettingsTab({ platformSettings, stats, settingsForm, set
           <div className="space-y-3">
             <div className="bg-gray-50/40 dark:bg-slate-900/40 rounded-xl border border-gray-200/60 dark:border-slate-700/30 p-3">
               <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{t('platformAdmin.settings.adminEmail')}</label>
-              <input type="email" placeholder="admin@ecopro.com" defaultValue="admin@ecopro.com"
+              <input type="email" placeholder="admin@sahla4eco.com" defaultValue="admin@sahla4eco.com"
                 className="w-full bg-white/60 dark:bg-slate-800/60 border border-gray-300/60 dark:border-slate-600/50 text-gray-900 dark:text-white rounded-lg focus:border-purple-500/50 text-sm p-2 outline-none"
               />
             </div>
             <div className="bg-gray-50/40 dark:bg-slate-900/40 rounded-xl border border-gray-200/60 dark:border-slate-700/30 p-3">
               <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{t('platformAdmin.settings.supportEmail')}</label>
-              <input type="email" placeholder="support@ecopro.com"
+              <input type="email" placeholder="support@sahla4eco.com"
                 className="w-full bg-white/60 dark:bg-slate-800/60 border border-gray-300/60 dark:border-slate-600/50 text-gray-900 dark:text-white rounded-lg focus:border-purple-500/50 text-sm p-2 outline-none"
               />
             </div>

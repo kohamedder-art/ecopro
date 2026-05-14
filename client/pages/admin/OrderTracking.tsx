@@ -131,30 +131,65 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
       </div>
 
       {/* Progress road */}
-      <div className="relative h-[16px] mx-[2px]" dir="ltr">
+      <div className="relative h-[22px] mx-[2px]">
         {/* Track */}
-        <div className="absolute top-[6px] bottom-[6px] left-0 right-0 rounded-full bg-slate-200 dark:bg-slate-700" />
-        {/* Fill */}
+        <div className="absolute top-[9px] bottom-[9px] left-0 right-0 rounded-full bg-slate-200 dark:bg-slate-700" />
+        {/* Fill — grows from right (RTL: delivery starts right, ends left) */}
         <div
-          className="absolute top-[6px] bottom-[6px] right-0 rounded-full transition-all duration-700"
+          className="absolute top-[9px] bottom-[9px] right-0 rounded-full transition-all duration-700"
           style={{
             width: `${pct}%`,
             background: isCancelled
-              ? "linear-gradient(270deg,#e03131,#fc8181)"
-              : "linear-gradient(270deg,#059669,#3b82f6,#f97316)",
+              ? "linear-gradient(90deg,#e03131,#fc8181)"
+              : "linear-gradient(90deg,#059669,#3b82f6,#f97316)",
           }}
         />
-        {/* Moving icon */}
+        {/* Moving truck — positioned from right, moves toward left as pct grows */}
         <div
           className="absolute top-0 transition-all duration-700"
-          style={{ right: `clamp(0px, calc(${pct}% - 8px), calc(100% - 16px))` }}
+          style={{ right: `clamp(0px, calc(${pct}% - 11px), calc(100% - 22px))` }}
         >
           {isCancelled ? (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#fee2e2"/><path d="M5 5L11 11M11 5L5 11" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          ) : currentStep >= 5 ? (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="7" width="12" height="8" rx="1" fill="#3b82f6"/><path d="M1 8L8 2L15 8" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><rect x="6" y="11" width="3" height="4" rx="0.5" fill="#1d4ed8"/></svg>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="10" fill="#fee2e2" stroke="#fca5a5" strokeWidth="1"/><path d="M7 7L15 15M15 7L7 15" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/></svg>
+          ) : currentStep >= 6 ? (
+            // House/delivered icon
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="10" fill="#d1fae5" stroke="#6ee7b7" strokeWidth="1"/><path d="M5 11L11 5L17 11" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><rect x="8" y="12" width="6" height="5" rx="0.8" fill="#059669"/><rect x="9.5" y="13.5" width="3" height="3.5" rx="0.5" fill="#d1fae5"/></svg>
           ) : (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="4" width="9" height="8" rx="1" stroke="#3b82f6" strokeWidth="1.2" fill="#eff6ff"/><path d="M10 7h3l2 2v3h-5V7Z" stroke="#3b82f6" strokeWidth="1.2" fill="#eff6ff"/><circle cx="4" cy="13" r="1.5" fill="#3b82f6"/><circle cx="12" cy="13" r="1.5" fill="#3b82f6"/></svg>
+            // 3D-style truck facing left (RTL: moving toward delivery on left)
+            <svg width="22" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Shadow */}
+              <ellipse cx="16" cy="21" rx="12" ry="1.5" fill="#00000018"/>
+              {/* Trailer body */}
+              <rect x="1" y="5" width="18" height="12" rx="2" fill="#1d4ed8"/>
+              {/* Trailer top highlight */}
+              <rect x="1" y="5" width="18" height="3" rx="2" fill="#3b82f6"/>
+              {/* Trailer side panel lines */}
+              <line x1="7" y1="5" x2="7" y2="17" stroke="#1e40af" strokeWidth="0.8"/>
+              {/* Cab */}
+              <path d="M19 9 H26 Q29 9 30 12 L31 17 H19 Z" fill="#2563eb"/>
+              {/* Cab top highlight */}
+              <path d="M19 9 H25 Q27 9 28 11 H19 Z" fill="#3b82f6"/>
+              {/* Windshield */}
+              <path d="M22 10.5 H25.5 Q27 10.5 28 12.5 H22 Z" fill="#bfdbfe" stroke="#93c5fd" strokeWidth="0.5"/>
+              {/* Cab door */}
+              <rect x="19.5" y="11" width="2" height="4" rx="0.4" fill="#1e40af" stroke="#3b82f6" strokeWidth="0.4"/>
+              {/* Exhaust */}
+              <rect x="18.5" y="3" width="1.5" height="4" rx="0.5" fill="#374151"/>
+              <circle cx="19.2" cy="3" r="1" fill="#6b7280" opacity="0.6"/>
+              {/* Rear wheels */}
+              <circle cx="5" cy="18" r="3" fill="#1f2937"/>
+              <circle cx="5" cy="18" r="1.5" fill="#374151"/>
+              <circle cx="5" cy="18" r="0.6" fill="#9ca3af"/>
+              <circle cx="11" cy="18" r="3" fill="#1f2937"/>
+              <circle cx="11" cy="18" r="1.5" fill="#374151"/>
+              <circle cx="11" cy="18" r="0.6" fill="#9ca3af"/>
+              {/* Front wheel */}
+              <circle cx="26" cy="18" r="3" fill="#1f2937"/>
+              <circle cx="26" cy="18" r="1.5" fill="#374151"/>
+              <circle cx="26" cy="18" r="0.6" fill="#9ca3af"/>
+              {/* Headlight */}
+              <rect x="29.5" y="13" width="1.5" height="2" rx="0.4" fill="#fef08a"/>
+            </svg>
           )}
         </div>
       </div>
