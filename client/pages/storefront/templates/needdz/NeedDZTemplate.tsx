@@ -291,6 +291,22 @@ const parseVideoEmbed = (videoUrl: string) => {
                       const idx = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth);
                       setCurrentImgIdx(prev => ({ ...prev, [product.id]: idx }));
                     }}
+                    onTouchStart={e => { const el = e.currentTarget as any; el._tsx = e.touches[0].clientX; el._tss = el.scrollLeft; el._touched = false; }}
+                    onTouchMove={e => { (e.currentTarget as any)._touched = true; }}
+                    onTouchEnd={e => {
+                      const el = e.currentTarget as any;
+                      if (!el._touched) return;
+                      const diff = el._tsx - e.changedTouches[0].clientX;
+                      if (Math.abs(diff) < 50) return;
+                      if (Math.abs(el.scrollLeft - el._tss) > 2) return;
+                      const total = product.images.length + (product.videoUrl ? 1 : 0);
+                      if (total <= 1) return;
+                      if (diff > 0) {
+                        el.scrollTo({ left: 0, behavior: 'smooth' });
+                      } else {
+                        el.scrollTo({ left: (total - 1) * el.clientWidth, behavior: 'smooth' });
+                      }
+                    }}
                   >
                     {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
                       const ve = parseVideoEmbed(product.videoUrl);

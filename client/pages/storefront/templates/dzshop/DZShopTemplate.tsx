@@ -272,7 +272,25 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                     {/* Main Product Image (Swipeable Carousel) */}
                     <div className="aspect-square rounded-2xl overflow-hidden shadow-sm bg-white relative group">
                         {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+                              onTouchStart={e => { const el = e.currentTarget as any; el._tsx = e.touches[0].clientX; el._tss = el.scrollLeft; el._touched = false; }}
+                              onTouchMove={e => { (e.currentTarget as any)._touched = true; }}
+                              onTouchEnd={e => {
+                                const el = e.currentTarget as any;
+                                if (!el._touched) return;
+                                const diff = el._tsx - e.changedTouches[0].clientX;
+                                if (Math.abs(diff) < 50) return;
+                                if (Math.abs(el.scrollLeft - el._tss) > 2) return;
+                                const total = galleryImages.length + (videoEmbed ? 1 : 0);
+                                if (total <= 1) return;
+                                if (diff > 0) {
+                                  handleThumbClick(videoEmbed ? -1 : 0);
+                                } else {
+                                  const last = total - 1;
+                                  handleThumbClick(last === 0 && videoEmbed ? -1 : (videoEmbed ? last - 1 : last));
+                                }
+                              }}
+                            >
                                 {videoEmbed && (
                                     <div key="video" className="snap-center" style={{ flex: '0 0 100%', height: '100%', scrollSnapAlign: 'center' }}>
                                         {videoEmbed.type === 'youtube' ? (

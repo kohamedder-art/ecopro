@@ -46,7 +46,27 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   return (
     <div className="boutique-gallery-wrap flex flex-col h-full">
       <div className="boutique-gallery-img relative w-full aspect-square overflow-hidden shrink-0" style={{ backgroundColor: surfaceMuted }}>
-        <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+        <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+          onTouchStart={e => { const el = e.currentTarget as any; el._tsx = e.touches[0].clientX; el._tss = el.scrollLeft; el._touched = false; }}
+          onTouchMove={e => { (e.currentTarget as any)._touched = true; }}
+          onTouchEnd={e => {
+            const el = e.currentTarget as any;
+            if (!el._touched) return;
+            const diff = el._tsx - e.changedTouches[0].clientX;
+            if (Math.abs(diff) < 50) return;
+            if (Math.abs(el.scrollLeft - el._tss) > 2) return;
+            const total = imgs.length + (videoEmbed ? 1 : 0);
+            if (total <= 1) return;
+            if (diff > 0) {
+              if (videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
+              else { setShowVideo(false); setIdx(0); scrollCarouselTo(0); }
+            } else {
+              const last = total - 1;
+              if (last === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
+              else { setShowVideo(false); const ii = videoEmbed ? last - 1 : last; setIdx(ii); scrollCarouselTo(last); }
+            }
+          }}
+        >
           {videoEmbed && (
             <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
               {videoEmbed.type === 'youtube' ? (

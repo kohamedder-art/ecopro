@@ -281,7 +281,27 @@ export default function Bassem28Template({
             <div className="w-full lg:w-[48%] flex flex-col gap-3 lg:self-stretch">
               {/* Main display: video or image */}
               <div className="rounded-2xl overflow-hidden shadow-xl aspect-[4/5] lg:aspect-auto lg:flex-1 min-h-[300px] lg:max-h-[70vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+                  onTouchStart={e => { const el = e.currentTarget as any; el._tsx = e.touches[0].clientX; el._tss = el.scrollLeft; el._touched = false; }}
+                  onTouchMove={e => { (e.currentTarget as any)._touched = true; }}
+                  onTouchEnd={e => {
+                    const el = e.currentTarget as any;
+                    if (!el._touched) return;
+                    const diff = el._tsx - e.changedTouches[0].clientX;
+                    if (Math.abs(diff) < 50) return;
+                    if (Math.abs(el.scrollLeft - el._tss) > 2) return;
+                    const total = mainImages.length + (videoEmbed ? 1 : 0);
+                    if (total <= 1) return;
+                    if (diff > 0) {
+                      if (videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
+                      else { setShowVideo(false); setSelectedMainImage(0); scrollCarouselTo(0); }
+                    } else {
+                      const last = total - 1;
+                      if (last === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
+                      else { setShowVideo(false); const ii = videoEmbed ? last - 1 : last; setSelectedMainImage(ii); scrollCarouselTo(last); }
+                    }
+                  }}
+                >
                   {videoEmbed && (
                     <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
                       {videoEmbed.type === 'youtube' ? (
