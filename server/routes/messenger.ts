@@ -723,7 +723,7 @@ async function handleReferral(pageId: string, senderId: string, referral: any) {
     const storeName = storeRes.rows[0]?.store_name || 'Store';
 
     const nameRes = await pool.query(
-      `SELECT customer_name FROM orders WHERE client_id = $1 AND customer_phone = $2 ORDER BY created_at DESC LIMIT 1`,
+      `SELECT customer_name FROM store_orders WHERE client_id = $1 AND customer_phone = $2 ORDER BY created_at DESC LIMIT 1`,
       [client_id, customer_phone]
     );
     const customerName = nameRes.rows[0]?.customer_name || '';
