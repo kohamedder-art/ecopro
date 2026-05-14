@@ -296,7 +296,8 @@ const parseVideoEmbed = (videoUrl: string) => {
                       const h = e.currentTarget as HTMLElement;
                       const cur = Math.round(Math.abs(h.scrollLeft) / h.clientWidth);
                       const tgt = diff > 0 ? (cur - 1 + total) % total : (cur + 1) % total;
-                      h.scrollTo({ left: tgt * h.clientWidth, behavior: 'smooth' });
+                      const wrap = diff > 0 ? tgt > cur : tgt < cur;
+                      h.scrollTo({ left: tgt * h.clientWidth, behavior: wrap ? 'auto' : 'smooth' });
                     }}
                   >
                     {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
@@ -504,34 +505,33 @@ const parseVideoEmbed = (videoUrl: string) => {
                     </div>
                   </div>
 
-                  {/* Variants */}
-                  {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
-                    <VariantSelector 
-                      variants={selectedProduct.variants} 
-                      selected={selectedVariant} 
-                      onSelect={setSelectedVariant} 
-                      accentColor={accentColor} 
-                      currency={settings?.currency_code || 'دج'} 
-                      basePrice={selectedProduct.price} 
-                    />
-                  )}
-
-                  {/* Offers */}
-                  {offers.length > 0 && (
-                    <OfferSelector 
-                      offers={offers} 
-                      unitPrice={selectedProduct?.price || 0} 
-                      currency={settings?.currency_code || 'دج'} 
-                      selectedOfferId={selectedOffer?.offer_id ?? null} 
-                      onSelect={handleOfferSelect} 
-                      accentColor={accentColor} 
-                      textColor="#1e293b" 
-                      borderColor="#e2e8f0" 
-                      hidePrice={true}
-                    />
-                  )}
-
                   <form className="space-y-5" onSubmit={handleOrder}>
+                    {/* Variants */}
+                    {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
+                      <VariantSelector 
+                        variants={selectedProduct.variants} 
+                        selected={selectedVariant} 
+                        onSelect={setSelectedVariant} 
+                        accentColor={accentColor} 
+                        currency={settings?.currency_code || 'دج'} 
+                        basePrice={selectedProduct.price} 
+                      />
+                    )}
+
+                    {/* Offers */}
+                    {offers.length > 0 && (
+                      <OfferSelector 
+                        offers={offers} 
+                        unitPrice={selectedProduct?.price || 0} 
+                        currency={settings?.currency_code || 'دج'} 
+                        selectedOfferId={selectedOffer?.offer_id ?? null} 
+                        onSelect={handleOfferSelect} 
+                        accentColor={accentColor} 
+                        textColor="#1e293b" 
+                        borderColor="#e2e8f0" 
+                        hidePrice={true}
+                      />
+                    )}
                     <div className="grid gap-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">

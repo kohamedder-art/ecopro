@@ -96,11 +96,11 @@ export default function Dz3ShopTemplate({
   const [detailVariant, setDetailVariant] = useState<SelectedVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number) => {
+  const scrollCarouselTo = (i: number, behavior: ScrollBehavior = 'smooth') => {
     const container = carouselRef.current;
     if (!container) return;
     const target = container.children[i] as HTMLElement | undefined;
-    if (target) container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+    if (target) container.scrollTo({ left: target.offsetLeft, behavior });
   };
 
   // ── Main Product ──
@@ -205,7 +205,8 @@ export default function Dz3ShopTemplate({
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
   // ── Order Submission ──
-  const handleOrder = async () => {
+  const handleOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId) { alert('يرجى ملء جميع الحقول'); return; }
     if (!detailProduct) return;
     try {
@@ -511,8 +512,9 @@ export default function Dz3ShopTemplate({
                       if (total <= 1) return;
                       const c = showVideo ? 0 : (videoEmbed ? activeImageIndex + 1 : activeImageIndex);
                       const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
-                      if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
-                      else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setActiveImageIndex(ii); scrollCarouselTo(n); }
+                      const wrap = diff > 0 ? n > c : n < c;
+                      if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0, wrap ? 'auto' : 'smooth'); }
+                      else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setActiveImageIndex(ii); scrollCarouselTo(n, wrap ? 'auto' : 'smooth'); }
                     }}
                   >
                     {videoEmbed && (
@@ -599,7 +601,7 @@ export default function Dz3ShopTemplate({
                     <VariantSelector variants={detailProduct.variants} selected={detailVariant} onSelect={setDetailVariant} accentColor={accentColor} currency={currency} basePrice={detailProduct.price} />
                   </div>
                 )}
-                <div className="p-5 md:p-6" style={{ border: `1px solid ${accentColor}`, borderRadius: 12, backgroundColor: surfaceColor }}>
+                <form className="p-5 md:p-6" style={{ border: `1px solid ${accentColor}`, borderRadius: 12, backgroundColor: surfaceColor }} onSubmit={handleOrder}>
                   {offers.length > 0 && (
                     <OfferSelector
                       offers={offers}
@@ -721,12 +723,12 @@ export default function Dz3ShopTemplate({
                         <div className="flex justify-between" style={{ color: surfaceTextMuted }}><span>التوصيل</span><span style={{ color: deliveryFee > 0 ? surfaceTextColor : accentColor }}>{deliveryFee > 0 ? `${deliveryFee} ${currency}` : 'اختر الولاية'}</span></div>
                         <div className="flex justify-between font-bold pt-1" style={{ borderTop: `1px solid ${accentColor}20`, color: surfaceTextColor }}><span>المجموع</span><span style={{ color: accentColor }}>{Math.round(productTotal + deliveryFee).toLocaleString()} {currency}</span></div>
                       </div>
-                      <button onClick={handleOrder} disabled={isSubmitting} className="w-full h-12 text-white font-bold rounded-lg transition-opacity disabled:opacity-50" style={{ backgroundColor: accentColor }}>
+                      <button type="submit" disabled={isSubmitting} className="w-full h-12 text-white font-bold rounded-lg transition-opacity disabled:opacity-50" style={{ backgroundColor: accentColor }}>
                         <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_button_text')}>{isSubmitting ? 'جاري المعالجة...' : buttonText}</span>
                       </button>
                     </div>
                   </div>
-                </div>
+                </form>
               </div>
             </div>
 

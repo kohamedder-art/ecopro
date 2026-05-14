@@ -599,7 +599,7 @@ export default function LeRoiShopTemplate({
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={handleOrder} className="space-y-3">
+                    <form onSubmit={handleOrder} className="space-y-4">
 
                       {/* 1 ── Offers ───────────────────── */}
                       {offers.length > 0 && (
@@ -629,11 +629,11 @@ export default function LeRoiShopTemplate({
                       )}
 
                       {/* 3 ── Customer fields ─────────── */}
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-4">
                         <input required name="name" type="text" placeholder="الإسم واللقب" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                         <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors text-right" dir="ltr" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       </div>
-                      <div className={`grid gap-3 ${showCommune ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      <div className={`grid gap-4 ${showCommune ? 'grid-cols-2' : 'grid-cols-1'}`}>
                         <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-3 py-2.5 rounded text-sm outline-none appearance-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>
                           <option value="">الولاية</option>
                           {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}

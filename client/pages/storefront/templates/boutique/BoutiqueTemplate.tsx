@@ -28,11 +28,11 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   const [showVideo, setShowVideo] = React.useState(true);
   const imgs: string[] = product.images?.filter(Boolean) || [];
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number) => {
+  const scrollCarouselTo = (i: number, behavior: ScrollBehavior = 'smooth') => {
     const container = carouselRef.current;
     if (!container) return;
     const target = container.children[i] as HTMLElement | undefined;
-    if (target) container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+    if (target) container.scrollTo({ left: target.offsetLeft, behavior });
   };
   const videoUrl = product?.metadata?.video_url || '';
   const videoEmbed = useMemo(() => {
@@ -55,8 +55,9 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
             if (total <= 1) return;
             const c = showVideo ? 0 : (videoEmbed ? idx + 1 : idx);
             const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
-            if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
-            else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setIdx(ii); scrollCarouselTo(n); }
+            const wrap = diff > 0 ? n > c : n < c;
+            if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0, wrap ? 'auto' : 'smooth'); }
+            else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setIdx(ii); scrollCarouselTo(n, wrap ? 'auto' : 'smooth'); }
           }}
         >
           {videoEmbed && (
@@ -251,7 +252,8 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + (item.price * item.qty), 0), [cart]);
   const total = subtotal + (cart.length > 0 ? deliveryFee : 0);
 
-  const handleOrder = async () => {
+  const handleOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId || !orderProduct) {
       alert('الرجاء تعبئة جميع الحقول المطلوبة');
       return;
@@ -515,10 +517,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             hidePrice={true}
                           />
                         )}
-                        <h3 className="text-lg font-black mb-4 mt-2" style={{ color: surfaceTextColor }}>معلومات التوصيل</h3>
-                        <div className="space-y-3">
+                        <form id="orderForm" onSubmit={handleOrder} className="space-y-4">
                           {/* Name + Phone */}
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 gap-4">
                             <input
                               type="text"
                               required
@@ -548,7 +549,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                           </div>
 
                           {/* Wilaya + Commune */}
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 gap-4">
                             <select
                               required
                               className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 appearance-none"
@@ -613,7 +614,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             </div>
                           </div>
                         )}
-                      </div>
+                      </form>
                   </div>
               </div>
 
@@ -624,8 +625,8 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                   <span style={{ color: accentColor }}>{Math.round(((orderVariant?.price ?? orderProduct.price) * orderQty) + deliveryFee).toLocaleString()} {currency}</span>
                 </div>
                 <button
-                  type="button"
-                  onClick={handleOrder}
+                  type="submit"
+                  form="orderForm"
                   disabled={isSubmitting}
                   className="w-full text-white font-bold py-4 rounded-xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-60"
                   style={{ backgroundColor: themeColor }}

@@ -177,11 +177,11 @@ export default function IycoTemplate({
   const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number) => {
+  const scrollCarouselTo = (i: number, behavior: ScrollBehavior = 'smooth') => {
     const container = carouselRef.current;
     if (!container) return;
     const target = container.children[i] as HTMLElement | undefined;
-    if (target) container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+    if (target) container.scrollTo({ left: target.offsetLeft, behavior });
   };
   const [selectedSize, setSelectedSize] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -200,7 +200,8 @@ export default function IycoTemplate({
   };
 
   // ── Order Submission ──
-  const handleOrder = async () => {
+  const handleOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId) {
       alert('يرجى ملء جميع الحقول');
       return;
@@ -399,8 +400,9 @@ export default function IycoTemplate({
                     if (total <= 1) return;
                     const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage);
                     const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
-                    if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
-                    else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n); }
+                    const wrap = diff > 0 ? n > c : n < c;
+                    if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0, wrap ? 'auto' : 'smooth'); }
+                    else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n, wrap ? 'auto' : 'smooth'); }
                   }}
                 >
                   {videoEmbed && (
@@ -492,7 +494,7 @@ export default function IycoTemplate({
               </div>
 
               {/* ── THE ORDER FORM ── */}
-              <div className="rounded-xl p-3 shadow-sm mb-4" style={{ backgroundColor: surfaceColor, border: `1px solid ${borderColor}` }}>
+              <form className="rounded-xl p-3 shadow-sm mb-4" style={{ backgroundColor: surfaceColor, border: `1px solid ${borderColor}` }} onSubmit={handleOrder}>
                 <h3 className="font-black text-center text-sm mb-3 pb-2" style={{ color: surfaceTextColor, borderBottom: `1px solid ${borderColor}` }}>إستمارة الطلب</h3>
                 {offers.length > 0 && (
                   <OfferSelector
@@ -521,9 +523,9 @@ export default function IycoTemplate({
                   </div>
                 )}
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {/* Name + Phone */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="relative">
                       <input
                         required
@@ -630,19 +632,18 @@ export default function IycoTemplate({
                     </div>
                   </div>
 
-                  {/* Submit Button */}
-                  <button
-                    type="button"
-                    onClick={handleOrder}
-                    disabled={isSubmitting}
-                    className="w-full mt-1 py-3 text-white rounded-md font-black text-base shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    style={{ backgroundColor: accentColor }}
-                  >
-                    {isSubmitting ? 'جاري المعالجة...' : buttonText}
-                    {!isSubmitting && <ShoppingCart size={20} fill="currentColor" className="mt-0.5" />}
-                  </button>
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full mt-1 py-3 text-white rounded-md font-black text-base shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{ backgroundColor: accentColor }}
+              >
+                {isSubmitting ? 'جاري المعالجة...' : buttonText}
+                {!isSubmitting && <ShoppingCart size={20} fill="currentColor" className="mt-0.5" />}
+              </button>
                 </div>
-              </div>
+              </form>
 
               <p
                 className="text-center text-xs font-bold mb-6"

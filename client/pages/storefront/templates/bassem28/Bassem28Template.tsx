@@ -153,11 +153,11 @@ export default function Bassem28Template({
   const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number) => {
+  const scrollCarouselTo = (i: number, behavior: ScrollBehavior = 'smooth') => {
     const container = carouselRef.current;
     if (!container) return;
     const target = container.children[i] as HTMLElement | undefined;
-    if (target) container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+    if (target) container.scrollTo({ left: target.offsetLeft, behavior });
   };
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
     const text = e.currentTarget.textContent || '';
@@ -290,8 +290,9 @@ export default function Bassem28Template({
                     if (total <= 1) return;
                     const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage);
                     const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
-                    if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
-                    else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n); }
+                    const wrap = diff > 0 ? n > c : n < c;
+                    if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0, wrap ? 'auto' : 'smooth'); }
+                    else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n, wrap ? 'auto' : 'smooth'); }
                   }}
                 >
                   {videoEmbed && (
@@ -375,20 +376,20 @@ export default function Bassem28Template({
                 ))}
               </div>
 
-              {/* Variants */}
-              {mainProduct.variants && mainProduct.variants.length > 0 && (
-                <VariantSelector variants={mainProduct.variants} selected={selectedVariant} onSelect={setSelectedVariant} accentColor={accentColor} currency={currency} basePrice={mainProduct.price} />
-              )}
-
               {/* Order Form */}
-              <div className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
+              <form className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }} onSubmit={handleOrder}>
                 <h3 className="text-sm font-black text-center pb-2" style={{ color: surfaceTextColor, borderBottom: `1px solid ${surfaceBorderColor}` }}>إستمارة الطلب</h3>
+
+                {/* Variants */}
+                {mainProduct.variants && mainProduct.variants.length > 0 && (
+                  <VariantSelector variants={mainProduct.variants} selected={selectedVariant} onSelect={setSelectedVariant} accentColor={accentColor} currency={currency} basePrice={mainProduct.price} />
+                )}
 
                 {offers.length > 0 && (
                   <OfferSelector offers={offers} unitPrice={mainProduct?.price || 0} currency={currency} selectedOfferId={selectedOffer?.offer_id ?? null} onSelect={handleOfferSelect} accentColor={accentColor} textColor={surfaceTextColor} borderColor={surfaceBorderColor} hidePrice={true} />
                 )}
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
                     <User className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
                     <input type="text" placeholder="الاسم الكامل" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
@@ -399,7 +400,7 @@ export default function Bassem28Template({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
                     <MapPin className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
                     <select value={selectedWilayaId ?? ''} onChange={e => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold appearance-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
@@ -462,11 +463,11 @@ export default function Bassem28Template({
                   </div>
                 </div>
 
-                <button onClick={handleOrder} disabled={isSubmitting} className="w-full py-3 rounded-xl font-black text-base text-white shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50" style={{ backgroundColor: accentColor }}>
+                <button type="submit" disabled={isSubmitting} className="w-full py-3 rounded-xl font-black text-base text-white shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50" style={{ backgroundColor: accentColor }}>
                   <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_button_text')}>{isSubmitting ? 'جاري المعالجة...' : buttonText}</span>
                   <ArrowRight size={18} />
                 </button>
-              </div>
+              </form>
             </div>
           </div>
 

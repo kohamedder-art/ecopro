@@ -232,34 +232,33 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               {formTitle}
             </h2>
 
-            {/* Variants */}
-            {safeProduct.variants && safeProduct.variants.length > 0 && (
-              <VariantSelector 
-                variants={safeProduct.variants} 
-                selected={selectedVariant} 
-                onSelect={setSelectedVariant} 
-                accentColor={accentColor} 
-                currency={currency} 
-                basePrice={safeProduct.price} 
-              />
-            )}
-
-            {/* Offers */}
-            {offers.length > 0 && (
-              <OfferSelector 
-                offers={offers} 
-                unitPrice={mainProduct?.price || 0} 
-                currency={currency} 
-                selectedOfferId={selectedOffer?.offer_id ?? null} 
-                onSelect={handleOfferSelect} 
-                accentColor={accentColor} 
-                textColor="#1e293b" 
-                borderColor="#e2e8f0" 
-                hidePrice={true}
-              />
-            )}
-
             <form onSubmit={handleOrder} className="space-y-4">
+              {/* Variants */}
+              {safeProduct.variants && safeProduct.variants.length > 0 && (
+                <VariantSelector 
+                  variants={safeProduct.variants} 
+                  selected={selectedVariant} 
+                  onSelect={setSelectedVariant} 
+                  accentColor={accentColor} 
+                  currency={currency} 
+                  basePrice={safeProduct.price} 
+                />
+              )}
+
+              {/* Offers */}
+              {offers.length > 0 && (
+                <OfferSelector 
+                  offers={offers} 
+                  unitPrice={mainProduct?.price || 0} 
+                  currency={currency} 
+                  selectedOfferId={selectedOffer?.offer_id ?? null} 
+                  onSelect={handleOfferSelect} 
+                  accentColor={accentColor} 
+                  textColor="#1e293b" 
+                  borderColor="#e2e8f0" 
+                  hidePrice={true}
+                />
+              )}
 
               {/* 2-Column: Name | Phone */}
               <div className="grid grid-cols-2 gap-4">

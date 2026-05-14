@@ -204,6 +204,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     // Image Gallery State
 const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const carouselRef = useRef<HTMLDivElement>(null);
+    const wrapRef = useRef(false);
 
     const handleThumbClick = (idx: number) => {
         setSelectedImageIndex(idx);
@@ -213,10 +214,10 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     useEffect(() => {
         if (!carouselRef.current || selectedImageIndex < 0) return;
         const container = carouselRef.current;
-        // Video is at index 0 in carousel when present
         const hasVideo = videoEmbed !== null;
         const scrollIdx = selectedImageIndex + (hasVideo ? 1 : 0);
-        container.children[scrollIdx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+        container.children[scrollIdx]?.scrollIntoView({ behavior: wrapRef.current ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
+        wrapRef.current = false;
     }, [selectedImageIndex, videoEmbed]);
 
     return (
@@ -281,6 +282,8 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                                 if (total <= 1) return;
                                 const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex);
                                 const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
+                                const wrap = diff > 0 ? n > c : n < c;
+                                if (wrap) wrapRef.current = true;
                                 handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n));
                               }}
                             >
@@ -453,37 +456,34 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                         </div>
                         
                         <h3 className="text-lg font-bold mb-4 mt-2">معلومات المشتري</h3>
-                        
-                        {/* Variants */}
-                        {product?.variants && product.variants.length > 0 && (
-                            <VariantSelector 
-                                variants={product.variants} 
-                                selected={selectedVariant} 
-                                onSelect={setSelectedVariant} 
-                                accentColor={accentColor} 
-                                currency={settings?.currency_code || 'دج'} 
-                                basePrice={product.price} 
-                            />
-                        )}
-                        
-                        <div className="mb-6"></div>
-                        
-                        {/* Offers */}
-                        {offers.length > 0 && (
-                            <OfferSelector 
-                                offers={offers} 
-                                unitPrice={product?.price || 0} 
-                                currency={settings?.currency_code || 'دج'} 
-                                selectedOfferId={selectedOffer?.offer_id ?? null} 
-                                onSelect={handleOfferSelect} 
-                                accentColor={accentColor} 
-                                textColor="#1e293b" 
-                                borderColor="#e2e8f0" 
-                                hidePrice={true} 
-                            />
-                        )}
 
                         <form className="space-y-4 mt-6" onSubmit={handleDefaultOrder}>
+                            {/* Variants */}
+                            {product?.variants && product.variants.length > 0 && (
+                                <VariantSelector 
+                                    variants={product.variants} 
+                                    selected={selectedVariant} 
+                                    onSelect={setSelectedVariant} 
+                                    accentColor={accentColor} 
+                                    currency={settings?.currency_code || 'دج'} 
+                                    basePrice={product.price} 
+                                />
+                            )}
+                            
+                            {/* Offers */}
+                            {offers.length > 0 && (
+                                <OfferSelector 
+                                    offers={offers} 
+                                    unitPrice={product?.price || 0} 
+                                    currency={settings?.currency_code || 'دج'} 
+                                    selectedOfferId={selectedOffer?.offer_id ?? null} 
+                                    onSelect={handleOfferSelect} 
+                                    accentColor={accentColor} 
+                                    textColor="#1e293b" 
+                                    borderColor="#e2e8f0" 
+                                    hidePrice={true} 
+                                />
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">الاسم الكامل</label>
