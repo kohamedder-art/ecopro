@@ -186,14 +186,17 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     const ids = String(config.facebook_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return;
 
-    // Check if fbq already loaded - initialize each id and track pageview
-    if (window.fbq) {
+    // Check if fbq already has the real SDK loaded (has callMethod from the real script)
+    if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
       ids.forEach(id => {
         try { window.fbq('init', id); } catch (e) { /* ignore */ }
       });
       try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
       return;
     }
+
+    // Preserve any events already queued by trackFacebookEvent before fbq loaded
+    const existingQueue = (window as any).fbq?.queue || [];
 
     // Initialize fbq without inline script (CSP-safe)
     const n = window.fbq = function() {
@@ -204,6 +207,11 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     n.loaded = true;
     n.version = '2.0';
     n.queue = [];
+
+    // Re-queue any events fired before fbq was fully initialized
+    existingQueue.forEach((args: any[]) => {
+      try { window.fbq.apply(null, args); } catch (e) { /* ignore */ }
+    });
 
     // Load the Facebook SDK via external script
     const script = document.createElement('script');

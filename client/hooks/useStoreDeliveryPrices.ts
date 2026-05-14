@@ -84,7 +84,7 @@ export function useStoreDeliveryPrices(storeSlug: string) {
     return mapped;
   }, [prices, loaded, defaultPrice]);
 
-  return { wilayas, loading };
+  return { wilayas, loading, defaultPrice };
 }
 
 /**

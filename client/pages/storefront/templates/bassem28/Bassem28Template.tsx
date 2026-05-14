@@ -124,13 +124,13 @@ export default function Bassem28Template({
   }, [videoUrl]);
 
   // ── Delivery System ──
-  const { wilayas } = useStoreDeliveryPrices(storeSlug);
+  const { wilayas, defaultPrice } = useStoreDeliveryPrices(storeSlug);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
+  const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? (selectedWilaya.homePrice || defaultPrice) : ((selectedWilaya.deskPrice ?? selectedWilaya.homePrice) || defaultPrice)) : 0;
 
   // Offers system
   const { offers } = useProductOffers(storeSlug, mainProduct?.id);
