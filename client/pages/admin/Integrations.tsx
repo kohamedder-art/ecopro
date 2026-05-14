@@ -199,13 +199,22 @@ export default function Integrations() {
     saveSettings(payload, platform);
   }
 
-  function handleDisconnect(platform: Platform) {
+  async function handleDisconnect(platform: Platform) {
+    if (platform === 'facebook' || platform === 'instagram') {
+      setSaving(platform);
+      try {
+        await apiFetch('/api/facebook/disconnect', { method: 'POST' });
+        toast({ title: isRTL ? 'تم إلغاء الربط' : 'Disconnected' });
+        await loadSettings(true);
+      } catch {
+        toast({ title: isRTL ? 'فشل إلغاء الربط' : 'Disconnect failed', variant: 'destructive' });
+      } finally { setSaving(null); }
+      return;
+    }
     const payload: Record<string, any> = { provider: platform };
     if (platform === 'telegram') { payload.telegramBotToken = ''; payload.telegramBotUsername = ''; payload.usePlatformTelegram = false; }
     else if (platform === 'whatsapp_cloud') { payload.whatsappToken = ''; payload.whatsappPhoneId = ''; payload.usePlatformWhatsapp = false; }
     else if (platform === 'viber') { payload.viberAuthToken = ''; payload.usePlatformViber = false; }
-    else if (platform === 'instagram') { payload.instagramAccountId = ''; payload.instagramPageAccessToken = ''; payload.usePlatformInstagram = false; }
-    else if (platform === 'facebook') { payload.fbPageId = ''; payload.fbPageAccessToken = ''; payload.usePlatformMessenger = false; payload.messengerEnabled = false; }
     saveSettings(payload, platform);
   }
 

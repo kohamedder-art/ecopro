@@ -461,14 +461,15 @@ async function savePageToken(
     ]
   );
 
-  // Also update bot_settings so the messenger route picks up the new OAuth token
+  // Also upsert bot_settings so the messenger route picks up the new OAuth token
   await pool.query(
-    `UPDATE bot_settings
-     SET fb_page_id = $2,
-         fb_page_access_token = $3,
-         messenger_enabled = TRUE,
-         updated_at = NOW()
-     WHERE client_id = $1`,
+    `INSERT INTO bot_settings (client_id, fb_page_id, fb_page_access_token, messenger_enabled, updated_at)
+     VALUES ($1, $2, $3, TRUE, NOW())
+     ON CONFLICT (client_id) DO UPDATE SET
+       fb_page_id = $2,
+       fb_page_access_token = $3,
+       messenger_enabled = TRUE,
+       updated_at = NOW()`,
     [clientId, page.id, page.accessToken]
   );
 }
