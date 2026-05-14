@@ -120,7 +120,7 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
                 <StepIcon type={step.icon} done={done} active={active} color={dim} />
               </div>
               <span
-                className="text-[6.5px] leading-tight text-center font-semibold max-w-[30px]"
+                className="text-[10px] leading-tight text-center font-semibold max-w-[55px]"
                 style={{ color: done || active ? step.color : "#c0c0c0" }}
               >
                 {step.labelAr}
