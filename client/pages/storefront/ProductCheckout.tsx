@@ -241,8 +241,6 @@ export default function ProductCheckout() {
       const cachedProduct = localStorage.getItem(`product_${productIdentifier}`);
       if (cachedProduct) {
         const parsed = JSON.parse(cachedProduct);
-        // Only use cache if it includes stock_quantity and variants.
-        // Older cached payloads may miss these and can allow out-of-stock checkout or hide variant selection.
         if (
           parsed.store_slug &&
           typeof parsed.stock_quantity === 'number' &&
@@ -252,20 +250,16 @@ export default function ProductCheckout() {
         }
       }
       
-      // Try the new product-info endpoint that returns store_slug
       let response = await fetch(`/api/product-info/${productIdentifier}`);
       if (response.ok) {
         const data = await response.json();
-        // Cache the result with store_slug
         localStorage.setItem(`product_${productIdentifier}`, JSON.stringify(data));
         return data;
       }
       
-      // Try multiple API endpoints
       response = await fetch(`/api/product/${productIdentifier}`);
       if (response.ok) return response.json();
       
-      // Try client store products (for store checkout)
       response = await fetch(`/api/client/store/products/${productIdentifier}`);
       if (response.ok) return response.json();
       
@@ -273,8 +267,23 @@ export default function ProductCheckout() {
     },
   });
 
-  const template = (product as any)?.store_template || readStorefrontTemplate('books');
-  const settings: StoreSettings = readStorefrontSettings<StoreSettings>({} as StoreSettings);
+  // Fetch fresh settings directly from API (bypass localStorage cache)
+  const { data: liveSettings } = useQuery({
+    queryKey: ['storefront-settings', storeSlug],
+    queryFn: async () => {
+      if (!storeSlug) throw new Error('No store slug');
+      const res = await fetch(`/api/storefront/${encodeURIComponent(storeSlug)}/settings?_t=${Date.now()}`);
+      if (!res.ok) throw new Error('Failed to load settings');
+      const data = await res.json();
+      return (data?.settings || data || {}) as StoreSettings;
+    },
+    enabled: !!storeSlug,
+    staleTime: 5000,
+    retry: 1,
+  });
+
+  const template = (product as any)?.store_template || liveSettings?.template || readStorefrontTemplate('books');
+  const settings: StoreSettings = liveSettings || readStorefrontSettings<StoreSettings>({} as StoreSettings);
   const accentColor = settings.template_accent_color || settings.primary_color || (product as any)?.primary_color || '#3b82f6';
   const primaryColor = settings.primary_color || (product as any)?.primary_color || accentColor;
   const secondaryColor = settings.secondary_color || (product as any)?.secondary_color || '#a855f7';

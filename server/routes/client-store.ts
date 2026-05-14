@@ -12,8 +12,8 @@ const router = Router();
 // Simple in-memory cache for slow remote DB
 const settingsCache = new Map<number, { data: any; expires: number }>();
 const productsCache = new Map<number, { data: any; expires: number }>();
-const CACHE_TTL_MS = 30000; // 30 seconds cache
-const PRODUCTS_CACHE_TTL_MS = 15000; // 15 seconds for products (shorter since they change more)
+const CACHE_TTL_MS = 5000; // 5 seconds cache
+const PRODUCTS_CACHE_TTL_MS = 5000; // 5 seconds for products
 
 // Schema cache: column names rarely change at runtime (only after migrations)
 let storeSettingsColumnCache: { cols: Set<string>; expires: number } | null = null;

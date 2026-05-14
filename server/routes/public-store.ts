@@ -27,10 +27,10 @@ type CacheEntry<T> = { value: T; expiresAt: number };
 
 const isDev = process.env.NODE_ENV !== 'production';
 const SETTINGS_CACHE_TTL_MS = Number(
-  process.env.STOREFRONT_SETTINGS_CACHE_TTL_MS ?? (isDev ? 15_000 : 60_000)
+  process.env.STOREFRONT_SETTINGS_CACHE_TTL_MS ?? (isDev ? 5_000 : 5_000)
 );
 const PRODUCTS_CACHE_TTL_MS = Number(
-  process.env.STOREFRONT_PRODUCTS_CACHE_TTL_MS ?? (isDev ? 15_000 : 30_000)
+  process.env.STOREFRONT_PRODUCTS_CACHE_TTL_MS ?? (isDev ? 10_000 : 10_000)
 );
 
 const storefrontSettingsCache = new Map<string, CacheEntry<any>>();
@@ -133,8 +133,8 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
     return res.status(400).json({ error: 'Invalid store ID' });
   }
 
-  // CDN-friendly caching: allow browser/CDN to cache for 5 min, serve stale for 1 day
-  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400');
+  // CDN-friendly caching: 60s, serve stale for 5 min
+  res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=300');
 
   const cacheKey = `products:${storeSlug}`;
   const cached = getCached(storefrontProductsCache, cacheKey);
@@ -311,8 +311,8 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
     return res.status(400).json({ error: 'Invalid store ID' });
   }
 
-  // CDN-friendly caching: allow browser/CDN to cache for 5 min, serve stale for 1 day
-  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400');
+  // CDN-friendly caching: 60s, serve stale for 5 min
+  res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=300');
 
   try {
     if (!isProduction) {

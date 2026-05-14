@@ -177,7 +177,7 @@ export default function Storefront() {
         setError('');
         // Fetch settings first so we can canonicalize slug and avoid slow DB fallbacks
         const settingsRes = await fetchWithTimeout(
-          `/api/storefront/${encodeURIComponent(String(storeSlug))}/settings`,
+          `/api/storefront/${encodeURIComponent(String(storeSlug))}/settings?_t=${Date.now()}`,
           25000,
           undefined,
           1
@@ -221,7 +221,7 @@ export default function Storefront() {
 
         // Now fetch products using the canonical slug to avoid expensive name-normalization scans
         const productsRes = await fetchWithTimeout(
-          `/api/storefront/${encodeURIComponent(canonical)}/products`,
+          `/api/storefront/${encodeURIComponent(canonical)}/products?_t=${Date.now()}`,
           35000,
           undefined,
           1
