@@ -273,19 +273,20 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                     <div className="aspect-square rounded-2xl overflow-hidden shadow-sm bg-white relative group">
                         {hasProductImages || videoEmbed ? (
                             <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
-                              onTouchStart={e => { const el = e.currentTarget as any; el._tsx = e.touches[0].clientX; el._tss = el.scrollLeft; el._touched = false; }}
+                              onTouchStart={e => { const el = e.currentTarget as any; el._tsx = e.touches[0].clientX; el._touched = false; }}
                               onTouchMove={e => { (e.currentTarget as any)._touched = true; }}
                               onTouchEnd={e => {
                                 const el = e.currentTarget as any;
                                 if (!el._touched) return;
                                 const diff = el._tsx - e.changedTouches[0].clientX;
                                 if (Math.abs(diff) < 50) return;
-                                if (Math.abs(el.scrollLeft - el._tss) > 2) return;
-                                const total = galleryImages.length + (videoEmbed ? 1 : 0);
+                                const h = e.currentTarget as HTMLElement;
+                                const total = h.children.length;
                                 if (total <= 1) return;
-                                if (diff > 0) {
+                                const cur = Math.round(Math.abs(h.scrollLeft) / h.clientWidth);
+                                if (diff > 0 && cur >= total - 1) {
                                   handleThumbClick(videoEmbed ? -1 : 0);
-                                } else {
+                                } else if (diff < 0 && cur <= 0) {
                                   const last = total - 1;
                                   handleThumbClick(last === 0 && videoEmbed ? -1 : (videoEmbed ? last - 1 : last));
                                 }
