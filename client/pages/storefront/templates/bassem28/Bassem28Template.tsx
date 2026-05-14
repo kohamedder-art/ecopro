@@ -165,6 +165,48 @@ export default function Bassem28Template({
       window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key, value: text }, '*');
     }
   };
+
+  const handleOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerName || !customerPhone || !selectedWilayaId || !mainProduct) {
+      alert('يرجى ملء جميع الحقول');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const address = [selectedWilaya?.labelAR || '', customerCommune, customerAddress].filter(Boolean).join(' - ');
+      const isOfferItem = selectedOffer && mainProduct.id === mainProduct.id;
+      const itemPrice = selectedVariant?.price ?? mainProduct.price;
+      const res = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store_slug: storeSlug,
+          product_id: mainProduct.id,
+          ...(selectedVariant?.id ? { variant_id: selectedVariant.id } : {}),
+          quantity: isOfferItem ? selectedOffer.quantity : quantity,
+          ...(isOfferItem ? { offer_id: selectedOffer.offer_id } : {}),
+          total_price: isOfferItem ? selectedOffer.bundle_price : itemPrice * quantity,
+          delivery_fee: deliveryFee,
+          delivery_type: selectedDeliveryType,
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_address: address,
+          customer_notes: customerNotes,
+          shipping_wilaya_id: selectedWilayaId,
+        }),
+      });
+      const data = await res.json();
+      setLastOrderId(data.order?.id || null);
+      setLastTelegramUrl(data.telegramStartUrl || null);
+      if (!res.ok) throw new Error(data.error || 'Order failed');
+      setOrderSuccess(true);
+    } catch {
+      alert('حدث خطأ أثناء إرسال الطلب');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   // ── Google Font ──
   useEffect(() => {
     if (!document.getElementById('cairo-font')) {
