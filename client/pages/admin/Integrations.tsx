@@ -242,57 +242,58 @@ export default function Integrations() {
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="text-center space-y-3">
-        <div className="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center mx-auto">
-          <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
-        </div>
-        <p className="text-sm font-medium text-slate-500">{isRTL ? 'جاري التحميل...' : 'Loading integrations...'}</p>
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mx-auto" />
+        <p className="text-sm font-medium text-slate-500">{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-8">
+    <div className="max-w-3xl mx-auto space-y-6 pb-10">
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/30">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">{isRTL ? 'ربط المنصات' : 'Integrations'}</h1>
-            <p className="text-sm text-slate-500">{isRTL ? 'اربط منصات المراسلة للرد التلقائي بالذكاء الاصطناعي' : 'Connect messaging platforms for AI-powered auto-replies'}</p>
-          </div>
+        <div>
+          <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">{isRTL ? 'ربط المنصات' : 'Integrations'}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{isRTL ? 'اربط منصات المراسلة للرد التلقائي بالذكاء الاصطناعي' : 'Connect messaging platforms for AI-powered auto-replies'}</p>
         </div>
         {refreshing && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
       </div>
 
-      {/* Platform Tabs */}
-      <div className="grid grid-cols-5 gap-3">
+      {/* Platform selector grid */}
+      <div className="grid grid-cols-5 gap-2">
         {PLATFORM_DEFS.map(p => {
           const c = isConnected(p.value);
           const active = activePlatform === p.value;
           const vib = p.value === 'viber';
+          const color = vib ? '#7360F2' : p.bgColor;
           return (
             <button key={p.value} onClick={() => setActivePlatform(p.value)}
-              className={`relative p-4 rounded-2xl border-2 text-center transition-all ${
-                active ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 shadow-sm'
-                : c     ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-900/20'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 hover:border-slate-300'
+              className={`relative flex flex-col items-center gap-2 py-4 px-2 rounded-2xl border-2 transition-all duration-200 ${
+                active ? 'shadow-lg scale-[1.03]' : 'hover:scale-[1.01] hover:shadow-md'
+              } ${
+                active ? 'border-transparent' :
+                c ? 'border-emerald-300 dark:border-emerald-700/70 bg-emerald-50/60 dark:bg-emerald-900/10' :
+                'border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/40'
               }`}
+              style={active ? { backgroundColor: color, borderColor: color } : {}}
             >
-              {c && <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />}
-              {vib && <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full bg-slate-400 text-white text-[8px] font-bold whitespace-nowrap">{isRTL ? 'قريباً' : 'Soon'}</span>}
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: p.bgColor, opacity: vib ? 0.5 : 1 }}>
-                <span className="text-white">{ICONS[p.value]()}</span>
+              {c && !active && (
+                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+              )}
+              {vib && !active && (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-black bg-slate-400 text-white px-1.5 py-0.5 rounded-full whitespace-nowrap">{isRTL ? 'قريباً' : 'Soon'}</span>
+              )}
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${active ? 'bg-white/20' : ''}`}
+                style={!active ? { backgroundColor: color + '22' } : {}}>
+                <span style={{ color: active ? 'white' : color }}>{ICONS[p.value]()}</span>
               </div>
-              <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{p.label}</p>
-              <p className={`text-[10px] mt-0.5 font-medium ${active ? 'text-indigo-500' : c ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                {vib ? (isRTL ? 'قريباً' : 'Soon') : c ? (isRTL ? 'متصل' : 'Connected') : (isRTL ? 'غير متصل' : 'Not connected')}
-              </p>
+              <div className="text-center">
+                <p className={`text-[11px] font-bold ${active ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{p.label}</p>
+                <p className={`text-[9px] mt-0.5 font-semibold ${active ? 'text-white/70' : c ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                  {vib ? (isRTL ? 'قريباً' : 'Soon') : c ? (isRTL ? 'متصل' : 'Connected') : (isRTL ? 'غير متصل' : 'Not set')}
+                </p>
+              </div>
             </button>
           );
         })}
@@ -302,41 +303,34 @@ export default function Integrations() {
       <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/60 shadow-sm overflow-hidden">
 
         {/* Panel Header */}
-        <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: plat.bgColor, opacity: isViber ? 0.6 : 1 }}>
+        <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-100 dark:border-slate-800"
+          style={{ background: `linear-gradient(135deg, ${isViber ? '#7360F2' : plat.bgColor}15 0%, transparent 70%)` }}>
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow" style={{ backgroundColor: isViber ? '#7360F2' : plat.bgColor }}>
             <span className="text-white">{ICONS[plat.value]()}</span>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">{plat.label}</h2>
-              {isViber ? (
-                <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-400">🚧 {isRTL ? 'قريباً' : 'Coming Soon'}</span>
-              ) : connected ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />{isRTL ? 'متصل' : 'Connected'}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500">
-                  <WifiOff className="w-3 h-3" />{isRTL ? 'غير متصل' : 'Not connected'}
-                </span>
-              )}
-              {ping === 'ok'   && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-[10px] font-bold text-emerald-600"><CheckCircle2 className="w-3 h-3" />{isRTL ? 'يعمل!' : 'Working!'}</span>}
-              {ping === 'warn' && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-[10px] font-bold text-amber-600"><AlertTriangle className="w-3 h-3" />{isRTL ? 'أذونات ناقصة' : 'Missing permissions'}</span>}
-              {ping === 'fail' && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-[10px] font-bold text-red-600"><XCircle className="w-3 h-3" />{isRTL ? 'لا يستجيب' : 'Not responding'}</span>}
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">{plat.label}</h2>
+              {isViber ? <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-500">{isRTL ? 'قريباً' : 'Soon'}</span>
+              : connected ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />{isRTL ? 'متصل' : 'Connected'}</span>
+              : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500"><WifiOff className="w-3 h-3" />{isRTL ? 'غير متصل' : 'Not connected'}</span>}
+              {ping === 'ok'   && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-[10px] font-bold text-emerald-600"><CheckCircle2 className="w-3 h-3" />{isRTL ? 'يعمل!' : 'Working!'}</span>}
+              {ping === 'warn' && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-[10px] font-bold text-amber-600"><AlertTriangle className="w-3 h-3" />{isRTL ? 'أذونات ناقصة' : 'Permissions'}</span>}
+              {ping === 'fail' && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-[10px] font-bold text-red-600"><XCircle className="w-3 h-3" />{isRTL ? 'لا يستجيب' : 'Failed'}</span>}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">{plat.desc}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{plat.desc}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {connected && !isViber && !usingPlatform && (
               <button onClick={() => pingPlatform(activePlatform)} disabled={ping === 'loading'}
-                className="h-8 px-3 rounded-lg text-xs font-semibold text-indigo-600 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 flex items-center gap-1.5">
+                className="h-8 px-3 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 flex items-center gap-1.5">
                 {ping === 'loading' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                 {isRTL ? 'اختبار' : 'Test'}
               </button>
             )}
             {connected && !isViber && (
               <button onClick={() => handleDisconnect(activePlatform)} disabled={saving === activePlatform}
-                className="h-8 px-3 rounded-lg text-xs font-semibold text-red-600 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5">
+                className="h-8 px-3 rounded-lg text-xs font-semibold text-red-500 border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 flex items-center gap-1.5">
                 {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                 {isRTL ? 'إلغاء الربط' : 'Disconnect'}
               </button>
@@ -348,39 +342,36 @@ export default function Integrations() {
 
           {/* Viber — coming soon */}
           {isViber && (
-            <div className="text-center py-10 text-slate-400">
-              <p className="text-4xl mb-3">🚧</p>
-              <p className="font-semibold text-slate-600 dark:text-slate-300">{isRTL ? 'قريباً' : 'Coming Soon'}</p>
-              <p className="text-sm mt-1">{isRTL ? 'دعم Viber قيد التطوير' : 'Viber integration is under development'}</p>
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#7360F220' }}>
+                <span style={{ color: '#7360F2' }}>{ICONS.viber()}</span>
+              </div>
+              <p className="font-bold text-slate-700 dark:text-slate-200">{isRTL ? 'قريباً' : 'Coming Soon'}</p>
+              <p className="text-sm text-slate-400 text-center max-w-xs">{isRTL ? 'دعم Viber قيد التطوير وسيكون متاحاً قريباً' : 'Viber integration is under development and will be available soon'}</p>
             </div>
           )}
 
           {/* Connected state banner */}
           {!isViber && connected && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="flex items-center gap-4 p-4 rounded-xl border" style={{ background: `${plat.bgColor}10`, borderColor: `${plat.bgColor}40` }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${plat.bgColor}20` }}>
+                <CheckCircle2 className="w-5 h-5" style={{ color: plat.bgColor }} />
+              </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
-                  {isRTL ? 'متصل وجاهز' : 'Connected & Ready'}
-                  {usingPlatform && <span className="mr-2 text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-full">{isRTL ? 'بوت المنصة' : 'Platform Bot'}</span>}
-                </p>
-                <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
-                  {usingPlatform
-                    ? (isRTL ? 'EcoPro يدير البوت تلقائياً.' : 'EcoPro manages the bot automatically.')
-                    : (isRTL ? 'بياناتك محفوظة وآمنة.' : 'Your credentials are saved and active.')}
-                </p>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{isRTL ? 'متصل وجاهز' : 'Connected & Ready'}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{isRTL ? 'الذكاء الاصطناعي يرد تلقائياً على رسائل عملائك' : 'AI is automatically replying to your customer messages'}</p>
               </div>
             </div>
           )}
 
           {/* Missing permissions warning */}
           {pingDetail[activePlatform]?.errorType === 'missing_permissions' && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
               <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-800 dark:text-amber-200">
                 {isRTL
-                  ? 'الرمز صالح لكن تطبيق Meta يفتقر للأذونات. أضف: pages_messaging، pages_read_engagement، pages_manage_metadata من App Review.'
-                  : 'Token is valid but Meta App is missing permissions. Add: pages_messaging, pages_read_engagement, pages_manage_metadata from App Review.'}
+                  ? 'الرمز صالح لكن تطبيق Meta يفتقر للأذونات. أضف: pages_messaging، pages_read_engagement، pages_manage_metadata'
+                  : 'Token valid but Meta App is missing permissions: pages_messaging, pages_read_engagement, pages_manage_metadata'}
               </p>
             </div>
           )}
@@ -504,13 +495,13 @@ export default function Integrations() {
             </div>
           )}
 
-          {/* ── Timing Settings (all active platforms) ── */}
-          {!isViber && (
-            <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{isRTL ? 'الإعدادات العامة' : 'General Settings'}</p>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-semibold text-slate-500">{isRTL ? 'تأخير الرد (دقيقة)' : 'Reply Delay (min)'}</Label>
+          {/* ── Timing Settings — only when connected ── */}
+          {!isViber && connected && (
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3">{isRTL ? 'إعدادات الرد' : 'Reply Settings'}</p>
+              <div className="flex items-end gap-3">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-[11px] font-semibold text-slate-500">{isRTL ? 'تأخير الرد (دقائق)' : 'Reply delay (minutes)'}</Label>
                   <Input type="number" min={0} max={60} className="h-9 rounded-lg text-sm"
                     value={activePlatform === 'telegram' ? settings.telegramDelayMinutes ?? 5 : activePlatform === 'facebook' ? settings.messengerDelayMinutes ?? 5 : (settings as any)[`${activePlatform === 'whatsapp_cloud' ? 'whatsapp' : activePlatform}DelayMinutes`] ?? 5}
                     onChange={e => {
@@ -518,25 +509,22 @@ export default function Integrations() {
                       updateSetting(key, parseInt(e.target.value, 10) || 0);
                     }} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-semibold text-slate-500">{isRTL ? 'انتهاء الطلب (ساعة)' : 'Order Expiry (h)'}</Label>
+                <div className="flex-1 space-y-1">
+                  <Label className="text-[11px] font-semibold text-slate-500">{isRTL ? 'انتهاء الطلب (ساعات)' : 'Order expiry (hours)'}</Label>
                   <Input type="number" min={1} max={72} className="h-9 rounded-lg text-sm"
                     value={settings.autoExpireHours ?? 24}
                     onChange={e => updateSetting('autoExpireHours', parseInt(e.target.value, 10) || 24)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-semibold text-slate-500">{isRTL ? 'حفظ' : 'Save'}</Label>
-                  <Button onClick={() => {
-                    const payload: any = { provider: activePlatform, autoExpireHours: settings.autoExpireHours ?? 24 };
-                    if (activePlatform === 'telegram') payload.telegramDelayMinutes = settings.telegramDelayMinutes ?? 5;
-                    else if (activePlatform === 'facebook') payload.messengerDelayMinutes = settings.messengerDelayMinutes ?? 5;
-                    else if (activePlatform === 'whatsapp_cloud') payload.whatsappDelayMinutes = (settings as any).whatsappDelayMinutes ?? 5;
-                    saveSettings(payload, activePlatform);
-                  }} disabled={saving === activePlatform}
-                    className="h-9 w-full rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50">
-                    {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : isRTL ? 'حفظ' : 'Save'}
-                  </Button>
-                </div>
+                <Button onClick={() => {
+                  const payload: any = { provider: activePlatform, autoExpireHours: settings.autoExpireHours ?? 24 };
+                  if (activePlatform === 'telegram') payload.telegramDelayMinutes = settings.telegramDelayMinutes ?? 5;
+                  else if (activePlatform === 'facebook') payload.messengerDelayMinutes = settings.messengerDelayMinutes ?? 5;
+                  else if (activePlatform === 'whatsapp_cloud') payload.whatsappDelayMinutes = (settings as any).whatsappDelayMinutes ?? 5;
+                  saveSettings(payload, activePlatform);
+                }} disabled={saving === activePlatform}
+                  className="h-9 px-5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 shrink-0">
+                  {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin" /> : isRTL ? 'حفظ' : 'Save'}
+                </Button>
               </div>
             </div>
           )}
