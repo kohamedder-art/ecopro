@@ -419,17 +419,6 @@ export default function Integrations() {
                 </div>
               )}
 
-              {/* Platform bot fallback */}
-              {settings.platformMessengerAvailable && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-                  <p className="text-xs text-slate-500 flex-1">{isRTL ? 'أو استخدم بوت المنصة المشترك:' : 'Or use the shared platform bot:'}</p>
-                  <button onClick={() => handleUsePlatformBot('facebook')} disabled={saving === 'facebook'}
-                    className="h-8 px-3 rounded-lg text-xs font-semibold border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 flex items-center gap-1.5 shrink-0">
-                    {saving === 'facebook' ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                    {isRTL ? 'استخدام بوت المنصة' : 'Use Platform Bot'}
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
@@ -546,90 +535,8 @@ export default function Integrations() {
         </div>
       </div>
 
-      {/* FAQs */}
-      {activePlatform === 'whatsapp_cloud' && <WhatsAppFaq isRTL={isRTL} />}
-      {activePlatform === 'facebook'       && <FacebookFaq isRTL={isRTL} />}
-      {activePlatform === 'instagram'      && <InstagramFaq isRTL={isRTL} />}
-      {activePlatform === 'telegram'       && <TelegramFaq isRTL={isRTL} />}
 
     </div>
   );
 }
 
-// ─── FAQ Components ───────────────────────────────────────────────────────────
-
-function FaqAccordion({ title, faqs }: { title: string; faqs: { q: string; a: string }[] }) {
-  const [open, setOpen] = useState<number | null>(null);
-  return (
-    <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/60 shadow-sm p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm">❓</span>
-        <h3 className="text-sm font-bold text-slate-800 dark:text-white">{title}</h3>
-      </div>
-      <div className="space-y-2">
-        {faqs.map((faq, i) => (
-          <div key={i} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-white bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors"
-              onClick={() => setOpen(open === i ? null : i)}>
-              <span className="text-start flex-1">{faq.q}</span>
-              <svg className={`w-4 h-4 shrink-0 ml-2 transition-transform ${open === i ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-            {open === i && (
-              <div className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700">{faq.a}</div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FacebookFaq({ isRTL }: { isRTL: boolean }) {
-  const faqs = isRTL ? [
-    { q: 'كيف أنشئ تطبيق Messenger على Meta؟', a: 'اذهب إلى developers.facebook.com ← My Apps ← Create App ← اختر Business ← أضف منتج Messenger. ستحتاج إلى صفحة Facebook نشطة.' },
-    { q: 'ما هو الـ Webhook الذي أضعه؟', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/messenger/webhook\n\nVerify Token:\necopro_messenger_verify\n\nاشترك في: messages, messaging_postbacks' },
-    { q: 'ما الأذونات المطلوبة؟', a: '• pages_messaging\n• pages_read_engagement\n• pages_manage_metadata\n\nأضفها من Meta Developers ← App Review ← Permissions and Features.' },
-  ] : [
-    { q: 'How do I create a Messenger app on Meta?', a: 'Go to developers.facebook.com → My Apps → Create App → choose Business → add Messenger product. You\'ll need an active Facebook Page.' },
-    { q: 'What Webhook URL do I use?', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/messenger/webhook\n\nVerify Token:\necopro_messenger_verify\n\nSubscribe to: messages, messaging_postbacks' },
-    { q: 'What permissions does my app need?', a: '• pages_messaging\n• pages_read_engagement\n• pages_manage_metadata\n\nAdd from Meta Developers → App Review → Permissions and Features.' },
-  ];
-  return <FaqAccordion title={isRTL ? 'كيف أربط Facebook Messenger؟' : 'How to set up Facebook Messenger?'} faqs={faqs} />;
-}
-
-function InstagramFaq({ isRTL }: { isRTL: boolean }) {
-  const faqs = isRTL ? [
-    { q: 'كيف يعمل ربط Instagram؟', a: 'Instagram يُربط تلقائياً عند ربط Facebook إذا كانت الصفحة مرتبطة بحساب Instagram Business أو Creator.' },
-    { q: 'ما الأذونات المطلوبة؟', a: '• instagram_basic\n• instagram_manage_messages\n• pages_manage_metadata' },
-  ] : [
-    { q: 'How does Instagram connection work?', a: 'Instagram connects automatically when you connect Facebook, if the Page is linked to an Instagram Business or Creator account.' },
-    { q: 'What permissions does my app need?', a: '• instagram_basic\n• instagram_manage_messages\n• pages_manage_metadata' },
-  ];
-  return <FaqAccordion title={isRTL ? 'كيف أربط Instagram؟' : 'How to set up Instagram?'} faqs={faqs} />;
-}
-
-function TelegramFaq({ isRTL }: { isRTL: boolean }) {
-  const faqs = isRTL ? [
-    { q: 'كيف أنشئ بوت Telegram؟', a: 'افتح Telegram ← ابحث عن @BotFather ← أرسل /newbot ← اختر اسماً وusername ← ستحصل على Bot Token.' },
-    { q: 'هل يمكنني استخدام بوت المنصة؟', a: 'نعم! إذا كان بوت المنصة متاحاً، انقر "استخدام بوت المنصة" وسيعمل تلقائياً.' },
-    { q: 'كيف أختبر البوت؟', a: 'بعد الحفظ، افتح بوتك في Telegram وأرسل /start. يمكنك أيضاً الضغط على زر "اختبار".' },
-  ] : [
-    { q: 'How do I create a Telegram bot?', a: 'Open Telegram → search @BotFather → send /newbot → choose a name and username → you\'ll get a Bot Token.' },
-    { q: 'Can I use the Platform Bot?', a: 'Yes! If available, click "Use Platform Bot" and it works automatically with no setup.' },
-    { q: 'How do I test the bot?', a: 'After saving, open your bot in Telegram and send /start. You can also click the "Test" button above.' },
-  ];
-  return <FaqAccordion title={isRTL ? 'كيف أربط Telegram؟' : 'How to set up Telegram?'} faqs={faqs} />;
-}
-
-function WhatsAppFaq({ isRTL }: { isRTL: boolean }) {
-  const faqs = isRTL ? [
-    { q: 'كيف أنشئ تطبيق WhatsApp Business؟', a: 'اذهب إلى developers.facebook.com ← My Apps ← Create App ← اختر Business ← أضف منتج WhatsApp. ستجد Phone Number ID و Access Token في صفحة API Setup.' },
-    { q: 'ما هو الـ Callback URL؟', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/whatsapp/webhook\n\nVerify Token:\necopro_whatsapp_verify\n\nاشترك في: messages' },
-    { q: 'أين أجد الـ Phone Number ID والـ Token؟', a: 'في Meta Developers ← تطبيقك ← WhatsApp ← API Setup. الـ Token المؤقت موجود هناك. للتوكن الدائم: business.facebook.com ← Users ← System Users ← Generate Token.' },
-  ] : [
-    { q: 'How do I create a WhatsApp Business app?', a: 'Go to developers.facebook.com → My Apps → Create App → choose Business → add WhatsApp product. Find Phone Number ID and Access Token on the API Setup page.' },
-    { q: 'What Callback URL do I use?', a: 'Callback URL:\nhttps://www.sahla4eco.com/api/whatsapp/webhook\n\nVerify Token:\necopro_whatsapp_verify\n\nSubscribe to: messages' },
-    { q: 'Where do I find my Phone Number ID and Token?', a: 'In Meta Developers → Your App → WhatsApp → API Setup. For a permanent token: business.facebook.com → Users → System Users → Generate Token.' },
-  ];
-  return <FaqAccordion title={isRTL ? 'كيف أربط WhatsApp؟' : 'How to set up WhatsApp?'} faqs={faqs} />;
-}
