@@ -502,26 +502,17 @@ export default function Dz3ShopTemplate({
 
                 {/* Main display: video or image */}
                 <div className="rounded-xl overflow-hidden shadow-sm relative aspect-[4/5] lg:aspect-auto lg:flex-1 lg:max-h-[70vh]" style={{ backgroundColor: surfaceColor }}>
-                  <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
-                    onTouchStart={e => { const el = e.currentTarget as any; el._tsx = e.touches[0].clientX; el._touched = false; }}
-                    onTouchMove={e => { (e.currentTarget as any)._touched = true; }}
+                  <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'hidden', scrollSnapType: 'x mandatory', touchAction: 'none' }}
+                    onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                     onTouchEnd={e => {
-                      const el = e.currentTarget as any;
-                      if (!el._touched) return;
-                      const diff = el._tsx - e.changedTouches[0].clientX;
+                      const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
                       if (Math.abs(diff) < 50) return;
-                      const h = e.currentTarget as HTMLElement;
-                      const total = h.children.length;
+                      const total = detailImages.length + (videoEmbed ? 1 : 0);
                       if (total <= 1) return;
-                      const cur = Math.round(Math.abs(h.scrollLeft) / h.clientWidth);
-                      if (diff > 0 && cur >= total - 1) {
-                        if (videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
-                        else { setShowVideo(false); setActiveImageIndex(0); scrollCarouselTo(0); }
-                      } else if (diff < 0 && cur <= 0) {
-                        const last = total - 1;
-                        if (last === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
-                        else { setShowVideo(false); const ii = videoEmbed ? last - 1 : last; setActiveImageIndex(ii); scrollCarouselTo(last); }
-                      }
+                      const c = showVideo ? 0 : (videoEmbed ? activeImageIndex + 1 : activeImageIndex);
+                      const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
+                      if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
+                      else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setActiveImageIndex(ii); scrollCarouselTo(n); }
                     }}
                   >
                     {videoEmbed && (

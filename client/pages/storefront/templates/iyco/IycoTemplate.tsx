@@ -390,26 +390,17 @@ export default function IycoTemplate({
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4">
               <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[65vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
-                  onTouchStart={e => { const el = e.currentTarget as any; el._tsx = e.touches[0].clientX; el._touched = false; }}
-                  onTouchMove={e => { (e.currentTarget as any)._touched = true; }}
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'hidden', touchAction: 'none' }}
+                  onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                   onTouchEnd={e => {
-                    const el = e.currentTarget as any;
-                    if (!el._touched) return;
-                    const diff = el._tsx - e.changedTouches[0].clientX;
+                    const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
                     if (Math.abs(diff) < 50) return;
-                    const h = e.currentTarget as HTMLElement;
-                    const total = h.children.length;
+                    const total = mainImages.length + (videoEmbed ? 1 : 0);
                     if (total <= 1) return;
-                    const cur = Math.round(Math.abs(h.scrollLeft) / h.clientWidth);
-                    if (diff > 0 && cur >= total - 1) {
-                      if (videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
-                      else { setShowVideo(false); setSelectedMainImage(0); scrollCarouselTo(0); }
-                    } else if (diff < 0 && cur <= 0) {
-                      const last = total - 1;
-                      if (last === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
-                      else { setShowVideo(false); const ii = videoEmbed ? last - 1 : last; setSelectedMainImage(ii); scrollCarouselTo(last); }
-                    }
+                    const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage);
+                    const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
+                    if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); }
+                    else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n); }
                   }}
                 >
                   {videoEmbed && (

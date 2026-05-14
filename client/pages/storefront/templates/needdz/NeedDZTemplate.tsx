@@ -286,27 +286,17 @@ const parseVideoEmbed = (videoUrl: string) => {
               <div key={product.id} className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm group">
                 {/* Image Gallery */}
                 <div className="relative aspect-square overflow-hidden bg-slate-100">
-                  <div data-cr className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}
-                    onScroll={e => {
-                      const idx = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth);
-                      setCurrentImgIdx(prev => ({ ...prev, [product.id]: idx }));
-                    }}
-                    onTouchStart={e => { const el = e.currentTarget as any; el._tsx = e.touches[0].clientX; el._touched = false; }}
-                    onTouchMove={e => { (e.currentTarget as any)._touched = true; }}
+                  <div data-cr className="flex h-full overflow-x-hidden" style={{ touchAction: 'none' }}
+                    onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                     onTouchEnd={e => {
-                      const el = e.currentTarget as any;
-                      if (!el._touched) return;
-                      const diff = el._tsx - e.changedTouches[0].clientX;
+                      const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
                       if (Math.abs(diff) < 50) return;
-                      const h = e.currentTarget as HTMLElement;
-                      const total = h.children.length;
+                      const total = product.images.length + (product.videoUrl ? 1 : 0);
                       if (total <= 1) return;
+                      const h = e.currentTarget as HTMLElement;
                       const cur = Math.round(Math.abs(h.scrollLeft) / h.clientWidth);
-                      if (diff > 0 && cur >= total - 1) {
-                        h.scrollTo({ left: 0, behavior: 'smooth' });
-                      } else if (diff < 0 && cur <= 0) {
-                        h.scrollTo({ left: (total - 1) * h.clientWidth, behavior: 'smooth' });
-                      }
+                      const tgt = diff > 0 ? (cur - 1 + total) % total : (cur + 1) % total;
+                      h.scrollTo({ left: tgt * h.clientWidth, behavior: 'smooth' });
                     }}
                   >
                     {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
