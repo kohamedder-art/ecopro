@@ -507,7 +507,7 @@ export default function IycoTemplate({
                         required
                         type="text"
                         placeholder="أدخل الإسم الكامل"
-                        className="w-full pl-4 pr-10 py-2 rounded-md text-sm outline-none transition-all"
+                        className="w-full pl-4 pr-10 py-2.5 rounded-md text-sm outline-none transition-all"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerName ? accentColor : borderColor}` }}
                         value={customerName}
                         onChange={e => setCustomerName(e.target.value)}
@@ -521,7 +521,7 @@ export default function IycoTemplate({
                         required
                         type="tel"
                         placeholder="أدخل رقم الهاتف..."
-                        className="w-full pl-4 pr-10 py-2 rounded-md text-sm outline-none transition-all text-right"
+                        className="w-full pl-4 pr-10 py-2.5 rounded-md text-sm outline-none transition-all text-right"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerPhone ? accentColor : borderColor}` }}
                         value={customerPhone}
                         onChange={e => setCustomerPhone(e.target.value)}
@@ -537,7 +537,7 @@ export default function IycoTemplate({
                     <div className="relative">
                       <select
                         required
-                        className="w-full pl-4 pr-10 py-2 rounded-md text-sm outline-none transition-all appearance-none cursor-pointer"
+                        className="w-full pl-4 pr-10 py-2.5 rounded-md text-sm outline-none transition-all appearance-none cursor-pointer"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${selectedWilayaId ? accentColor : borderColor}` }}
                         value={selectedWilayaId ?? ''}
                         onChange={e => setSelectedWilayaId(Number(e.target.value) || null)}
