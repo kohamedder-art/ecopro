@@ -69,7 +69,7 @@ const ALL_TEMPLATE_IDS = [
   'dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist',
   'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan',
   'vera', 'streetwear', 'gallery', 'iyco', 'bassem28', 'classicshop',
-  'jewelheart', 'dz3shop', 'spiriluxe', 'leroishop',
+  'jewelheart', 'spiriluxe', 'leroishop',
 ];
 
 function makeProduct(overrides: Partial<StoreProduct> = {}): StoreProduct {

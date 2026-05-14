@@ -113,18 +113,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
   //   icon: <ShoppingBag className="w-4 h-4" />,
   //   tags: ['داكن', 'مقاسات'],
   // },
-  {
-    id: 'dz3shop',
-    name: 'DZ3 Shop',
-    nameAr: 'دي زي 3 شوب',
-    descAr: 'متجر متعدد المنتجات شبكة كثيفة',
-    category: 'storefront',
-    imageType: 'standard',
-    gradient: 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)',
-    accent: '#dc2626',
-    icon: <ShoppingBag className="w-4 h-4" />,
-    tags: ['متعدد', 'شبكة'],
-  },
+
   {
     id: 'spiriluxe',
     name: 'Spiriluxe',
