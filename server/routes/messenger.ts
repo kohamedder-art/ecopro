@@ -996,10 +996,16 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
     let postbackGreeting: string | null = null;
     let pageAccessToken = '';
 
-    // Get client_id and page access token
+    // Get client_id and page access token — prefer the row that has an OAuth token
+    // JOIN facebook_tokens so the client with an active token wins over one without.
     const settingsResult = await pool.query(
-      `SELECT fb_page_access_token, client_id, template_greeting FROM bot_settings 
-       WHERE fb_page_id = $1
+      `SELECT bs.fb_page_access_token, bs.client_id, bs.template_greeting,
+              ft.page_access_token_encrypted
+       FROM bot_settings bs
+       LEFT JOIN facebook_tokens ft ON ft.client_id = bs.client_id AND ft.is_active = TRUE
+       WHERE bs.fb_page_id = $1
+       ORDER BY (ft.page_access_token_encrypted IS NOT NULL) DESC,
+                (bs.fb_page_access_token IS NOT NULL AND bs.fb_page_access_token != '') DESC
        LIMIT 1`,
       [pageId]
     );
@@ -1008,16 +1014,14 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
       client_id = Number(settingsResult.rows[0].client_id);
       postbackGreeting = settingsResult.rows[0].template_greeting || null;
 
-      // Priority 1: OAuth token from facebook_tokens
-      try {
-        const oauthRes = await pool.query(
-          `SELECT page_access_token_encrypted FROM facebook_tokens WHERE client_id = $1 AND is_active = TRUE LIMIT 1`,
-          [client_id]
-        );
-        if (oauthRes.rows[0]?.page_access_token_encrypted) {
-          pageAccessToken = decryptData(oauthRes.rows[0].page_access_token_encrypted);
+      // Priority 1: OAuth token from facebook_tokens (already joined)
+      if (settingsResult.rows[0].page_access_token_encrypted) {
+        try {
+          pageAccessToken = decryptData(settingsResult.rows[0].page_access_token_encrypted);
+        } catch (e: any) {
+          console.error(`[Messenger] handlePostback: decrypt error:`, e?.message);
         }
-      } catch { /* best-effort */ }
+      }
 
       // Priority 2: token in bot_settings
       if (!pageAccessToken) {
@@ -1319,32 +1323,31 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
     let store_name = 'Store';
     let pageAccessToken = '';
 
-    // Get page access token (must match the exact page id)
+    // Get page access token — prefer client that has an active OAuth token
     const settingsResult = await pool.query(
-      `SELECT fb_page_access_token, client_id, template_greeting FROM bot_settings 
-       WHERE fb_page_id = $1
+      `SELECT bs.fb_page_access_token, bs.client_id, bs.template_greeting,
+              ft.page_access_token_encrypted
+       FROM bot_settings bs
+       LEFT JOIN facebook_tokens ft ON ft.client_id = bs.client_id AND ft.is_active = TRUE
+       WHERE bs.fb_page_id = $1
+       ORDER BY (ft.page_access_token_encrypted IS NOT NULL) DESC,
+                (bs.fb_page_access_token IS NOT NULL AND bs.fb_page_access_token != '') DESC
        LIMIT 1`,
       [pageId]
     );
 
     if (settingsResult.rows.length > 0) {
       client_id = Number(settingsResult.rows[0].client_id);
-      const fetchedGreeting: string | null = settingsResult.rows[0].template_greeting || null;
-      console.log(`[Messenger] handleMessage: found client=${client_id} bot_settings_token_len=${String(settingsResult.rows[0].fb_page_access_token||'').length}`);
+      console.log(`[Messenger] handleMessage: found client=${client_id} has_oauth=${!!settingsResult.rows[0].page_access_token_encrypted}`);
 
-      // Priority 1: OAuth token from facebook_tokens (encrypted, per-client)
-      try {
-        const oauthRes = await pool.query(
-          `SELECT page_access_token_encrypted FROM facebook_tokens WHERE client_id = $1 AND is_active = TRUE LIMIT 1`,
-          [client_id]
-        );
-        console.log(`[Messenger] handleMessage: facebook_tokens rows=${oauthRes.rows.length} has_enc=${!!oauthRes.rows[0]?.page_access_token_encrypted}`);
-        if (oauthRes.rows[0]?.page_access_token_encrypted) {
-          pageAccessToken = decryptData(oauthRes.rows[0].page_access_token_encrypted);
-          console.log(`[Messenger] handleMessage: decrypted oauth token len=${pageAccessToken.length}`);
+      // Priority 1: OAuth token from facebook_tokens (already joined)
+      if (settingsResult.rows[0].page_access_token_encrypted) {
+        try {
+          pageAccessToken = decryptData(settingsResult.rows[0].page_access_token_encrypted);
+          console.log(`[Messenger] handleMessage: using oauth token len=${pageAccessToken.length}`);
+        } catch (e: any) {
+          console.error(`[Messenger] handleMessage: decrypt error:`, e?.message);
         }
-      } catch (e: any) {
-        console.error(`[Messenger] handleMessage: facebook_tokens lookup error:`, e?.message || e);
       }
 
       // Priority 2: token stored directly in bot_settings
