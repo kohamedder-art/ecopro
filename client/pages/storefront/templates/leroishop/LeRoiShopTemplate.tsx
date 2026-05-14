@@ -453,7 +453,9 @@ export default function LeRoiShopTemplate({
 
               {/* Image */}
               <div className="w-full md:w-1/2 flex flex-col">
-                <div className="rounded-xl overflow-hidden shadow-sm aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] relative" style={{ backgroundColor: surfaceMuted }}>
+                <div className="rounded-xl overflow-hidden shadow-sm aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] relative" style={{ backgroundColor: surfaceMuted }}
+                  onTouchStart={e => { if (!showVideo) (e.currentTarget as any)._ts = e.touches[0].clientX; }}
+                  onTouchEnd={e => { if (showVideo || !activeProduct?.images?.length) return; const ts = (e.currentTarget as any)._ts; if (ts == null) return; const d = ts - e.changedTouches[0].clientX; if (Math.abs(d) > 40) { d > 0 ? setActiveImageIndex(i => Math.min(i + 1, activeProduct.images.length - 1)) : setActiveImageIndex(i => Math.max(i - 1, 0)); } }}>
                   {showVideo && videoEmbed ? (
                     videoEmbed.type === 'youtube' ? (
                       <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
@@ -564,6 +566,35 @@ export default function LeRoiShopTemplate({
                     </div>
                   ) : (
                     <form onSubmit={handleOrder} className="space-y-3">
+
+                      {/* 1 ── Offers ───────────────────── */}
+                      {offers.length > 0 && (
+                        <OfferSelector
+                          offers={offers}
+                          unitPrice={unitPrice}
+                          currency={currency}
+                          selectedOfferId={selectedOffer?.offer_id ?? null}
+                          onSelect={handleOfferSelect}
+                          accentColor={accentColor}
+                          textColor={textColor}
+                          borderColor={inputBorderColor}
+                          hidePrice={true}
+                        />
+                      )}
+
+                      {/* 2 ── Colors / Sizes (variants) ── */}
+                      {activeProduct?.variants && activeProduct.variants.length > 0 && (
+                        <VariantSelector
+                          variants={activeProduct.variants}
+                          selected={selectedVariant}
+                          onSelect={setSelectedVariant}
+                          accentColor={accentColor}
+                          currency={currency}
+                          basePrice={activeProduct.price}
+                        />
+                      )}
+
+                      {/* 3 ── Customer fields ─────────── */}
                       <div className="grid grid-cols-2 gap-3">
                         <input required name="name" type="text" placeholder="الإسم واللقب" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                         <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors text-right" dir="ltr" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
@@ -578,30 +609,14 @@ export default function LeRoiShopTemplate({
                       </div>
                       <div className="flex gap-2">
                         {showHomeDelivery && (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDeliveryType('home')}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs transition-all"
-                            style={{
-                              backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg,
-                              border: `1px solid ${inputBorderColor}`,
-                              color: selectedDeliveryType === 'home' ? '#ffffff' : textColor,
-                            }}
-                          >
+                          <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs transition-all"
+                            style={{ backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg, border: `1px solid ${inputBorderColor}`, color: selectedDeliveryType === 'home' ? '#ffffff' : textColor }}>
                             <span>التوصيل للمنزل</span>
                           </button>
                         )}
                         {showDeskDelivery && (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDeliveryType('desk')}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs transition-all"
-                            style={{
-                              backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg,
-                              border: `1px solid ${inputBorderColor}`,
-                              color: selectedDeliveryType === 'desk' ? '#ffffff' : textColor,
-                            }}
-                          >
+                          <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs transition-all"
+                            style={{ backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg, border: `1px solid ${inputBorderColor}`, color: selectedDeliveryType === 'desk' ? '#ffffff' : textColor }}>
                             <span>الاستلام من المكتب</span>
                           </button>
                         )}
@@ -613,52 +628,22 @@ export default function LeRoiShopTemplate({
                         <textarea name="notes" placeholder="ملاحظات إضافية" rows={2} className="w-full px-3 py-2.5 rounded text-sm outline-none resize-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       )}
 
-                      {/* ── Variant selector ─────────────── */}
-                      {activeProduct?.variants && activeProduct.variants.length > 0 && (
-                      <div className="mt-3" style={{ borderTop: `1px solid ${borderColor}`, paddingTop: '12px' }}>
-                        <VariantSelector
-                          variants={activeProduct.variants}
-                          selected={selectedVariant}
-                          onSelect={setSelectedVariant}
-                          accentColor={accentColor}
-                          currency={currency}
-                          basePrice={activeProduct.price}
-                        />
-                      </div>
-                      )}
-
-                      {/* ── Offer rows ─────────────────── */}
-                      {offers.length > 0 && (
-                      <div className="mt-4" style={{ borderTop: `1px solid ${borderColor}`, paddingTop: '12px' }}>
-                        <OfferSelector
-                          offers={offers}
-                          unitPrice={unitPrice}
-                          currency={currency}
-                          selectedOfferId={selectedOffer?.offer_id ?? null}
-                          onSelect={handleOfferSelect}
-                          accentColor={accentColor}
-                          textColor={textColor}
-                          borderColor={inputBorderColor}
-                          hidePrice={true}
-                        />
-                      </div>
-                      )}
-
-                      {/* Action row: submit + qty */}
-                      <div className="flex gap-3 mt-4 pt-2">
-                        <button disabled={isSubmitting} type="submit" className="flex-1 font-bold py-3 px-4 rounded text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: accentColor }}>
-                          {isSubmitting ? 'جاري المعالجة...' : 'اطلب الآن'}
-                        </button>
+                      {/* 4 ── Quantity ─────────────────── */}
+                      <div className="flex items-center gap-3 pt-1">
+                        <span className="text-sm font-bold" style={{ color: textMuted }}>الكمية</span>
                         <div className="flex items-center rounded px-2" style={{ border: `1px solid ${borderColor}`, backgroundColor: inputBg }}>
-                          <button type="button" className="px-2 font-bold hover:opacity-70" style={{ color: textMuted }} onClick={() => setQuantity(q => Math.max(1, q - 1))}>−</button>
+                          <button type="button" className="px-3 py-1 font-bold text-lg hover:opacity-70" style={{ color: textMuted }} onClick={() => setQuantity(q => Math.max(1, q - 1))}>−</button>
                           <span className="w-8 text-center font-bold text-sm" style={{ color: textColor }}>{quantity}</span>
-                          <button type="button" className="px-2 font-bold hover:opacity-70" style={{ color: textMuted }} onClick={() => setQuantity(q => q + 1)}>+</button>
+                          <button type="button" className="px-3 py-1 font-bold text-lg hover:opacity-70" style={{ color: textMuted }} onClick={() => setQuantity(q => q + 1)}>+</button>
                         </div>
+                        <span className="text-sm font-semibold" style={{ color: accentColor }}>
+                          {Math.round(productTotal ?? 0).toLocaleString()} {currency}
+                        </span>
                       </div>
 
-                      {/* Order summary */}
+                      {/* 5 ── Order summary ────────────── */}
                       {selectedWilayaId && (
-                        <div className="mt-3 pt-3 space-y-1 text-sm" style={{ borderTop: `1px solid ${borderColor}` }}>
+                        <div className="pt-2 space-y-1 text-sm" style={{ borderTop: `1px solid ${borderColor}` }}>
                           <div className="flex justify-between">
                             <span className="font-bold">{Math.round(productTotal ?? 0).toLocaleString()} {currency}</span>
                             <span style={{ color: textMuted }}>سعر المنتجات</span>
@@ -673,6 +658,11 @@ export default function LeRoiShopTemplate({
                           </div>
                         </div>
                       )}
+
+                      {/* 6 ── Submit button ────────────── */}
+                      <button disabled={isSubmitting} type="submit" className="w-full font-bold py-3.5 px-4 rounded text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 text-base" style={{ backgroundColor: accentColor }}>
+                        {isSubmitting ? 'جاري المعالجة...' : 'اطلب الآن'}
+                      </button>
                     </form>
                   )}
                 </div>
