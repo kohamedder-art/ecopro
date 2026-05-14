@@ -22,41 +22,18 @@ const router = Router();
 function getFbVerifyToken() { return process.env.FB_MESSENGER_VERIFY_TOKEN || 'ecopro_messenger_verify'; }
 function getFbAppSecret() { return process.env.FB_APP_SECRET || ''; }
 
-// Optional platform-wide fallback page (shared) for stores without their own Page.
-// NOTE: Page Access Token is secret; never expose it via public endpoints.
-function getPlatformFbPageId() { return String(process.env.PLATFORM_FB_PAGE_ID || '').trim(); }
-function getPlatformFbPageAccessToken() { return String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim(); }
-function getPlatformMessengerEnabled() {
-  return String(process.env.PLATFORM_MESSENGER_ENABLED || '').toLowerCase() === 'true' ||
-    (!!getPlatformFbPageId() && !!getPlatformFbPageAccessToken());
-}
-
-function isPlatformPage(pageId: string): boolean {
-  return !!getPlatformFbPageId() && String(pageId) === getPlatformFbPageId();
-}
-
 function resolveEffectivePageConfig(botRow: any, oauthToken?: string): { enabled: boolean; pageId: string; pageAccessToken: string; usingPlatform: boolean; reason?: string } {
   const storePageId = botRow?.fb_page_id ? String(botRow.fb_page_id).trim() : '';
   const storeToken = botRow?.fb_page_access_token ? String(botRow.fb_page_access_token).trim() : '';
 
-  // Priority 1: OAuth token from facebook_tokens table (encrypted, auto-refreshable)
+  // Priority 1: OAuth token from facebook_tokens table
   if (storePageId && oauthToken) {
     return { enabled: true, pageId: storePageId, pageAccessToken: oauthToken, usingPlatform: false };
   }
 
-  // Priority 2: Platform shared Page
-  // If the store is configured to use the platform shared Page, always use the platform env token.
-  // This ensures one token is used for all stores and avoids stale per-store tokens causing OAuth 190.
-  if (storePageId && getPlatformMessengerEnabled() && storePageId === getPlatformFbPageId() && getPlatformFbPageAccessToken()) {
-    return { enabled: true, pageId: getPlatformFbPageId(), pageAccessToken: getPlatformFbPageAccessToken(), usingPlatform: true };
-  }
-
+  // Priority 2: Token saved in bot_settings
   if (storePageId && storeToken) {
     return { enabled: true, pageId: storePageId, pageAccessToken: storeToken, usingPlatform: false };
-  }
-
-  if (getPlatformMessengerEnabled() && getPlatformFbPageId() && getPlatformFbPageAccessToken()) {
-    return { enabled: true, pageId: getPlatformFbPageId(), pageAccessToken: getPlatformFbPageAccessToken(), usingPlatform: true };
   }
 
   return {

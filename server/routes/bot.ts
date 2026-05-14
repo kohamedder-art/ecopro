@@ -6,9 +6,6 @@ import { ensureBotSettingsRow } from '../utils/client-provisioning';
 import { encryptData } from '../utils/encryption';
 
 // Read env vars lazily so they're always current (not frozen at import time)
-function getPlatformFbPageId() { return String(process.env.PLATFORM_FB_PAGE_ID || '').trim(); }
-function getPlatformFbPageAccessToken() { return String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim(); }
-function getPlatformMessengerAvailable() { return !!getPlatformFbPageId() && !!getPlatformFbPageAccessToken(); }
 
 function getPlatformTelegramBotToken() { return String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim(); }
 function getPlatformTelegramBotUsername() { return String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim(); }
@@ -27,10 +24,6 @@ function getPlatformInstagramAccessToken() { return String(process.env.PLATFORM_
 function getPlatformInstagramAvailable() { return !!getPlatformInstagramPageId() && !!getPlatformInstagramAccessToken(); }
 
 // Keep frozen constants for backward compatibility within this file
-const PLATFORM_FB_PAGE_ID = getPlatformFbPageId();
-const PLATFORM_FB_PAGE_ACCESS_TOKEN = getPlatformFbPageAccessToken();
-const PLATFORM_MESSENGER_AVAILABLE = getPlatformMessengerAvailable();
-
 const PLATFORM_TELEGRAM_BOT_TOKEN = getPlatformTelegramBotToken();
 const PLATFORM_TELEGRAM_BOT_USERNAME = getPlatformTelegramBotUsername();
 const PLATFORM_TELEGRAM_AVAILABLE = getPlatformTelegramAvailable();
@@ -153,17 +146,15 @@ export const getBotSettings: RequestHandler = async (req, res) => {
           fbPageAccessToken: '',
           fbPageAccessTokenConfigured: false,
           messengerDelayMinutes: 5,
-          platformMessengerAvailable: PLATFORM_MESSENGER_AVAILABLE,
+          platformMessengerAvailable: false,
           platformTelegramAvailable: PLATFORM_TELEGRAM_AVAILABLE,
-          usePlatformMessenger: PLATFORM_MESSENGER_AVAILABLE,
-          messengerUsingPlatform: PLATFORM_MESSENGER_AVAILABLE,
+          usePlatformMessenger: false,
+          messengerUsingPlatform: false,
           usePlatformTelegram: PLATFORM_TELEGRAM_AVAILABLE,
           telegramUsingPlatform: PLATFORM_TELEGRAM_AVAILABLE,
           platformWhatsappAvailable: PLATFORM_WHATSAPP_AVAILABLE,
           usePlatformWhatsapp: PLATFORM_WHATSAPP_AVAILABLE,
           whatsappUsingPlatform: PLATFORM_WHATSAPP_AVAILABLE,
-          // Do not expose platform Page ID to store owners.
-          platformMessengerPageId: '',
           templateGreeting: `شكراً لطلبك من {storeName}، {customerName}! 🎉\n\n✅ فعّل الإشعارات لتلقي تأكيد الطلب وتحديثات التتبع.`,
           templateInstantOrder: `🎉 شكراً لك {customerName}!\n\nتم استلام طلبك بنجاح ✅\n\n━━━━━━━━━━━━━━━━\n📦 تفاصيل الطلب\n━━━━━━━━━━━━━━━━\n🔢 رقم الطلب: #{orderId}\n📱 المنتج: {productName}\n💰 السعر: {totalPrice} دج\n📍 الكمية: {quantity}\n\n━━━━━━━━━━━━━━━━\n👤 معلومات التوصيل\n━━━━━━━━━━━━━━━━\n📛 الاسم: {customerName}\n📞 الهاتف: {customerPhone}\n🏠 العنوان: {address}\n\n━━━━━━━━━━━━━━━━\n🚚 حالة الطلب: قيد المعالجة\n━━━━━━━━━━━━━━━━\n\nسنتصل بك قريباً للتأكيد 📞\n\n⭐ من {storeName}`,
           templatePinInstructions: `📌 نصيحة مهمة:\n\nاضغط مطولاً على الرسالة السابقة واختر "تثبيت" لتتبع طلبك بسهولة!\n\n🔔 تأكد من:\n• تفعيل الإشعارات\n• عدم كتم المحادثة\n• ستتلقى تحديثات حالة الطلب هنا مباشرة`,
@@ -197,9 +188,7 @@ export const getBotSettings: RequestHandler = async (req, res) => {
     const storedFbPageId = String(settings.fb_page_id || '').trim();
     const storedFbPageAccessToken = String(settings.fb_page_access_token || '').trim();
     const messengerTokenConfigured = !!storedFbPageAccessToken;
-    const _platformMessengerAvailable = getPlatformMessengerAvailable();
-    const _platformFbPageId = getPlatformFbPageId();
-    const messengerUsingPlatform = _platformMessengerAvailable && storedFbPageId === _platformFbPageId;
+    const messengerUsingPlatform = false;
 
     const whatsappTokenConfigured = !!String(settings.whatsapp_token || '').trim();
     const whatsappPhoneIdStored = String(settings.whatsapp_phone_id || '').trim();
@@ -249,18 +238,18 @@ export const getBotSettings: RequestHandler = async (req, res) => {
       templatePayment: settings.template_payment || `تم تأكيد طلبك #{orderId}. المبلغ المطلوب: {totalPrice} دج.`,
       templateShipping: settings.template_shipping || `تم شحن طلبك #{orderId}. رقم التتبع: {trackingNumber}.`,
       messengerEnabled: !!settings.messenger_enabled,
-      fbPageId: messengerUsingPlatform ? '' : (settings.fb_page_id || ''),
+      fbPageId: settings.fb_page_id || '',
       fbPageAccessToken: '',
-      fbPageAccessTokenConfigured: messengerTokenConfigured || messengerUsingPlatform,
+      fbPageAccessTokenConfigured: messengerTokenConfigured,
       messengerDelayMinutes: settings.messenger_delay_minutes || 5,
       delivery_notifications_enabled: settings.delivery_notifications_enabled !== false,
       delivery_status_template: settings.delivery_status_template || null,
-      platformMessengerAvailable: getPlatformMessengerAvailable(),
+      platformMessengerAvailable: false,
       platformTelegramAvailable: getPlatformTelegramAvailable(),
       usePlatformTelegram: telegramUsingPlatform,
       platformWhatsappAvailable: getPlatformWhatsappAvailable(),
-      usePlatformMessenger: messengerUsingPlatform,
-      messengerUsingPlatform,
+      usePlatformMessenger: false,
+      messengerUsingPlatform: false,
       telegramUsingPlatform,
       usePlatformWhatsapp: whatsappUsingPlatform,
       whatsappUsingPlatform,
@@ -268,8 +257,6 @@ export const getBotSettings: RequestHandler = async (req, res) => {
       instagramAccountId: instagramAccountIdStored,
       instagramPageAccessToken: '',
       instagramTokenConfigured,
-      // Do not expose platform Page ID to store owners.
-      platformMessengerPageId: '',
       platformViberAvailable: getPlatformViberAvailable(),
       usePlatformViber: getPlatformViberAvailable(),
       viberUsingPlatform: getPlatformViberAvailable(),
@@ -315,8 +302,7 @@ export const testBotConnection: RequestHandler = async (req, res) => {
     }
 
     if (platform === 'facebook') {
-      const token = String(s.fb_page_access_token || '').trim();
-      const effectiveToken = token || getPlatformFbPageAccessToken();
+      const effectiveToken = String(s.fb_page_access_token || '').trim();
       if (!effectiveToken) return res.json({ success: false, error: 'No Facebook token configured' });
       try {
         // /me with a Page Access Token returns the page info — no special permissions required
@@ -426,13 +412,9 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
 
     const existingTelegramIsPlatform = getPlatformTelegramAvailable()
       && String(existingSecrets.telegram_bot_token || '').trim() === getPlatformTelegramBotToken();
-    const existingMessengerIsPlatform = getPlatformMessengerAvailable()
-      && String(existingSecrets.fb_page_id || '').trim() === getPlatformFbPageId();
     const existingWhatsappIsPlatform = getPlatformWhatsappAvailable()
       && String(existingSecrets.whatsapp_phone_id || '').trim() === getPlatformWhatsappPhoneNumberId();
 
-    const wantsPlatformMessenger = usePlatformMessenger === true
-      || (usePlatformMessenger == null && existingMessengerIsPlatform);
     const wantsPlatformTelegram = usePlatformTelegram === true
       || (usePlatformTelegram == null && existingTelegramIsPlatform);
     const wantsPlatformWhatsapp = usePlatformWhatsapp === true
@@ -490,14 +472,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     let finalFbPageId: string | null = existingSecrets.fb_page_id ?? null;
     let finalFbPageAccessToken: string | null = existingSecrets.fb_page_access_token ?? null;
 
-    if (wantsPlatformMessenger) {
-      if (!getPlatformMessengerAvailable()) {
-        return res.status(400).json({ error: 'Platform Messenger page is not configured on the server.' });
-      }
-      finalFbPageId = getPlatformFbPageId();
-      finalFbPageAccessToken = null;
-    } else if (fbPageIdSent) {
-      // Page ID explicitly provided (or explicitly emptied) — save or clear accordingly.
+    if (fbPageIdSent) {
       finalFbPageId = normalizedFbPageId || null;
       finalFbPageAccessToken = normalizedFbPageAccessToken || null;
     }
