@@ -96,6 +96,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [quantity, setQuantity] = useState(1);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
+  const [submittedPhone, setSubmittedPhone] = useState('');
 
   // Variant and Offer support
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -180,6 +181,7 @@ const parseVideoEmbed = (videoUrl: string) => {
       if (!res.ok) throw new Error('Order error');
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
+      setSubmittedPhone(String(fd.get('phone') || ''));
       setOrderStatus('success');
     } catch(err) {
       console.error(err);
@@ -442,7 +444,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                     <h2 className="text-2xl font-black" style={{ color: accentColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
                     <p className="text-slate-500 mt-2 px-6">سنتصل بك قريباً لتأكيد الطلب</p>
                   </div>
-                  <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={String(new FormData(document.querySelector('form')!)?.get('phone') || '')} />
+                  <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={submittedPhone} />
                   <div className="text-right rounded-xl p-4 space-y-2 border border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
                     <div className="flex justify-between text-sm">
                       <span>{selectedProduct?.name || 'المنتج'} × {selectedOffer?.quantity || quantity}</span>
