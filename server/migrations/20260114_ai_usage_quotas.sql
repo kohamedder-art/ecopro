@@ -1,15 +1,16 @@
 -- AI Usage Quotas and Tracking
 -- Tracks per-store AI usage for billing and quota management
+-- Token-based quotas: accurate cost tracking instead of message counting
 
--- Quota table: monthly limits per store
+-- Quota table: monthly limits per store (in tokens)
 CREATE TABLE IF NOT EXISTS ai_usage_quotas (
   id SERIAL PRIMARY KEY,
   client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   period_start DATE NOT NULL, -- First day of month (e.g., 2026-01-01)
-  owner_messages_used INTEGER DEFAULT 0,
-  owner_messages_limit INTEGER DEFAULT 200,
-  customer_messages_used INTEGER DEFAULT 0,
-  customer_messages_limit INTEGER DEFAULT 3000,
+  owner_tokens_used BIGINT DEFAULT 0,
+  owner_token_limit BIGINT DEFAULT 1000000, -- 1M tokens for owner (~$0.40)
+  customer_tokens_used BIGINT DEFAULT 0,
+  customer_token_limit BIGINT DEFAULT 10000000, -- 10M tokens for customers (~$0.50)
   last_reset_at TIMESTAMP DEFAULT NOW(),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS ai_usage_logs (
   model_used VARCHAR(50) NOT NULL,
   tokens_input INTEGER DEFAULT 0,
   tokens_output INTEGER DEFAULT 0,
+  total_tokens INTEGER DEFAULT 0,
   cost_usd DECIMAL(10,6) DEFAULT 0,
   message_preview TEXT, -- First 100 chars for debugging
   created_at TIMESTAMP DEFAULT NOW()

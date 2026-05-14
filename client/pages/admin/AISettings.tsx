@@ -335,6 +335,17 @@ const PLATFORM_TOGGLES = [
   { key: 'ai_reply_viber' as keyof AISettings, icon: <MkrAiMsg className="h-[13px] w-[13px]" />, label: 'Viber', labelAr: 'فايبر', color: 'text-purple-500' },
 ];
 
+// Helper to format tokens for display (e.g., 1M, 500K)
+function formatTokens(tokens: number): string {
+  if (tokens >= 1000000) {
+    return `${(tokens / 1000000).toFixed(1)}M`;
+  }
+  if (tokens >= 1000) {
+    return `${(tokens / 1000).toFixed(0)}K`;
+  }
+  return tokens.toString();
+}
+
 export default function AISettingsPage() {
   const { locale } = useTranslation();
   const isRTL = locale === "ar";
@@ -556,14 +567,14 @@ export default function AISettingsPage() {
             <div className="grid grid-cols-2 gap-[9px]">
               <div className="bg-muted/30 rounded-lg p-[11px] border border-border/50">
                 <p className="text-[10px] text-muted-foreground font-medium mb-[5px]">{isRTL ? "استخدامك (المالك)" : "Your Usage (Owner)"}</p>
-                <p className="text-lg font-extrabold text-foreground">{quota.ownerUsed} <span className="text-[11px] text-muted-foreground font-normal">/ {quota.ownerLimit}</span></p>
+                <p className="text-lg font-extrabold text-foreground">{formatTokens(quota.ownerUsed)} <span className="text-[11px] text-muted-foreground font-normal">/ {formatTokens(quota.ownerLimit)}</span></p>
                 <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden mt-[7px]">
                   <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all" style={{ width: `${(quota.ownerUsed / quota.ownerLimit) * 100}%` }} />
                 </div>
               </div>
               <div className="bg-muted/30 rounded-lg p-[11px] border border-border/50">
                 <p className="text-[10px] text-muted-foreground font-medium mb-[5px]">{isRTL ? "استخدام العملاء" : "Customer Usage"}</p>
-                <p className="text-lg font-extrabold text-foreground">{quota.customerUsed} <span className="text-[11px] text-muted-foreground font-normal">/ {quota.customerLimit}</span></p>
+                <p className="text-lg font-extrabold text-foreground">{formatTokens(quota.customerUsed)} <span className="text-[11px] text-muted-foreground font-normal">/ {formatTokens(quota.customerLimit)}</span></p>
                 <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden mt-[7px]">
                   <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all" style={{ width: `${(quota.customerUsed / quota.customerLimit) * 100}%` }} />
                 </div>

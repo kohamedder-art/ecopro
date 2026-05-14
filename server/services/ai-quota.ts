@@ -1,8 +1,9 @@
 /**
  * AI Quota Management
- * 
+ *
  * Tracks per-store AI usage and enforces monthly limits.
  * Store owners have separate quotas from their customers.
+ * Token-based quotas for accurate cost tracking.
  */
 
 import { ensureConnection } from '../utils/database';
@@ -35,10 +36,10 @@ async function getOrCreateQuota(clientId: number): Promise<any> {
     return existing.rows[0];
   }
 
-  // Create new quota record
+  // Create new quota record (token-based limits)
   const created = await pool.query(
-    `INSERT INTO ai_usage_quotas (client_id, period_start, owner_messages_limit, customer_messages_limit)
-     VALUES ($1, $2, 200, 3000)
+    `INSERT INTO ai_usage_quotas (client_id, period_start, owner_token_limit, customer_token_limit)
+     VALUES ($1, $2, 1000000, 10000000)
      RETURNING *`,
     [clientId, periodStart]
   );
@@ -49,16 +50,16 @@ async function getOrCreateQuota(clientId: number): Promise<any> {
 /**
  * Check if a user has quota remaining for the current month.
  */
-export async function checkQuota(clientId: number, userType: UserType): Promise<QuotaStatus> {
+export async function checkQuota(clientId: number, userType: UserType, estimatedTokens: number = 0): Promise<QuotaStatus> {
   const quota = await getOrCreateQuota(clientId);
   const now = new Date();
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const usedField = userType === 'owner' ? 'owner_messages_used' : 'customer_messages_used';
-  const limitField = userType === 'owner' ? 'owner_messages_limit' : 'customer_messages_limit';
+  const usedField = userType === 'owner' ? 'owner_tokens_used' : 'customer_tokens_used';
+  const limitField = userType === 'owner' ? 'owner_token_limit' : 'customer_token_limit';
   const used = Number(quota[usedField] || 0);
   const limit = Number(quota[limitField] || 0);
-  const remaining = Math.max(0, limit - used);
+  const remaining = Math.max(0, limit - used - estimatedTokens);
 
   return {
     allowed: remaining > 0,
@@ -70,7 +71,7 @@ export async function checkQuota(clientId: number, userType: UserType): Promise<
 }
 
 /**
- * Record an AI usage event.
+ * Record an AI usage event with actual token usage from API response.
  */
 export async function recordUsage(params: {
   clientId: number;
@@ -79,27 +80,28 @@ export async function recordUsage(params: {
   modelUsed: string;
   tokensInput: number;
   tokensOutput: number;
+  totalTokens: number;
   costUsd: number;
   messagePreview: string;
 }): Promise<void> {
   const pool = await ensureConnection();
   const quota = await getOrCreateQuota(params.clientId);
 
-  // Update quota counters
-  const usedField = params.userType === 'owner' ? 'owner_messages_used' : 'customer_messages_used';
+  // Update quota counters (add actual tokens used)
+  const usedField = params.userType === 'owner' ? 'owner_tokens_used' : 'customer_tokens_used';
   await pool.query(
     `UPDATE ai_usage_quotas
-     SET ${usedField} = ${usedField} + 1,
+     SET ${usedField} = ${usedField} + $1,
          updated_at = NOW()
-     WHERE id = $1`,
-    [quota.id]
+     WHERE id = $2`,
+    [params.totalTokens, quota.id]
   );
 
   // Log detailed usage
   await pool.query(
     `INSERT INTO ai_usage_logs
-     (client_id, user_type, platform_chat_id, model_used, tokens_input, tokens_output, cost_usd, message_preview)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+     (client_id, user_type, platform_chat_id, model_used, tokens_input, tokens_output, total_tokens, cost_usd, message_preview)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
       params.clientId,
       params.userType,
@@ -107,6 +109,7 @@ export async function recordUsage(params: {
       params.modelUsed,
       params.tokensInput,
       params.tokensOutput,
+      params.totalTokens,
       params.costUsd,
       params.messagePreview.substring(0, 100),
     ]
@@ -125,10 +128,10 @@ export async function getQuotaSummary(clientId: number): Promise<{
 }> {
   const quota = await getOrCreateQuota(clientId);
   return {
-    ownerUsed: Number(quota.owner_messages_used || 0),
-    ownerLimit: Number(quota.owner_messages_limit || 0),
-    customerUsed: Number(quota.customer_messages_used || 0),
-    customerLimit: Number(quota.customer_messages_limit || 0),
+    ownerUsed: Number(quota.owner_tokens_used || 0),
+    ownerLimit: Number(quota.owner_token_limit || 0),
+    customerUsed: Number(quota.customer_tokens_used || 0),
+    customerLimit: Number(quota.customer_token_limit || 0),
     periodStart: quota.period_start,
   };
 }

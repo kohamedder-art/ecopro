@@ -560,7 +560,7 @@ async function callAI(
   images?: { mimeType: string; base64: string }[],
   temperature: number = 0.7,
   model?: string
-): Promise<string> {
+): Promise<{ text: string; tokensInput: number; tokensOutput: number; totalTokens: number; costUsd: number }> {
   const apiKey = process.env.DEEPINFRA_API_KEY;
   if (!apiKey) throw new Error('DEEPINFRA_API_KEY is not configured');
 
@@ -604,7 +604,24 @@ async function callAI(
       const data: any = await response.json();
       const text = data?.choices?.[0]?.message?.content;
       if (!text) throw new Error('Empty response from AI');
-      return text.trim();
+      
+      // Extract actual token usage from DeepInfra response
+      const usage = data?.usage || {};
+      const tokensInput = usage.prompt_tokens || 0;
+      const tokensOutput = usage.completion_tokens || 0;
+      const totalTokens = usage.total_tokens || (tokensInput + tokensOutput);
+      
+      // Calculate actual cost based on model
+      const costPerToken = useModel === OWNER_AI_MODEL ? 0.0000004 : 0.00000003; // Updated rates
+      const costUsd = totalTokens * costPerToken;
+      
+      return { 
+        text: text.trim(), 
+        tokensInput, 
+        tokensOutput, 
+        totalTokens, 
+        costUsd 
+      };
     }
 
     if (response.status === 429) throw new Error('AI_QUOTA_EXCEEDED');
@@ -646,8 +663,8 @@ async function callAIWithSearch(
   userMessage: string,
   conversationHistory: GeminiContent[] = [],
 ): Promise<SearchGroundedResult> {
-  const text = await callAI(systemPrompt, userMessage, conversationHistory);
-  return { text, sources: [] };
+  const aiResponse = await callAI(systemPrompt, userMessage, conversationHistory);
+  return { text: aiResponse.text, sources: [] };
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────
@@ -684,30 +701,25 @@ export async function generateText(
   }
 
   const startTime = Date.now();
-  const response = await callAI(systemPrompt, prompt, history, images, temp, model);
+  const aiResponse = await callAI(systemPrompt, prompt, history, images, temp, model);
   const duration = Date.now() - startTime;
 
   // Record usage if clientId and userType are provided
   if (ctx.clientId && ctx.userType) {
-    // Estimate tokens (rough approximation: ~4 chars per token)
-    const estimatedTokens = Math.ceil((prompt.length + response.length) / 4);
-    // Estimate cost (70B ~$0.50/1M tokens, 8B ~$0.13/1M tokens)
-    const costPerToken = model === OWNER_AI_MODEL ? 0.0000005 : 0.00000013;
-    const estimatedCost = estimatedTokens * costPerToken;
-
     await recordUsage({
       clientId: ctx.clientId,
       userType: ctx.userType,
       platformChatId: ctx.platformChatId,
       modelUsed: model,
-      tokensInput: Math.ceil(prompt.length / 4),
-      tokensOutput: Math.ceil(response.length / 4),
-      costUsd: estimatedCost,
+      tokensInput: aiResponse.tokensInput,
+      tokensOutput: aiResponse.tokensOutput,
+      totalTokens: aiResponse.totalTokens,
+      costUsd: aiResponse.costUsd,
       messagePreview: prompt,
     });
   }
 
-  return response;
+  return aiResponse.text;
 }
 
 /**
@@ -723,8 +735,8 @@ export async function generateTextWithSearch(
 ): Promise<SearchGroundedResult> {
   const systemPrompt = buildSystemPrompt(role, ctx);
   const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
-  const text = await callAI(systemPrompt, prompt, history, undefined, 0.7, model);
-  return { text, sources: [] };
+  const aiResponse = await callAI(systemPrompt, prompt, history, undefined, 0.7, model);
+  return { text: aiResponse.text, sources: [] };
 }
 
 /**
@@ -740,9 +752,9 @@ export async function generateJSON<T = any>(
   const systemPrompt = buildSystemPrompt(role, ctx);
   const jsonPrompt = `${prompt}\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no explanation text.`;
   const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
-  const raw = await callAI(systemPrompt, jsonPrompt, [], images, 0.7, model);
+  const aiResponse = await callAI(systemPrompt, jsonPrompt, [], images, 0.7, model);
   // Strip markdown fences if model ignores the instruction
-  const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+  const cleaned = aiResponse.text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
   return JSON.parse(cleaned) as T;
 }
 
@@ -788,7 +800,7 @@ export async function analyzeProductImage(
 Context: This is for the Algerian market. Currency is DZD (Algerian Dinar). Prices should be realistic for Algeria.
 IMPORTANT: Respond ONLY with valid JSON. No markdown fences.`;
 
-  const raw = await callAI(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }], 0.7, OWNER_AI_MODEL);
-  const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+  const aiResponse = await callAI(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }], 0.7, OWNER_AI_MODEL);
+  const cleaned = aiResponse.text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
   return JSON.parse(cleaned);
 }
