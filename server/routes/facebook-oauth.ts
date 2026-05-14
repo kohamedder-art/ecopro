@@ -30,9 +30,7 @@ const SCOPES = [
   "pages_messaging",
   "pages_manage_metadata",
   "pages_read_engagement",
-  "pages_read_user_content",
   "instagram_basic",
-  "instagram_manage_messages",
 ].join(",");
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -93,18 +91,18 @@ router.get("/callback", async (req: Request, res: Response) => {
 
     if (fbError) {
       console.error("[FB OAuth] Facebook returned error:", fbError);
-      return res.redirect("/dashboard/bot-settings?fb=error");
+      return res.redirect("/dashboard/integrations?fb=error");
     }
 
     if (!code || !state) {
-      return res.redirect("/dashboard/bot-settings?fb=error");
+      return res.redirect("/dashboard/integrations?fb=error");
     }
 
     // Verify CSRF state
     const savedState = (req as any).cookies?.fb_oauth_state;
     if (!savedState || savedState !== String(state)) {
       console.error("[FB OAuth] State mismatch");
-      return res.redirect("/dashboard/bot-settings?fb=error");
+      return res.redirect("/dashboard/integrations?fb=error");
     }
 
     // Clear state cookie
@@ -121,7 +119,7 @@ router.get("/callback", async (req: Request, res: Response) => {
 
     if (!tokenData.access_token) {
       console.error("[FB OAuth] No access_token in response:", tokenData);
-      return res.redirect("/dashboard/bot-settings?fb=error");
+      return res.redirect("/dashboard/integrations?fb=error");
     }
 
     // Exchange for long-lived user token (~60 days)
@@ -176,14 +174,14 @@ router.get("/callback", async (req: Request, res: Response) => {
         maxAge: 5 * 60 * 1000, // 5 min
       });
 
-      return res.redirect("/dashboard/bot-settings?fb=select-page");
+      return res.redirect("/dashboard/integrations?fb=select-page");
     }
 
     // If only 1 page, auto-select it
     if (pages.length === 1) {
       const page = pages[0];
       await savePageToken(clientId, me.id, userAccessToken, expiresIn, page);
-      return res.redirect("/dashboard/bot-settings?fb=connected");
+      return res.redirect("/dashboard/integrations?fb=connected");
     }
 
     // Multiple pages → store temp data, redirect to page picker
@@ -203,10 +201,10 @@ router.get("/callback", async (req: Request, res: Response) => {
       maxAge: 5 * 60 * 1000,
     });
 
-    return res.redirect("/dashboard/bot-settings?fb=select-page");
+    return res.redirect("/dashboard/integrations?fb=select-page");
   } catch (err: any) {
     console.error("[FB OAuth] Callback error:", err?.message || err);
-    return res.redirect("/dashboard/bot-settings?fb=error");
+    return res.redirect("/dashboard/integrations?fb=error");
   }
 });
 
