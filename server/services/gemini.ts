@@ -11,8 +11,8 @@
  */
 
 const DEEPINFRA_API_BASE = 'https://api.deepinfra.com/v1/openai';
-const AI_MODEL = 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo';
-const AI_FALLBACK_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'; // Fallback to 8B if 70B fails
+const AI_MODEL = 'mistralai/Mistral-Small-24B-Instruct-2501';
+const AI_FALLBACK_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'; // Fallback if primary fails
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 3000, 6000]; // ms
 
