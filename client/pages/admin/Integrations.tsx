@@ -137,7 +137,7 @@ export default function Integrations() {
       if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || `HTTP ${response.status}`);
       const data = await response.json();
       setSettings(data); savedSettingsRef.current = data;
-      if (data?.provider) setActivePlatform(data.provider as Platform);
+      if (data?.provider && !background) setActivePlatform(data.provider as Platform);
     } catch (error) {
       toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to load", variant: "destructive" });
     } finally { if (!background) setLoading(false); else setRefreshing(false); }
