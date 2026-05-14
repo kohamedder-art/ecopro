@@ -33,13 +33,27 @@ async function getOrCreateQuota(clientId: number): Promise<any> {
   );
 
   if (existing.rows.length > 0) {
-    return existing.rows[0];
+    // Ensure limits are at least code defaults (fixes 0-limit rows)
+    const row = existing.rows[0];
+    if (Number(row.owner_token_limit) < 5000000 || Number(row.customer_token_limit) < 100000000) {
+      await pool.query(
+        `UPDATE ai_usage_quotas
+         SET owner_token_limit = GREATEST(owner_token_limit, 5000000),
+             customer_token_limit = GREATEST(customer_token_limit, 100000000),
+             updated_at = NOW()
+         WHERE id = $1`,
+        [row.id]
+      );
+      row.owner_token_limit = Math.max(Number(row.owner_token_limit), 5000000);
+      row.customer_token_limit = Math.max(Number(row.customer_token_limit), 100000000);
+    }
+    return row;
   }
 
   // Create new quota record (token-based limits)
   const created = await pool.query(
     `INSERT INTO ai_usage_quotas (client_id, period_start, owner_token_limit, customer_token_limit)
-     VALUES ($1, $2, 1000000, 10000000)
+     VALUES ($1, $2, 5000000, 100000000)
      RETURNING *`,
     [clientId, periodStart]
   );
