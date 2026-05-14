@@ -625,10 +625,26 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
       if (trimmedText && botToken && chatId) {
         // Resolve client_id: prefer chat_id mapping (accurate for shared bots),
         // fall back to webhook secret only if no chat mapping exists
-        const clientId = await resolveClientFromTelegramChatId(chatId)
-          || await resolveClientFromTelegramSecret(secret);
+        const clientIdFromChatMap = await resolveClientFromTelegramChatId(chatId);
+        const clientIdFromSecret = !clientIdFromChatMap ? await resolveClientFromTelegramSecret(secret) : null;
+        const clientId = clientIdFromChatMap || clientIdFromSecret;
+
+        // If resolved ONLY via secret (no customer mapping exists for this chatId),
+        // this is almost certainly the store owner messaging their own bot.
+        // Save their chatId so isSenderStoreOwner() correctly silences the AI for them.
+        if (!clientIdFromChatMap && clientIdFromSecret) {
+          try {
+            await pool.query(
+              `UPDATE bot_settings SET owner_telegram_chat_id = $1 WHERE client_id = $2 AND (owner_telegram_chat_id IS NULL OR owner_telegram_chat_id = '')`,
+              [chatId, clientIdFromSecret]
+            );
+            console.log(`[TelegramWebhook] Auto-saved owner chat_id=${chatId} for client=${clientIdFromSecret}`);
+          } catch (e) {
+            console.warn('[TelegramWebhook] Failed to save owner_telegram_chat_id:', e);
+          }
+        }
         
-        console.log(`[TelegramWebhook] AI resolve: chatId=${chatId} → clientId=${clientId}`);
+        console.log(`[TelegramWebhook] AI resolve: chatId=${chatId} → clientId=${clientId} (via ${clientIdFromChatMap ? 'chatMap' : 'secret'})`);
         
         if (clientId) {
           try {
