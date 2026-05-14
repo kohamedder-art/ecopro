@@ -38,8 +38,8 @@ export default function Bassem28Template({
   const primaryColor = settings?.primary_color || '#0f172a';
   const currency = settings?.currency_code || 'د.ج';
 
-  const heroTitle = settings?.template_hero_heading || 'Ignite Your Presence 🔥';
-  const heroSubtitle = settings?.template_hero_subtitle || 'عطر مميز يجمع بين الفخامة والحضور';
+  const heroTitle = settings?.template_hero_heading || 'تسوق منتجاتنا';
+  const heroSubtitle = settings?.template_hero_subtitle || 'أفضل المنتجات بأسعار تنافسية';
   const buttonText = settings?.template_button_text || 'تأكيد الطلب الآن';
   const storeName = settings?.store_name || 'المتجر';
 
@@ -280,7 +280,7 @@ export default function Bassem28Template({
           suppressContentEditableWarning
           onBlur={handleTextEdit('bassem28_banner_text')}
         >
-          {settings?.bassem28_banner_text || 'تخفيضات حصرية لفترة محدودة ⚡ شحن سريع لـ 58 ولاية'}
+          {settings?.bassem28_banner_text || 'شحن سريع لجميع الولايات - الدفع عند الاستلام'}
         </span>
       </div>
 
@@ -328,17 +328,13 @@ export default function Bassem28Template({
       {viewMode === 'catalog' && products && products.length > 0 && (
         <main className="max-w-6xl mx-auto px-4 py-6">
           {/* Hero */}
-          <div className="relative overflow-hidden rounded-3xl mb-10 p-8 md:p-12" style={{ background: `linear-gradient(145deg, ${accentColor}, ${accentColor}dd)`, color: '#fff' }}>
-            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-60 h-60 bg-black/10 rounded-full translate-y-1/3 -translate-x-1/3" />
-            <div className="relative">
-              <h1 className="text-3xl md:text-4xl font-black mb-3">
-                <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>{heroTitle}</span>
-              </h1>
-              <p className="text-sm md:text-base opacity-90 max-w-lg">
-                <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('bassem28_banner_text')}>{settings?.bassem28_banner_text || 'تخفيضات حصرية لفترة محدودة ⚡ شحن سريع لـ 58 ولاية'}</span>
-              </p>
-            </div>
+          <div className="rounded-2xl mb-8 p-6 md:p-8 text-center" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
+            <h1 className="text-xl md:text-2xl font-bold mb-1" style={{ color: textColor }}>
+              <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>{heroTitle}</span>
+            </h1>
+            <p className="text-sm" style={{ color: textMuted }}>
+              <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('bassem28_banner_text')}>{settings?.bassem28_banner_text || 'شحن سريع لجميع الولايات - الدفع عند الاستلام'}</span>
+            </p>
           </div>
 
           {/* Product Grid */}

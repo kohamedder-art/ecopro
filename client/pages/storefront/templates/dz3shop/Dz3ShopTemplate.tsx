@@ -40,8 +40,8 @@ export default function Dz3ShopTemplate({
   const primaryColor = settings?.primary_color || '#111827';
   const currency = settings?.currency_code || 'د.ج';
 
-  const heroTitle = settings?.template_hero_heading || 'مرحبا بك في متجرنا ❤️';
-  const heroSubtitle = settings?.template_hero_subtitle || 'اكتشفوا أفضل المنتجات متوفرة لدينا 🔥';
+  const heroTitle = settings?.template_hero_heading || 'تسوق منتجاتنا';
+  const heroSubtitle = settings?.template_hero_subtitle || 'تشكيلة واسعة من المنتجات بأفضل الأسعار';
   const buttonText = settings?.template_button_text || 'أطلب الآن';
   const storeName = settings?.store_name || 'المتجر';
   const [showBanner, setShowBanner] = useState(settings?.show_promotional_banner !== false);
@@ -418,13 +418,11 @@ export default function Dz3ShopTemplate({
         {viewMode === 'catalog' && (
           <div>
             {/* Hero Section */}
-            <div className="relative overflow-hidden rounded-2xl mb-8 p-8 md:p-12 text-center" style={{ background: `linear-gradient(135deg, ${accentColor}15, ${accentColor}05)`, border: `1px solid ${accentColor}20` }}>
-              <div className="absolute top-0 left-0 w-32 h-32 rounded-full opacity-10" style={{ background: accentColor, transform: 'translate(-30%, -30%)' }} />
-              <div className="absolute bottom-0 right-0 w-48 h-48 rounded-full opacity-10" style={{ background: accentColor, transform: 'translate(30%, 30%)' }} />
-              <h2 className="text-2xl md:text-3xl font-black mb-2" style={{ color: textColor }}>
+            <div className="rounded-2xl mb-8 p-6 md:p-8 text-center" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
+              <h2 className="text-xl md:text-2xl font-bold mb-1" style={{ color: textColor }}>
                 <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>{heroTitle}</span>
               </h2>
-              <p className="text-sm max-w-lg mx-auto" style={{ color: textMuted }}>
+              <p className="text-sm" style={{ color: textMuted }}>
                 <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_subtitle')}>{heroSubtitle}</span>
               </p>
             </div>
