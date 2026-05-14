@@ -105,12 +105,6 @@ export default function OfferSelector({
         return (
           <label
             key={offer.id}
-            onClick={() => active ? onSelect(null) : onSelect({
-              offer_id: offer.id,
-              quantity: offer.quantity,
-              bundle_price: offer.bundle_price,
-              free_delivery: offer.free_delivery,
-            })}
             className="flex items-center justify-between w-full p-3 rounded-lg cursor-pointer transition-all"
             style={{
               border: `2px solid ${active ? accentColor : borderColor}`,
@@ -122,8 +116,13 @@ export default function OfferSelector({
                 type="radio"
                 name="product-offer"
                 checked={active}
-                readOnly
-                className="w-4 h-4 accent-orange-500"
+                onClick={() => active ? onSelect(null) : onSelect({
+                  offer_id: offer.id,
+                  quantity: offer.quantity,
+                  bundle_price: offer.bundle_price,
+                  free_delivery: offer.free_delivery,
+                })}
+                className="w-4 h-4 accent-orange-500 cursor-pointer"
               />
               {offer.image_url && (
                 <img
