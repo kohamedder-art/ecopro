@@ -409,7 +409,7 @@ export async function handleStoreOwnerMessage(
     const response = await generateText(
       'store_owner',
       prompt,
-      { storeId: clientId, storeName: ctx.storeName, persona: persona || undefined },
+      { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'owner', persona: persona || undefined },
       history // Pass history to AI!
     );
     

@@ -1033,7 +1033,7 @@ ${effectiveMessage}`;
     const response = await generateText(
       'customer',
       prompt,
-      { storeId: clientId, storeName: ctx.storeName },
+      { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'customer', platformChatId },
       history
     );
 

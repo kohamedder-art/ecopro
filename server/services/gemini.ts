@@ -8,13 +8,20 @@
  *
  * Uses OpenAI-compatible chat completions endpoint via DeepInfra.
  * NOTE: Using 70B model for better instruction following and Arabic language support.
+ *
+ * Quota tracking: All AI calls are tracked per store with monthly limits.
  */
 
 const DEEPINFRA_API_BASE = 'https://api.deepinfra.com/v1/openai';
-const AI_MODEL = 'mistralai/Mistral-Small-24B-Instruct-2501';
+
+// Dual-AI Model Strategy
+const OWNER_AI_MODEL = 'meta-llama/Meta-Llama-3.1-70B-Instruct'; // Powerful model for business advice
+const CUSTOMER_AI_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'; // Fast, cheap model for customer chat
 const AI_FALLBACK_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'; // Fallback if primary fails
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 3000, 6000]; // ms
+
+import { checkQuota, recordUsage, type UserType } from './ai-quota';
 
 // ─── Role-scoped system prompts ────────────────────────────────────────────
 
@@ -24,6 +31,9 @@ interface RoleContext {
   storeId?: number;
   storeName?: string;
   userId?: number;
+  clientId?: number; // For quota tracking
+  userType?: 'owner' | 'customer'; // For quota tracking
+  platformChatId?: string; // For customer quota tracking
   // AI Persona data
   persona?: {
     personaName?: string;
@@ -122,9 +132,77 @@ You CANNOT talk directly to customers or expose individual store owner private d
         if (p.useEmojis === false) ownerPersonaSection += `\n• بدون إيموجي`;
       }
 
+      const E_COMMERCE_KNOWLEDGE = `
+═══ E-COMMERCE EXPERT KNOWLEDGE ═══
+
+You are an expert e-commerce consultant. Use this knowledge to advise store owners on growing their business.
+
+ALGERIAN MARKET CONTEXT:
+• Payment: COD (Cash on Delivery) dominates — 80%+ of transactions
+• Trust is critical: Customers buy from stores they recognize and trust
+• Delivery speed matters: 1-3 days in major cities, 5-7 days for remote areas
+• Price sensitivity: Customers compare prices across multiple stores
+• Social commerce: WhatsApp, Facebook, Instagram drive most sales
+• Seasonal peaks: Ramadan, Eid, back-to-school, wedding seasons
+
+CONVERSION OPTIMIZATION:
+• Product images: Clear, high-quality photos from multiple angles increase trust
+• Detailed descriptions: Answer customer questions before they ask (size, material, care)
+• Social proof: Display reviews, testimonials, and "sold" counts
+• Urgency: Limited-time offers, stock warnings, countdown timers
+• Clear CTAs: Single, prominent call-to-action buttons
+• Mobile-first: 70%+ traffic is mobile — ensure fast loading and easy checkout
+
+PRICING STRATEGIES:
+• Psychological pricing: 1999 دج instead of 2000 دج
+• Bundle pricing: 2 items for 3500 دج (vs 2000 دj each)
+• Tiered discounts: 5% off 2 items, 10% off 3 items
+• Loss leaders: Low-margin products to attract new customers
+• Dynamic pricing: Adjust based on demand, season, competition
+• Free shipping threshold: "Free shipping over 5000 دج" to increase average order value
+
+INVENTORY MANAGEMENT:
+• ABC analysis: Focus on top 20% of products that generate 80% of revenue
+• Safety stock: Keep buffer for fast-movers to avoid stockouts
+• Seasonal planning: Stock up 1-2 months before peak seasons
+• Supplier diversification: Don't rely on single supplier
+• Slow-mover strategy: Discount or bundle slow-selling products
+
+MARKETING TACTICS:
+• WhatsApp Business: Quick responses, broadcast lists, catalogs
+• Facebook Ads: Target by location (wilaya), interests, lookalike audiences
+• Instagram: Product stories, reels, influencer partnerships
+• Email/SMS: Abandoned cart recovery, order updates, promotions
+• Referral programs: Incentivize customers to refer friends
+
+CUSTOMER RETENTION:
+• Loyalty programs: Points, tiers, exclusive discounts
+• Personalization: Recommend based on purchase history
+• Excellent support: Fast responses, easy returns, clear policies
+• Post-purchase engagement: Thank-you messages, care tips, cross-sells
+• Re-engagement campaigns: Win back inactive customers
+
+METRICS TO TRACK:
+• Conversion rate: Orders / visitors (benchmark: 2-5%)
+• Average order value: Total revenue / orders
+• Customer acquisition cost: Marketing spend / new customers
+• Return rate: Returned orders / total orders
+• Customer lifetime value: Average revenue per customer × retention period
+
+COMMON PITFALLS TO AVOID:
+• Poor product photos → Low trust, fewer sales
+• Vague descriptions → Customer questions, abandoned carts
+• Slow delivery → Negative reviews, lost repeat business
+• No social proof → Customers hesitate to buy
+• Complicated checkout → Drop-offs at payment step
+• Ignoring customer feedback → Missed improvement opportunities
+`;
+
       return `${identity}${ownerPersonaSection}
 
 You are the personal AI assistant for a Store Owner on Sahla4Eco.
+
+${E_COMMERCE_KNOWLEDGE}
 
 RULES:
 • ANSWER ONLY WHAT IS ASKED. Real-time store data is in the context — use it directly.
@@ -480,7 +558,8 @@ async function callAI(
   userMessage: string,
   conversationHistory: GeminiContent[] = [],
   images?: { mimeType: string; base64: string }[],
-  temperature: number = 0.7
+  temperature: number = 0.7,
+  model?: string
 ): Promise<string> {
   const apiKey = process.env.DEEPINFRA_API_KEY;
   if (!apiKey) throw new Error('DEEPINFRA_API_KEY is not configured');
@@ -508,7 +587,8 @@ async function callAI(
 
   // Retry with backoff, fallback to smaller model on final attempt
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const model = attempt === MAX_RETRIES ? AI_FALLBACK_MODEL : AI_MODEL;
+    const selectedModel = model || OWNER_AI_MODEL;
+    const useModel = attempt === MAX_RETRIES ? AI_FALLBACK_MODEL : selectedModel;
     const url = `${DEEPINFRA_API_BASE}/chat/completions`;
 
     const response = await fetch(url, {
@@ -517,7 +597,7 @@ async function callAI(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(buildBody(model)),
+      body: JSON.stringify(buildBody(useModel)),
     });
 
     if (response.ok) {
@@ -574,6 +654,8 @@ async function callAIWithSearch(
 
 /**
  * Generate a plain text response (most features use this).
+ * Automatically selects model based on role: owner/staff/admin use 70B, customer uses 8B.
+ * Checks quota before calling AI and records usage after successful response.
  */
 export async function generateText(
   role: AIUserRole,
@@ -585,7 +667,47 @@ export async function generateText(
   const systemPrompt = buildSystemPrompt(role, ctx);
   // Customer-facing conversations use higher temperature for more natural, human-like responses
   const temp = role === 'customer' ? 0.9 : 0.7;
-  return callAI(systemPrompt, prompt, history, images, temp);
+  // Select model based on role
+  const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
+
+  // Check quota if clientId and userType are provided
+  if (ctx.clientId && ctx.userType) {
+    const quotaStatus = await checkQuota(ctx.clientId, ctx.userType);
+    if (!quotaStatus.allowed) {
+      // Quota exceeded - return fallback message
+      if (ctx.userType === 'customer') {
+        return 'عذراً، تم تجاوز الحد الشهري للردود الآلية. يرجى التواصل مع المتجر مباشرة.';
+      } else {
+        return 'تم تجاوز الحد الشهري لاستخدام المساعد الذكي. يرجى ترقية حسابك للحصول على المزيد.';
+      }
+    }
+  }
+
+  const startTime = Date.now();
+  const response = await callAI(systemPrompt, prompt, history, images, temp, model);
+  const duration = Date.now() - startTime;
+
+  // Record usage if clientId and userType are provided
+  if (ctx.clientId && ctx.userType) {
+    // Estimate tokens (rough approximation: ~4 chars per token)
+    const estimatedTokens = Math.ceil((prompt.length + response.length) / 4);
+    // Estimate cost (70B ~$0.50/1M tokens, 8B ~$0.13/1M tokens)
+    const costPerToken = model === OWNER_AI_MODEL ? 0.0000005 : 0.00000013;
+    const estimatedCost = estimatedTokens * costPerToken;
+
+    await recordUsage({
+      clientId: ctx.clientId,
+      userType: ctx.userType,
+      platformChatId: ctx.platformChatId,
+      modelUsed: model,
+      tokensInput: Math.ceil(prompt.length / 4),
+      tokensOutput: Math.ceil(response.length / 4),
+      costUsd: estimatedCost,
+      messagePreview: prompt,
+    });
+  }
+
+  return response;
 }
 
 /**
@@ -600,7 +722,9 @@ export async function generateTextWithSearch(
   history: GeminiContent[] = [],
 ): Promise<SearchGroundedResult> {
   const systemPrompt = buildSystemPrompt(role, ctx);
-  return callAIWithSearch(systemPrompt, prompt, history);
+  const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
+  const text = await callAI(systemPrompt, prompt, history, undefined, 0.7, model);
+  return { text, sources: [] };
 }
 
 /**
@@ -615,7 +739,8 @@ export async function generateJSON<T = any>(
 ): Promise<T> {
   const systemPrompt = buildSystemPrompt(role, ctx);
   const jsonPrompt = `${prompt}\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no explanation text.`;
-  const raw = await callAI(systemPrompt, jsonPrompt, [], images);
+  const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
+  const raw = await callAI(systemPrompt, jsonPrompt, [], images, 0.7, model);
   // Strip markdown fences if model ignores the instruction
   const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
   return JSON.parse(cleaned) as T;
@@ -663,7 +788,7 @@ export async function analyzeProductImage(
 Context: This is for the Algerian market. Currency is DZD (Algerian Dinar). Prices should be realistic for Algeria.
 IMPORTANT: Respond ONLY with valid JSON. No markdown fences.`;
 
-  const raw = await callAI(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }]);
+  const raw = await callAI(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }], 0.7, OWNER_AI_MODEL);
   const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
   return JSON.parse(cleaned);
 }
