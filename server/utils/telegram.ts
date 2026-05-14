@@ -95,6 +95,23 @@ export async function registerTelegramWebhook(opts: {
   }
 }
 
+export async function deleteTelegramWebhook(botToken: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const resp = await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ drop_pending_updates: true }),
+    });
+    const data: any = await resp.json().catch(() => null);
+    if (!resp.ok || !data?.ok) {
+      return { ok: false, error: data?.description || `deleteWebhook failed (${resp.status})` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as any)?.message || String(e) };
+  }
+}
+
 export async function createOrderTelegramLink(opts: {
   orderId: number;
   clientId: number;

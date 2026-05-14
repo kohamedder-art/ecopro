@@ -1,6 +1,6 @@
 import { RequestHandler } from "express";
 import { pool } from "../utils/database";
-import { registerTelegramWebhook, upsertTelegramWebhookSecret } from "../utils/telegram";
+import { registerTelegramWebhook, upsertTelegramWebhookSecret, deleteTelegramWebhook } from "../utils/telegram";
 import { getPublicBaseUrl } from '../utils/public-url';
 import { ensureBotSettingsRow } from '../utils/client-provisioning';
 import { encryptData } from '../utils/encryption';
@@ -637,6 +637,15 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
         console.log(`[Bot] Manual Instagram credentials saved for client ${clientId}, IG Account: ${normalizedIgAccountId}`);
       } catch (igErr) {
         console.warn('[Bot] Failed to save manual Instagram credentials:', (igErr as any)?.message || igErr);
+      }
+    }
+
+    // Delete Telegram webhook when token is explicitly cleared
+    if (telegramBotTokenSent && !finalTelegramBotToken && existingSecrets.telegram_bot_token) {
+      try {
+        await deleteTelegramWebhook(String(existingSecrets.telegram_bot_token).trim());
+      } catch (e) {
+        console.warn('[Telegram] deleteWebhook failed (non-blocking):', e);
       }
     }
 
