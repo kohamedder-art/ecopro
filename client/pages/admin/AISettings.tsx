@@ -45,6 +45,14 @@ interface AISettings {
   ai_instructions: string;
 }
 
+interface QuotaSummary {
+  ownerUsed: number;
+  ownerLimit: number;
+  customerUsed: number;
+  customerLimit: number;
+  periodStart: Date;
+}
+
 const DEFAULT: AISettings = {
   ai_chat_enabled: true,
   guardian_enabled: true,
@@ -336,6 +344,7 @@ export default function AISettingsPage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [activeTab, setActiveTab] = useState("core");
+  const [quota, setQuota] = useState<QuotaSummary | null>(null);
 
   useEffect(() => {
     fetch("/api/ai-settings", { credentials: "include" })
@@ -345,6 +354,13 @@ export default function AISettingsPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    fetch("/api/ai/quota", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && !data.error) setQuota(data);
+      })
+      .catch(() => {});
   }, []);
 
   const toggle = (key: keyof AISettings) => {
@@ -529,6 +545,32 @@ export default function AISettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Quota Usage Card ── */}
+        {quota && (
+          <div className="bg-card border border-border rounded-xl p-[13px] shadow-sm">
+            <div className="flex items-center gap-[7px] mb-[11px]">
+              <MkrAiChart className="h-[13px] w-[13px] text-blue-500" />
+              <h3 className="text-xs font-bold">{isRTL ? "استخدام الذكاء الاصطناعي هذا الشهر" : "AI Usage This Month"}</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-[9px]">
+              <div className="bg-muted/30 rounded-lg p-[11px] border border-border/50">
+                <p className="text-[10px] text-muted-foreground font-medium mb-[5px]">{isRTL ? "استخدامك (المالك)" : "Your Usage (Owner)"}</p>
+                <p className="text-lg font-extrabold text-foreground">{quota.ownerUsed} <span className="text-[11px] text-muted-foreground font-normal">/ {quota.ownerLimit}</span></p>
+                <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden mt-[7px]">
+                  <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all" style={{ width: `${(quota.ownerUsed / quota.ownerLimit) * 100}%` }} />
+                </div>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-[11px] border border-border/50">
+                <p className="text-[10px] text-muted-foreground font-medium mb-[5px]">{isRTL ? "استخدام العملاء" : "Customer Usage"}</p>
+                <p className="text-lg font-extrabold text-foreground">{quota.customerUsed} <span className="text-[11px] text-muted-foreground font-normal">/ {quota.customerLimit}</span></p>
+                <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden mt-[7px]">
+                  <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all" style={{ width: `${(quota.customerUsed / quota.customerLimit) * 100}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Tab bar ── */}
         <div className="bg-card border border-border rounded-xl p-1 flex overflow-x-auto gap-1 shadow-sm">
