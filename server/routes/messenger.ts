@@ -715,18 +715,24 @@ async function handleReferral(pageId: string, senderId: string, referral: any) {
       [refToken]
     );
 
-    // Get store name
+    // Get store name + customer name
     const storeRes = await pool.query(
       `SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
       [client_id]
     );
     const storeName = storeRes.rows[0]?.store_name || 'Store';
 
+    const nameRes = await pool.query(
+      `SELECT customer_name FROM orders WHERE client_id = $1 AND customer_phone = $2 ORDER BY created_at DESC LIMIT 1`,
+      [client_id, customer_phone]
+    );
+    const customerName = nameRes.rows[0]?.customer_name || '';
+
     // Send welcome message
     const defaultGreeting = `مرحباً بك في ${storeName}! 🎉\n\n✅ تم ربط حسابك بنجاح.\n\nيمكنك الآن العودة لإتمام طلبك وستتلقى التأكيد هنا مباشرة! 📦`;
     
     let greeting = template_greeting || defaultGreeting;
-    greeting = replaceTemplateVariables(greeting, { storeName, customerName: '' });
+    greeting = replaceTemplateVariables(greeting, { storeName, customerName });
     
     await sendMessengerMessage(
       pageAccessToken,
