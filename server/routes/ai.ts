@@ -33,6 +33,7 @@ import {
   verifyAlertOwnership,
 } from '../utils/alert-service';
 import { getOmniOverview } from '../services/omni-intelligence';
+import { getQuotaSummary } from '../services/ai-quota';
 
 const router = Router();
 const isProduction = process.env.NODE_ENV === 'production';
@@ -78,6 +79,21 @@ const authAiLimiter = rateLimit({
 // ════════════════════════════════════════════════════════════
 // PHASE 2 — Store Owner: Product Management
 // ════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/ai/quota
+ * Returns AI quota usage summary for the authenticated store owner.
+ */
+router.get('/quota', authenticate, requireClient, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const summary = await getQuotaSummary(user.id);
+    return res.json(summary);
+  } catch (err) {
+    console.error('[AI quota error]', err);
+    return res.status(500).json({ error: 'Failed to fetch quota data' });
+  }
+});
 
 /**
  * POST /api/ai/product/description
