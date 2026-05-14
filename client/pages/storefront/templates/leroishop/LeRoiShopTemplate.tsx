@@ -135,14 +135,6 @@ export default function LeRoiShopTemplate({
   }, [videoUrl]);
   const [showVideo, setShowVideo] = useState(true);
 
-  // Auto-select the first offer when offers load
-  useEffect(() => {
-    if (offers.length > 0 && !selectedOffer) {
-      const first = offers[0];
-      setSelectedOffer({ offer_id: first.id, quantity: first.quantity, bundle_price: first.bundle_price, free_delivery: first.free_delivery });
-      setQuantity(first.quantity);
-    }
-  }, [offers]);
   const comparePrice = (activeProduct as any)?.compare_at_price;
   const unitPrice = activeProduct?.price || 0;
   const deliveryFee = resolveDeliveryFee(activeProduct, selectedOffer, baseDeliveryFee);

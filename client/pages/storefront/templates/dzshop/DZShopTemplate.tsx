@@ -41,14 +41,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
     const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
 
-    // Auto-select first offer when offers load
-    useEffect(() => {
-        if (offers.length > 0 && !selectedOffer) {
-            const first = offers[0];
-            setSelectedOffer({ offer_id: first.id, quantity: first.quantity, bundle_price: first.bundle_price, free_delivery: first.free_delivery });
-        }
-    }, [offers]);
-
     const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
     const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
     const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : (variantPrice ?? product?.price ?? 0) * quantity;
