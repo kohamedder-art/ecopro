@@ -541,9 +541,12 @@ Be concise and informative. No emojis unless specifically requested.`;
 
 // ─── Core fetch wrapper (OpenAI-compatible) ────────────────────────────────
 
-/** Strip <think>...</think> reasoning blocks from model output */
+/** Strip <think>...</think> reasoning blocks (closed or unclosed) from model output */
 function stripThinkTags(text: string): string {
-  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/g, '')  // closed blocks
+    .replace(/<think>[\s\S]*$/g, '')             // unclosed blocks
+    .trim();
 }
 
 interface ChatMessage {
@@ -704,8 +707,8 @@ export async function generateText(
   // Limit chat history to last 5 messages for customers to reduce token burn
   const limitedHistory = role === 'customer' ? history.slice(-5) : history;
 
-  // Set max_tokens to 200 for customer replies to prevent verbose responses
-  const maxTokens = role === 'customer' ? 200 : undefined;
+  // Set max_tokens for customer replies; generous to leave room after stripped reasoning
+  const maxTokens = role === 'customer' ? 600 : undefined;
 
   // Check quota if clientId and userType are provided
   if (ctx.clientId && ctx.userType) {
