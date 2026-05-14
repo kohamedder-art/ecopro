@@ -304,6 +304,16 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                                 {canManage && <input type="file" ref={mainFileInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} /> }
                             </>
                         )}
+                        {galleryImages.length > 1 && (
+                            <>
+                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const n = (c + 1) % t; handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n)); }}
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
+                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const p = (c - 1 + t) % t; handleThumbClick(p === 0 && videoEmbed ? -1 : (videoEmbed ? p - 1 : p)); }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+                            </>
+                        )}
                     </div>
 
                     {/* Thumbnail Scrollable Row */}

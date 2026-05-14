@@ -461,10 +461,10 @@ export default function LeRoiShopTemplate({
                 const imgs: string[] = activeProduct.images?.filter(Boolean) || [];
 
                 const goTo = (idx: number) => {
-                  const clamped = Math.max(0, Math.min(idx, imgs.length - 1));
-                  console.log('[LeRoiGallery] goTo', { idx, clamped, imgsLen: imgs.length, stripEl: !!galleryStripRef.current });
-                  galleryIdxRef.current = clamped;
-                  setActiveImageIndex(clamped);
+                  const wrapped = ((idx % imgs.length) + imgs.length) % imgs.length;
+                  console.log('[LeRoiGallery] goTo', { idx, wrapped, imgsLen: imgs.length });
+                  galleryIdxRef.current = wrapped;
+                  setActiveImageIndex(wrapped);
                 };
 
                 return (
@@ -507,9 +507,13 @@ export default function LeRoiShopTemplate({
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textMuted }}><span>لا توجد صور</span></div>
                       )}
                       {imgs.length > 1 && !showVideo && (
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                          {imgs.map((_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full transition-all" style={{ backgroundColor: i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.4)', transform: i === activeImageIndex ? 'scale(1.4)' : 'scale(1)' }} />)}
-                        </div>
+                        <>
+                          <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current - 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
+                          <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current + 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                            {imgs.map((_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full transition-all" style={{ backgroundColor: i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.4)', transform: i === activeImageIndex ? 'scale(1.4)' : 'scale(1)' }} />)}
+                          </div>
+                        </>
                       )}
                     </div>
                     {/* Thumbnails */}

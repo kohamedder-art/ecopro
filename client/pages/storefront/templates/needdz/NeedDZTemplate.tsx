@@ -332,15 +332,34 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </div>
 
                   {product.images.length > 1 && (
+                      <>
                       <button 
                         onClick={e => {
                           const carousel = (e.currentTarget as HTMLElement).parentElement?.querySelector('[data-cr]') as HTMLElement;
-                          if (carousel) carousel.scrollBy({ left: carousel.clientWidth, behavior: 'smooth' });
+                          if (!carousel) return;
+                          const cur = Math.round(carousel.scrollLeft / carousel.clientWidth);
+                          const total = product.images.length + (product.videoUrl ? 1 : 0);
+                          if (cur <= 0) carousel.scrollTo({ left: (total - 1) * carousel.clientWidth, behavior: 'smooth' });
+                          else carousel.scrollBy({ left: -carousel.clientWidth, behavior: 'smooth' });
+                        }}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <button 
+                        onClick={e => {
+                          const carousel = (e.currentTarget as HTMLElement).parentElement?.querySelector('[data-cr]') as HTMLElement;
+                          if (!carousel) return;
+                          const cur = Math.round(carousel.scrollLeft / carousel.clientWidth);
+                          const total = product.images.length + (product.videoUrl ? 1 : 0);
+                          if (cur >= total - 1) carousel.scrollTo({ left: 0, behavior: 'smooth' });
+                          else carousel.scrollBy({ left: carousel.clientWidth, behavior: 'smooth' });
                         }}
                         className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
                       >
                         <ChevronRight size={20} />
                       </button>
+                      </>
                   )}
                 </div>
 

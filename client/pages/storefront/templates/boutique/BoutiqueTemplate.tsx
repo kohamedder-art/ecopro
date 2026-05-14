@@ -71,6 +71,16 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
             </div>
           )}
         </div>
+        {imgs.length > 1 && (
+          <>
+            <button onClick={e => { e.stopPropagation(); const t = imgs.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? idx + 1 : idx); const n = (c + 1) % t; if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setIdx(ii); scrollCarouselTo(n); } }}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
+              style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
+            <button onClick={e => { e.stopPropagation(); const t = imgs.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? idx + 1 : idx); const p = (c - 1 + t) % t; if (p === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? p - 1 : p; setIdx(ii); scrollCarouselTo(p); } }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
+              style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+          </>
+        )}
       </div>
       {(videoEmbed || imgs.length > 1) && (
         <div className="flex gap-2 px-4 py-2 overflow-x-auto shrink-0" style={{ borderBottom: `1px solid ${surfaceBorderColor}` }}>

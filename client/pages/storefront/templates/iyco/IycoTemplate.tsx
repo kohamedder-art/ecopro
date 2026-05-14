@@ -415,6 +415,16 @@ export default function IycoTemplate({
                     </div>
                   )}
                 </div>
+                {mainImages.length > 1 && (
+                  <>
+                    <button onClick={e => { e.stopPropagation(); const t = mainImages.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const n = (c + 1) % t; if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n); } }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
+                    <button onClick={e => { e.stopPropagation(); const t = mainImages.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const p = (c - 1 + t) % t; if (p === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? p - 1 : p; setSelectedMainImage(ii); scrollCarouselTo(p); } }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+                  </>
+                )}
               </div>
               {(videoEmbed || mainImages.length > 1) && (
                 <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
