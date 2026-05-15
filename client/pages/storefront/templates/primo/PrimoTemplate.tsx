@@ -3,6 +3,8 @@ import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import PixelScripts from '@/components/storefront/PixelScripts';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import {
   ShoppingBag,
   Star,
@@ -303,6 +305,7 @@ export default function PrimoTemplate({
   // ══════════════════════════════════════
   return (
     <div className="min-h-screen" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      <PixelScripts storeSlug={storeSlug} />
 
       {/* ── TOP BANNER ── */}
       <div className="py-2 text-center text-xs font-bold tracking-widest" style={{ backgroundColor: isDark ? '#000000' : '#111111', color: '#ffffff' }}>

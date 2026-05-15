@@ -6,6 +6,8 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
+import PixelScripts from '@/components/storefront/PixelScripts';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { CheckCircle2 } from 'lucide-react';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -217,6 +219,7 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
     return (
         <div className="bg-gray-50 text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || undefined }} dir="rtl">
+            <PixelScripts storeSlug={storeSlug} />
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
             {/* Top Bar Notice */}
