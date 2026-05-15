@@ -158,6 +158,13 @@ export const assignDeliveryToOrder: RequestHandler = async (req, res) => {
       return;
     }
 
+    // Mark as at_delivery
+    await pool.query(
+      `UPDATE store_orders SET status = 'at_delivery', updated_at = NOW()
+       WHERE id = $1 AND client_id = $2 AND COALESCE(status, '') NOT IN ('delivered','completed','cancelled','failed','returned','refunded')`,
+      [orderId, clientId]
+    );
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('[Delivery] assignDeliveryToOrder error:', error);
@@ -497,13 +504,29 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
           }
 
           if (apiSuccess) {
+            // Only mark as at_delivery if API upload succeeded
+            await pool.query(
+              `UPDATE store_orders SET status = 'at_delivery', updated_at = NOW()
+               WHERE id = $1 AND client_id = $2 AND COALESCE(status, '') NOT IN ('delivered','completed','cancelled','failed','returned','refunded')`,
+              [orderId, clientId]
+            );
             results.push({ orderId, success: true, tracking_number, label_url });
           } else {
-            // API call failed — keep the assignment but report the upload error
+            // API call failed — rollback delivery assignment
+            await pool.query(
+              `UPDATE store_orders SET delivery_company_id = NULL, delivery_status = NULL, updated_at = NOW()
+               WHERE id = $1 AND client_id = $2`,
+              [orderId, clientId]
+            );
             results.push({ orderId, success: false, error: apiError });
           }
         } else {
-          // Manual/non-API couriers: assignment only.
+          // Manual/non-API couriers: assignment only — mark as at_delivery
+          await pool.query(
+            `UPDATE store_orders SET status = 'at_delivery', updated_at = NOW()
+             WHERE id = $1 AND client_id = $2 AND COALESCE(status, '') NOT IN ('delivered','completed','cancelled','failed','returned','refunded')`,
+            [orderId, clientId]
+          );
           results.push({ orderId, success: true });
         }
       } catch (err: any) {

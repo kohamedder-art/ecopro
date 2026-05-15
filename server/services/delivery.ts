@@ -167,10 +167,16 @@ export class DeliveryService {
       }
 
       const integration = integrationResult.rows[0];
-      const apiKey = decryptData(integration.api_key_encrypted);
-      const secondaryCredential = integration.api_secret_encrypted
-        ? decryptData(integration.api_secret_encrypted)
-        : undefined;
+      let apiKey: string;
+      let secondaryCredential: string | undefined;
+      try {
+        apiKey = decryptData(integration.api_key_encrypted);
+        secondaryCredential = integration.api_secret_encrypted
+          ? decryptData(integration.api_secret_encrypted)
+          : undefined;
+      } catch {
+        throw new Error('فشل فك تشفير بيانات التوصيل. يرجى إعادة حفظ بيانات الشركة في الإعدادات');
+      }
       const accountId = integration.merchant_id || undefined;
 
       const service = getCourierService(order.company_name);
@@ -397,10 +403,6 @@ export class DeliveryService {
         `UPDATE store_orders 
          SET delivery_company_id = $1, 
              delivery_status = $2,
-             status = CASE
-               WHEN COALESCE(status, '') IN ('delivered','completed','cancelled','failed','returned','refunded') THEN status
-               ELSE 'at_delivery'
-             END,
              cod_amount = $3,
              updated_at = NOW()
          WHERE id = $4 AND client_id = $5`,
