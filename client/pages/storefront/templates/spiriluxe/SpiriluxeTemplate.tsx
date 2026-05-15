@@ -423,7 +423,7 @@ export default function SpiriluxeTemplate({
                     accentColor={accentColor}
                     textColor={textColor}
                     borderColor="#e5e7eb"
-                    hidePrice={true}
+                    
                   />
                 )}
                 <div className="grid grid-cols-2 gap-3">

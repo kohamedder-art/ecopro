@@ -537,7 +537,7 @@ export default function Bassem28Template({
                 )}
 
                 {offers.length > 0 && (
-                  <OfferSelector offers={offers} unitPrice={mainProduct?.price || 0} currency={currency} selectedOfferId={selectedOffer?.offer_id ?? null} onSelect={handleOfferSelect} accentColor={accentColor} textColor={surfaceTextColor} borderColor={surfaceBorderColor} hidePrice={true} />
+                  <OfferSelector offers={offers} unitPrice={mainProduct?.price || 0} currency={currency} selectedOfferId={selectedOffer?.offer_id ?? null} onSelect={handleOfferSelect} accentColor={accentColor} textColor={surfaceTextColor} borderColor={surfaceBorderColor}  />
                 )}
 
                 <div className="grid grid-cols-2 gap-3">

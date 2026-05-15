@@ -473,7 +473,7 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                                     accentColor={accentColor} 
                                     textColor="#1e293b" 
                                     borderColor="#e2e8f0" 
-                                    hidePrice={true} 
+                                    
                                 />
                             )}
                             <div className="grid grid-cols-2 gap-4">

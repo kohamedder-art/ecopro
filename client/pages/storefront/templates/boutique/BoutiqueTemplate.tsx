@@ -522,7 +522,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             accentColor={accentColor}
                             textColor={surfaceTextColor}
                             borderColor={surfaceBorderColor}
-                            hidePrice={true}
+                            
                           />
                         )}
                         <form id="orderForm" onSubmit={handleOrder} className="space-y-4">

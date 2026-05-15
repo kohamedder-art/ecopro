@@ -514,7 +514,7 @@ export default function IycoTemplate({
                     accentColor={accentColor}
                     textColor={surfaceTextColor}
                     borderColor={borderColor}
-                    hidePrice={true}
+                    
                   />
                 )}
 

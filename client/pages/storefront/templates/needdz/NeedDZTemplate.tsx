@@ -529,7 +529,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                         accentColor={accentColor} 
                         textColor="#1e293b" 
                         borderColor="#e2e8f0" 
-                        hidePrice={true}
+                        
                       />
                     )}
                     <div className="grid gap-4">

@@ -604,7 +604,7 @@ export default function LeRoiShopTemplate({
                           accentColor={accentColor}
                           textColor={textColor}
                           borderColor={inputBorderColor}
-                          hidePrice={true}
+                          
                         />
                       )}
 
