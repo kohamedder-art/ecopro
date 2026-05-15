@@ -1,7 +1,7 @@
 // Chat Page - Main Chat Interface
 
 import React, { useState, useEffect } from 'react';
-import { ChatList, ChatWindow } from '../components/chat';
+import { ChatList, ChatWindow } from '../../components/chat';
 import { apiFetch } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 
