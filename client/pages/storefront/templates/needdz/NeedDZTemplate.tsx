@@ -351,7 +351,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                         onClick={e => {
                           const carousel = (e.currentTarget as HTMLElement).parentElement?.querySelector('[data-cr]') as HTMLElement;
                           if (!carousel) return;
-                          const cur = Math.round(carousel.scrollLeft / carousel.clientWidth);
+                          const cur = Math.round(Math.abs(carousel.scrollLeft) / carousel.clientWidth);
                           const total = product.images.length + (product.videoUrl ? 1 : 0);
                           const next = (cur - 1 + total) % total;
                           setCurrentImgIdx(prev => ({ ...prev, [product.id]: next }));
@@ -365,7 +365,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                         onClick={e => {
                           const carousel = (e.currentTarget as HTMLElement).parentElement?.querySelector('[data-cr]') as HTMLElement;
                           if (!carousel) return;
-                          const cur = Math.round(carousel.scrollLeft / carousel.clientWidth);
+                          const cur = Math.round(Math.abs(carousel.scrollLeft) / carousel.clientWidth);
                           const total = product.images.length + (product.videoUrl ? 1 : 0);
                           const next = (cur + 1) % total;
                           setCurrentImgIdx(prev => ({ ...prev, [product.id]: next }));
