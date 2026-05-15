@@ -804,7 +804,6 @@ router.get('/validate/:code', async (req, res) => {
       valid: true,
       code: result.rows[0].voucher_code,
     });
-    });
   } catch (error) {
     console.error('[Affiliate] Validate code error:', error);
     return res.json({ valid: false });
