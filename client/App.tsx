@@ -47,10 +47,7 @@ const DataMigration = lazy(() => import("./pages/DataMigration"));
 const StockManagement = lazy(() => import("./pages/customer/StockManagement"));
 const Store = lazy(() => import("./pages/customer/Store"));
 const ImageManager = lazy(() => import("./pages/admin/ImageManager"));
-const MediaLibrary = lazy(() => import("./pages/admin/MediaLibrary"));
-const PublicProduct = lazy(() => import("./pages/PublicProduct"));
 const Storefront = lazy(() => import("./pages/Storefront"));
-const Checkout = lazy(() => import("./pages/Checkout"));
 const MyStore = lazy(() => import("./pages/MyStore"));
 const MyStoreIndex = lazy(() => import("./pages/my-store/Index"));
 const MyStoreTemplateEditor = lazy(() => import("./pages/my-store/TemplateEditor"));
@@ -77,8 +74,6 @@ const AffiliateDashboard = lazy(() => import("./pages/affiliate/AffiliateDashboa
 
 // Orders submenu pages - lazy loaded
 const AddOrder = lazy(() => import("./pages/admin/orders/AddOrder"));
-const AbandonedOrders = lazy(() => import("./pages/admin/orders/AbandonedOrders"));
-const FlexScan = lazy(() => import("./pages/admin/orders/FlexScan"));
 const ChatOrders = lazy(() => import("./pages/admin/orders/ChatOrders"));
 const OrderTracking = lazy(() => import("./pages/admin/OrderTracking"));
 
@@ -515,8 +510,6 @@ const App = () => (
                     {/* Orders submenu routes */}
                     <Route path="orders" element={<SubscriptionPageLock><AdminOrders /></SubscriptionPageLock>} />
                     <Route path="orders/add" element={<SubscriptionPageLock><AddOrder /></SubscriptionPageLock>} />
-                    <Route path="orders/abandoned" element={<SubscriptionPageLock><AbandonedOrders /></SubscriptionPageLock>} />
-                    <Route path="orders/flex-scan" element={<SubscriptionPageLock><FlexScan /></SubscriptionPageLock>} />
                     <Route path="orders/chat" element={<SubscriptionPageLock><ChatOrders /></SubscriptionPageLock>} />
                     <Route path="tracking" element={<OrderTracking />} />
                     {/* Products management moved to Store page */}
