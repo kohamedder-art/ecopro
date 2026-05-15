@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 export default function IycoTemplate({
   settings,
@@ -140,6 +141,13 @@ export default function IycoTemplate({
         variant_id: vid,
         variant_name: variant ? (variant.variant_name || [variant.color, variant.size].filter(Boolean).join(' / ')) : undefined,
       }];
+    });
+    trackAllPixels(PixelEvents.ADD_TO_CART, {
+      content_ids: [product.id],
+      content_name: product.title || product.name || 'منتج',
+      value: variant?.price ?? product.price,
+      currency: 'DZD',
+      content_type: 'product',
     });
   };
 

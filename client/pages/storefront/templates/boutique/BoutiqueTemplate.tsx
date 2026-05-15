@@ -10,6 +10,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 interface CartItem {
   id: number;
@@ -239,6 +240,13 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       return [...prev, item];
     });
     setIsCartOpen(true);
+    trackAllPixels(PixelEvents.ADD_TO_CART, {
+      content_ids: [product.id],
+      content_name: product.title || product.name || 'منتج',
+      value: variantPrice,
+      currency: 'DZD',
+      content_type: 'product',
+    });
   };
 
   const updateQty = (id: number, delta: number, vid?: number) => {

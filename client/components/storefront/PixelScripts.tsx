@@ -388,6 +388,7 @@ function trackToBackend(storeSlug: string, eventName: string, params?: Record<st
  * Track PageView - only one event per page navigation
  */
 function trackPageView(storeSlug: string) {
+  trackFacebookEvent('PageView');
   trackToBackend(storeSlug, 'PageView', { page_url: window.location.href });
 }
 

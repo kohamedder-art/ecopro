@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 interface CartItem {
   id: number;
@@ -71,6 +72,13 @@ export default function AuroraTemplate({ settings, products, canManage, storeSlu
     };
     setCart(prev => [...prev, item]);
     setShowCheckout(true);
+    trackAllPixels(PixelEvents.ADD_TO_CART, {
+      content_ids: [product.id],
+      content_name: product.title || product.name || 'منتج',
+      value: product.price,
+      currency: 'DZD',
+      content_type: 'product',
+    });
   };
 
   const removeFromCart = (index: number) => setCart(prev => prev.filter((_, i) => i !== index));

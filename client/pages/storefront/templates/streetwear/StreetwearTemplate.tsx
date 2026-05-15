@@ -3,6 +3,7 @@ import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, type SelectedOffer } from '@/components/storefront/OfferSelector';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import {
   ShoppingBag,
   Menu,
@@ -169,6 +170,13 @@ export default function StreetwearTemplate(props: TemplateProps) {
       setCart(prev => [...prev, { ...product, selectedSize: size || '', cartId: Math.random() }]);
     }
     setIsCartOpen(true);
+    trackAllPixels(PixelEvents.ADD_TO_CART, {
+      content_ids: [product.id],
+      content_name: product.title || product.name || 'منتج',
+      value: variant?.price ?? product.price,
+      currency: 'DZD',
+      content_type: 'product',
+    });
   };
 
   const removeFromCart = (cartId: number) => {

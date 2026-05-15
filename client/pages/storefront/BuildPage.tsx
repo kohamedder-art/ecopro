@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Check, AlertTriangle, Cpu, HardDrive, Monitor, Box, Zap, Save, ShoppingCart, Trash2, Download } from 'lucide-react';
 import { safeJsonParse } from '@/utils/safeJson';
 import { useTranslation } from '@/lib/i18n';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 // Types
 interface ProductMeta {
@@ -318,6 +319,13 @@ export default function BuildPage() {
           price: product.price,
           quantity: 1,
           image: product.image,
+        });
+        trackAllPixels(PixelEvents.ADD_TO_CART, {
+          content_ids: [product.id],
+          content_name: product.title || 'منتج',
+          value: product.price,
+          currency: 'DZD',
+          content_type: 'product',
         });
       }
     });

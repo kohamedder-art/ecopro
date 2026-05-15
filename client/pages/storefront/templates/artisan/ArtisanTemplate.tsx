@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import {
   ShoppingBag,
   Heart,
@@ -76,6 +77,13 @@ export default function ArtisanTemplate(props: TemplateProps) {
       setCart(prev => [...prev, product]);
     }
     setShowCheckout(true);
+    trackAllPixels(PixelEvents.ADD_TO_CART, {
+      content_ids: [product.id],
+      content_name: product.title || product.name || 'منتج',
+      value: product.price,
+      currency: 'DZD',
+      content_type: 'product',
+    });
   };
 
   const removeFromCart = (id: number) => {

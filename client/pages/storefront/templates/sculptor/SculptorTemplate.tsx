@@ -10,6 +10,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 interface CartItem {
   id: number;
@@ -148,6 +149,13 @@ export default function SculptorTemplate({ settings, products, canManage, storeS
   const handleAddToCart = () => {
     if (!mainProduct) return;
     onProductView?.(mainProduct);
+    trackAllPixels(PixelEvents.ADD_TO_CART, {
+      content_ids: [mainProduct.id],
+      content_name: mainProduct.title || mainProduct.name || 'منتج',
+      value: selectedVariant?.price ?? productPrice,
+      currency: 'DZD',
+      content_type: 'product',
+    });
     setIsAdding(true);
     const variant = selectedVariant;
     setTimeout(() => {

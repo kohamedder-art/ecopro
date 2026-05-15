@@ -57,6 +57,13 @@ export default function ProductDetail() {
   function addToCart() {
     if (!product) return;
     cart.add({ productId: product.id, title: product.title, price: product.price, imageUrl: product.imageUrl }, 1);
+    trackAllPixels(PixelEvents.ADD_TO_CART, {
+      content_ids: [product.id],
+      content_name: product.title,
+      value: product.price,
+      currency: 'DZD',
+      content_type: 'product',
+    });
     nav("/cart");
   }
 
