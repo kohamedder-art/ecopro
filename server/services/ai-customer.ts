@@ -1052,11 +1052,10 @@ ${effectiveMessage}`;
     return cleanResponse;
   } catch (err: any) {
     console.error(`[AI-Customer] Error generating response for client ${clientId}:`, err);
-    // ✅ CRITICAL FIX: Always return a fallback message instead of null
     const fallbacks = [
-      `عذراً، حصل خطأ تقني. جرب تكلمني مرة أخرى بعد شوية ⏱️`,
-      `المعذرة، النظام مشغول حالياً. حاول بعد دقيقة 🙏`,
-      `راني عندي مشكل تقني صغير. رجاءً أرسل رسالتك مرة أخرى 😊`,
+      `آسف، أقدرش جاوبك حالياً. حاول تكتب رسالتك مرة أخرى وإذا رجعت نفس المشكلة، صاحب المتجر راح يرد عليك قريباً ✅`,
+      `النظام مشغول شوية. جرب بعد دقيقة 🙏 إذا استمرت المشكلة، تواصل مع صاحب المتجر مباشرة`,
+      `عذراً، ما قدرتش أجيب رد. أعد المحاولة وإذا ما اشتغلتش، راح يرد عليك صاحب المتجر في أقرب وقت إن شاء الله ✅`,
     ];
     return fallbacks[Math.floor(Math.random() * fallbacks.length)];
   }

@@ -54,10 +54,35 @@ export const handleHealth: RequestHandler = async (_req, res) => {
       return res.json({ status: 'ok', commit, spa_assets, db: { connected: false, skipped: true } });
     }
 
-    const start = Date.now();
+    const dbStart = Date.now();
     await ensureConnection(2);
-    const latency = Date.now() - start;
-    res.json({ status: 'ok', commit, spa_assets, db: { connected: true, latency } });
+    const dbLatency = Date.now() - dbStart;
+
+    // Quick AI API ping — lightweight models endpoint check only in production
+    let ai: { reachable: boolean; latency?: number } = { reachable: false };
+    if (isProduction && process.env.DEEPINFRA_API_KEY) {
+      const aiStart = Date.now();
+      try {
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 5000);
+        const aiRes = await fetch('https://api.deepinfra.com/v1/openai/models', {
+          signal: ctrl.signal,
+        });
+        clearTimeout(timeout);
+        ai = { reachable: aiRes.ok, latency: Date.now() - aiStart };
+      } catch {
+        ai = { reachable: false };
+      }
+    }
+
+    res.json({
+      status: 'ok',
+      commit,
+      spa_assets,
+      db: { connected: true, latency: dbLatency },
+      ai,
+      timestamp: new Date().toISOString(),
+    });
   } catch (err: any) {
     const isProduction = process.env.NODE_ENV === 'production';
     const message = isProduction ? 'unknown' : (err?.message || 'unknown');
