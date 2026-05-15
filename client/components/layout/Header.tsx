@@ -37,7 +37,8 @@ export default function Header() {
   const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
-    if (isClient) {
+    const clientRole = user?.role === "client";
+    if (clientRole) {
       fetch('/api/ai/alerts', { credentials: 'include' })
         .then(r => r.json())
         .then(data => setAlertCount((data.alerts || []).filter((a: any) => a.status === 'unread').length))
@@ -50,7 +51,7 @@ export default function Header() {
       }, 60000);
       return () => clearInterval(interval);
     }
-  }, [isClient]);
+  }, [user?.role]);
   
   const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
   const user = userStr ? safeJsonParse(userStr, null as any) : null;
