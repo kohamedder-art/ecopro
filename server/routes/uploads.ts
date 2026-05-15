@@ -95,14 +95,9 @@ export const uploadImage: RequestHandler = async (req, res) => {
 
     // If Cloudinary is configured, upload there (persistent storage)
     const cloudConfigured = isCloudinaryConfigured();
-    console.log('[uploadImage] Cloudinary configured:', cloudConfigured, 'env check:', {
-      hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
-      hasApiKey: !!process.env.CLOUDINARY_API_KEY,
-      hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
-      cloudNameValue: process.env.CLOUDINARY_CLOUD_NAME,
-      apiKeyValue: process.env.CLOUDINARY_API_KEY,
-      apiSecretValue: process.env.CLOUDINARY_API_SECRET,
-    });
+    if (!cloudConfigured) {
+      console.warn('[uploadImage] Cloudinary not configured — using local storage');
+    }
     if (cloudConfigured) {
       try {
         const clientId = req.user.id;

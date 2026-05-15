@@ -49,7 +49,7 @@ import trapsRouter from "./routes/traps";
 import { startSubscriptionEnforcement } from './utils/subscription-enforcement';
 import intelRouter from "./routes/intel";
 import { usersRouter } from "./routes/users";
-import { deliveryRouter } from "./routes/delivery";
+import { deliveryRouter, handleDeliveryWebhook } from "./routes/delivery";
 import googleSheetsRouter from "./routes/google-sheets";
 import chatRouter from "./routes/chat";
 import aiRouter from "./routes/ai";
@@ -1635,6 +1635,9 @@ ${urls}
   app.patch("/api/storefront/:storeSlug/order/:orderId/update", orderConfirmationRoutes.updateOrderDetails);
   app.patch("/api/client/orders/:id/status", authenticate, requireClient, orderRoutes.updateOrderStatus);
   app.patch("/api/client/orders/:id", authenticate, requireClient, orderRoutes.updateClientOrder);
+
+  // Delivery webhooks — must be public (courier callbacks have no JWT)
+  app.post('/api/delivery/webhooks/:company', handleDeliveryWebhook);
 
   // Delivery routes (authenticated)
   app.use('/api/delivery', authenticate, deliveryRouter);

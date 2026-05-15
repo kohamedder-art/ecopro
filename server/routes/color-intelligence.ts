@@ -74,7 +74,26 @@ router.get('/products/analyze', authenticate, async (req: Request, res: Response
     });
   } catch (error: any) {
     console.error('Error in analyze products:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
+  }
+});
+
+/**
+ * GET /api/color-intelligence/palette
+ * Get store's aggregate color palette
+ */
+export const getColorPalette: RequestHandler = async (req, res) => {
+  try {
+    const { storeId } = req.params as any;
+    if (!storeId) {
+      res.status(400).json({ error: 'storeId is required' });
+      return;
+    }
+    const palette = await colorIntelligenceService.getStoreColorPalette(storeId);
+    res.json({ success: true, palette });
+  } catch (error: any) {
+    console.error('Error in getColorPalette:', error);
+    res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
   }
 });
 
@@ -106,7 +125,7 @@ router.get('/palette', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error getting palette:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
   }
 });
 
@@ -138,7 +157,7 @@ router.get('/segments', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error getting segments:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
   }
 });
 
@@ -170,7 +189,7 @@ router.post('/recommend', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error generating recommendation:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
   }
 });
 
@@ -202,7 +221,7 @@ router.post('/apply', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error applying recommendation:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
   }
 });
 
@@ -248,7 +267,7 @@ router.get('/versions', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error getting versions:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
   }
 });
 
@@ -328,7 +347,7 @@ router.post('/undo', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error undoing version:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
   }
 });
 
@@ -359,7 +378,7 @@ router.post('/update-segment-metrics', authenticate, async (req: Request, res: R
     });
   } catch (error: any) {
     console.error('Error updating segment metrics:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
   }
 });
 

@@ -420,7 +420,18 @@ export const updatePlatformSettings: RequestHandler = async (req, res) => {
       return jsonError(res, 400, "Invalid settings object");
     }
 
+    const allowedKeys = new Set([
+      'maintenance_mode', 'min_app_version', 'max_stores_per_ip',
+      'default_trial_days', 'max_products_free_tier', 'max_products_pro_tier',
+      'commission_rate', 'referral_bonus', 'minimum_withdrawal',
+      'whatsapp_webhook_url', 'whatsapp_api_version',
+    ]);
+
     for (const [key, value] of Object.entries(settings)) {
+      if (!allowedKeys.has(key)) {
+        console.warn(`[updatePlatformSettings] Ignoring unknown key: ${key}`);
+        continue;
+      }
       await pool.query(
         `UPDATE platform_settings SET setting_value = $1, updated_by = $2, updated_at = NOW()
          WHERE setting_key = $3`,

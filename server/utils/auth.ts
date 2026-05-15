@@ -48,12 +48,7 @@ export async function comparePassword(
   password: string,
   storedPassword: string
 ): Promise<boolean> {
-  // 1. Plain text comparison
-  if (password === storedPassword) {
-    return true;
-  }
-
-  // 2. Try argon2 if hash starts with $argon2
+  // 1. Try argon2 if hash starts with $argon2
   if (storedPassword?.startsWith("$argon2")) {
     try {
       return await argon2.verify(storedPassword, password);
@@ -62,7 +57,7 @@ export async function comparePassword(
     }
   }
 
-  // 3. Try bcrypt if hash starts with $2
+  // 2. Try bcrypt if hash starts with $2
   if (storedPassword?.startsWith("$2")) {
     try {
       return await bcrypt.compare(password, storedPassword);

@@ -1,6 +1,7 @@
 import { Router, RequestHandler } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { pool } from '../utils/database';
 import { jsonError, jsonServerError } from '../utils/httpHelpers';
 import { requireAdmin } from '../middleware/auth';
@@ -9,6 +10,14 @@ const router = Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const AFFILIATE_COOKIE = 'affiliate_token';
+
+const affiliateLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts. Try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================================
 // AFFILIATE AUTH MIDDLEWARE
@@ -55,7 +64,7 @@ export const authenticateAffiliate: RequestHandler = async (req, res, next) => {
 // ============================================================
 
 // POST /api/affiliates/login
-router.post('/login', async (req, res) => {
+router.post('/login', affiliateLoginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     

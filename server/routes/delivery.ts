@@ -110,7 +110,7 @@ export const configureDeliveryIntegration: RequestHandler = async (req, res) => 
  */
 export const listDeliveryIntegrations: RequestHandler = async (req, res) => {
   try {
-    const clientId = req.user?.id || (req.query.client_id ? Number(req.query.client_id) : undefined);
+    const clientId = req.user?.id;
     if (!clientId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
@@ -143,7 +143,7 @@ export const listDeliveryIntegrations: RequestHandler = async (req, res) => {
 export const assignDeliveryToOrder: RequestHandler = async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
-    const clientId = req.user?.id || (req.body.client_id as number);
+    const clientId = req.user?.id;
     const { delivery_company_id, cod_amount } = req.body;
 
     if (!clientId || !delivery_company_id) {
@@ -172,7 +172,7 @@ export const assignDeliveryToOrder: RequestHandler = async (req, res) => {
 export const generateShippingLabel: RequestHandler = async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
-    const clientId = req.user?.id || (req.body.client_id as number);
+    const clientId = req.user?.id;
     const { delivery_company_id } = req.body;
 
     if (!clientId || !delivery_company_id) {
@@ -205,7 +205,7 @@ export const generateShippingLabel: RequestHandler = async (req, res) => {
 export const getOrderTracking: RequestHandler = async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
-    const clientId = req.user?.id || (req.query.client_id as string | undefined);
+    const clientId = req.user?.id;
 
     if (!clientId) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -234,7 +234,7 @@ export const getOrderTracking: RequestHandler = async (req, res) => {
 export const downloadShippingLabel: RequestHandler = async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
-    const clientId = req.user?.id || (req.query.client_id ? Number(req.query.client_id) : undefined);
+    const clientId = req.user?.id;
 
     if (!clientId) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -371,7 +371,7 @@ export const handleDeliveryWebhook: RequestHandler = async (req, res) => {
  */
 export const bulkAssignDelivery: RequestHandler = async (req, res) => {
   try {
-    const clientId = req.user?.id || (req.body.client_id as number);
+    const clientId = req.user?.id;
     const { order_ids, delivery_company_id, generate_labels } = req.body;
 
     if (!clientId) {
