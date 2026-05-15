@@ -18,7 +18,8 @@ import {
   User as UserIcon,
   Headset,
   Info,
-  CreditCard
+  CreditCard,
+  Bell,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { authApi } from "@/lib/auth";
@@ -33,6 +34,23 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    if (isClient) {
+      fetch('/api/ai/alerts', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => setAlertCount((data.alerts || []).filter((a: any) => a.status === 'unread').length))
+        .catch(() => {});
+      const interval = setInterval(() => {
+        fetch('/api/ai/alerts', { credentials: 'include' })
+          .then(r => r.json())
+          .then(data => setAlertCount((data.alerts || []).filter((a: any) => a.status === 'unread').length))
+          .catch(() => {});
+      }, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [isClient]);
   
   const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
   const user = userStr ? safeJsonParse(userStr, null as any) : null;
@@ -107,6 +125,16 @@ export default function Header() {
         <div className="flex items-center space-x-3 space-x-reverse">
           {/* Controls: Theme & Lang */}
           <div className="flex items-center space-x-2 space-x-reverse mr-2">
+            {isClient && (
+              <Link to="/dashboard/alerts" className="relative p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                {alertCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-red-500/30">
+                    {alertCount > 9 ? '9+' : alertCount}
+                  </span>
+                )}
+              </Link>
+            )}
             <div className="relative">
               <button 
                 onClick={() => setLangMenuOpen(!langMenuOpen)}

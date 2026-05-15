@@ -55,6 +55,7 @@ const StockManagement = lazy(() => import("./pages/dashboard/StockManagement"));
 const Store = lazy(() => import("./pages/dashboard/Store"));
 const ImageManager = lazy(() => import("./pages/dashboard/ImageManager"));
 const OrderTracking = lazy(() => import("./pages/dashboard/OrderTracking"));
+const AlertsPage = lazy(() => import("./pages/dashboard/Alerts"));
 const StaffManagement = lazy(() => import("./pages/dashboard/StaffManagement"));
 
 // ── Dashboard sub-pages ──
@@ -516,6 +517,7 @@ const App = () => (
                     <Route path="stock" element={<StockManagement />} />
                     {/* Image management */}
                     <Route path="images" element={<ImageManager />} />
+                    <Route path="alerts" element={<AlertsPage />} />
                     {/* Orders submenu routes */}
                     <Route path="orders" element={<SubscriptionPageLock><AdminOrders /></SubscriptionPageLock>} />
                     <Route path="orders/add" element={<SubscriptionPageLock><AddOrder /></SubscriptionPageLock>} />

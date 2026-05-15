@@ -2237,6 +2237,7 @@ export const ar = {
   "sidebar.aiSettings": "الذكاء الاصطناعي",
   "sidebar.staff": "الموظفون",
   "sidebar.billing": "الفواتير",
+  "sidebar.alerts": "التنبيهات",
   "sidebar.brand": "Sahla4Eco",
   "sidebar.controlPanel": "لوحة التحكم",
   "sidebar.selectTheme": "اختر المظهر",

@@ -5,7 +5,7 @@ import {
   Users, Shield, Ban, Puzzle, CreditCard, Settings,
   ChevronDown, ChevronRight, Menu, X, Package, Bot,
     Divide, Palette, User, Lock, Image, Brain, MapPin, MessageSquare,
-  Receipt
+  Receipt, Bell
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -123,6 +123,7 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
     },
     { titleKey: "sidebar.staff", path: "/dashboard/staff", icon: <Users className="w-[18px] h-[18px]" />, permission: "view_staff" },
     { titleKey: "sidebar.billing", path: "/dashboard/billing", icon: <CreditCard className="w-[18px] h-[18px]" />, permission: "view_settings" },
+    { titleKey: "sidebar.alerts", path: "/dashboard/alerts", icon: <Bell className="w-[18px] h-[18px]" />, permission: "view_dashboard" },
   ];
 };
 
