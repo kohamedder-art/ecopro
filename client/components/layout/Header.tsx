@@ -34,11 +34,19 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const user = userStr ? safeJsonParse(userStr, null as any) : null;
+  const isAdmin = user?.role === "admin";
+  const isSeller = user?.role === "seller";
+  const isClient = user?.role === "client";
+  
+  const { storeSlug } = useStoreSettings({ enabled: Boolean(user && isClient) });
+
   const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
-    const clientRole = user?.role === "client";
-    if (clientRole) {
+    if (isClient) {
       fetch('/api/ai/alerts', { credentials: 'include' })
         .then(r => r.json())
         .then(data => setAlertCount((data.alerts || []).filter((a: any) => a.status === 'unread').length))
@@ -51,15 +59,7 @@ export default function Header() {
       }, 60000);
       return () => clearInterval(interval);
     }
-  }, [user?.role]);
-  
-  const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-  const user = userStr ? safeJsonParse(userStr, null as any) : null;
-  const isAdmin = user?.role === "admin";
-  const isSeller = user?.role === "seller";
-  const isClient = user?.role === "client";
-  
-  const { storeSlug } = useStoreSettings({ enabled: Boolean(user && isClient) });
+  }, [isClient]);
 
   const handleLogout = async () => {
     try {
