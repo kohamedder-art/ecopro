@@ -199,7 +199,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     };
 
     // Image Gallery State
-const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const carouselRef = useRef<HTMLDivElement>(null);
     const wrapRef = useRef(false);
 
