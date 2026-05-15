@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShoppingBag, 
   Truck, 
@@ -117,8 +117,6 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
       if (child) carousel.scrollTo({ left: child.offsetLeft, behavior: 'smooth' });
     }
   }, [currentImgIdx]);
-  const [previewProduct, setPreviewProduct] = useState<any>(null);
-  const carouselRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(selectedProduct, selectedOffer, baseDeliveryFee);
   const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
