@@ -1143,8 +1143,8 @@ export default function OrdersAdmin() {
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex flex-col items-end gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold">{o.customer}</span>
+                        <div className="flex items-center gap-2 max-w-[140px]">
+                          <span className="text-sm font-bold truncate block" title={o.customer}>{o.customer}</span>
                         </div>
                         {o.phone && (
                           <button
@@ -1202,7 +1202,7 @@ export default function OrdersAdmin() {
                             </div>
                           <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
                               <div className="text-xs font-semibold text-foreground/60">{t('orders.customerName')}</div>
-                              <div className="font-bold text-sm">{o.customer}</div>
+                              <div className="font-bold text-sm truncate" title={o.customer}>{o.customer}</div>
                             </div>
                           <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
                               <div className="text-xs font-semibold text-foreground/60">{t('orders.phoneNumber')}</div>

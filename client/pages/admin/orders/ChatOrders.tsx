@@ -565,7 +565,7 @@ export default function ChatOrders() {
                         {/* Customer */}
                         <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
                           <div className="flex flex-col items-end gap-0.5">
-                            <span className="text-sm font-bold">{o.customer_name || "—"}</span>
+                            <span className="text-sm font-bold max-w-[140px] truncate block" title={o.customer_name}>{o.customer_name || "—"}</span>
                             {o.customer_phone && (
                               <button
                                 onClick={() => copy(o.customer_phone, `ph-${o.id}`)}
@@ -642,7 +642,7 @@ export default function ChatOrders() {
                                   <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                                     <MapPin className="w-3 h-3" /> عنوان التوصيل
                                   </span>
-                                  <span className="font-semibold text-foreground">{o.shipping_address || "—"}</span>
+                                  <span className="font-semibold text-foreground truncate block" title={o.shipping_address}>{o.shipping_address || "—"}</span>
                                   <span className="text-xs text-muted-foreground">{o.delivery_type === "desk" ? "🏪 توصيل للمكتب" : "🏠 توصيل للمنزل"}</span>
                                 </div>
 
@@ -832,7 +832,7 @@ export default function ChatOrders() {
                     {/* Card Actions Row */}
                     <div className="px-3 pb-3 flex items-center justify-between gap-2 border-t border-border/30 pt-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold">{o.customer_name || "—"}</span>
+                        <span className="text-xs font-bold truncate max-w-[120px]" title={o.customer_name}>{o.customer_name || "—"}</span>
                         {o.customer_phone && (
                           <button
                             onClick={() => copy(o.customer_phone, `ph-${o.id}`)}
