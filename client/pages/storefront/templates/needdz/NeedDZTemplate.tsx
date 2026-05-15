@@ -108,13 +108,13 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [previewProduct, setPreviewProduct] = useState<any>(null);
 
-  // Scroll carousel when currentImgIdx changes (DZShop pattern — uses scrollIntoView)
+  // Scroll carousel when currentImgIdx changes
   useEffect(() => {
     for (const [pid, idx] of Object.entries(currentImgIdx)) {
       const carousel = document.querySelector(`[data-cr="${pid}"]`) as HTMLElement;
       if (!carousel) continue;
       const child = carousel.children[idx] as HTMLElement;
-      if (child) child.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+      if (child) carousel.scrollTo({ left: child.offsetLeft, behavior: 'smooth' });
     }
   }, [currentImgIdx]);
   const [previewProduct, setPreviewProduct] = useState<any>(null);
