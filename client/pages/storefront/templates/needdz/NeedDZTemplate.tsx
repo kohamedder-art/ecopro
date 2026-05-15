@@ -90,10 +90,10 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const baseDeliveryFee = selectedWilaya
     ? (selectedDeliveryType === 'desk' ? (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0) : (selectedWilaya.homePrice ?? 0))
     : 0;
-  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerCommune, setCustomerCommune] = useState('');
