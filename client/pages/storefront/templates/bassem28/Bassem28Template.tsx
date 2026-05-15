@@ -433,11 +433,13 @@ export default function Bassem28Template({
             <div className="w-full lg:w-[48%] flex flex-col gap-3 lg:self-stretch">
               {/* Main display: video or image */}
               <div className="rounded-2xl overflow-hidden shadow-xl aspect-[4/5] lg:aspect-auto lg:flex-1 min-h-[300px] lg:max-h-[70vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
-                  onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'pan-y' }}
+                  onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
                   onTouchEnd={e => {
-                    const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
-                    if (Math.abs(diff) < 50) return;
+                    const el = e.currentTarget as any;
+                    const dx = el._tsx - e.changedTouches[0].clientX;
+                    const dy = el._tsy - e.changedTouches[0].clientY;
+                    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
                     const total = mainImages.length + (videoEmbed ? 1 : 0);
                     if (total <= 1) return;
                     const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage);

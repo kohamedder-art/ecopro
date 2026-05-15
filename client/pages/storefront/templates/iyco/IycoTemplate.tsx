@@ -400,11 +400,11 @@ export default function IycoTemplate({
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4">
               <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[65vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
-                  onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'pan-y' }}
+                  onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
                   onTouchEnd={e => {
-                    const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
-                    if (Math.abs(diff) < 50) return;
+                    const el = e.currentTarget as any; const dx = el._tsx - e.changedTouches[0].clientX; const dy = el._tsy - e.changedTouches[0].clientY;
+                    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
                     const total = mainImages.length + (videoEmbed ? 1 : 0);
                     if (total <= 1) return;
                     const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage);

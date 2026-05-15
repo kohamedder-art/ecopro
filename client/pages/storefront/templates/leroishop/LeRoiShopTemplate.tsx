@@ -463,19 +463,20 @@ export default function LeRoiShopTemplate({
                 return (
                   <div className="w-full md:w-1/2 flex flex-col">
                     {/* Main image viewport */}
-                    <div className="overflow-hidden aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] md:rounded-xl select-none" style={{ backgroundColor: surfaceMuted, position: 'relative' }}
+                    <div className="overflow-hidden aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] md:rounded-xl select-none" style={{ backgroundColor: surfaceMuted, position: 'relative', touchAction: 'pan-y' }}
                       onTouchStart={e => {
                         if (showVideo) return;
-                        (e.currentTarget as any)._ts = e.touches[0].clientX;
+                        const t = e.currentTarget as any;
+                        t._ts = e.touches[0].clientX;
+                        t._tsy = e.touches[0].clientY;
                       }}
                       onTouchEnd={e => {
                         if (showVideo) return;
-                        const ts = (e.currentTarget as any)._ts;
-                        if (ts == null) return;
-                        const d = ts - e.changedTouches[0].clientX;
-                        if (Math.abs(d) > 50) {
-                          d > 0 ? goTo(galleryIdxRef.current + 1) : goTo(galleryIdxRef.current - 1);
-                        }
+                        const t = e.currentTarget as any;
+                        const dx = t._ts - e.changedTouches[0].clientX;
+                        const dy = t._tsy - e.changedTouches[0].clientY;
+                        if (t._ts == null || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+                        dx > 0 ? goTo(galleryIdxRef.current + 1) : goTo(galleryIdxRef.current - 1);
                       }}>
                       {showVideo && videoEmbed ? (
                         <div style={{ position: 'absolute', inset: 0 }}>

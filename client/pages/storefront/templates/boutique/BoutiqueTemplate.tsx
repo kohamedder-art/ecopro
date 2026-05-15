@@ -47,11 +47,13 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   return (
     <div className="boutique-gallery-wrap flex flex-col h-full">
       <div className="boutique-gallery-img relative w-full aspect-square overflow-hidden shrink-0" style={{ backgroundColor: surfaceMuted }}>
-        <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
-          onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
+        <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'pan-y' }}
+          onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
           onTouchEnd={e => {
-            const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
-            if (Math.abs(diff) < 50) return;
+            const el = e.currentTarget as any;
+            const dx = el._tsx - e.changedTouches[0].clientX;
+            const dy = el._tsy - e.changedTouches[0].clientY;
+            if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
             const total = imgs.length + (videoEmbed ? 1 : 0);
             if (total <= 1) return;
             const c = showVideo ? 0 : (videoEmbed ? idx + 1 : idx);
