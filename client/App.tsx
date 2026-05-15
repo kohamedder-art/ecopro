@@ -80,9 +80,9 @@ const MyStoreStorefront = lazy(() => import("./pages/my-store/StorefrontPreview"
 const GoldTemplateEditor = lazy(() => import("./pages/GoldTemplateEditor"));
 
 // ── Staff ──
-const StaffLogin = lazy(() => import("./pages/staff/Login"));
-const StaffDashboard = lazy(() => import("./pages/staff/Dashboard"));
-const StaffOrders = lazy(() => import("./pages/staff/Orders"));
+const StaffLogin = lazy(() => import("./pages/staff/StaffLogin"));
+const StaffDashboard = lazy(() => import("./pages/staff/StaffDashboard"));
+const StaffOrders = lazy(() => import("./pages/staff/StaffOrders"));
 
 // ── Affiliate ──
 const AffiliateLogin = lazy(() => import("./pages/affiliate/AffiliateLogin"));
