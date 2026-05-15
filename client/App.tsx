@@ -89,8 +89,8 @@ const AffiliateLogin = lazy(() => import("./pages/affiliate/AffiliateLogin"));
 const AffiliateDashboard = lazy(() => import("./pages/affiliate/AffiliateDashboard"));
 
 // ── Billing ──
-const BillingSuccess = lazy(() => import("./pages/billing/Success"));
-const BillingCancelled = lazy(() => import("./pages/billing/Cancelled"));
+const BillingSuccess = lazy(() => import("./pages/billing/BillingSuccess"));
+const BillingCancelled = lazy(() => import("./pages/billing/BillingCancelled"));
 const RenewSubscription = lazy(() => import("./pages/billing/RenewSubscription"));
 import SubscriptionPageLock from "./components/SubscriptionPageLock";
 

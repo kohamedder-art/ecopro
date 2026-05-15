@@ -340,17 +340,6 @@ export default function Integrations() {
 
         <div className="p-6 space-y-5">
 
-          {/* Viber — coming soon */}
-          {isViber && (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#7360F220' }}>
-                <span style={{ color: '#7360F2' }}>{ICONS.viber()}</span>
-              </div>
-              <p className="font-bold text-slate-700 dark:text-slate-200">{isRTL ? 'قريباً' : 'Coming Soon'}</p>
-              <p className="text-sm text-slate-400 text-center max-w-xs">{isRTL ? 'دعم Viber قيد التطوير وسيكون متاحاً قريباً' : 'Viber integration is under development and will be available soon'}</p>
-            </div>
-          )}
-
           {/* Connected state banner */}
           {!isViber && connected && (
             <div className="flex items-center gap-4 p-4 rounded-xl border" style={{ background: `${plat.bgColor}10`, borderColor: `${plat.bgColor}40` }}>

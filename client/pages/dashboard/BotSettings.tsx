@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import CustomerBot from "../CustomerBot";
+import CustomerBot from './CustomerBot';
 
 interface BotSettings {
   enabled: boolean;

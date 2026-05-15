@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "../../lib/i18n";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
-import { Bell, Search, User, Sparkles, Shield, LogOut } from "lucide-react";
+import { Bell, Search, User, Sparkles, Shield, LogOut, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useStaffPermissions } from "@/contexts/StaffPermissionContext";
 import { PermissionGate } from "@/components/PermissionGate";
 import Header from "@/components/layout/Header";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 
 export default function AdminLayout() {
@@ -91,7 +92,21 @@ export default function AdminLayout() {
         <div className="px-4 md:px-6 pt-4 pb-24 lg:pb-6">
           {/* Wrap outlet with PermissionGate - auto-detects permission from route */}
           <PermissionGate>
-            <Outlet />
+            <ErrorBoundary fallback={
+              <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-red-500" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">عذراً، حدث خطأ غير متوقع</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 text-center max-w-md">حاول إعادة تحميل الصفحة. إذا استمرت المشكلة، تواصل مع الدعم الفني.</p>
+                <Button onClick={() => window.location.reload()}>
+                  <RefreshCw className="w-4 h-4 ml-2" />
+                  إعادة تحميل
+                </Button>
+              </div>
+            }>
+              <Outlet />
+            </ErrorBoundary>
           </PermissionGate>
         </div>
         </main>
