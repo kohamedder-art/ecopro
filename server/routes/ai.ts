@@ -25,6 +25,18 @@ import { verifyToken } from '../utils/auth';
 import { authenticate, requireAdmin, requireClient } from '../middleware/auth';
 import { authenticateStaff } from '../utils/staff-middleware';
 import { pool } from '../utils/database';
+
+async function checkAIActionPermission(clientId: number, toggle: string): Promise<boolean> {
+  try {
+    const res = await pool.query(
+      `SELECT ${toggle} FROM ai_settings WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+    return res.rows[0]?.[toggle] !== false;
+  } catch {
+    return true;
+  }
+}
 import {
   getClientAlerts,
   markAlertRead,
@@ -1794,6 +1806,9 @@ router.post('/order-action', authAiLimiter, async (req: Request, res: Response) 
       return res.status(401).json({ error: 'Authentication required.' });
     }
     const clientId = user.id || user.clientId;
+    if (!await checkAIActionPermission(clientId, 'action_order_status')) {
+      return res.status(403).json({ error: 'AI order status change is disabled in AI settings.' });
+    }
     const { orderId, newStatus } = req.body;
 
     if (!orderId || !newStatus) {
@@ -1849,6 +1864,9 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
     const { type } = req.body;
 
     if (type === 'create_product') {
+      if (!await checkAIActionPermission(clientId, 'action_create_product')) {
+        return res.status(403).json({ error: 'AI product creation is disabled in AI settings.' });
+      }
       const { title, price, stock, category, description } = req.body;
       if (!title || price === undefined) return res.status(400).json({ error: 'title and price are required.' });
       const result = await pool.query(
@@ -1861,6 +1879,9 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
     }
 
     if (type === 'edit_product') {
+      if (!await checkAIActionPermission(clientId, 'action_edit_product')) {
+        return res.status(403).json({ error: 'AI product editing is disabled in AI settings.' });
+      }
       const { productId, field, value } = req.body;
       if (!productId || !field || value === undefined) return res.status(400).json({ error: 'productId, field, and value are required.' });
       const allowedFields = ['price', 'stock_quantity', 'status', 'title', 'description', 'category'];
@@ -1876,6 +1897,9 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
     }
 
     if (type === 'delete_product') {
+      if (!await checkAIActionPermission(clientId, 'action_delete_product')) {
+        return res.status(403).json({ error: 'AI product deletion is disabled in AI settings.' });
+      }
       const { productId, title } = req.body;
       if (!productId) return res.status(400).json({ error: 'productId is required.' });
       const result = await pool.query(
@@ -1911,6 +1935,9 @@ router.post('/store-action', authAiLimiter, async (req: Request, res: Response) 
       return res.status(401).json({ error: 'Authentication required.' });
     }
     const clientId = user.id || user.clientId;
+    if (!await checkAIActionPermission(clientId, 'action_store_design')) {
+      return res.status(403).json({ error: 'AI store design changes are disabled in AI settings.' });
+    }
     const { field, value, changes } = req.body;
 
     // ── Whitelist of AI-modifiable fields ──
@@ -2192,6 +2219,9 @@ router.post('/bot/toggle', authenticate, requireClient, authAiLimiter, async (re
   try {
     const user = (req as any).user;
     const clientId = user?.id;
+    if (!await checkAIActionPermission(clientId, 'action_bot_control')) {
+      return res.status(403).json({ error: 'AI bot control is disabled in AI settings.' });
+    }
     const { intent } = req.body;
     if (!intent) return res.status(400).json({ error: 'intent is required' });
 
