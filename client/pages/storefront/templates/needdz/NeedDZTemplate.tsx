@@ -316,7 +316,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                       const total = product.images.length + (product.videoUrl ? 1 : 0);
                       if (total <= 1) return;
                       const cur = currentImgIdx[product.id] || 0;
-                      const tgt = dx > 0 ? (cur + 1) % total : (cur - 1 + total) % total;
+                      const tgt = dx > 0 ? (cur - 1 + total) % total : (cur + 1) % total;
                       setCurrentImgIdx(prev => ({ ...prev, [product.id]: tgt }));
                     }}
                   >
