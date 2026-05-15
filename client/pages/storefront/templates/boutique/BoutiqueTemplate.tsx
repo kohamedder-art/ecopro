@@ -117,6 +117,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
@@ -192,7 +193,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   }, [products, settings?.dzp_main_product_id, initialProductSlug]);
 
   // Offers system
-  const { offers } = useProductOffers(storeSlug, heroProduct?.id);
+  const { offers, loading: offersLoading } = useProductOffers(storeSlug, heroProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(heroProduct, selectedOffer, baseDeliveryFee);
@@ -263,7 +264,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const handleOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId || !orderProduct) {
-      alert('الرجاء تعبئة جميع الحقول المطلوبة');
+      setOrderError('الرجاء تعبئة جميع الحقول المطلوبة');
       return;
     }
 
@@ -297,13 +298,13 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
       if (!res.ok) {
-        alert(data.error || 'حدث خطأ أثناء إرسال الطلب');
+        setOrderError(data.error || 'حدث خطأ أثناء إرسال الطلب');
         return;
       }
 
       setOrderSuccess(true);
     } catch {
-      alert('حدث خطأ أثناء إرسال الطلب');
+      setOrderError('حدث خطأ أثناء إرسال الطلب');
     } finally {
       setIsSubmitting(false);
     }

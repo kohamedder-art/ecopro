@@ -37,8 +37,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
     // Variant and Offer support
     const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
-    const { offers } = useProductOffers(storeSlug, product?.id);
+    const { offers, loading: offersLoading } = useProductOffers(storeSlug, product?.id);
     const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
+    const [orderError, setOrderError] = useState<string | null>(null);
     const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
 
     const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
@@ -79,7 +80,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             setOrderSuccess(true);
         } catch(err) {
             console.error(err);
-            alert('حدث خطأ أثناء تقديم الطلب.');
+            setOrderError('حدث خطأ أثناء تقديم الطلب. حاول مرة أخرى.');
         } finally {
             setIsSubmitting(false);
         }
@@ -524,7 +525,7 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                                     <span className="font-black text-lg">{quantity}</span>
                                     <button
                                         type="button"
-                                        onClick={() => setQuantity(quantity + 1)}
+                                        onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))}
                                         className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
                                     >+</button>
                                 </div>

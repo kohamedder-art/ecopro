@@ -133,7 +133,7 @@ export default function Bassem28Template({
   const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? (selectedWilaya.homePrice || defaultPrice) : ((selectedWilaya.deskPrice ?? selectedWilaya.homePrice) || defaultPrice)) : 0;
 
   // Offers system
-  const { offers } = useProductOffers(storeSlug, mainProduct?.id);
+  const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
@@ -153,6 +153,7 @@ export default function Bassem28Template({
   const [customerCommune, setCustomerCommune] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
@@ -178,7 +179,7 @@ export default function Bassem28Template({
   const handleOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId || !mainProduct) {
-      alert('يرجى ملء جميع الحقول');
+      setOrderError('يرجى ملء جميع الحقول');
       return;
     }
     setIsSubmitting(true);
@@ -211,7 +212,7 @@ export default function Bassem28Template({
       if (!res.ok) throw new Error(data.error || 'Order failed');
       setOrderSuccess(true);
     } catch {
-      alert('حدث خطأ أثناء إرسال الطلب');
+      setOrderError('حدث خطأ أثناء إرسال الطلب');
     } finally {
       setIsSubmitting(false);
     }
@@ -575,7 +576,7 @@ export default function Bassem28Template({
                   <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, border: `1px solid ${surfaceBorderColor}` }}>
                     <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center" style={{ borderColor: surfaceBorderColor }}>−</button>
                     <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 bg-white border rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center" style={{ borderColor: surfaceBorderColor }}>+</button>
+                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center" style={{ borderColor: surfaceBorderColor }}>+</button>
                   </div>
                 </div>
 

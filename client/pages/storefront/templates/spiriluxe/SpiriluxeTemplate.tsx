@@ -75,7 +75,7 @@ export default function SpiriluxeTemplate({
 
   // ─── Offer & Variant System ───
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
-  const { offers } = useProductOffers(storeSlug, mainProduct?.id);
+  const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
 
   // When product changes: reset images and offer
@@ -310,7 +310,7 @@ export default function SpiriluxeTemplate({
 
   // ─── Render ───
   return (
-    <div className="min-h-screen" style={{ backgroundColor: bgColor, color: textColor }}>
+    <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, color: textColor }}>
       <div className="max-w-md mx-auto">
 
         {/* Video Embed (above images) */}
@@ -511,7 +511,7 @@ export default function SpiriluxeTemplate({
                   <div className="flex items-center justify-between bg-gray-50 border-2 border-gray-200 rounded-xl p-1">
                     <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">−</button>
                     <span className="font-black text-lg">{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">+</button>
+                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">+</button>
                   </div>
                 </div>
 

@@ -116,7 +116,7 @@ export default function IycoTemplate({
 
 
   // Offers system
-  const { offers } = useProductOffers(storeSlug, mainProduct?.id);
+  const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
@@ -174,6 +174,7 @@ export default function IycoTemplate({
   const [customerNotes, setCustomerNotes] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
@@ -211,12 +212,12 @@ export default function IycoTemplate({
   const handleOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId) {
-      alert('يرجى ملء جميع الحقول');
+      setOrderError('يرجى ملء جميع الحقول');
       return;
     }
 
     if (!mainProduct) {
-      alert('يرجى إضافة منتج واحد على الأقل');
+      setOrderError('يرجى إضافة منتج واحد على الأقل');
       return;
     }
 
@@ -254,13 +255,13 @@ export default function IycoTemplate({
           const data = await res.json();
           setLastOrderId(data.order?.id || null);
           setLastTelegramUrl(data.telegramStartUrl || null);
-          alert(data.error || 'خطأ في الطلب');
+          setOrderError(data.error || 'خطأ في الطلب');
           return;
         }
       }
       setOrderSuccess(true);
     } catch {
-      alert('خطأ في الطلب');
+      setOrderError('خطأ في الطلب');
     } finally {
       setIsSubmitting(false);
     }
@@ -597,7 +598,7 @@ export default function IycoTemplate({
                     <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
                       <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl" style={{ color: textColor, borderColor: borderColor }}>−</button>
                       <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
-                      <button type="button" onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 bg-white border rounded-md font-bold text-xl" style={{ color: textColor, borderColor: borderColor }}>+</button>
+                      <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl" style={{ color: textColor, borderColor: borderColor }}>+</button>
                     </div>
                   </div>
 
@@ -742,54 +743,6 @@ export default function IycoTemplate({
       <footer className="py-8 mt-12 text-center" style={{ backgroundColor: surfaceMuted, borderTop: `1px solid ${borderColor}` }}>
         <p className="text-sm font-bold" style={{ color: textMuted }}>© {new Date().getFullYear()} {storeName}</p>
       </footer>
-
-      {false && showCart && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/40" onClick={() => setShowCart(false)}>
-          <div
-            className="w-full sm:max-w-md rounded-t-[2rem] sm:rounded-[2rem] p-6 max-h-[90vh] overflow-y-auto"
-            style={{ backgroundColor: surfaceColor, color: textColor }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-black" style={{ color: textColor }}>السلة ({cart.reduce((s, i) => s + i.qty, 0)})</h3>
-              <button onClick={() => setShowCart(false)} className="p-2 rounded-full" style={{ color: textMuted }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            {cart.length === 0 ? (
-              <div className="py-12 text-center" style={{ color: textMuted }}>
-                <ShoppingBag className="mx-auto mb-3" size={40} />
-                <p>السلة فارغة</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {cart.map(item => (
-                  <div key={item.id} className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: surfaceMuted }}>
-                    <img src={item.image} alt="" className="w-16 h-16 rounded-lg object-cover" loading="lazy" />
-                    <div className="flex-1">
-                      <p className="font-bold text-sm truncate" style={{ color: textColor }}>{item.title}</p>
-                      <p className="text-sm" style={{ color: accentColor }}>{Math.round(item.price ?? 0).toLocaleString()} {currency}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <button onClick={() => updateQty(item.id, -1)} className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: borderColor, color: textColor }}><Minus size={12} /></button>
-                        <span className="text-sm font-bold">{item.qty}</span>
-                        <button onClick={() => updateQty(item.id, 1)} className="w-6 h-6 rounded flex items-center justify-center text-white" style={{ backgroundColor: accentColor }}><Plus size={12} /></button>
-                      </div>
-                    </div>
-                    <button onClick={() => removeFromCart(item.id)} className="self-start" style={{ color: '#ef4444' }}>
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-                <div className="border-t pt-3 flex justify-between font-black text-lg" style={{ borderColor }}>
-                  <span>المجموع</span>
-                  <span style={{ color: accentColor }}>{Math.round(subtotal ?? 0).toLocaleString()} {currency}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Platform Footer */}
       <footer className="py-6 text-center text-xs" style={{ borderTop: `1px solid ${borderColor}`, color: textMuted }}>

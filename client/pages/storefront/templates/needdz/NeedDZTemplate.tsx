@@ -82,7 +82,10 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     if (navigate) navigate(`/store/${storeSlug}`);
   };
   const [orderStatus, setOrderStatus] = useState('idle');
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, mins: 45, secs: 12 });
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const target = Date.now() + 45 * 60 * 1000;
+    return { target, hours: 0, mins: 45, secs: 0 };
+  });
   const [currentImgIdx, setCurrentImgIdx] = useState<Record<number, number>>({});
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
@@ -100,7 +103,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
 
   // Variant and Offer support
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
-  const { offers } = useProductOffers(storeSlug, selectedProduct?.id);
+  const { offers, loading: offersLoading } = useProductOffers(storeSlug, selectedProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(selectedProduct, selectedOffer, baseDeliveryFee);
@@ -143,14 +146,17 @@ const parseVideoEmbed = (videoUrl: string) => {
   // Countdown timer logic
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev.secs > 0) return { ...prev, secs: prev.secs - 1 };
-        if (prev.mins > 0) return { ...prev, mins: prev.mins - 1, secs: 59 };
-        return prev;
-      });
+      const remaining = Math.max(0, timeLeft.target - Date.now());
+      const totalSecs = Math.floor(remaining / 1000);
+      setTimeLeft(prev => ({
+        ...prev,
+        hours: Math.floor(totalSecs / 3600),
+        mins: Math.floor((totalSecs % 3600) / 60),
+        secs: totalSecs % 60,
+      }));
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [timeLeft.target]);
 
   const handleOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -186,7 +192,7 @@ const parseVideoEmbed = (videoUrl: string) => {
     } catch(err) {
       console.error(err);
       setOrderStatus('idle');
-      alert("Une erreur s'est produite lors de la commande.");
+      setOrderError("Une erreur s'est produite lors de la commande.");
     }
   };
 
@@ -584,7 +590,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                       <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-1">
                         <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border border-slate-200 rounded-lg font-bold text-xl text-slate-600 active:bg-slate-100 flex items-center justify-center">−</button>
                         <span className="font-black text-lg">{quantity}</span>
-                        <button type="button" onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 bg-white border border-slate-200 rounded-lg font-bold text-xl text-slate-600 active:bg-slate-100 flex items-center justify-center">+</button>
+                        <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border border-slate-200 rounded-lg font-bold text-xl text-slate-600 active:bg-slate-100 flex items-center justify-center">+</button>
                       </div>
                     </div>
 

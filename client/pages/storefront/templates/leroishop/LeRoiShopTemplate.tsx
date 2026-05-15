@@ -74,6 +74,7 @@ export default function LeRoiShopTemplate({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
@@ -118,7 +119,7 @@ export default function LeRoiShopTemplate({
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
 
   // Offers system — must come after activeProduct
-  const { offers } = useProductOffers(storeSlug, activeProduct?.id);
+  const { offers, loading: offersLoading } = useProductOffers(storeSlug, activeProduct?.id);
 
   // Reset offer when active product changes
   useEffect(() => {
@@ -226,7 +227,7 @@ export default function LeRoiShopTemplate({
     const name = fd.get('name') as string;
     const phone = fd.get('phone') as string;
     if (!name || !phone || !selectedWilayaId || !activeProduct) {
-      alert('الرجاء تعبئة جميع الحقول المطلوبة');
+      setOrderError('الرجاء تعبئة جميع الحقول المطلوبة');
       return;
     }
     try {
@@ -255,9 +256,9 @@ export default function LeRoiShopTemplate({
       setLastTelegramUrl(data.telegramStartUrl || null);
       setLastCustomerPhone(phone);
       if (res.ok) setOrderSuccess(true);
-      else alert(data.error || 'حدث خطأ أثناء إرسال الطلب');
+      else setOrderError(data.error || 'حدث خطأ أثناء إرسال الطلب');
     } catch {
-      alert('حدث خطأ أثناء إرسال الطلب');
+      setOrderError('حدث خطأ أثناء إرسال الطلب');
     } finally {
       setIsSubmitting(false);
     }
@@ -454,7 +455,7 @@ export default function LeRoiShopTemplate({
 
                 const goTo = (idx: number) => {
                   const wrapped = ((idx % imgs.length) + imgs.length) % imgs.length;
-                  console.log('[LeRoiGallery] goTo', { idx, wrapped, imgsLen: imgs.length });
+                  // console.log('[LeRoiGallery] goTo', { idx, wrapped, imgsLen: imgs.length });
                   galleryIdxRef.current = wrapped;
                   setActiveImageIndex(wrapped);
                 };

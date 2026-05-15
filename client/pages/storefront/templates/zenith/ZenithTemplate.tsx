@@ -13,6 +13,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const formRef = useRef<HTMLDivElement>(null);
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   // Variant and Offer support
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
-  const { offers } = useProductOffers(storeSlug, mainProduct?.id);
+  const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
@@ -83,7 +84,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const handleOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId || !mainProduct?.id) {
-      alert('الرجاء تعبئة جميع الحقول المطلوبة');
+      setOrderError('الرجاء تعبئة جميع الحقول المطلوبة');
       return;
     }
 
@@ -116,10 +117,10 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         setLastTelegramUrl(data.telegramStartUrl || null);
         setOrderSuccess(true);
       } else {
-        alert(data.error || 'حدث خطأ أثناء إرسال الطلب');
+        setOrderError(data.error || 'حدث خطأ أثناء إرسال الطلب');
       }
     } catch {
-      alert('حدث خطأ أثناء إرسال الطلب');
+      setOrderError('حدث خطأ أثناء إرسال الطلب');
     } finally {
       setIsSubmitting(false);
     }
@@ -357,7 +358,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <span className="font-black text-lg">{quantity}</span>
                   <button
                     type="button"
-                    onClick={() => setQuantity(quantity + 1)}
+                    onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))}
                     className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
                   >+</button>
                 </div>
