@@ -301,9 +301,9 @@ const parseVideoEmbed = (videoUrl: string) => {
                       if (total <= 1) return;
                       const h = e.currentTarget as HTMLElement;
                       const cur = Math.round(Math.abs(h.scrollLeft) / h.clientWidth);
-                      const tgt = diff > 0 ? (cur - 1 + total) % total : (cur + 1) % total;
-                      const wrap = diff > 0 ? tgt > cur : tgt < cur;
-                      h.scrollTo({ left: tgt * h.clientWidth, behavior: wrap ? 'auto' : 'smooth' });
+                      const tgt = diff > 0 ? (cur + 1) % total : (cur - 1 + total) % total;
+                      setCurrentImgIdx(prev => ({ ...prev, [product.id]: tgt }));
+                      h.scrollTo({ left: tgt * h.clientWidth, behavior: tgt === 0 || (diff > 0 && tgt < cur) || (diff < 0 && tgt > cur) ? 'auto' : 'smooth' });
                     }}
                   >
                     {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
@@ -353,8 +353,9 @@ const parseVideoEmbed = (videoUrl: string) => {
                           if (!carousel) return;
                           const cur = Math.round(carousel.scrollLeft / carousel.clientWidth);
                           const total = product.images.length + (product.videoUrl ? 1 : 0);
-                          if (cur <= 0) carousel.scrollTo({ left: (total - 1) * carousel.clientWidth, behavior: 'smooth' });
-                          else carousel.scrollBy({ left: -carousel.clientWidth, behavior: 'smooth' });
+                          const next = (cur - 1 + total) % total;
+                          setCurrentImgIdx(prev => ({ ...prev, [product.id]: next }));
+                          carousel.scrollTo({ left: next * carousel.clientWidth, behavior: 'smooth' });
                         }}
                         className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
                       >
@@ -366,8 +367,9 @@ const parseVideoEmbed = (videoUrl: string) => {
                           if (!carousel) return;
                           const cur = Math.round(carousel.scrollLeft / carousel.clientWidth);
                           const total = product.images.length + (product.videoUrl ? 1 : 0);
-                          if (cur >= total - 1) carousel.scrollTo({ left: 0, behavior: 'smooth' });
-                          else carousel.scrollBy({ left: carousel.clientWidth, behavior: 'smooth' });
+                          const next = (cur + 1) % total;
+                          setCurrentImgIdx(prev => ({ ...prev, [product.id]: next }));
+                          carousel.scrollTo({ left: next * carousel.clientWidth, behavior: 'smooth' });
                         }}
                         className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
                       >
