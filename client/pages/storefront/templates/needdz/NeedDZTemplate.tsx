@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShoppingBag, 
   Truck, 
@@ -106,6 +106,19 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, selectedProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<any>(null);
+
+  // Scroll carousel when currentImgIdx changes (DZShop pattern — uses scrollIntoView)
+  useEffect(() => {
+    for (const [pid, idx] of Object.entries(currentImgIdx)) {
+      const carousel = document.querySelector(`[data-cr="${pid}"]`) as HTMLElement;
+      if (!carousel) continue;
+      const child = carousel.children[idx] as HTMLElement;
+      if (child) child.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    }
+  }, [currentImgIdx]);
+  const [previewProduct, setPreviewProduct] = useState<any>(null);
+  const carouselRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(selectedProduct, selectedOffer, baseDeliveryFee);
   const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
@@ -293,7 +306,7 @@ const parseVideoEmbed = (videoUrl: string) => {
               <div key={product.id} className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm group">
                 {/* Image Gallery */}
                 <div className="relative aspect-square overflow-hidden bg-slate-100">
-                  <div data-cr className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none', touchAction: 'pan-y' }}
+                  <div data-cr={product.id} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none', touchAction: 'pan-y' }}
                     onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
                     onTouchEnd={e => {
                       const el = e.currentTarget as any;
@@ -302,11 +315,9 @@ const parseVideoEmbed = (videoUrl: string) => {
                       if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
                       const total = product.images.length + (product.videoUrl ? 1 : 0);
                       if (total <= 1) return;
-                      const h = e.currentTarget as HTMLElement;
-                      const cur = Math.round(Math.abs(h.scrollLeft) / h.clientWidth);
+                      const cur = currentImgIdx[product.id] || 0;
                       const tgt = dx > 0 ? (cur + 1) % total : (cur - 1 + total) % total;
                       setCurrentImgIdx(prev => ({ ...prev, [product.id]: tgt }));
-                      h.scrollBy({ left: dx > 0 ? -h.clientWidth : h.clientWidth, behavior: 'smooth' });
                     }}
                   >
                     {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
@@ -328,7 +339,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                         className="w-full h-full object-cover shrink-0 cursor-pointer"
                         loading="lazy"
                         style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
-                        onClick={() => setPreviewImg(img)}
+                        onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}
                       />
                     )) : (
                       <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: '#94a3b8' }}>
@@ -353,13 +364,10 @@ const parseVideoEmbed = (videoUrl: string) => {
                       <>
                       <button 
                         onClick={e => {
-                          const carousel = (e.currentTarget as HTMLElement).parentElement?.querySelector('[data-cr]') as HTMLElement;
-                          if (!carousel) return;
                           const total = product.images.length + (product.videoUrl ? 1 : 0);
-                          const cur = Math.round(Math.abs(carousel.scrollLeft) / carousel.clientWidth);
+                          const cur = currentImgIdx[product.id] || 0;
                           const prev = (cur - 1 + total) % total;
                           setCurrentImgIdx(prev => ({ ...prev, [product.id]: prev }));
-                          carousel.scrollBy({ left: -carousel.clientWidth, behavior: 'smooth' });
                         }}
                         className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
                       >
@@ -367,13 +375,10 @@ const parseVideoEmbed = (videoUrl: string) => {
                       </button>
                       <button 
                         onClick={e => {
-                          const carousel = (e.currentTarget as HTMLElement).parentElement?.querySelector('[data-cr]') as HTMLElement;
-                          if (!carousel) return;
                           const total = product.images.length + (product.videoUrl ? 1 : 0);
-                          const cur = Math.round(Math.abs(carousel.scrollLeft) / carousel.clientWidth);
+                          const cur = currentImgIdx[product.id] || 0;
                           const next = (cur + 1) % total;
                           setCurrentImgIdx(prev => ({ ...prev, [product.id]: next }));
-                          carousel.scrollBy({ left: carousel.clientWidth, behavior: 'smooth' });
                         }}
                         className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
                       >
@@ -689,10 +694,20 @@ const parseVideoEmbed = (videoUrl: string) => {
       `}} />
 
       {/* Image Preview Lightbox */}
-      {previewImg && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center" onClick={() => setPreviewImg(null)}>
-          <img src={previewImg} alt="" className="max-w-full max-h-full object-contain p-4" onClick={e => e.stopPropagation()} />
-          <button onClick={() => setPreviewImg(null)} className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-xl">✕</button>
+      {previewImg && previewProduct && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center" onClick={() => { setPreviewImg(null); setPreviewProduct(null); }}>
+          <button onClick={() => { setPreviewImg(null); setPreviewProduct(null); }} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-xl z-10">✕</button>
+          <img src={previewImg} alt="" className="max-w-full max-h-[70vh] object-contain px-4" onClick={e => e.stopPropagation()} />
+          {previewProduct.images.length > 1 && (
+            <div className="flex gap-2 mt-4 px-4 overflow-x-auto max-w-full">
+              {previewProduct.images.map((img: string, i: number) => (
+                <button key={i} onClick={(e) => { e.stopPropagation(); setPreviewImg(img); }}
+                  className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${previewImg === img ? 'border-white opacity-100' : 'border-transparent opacity-50'}`}>
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
