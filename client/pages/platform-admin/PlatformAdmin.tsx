@@ -52,7 +52,7 @@ import { GradientCard } from '@/components/ui/GradientCard';
 import { Button } from '@/components/ui/button';
 import BigCarGauge from '@/components/platform-admin/BigCarGauge';
 import GlobalAnnouncementsManager from '@/components/platform-admin/GlobalAnnouncementsManager';
-import AdminAffiliatesPage from '@/pages/admin/AdminAffiliatesPage';
+import AdminAffiliatesPage from '@/pages/platform-admin/AdminAffiliatesPage';
 import Header from '@/components/layout/Header';
 import OverviewTab from '@/components/platform-admin/tabs/OverviewTab';
 import UsersTab from '@/components/platform-admin/tabs/UsersTab';

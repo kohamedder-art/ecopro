@@ -11,78 +11,87 @@ import Layout from "@/components/layout/Layout";
 import React, { Suspense, lazy } from "react";
 
 // Lazy load ALL pages — keep main bundle minimal
-const Index = lazy(() => import("./pages/Index"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Login = lazy(() => import("./pages/Login"));
-const Signup = lazy(() => import("./pages/Signup"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const PlatformAdminLogin = lazy(() => import("./pages/PlatformAdminLogin"));
-const Pricing = lazy(() => import("./pages/Pricing"));
-const SubscriptionTiers = lazy(() => import("./pages/SubscriptionTiers"));
-const About = lazy(() => import("./pages/About"));
-const Contact = lazy(() => import("./pages/Contact"));
-const Privacy = lazy(() => import("./pages/Privacy"));
-const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
-const Kernel = lazy(() => import("./pages/Kernel"));
-const AdminLayout = lazy(() => import("./pages/admin/Layout"));
-const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
-const EnhancedDashboard = lazy(() => import("./pages/admin/EnhancedDashboard"));
-const AdminOrders = lazy(() => import("./pages/admin/Orders"));
-const AdminCalls = lazy(() => import("./pages/admin/Calls"));
-const AdminBotSettings = lazy(() => import("./pages/admin/BotSettings"));
-const AdminIntegrations = lazy(() => import("./pages/admin/Integrations"));
-const AdminAISettings = lazy(() => import("./pages/admin/AISettings"));
-const AdminChats = lazy(() => import("./pages/admin/Chats"));
-const AdminChat = lazy(() => import("./pages/admin/Chat"));
-const Profile = lazy(() => import("./pages/admin/Profile"));
-const ChatPage = lazy(() => import("./pages/ChatPage"));
-const CustomerBot = lazy(() => import("./pages/CustomerBot"));
-const MarketingAnalytics = lazy(() => import("./pages/MarketingAnalytics"));
-const PixelSettings = lazy(() => import("./pages/PixelSettings"));
-const LogoDemo = lazy(() => import("./pages/LogoDemo"));
-const DataMigration = lazy(() => import("./pages/DataMigration"));
+// ── Landing ──
+const Index = lazy(() => import("./pages/landing/Index"));
+const NotFound = lazy(() => import("./pages/landing/NotFound"));
+const About = lazy(() => import("./pages/landing/About"));
+const Contact = lazy(() => import("./pages/landing/Contact"));
+const Privacy = lazy(() => import("./pages/landing/Privacy"));
+const Pricing = lazy(() => import("./pages/landing/Pricing"));
+const SubscriptionTiers = lazy(() => import("./pages/landing/SubscriptionTiers"));
 
-// Customer pages - lazy loaded
-const StockManagement = lazy(() => import("./pages/customer/StockManagement"));
-const Store = lazy(() => import("./pages/customer/Store"));
-const ImageManager = lazy(() => import("./pages/admin/ImageManager"));
+// ── Auth ──
+const Login = lazy(() => import("./pages/auth/Login"));
+const Signup = lazy(() => import("./pages/auth/Signup"));
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
+const AccountLocked = lazy(() => import("./pages/auth/AccountLocked"));
+
+// ── Platform Admin ──
+const PlatformAdminLogin = lazy(() => import("./pages/platform-admin/PlatformAdminLogin"));
+const PlatformAdmin = lazy(() => import("./pages/platform-admin/PlatformAdmin"));
+const AdminChats = lazy(() => import("./pages/platform-admin/Chats"));
+const AdminChat = lazy(() => import("./pages/platform-admin/Chat"));
+const Kernel = lazy(() => import("./pages/Kernel"));
+
+// ── Dashboard (store owner) ──
+const AdminLayout = lazy(() => import("./pages/dashboard/Layout"));
+const AdminDashboard = lazy(() => import("./pages/dashboard/Dashboard"));
+const EnhancedDashboard = lazy(() => import("./pages/dashboard/EnhancedDashboard"));
+const AdminOrders = lazy(() => import("./pages/dashboard/Orders"));
+const AdminCalls = lazy(() => import("./pages/dashboard/Calls"));
+const AdminBotSettings = lazy(() => import("./pages/dashboard/BotSettings"));
+const AdminIntegrations = lazy(() => import("./pages/dashboard/Integrations"));
+const AdminAISettings = lazy(() => import("./pages/dashboard/AISettings"));
+const Profile = lazy(() => import("./pages/dashboard/Profile"));
+const Billing = lazy(() => import("./pages/dashboard/Billing"));
+const ChatPage = lazy(() => import("./pages/dashboard/ChatPage"));
+const CustomerBot = lazy(() => import("./pages/dashboard/CustomerBot"));
+const MarketingAnalytics = lazy(() => import("./pages/dashboard/MarketingAnalytics"));
+const PixelSettings = lazy(() => import("./pages/dashboard/PixelSettings"));
+const LogoDemo = lazy(() => import("./pages/dashboard/LogoDemo"));
+const DataMigration = lazy(() => import("./pages/dashboard/DataMigration"));
+const StockManagement = lazy(() => import("./pages/dashboard/StockManagement"));
+const Store = lazy(() => import("./pages/dashboard/Store"));
+const ImageManager = lazy(() => import("./pages/dashboard/ImageManager"));
+const OrderTracking = lazy(() => import("./pages/dashboard/OrderTracking"));
+const StaffManagement = lazy(() => import("./pages/dashboard/StaffManagement"));
+
+// ── Dashboard sub-pages ──
+const AddOrder = lazy(() => import("./pages/dashboard/orders/AddOrder"));
+const ChatOrders = lazy(() => import("./pages/dashboard/orders/ChatOrders"));
+const DeliveryCompanies = lazy(() => import("./pages/dashboard/delivery/DeliveryCompanies"));
+const DeliveryPricing = lazy(() => import("./pages/dashboard/delivery/DeliveryPricing"));
+
+// ── Storefront ──
 const Storefront = lazy(() => import("./pages/Storefront"));
-const MyStore = lazy(() => import("./pages/MyStore"));
-const MyStoreIndex = lazy(() => import("./pages/my-store/Index"));
-const MyStoreTemplateEditor = lazy(() => import("./pages/my-store/TemplateEditor"));
-const MyStoreStorefront = lazy(() => import("./pages/my-store/StorefrontPreview"));
 const StoreLayout = lazy(() => import("./pages/StoreLayout"));
-const GoldTemplateEditor = lazy(() => import("./pages/GoldTemplateEditor"));
 const BuildPage = lazy(() => import("./pages/storefront/BuildPage"));
-const StaffManagement = lazy(() => import("./pages/seller/StaffManagement"));
-const StaffLogin = lazy(() => import("./pages/StaffLogin"));
-const StaffDashboard = lazy(() => import("./pages/StaffDashboard"));
-const StaffOrders = lazy(() => import("./pages/StaffOrders"));
 const ProductDetail = lazy(() => import("./pages/storefront/ProductDetail"));
 const ProductCheckout = lazy(() => import("./pages/storefront/ProductCheckout"));
 const StorefrontCheckout = lazy(() => import("./pages/storefront/Checkout"));
 const OrderConfirmation = lazy(() => import("./pages/storefront/OrderConfirmation"));
-const AccountLocked = lazy(() => import("./pages/AccountLocked"));
-const Billing = lazy(() => import("./pages/admin/Billing"));
-const BillingSuccess = lazy(() => import("./pages/BillingSuccess"));
-const BillingCancelled = lazy(() => import("./pages/BillingCancelled"));
 
-// Affiliate pages - lazy loaded
+// ── My Store ──
+const MyStore = lazy(() => import("./pages/MyStore"));
+const MyStoreIndex = lazy(() => import("./pages/my-store/Index"));
+const MyStoreTemplateEditor = lazy(() => import("./pages/my-store/TemplateEditor"));
+const MyStoreStorefront = lazy(() => import("./pages/my-store/StorefrontPreview"));
+const GoldTemplateEditor = lazy(() => import("./pages/GoldTemplateEditor"));
+
+// ── Staff ──
+const StaffLogin = lazy(() => import("./pages/staff/Login"));
+const StaffDashboard = lazy(() => import("./pages/staff/Dashboard"));
+const StaffOrders = lazy(() => import("./pages/staff/Orders"));
+
+// ── Affiliate ──
 const AffiliateLogin = lazy(() => import("./pages/affiliate/AffiliateLogin"));
 const AffiliateDashboard = lazy(() => import("./pages/affiliate/AffiliateDashboard"));
 
-// Orders submenu pages - lazy loaded
-const AddOrder = lazy(() => import("./pages/admin/orders/AddOrder"));
-const ChatOrders = lazy(() => import("./pages/admin/orders/ChatOrders"));
-const OrderTracking = lazy(() => import("./pages/admin/OrderTracking"));
-
-// Delivery submenu pages - lazy loaded
-const DeliveryCompanies = lazy(() => import("./pages/admin/delivery/DeliveryCompanies"));
-const DeliveryPricing = lazy(() => import("./pages/admin/delivery/DeliveryPricing"));
-
-// Subscription pages - lazy loaded
-const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
+// ── Billing ──
+const BillingSuccess = lazy(() => import("./pages/billing/Success"));
+const BillingCancelled = lazy(() => import("./pages/billing/Cancelled"));
+const RenewSubscription = lazy(() => import("./pages/billing/RenewSubscription"));
 import SubscriptionPageLock from "./components/SubscriptionPageLock";
 
 import { ThemeProvider } from "./contexts/ThemeContext";
