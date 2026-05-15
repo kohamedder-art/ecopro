@@ -1,36 +1,19 @@
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import {
-  MkrAiBrain, MkrAiShield, MkrAiStore,
-  MkrAiFile, MkrAiDollar, MkrAiImage, MkrAiScan,
-  MkrAiChart, MkrAiBox, MkrAiClipboard, MkrAiAlert,
-  MkrAiTrendDown, MkrAiReply, MkrAiBroadcast, MkrAiRadar,
-  MkrAiRefresh, MkrAiPlus, MkrAiPencil, MkrAiTrash,
-  MkrAiPalette, MkrAiBot, MkrAiZap,
-  MkrAiSave, MkrAiSpinner, MkrAiCheck, MkrAiX,
-  MkrAiMsg, MkrAiSend, MkrAiInsta, MkrAiPhone,
-  MkrAiSparkle, MkrAiInfo,
-} from "@/components/icons/AIIcons";
+import { Bot, MessageCircle, Smartphone, Globe, Camera, Shield, Pen, FileText, Send, BarChart3, RefreshCw, Plus, Trash2, Pencil, Palette, Brain, Sparkles, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface AISettings {
   ai_chat_enabled: boolean;
-  guardian_enabled: boolean;
   storefront_assistant: boolean;
+  guardian_enabled: boolean;
   auto_descriptions: boolean;
-  auto_pricing: boolean;
   auto_alt_text: boolean;
-  image_analysis: boolean;
-  analytics_narration: boolean;
-  inventory_forecast: boolean;
-  order_suggestions: boolean;
-  order_priority: boolean;
-  churn_warning: boolean;
-  reply_suggestions: boolean;
   broadcast_composer: boolean;
-  omni_intelligence: boolean;
+  reply_suggestions: boolean;
   action_order_status: boolean;
   action_create_product: boolean;
   action_edit_product: boolean;
@@ -50,25 +33,17 @@ interface QuotaSummary {
   ownerLimit: number;
   customerUsed: number;
   customerLimit: number;
-  periodStart: Date;
+  periodStart: string;
 }
 
 const DEFAULT: AISettings = {
   ai_chat_enabled: true,
-  guardian_enabled: true,
   storefront_assistant: true,
+  guardian_enabled: true,
   auto_descriptions: false,
-  auto_pricing: false,
   auto_alt_text: false,
-  image_analysis: true,
-  analytics_narration: true,
-  inventory_forecast: true,
-  order_suggestions: true,
-  order_priority: true,
-  churn_warning: true,
-  reply_suggestions: true,
   broadcast_composer: true,
-  omni_intelligence: true,
+  reply_suggestions: true,
   action_order_status: true,
   action_create_product: true,
   action_edit_product: true,
@@ -83,644 +58,300 @@ const DEFAULT: AISettings = {
   ai_instructions: '',
 };
 
-interface ToggleItem {
+interface PlatformToggle {
   key: keyof AISettings;
   icon: React.ReactNode;
-  titleAr: string;
-  titleEn: string;
-  descAr: string;
-  descEn: string;
-}
-
-interface Category {
-  id: string;
-  titleAr: string;
-  titleEn: string;
-  color: string;
-  items: ToggleItem[];
-}
-
-const CATEGORIES: Category[] = [
-  {
-    id: "core",
-    titleAr: "الأساسيات",
-    titleEn: "Core",
-    color: "violet",
-    items: [
-      {
-        key: "ai_chat_enabled",
-        icon: <MkrAiBrain className="h-[13px] w-[13px]" />,
-        titleAr: "مساعد الذكاء الاصطناعي",
-        titleEn: "AI Chat Assistant",
-        descAr: "فقاعة المساعد الذكي في لوحة التحكم",
-        descEn: "Smart assistant bubble in your dashboard",
-      },
-      {
-        key: "guardian_enabled",
-        icon: <MkrAiShield className="h-[13px] w-[13px]" />,
-        titleAr: "حارس المتجر",
-        titleEn: "Store Guardian",
-        descAr: "تنبيهات تلقائية: طلبات معلقة، مخزون منخفض",
-        descEn: "Auto-alerts for stale orders, low stock",
-      },
-      {
-        key: "storefront_assistant",
-        icon: <MkrAiStore className="h-[13px] w-[13px]" />,
-        titleAr: "مساعد الزبائن",
-        titleEn: "Storefront Assistant",
-        descAr: "يردّ على أسئلة الزبائن حول المنتجات",
-        descEn: "Answers customer product questions",
-      },
-    ],
-  },
-  {
-    id: "product",
-    titleAr: "أتمتة المنتجات",
-    titleEn: "Product Automation",
-    color: "blue",
-    items: [
-      {
-        key: "auto_descriptions",
-        icon: <MkrAiFile className="h-[13px] w-[13px]" />,
-        titleAr: "وصف المنتجات تلقائياً",
-        titleEn: "Auto Descriptions",
-        descAr: "الذكاء الاصطناعي يكتب الوصف عند إضافة منتج",
-        descEn: "AI writes descriptions for new products",
-      },
-      {
-        key: "auto_pricing",
-        icon: <MkrAiDollar className="h-[13px] w-[13px]" />,
-        titleAr: "اقتراح الأسعار",
-        titleEn: "Price Suggestions",
-        descAr: "اقتراحات تسعير بناءً على السوق",
-        descEn: "Market-based pricing suggestions",
-      },
-      {
-        key: "auto_alt_text",
-        icon: <MkrAiImage className="h-[13px] w-[13px]" />,
-        titleAr: "وصف الصور تلقائياً",
-        titleEn: "Auto Alt Text",
-        descAr: "نصوص بديلة للصور لتحسين SEO",
-        descEn: "Image alt text for SEO",
-      },
-      {
-        key: "image_analysis",
-        icon: <MkrAiScan className="h-[13px] w-[13px]" />,
-        titleAr: "تحليل صور المنتجات",
-        titleEn: "Image Analysis",
-        descAr: "الذكاء الاصطناعي يحلل صور المنتجات",
-        descEn: "AI analyzes product photos",
-      },
-    ],
-  },
-  {
-    id: "analytics",
-    titleAr: "التحليلات والطلبات",
-    titleEn: "Analytics & Orders",
-    color: "emerald",
-    items: [
-      {
-        key: "analytics_narration",
-        icon: <MkrAiChart className="h-[13px] w-[13px]" />,
-        titleAr: "تحليل الأداء",
-        titleEn: "Analytics Narration",
-        descAr: "ملخصات أسبوعية عن أداء المتجر",
-        descEn: "Weekly AI performance summaries",
-      },
-      {
-        key: "inventory_forecast",
-        icon: <MkrAiBox className="h-[13px] w-[13px]" />,
-        titleAr: "توقعات المخزون",
-        titleEn: "Inventory Forecast",
-        descAr: "تنبؤات بالمنتجات التي تنفد قريباً",
-        descEn: "Restock predictions before sellout",
-      },
-      {
-        key: "order_suggestions",
-        icon: <MkrAiClipboard className="h-[13px] w-[13px]" />,
-        titleAr: "اقتراحات الطلبات",
-        titleEn: "Order Suggestions",
-        descAr: "الخطوة التالية لكل طلب",
-        descEn: "Next-action hints per order",
-      },
-      {
-        key: "order_priority",
-        icon: <MkrAiAlert className="h-[13px] w-[13px]" />,
-        titleAr: "أولوية الطلبات",
-        titleEn: "Order Priority",
-        descAr: "يحدد الطلبات العاجلة والمتأخرة",
-        descEn: "Flags urgent & overdue orders",
-      },
-      {
-        key: "churn_warning",
-        icon: <MkrAiTrendDown className="h-[13px] w-[13px]" />,
-        titleAr: "تحذير انخفاض المبيعات",
-        titleEn: "Churn Warning",
-        descAr: "يكشف انخفاض الإيرادات ويقترح حلول",
-        descEn: "Detects revenue decline & suggests fixes",
-      },
-    ],
-  },
-  {
-    id: "messaging",
-    titleAr: "الرسائل والتسويق",
-    titleEn: "Messaging & Marketing",
-    color: "amber",
-    items: [
-      {
-        key: "reply_suggestions",
-        icon: <MkrAiReply className="h-[13px] w-[13px]" />,
-        titleAr: "اقتراحات الردود",
-        titleEn: "Reply Suggestions",
-        descAr: "ردود جاهزة للرسائل على واتساب",
-        descEn: "Ready-made WhatsApp reply templates",
-      },
-      {
-        key: "broadcast_composer",
-        icon: <MkrAiBroadcast className="h-[13px] w-[13px]" />,
-        titleAr: "كاتب الحملات",
-        titleEn: "Broadcast Composer",
-        descAr: "صياغة رسائل حملات واتساب بالذكاء الاصطناعي",
-        descEn: "AI-drafted WhatsApp campaign messages",
-      },
-      {
-        key: "omni_intelligence",
-        icon: <MkrAiRadar className="h-[13px] w-[13px]" />,
-        titleAr: "تحليل السلوك العميق",
-        titleEn: "Omni Intelligence",
-        descAr: "تحليل عميق: عقبات الشراء، أداء الإعلانات",
-        descEn: "Deep analysis: friction clusters, ad performance",
-      },
-    ],
-  },
-  {
-    id: "actions",
-    titleAr: "صلاحيات الذكاء الاصطناعي",
-    titleEn: "AI Actions",
-    color: "rose",
-    items: [
-      {
-        key: "action_order_status",
-        icon: <MkrAiRefresh className="h-[13px] w-[13px]" />,
-        titleAr: "تعديل حالة الطلبات",
-        titleEn: "Update Order Status",
-        descAr: "السماح للذكاء الاصطناعي بتغيير حالة الطلبات",
-        descEn: "Allow AI to change order statuses",
-      },
-      {
-        key: "action_create_product",
-        icon: <MkrAiPlus className="h-[13px] w-[13px]" />,
-        titleAr: "إنشاء منتجات",
-        titleEn: "Create Products",
-        descAr: "السماح للذكاء الاصطناعي بإضافة منتجات جديدة",
-        descEn: "Allow AI to add new products",
-      },
-      {
-        key: "action_edit_product",
-        icon: <MkrAiPencil className="h-[13px] w-[13px]" />,
-        titleAr: "تعديل المنتجات",
-        titleEn: "Edit Products",
-        descAr: "تعديل الأسعار، المخزون، الوصف، العناوين",
-        descEn: "Edit prices, stock, descriptions, titles",
-      },
-      {
-        key: "action_delete_product",
-        icon: <MkrAiTrash className="h-[13px] w-[13px]" />,
-        titleAr: "حذف المنتجات",
-        titleEn: "Remove Products",
-        descAr: "السماح للذكاء الاصطناعي بإلغاء تفعيل المنتجات",
-        descEn: "Allow AI to deactivate products",
-      },
-      {
-        key: "action_store_design",
-        icon: <MkrAiPalette className="h-[13px] w-[13px]" />,
-        titleAr: "تعديل تصميم المتجر",
-        titleEn: "Edit Store Design",
-        descAr: "تغيير الألوان، الخطوط، النصوص، التصميم",
-        descEn: "Change colors, fonts, text, layout",
-      },
-      {
-        key: "action_bot_control",
-        icon: <MkrAiBot className="h-[13px] w-[13px]" />,
-        titleAr: "التحكم بالبوت",
-        titleEn: "Bot Control",
-        descAr: "تشغيل/إيقاف البوت وتعديل قوالب الرسائل",
-        descEn: "Toggle bot & edit message templates",
-      },
-    ],
-  },
-];
-
-const TAB_COLORS: Record<string, { badge: string; border: string; dot: string }> = {
-  violet: { badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300", border: "border-violet-200 dark:border-violet-800", dot: "bg-violet-500" },
-  blue:   { badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800", dot: "bg-blue-500" },
-  emerald: { badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300", border: "border-emerald-200 dark:border-emerald-800", dot: "bg-emerald-500" },
-  amber:  { badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", border: "border-amber-200 dark:border-amber-800", dot: "bg-amber-500" },
-  rose:   { badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300", border: "border-rose-200 dark:border-rose-800", dot: "bg-rose-500" },
-};
-
-const TAB_ICONS: Record<string, React.ReactNode> = {
-  core: <MkrAiBrain className="h-[13px] w-[13px]" />,
-  product: <MkrAiBox className="h-[13px] w-[13px]" />,
-  analytics: <MkrAiChart className="h-[13px] w-[13px]" />,
-  messaging: <MkrAiBroadcast className="h-[13px] w-[13px]" />,
-  actions: <MkrAiZap className="h-[13px] w-[13px]" />,
-};
-
-const PLATFORM_TOGGLES = [
-  { key: 'ai_reply_telegram' as keyof AISettings, icon: <MkrAiSend className="h-[13px] w-[13px]" />, label: 'Telegram', labelAr: 'تيليغرام', color: 'text-sky-500' },
-  { key: 'ai_reply_messenger' as keyof AISettings, icon: <MkrAiMsg className="h-[13px] w-[13px]" />, label: 'Messenger', labelAr: 'ماسنجر', color: 'text-blue-500' },
-  { key: 'ai_reply_instagram' as keyof AISettings, icon: <MkrAiInsta className="h-[13px] w-[13px]" />, label: 'Instagram', labelAr: 'إنستغرام', color: 'text-pink-500' },
-  { key: 'ai_reply_whatsapp' as keyof AISettings, icon: <MkrAiPhone className="h-[13px] w-[13px]" />, label: 'WhatsApp', labelAr: 'واتساب', color: 'text-emerald-500' },
-  { key: 'ai_reply_viber' as keyof AISettings, icon: <MkrAiMsg className="h-[13px] w-[13px]" />, label: 'Viber', labelAr: 'فايبر', color: 'text-purple-500' },
-];
-
-// Helper to format tokens for display (e.g., 1M, 500K)
-function formatTokens(tokens: number): string {
-  if (tokens >= 1000000) {
-    return `${(tokens / 1000000).toFixed(1)}M`;
-  }
-  if (tokens >= 1000) {
-    return `${(tokens / 1000).toFixed(0)}K`;
-  }
-  return tokens.toString();
+  label: string;
+  desc: string;
 }
 
 export default function AISettingsPage() {
-  const { locale } = useTranslation();
-  const isRTL = locale === "ar";
+  const { t, locale } = useTranslation();
   const { toast } = useToast();
+  const isRTL = locale === 'ar';
   const [settings, setSettings] = useState<AISettings>(DEFAULT);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const [activeTab, setActiveTab] = useState("core");
   const [quota, setQuota] = useState<QuotaSummary | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'auto-reply' | 'permissions' | 'product' | 'advanced'>('auto-reply');
 
   useEffect(() => {
-    fetch("/api/ai-settings", { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data && !data.error) setSettings(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-
-    fetch("/api/ai/quota", { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data && !data.error) setQuota(data);
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch('/api/ai-settings', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/ai/quota-summary', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    ]).then(([data, quotaData]) => {
+      if (data && !data.error) setSettings({ ...DEFAULT, ...data });
+      if (quotaData) setQuota(quotaData);
+    }).finally(() => setLoading(false));
   }, []);
 
   const toggle = (key: keyof AISettings) => {
-    setSettings((s) => ({ ...s, [key]: !s[key] }));
-    setDirty(true);
-  };
-
-  const toggleAllInCategory = (cat: Category, value: boolean) => {
-    const updates: Partial<AISettings> = {};
-    cat.items.forEach((item) => { (updates as any)[item.key] = value; });
-    setSettings((s) => ({ ...s, ...updates }));
-    setDirty(true);
+    if (key === 'ai_instructions') return;
+    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const save = async () => {
     setSaving(true);
     try {
-      const res = await fetch("/api/ai-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+      const res = await fetch('/api/ai-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(settings),
       });
-      if (!res.ok) throw new Error();
-      setDirty(false);
-      toast({
-        title: isRTL ? "تم الحفظ" : "Saved",
-        description: isRTL ? "تم تحديث إعدادات الذكاء الاصطناعي" : "AI settings updated successfully",
-      });
+      if (res.ok) {
+        toast({ title: isRTL ? 'تم الحفظ' : 'Saved', description: isRTL ? 'تم تحديث الإعدادات' : 'Settings updated' });
+      } else {
+        throw new Error('Failed');
+      }
     } catch {
-      toast({
-        title: isRTL ? "خطأ" : "Error",
-        description: isRTL ? "فشل حفظ الإعدادات" : "Failed to save settings",
-        variant: "destructive",
-      });
+      toast({ title: isRTL ? 'خطأ' : 'Error', description: isRTL ? 'فشل الحفظ' : 'Failed to save', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const platformKeys = new Set(["ai_reply_telegram", "ai_reply_messenger", "ai_reply_instagram", "ai_reply_whatsapp", "ai_reply_viber"]);
-  const enabledCount = Object.entries(settings).filter(([k, v]) => k !== "ai_instructions" && !platformKeys.has(k) && v === true).length;
-  const totalCount = Object.keys(settings).filter((k) => k !== "ai_instructions" && !platformKeys.has(k)).length;
-  const progressPct = totalCount > 0 ? Math.round((enabledCount / totalCount) * 100) : 0;
+  const updateInstructions = (val: string) => setSettings(prev => ({ ...prev, ai_instructions: val }));
+
+  const TabButton = ({ id, label, icon }: { id: typeof activeTab; label: string; icon: React.ReactNode }) => (
+    <button
+      onClick={() => setActiveTab(id)}
+      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+        activeTab === id
+          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
+          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+
+  const ToggleRow = ({ checked, onChange, label, desc, icon }: { checked: boolean; onChange: () => void; label: string; desc: string; icon: React.ReactNode }) => (
+    <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 hover:border-slate-200 dark:hover:border-slate-600 transition-all">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-200/50 dark:border-purple-800/30 flex items-center justify-center flex-shrink-0">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{label}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{desc}</p>
+        </div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} className="flex-shrink-0 ml-3" />
+    </div>
+  );
+
+  const platforms: PlatformToggle[] = [
+    { key: 'ai_reply_messenger', icon: <MessageCircle className="w-4 h-4 text-blue-600" />, label: 'Facebook Messenger', desc: 'الرد على رسائل الفيسبوك' },
+    { key: 'ai_reply_whatsapp', icon: <Smartphone className="w-4 h-4 text-green-600" />, label: 'WhatsApp', desc: 'الرد على رسائل واتساب' },
+    { key: 'ai_reply_telegram', icon: <Send className="w-4 h-4 text-blue-500" />, label: 'Telegram', desc: 'الرد على رسائل تيليجرام' },
+    { key: 'ai_reply_instagram', icon: <Camera className="w-4 h-4 text-pink-600" />, label: 'Instagram', desc: 'الرد على رسائل إنستغرام' },
+    { key: 'ai_reply_viber', icon: <Globe className="w-4 h-4 text-purple-600" />, label: 'Viber', desc: 'الرد على رسائل Viber' },
+  ];
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-[9px] py-32">
-        <MkrAiBrain className="h-10 w-10 text-primary" />
-        <MkrAiSpinner className="h-5 w-5 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          {isRTL ? "جارٍ التحميل..." : "Loading AI settings..."}
-        </p>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
       </div>
     );
   }
 
-  const activeCat = CATEGORIES.find((c) => c.id === activeTab)!;
-  const colors = TAB_COLORS[activeCat.color];
-  const enabledInActive = activeCat.items.filter((i) => settings[i.key]).length;
-  const allEnabled = enabledInActive === activeCat.items.length;
-
-  const FeatureCard = ({ item, isOn }: { item: ToggleItem; isOn: boolean }) => (
-    <div className="relative">
-      <button
-        onClick={() => toggle(item.key)}
-        className={`w-full text-start rounded-xl border p-[11px] transition-all ${
-          isOn
-            ? `bg-gradient-to-br from-card to-primary/5 ${colors.border} shadow-sm`
-            : "bg-card border-border hover:border-muted-foreground/30 hover:shadow-sm"
-        }`}
-      >
-        <div className="flex items-start justify-between gap-[9px]">
-          <div className="flex items-start gap-[9px] min-w-0">
-            <div className={`flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-lg transition-all ${
-              isOn
-                ? `${colors.badge} shadow-sm`
-                : "bg-muted text-muted-foreground"
-            }`}>
-              {item.icon}
-            </div>
-            <div className="min-w-0 pt-[3px]">
-              <p className="text-xs font-bold leading-tight">
-                {isRTL ? item.titleAr : item.titleEn}
-              </p>
-              <p className="text-[11px] text-muted-foreground leading-snug mt-[3px]">
-                {isRTL ? item.descAr : item.descEn}
-              </p>
-            </div>
-          </div>
-          <div className="shrink-0 pt-[3px]">
-            <Switch checked={isOn} onCheckedChange={() => toggle(item.key)} onClick={(e) => e.stopPropagation()} />
-          </div>
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 p-4 md:p-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Brain className="w-6 h-6 text-purple-500" />
+            {isRTL ? 'الذكاء الاصطناعي' : 'AI Settings'}
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {isRTL ? 'تحكم في إعدادات الذكاء الاصطناعي لمتجرك' : 'Control your store\'s AI settings'}
+          </p>
         </div>
-        {isOn && (
-          <div className="mt-[7px] flex items-center gap-[5px] text-[10px] font-bold uppercase tracking-wider">
-            <span className={`h-[5px] w-[5px] rounded-full animate-pulse ${colors.dot}`} />
-            <span className={colors.badge.split(' ')[1]}>{isRTL ? "مفعّل" : "Active"}</span>
-          </div>
-        )}
-      </button>
+        <Button onClick={save} disabled={saving} className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-500/25">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <CheckCircle2 className="w-4 h-4 ml-2" />}
+          {isRTL ? 'حفظ' : 'Save'}
+        </Button>
+      </div>
 
-      {item.key === "storefront_assistant" && isOn && (
-        <div className="space-y-[7px] mt-[7px]">
-          <div className={`rounded-xl border p-[11px] ${colors.border} bg-card`}>
-            <div className="flex items-center gap-[7px] mb-[7px]">
-              <MkrAiMsg className="h-[13px] w-[13px] text-blue-500" />
-              <p className="text-xs font-bold">{isRTL ? "منصات الرد التلقائي" : "Auto-Reply Platforms"}</p>
+      {/* Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        <TabButton id="auto-reply" label={isRTL ? 'الرد التلقائي' : 'Auto-Reply'} icon={<MessageCircle className="w-4 h-4" />} />
+        <TabButton id="permissions" label={isRTL ? 'الصلاحيات' : 'Permissions'} icon={<Shield className="w-4 h-4" />} />
+        <TabButton id="product" label={isRTL ? 'المنتجات' : 'Products'} icon={<FileText className="w-4 h-4" />} />
+        <TabButton id="advanced" label={isRTL ? 'خيارات متقدمة' : 'Advanced'} icon={<Sparkles className="w-4 h-4" />} />
+      </div>
+
+      {/* ── AUTO-REPLY TAB ── */}
+      {activeTab === 'auto-reply' && (
+        <div className="space-y-4">
+          {/* Master toggle */}
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-500/5 to-indigo-500/5 border border-purple-200/50 dark:border-purple-800/30">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-purple-500" />
+                  {isRTL ? 'الرد التلقائي على العملاء' : 'Customer Auto-Reply'}
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {isRTL ? 'الذكاء الاصطناعي يرد تلقائياً على رسائل العملاء في جميع المنصات' : 'AI automatically replies to customers across all platforms'}
+                </p>
+              </div>
+              <Switch checked={settings.storefront_assistant} onCheckedChange={() => toggle('storefront_assistant')} />
             </div>
-            <p className="text-[11px] text-muted-foreground mb-[7px]">
-              {isRTL ? "اختر المنصات التي يرد عليها الذكاء الاصطناعي تلقائياً" : "Choose which platforms AI auto-replies on"}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[7px]">
-              {PLATFORM_TOGGLES.map(p => (
-                <div
-                  key={p.key}
-                  className={`flex items-center justify-between gap-[7px] px-[9px] py-[9px] rounded-lg border transition-colors cursor-pointer ${
-                    settings[p.key] ? 'bg-card border-border' : 'bg-muted/30 border-border/50'
-                  }`}
-                  onClick={() => toggle(p.key)}
-                >
-                  <div className="flex items-center gap-[7px]">
-                    <span className={p.color}>{p.icon}</span>
-                    <span className="text-xs font-semibold">{isRTL ? p.labelAr : p.label}</span>
+            {/* Per-platform toggles */}
+            <div className={`grid ${settings.storefront_assistant ? 'grid-cols-1 sm:grid-cols-2 gap-2' : 'hidden'}`}>
+              {platforms.map(p => (
+                <div key={p.key} className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700/50">
+                  <div className="flex items-center gap-2.5">
+                    {p.icon}
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{p.label}</span>
                   </div>
-                  <Switch checked={settings[p.key] as boolean} onCheckedChange={() => toggle(p.key)} onClick={(e) => e.stopPropagation()} />
+                  <Switch checked={settings[p.key] as boolean} onCheckedChange={() => toggle(p.key)} />
                 </div>
               ))}
             </div>
           </div>
+
+          {/* Instructions */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2">
+              {isRTL ? 'تعليمات الذكاء الاصطناعي' : 'AI Instructions'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              {isRTL ? 'أخبر الذكاء الاصطناعي كيف يتعامل مع عملائك — مثلاً: "قل للزبون أن التوصيل متاح لجميع الولايات"' : 'Tell the AI how to treat your customers — e.g., "Inform customers delivery is available nationwide"'}
+            </p>
+            <Textarea
+              value={settings.ai_instructions}
+              onChange={e => updateInstructions(e.target.value)}
+              placeholder={isRTL ? 'اكتب تعليماتك هنا...' : 'Write your instructions here...'}
+              className="min-h-[100px] text-sm"
+            />
+          </div>
+
+          {/* Guardian */}
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-200/50 dark:border-amber-800/30 flex items-center justify-center">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{isRTL ? 'حارس المتجر' : 'Store Guardian'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{isRTL ? 'تنبيهات تلقائية عن الطلبات المعلقة والمخزون المنخفض' : 'Automatic alerts for stale orders and low stock'}</p>
+              </div>
+            </div>
+            <Switch checked={settings.guardian_enabled} onCheckedChange={() => toggle('guardian_enabled')} />
+          </div>
+
+          {/* AI Chat (store owner) */}
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/10 to-blue-500/10 border border-indigo-200/50 dark:border-indigo-800/30 flex items-center justify-center">
+                <Brain className="w-4 h-4 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{isRTL ? 'المساعد الذكي (لوحة التحكم)' : 'AI Assistant (Dashboard)'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{isRTL ? 'فقاعة المساعد الذكي في لوحة التحكم للاستشارات' : 'Floating AI chat bubble in your dashboard for advice'}</p>
+              </div>
+            </div>
+            <Switch checked={settings.ai_chat_enabled} onCheckedChange={() => toggle('ai_chat_enabled')} />
+          </div>
         </div>
       )}
-    </div>
-  );
 
-  return (
-    <div className="min-h-screen pb-24" dir={isRTL ? "rtl" : "ltr"}>
-      <div className="max-w-5xl mx-auto px-4 pt-4 space-y-[9px]">
-        {/* ── Hero header ── */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-[18px] shadow-sm">
-          <div className="absolute -top-8 -right-8 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-violet-500/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="relative flex items-center justify-between gap-4">
+      {/* ── PERMISSIONS TAB ── */}
+      {activeTab === 'permissions' && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {isRTL ? 'الصلاحيات التي يملكها الذكاء الاصطناعي لتنفيذ الإجراءات في متجرك' : 'Permissions the AI has to execute actions in your store'}
+          </p>
+          <div className="grid gap-3">
+            <ToggleRow checked={settings.action_order_status} onChange={() => toggle('action_order_status')} label={isRTL ? 'تعديل حالة الطلبات' : 'Change Order Status'} desc={isRTL ? 'تحديث حالة الطلب (مؤكد، ملغي، تم التوصيل...)' : 'Update order status (confirmed, cancelled, delivered...)'} icon={<RefreshCw className="w-4 h-4 text-rose-500" />} />
+            <ToggleRow checked={settings.action_create_product} onChange={() => toggle('action_create_product')} label={isRTL ? 'إضافة منتجات جديدة' : 'Create Products'} desc={isRTL ? 'إضافة منتجات جديدة للمتجر' : 'Add new products to your store'} icon={<Plus className="w-4 h-4 text-emerald-500" />} />
+            <ToggleRow checked={settings.action_edit_product} onChange={() => toggle('action_edit_product')} label={isRTL ? 'تعديل المنتجات' : 'Edit Products'} desc={isRTL ? 'تعديل الأسعار، المخزون، الوصف والعناوين' : 'Edit prices, stock, descriptions, and titles'} icon={<Pencil className="w-4 h-4 text-blue-500" />} />
+            <ToggleRow checked={settings.action_delete_product} onChange={() => toggle('action_delete_product')} label={isRTL ? 'حذف المنتجات' : 'Delete Products'} desc={isRTL ? 'إلغاء تفعيل المنتجات من المتجر' : 'Deactivate products from your store'} icon={<Trash2 className="w-4 h-4 text-red-500" />} />
+            <ToggleRow checked={settings.action_store_design} onChange={() => toggle('action_store_design')} label={isRTL ? 'تعديل التصميم' : 'Edit Store Design'} desc={isRTL ? 'تغيير الألوان، الخطوط، والنصوص في المتجر' : 'Change colors, fonts, and store text'} icon={<Palette className="w-4 h-4 text-purple-500" />} />
+            <ToggleRow checked={settings.action_bot_control} onChange={() => toggle('action_bot_control')} label={isRTL ? 'التحكم في البوت' : 'Control Bot'} desc={isRTL ? 'تشغيل وإيقاف البوت عبر الأوامر الصوتية' : 'Enable/disable the bot via voice commands'} icon={<Bot className="w-4 h-4 text-amber-500" />} />
+          </div>
+        </div>
+      )}
+
+      {/* ── PRODUCT TAB ── */}
+      {activeTab === 'product' && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {isRTL ? 'أتمتة كتابة محتوى المنتجات باستخدام الذكاء الاصطناعي' : 'Automate product content writing with AI'}
+          </p>
+          <ToggleRow checked={settings.auto_descriptions} onChange={() => toggle('auto_descriptions')} label={isRTL ? 'وصف المنتجات تلقائياً' : 'Auto-Generate Descriptions'} desc={isRTL ? 'الذكاء الاصطناعي يكتب وصفاً لكل منتج جديد تضيفه' : 'AI writes a description for every new product you add'} icon={<FileText className="w-4 h-4 text-indigo-500" />} />
+          <ToggleRow checked={settings.auto_alt_text} onChange={() => toggle('auto_alt_text')} label={isRTL ? 'وصف الصور تلقائياً' : 'Auto-Generate Image Alt Text'} desc={isRTL ? 'نصوص بديلة للصور لتحسين ظهور متجرك في محركات البحث' : 'Alt text for images to improve your store\'s SEO'} icon={<Camera className="w-4 h-4 text-sky-500" />} />
+        </div>
+      )}
+
+      {/* ── ADVANCED TAB ── */}
+      {activeTab === 'advanced' && (
+        <div className="space-y-6">
+          {/* Broadcast Composer */}
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
             <div className="flex items-center gap-3">
-              <div className="relative flex h-10 w-10 items-center justify-center shrink-0">
-                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted/40" />
-                  <circle cx="18" cy="18" r="15" fill="none" stroke="url(#pg)" strokeWidth="2.5"
-                    strokeDasharray={`${progressPct * 0.942} 94.2`} strokeLinecap="round" />
-                  <defs>
-                    <linearGradient id="pg" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="var(--primary)" />
-                      <stop offset="100%" stopColor="var(--accent, #8b5cf6)" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <MkrAiBrain className="w-4 h-4 text-primary relative z-10" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 border border-orange-200/50 dark:border-orange-800/30 flex items-center justify-center">
+                <Send className="w-4 h-4 text-orange-500" />
               </div>
               <div>
-                <h1 className="text-base font-extrabold tracking-tight text-foreground">
-                  {isRTL ? "إعدادات الذكاء الاصطناعي" : "AI Autopilot"}
-                </h1>
-                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
-                  {isRTL
-                    ? `${enabledCount} من ${totalCount} ميزة مفعّلة — ${progressPct}%`
-                    : `${enabledCount} of ${totalCount} features active — ${progressPct}%`}
-                </p>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{isRTL ? 'كاتب الحملات التسويقية' : 'Broadcast Composer'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{isRTL ? 'صياغة رسائل الحملات التسويقية بالذكاء الاصطناعي' : 'AI composes marketing campaign messages'}</p>
               </div>
             </div>
-            <button
-              onClick={save}
-              disabled={saving || !dirty}
-              className="flex shrink-0 items-center gap-[5px] h-9 px-4 rounded-xl text-xs font-bold bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-primary/20"
-            >
-              {saving ? <MkrAiSpinner className="h-[11px] w-[11px]" /> : <MkrAiSave className="h-[11px] w-[11px]" />}
-              {isRTL ? "حفظ" : "Save"}
-            </button>
-          </div>
-          <div className="relative mt-3">
-            <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-700" style={{ width: `${progressPct}%` }} />
-            </div>
-          </div>
-        </div>
-
-        {/* ── Quota Usage Card ── */}
-        {quota && (
-          <div className="bg-card border border-border rounded-xl p-[13px] shadow-sm">
-            <div className="flex items-center gap-[7px] mb-[11px]">
-              <MkrAiChart className="h-[13px] w-[13px] text-blue-500" />
-              <h3 className="text-xs font-bold">{isRTL ? "استخدام الذكاء الاصطناعي هذا الشهر" : "AI Usage This Month"}</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-[9px]">
-              <div className="bg-muted/30 rounded-lg p-[11px] border border-border/50">
-                <p className="text-[10px] text-muted-foreground font-medium mb-[5px]">{isRTL ? "استخدامك (المالك)" : "Your Usage (Owner)"}</p>
-                <p className="text-lg font-extrabold text-foreground">{formatTokens(quota.ownerUsed)} <span className="text-[11px] text-muted-foreground font-normal">/ {formatTokens(quota.ownerLimit)}</span></p>
-                <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden mt-[7px]">
-                  <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all" style={{ width: `${(quota.ownerUsed / quota.ownerLimit) * 100}%` }} />
-                </div>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-[11px] border border-border/50">
-                <p className="text-[10px] text-muted-foreground font-medium mb-[5px]">{isRTL ? "استخدام العملاء" : "Customer Usage"}</p>
-                <p className="text-lg font-extrabold text-foreground">{formatTokens(quota.customerUsed)} <span className="text-[11px] text-muted-foreground font-normal">/ {formatTokens(quota.customerLimit)}</span></p>
-                <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden mt-[7px]">
-                  <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all" style={{ width: `${(quota.customerUsed / quota.customerLimit) * 100}%` }} />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Tab bar ── */}
-        <div className="bg-card border border-border rounded-xl p-1 flex overflow-x-auto gap-1 shadow-sm">
-          {CATEGORIES.map((cat) => {
-            const isActive = activeTab === cat.id;
-            const tc = TAB_COLORS[cat.color];
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setActiveTab(cat.id)}
-                className={`flex items-center gap-[5px] text-xs font-bold px-3 py-2 rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
-                  isActive
-                    ? `bg-gradient-to-br from-primary to-accent text-white shadow-md`
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                }`}
-              >
-                {TAB_ICONS[cat.id]}
-                <span>{isRTL ? cat.titleAr : cat.titleEn}</span>
-                <span className={`text-[10px] rounded-full px-[7px] py-[1px] ${isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
-                  {cat.items.filter((i) => settings[i.key]).length}/{cat.items.length}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── Category panel ── */}
-        <div className="rounded-xl border border-border bg-card">
-          <div className="flex items-center justify-between p-[13px] border-b border-border">
-            <div className="flex items-center gap-[9px]">
-              <div className={`flex h-[31px] w-[31px] items-center justify-center rounded-lg ${colors.badge}`}>
-                {TAB_ICONS[activeCat.id]}
-              </div>
-              <div>
-                <h2 className="text-sm font-extrabold">{isRTL ? activeCat.titleAr : activeCat.titleEn}</h2>
-                <p className="text-[11px] text-muted-foreground">
-                  {isRTL ? `${enabledInActive} من ${activeCat.items.length} مفعّل` : `${enabledInActive} of ${activeCat.items.length} enabled`}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-[7px]">
-              {activeCat.id === "actions" && (
-                <div className="flex items-center gap-[5px] text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 rounded-lg px-[9px] py-[3px] font-medium">
-                  <MkrAiInfo className="h-[11px] w-[11px]" />
-                  {isRTL ? "صلاحيات حساسة" : "Sensitive permissions"}
-                </div>
-              )}
-              <button
-                onClick={() => toggleAllInCategory(activeCat, !allEnabled)}
-                className={`flex items-center gap-[5px] text-xs font-bold px-[9px] py-[5px] rounded-lg border transition-colors ${
-                  allEnabled
-                    ? "border-border text-muted-foreground hover:bg-muted/50"
-                    : `${colors.badge} border-transparent`
-                }`}
-              >
-                {allEnabled
-                  ? <><MkrAiX className="h-[11px] w-[11px]" />{isRTL ? "تعطيل الكل" : "Disable all"}</>
-                  : <><MkrAiCheck className="h-[11px] w-[11px]" />{isRTL ? "تفعيل الكل" : "Enable all"}</>
-                }
-              </button>
-            </div>
+            <Switch checked={settings.broadcast_composer} onCheckedChange={() => toggle('broadcast_composer')} />
           </div>
 
-          <div className="p-[13px] grid grid-cols-1 sm:grid-cols-2 gap-[9px]">
-            {activeCat.items.map((item) => {
-              const isOn = settings[item.key] as boolean;
-              return <FeatureCard key={item.key} item={item} isOn={isOn} />;
-            })}
-
-            {activeTab === "core" && settings.storefront_assistant && (
-              <div className={`rounded-xl border p-[13px] ${colors.border} bg-card flex flex-col`}>
-                <div className="flex items-center justify-between mb-[9px]">
-                  <div className="flex items-center gap-[7px]">
-                    <MkrAiSparkle className="h-[13px] w-[13px] text-amber-500" />
-                    <p className="text-xs font-bold">{isRTL ? "تعليمات الذكاء الاصطناعي" : "AI Instructions"}</p>
+          {/* Monthly Usage */}
+          {quota && (
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-500/5 to-slate-600/5 border border-slate-200/50 dark:border-slate-700/50">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-slate-500" />
+                {isRTL ? 'استخدام الشهر الحالي' : 'Monthly Usage'}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">{isRTL ? 'مساعد المتجر' : 'Store Owner AI'}</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">{quota.ownerUsed.toLocaleString()} / {quota.ownerLimit.toLocaleString()}</span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground font-medium">{settings.ai_instructions?.length || 0}/500</span>
+                  <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all" style={{ width: `${Math.min(100, (quota.ownerUsed / quota.ownerLimit) * 100)}%` }} />
+                  </div>
                 </div>
-                <Textarea
-                  value={settings.ai_instructions || ""}
-                  onChange={(e) => {
-                    setSettings((s) => ({ ...s, ai_instructions: e.target.value.slice(0, 500) }));
-                    setDirty(true);
-                  }}
-                  rows={10}
-                  placeholder={isRTL ? "مثال: ركز على بيع المنتجات الجديدة، رحب بالزبائن باسم المتجر، لا تعطي خصومات..." : "E.g. Focus on new products, greet by store name, never offer discounts..."}
-                  className="bg-muted/30 border-border/60 rounded-xl text-xs resize-none flex-1"
-                />
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">{isRTL ? 'الرد على العملاء' : 'Customer Auto-Reply'}</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">{quota.customerUsed.toLocaleString()} / {quota.customerLimit.toLocaleString()}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all" style={{ width: `${Math.min(100, (quota.customerUsed / quota.customerLimit) * 100)}%` }} />
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Bottom tab nav ── */}
-        <div className="rounded-2xl border border-border bg-card p-2 flex overflow-x-auto gap-1.5 shadow-sm">
-          {CATEGORIES.map((cat) => {
-            const en = cat.items.filter((i) => settings[i.key]).length;
-            const isActive = activeTab === cat.id;
-            const tc = TAB_COLORS[cat.color];
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setActiveTab(cat.id)}
-                className={`flex-1 flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-bold transition-all min-w-[60px] ${
-                  isActive
-                    ? 'bg-gradient-to-br from-primary to-accent text-white shadow-md'
-                    : "text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                <span className={isActive ? "opacity-100" : "opacity-50"}>{TAB_ICONS[cat.id]}</span>
-                <span className="hidden sm:block truncate">{isRTL ? cat.titleAr : cat.titleEn}</span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                  isActive ? 'bg-white/20' : 'bg-muted'
-                }`}>{en}/{cat.items.length}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── Unsaved changes bar ── */}
-        {dirty && (
-          <div className="fixed bottom-6 inset-x-4 max-w-md mx-auto z-50">
-            <div className="flex items-center justify-between gap-[9px] bg-foreground text-background rounded-xl px-[13px] py-[11px] border border-border">
-              <div className="flex items-center gap-[7px] text-sm font-medium">
-                <div className="h-[7px] w-[7px] rounded-full bg-amber-400" />
-                {isRTL ? "لديك تغييرات غير محفوظة" : "Unsaved changes"}
-              </div>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="flex items-center gap-[5px] text-xs font-bold bg-primary text-primary-foreground px-[11px] py-[5px] rounded-lg transition-colors disabled:opacity-60"
-              >
-                {saving ? <MkrAiSpinner className="h-[11px] w-[11px]" /> : <MkrAiSave className="h-[11px] w-[11px]" />}
-                {isRTL ? "حفظ" : "Save now"}
-              </button>
             </div>
+          )}
+
+          {/* Storefront Assistant */}
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/10 to-fuchsia-500/10 border border-purple-200/50 dark:border-purple-800/30 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{isRTL ? 'توصيات الردود (Chat)' : 'Reply Suggestions (Chat)'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{isRTL ? 'اقتراحات ردود جاهزة في شاشة المحادثات' : 'Ready-made reply suggestions in the chat screen'}</p>
+              </div>
+            </div>
+            <Switch checked={settings.reply_suggestions} onCheckedChange={() => toggle('reply_suggestions')} />
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
