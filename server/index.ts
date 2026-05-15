@@ -269,6 +269,8 @@ export function createServer(options?: { skipDbInit?: boolean }) {
             scriptSrc: [
               "'self'",
               (req) => `'nonce-${(req as any).cspNonce}'`,
+              'https://connect.facebook.net',
+              'https://unpkg.com',
             ],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'", 'https:'],
