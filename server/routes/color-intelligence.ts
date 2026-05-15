@@ -95,7 +95,7 @@ export const getColorPalette: RequestHandler = async (req, res) => {
     console.error('Error in getColorPalette:', error);
     res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message });
   }
-});
+};
 
 /**
  * GET /api/color-intelligence/palette
