@@ -609,14 +609,25 @@ async function callAI(
     const useModel = attempt === MAX_RETRIES ? AI_FALLBACK_MODEL : selectedModel;
     const url = `${DEEPINFRA_API_BASE}/chat/completions`;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(buildBody(useModel)),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(buildBody(useModel)),
+        signal: AbortSignal.timeout(60000),
+      });
+    } catch (err: any) {
+      console.warn(`[AI] Network error on attempt ${attempt + 1}: ${err?.message || err}`);
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+        continue;
+      }
+      throw new Error(`AI API network error after ${MAX_RETRIES + 1} attempts: ${err?.message || err}`);
+    }
 
     if (response.ok) {
       const data: any = await response.json();

@@ -1436,6 +1436,19 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
     }
 
     console.log(`[Messenger] Found client ${client_id} for page ${pageId}`);
+    
+    // Fetch store name for fallback messages
+    try {
+      const storeRes = await pool.query(
+        `SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
+        [client_id]
+      );
+      if (storeRes.rows[0]?.store_name) {
+        store_name = storeRes.rows[0].store_name;
+      }
+    } catch (e) {
+      // non-blocking — keep default 'Store'
+    }
 
     let linkedViaToken = false;
 
