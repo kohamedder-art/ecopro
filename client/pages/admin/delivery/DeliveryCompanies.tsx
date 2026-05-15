@@ -629,7 +629,15 @@ export default function DeliveryCompanies() {
     }
   };
 
-  const handleDisable = (companyId: string) => {
+  const handleDisable = async (companyId: string) => {
+    try {
+      await fetch(`/api/delivery/integrations/${companyId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+    } catch (e) {
+      console.error('Failed to delete integration:', e);
+    }
     setCompanies(companies.map(company => 
       company.id === companyId 
         ? { ...company, enabled: false, credentials: {} } 

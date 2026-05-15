@@ -554,6 +554,21 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
 deliveryRouter.get('/companies', getDeliveryCompanies);
 deliveryRouter.get('/integrations', listDeliveryIntegrations);
 deliveryRouter.post('/integrations', configureDeliveryIntegration);
+deliveryRouter.delete('/integrations/:companyId', async (req, res) => {
+  try {
+    const clientId = (req as any).user?.id;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    await pool.query(
+      `DELETE FROM delivery_integrations WHERE client_id = $1 AND delivery_company_id = $2`,
+      [clientId, req.params.companyId]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('[Delivery] delete integration error:', err);
+    res.status(500).json({ error: 'Failed to delete integration' });
+  }
+});
 deliveryRouter.post('/orders/bulk-assign', bulkAssignDelivery);
 deliveryRouter.post('/orders/:id/assign', assignDeliveryToOrder);
 deliveryRouter.post('/orders/:id/generate-label', generateShippingLabel);
