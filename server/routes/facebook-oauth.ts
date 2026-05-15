@@ -63,10 +63,10 @@ router.get("/auth-url", requireAuth, (_req: Request, res: Response) => {
   const state = crypto.randomBytes(20).toString("hex");
 
   // Save state in httpOnly cookie for CSRF protection
-  const { isProduction, sameSite, domain } = getCookieOptions();
+  const { secure, sameSite, domain } = getCookieOptions();
   res.cookie("fb_oauth_state", state, {
     httpOnly: true,
-    secure: isProduction,
+    secure,
     sameSite,
     domain,
     path: "/",
@@ -164,10 +164,10 @@ router.get("/callback", async (req: Request, res: Response) => {
         expiresIn,
         pages,
       });
-      const { isProduction, sameSite, domain } = getCookieOptions();
+      const { secure, sameSite, domain } = getCookieOptions();
       res.cookie("fb_oauth_temp", encryptData(tempData), {
         httpOnly: true,
-        secure: isProduction,
+        secure,
         sameSite,
         domain,
         path: "/",
@@ -191,10 +191,10 @@ router.get("/callback", async (req: Request, res: Response) => {
       expiresIn,
       pages,
     });
-    const { isProduction, sameSite, domain } = getCookieOptions();
+    const { secure, sameSite, domain } = getCookieOptions();
     res.cookie("fb_oauth_temp", encryptData(tempData), {
       httpOnly: true,
-      secure: isProduction,
+      secure,
       sameSite,
       domain,
       path: "/",
