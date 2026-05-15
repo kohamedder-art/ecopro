@@ -5,9 +5,19 @@ import { Client } from '../models/Client.js';
 
 const router = express.Router();
 
+// Simple API key verification
+function requireApiKey(req: any, res: any, next: any) {
+  const key = req.headers['x-api-key'];
+  const expected = process.env.WEBHOOK_API_KEY;
+  if (!expected || key !== expected) {
+    return res.status(401).json({ error: 'Invalid or missing API key' });
+  }
+  next();
+}
+
 // Webhook endpoint for external stores to create orders
 // This is called when a buyer completes checkout on Facebook, Instagram, or any integrated store
-router.post('/order', async (req, res) => {
+router.post('/order', requireApiKey, async (req, res) => {
   try {
     const {
       client_id,

@@ -598,15 +598,12 @@ ${urls}
 </body></html>`);
   });
 
-  // Email config check (for debugging)
+  // Email config check (for internal use only)
   app.get("/api/email-status", (_req, res) => {
     const user = process.env.GMAIL_USER;
     const pass = process.env.GMAIL_APP_PASSWORD;
     res.json({
       configured: !!(user && pass),
-      user: user ? `${user.substring(0, 3)}...@${user.split('@')[1] || '?'}` : null,
-      passwordSet: !!pass,
-      passwordLength: pass?.length || 0,
     });
   });
 

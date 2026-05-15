@@ -194,7 +194,7 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
               p.id, p.title, p.description, p.price, p.original_price, 
               p.images, p.category, p.stock_quantity, p.is_featured, 
               p.slug, p.views, p.created_at, p.metadata,
-              s.store_name, s.owner_name AS seller_name, s.owner_email AS seller_email
+              s.store_name, s.owner_name AS seller_name
             FROM client_store_products p
             INNER JOIN client_store_settings s ON p.client_id = s.client_id
             WHERE p.client_id = $1 AND p.status = 'active'

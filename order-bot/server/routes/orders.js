@@ -72,7 +72,20 @@ router.get('/confirm/:token', async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    res.json({ order });
+    // Only expose non-sensitive fields
+    res.json({
+      order: {
+        id: order.id,
+        order_number: order.order_number,
+        product_name: order.product_name,
+        quantity: order.quantity,
+        total_price: order.total_price,
+        status: order.status,
+        buyer_name: order.buyer_name,
+        client_name: order.client_name,
+        created_at: order.created_at,
+      }
+    });
   } catch (error) {
     console.error('Get order by token error:', error);
     res.status(500).json({ error: 'Failed to get order' });
