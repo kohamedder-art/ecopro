@@ -105,6 +105,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, selectedProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
+  const [previewImg, setPreviewImg] = useState<string | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(selectedProduct, selectedOffer, baseDeliveryFee);
   const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
@@ -292,18 +293,20 @@ const parseVideoEmbed = (videoUrl: string) => {
               <div key={product.id} className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm group">
                 {/* Image Gallery */}
                 <div className="relative aspect-square overflow-hidden bg-slate-100">
-                  <div data-cr className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none', touchAction: 'none' }}
-                    onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
+                  <div data-cr className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none', touchAction: 'pan-y' }}
+                    onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
                     onTouchEnd={e => {
-                      const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
-                      if (Math.abs(diff) < 50) return;
+                      const el = e.currentTarget as any;
+                      const dx = el._tsx - e.changedTouches[0].clientX;
+                      const dy = el._tsy - e.changedTouches[0].clientY;
+                      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
                       const total = product.images.length + (product.videoUrl ? 1 : 0);
                       if (total <= 1) return;
                       const h = e.currentTarget as HTMLElement;
                       const cur = Math.round(Math.abs(h.scrollLeft) / h.clientWidth);
-                      const tgt = diff > 0 ? (cur + 1) % total : (cur - 1 + total) % total;
+                      const tgt = dx > 0 ? (cur + 1) % total : (cur - 1 + total) % total;
                       setCurrentImgIdx(prev => ({ ...prev, [product.id]: tgt }));
-                      h.scrollTo({ left: tgt * h.clientWidth, behavior: tgt === 0 || (diff > 0 && tgt < cur) || (diff < 0 && tgt > cur) ? 'auto' : 'smooth' });
+                      h.scrollBy({ left: dx > 0 ? -h.clientWidth : h.clientWidth, behavior: 'smooth' });
                     }}
                   >
                     {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
@@ -322,9 +325,10 @@ const parseVideoEmbed = (videoUrl: string) => {
                     })()}
                     {product.images.length > 0 ? product.images.map((img: string, i: number) => (
                       <img key={i} src={img} alt={product.name}
-                        className="w-full h-full object-cover shrink-0"
+                        className="w-full h-full object-cover shrink-0 cursor-pointer"
                         loading="lazy"
                         style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+                        onClick={() => setPreviewImg(img)}
                       />
                     )) : (
                       <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: '#94a3b8' }}>
@@ -351,11 +355,11 @@ const parseVideoEmbed = (videoUrl: string) => {
                         onClick={e => {
                           const carousel = (e.currentTarget as HTMLElement).parentElement?.querySelector('[data-cr]') as HTMLElement;
                           if (!carousel) return;
-                          const cur = Math.round(Math.abs(carousel.scrollLeft) / carousel.clientWidth);
                           const total = product.images.length + (product.videoUrl ? 1 : 0);
-                          const next = (cur - 1 + total) % total;
-                          setCurrentImgIdx(prev => ({ ...prev, [product.id]: next }));
-                          carousel.scrollTo({ left: next * carousel.clientWidth, behavior: 'smooth' });
+                          const cur = Math.round(Math.abs(carousel.scrollLeft) / carousel.clientWidth);
+                          const prev = (cur - 1 + total) % total;
+                          setCurrentImgIdx(prev => ({ ...prev, [product.id]: prev }));
+                          carousel.scrollBy({ left: -carousel.clientWidth, behavior: 'smooth' });
                         }}
                         className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
                       >
@@ -365,11 +369,11 @@ const parseVideoEmbed = (videoUrl: string) => {
                         onClick={e => {
                           const carousel = (e.currentTarget as HTMLElement).parentElement?.querySelector('[data-cr]') as HTMLElement;
                           if (!carousel) return;
-                          const cur = Math.round(Math.abs(carousel.scrollLeft) / carousel.clientWidth);
                           const total = product.images.length + (product.videoUrl ? 1 : 0);
+                          const cur = Math.round(Math.abs(carousel.scrollLeft) / carousel.clientWidth);
                           const next = (cur + 1) % total;
                           setCurrentImgIdx(prev => ({ ...prev, [product.id]: next }));
-                          carousel.scrollTo({ left: next * carousel.clientWidth, behavior: 'smooth' });
+                          carousel.scrollBy({ left: carousel.clientWidth, behavior: 'smooth' });
                         }}
                         className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
                       >
@@ -683,6 +687,14 @@ const parseVideoEmbed = (videoUrl: string) => {
           scrollbar-width: none;
         }
       `}} />
+
+      {/* Image Preview Lightbox */}
+      {previewImg && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center" onClick={() => setPreviewImg(null)}>
+          <img src={previewImg} alt="" className="max-w-full max-h-full object-contain p-4" onClick={e => e.stopPropagation()} />
+          <button onClick={() => setPreviewImg(null)} className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-xl">✕</button>
+        </div>
+      )}
     </div>
   );
 }
