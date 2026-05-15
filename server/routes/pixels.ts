@@ -160,6 +160,32 @@ export const updatePixelSettings: RequestHandler = async (req, res) => {
       is_tiktok_enabled,
       additional_pixels
     } = req.body;
+
+    // Validate pixel IDs — must be numeric for Facebook, alphanumeric for TikTok
+    if (facebook_pixel_id) {
+      const cleaned = String(facebook_pixel_id).trim();
+      if (!/^\d{13,16}$/.test(cleaned)) {
+        return res.status(400).json({ error: 'Facebook Pixel ID must be a numeric ID (13-16 digits)' });
+      }
+      req.body.facebook_pixel_id = cleaned;
+    }
+    if (tiktok_pixel_id) {
+      const cleaned = String(tiktok_pixel_id).trim();
+      if (!/^[A-Za-z0-9]{15,25}$/.test(cleaned)) {
+        return res.status(400).json({ error: 'TikTok Pixel ID must be alphanumeric (15-25 characters)' });
+      }
+      req.body.tiktok_pixel_id = cleaned;
+    }
+    if (additional_pixels) {
+      for (const p of additional_pixels) {
+        if (p.type === 'facebook' && !/^\d{13,16}$/.test(String(p.pixel_id || '').trim())) {
+          return res.status(400).json({ error: `Invalid Facebook Pixel ID: ${p.pixel_id}` });
+        }
+        if (p.type === 'tiktok' && !/^[A-Za-z0-9]{15,25}$/.test(String(p.pixel_id || '').trim())) {
+          return res.status(400).json({ error: `Invalid TikTok Pixel ID: ${p.pixel_id}` });
+        }
+      }
+    }
     
     const pool = await getPool();
     
