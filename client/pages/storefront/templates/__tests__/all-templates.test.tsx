@@ -68,7 +68,7 @@ vi.stubGlobal('parent', window);
 const ALL_TEMPLATE_IDS = [
   'dzshop', 'dzpremium', 'luxedrop', 'needdz', 'novadz', 'minimalist',
   'lumina', 'zenith', 'boutique', 'aurora', 'sculptor', 'artisan',
-  'vera', 'streetwear', 'gallery', 'iyco', 'bassem28', 'classicshop',
+  'vera', 'streetwear', 'gallery', 'iyco', 'primo', 'classicshop',
   'jewelheart', 'spiriluxe', 'leroishop',
 ];
 

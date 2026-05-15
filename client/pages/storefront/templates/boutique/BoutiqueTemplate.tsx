@@ -5,7 +5,7 @@ import {
   Home, Building2
 } from 'lucide-react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
@@ -28,13 +28,8 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   const [idx, setIdx] = React.useState(0);
   const [showVideo, setShowVideo] = React.useState(true);
   const imgs: string[] = product.images?.filter(Boolean) || [];
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number, behavior: ScrollBehavior = 'smooth') => {
-    const container = carouselRef.current;
-    if (!container) return;
-    const target = container.children[i] as HTMLElement | undefined;
-    if (target) container.scrollTo({ left: target.offsetLeft, behavior });
-  };
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const videoUrl = product?.metadata?.video_url || '';
   const videoEmbed = useMemo(() => {
     if (!videoUrl) return null;
@@ -44,27 +39,30 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
     return { type: 'iframe' as const, url: videoUrl };
   }, [videoUrl]);
   React.useEffect(() => { setIdx(0); setShowVideo(!!videoEmbed); }, [product?.id]);
+  const total = imgs.length + (videoEmbed ? 1 : 0);
+  const currentIdx = showVideo ? 0 : (videoEmbed ? idx + 1 : idx);
+  const goTo = (n: number) => {
+    const t = total;
+    if (n < 0) n = t - 1;
+    if (n >= t) n = 0;
+    if (n === 0 && videoEmbed) { setShowVideo(true); setIdx(0); }
+    else { setShowVideo(false); setIdx(videoEmbed ? n - 1 : n); }
+  };
   return (
-    <div className="boutique-gallery-wrap flex flex-col h-full">
-      <div className="boutique-gallery-img relative w-full aspect-square overflow-hidden shrink-0" style={{ backgroundColor: surfaceMuted }}>
-        <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'pan-y' }}
-          onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="relative w-full overflow-hidden shrink-0 boutique-gallery-fill" style={{ backgroundColor: surfaceMuted, aspectRatio: '1/1' }}>
+        <div ref={galleryRef} className="flex h-full transition-transform duration-300 ease-out" style={{ transform: `translateX(-${currentIdx * 100}%)` }}
+          onTouchStart={e => { touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
           onTouchEnd={e => {
-            const el = e.currentTarget as any;
-            const dx = el._tsx - e.changedTouches[0].clientX;
-            const dy = el._tsy - e.changedTouches[0].clientY;
+            const dx = touchStartRef.current.x - e.changedTouches[0].clientX;
+            const dy = touchStartRef.current.y - e.changedTouches[0].clientY;
             if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-            const total = imgs.length + (videoEmbed ? 1 : 0);
             if (total <= 1) return;
-            const c = showVideo ? 0 : (videoEmbed ? idx + 1 : idx);
-            const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
-            const wrap = diff > 0 ? n > c : n < c;
-            if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0, wrap ? 'auto' : 'smooth'); }
-            else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setIdx(ii); scrollCarouselTo(n, wrap ? 'auto' : 'smooth'); }
+            goTo(currentIdx + (dx > 0 ? 1 : -1));
           }}
         >
           {videoEmbed && (
-            <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
+            <div className="h-full shrink-0" style={{ flex: '0 0 100%' }}>
               {videoEmbed.type === 'youtube' ? (
                 <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
               ) : videoEmbed.type === 'video' ? (
@@ -77,8 +75,8 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
           {imgs.length > 0 ? imgs.map((img, i) => (
             <img key={i} src={img} alt=""
               className="w-full h-full object-cover shrink-0 cursor-pointer"
-              loading="lazy"
-              style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              style={{ flex: '0 0 100%' }}
               onClick={() => onZoom(img)}
             />
           )) : (
@@ -87,25 +85,45 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
             </div>
           )}
         </div>
-        {imgs.length > 1 && (
+        {total > 1 && (
           <>
-            <button onClick={e => { e.stopPropagation(); const t = imgs.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? idx + 1 : idx); const n = (c + 1) % t; if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setIdx(ii); scrollCarouselTo(n); } }}
+            <button onClick={e => { e.stopPropagation(); goTo(currentIdx - 1); }}
               className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
               style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
-            <button onClick={e => { e.stopPropagation(); const t = imgs.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? idx + 1 : idx); const p = (c - 1 + t) % t; if (p === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? p - 1 : p; setIdx(ii); scrollCarouselTo(p); } }}
+            <button onClick={e => { e.stopPropagation(); goTo(currentIdx + 1); }}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
               style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+              {[...Array(total)].map((_, i) => (
+                <button key={i} onClick={() => goTo(i)}
+                  className="rounded-full transition-all duration-300"
+                  style={{ width: i === currentIdx ? 20 : 6, height: 6, backgroundColor: i === currentIdx ? accentColor : 'rgba(255,255,255,0.5)' }}
+                />
+              ))}
+            </div>
           </>
         )}
       </div>
-      {(videoEmbed || imgs.length > 1) && (
-        <div className="flex gap-2 px-4 py-2 overflow-x-auto shrink-0" style={{ borderBottom: `1px solid ${surfaceBorderColor}` }}>
-          {videoEmbed && <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 flex items-center justify-center transition-all" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></button>}
-          {imgs.map((img, i) => (
-            <button key={i} onClick={() => { setShowVideo(false); setIdx(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition-all" style={{ borderColor: !showVideo && i === idx ? accentColor : 'transparent', opacity: !showVideo && i === idx ? 1 : 0.6 }}>
-              <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
+      {/* Thumbnails */}
+      {total > 1 && (
+        <div className="flex gap-2 px-4 py-2 overflow-x-auto shrink-0 justify-center" style={{ backgroundColor: surfaceMuted }}>
+          {videoEmbed && (
+            <button onClick={() => goTo(0)}
+              className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 flex items-center justify-center transition-all"
+              style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
             </button>
-          ))}
+          )}
+          {imgs.map((img, i) => {
+            const imgIdx = videoEmbed ? i + 1 : i;
+            return (
+              <button key={i} onClick={() => goTo(imgIdx)}
+                className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 transition-all"
+                style={{ borderColor: !showVideo && i === idx ? accentColor : 'transparent', opacity: !showVideo && i === idx ? 1 : 0.6 }}>
+                <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -198,7 +216,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, heroProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = resolveDeliveryFee(heroProduct, selectedOffer, baseDeliveryFee);
+  const deliveryFee = baseDeliveryFee;
 
   // Collection = rest of products (excluding the hero)
   const collectionProducts = useMemo(() => {
@@ -365,7 +383,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           <img
             src={heroProduct.images?.[0] || ''}
             alt={heroProduct.title}
-            loading="lazy"
+            loading="eager"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent, transparent)' }} />
@@ -401,7 +419,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
         </section>
       )}
 
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto pb-20 md:pb-0">
 
         {/* TRUST MINI-BAR */}
         <div className="flex justify-around py-4 border-b text-[10px] font-bold" style={{ borderColor, backgroundColor: surfaceMuted, color: textMuted }}>
@@ -413,15 +431,18 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
         {/* COLLECTION GRID */}
         {collectionProducts.length > 0 && (
           <section className="p-4">
-            <h3
-              className="text-lg font-black mb-4 pr-3"
-              style={{ borderRight: `4px solid ${accentColor}` }}
-              contentEditable={canManage}
-              suppressContentEditableWarning
-              onBlur={handleTextEdit('boutique_category_name')}
-            >
-              {categoryName}
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3
+                className="text-lg font-black pr-3"
+                style={{ borderRight: `4px solid ${accentColor}` }}
+                contentEditable={canManage}
+                suppressContentEditableWarning
+                onBlur={handleTextEdit('boutique_category_name')}
+              >
+                {categoryName}
+              </h3>
+              <span className="text-xs font-bold" style={{ color: textMuted }}>{collectionProducts.length} منتج</span>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {collectionProducts.map(product => (
                 <div key={product.id} className="group cursor-pointer rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor }} onClick={() => { setDetailProduct(product); onProductView?.(product); }}>
@@ -446,8 +467,8 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                     </button>
                   </div>
                   <div className="p-2">
-                    <h4 className="font-bold text-xs line-clamp-1" style={{ color: textColor }}>{product.title}</h4>
-                    <div className="flex items-center justify-between mt-0.5">
+                    <h4 className="font-bold text-sm line-clamp-1" style={{ color: textColor }}>{product.title}</h4>
+                    <div className="flex items-center justify-between mt-1">
                       <p className="font-black text-sm" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
                       {(product as any).original_price && (product as any).original_price > product.price && (
                         <p className="text-[10px] line-through" style={{ color: textMuted }}>{Math.round((product as any).original_price ?? 0).toLocaleString()}</p>
@@ -469,7 +490,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
         )}
 
         {/* FOOTER */}
-        <footer className="p-10 text-center mt-10" style={{ backgroundColor: surfaceMuted, color: textMuted }}>
+        <footer className="p-8 text-center mt-10 pb-24 md:pb-8" style={{ backgroundColor: surfaceMuted, color: textMuted }}>
           <p className="text-xs uppercase tracking-widest font-bold">{brandName}</p>
           <p
             className="text-[10px] mt-2 italic"
@@ -479,7 +500,11 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           >
             {footerText}
           </p>
-          <p className="text-[10px] mt-3">صنع بواسطة <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor, textDecoration: 'none' }}>Sahla4Eco</a></p>
+          <div className="flex justify-center gap-4 mt-4">
+            <span className="text-[10px]">📞 {settings?.store_phone || 'اتصل بنا'}</span>
+            <span className="text-[10px]">📍 توصيل لـ 58 ولاية</span>
+          </div>
+          <p className="text-[10px] mt-4 opacity-50">صنع بواسطة <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor, textDecoration: 'none' }}>Sahla4Eco</a></p>
         </footer>
       </div>
 
@@ -515,6 +540,11 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
                   {/* COD FORM */}
                   <div className="border-t pt-4" style={{ borderColor: surfaceBorderColor }}>
+                      {orderProduct.variants && orderProduct.variants.length > 0 && (
+                        <div className="mb-4">
+                          <VariantSelector variants={orderProduct.variants} selected={orderVariant} onSelect={setOrderVariant} accentColor={accentColor} currency={currency} basePrice={orderProduct.price} />
+                        </div>
+                      )}
                       {offers.length > 0 && orderProduct.id === heroProduct?.id && (
                           <OfferSelector
                             offers={offers}
@@ -528,7 +558,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             
                           />
                         )}
-                        <form id="orderForm" onSubmit={handleOrder} className="space-y-4">
+                        <form id="orderForm" onSubmit={handleOrder} noValidate className="space-y-4">
                           {/* Name + Phone */}
                           <div className="grid grid-cols-2 gap-4">
                             <input
@@ -548,7 +578,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                                 required
                                 dir="ltr"
                                 placeholder="05 55 55 55 55"
-                                className="w-full border rounded-xl px-4 py-3 text-sm text-right outline-none focus:ring-2"
+                                className="w-full border rounded-xl px-4 pl-10 py-3 text-sm text-right outline-none focus:ring-2"
                                 style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
                                 onFocus={e => e.currentTarget.style.borderColor = accentColor}
                                 onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
@@ -573,7 +603,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                               <option value="">اختر الولاية</option>
                               {wilayas.map((w) => (
                                 <option key={w.id} value={w.id}>
-                                  {String(w.id).padStart(2, '0')} - {w.labelAR}
+                                  {w.labelAR}
                                   {w.homePrice ? ` (${w.homePrice} ${currency})` : ''}
                                 </option>
                               ))}
@@ -631,10 +661,26 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
               {/* Drawer Footer */}
               <div className="p-4 border-t space-y-3" style={{ backgroundColor: surfaceColor, borderColor: surfaceBorderColor }}>
-                <div className="flex justify-between font-black text-base" style={{ color: surfaceTextColor }}>
-                  <span>المجموع</span>
-                  <span style={{ color: accentColor }}>{Math.round(((orderVariant?.price ?? orderProduct.price) * orderQty) + deliveryFee).toLocaleString()} {currency}</span>
+                <div className="space-y-1.5 text-sm" style={{ color: surfaceTextMuted }}>
+                  <div className="flex justify-between">
+                    <span>سعر المنتج ({orderQty})</span>
+                    <span className="font-bold" style={{ color: surfaceTextColor }} dir="ltr">{Math.round((orderVariant?.price ?? orderProduct.price) * orderQty).toLocaleString()} {currency}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>التوصيل</span>
+                    <span className="font-bold" style={{ color: surfaceTextColor }} dir="ltr">{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
+                  </div>
+                  <div className="h-px" style={{ backgroundColor: surfaceBorderColor }} />
+                  <div className="flex justify-between font-black text-base" style={{ color: surfaceTextColor }}>
+                    <span>المجموع</span>
+                    <span style={{ color: accentColor }}>{Math.round(((orderVariant?.price ?? orderProduct.price) * orderQty) + deliveryFee).toLocaleString()} {currency}</span>
+                  </div>
                 </div>
+                {orderError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center">
+                    {orderError}
+                  </div>
+                )}
                 <button
                   type="submit"
                   form="orderForm"
@@ -659,14 +705,13 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
         }
         @media (min-width: 768px) {
           .boutique-modal-card { height: 85vh !important; max-height: 85vh !important; }
-          .boutique-gallery-wrap { height: 100%; }
-          .boutique-gallery-img { aspect-ratio: unset !important; max-height: 100% !important; flex: 1; min-height: 0; }
+          .boutique-gallery-fill { aspect-ratio: unset !important; flex: 1; min-height: 0; }
         }
       `}} />
 
       {/* Product Detail Modal */}
       {detailProduct && (
-        <div className="fixed inset-0 z-[90] flex items-end md:items-center md:justify-center md:p-4" onTouchMove={e => e.preventDefault()} style={{ touchAction: 'none' }}>
+        <div className="fixed inset-0 z-[90] flex items-end md:items-center md:justify-center md:p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetailProduct(null)} />
           <div className="boutique-modal-card relative z-10 w-full md:max-w-4xl md:mx-auto md:rounded-[32px] overflow-hidden flex flex-col md:flex-row" dir="ltr" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, height: '100dvh', maxHeight: '100dvh' }}>
             <button onClick={() => setDetailProduct(null)} className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }}><X size={18} /></button>
@@ -681,12 +726,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                 </div>
                 {detailProduct.description && <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: surfaceTextMuted }}>{detailProduct.description}</p>}
                 {detailProduct.category && <span className="inline-block text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border" style={{ borderColor: surfaceBorderColor, color: surfaceTextMuted }}>{detailProduct.category}</span>}
-                {detailProduct.variants && detailProduct.variants.length > 0 && (
-                  <VariantSelector variants={detailProduct.variants} selected={detailVariant} onSelect={setDetailVariant} accentColor={accentColor} currency={currency} basePrice={detailProduct.price} />
-                )}
               </div>
               <div className="shrink-0 px-6 pb-6 pt-3 space-y-3" style={{ borderTop: `1px solid ${surfaceBorderColor}` }}>
-                <button onClick={() => { setOrderProduct(detailProduct); setOrderVariant(detailVariant); setDetailProduct(null); setDetailVariant(null); }} className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold tracking-wide transition-all active:scale-95 shadow-lg" style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}>
+                <button onClick={() => { setOrderProduct(detailProduct); setDetailProduct(null); }} className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold tracking-wide transition-all active:scale-95 shadow-lg" style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}>
                   اطلب الآن →
                 </button>
               </div>
@@ -701,19 +743,65 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
             <X size={20} />
           </button>
-          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-            <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+          {zoomState.images.length > 1 && (
+            <>
+              <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx - 1 + zoomState.images.length) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">‹</button>
+              <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx + 1) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">›</button>
+            </>
+          )}
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}
+            onTouchStart={e => { (e.currentTarget as any)._zx = e.touches[0].clientX; }}
+            onTouchEnd={e => {
+              if (!zoomState || zoomState.images.length <= 1) return;
+              const dx = (e.currentTarget as any)._zx - e.changedTouches[0].clientX;
+              if (Math.abs(dx) < 50) return;
+              const n = dx > 0
+                ? (zoomState.idx + 1) % zoomState.images.length
+                : (zoomState.idx - 1 + zoomState.images.length) % zoomState.images.length;
+              setZoomState({ ...zoomState, idx: n });
+            }}
+          >
+            <img key={zoomState.idx} src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
           </div>
           {zoomState.images.length > 1 && (
-            <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
+            <div className="shrink-0 flex gap-2 px-4 pt-2 overflow-x-auto justify-center" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
               {zoomState.images.map((img, i) => (
-                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
+                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 opacity-50 hover:opacity-80'}`}>
                   <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
           )}
+          {zoomState.images.length > 1 && (
+            <div className="shrink-0 flex justify-center gap-1.5" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
+              {zoomState.images.map((_, i) => (
+                <div key={i} className="rounded-full transition-all duration-300" style={{ width: i === zoomState.idx ? 20 : 6, height: 6, backgroundColor: i === zoomState.idx ? '#fff' : 'rgba(255,255,255,0.35)' }} />
+              ))}
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Sticky Mobile Checkout Bar */}
+      {heroProduct && !orderProduct && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 p-3 border-t flex items-center gap-3" style={{ backgroundColor: surfaceColor, borderColor: surfaceBorderColor }}>
+          <div className="flex-1">
+            <p className="font-black text-lg" style={{ color: accentColor }}>{Math.round(heroProduct.price ?? 0).toLocaleString()} {currency}</p>
+            <p className="text-[10px]" style={{ color: surfaceTextMuted }}>الدفع عند الاستلام</p>
+          </div>
+          <button
+            onClick={() => { setDetailProduct(heroProduct); onProductView?.(heroProduct); }}
+            className="text-white font-bold px-8 py-3 rounded-xl text-base shadow-lg active:scale-95 transition-transform"
+            style={{ backgroundColor: accentColor }}
+          >
+            اطلب الآن
+          </button>
+        </div>
+      )}
+      {(detailProduct || orderProduct || zoomState) && (
+        <style>{`[data-storefront-contact="true"] { display: none !important; }`}</style>
       )}
     </div>
   );

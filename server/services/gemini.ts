@@ -257,7 +257,7 @@ The sidebar navigation is organized as follows. Each section below corresponds t
 • Product duplication, column customization (SKU, Stock, Price, Category)
 
 ═══ 3b. محرر القالب — Template Editor ═══
-• Template Selection: 10+ ready templates (dzshop, needdz, zenith, boutique, iyco, bassem28, dz3shop, spiriluxe, leroishop) filterable by category (Popular, Landing Pages, Minimal, Dark, Elegant, Industry, Pro)
+• Template Selection: 10+ ready templates (dzshop, needdz, zenith, boutique, iyco, primo, dz3shop, spiriluxe, leroishop) filterable by category (Popular, Landing Pages, Minimal, Dark, Elegant, Industry, Pro)
 • Template Preview: Preview any template before applying; template switching via API
 • Live Preview: Three device modes — Mobile (Samsung S24 Ultra), Tablet (iPad Pro), Desktop (fluid) rendered inside an iframe
 • Click-to-Edit: Click any element in the preview to select and edit it directly

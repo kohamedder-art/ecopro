@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import {
@@ -119,7 +119,7 @@ export default function IycoTemplate({
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
+  const deliveryFee = baseDeliveryFee;
 
   // ── Cart System ──
   const [cart, setCart] = useState<{ id: number; title: string; price: number; image: string; qty: number; variant_id?: number; variant_name?: string }[]>([]);
@@ -181,24 +181,66 @@ export default function IycoTemplate({
   const [showCart, setShowCart] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
 
+  // ── Scroll-aware Header ──
+  const [showHeader, setShowHeader] = useState(true);
+  const lastScrollY = useRef(0);
+  useEffect(() => {
+    const handleScroll = () => {
+      const sy = window.scrollY;
+      const dy = sy - lastScrollY.current;
+      if (Math.abs(dy) > 10) {
+        setShowHeader(dy < 0);
+        lastScrollY.current = sy;
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // ── Product Detail State ──
   const [selectedMainImage, setSelectedMainImage] = useState(0);
   const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number, behavior: ScrollBehavior = 'smooth') => {
-    const container = carouselRef.current;
-    if (!container) return;
-    const target = container.children[i] as HTMLElement | undefined;
-    if (target) container.scrollTo({ left: target.offsetLeft, behavior });
-  };
   const [selectedSize, setSelectedSize] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const mainImages = mainProduct?.images?.length ? mainProduct.images : ['/placeholder.png'];
+  const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
+  const videoEmbed = useMemo(() => {
+    if (!videoUrl) return null;
+    const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (yt) return { type: 'youtube' as const, id: yt[1] };
+    if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
+    return { type: 'iframe' as const, url: videoUrl };
+  }, [videoUrl]);
+
+  const scrollToIndex = (idx: number) => {
+    if (!carouselRef.current) return;
+    const hasVideo = videoEmbed !== null;
+    const target = carouselRef.current.children[idx] as HTMLElement | undefined;
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+  };
+
+  // Sync state from native scroll position
+  const handleScroll = () => {
+    if (!carouselRef.current) return;
+    const el = carouselRef.current;
+    const childWidth = el.children[0]?.getBoundingClientRect().width || 1;
+    const idx = Math.round(el.scrollLeft / childWidth);
+    if (videoEmbed) {
+      if (idx === 0) { setShowVideo(true); setSelectedMainImage(0); }
+      else { setShowVideo(false); setSelectedMainImage(idx - 1); }
+    } else {
+      setSelectedMainImage(idx);
+    }
+  };
 
   // Reset main image when mainProduct changes
   useEffect(() => {
     setSelectedMainImage(0);
     setShowVideo(!!videoEmbed);
+    if (carouselRef.current) carouselRef.current.scrollLeft = 0;
   }, [mainProduct?.id]);
 
   // Auto-add main product to cart when form submitted if cart is empty
@@ -299,17 +341,6 @@ export default function IycoTemplate({
     return mainProduct ? products.filter(p => p.id !== mainProduct.id) : products;
   }, [products, mainProduct]);
 
-  const mainImages = mainProduct?.images?.length ? mainProduct.images : ['/placeholder.png'];
-
-  const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
-  const videoEmbed = useMemo(() => {
-    if (!videoUrl) return null;
-    const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-    if (yt) return { type: 'youtube' as const, id: yt[1] };
-    if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
-    return { type: 'iframe' as const, url: videoUrl };
-  }, [videoUrl]);
-
   // ══════════════════════════════════════
   // ORDER SUCCESS SCREEN
   // ══════════════════════════════════════
@@ -358,7 +389,7 @@ export default function IycoTemplate({
     <div className="min-h-screen" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
 
       {/* ── TOP NAVIGATION ── */}
-      <nav className="sticky top-0 z-50" style={{ backgroundColor: surfaceColor, borderBottom: `1px solid ${borderColor}` }}>
+      <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: surfaceColor, borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             {settings?.store_logo ? (
@@ -378,7 +409,9 @@ export default function IycoTemplate({
               {storeName}
             </span>
           </div>
-          <div className="flex items-center gap-5" style={{ color: surfaceTextMuted }}>
+          <div className="flex items-center gap-3" style={{ color: surfaceTextMuted }}>
+            <span className="text-[10px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-full animate-pulse">14</span>
+            <ShoppingBag size={20} className="cursor-pointer hover:opacity-70 transition-opacity" />
           </div>
         </div>
       </nav>
@@ -399,27 +432,14 @@ export default function IycoTemplate({
 
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4">
-              <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[65vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'pan-y' }}
-                  onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
-                  onTouchEnd={e => {
-                    const el = e.currentTarget as any; const dx = el._tsx - e.changedTouches[0].clientX; const dy = el._tsy - e.changedTouches[0].clientY;
-                    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-                    const total = mainImages.length + (videoEmbed ? 1 : 0);
-                    if (total <= 1) return;
-                    const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage);
-                    const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
-                    const wrap = diff > 0 ? n > c : n < c;
-                    if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0, wrap ? 'auto' : 'smooth'); }
-                    else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n, wrap ? 'auto' : 'smooth'); }
-                  }}
-                >
+              <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[70vh]" style={{ backgroundColor: surfaceMuted }}>
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory' }} onScroll={handleScroll}>
                   {videoEmbed && (
-                    <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
+                    <div key="video" className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}>
                       {videoEmbed.type === 'youtube' ? (
                         <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                       ) : videoEmbed.type === 'video' ? (
-                        <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                        <video className="w-full h-full object-contain" src={videoEmbed.url} autoPlay muted loop playsInline />
                       ) : (
                         <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
                       )}
@@ -427,37 +447,37 @@ export default function IycoTemplate({
                   )}
                   {mainImages.length > 0 ? mainImages.map((img, i) => (
                     <img key={i} src={img} alt={mainProduct.title}
-                      className="w-full h-full object-cover shrink-0 cursor-pointer"
-                      loading="lazy"
-                      style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+                      className="w-full h-full object-contain shrink-0 cursor-pointer"
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                      style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
                   )) : (
-                    <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: textMuted }}>
+                    <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'start', color: textMuted }}>
                       <ShoppingBag size={48} strokeWidth={1} />
                     </div>
                   )}
                 </div>
                 {mainImages.length > 1 && (
                   <>
-                    <button onClick={e => { e.stopPropagation(); const t = mainImages.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const n = (c + 1) % t; if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n); } }}
+                    <button onClick={e => { e.stopPropagation(); const idx = showVideo ? mainImages.length : (videoEmbed ? selectedMainImage : selectedMainImage - 1 + mainImages.length); scrollToIndex(idx === 0 && videoEmbed ? 0 : (videoEmbed ? idx + 1 : idx)); if (idx === 0 && videoEmbed) { setShowVideo(true); setSelectedMainImage(0); } else { setShowVideo(false); setSelectedMainImage(videoEmbed ? (idx > 0 ? idx - 1 : 0) : idx); } }}
                       className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
                       style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
-                    <button onClick={e => { e.stopPropagation(); const t = mainImages.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const p = (c - 1 + t) % t; if (p === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? p - 1 : p; setSelectedMainImage(ii); scrollCarouselTo(p); } }}
+                    <button onClick={e => { e.stopPropagation(); const idx = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const next = (idx + 1) % (mainImages.length + (videoEmbed ? 1 : 0)); scrollToIndex(next); if (next === 0 && videoEmbed) { setShowVideo(true); setSelectedMainImage(0); } else { setShowVideo(false); setSelectedMainImage(videoEmbed ? next - 1 : next); } }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
                       style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
                   </>
                 )}
               </div>
               {(videoEmbed || mainImages.length > 1) && (
-                <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                <div className="flex gap-2 overflow-x-auto justify-center" style={{ scrollbarWidth: 'none' }}>
                   {videoEmbed && (
-                    <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="w-20 h-24 shrink-0 rounded-lg overflow-hidden border-2 flex items-center justify-center transition-all" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
-                    </button>
+                    <div onClick={() => { setShowVideo(true); setSelectedMainImage(0); scrollToIndex(0); }} className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border-2 flex items-center justify-center transition-all cursor-pointer" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+                    </div>
                   )}
                   {mainImages.map((img, idx) => (
-                    <button key={idx} onClick={() => { setShowVideo(false); setSelectedMainImage(idx); scrollCarouselTo(videoEmbed ? idx + 1 : idx); }} className="w-20 h-24 shrink-0 rounded-lg overflow-hidden border-2 transition-all" style={{ borderColor: !showVideo && selectedMainImage === idx ? accentColor : 'transparent', opacity: !showVideo && selectedMainImage === idx ? 1 : 0.6 }}>
+                    <button key={idx} onClick={() => { setShowVideo(false); setSelectedMainImage(idx); scrollToIndex(videoEmbed ? idx + 1 : idx); }} className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border-2 transition-all cursor-pointer" style={{ borderColor: !showVideo && selectedMainImage === idx ? accentColor : 'transparent', opacity: !showVideo && selectedMainImage === idx ? 1 : 0.6 }}>
                       <img src={img} className="w-full h-full object-cover" alt="thumb" loading="lazy" />
                     </button>
                   ))}
@@ -471,6 +491,12 @@ export default function IycoTemplate({
               {/* Title & Badge */}
               <div className="mb-6">
                 <h1 className="text-2xl md:text-3xl font-black mb-2" style={{ color: textColor }}>{mainProduct.title}</h1>
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full flex items-center gap-1">👀 14 شخص يشاهد هذا</span>
+                  {mainProduct.stock_quantity > 0 && mainProduct.stock_quantity <= 5 && (
+                    <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">⚠️ متبقي {mainProduct.stock_quantity} فقط</span>
+                  )}
+                </div>
                 <div className="flex items-center gap-3 mb-4 flex-wrap">
                   <span
                     className="text-white text-[11px] font-bold px-3 py-1 rounded-sm shadow-sm"
@@ -503,7 +529,7 @@ export default function IycoTemplate({
               </div>
 
               {/* ── THE ORDER FORM ── */}
-              <form className="rounded-xl p-3 shadow-sm mb-4" style={{ backgroundColor: surfaceColor, border: `1px solid ${borderColor}` }} onSubmit={handleOrder}>
+              <form id="orderForm" className="rounded-xl p-3 shadow-sm mb-4" style={{ backgroundColor: surfaceColor, border: `1px solid ${borderColor}` }} onSubmit={handleOrder} noValidate>
                 <h3 className="font-black text-center text-sm mb-3 pb-2" style={{ color: surfaceTextColor, borderBottom: `1px solid ${borderColor}` }}>إستمارة الطلب</h3>
                 {offers.length > 0 && (
                   <OfferSelector
@@ -596,9 +622,9 @@ export default function IycoTemplate({
                   <div className="pt-2">
                     <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الكمية</label>
                     <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
-                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl" style={{ color: textColor, borderColor: borderColor }}>−</button>
+                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>−</button>
                       <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
-                      <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl" style={{ color: textColor, borderColor: borderColor }}>+</button>
+                      <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>+</button>
                     </div>
                   </div>
 
@@ -633,6 +659,12 @@ export default function IycoTemplate({
                       <span className="flex items-center gap-1.5"><Truck size={13} /> التوصيل</span>
                       <span dir="ltr">{!selectedWilayaId ? '--' : `${deliveryFee} ${currency}`}</span>
                     </div>
+                    {selectedWilaya?.days && (
+                      <div className="flex justify-between items-center text-[10px]" style={{ color: surfaceTextMuted }}>
+                        <span>🕐 وقت التوصيل المقدر</span>
+                        <span>{selectedWilaya.days} أيام</span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center font-black text-sm" style={{ color: surfaceTextColor }}>
                       <span className="flex items-center gap-1.5"><Calculator size={13} /> المجموع</span>
                       <span dir="ltr" style={{ color: accentColor }}>
@@ -640,6 +672,12 @@ export default function IycoTemplate({
                       </span>
                     </div>
                   </div>
+
+              {orderError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center mb-2">
+                  {orderError}
+                </div>
+              )}
 
               {/* Submit Button */}
               <button
@@ -694,7 +732,7 @@ export default function IycoTemplate({
             <div className="flex items-center gap-4 mb-8">
               <h2 className="text-3xl font-black tracking-tight" style={{ color: textColor }}>{storeName}</h2>
               <div className="h-px flex-1 mt-2" style={{ backgroundColor: borderColor }}></div>
-              <span className="text-sm font-bold whitespace-nowrap" style={{ color: textMuted }}>المزيد من المنتجات :</span>
+              <span className="text-sm font-bold whitespace-nowrap" style={{ color: textMuted }}>{otherProducts.length} منتجات</span>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
@@ -739,34 +777,92 @@ export default function IycoTemplate({
         )}
       </main>
 
+      {/* ── Scroll to Top ── */}
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="fixed bottom-20 right-4 z-40 w-10 h-10 rounded-full shadow-lg flex items-center justify-center text-sm font-bold opacity-70 hover:opacity-100 transition-opacity md:hidden"
+        style={{ backgroundColor: accentColor, color: '#fff' }}
+      >
+        ↑
+      </button>
+
       {/* ── Footer ── */}
-      <footer className="py-8 mt-12 text-center" style={{ backgroundColor: surfaceMuted, borderTop: `1px solid ${borderColor}` }}>
+      <footer className="py-8 mt-12 text-center pb-24 md:pb-8" style={{ backgroundColor: surfaceMuted, borderTop: `1px solid ${borderColor}` }}>
         <p className="text-sm font-bold" style={{ color: textMuted }}>© {new Date().getFullYear()} {storeName}</p>
+        <div className="flex justify-center gap-4 mt-3">
+          <span className="text-xs" style={{ color: textMuted }}>📞 {settings?.store_phone || 'اتصل بنا'}</span>
+          <span className="text-xs" style={{ color: textMuted }}>📍 توصيل لـ 58 ولاية</span>
+        </div>
       </footer>
 
       {/* Platform Footer */}
       <footer className="py-6 text-center text-xs" style={{ borderTop: `1px solid ${borderColor}`, color: textMuted }}>
-        © {new Date().getFullYear()} {storeName}. جميع الحقوق محفوظة · صنع بواسطة <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor, textDecoration: 'none' }}>Sahla4Eco</a>
+        <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor, textDecoration: 'none' }}>Sahla4Eco</a>
       </footer>
+
+      {/* Sticky Mobile Checkout Bar */}
+      {mainProduct && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 p-3 border-t flex items-center gap-3" style={{ backgroundColor: surfaceColor, borderColor: borderColor }}>
+          <div className="flex-1">
+            <p className="font-black text-lg" style={{ color: accentColor }}>{Math.round(mainProduct.price ?? 0).toLocaleString()} {currency}</p>
+            <p className="text-[10px]" style={{ color: surfaceTextMuted }}>الدفع عند الاستلام</p>
+          </div>
+          <button
+            onClick={() => { const el = document.querySelector('#orderForm'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}
+            className="text-white font-bold px-8 py-3 rounded-xl text-base shadow-lg active:scale-95 transition-transform"
+            style={{ backgroundColor: accentColor }}
+          >
+            اطلب الآن
+          </button>
+        </div>
+      )}
+
+      {/* Hide chat bubble when modals are open */}
+      {zoomState && (
+        <style>{`[data-storefront-contact="true"] { display: none !important; }`}</style>
+      )}
 
       {/* Image Zoom Modal */}
       {zoomState && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomState(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setZoomState(null)}>
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
+          <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
             <X size={20} />
           </button>
-          <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
           {zoomState.images.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+            <>
+              <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx - 1 + zoomState.images.length) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">‹</button>
+              <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx + 1) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">›</button>
+            </>
+          )}
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}
+            onTouchStart={e => { (e.currentTarget as any)._zx = e.touches[0].clientX; }}
+            onTouchEnd={e => {
+              if (!zoomState || zoomState.images.length <= 1) return;
+              const dx = (e.currentTarget as any)._zx - e.changedTouches[0].clientX;
+              if (Math.abs(dx) < 50) return;
+              const n = dx > 0
+                ? (zoomState.idx + 1) % zoomState.images.length
+                : (zoomState.idx - 1 + zoomState.images.length) % zoomState.images.length;
+              setZoomState({ ...zoomState, idx: n });
+            }}
+          >
+            <img key={zoomState.idx} src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+          </div>
+          {zoomState.images.length > 1 && (
+            <div className="shrink-0 flex gap-2 px-4 pt-2 overflow-x-auto justify-center" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
               {zoomState.images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={(e) => { e.stopPropagation(); setZoomState({ ...zoomState, idx: i }); }}
-                  className="w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0"
-                  style={{ borderColor: i === zoomState.idx ? accentColor : 'rgba(255,255,255,0.3)', opacity: i === zoomState.idx ? 1 : 0.6 }}
-                >
-                  <img src={img} className="w-full h-full object-cover" alt="" />
+                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 opacity-50 hover:opacity-80'}`}>
+                  <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
+              ))}
+            </div>
+          )}
+          {zoomState.images.length > 1 && (
+            <div className="shrink-0 flex justify-center gap-1.5" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
+              {zoomState.images.map((_, i) => (
+                <div key={i} className="rounded-full transition-all duration-300" style={{ width: i === zoomState.idx ? 20 : 6, height: 6, backgroundColor: i === zoomState.idx ? '#fff' : 'rgba(255,255,255,0.35)' }} />
               ))}
             </div>
           )}

@@ -536,9 +536,9 @@ html.dark body[data-profile-wallpaper="true"] .profile-glass {
 
 /* ── Native App Feel ─────────────────────────────── */
 
-/* No overscroll bounce (iOS/Android rubber-banding) */
-html, body {
-  overscroll-behavior: none;
+/* Allow pull-to-refresh on mobile browsers */
+html {
+  overscroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -573,10 +573,7 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Prevent pull-to-refresh on the main page */
-body {
-  overscroll-behavior-y: contain;
-}
+/* Allow pull-to-refresh on mobile browsers */
 
 /* Standalone PWA: hide browser chrome artifacts */
 @media (display-mode: standalone) {

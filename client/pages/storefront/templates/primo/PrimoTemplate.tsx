@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import {
@@ -23,7 +23,7 @@ import {
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 
-export default function Bassem28Template({
+export default function PrimoTemplate({
   settings,
   products,
   canManage,
@@ -34,7 +34,7 @@ export default function Bassem28Template({
 }: TemplateProps) {
   // ── Settings Wiring ──
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#f39c12';
-  const bgColor = settings?.template_bg_color || settings?.bassem28_bg_color || '#fafafa';
+  const bgColor = settings?.template_bg_color || settings?.primo_bg_color || '#fafafa';
   const primaryColor = settings?.primary_color || '#0f172a';
   const currency = settings?.currency_code || 'د.ج';
 
@@ -136,7 +136,7 @@ export default function Bassem28Template({
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
+  const deliveryFee = baseDeliveryFee;
 
   // ── Variant & pricing ──
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -163,11 +163,25 @@ export default function Bassem28Template({
   const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarouselTo = (i: number, behavior: ScrollBehavior = 'smooth') => {
+
+  const scrollCarouselTo = (i: number) => {
     const container = carouselRef.current;
     if (!container) return;
     const target = container.children[i] as HTMLElement | undefined;
-    if (target) container.scrollTo({ left: target.offsetLeft, behavior });
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+  };
+
+  const handleCarouselScroll = () => {
+    if (!carouselRef.current) return;
+    const el = carouselRef.current;
+    const childWidth = el.children[0]?.getBoundingClientRect().width || 1;
+    const idx = Math.round(el.scrollLeft / childWidth);
+    if (videoEmbed) {
+      if (idx === 0) { setShowVideo(true); setSelectedMainImage(0); }
+      else { setShowVideo(false); setSelectedMainImage(idx - 1); }
+    } else {
+      setSelectedMainImage(idx);
+    }
   };
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
     const text = e.currentTarget.textContent || '';
@@ -175,6 +189,22 @@ export default function Bassem28Template({
       window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key, value: text }, '*');
     }
   };
+
+  // ── Scroll-aware Header ──
+  const [showHeader, setShowHeader] = useState(true);
+  const lastScrollY = useRef(0);
+  useEffect(() => {
+    const handleScroll = () => {
+      const sy = window.scrollY;
+      const dy = sy - lastScrollY.current;
+      if (Math.abs(dy) > 10) {
+        setShowHeader(dy < 0);
+        lastScrollY.current = sy;
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,14 +309,14 @@ export default function Bassem28Template({
         <span
           contentEditable={canManage}
           suppressContentEditableWarning
-          onBlur={handleTextEdit('bassem28_banner_text')}
+          onBlur={handleTextEdit('primo_banner_text')}
         >
-          {settings?.bassem28_banner_text || 'شحن سريع لجميع الولايات - الدفع عند الاستلام'}
+          {settings?.primo_banner_text || 'شحن سريع لجميع الولايات - الدفع عند الاستلام'}
         </span>
       </div>
 
       {/* ── HEADER / NAV ── */}
-      <header className="sticky top-0 z-50 backdrop-blur-md" style={{ backgroundColor: surfaceColor + 'cc', borderBottom: `1px solid ${surfaceBorderColor}` }}>
+      <header className="sticky top-0 z-50 backdrop-blur-md transition-transform duration-300" style={{ backgroundColor: surfaceColor + 'cc', borderBottom: `1px solid ${surfaceBorderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {settings?.store_logo ? (
@@ -327,7 +357,7 @@ export default function Bassem28Template({
           CATALOG VIEW
           ══════════════════════════════════════ */}
       {viewMode === 'catalog' && products && products.length > 0 && (
-        <main className="max-w-6xl mx-auto px-4 py-6">
+        <main className="max-w-6xl mx-auto px-4 py-6 pb-24 md:pb-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -424,7 +454,7 @@ export default function Bassem28Template({
       )}
 
       {viewMode === 'product' && mainProduct && (
-        <main className="max-w-6xl mx-auto px-4 py-4 lg:py-6">
+        <main className="max-w-6xl mx-auto px-4 py-4 lg:py-6 pb-24 md:pb-6">
 
           {/* ── SPLIT LAYOUT: Images LEFT, Form RIGHT ── */}
           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
@@ -433,28 +463,13 @@ export default function Bassem28Template({
             <div className="w-full lg:w-[48%] flex flex-col gap-3 lg:self-stretch">
               {/* Main display: video or image */}
               <div className="rounded-2xl overflow-hidden shadow-xl aspect-[4/5] lg:aspect-auto lg:flex-1 min-h-[300px] lg:max-h-[70vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'pan-y' }}
-                  onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
-                  onTouchEnd={e => {
-                    const el = e.currentTarget as any;
-                    const dx = el._tsx - e.changedTouches[0].clientX;
-                    const dy = el._tsy - e.changedTouches[0].clientY;
-                    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-                    const total = mainImages.length + (videoEmbed ? 1 : 0);
-                    if (total <= 1) return;
-                    const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage);
-                    const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
-                    const wrap = diff > 0 ? n > c : n < c;
-                    if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0, wrap ? 'auto' : 'smooth'); }
-                    else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n, wrap ? 'auto' : 'smooth'); }
-                  }}
-                >
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory' }} onScroll={handleCarouselScroll}>
                   {videoEmbed && (
                     <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
                       {videoEmbed.type === 'youtube' ? (
                         <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                       ) : videoEmbed.type === 'video' ? (
-                        <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                        <video className="w-full h-full object-contain" src={videoEmbed.url} autoPlay muted loop playsInline />
                       ) : (
                         <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
                       )}
@@ -462,8 +477,8 @@ export default function Bassem28Template({
                   )}
                   {mainImages.length > 0 ? mainImages.map((img, i) => (
                     <img key={i} src={img} alt={mainProduct.title}
-                      className="w-full h-full object-cover shrink-0 cursor-pointer"
-                      loading="lazy"
+                      className="w-full h-full object-contain shrink-0 cursor-pointer"
+                      loading={i === 0 ? 'eager' : 'lazy'}
                       style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
@@ -531,8 +546,14 @@ export default function Bassem28Template({
               </div>
 
               {/* Order Form */}
-              <form className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }} onSubmit={handleOrder}>
+              <form id="primo-order-form" className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }} onSubmit={handleOrder} noValidate>
                 <h3 className="text-sm font-black text-center pb-2" style={{ color: surfaceTextColor, borderBottom: `1px solid ${surfaceBorderColor}` }}>إستمارة الطلب</h3>
+
+                {orderError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center">
+                    {orderError}
+                  </div>
+                )}
 
                 {/* Variants */}
                 {mainProduct.variants && mainProduct.variants.length > 0 && (
@@ -576,9 +597,9 @@ export default function Bassem28Template({
                 <div className="pt-2">
                   <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الكمية</label>
                   <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, border: `1px solid ${surfaceBorderColor}` }}>
-                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center" style={{ borderColor: surfaceBorderColor }}>−</button>
+                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-md font-bold text-xl flex items-center justify-center" style={{ color: textColor, border: `1px solid ${surfaceBorderColor}`, backgroundColor: surfaceColor }}>−</button>
                     <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center" style={{ borderColor: surfaceBorderColor }}>+</button>
+                    <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-md font-bold text-xl flex items-center justify-center" style={{ color: textColor, border: `1px solid ${surfaceBorderColor}`, backgroundColor: surfaceColor }}>+</button>
                   </div>
                 </div>
 
@@ -630,7 +651,7 @@ export default function Bassem28Template({
               ═══════════════════════════════════ */}
           {otherProducts.length > 0 && (
             <section className="mt-16">
-              <h3 className="text-2xl font-black mb-8" style={{ color: textColor }}>منتجات أخرى</h3>
+              <h3 className="text-2xl font-black mb-8" style={{ color: textColor }}>{otherProducts.length} منتجات أخرى</h3>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {otherProducts.map(product => {
                   const swapProduct = () => { setActiveMainProduct(product); setSelectedMainImage(0); setViewMode('product'); onProductView?.(product); window.scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -679,25 +700,81 @@ export default function Bassem28Template({
         </div>
       </footer>
 
+      {/* ── Scroll to Top ── */}
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="fixed bottom-20 right-4 z-40 w-10 h-10 rounded-full shadow-lg flex items-center justify-center text-sm font-bold opacity-70 hover:opacity-100 transition-opacity md:hidden"
+        style={{ backgroundColor: accentColor, color: '#fff' }}
+      >
+        ↑
+      </button>
+
+      {/* ── Sticky Mobile Checkout Bar ── */}
+      {viewMode === 'product' && !orderSuccess && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden p-3 border-t flex items-center gap-3" style={{ backgroundColor: surfaceColor, borderColor: surfaceBorderColor }}>
+          <div className="flex-1">
+            <p className="font-black text-lg" style={{ color: accentColor }}>{Math.round(productPrice ?? 0).toLocaleString()} {currency}</p>
+            <p className="text-[10px]" style={{ color: surfaceTextMuted }}>الدفع عند الاستلام</p>
+          </div>
+          <button
+            onClick={() => document.getElementById('primo-order-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+            className="text-white font-bold px-8 py-3 rounded-xl text-base shadow-lg active:scale-95 transition-transform"
+            style={{ backgroundColor: accentColor }}
+          >
+            اطلب الآن
+          </button>
+        </div>
+      )}
+
       {/* Image Zoom Modal */}
       {zoomState && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col" onClick={() => setZoomState(null)}>
           <button className="absolute top-4 right-4 z-20 text-white/70 hover:text-white w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setZoomState(null); }}>
             <X size={20} />
           </button>
-          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-            <img src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+          {zoomState.images.length > 1 && (
+            <>
+              <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx - 1 + zoomState.images.length) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">‹</button>
+              <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx + 1) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">›</button>
+            </>
+          )}
+          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}
+            onTouchStart={e => { (e.currentTarget as any)._zx = e.touches[0].clientX; }}
+            onTouchEnd={e => {
+              if (!zoomState || zoomState.images.length <= 1) return;
+              const dx = (e.currentTarget as any)._zx - e.changedTouches[0].clientX;
+              if (Math.abs(dx) < 50) return;
+              const n = dx > 0
+                ? (zoomState.idx + 1) % zoomState.images.length
+                : (zoomState.idx - 1 + zoomState.images.length) % zoomState.images.length;
+              setZoomState({ ...zoomState, idx: n });
+            }}
+          >
+            <img key={zoomState.idx} src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
           </div>
           {zoomState.images.length > 1 && (
-            <div className="shrink-0 flex gap-2 px-4 pb-6 pt-2 overflow-x-auto justify-center" onClick={(e) => e.stopPropagation()}>
+            <div className="shrink-0 flex gap-2 px-4 pt-2 overflow-x-auto justify-center" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
               {zoomState.images.map((img, i) => (
-                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-100'}`}>
+                <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 opacity-50 hover:opacity-80'}`}>
                   <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
           )}
+          {zoomState.images.length > 1 && (
+            <div className="shrink-0 flex justify-center gap-1.5" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
+              {zoomState.images.map((_, i) => (
+                <div key={i} className="rounded-full transition-all duration-300" style={{ width: i === zoomState.idx ? 20 : 6, height: 6, backgroundColor: i === zoomState.idx ? '#fff' : 'rgba(255,255,255,0.35)' }} />
+              ))}
+            </div>
+          )}
         </div>
+      )}
+
+      {zoomState && (
+        <style>{`[data-storefront-contact="true"] { display: none !important; }`}</style>
       )}
     </div>
   );

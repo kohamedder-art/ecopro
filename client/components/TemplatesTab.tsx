@@ -151,7 +151,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     tags: ['هبوط', 'عصري'],
   },
   {
-    id: 'bassem28',
+    id: 'primo',
     name: 'Primo',
     nameAr: 'بريمو',
     descAr: 'صفحة هبوط منتج واحد أنيقة',

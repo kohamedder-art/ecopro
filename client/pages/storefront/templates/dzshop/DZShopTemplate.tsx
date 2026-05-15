@@ -18,7 +18,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-    const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
+    const baseDeliveryFee = selectedWilaya
+      ? (selectedDeliveryType === 'desk' ? (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0) : (selectedWilaya.homePrice ?? 0))
+      : 0;
 
     // Section visibility toggles
     const showBanner = settings?.dzshop_show_banner !== false;

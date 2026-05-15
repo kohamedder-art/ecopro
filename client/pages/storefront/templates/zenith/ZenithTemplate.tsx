@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { ChevronDown, Phone, ShoppingCart, ShieldCheck } from 'lucide-react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import { useImageClassifier } from '@/hooks/useImageClassifier';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
@@ -21,7 +21,6 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-  const baseDeliveryFee = selectedWilaya?.homePrice ?? 0;
 
   // Main product
   const mainProduct = (settings?.dzp_main_product_id
@@ -33,9 +32,12 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
 
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+  const baseDeliveryFee = selectedWilaya
+    ? (selectedDeliveryType === 'desk' ? (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0) : (selectedWilaya.homePrice ?? 0))
+    : 0;
+  const deliveryFee = baseDeliveryFee;
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -156,7 +158,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     <div className="min-h-screen font-sans text-gray-900" style={{ backgroundColor: settings?.template_bg_color || '#f3f4f6' }} dir="rtl">
 
       {/* Mobile Container */}
-      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-md mx-auto'} bg-white min-h-screen relative shadow-2xl`}>
+      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-md mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: settings?.template_bg_color || '#f3f4f6' }}>
 
         {/* ── STICKY HEADER ── */}
         <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between">
@@ -222,10 +224,13 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
         
         {/* ── ORDER FORM ── */}
-        <div ref={formRef} className="p-5 bg-gray-50 pb-24" id="checkout-form">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div ref={formRef} className="p-5 pb-24" id="checkout-form">
+          <div className="bg-white rounded-2xl p-5 shadow-sm relative" style={{ border: `2px solid ${accentColor}` }}>
+            <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
+              أكمل البيانات للطلب
+            </div>
             <h2
-              className="text-xl font-black text-center mb-6"
+              className="text-xl font-black text-center mb-6 mt-2"
               contentEditable={canManage}
               suppressContentEditableWarning
               onBlur={handleTextEdit('zenith_form_title')}
@@ -233,7 +238,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               {formTitle}
             </h2>
 
-            <form onSubmit={handleOrder} className="space-y-4">
+            <form onSubmit={handleOrder} noValidate className="space-y-4">
               {/* Variants */}
               {safeProduct.variants && safeProduct.variants.length > 0 && (
                 <VariantSelector 
@@ -270,7 +275,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                     type="text"
                     required
                     placeholder="أدخل اسمك الكامل"
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-black focus:border-black outline-none transition-all"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:border-black outline-none transition-all"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                   />
@@ -285,7 +290,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       required
                       dir="ltr"
                       placeholder="05 55 55 55 55"
-                      className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-right text-sm focus:ring-2 focus:ring-black focus:border-black outline-none transition-all"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 pl-10 py-3 text-right text-sm focus:ring-2 focus:border-black outline-none transition-all"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                     />
@@ -302,14 +307,14 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <div className="relative">
                     <select
                       required
-                      className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 focus:ring-black focus:border-black outline-none transition-all"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 focus:border-black outline-none transition-all"
                       value={selectedWilayaId ?? ''}
                       onChange={(e) => setSelectedWilayaId(e.target.value ? Number(e.target.value) : null)}
                     >
                       <option value="">اختر الولاية</option>
                       {wilayas.map((w) => (
                         <option key={w.id} value={w.id}>
-                          {String(w.id).padStart(2, '0')} - {w.labelAR}
+                          {w.labelAR}
                           {w.homePrice ? ` (${w.homePrice} ${currency})` : ''}
                         </option>
                       ))}
@@ -326,9 +331,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       type="text"
                       required
                       placeholder="أدخل بلديتك"
-                      className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-black focus:border-black outline-none transition-all"
-                      value={commune}
-                      onChange={(e) => setCommune(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:border-black outline-none transition-all"
+                    value={commune}
+                    onChange={(e) => setCommune(e.target.value)}
                     />
                   </div>
                 )}
@@ -341,7 +346,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <input
                     type="text"
                     placeholder="أدخل عنوانك"
-                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-black focus:border-black outline-none transition-all"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:border-black outline-none transition-all"
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
                   />
@@ -358,7 +363,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <span className="font-black text-lg">{quantity}</span>
                   <button
                     type="button"
-                    onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))}
+                    onClick={() => setQuantity(Math.min(safeProduct?.stock_quantity ?? 999, quantity + 1))}
                     className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
                   >+</button>
                 </div>
@@ -409,7 +414,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                     placeholder="ملاحظات إضافية"
                     value={customerNotes}
                     onChange={(e) => setCustomerNotes(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black focus:border-black outline-none transition-all text-sm"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:border-black outline-none transition-all text-sm bg-gray-50"
                     rows={3}
                   />
                 </div>
@@ -433,6 +438,12 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   </span>
                 </div>
               </div>
+
+              {orderError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center">
+                  {orderError}
+                </div>
+              )}
 
               {/* Submit */}
               <button

@@ -19,7 +19,7 @@ const DEFAULT_TEMPLATE_ID = 'leroishop';
 // These are the only templates shown by default in the picker.
 // NOTE: Disabled templates (files kept but not selectable):
 // dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina, luxedrop, streetwear
-const READY_TEMPLATE_IDS = new Set(['dzshop', 'needdz', 'zenith', 'boutique', 'iyco', 'bassem28', 'spiriluxe', 'leroishop']);
+const READY_TEMPLATE_IDS = new Set(['dzshop', 'needdz', 'zenith', 'boutique', 'iyco', 'primo', 'spiriluxe', 'leroishop']);
 
 // Template preview data with categories
 // NOTE: Disabled templates (files kept but not selectable):
@@ -34,7 +34,7 @@ const TEMPLATE_PREVIEWS = [
   // NOTE: streetwear disabled
   // { id: 'streetwear', name: 'ستريت وير — شبكة داكنة', image: '', categories: ['dark', 'popular'] },
   { id: 'iyco', name: 'IYCO — ملابس عصرية', image: '', categories: ['popular', 'landing'] },
-  { id: 'bassem28', name: 'بريمو — منتج احترافي', image: '', categories: ['popular', 'landing', 'elegant'] },
+  { id: 'primo', name: 'بريمو — منتج احترافي', image: '', categories: ['popular', 'landing', 'elegant'] },
 
   { id: 'spiriluxe', name: 'سبيريلوكس — هبوط + صور + فيديو', image: '', categories: ['landing', 'popular'] },
   { id: 'leroishop', name: 'لوروا شوب — كتالوج متعدد المنتجات', image: '', categories: ['popular', 'industry'] }

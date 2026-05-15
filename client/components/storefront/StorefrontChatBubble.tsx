@@ -66,7 +66,7 @@ export default function StorefrontChatBubble({ storeSlug, enabled }: StorefrontC
   if (!enabled || channels.length === 0) return null;
 
   return (
-    <div className="fixed bottom-20 sm:bottom-6 left-4 sm:left-6 z-[9999] flex flex-col gap-3" dir="ltr">
+    <div data-storefront-contact="true" className="fixed bottom-20 sm:bottom-6 left-4 sm:left-6 z-[9999] flex flex-col gap-3" dir="ltr">
       {channels.map((ch) => (
         <a
           key={ch.platform}
