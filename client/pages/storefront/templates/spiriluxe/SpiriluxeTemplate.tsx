@@ -83,6 +83,7 @@ export default function SpiriluxeTemplate({
   useEffect(() => {
     if (!mainProduct?.id) return;
     const imgs = Array.isArray(mainProduct?.images) ? mainProduct.images.filter(Boolean) : [];
+    console.log('[Spiriluxe] product images effect:', { productId: mainProduct.id, imagesCount: imgs.length });
     setProductImages(imgs);
     setSelectedOffer(null);
   }, [mainProduct?.id]);
@@ -91,6 +92,7 @@ export default function SpiriluxeTemplate({
   useEffect(() => {
     if (!mainProduct?.id) return;
     const savedCount = settings?.[`spiriluxe_above_count_${mainProduct.id}`];
+    console.log('[Spiriluxe] settings effect:', { productId: mainProduct.id, savedCount, allSettingsKeys: Object.keys(settings).filter(k => k.includes('above_count')), aboveCountState: aboveCount });
     if (savedCount != null) {
       const count = Number(savedCount);
       aboveCountRef.current = count;
@@ -185,15 +187,18 @@ export default function SpiriluxeTemplate({
   // Save aboveCount split to settings
   const saveAboveCount = async (count: number) => {
     if (!canManage || !mainProduct?.id) return;
+    console.log('[Spiriluxe] saveAboveCount called:', { count, productId: mainProduct.id, key: `spiriluxe_above_count_${mainProduct.id}` });
     try {
-      await fetch('/api/client/store/settings', {
+      const res = await fetch('/api/client/store/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ [`spiriluxe_above_count_${mainProduct.id}`]: count })
       });
+      const data = await res.json();
+      console.log('[Spiriluxe] saveAboveCount response:', data);
     } catch (err) {
-      console.error('Failed to save above count:', err);
+      console.error('[Spiriluxe] Failed to save above count:', err);
     }
   };
 
