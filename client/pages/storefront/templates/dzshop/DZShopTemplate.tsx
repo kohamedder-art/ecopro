@@ -101,12 +101,34 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
     const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#2563eb');
     const accentColor = settings?.template_accent_color || primaryColor;
+    const headerColor = settings?.iyco_header_color || '#ffffff';
+    const bgColor = settings?.template_bg_color || '#f3f4f6';
+    const isDark = useMemo(() => {
+      const hex = bgColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+    }, [bgColor]);
+    const textColor = isDark ? '#f1f5f9' : '#1f2937';
+    const textMuted = isDark ? '#94a3b8' : '#6b7280';
+    const borderColor = isDark ? '#334155' : '#e5e7eb';
+    const cardBg = isDark ? '#1e293b' : '#ffffff';
+    const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
+    const isHeaderDark = useMemo(() => {
+      const hex = headerColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+    }, [headerColor]);
+    const headerTextColor = isHeaderDark ? '#f1f5f9' : '#1f2937';
     const cssVariables = `
                 :root {
                     --dz-primary: ${primaryColor};
                     --dz-secondary: #f97316;
                     --dz-success: #22c55e;
-                    --dz-bg: #f3f4f6;
+                    --dz-bg: ${bgColor};
                 }
                 .hide-scrollbar::-webkit-scrollbar { display: none; }
                 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -227,7 +249,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     }, [selectedImageIndex, videoEmbed]);
 
     return (
-        <div className="bg-gray-50 text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || undefined }} dir="rtl">
+        <div className="min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: bgColor, color: textColor }} dir="rtl">
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
             {/* Top Bar Notice */}
@@ -255,7 +277,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             )}
 
             {/* Header */}
-            <header className="bg-white border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm">
+            <header className="border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm" style={{ backgroundColor: headerColor }}>
                 <div className="flex items-center gap-2">
                     {settings?.store_logo ? (
                         <img src={settings.store_logo} alt={settings?.store_name || "متجري"} className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
@@ -264,11 +286,11 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                             {(settings?.store_name || 'م').charAt(0)}
                         </div>
                     )}
-                    <span className="text-lg font-extrabold" style={{ color: 'var(--dz-primary)' }}>{settings?.store_name || "متجري"}</span>
+                    <span className="text-lg font-extrabold" style={{ color: headerTextColor }}>{settings?.store_name || "متجري"}</span>
                 </div>
                 <div className="flex gap-4">
-                    <i className="ph ph-shopping-cart text-2xl text-gray-700"></i>
-                    <i className="ph ph-list text-2xl text-gray-700 md:hidden"></i>
+                    <i className="ph ph-shopping-cart text-2xl" style={{ color: headerTextColor }}></i>
+                    <i className="ph ph-list text-2xl md:hidden" style={{ color: headerTextColor }}></i>
                 </div>
             </header>
 
@@ -442,7 +464,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">التوصيل</span>
+            <span className="text-xs" style={{ color: textMuted }}>التوصيل</span>
             <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
           </div>
           <div className="h-px bg-gray-200 my-1" />
@@ -456,12 +478,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         </button>
     </div>
 ) : (
-<div className="dz-checkout-card bg-white rounded-2xl p-6 border-2 relative" style={{ borderColor: accentColor }}>
+<div className="dz-checkout-card rounded-2xl p-6 border-2 relative" style={{ borderColor: accentColor, backgroundColor: cardBg }}>
                         <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold uppercase" style={{ backgroundColor: accentColor }}>
                             أكمل البيانات للطلب
                         </div>
                         
-                        <h3 className="text-lg font-bold mb-4 mt-2">معلومات المشتري</h3>
+                        <h3 className="text-lg font-bold mb-4 mt-2" style={{ color: textColor }}>معلومات المشتري</h3>
 
                         <form className="space-y-4 mt-6" onSubmit={handleDefaultOrder}>
                             {/* Variants */}
@@ -485,23 +507,19 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     selectedOfferId={selectedOffer?.offer_id ?? null} 
                                     onSelect={handleOfferSelect} 
                                     accentColor={accentColor} 
-                                    textColor="#1e293b" 
-                                    borderColor="#e2e8f0" 
+                                    textColor={textColor}
+                                    borderColor={borderColor}
                                     
                                 />
                             )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">الاسم الكامل</label>
-                                    <input required name="name" type="text" placeholder="أدخل اسمك الكامل" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">رقم الهاتف</label>
-                                    <input required name="phone" type="tel" placeholder="رقم الهاتف المحمول" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 text-right transition-colors" dir="ltr" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">الولاية</label>
-                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 appearance-none transition-colors">
+                                    <input required name="name" type="text" placeholder="أدخل اسمك الكامل" className="w-full px-4 py-3 rounded-xl outline-none transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+
+                                    <input required name="phone" type="tel" placeholder="رقم الهاتف المحمول" className="w-full px-4 py-3 rounded-xl outline-none text-right transition-colors" dir="ltr" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+
+                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded-xl outline-none appearance-none transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
                                         <option value="">اختر الولاية</option>
                                         {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                                     </select>
@@ -509,44 +527,26 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 {showAddress && (
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">العنوان</label>
-                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" />
-                                    </div>
-                                )}
-                                {showCommune && (
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">البلدية</label>
-                                        <input name="commune" type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" />
-                                    </div>
-                                )}
-                            </div>
+                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
 
-                            {showNotes && (
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">ملاحظات</label>
-                                    <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" rows={3} />
+                                        <input name="commune" type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+
+                                    <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-colors" rows={3} style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
                                 </div>
                             )}
 
                             <div className="pt-2">
                                 <label className="block text-sm font-bold text-gray-700 mb-1.5">الكمية</label>
-                                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                        className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
-                                    >-</button>
-                                    <span className="font-black text-lg">{quantity}</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))}
-                                        className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
-                                    >+</button>
+                                <div className="flex items-center justify-between rounded-lg p-1" style={{ border: `1px solid ${borderColor}`, backgroundColor: surfaceMuted }}>
+                                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ color: textMuted, border: `1px solid ${borderColor}`, backgroundColor: cardBg }}>−</button>
+                                    <span className="font-black text-lg" style={{ color: textColor }}>{quantity}</span>
+                                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ color: textMuted, border: `1px solid ${borderColor}`, backgroundColor: cardBg }}>+</button>
                                 </div>
                             </div>
 
                             {(showHomeDelivery || showDeskDelivery) && (
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">نوع التوصيل</label>
+                                <label className="block text-sm font-bold mb-2" style={{ color: textMuted }}>نوع التوصيل</label>
                                 <div className="grid grid-cols-2 gap-3">
                                     {showHomeDelivery && (
                                     <button
@@ -554,9 +554,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         onClick={() => setSelectedDeliveryType('home')}
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
                                         style={{
-                                            borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb',
-                                            backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#fff',
-                                            color: selectedDeliveryType === 'home' ? accentColor : '#374151',
+                                            borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor,
+                                            backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg,
+                                            color: selectedDeliveryType === 'home' ? accentColor : textColor,
                                         }}
                                     >
                                         <span className="text-sm font-bold">التوصيل للمنزل</span>
@@ -568,9 +568,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         onClick={() => setSelectedDeliveryType('desk')}
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
                                         style={{
-                                            borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb',
-                                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#fff',
-                                            color: selectedDeliveryType === 'desk' ? accentColor : '#374151',
+                                            borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor,
+                                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg,
+                                            color: selectedDeliveryType === 'desk' ? accentColor : textColor,
                                         }}
                                     >
                                         <span className="text-sm font-bold">الاستلام من المكتب</span>
@@ -602,7 +602,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 <i className="ph ph-cursor-click"></i>
                             </button>
                             
-                            <p className="text-center text-gray-500 text-xs mt-3 flex items-center justify-center gap-1">
+                            <p className="text-center text-xs mt-3 flex items-center justify-center gap-1" style={{ color: textMuted }}>
                                 <i className="ph ph-lock-key"></i>
                                 الدفع عند الاستلام بعد معاينة المنتج
                             </p>
@@ -641,8 +641,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 <img src={autoBannerImage} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="p-10 flex flex-col items-center justify-center pointer-events-none">
-                                    <i className="ph ph-plus-circle text-3xl mb-2 text-gray-400"></i>
-                                    <span className="text-sm font-bold text-gray-500">أضف صورة توضيحية للمميزات</span>
+                                    <i className="ph ph-plus-circle text-3xl mb-2" style={{ color: textMuted }}></i>
+                                    <span className="text-sm font-bold" style={{ color: textMuted }}>أضف صورة توضيحية للمميزات</span>
                                 </div>
                             )}
                         </div>
@@ -652,10 +652,10 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             </main>
 
             {/* Sticky Mobile Order Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white dz-sticky-order-bar p-3 md:hidden z-[100] border-t flex gap-3">
+            <div className="fixed bottom-0 left-0 right-0 dz-sticky-order-bar p-3 md:hidden z-[100] border-t flex gap-3" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
                 <div className="flex-1 flex flex-col justify-center px-2">
-                    <span className="font-black text-xl" style={{ color: 'var(--dz-primary)' }}>{product?.price || "4500"} دج</span>
-                    <span className="text-[10px] text-gray-400">الدفع عند الاستلام</span>
+                    <span className="font-black text-xl" style={{ color: textColor }}>{product?.price || "4500"} دج</span>
+                    <span className="text-[10px]" style={{ color: textMuted }}>الدفع عند الاستلام</span>
                 </div>
                 <button className="text-white font-bold px-8 py-3 rounded-xl text-lg flex-grow shadow-lg" style={{ backgroundColor: accentColor }} onClick={() => window.scrollTo({top: document.querySelector('.dz-checkout-card')?.getBoundingClientRect().top || 0, behavior: 'smooth'})}>
                     أطلب الآن
@@ -665,8 +665,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             {/* Admin Panel (Floating) - Only visible to store owner */}
             {canManage && (
             <div className="fixed bottom-24 left-6 z-[100] group hidden md:block">
-                <div className="bg-white shadow-2xl rounded-2xl p-4 border border-gray-100 scale-0 group-hover:scale-100 origin-bottom-left transition-all duration-300 w-64 mb-4">
-                    <h4 className="font-bold text-gray-800 border-b pb-2 mb-3">لوحة التحكم السريعة</h4>
+                <div className="shadow-2xl rounded-2xl p-4 scale-0 group-hover:scale-100 origin-bottom-left transition-all duration-300 w-64 mb-4" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}>
+                    <h4 className="font-bold pb-2 mb-3" style={{ color: textColor, borderBottom: `1px solid ${borderColor}` }}>لوحة التحكم السريعة</h4>
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <span className="text-xs">اللون الأساسي</span>
