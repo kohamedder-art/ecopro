@@ -324,6 +324,15 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       }
 
       setOrderSuccess(true);
+      trackAllPixels(PixelEvents.PURCHASE, {
+        content_name: orderProduct?.title || orderProduct?.name || '',
+        content_ids: orderProduct?.id ? [orderProduct.id] : [],
+        content_type: 'product',
+        value: isOfferItem ? selectedOffer.bundle_price : itemPrice * orderQty,
+        currency: settings?.currency_code || 'DZD',
+        num_items: isOfferItem ? selectedOffer.quantity : orderQty,
+        order_id: lastOrderId || data?.order?.id || null,
+      });
     } catch {
       setOrderError('حدث خطأ أثناء إرسال الطلب');
     } finally {

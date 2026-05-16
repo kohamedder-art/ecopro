@@ -18,6 +18,7 @@ import {
   Home,
   Building2
 } from 'lucide-react';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
@@ -203,6 +204,15 @@ const parseVideoEmbed = (videoUrl: string) => {
       setLastTelegramUrl(data.telegramStartUrl || null);
       setSubmittedPhone(String(fd.get('phone') || ''));
       setOrderStatus('success');
+      trackAllPixels(PixelEvents.PURCHASE, {
+        content_name: selectedProduct?.title || selectedProduct?.name || '',
+        content_ids: selectedProduct?.id ? [selectedProduct.id] : [],
+        content_type: 'product',
+        value: productTotal,
+        currency: settings?.currency_code || 'DZD',
+        num_items: selectedOffer?.quantity || quantity,
+        order_id: data?.order?.id || null,
+      });
     } catch(err) {
       console.error(err);
       setOrderStatus('idle');

@@ -7,6 +7,7 @@ import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Truck, Shield, Trash2, Plus, Home, Building2 } from 'lucide-react';
 import { uploadImage } from '@/lib/api';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 export default function SpiriluxeTemplate({ 
   settings, 
@@ -149,6 +150,15 @@ export default function SpiriluxeTemplate({
       setLastTelegramUrl(data.telegramStartUrl || null);
       setLastCustomerPhone(String(fd.get('phone') || ''));
       setOrderSuccess(true);
+      trackAllPixels(PixelEvents.PURCHASE, {
+        content_name: mainProduct?.title || mainProduct?.name || '',
+        content_ids: mainProduct?.id ? [mainProduct.id] : [],
+        content_type: 'product',
+        value: productTotal,
+        currency: settings?.currency_code || 'DZD',
+        num_items: selectedOffer?.quantity || quantity,
+        order_id: data?.order?.id || null,
+      });
     } catch (error: any) {
       console.error('Order error:', error);
       setOrderError(error?.message || 'حدث خطأ أثناء تقديم الطلب. يرجى المحاولة مجدداً.');

@@ -301,8 +301,22 @@ export default function IycoTemplate({
           setOrderError(data.error || 'خطأ في الطلب');
           return;
         }
+        const data = await res.json();
+        setLastOrderId(data.order?.id || null);
+        setLastTelegramUrl(data.telegramStartUrl || null);
       }
       setOrderSuccess(true);
+      const totalQty = (orderCart as any[]).reduce((sum: number, i: any) => sum + (i.qty || 1), 0);
+      const totalValue = (orderCart as any[]).reduce((sum: number, i: any) => sum + (i.price || 0) * (i.qty || 1), 0);
+      trackAllPixels(PixelEvents.PURCHASE, {
+        content_name: mainProduct?.title || mainProduct?.name || '',
+        content_ids: mainProduct?.id ? [mainProduct.id] : [],
+        content_type: 'product',
+        value: totalValue,
+        currency: settings?.currency_code || 'DZD',
+        num_items: totalQty,
+        order_id: lastOrderId || null,
+      });
     } catch {
       setOrderError('خطأ في الطلب');
     } finally {

@@ -7,6 +7,7 @@ import { useImageClassifier } from '@/hooks/useImageClassifier';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#000000';
@@ -119,6 +120,15 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         setLastOrderId(data.order?.id || null);
         setLastTelegramUrl(data.telegramStartUrl || null);
         setOrderSuccess(true);
+        trackAllPixels(PixelEvents.PURCHASE, {
+          content_name: mainProduct?.title || mainProduct?.name || '',
+          content_ids: mainProduct?.id ? [mainProduct.id] : [],
+          content_type: 'product',
+          value: productTotal,
+          currency: settings?.currency_code || 'DZD',
+          num_items: selectedOffer?.quantity || quantity,
+          order_id: data?.order?.id || null,
+        });
       } else {
         setOrderError(data.error || 'حدث خطأ أثناء إرسال الطلب');
       }

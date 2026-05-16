@@ -6,6 +6,7 @@ import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/sto
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 /* ═══════════════════════════════════════════════════════════
    LeRoi Shop — Multi-product catalog + product detail + order form
@@ -256,7 +257,18 @@ export default function LeRoiShopTemplate({
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
       setLastCustomerPhone(phone);
-      if (res.ok) setOrderSuccess(true);
+      if (res.ok) {
+        setOrderSuccess(true);
+        trackAllPixels(PixelEvents.PURCHASE, {
+          content_name: activeProduct?.title || activeProduct?.name || '',
+          content_ids: activeProduct?.id ? [activeProduct.id] : [],
+          content_type: 'product',
+          value: productTotal,
+          currency: settings?.currency_code || 'DZD',
+          num_items: quantity,
+          order_id: data?.order?.id || null,
+        });
+      }
       else setOrderError(data.error || 'حدث خطأ أثناء إرسال الطلب');
     } catch {
       setOrderError('حدث خطأ أثناء إرسال الطلب');

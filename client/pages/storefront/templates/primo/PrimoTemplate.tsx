@@ -3,6 +3,7 @@ import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import {
   ShoppingBag,
   Star,
@@ -242,6 +243,15 @@ export default function PrimoTemplate({
       setLastTelegramUrl(data.telegramStartUrl || null);
       if (!res.ok) throw new Error(data.error || 'Order failed');
       setOrderSuccess(true);
+      trackAllPixels(PixelEvents.PURCHASE, {
+        content_name: mainProduct?.title || mainProduct?.name || '',
+        content_ids: mainProduct?.id ? [mainProduct.id] : [],
+        content_type: 'product',
+        value: productTotal,
+        currency: settings?.currency_code || 'DZD',
+        num_items: isOfferItem ? selectedOffer.quantity : quantity,
+        order_id: data?.order?.id || null,
+      });
     } catch {
       setOrderError('حدث خطأ أثناء إرسال الطلب');
     } finally {

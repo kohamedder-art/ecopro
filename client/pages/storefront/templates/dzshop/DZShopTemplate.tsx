@@ -8,6 +8,7 @@ import VariantSelector, { SelectedVariant } from '@/components/storefront/Varian
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { CheckCircle2 } from 'lucide-react';
 import { Eye, EyeOff } from 'lucide-react';
+import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 export default function DZShopTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -81,6 +82,15 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             setLastTelegramUrl(data.telegramStartUrl || null);
             setCustomerPhone(fd.get('phone') as string);
             setOrderSuccess(true);
+            trackAllPixels(PixelEvents.PURCHASE, {
+              content_name: product?.title || product?.name || '',
+              content_ids: product?.id ? [product.id] : [],
+              content_type: 'product',
+              value: productTotal,
+              currency: settings?.currency_code || 'DZD',
+              num_items: quantity,
+              order_id: data?.order?.id || null,
+            });
         } catch(err) {
             console.error(err);
             setOrderError('حدث خطأ أثناء تقديم الطلب. حاول مرة أخرى.');
