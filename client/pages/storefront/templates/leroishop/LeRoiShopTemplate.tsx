@@ -577,7 +577,7 @@ export default function LeRoiShopTemplate({
                 </ul>
 
                 {/* ── Order Form ────────────────────────── */}
-                <div id="lrs-order-form" className="p-4 rounded-lg" style={{ backgroundColor: formBg, border: `1px solid ${borderColor}` }}>
+                <div id="lrs-order-form" className="p-4 md:p-5 rounded-xl" style={{ backgroundColor: formBg, border: `1px solid ${borderColor}` }}>
                   {orderSuccess ? (
                     <div className="py-8 text-center">
                       <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: accentColor + '20' }}>
@@ -637,42 +637,42 @@ export default function LeRoiShopTemplate({
 
                       {/* 3 ── Customer fields ─────────── */}
                       <div className="grid grid-cols-2 gap-4">
-                        <input required name="name" type="text" placeholder="الإسم واللقب" className="w-full px-4 py-3 rounded text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
-                        <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full px-4 py-3 rounded text-base md:text-sm outline-none transition-colors text-right" dir="ltr" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
+                        <input required name="name" type="text" placeholder="الإسم واللقب" className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
+                        <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none transition-colors text-right" dir="ltr" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       </div>
                       <div className={`grid gap-4 ${showCommune ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                        <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded text-base md:text-sm outline-none appearance-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>
+                        <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none appearance-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>
                           <option value="">الولاية</option>
                           {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                         </select>
                         {showCommune && (
-                          <input name="commune" type="text" placeholder="البلدية" className="w-full px-4 py-3 rounded text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />)}
+                          <input name="commune" type="text" placeholder="البلدية" className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />)}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-3">
                         {showHomeDelivery && (
-                          <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs transition-all"
+                          <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all"
                             style={{ backgroundColor: selectedDeliveryType === 'home' ? accentColor : inputBg, border: `1px solid ${inputBorderColor}`, color: selectedDeliveryType === 'home' ? '#ffffff' : textColor }}>
-                            <span>التوصيل للمنزل</span>
+                            <span>توصيل للمنزل</span>
                           </button>
                         )}
                         {showDeskDelivery && (
-                          <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs transition-all"
+                          <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all"
                             style={{ backgroundColor: selectedDeliveryType === 'desk' ? accentColor : inputBg, border: `1px solid ${inputBorderColor}`, color: selectedDeliveryType === 'desk' ? '#ffffff' : textColor }}>
-                            <span>الاستلام من المكتب</span>
+                            <span>استلام من المكتب</span>
                           </button>
                         )}
                       </div>
                       {showAddress && (
-                        <input name="address" type="text" placeholder="العنوان الكامل (إختياري)" className="w-full px-4 py-3 rounded text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
+                        <input name="address" type="text" placeholder="العنوان الكامل (إختياري)" className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       )}
                       {showNotes && (
-                        <textarea name="notes" placeholder="ملاحظات إضافية" rows={2} className="w-full px-4 py-3 rounded text-base md:text-sm outline-none resize-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
+                        <textarea name="notes" placeholder="ملاحظات إضافية" rows={2} className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none resize-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       )}
 
                       {/* 4 ── Quantity ─────────────────── */}
                       <div className="flex items-center gap-3 pt-1">
                         <span className="text-sm font-bold" style={{ color: textMuted }}>الكمية</span>
-                        <div className="flex items-center rounded px-2" style={{ border: `1px solid ${borderColor}`, backgroundColor: inputBg }}>
+                        <div className="flex items-center rounded-xl px-2" style={{ border: `1px solid ${borderColor}`, backgroundColor: inputBg }}>
                           <button type="button" className="px-3 py-1 font-bold text-lg hover:opacity-70" style={{ color: textMuted }} onClick={() => setQuantity(q => Math.max(1, q - 1))}>−</button>
                           <span className="w-8 text-center font-bold text-sm" style={{ color: textColor }}>{quantity}</span>
                           <button type="button" className="px-3 py-1 font-bold text-lg hover:opacity-70" style={{ color: textMuted }} onClick={() => setQuantity(q => q + 1)}>+</button>
@@ -701,7 +701,7 @@ export default function LeRoiShopTemplate({
                       )}
 
                       {/* 6 ── Submit button ────────────── */}
-                      <button disabled={isSubmitting} type="submit" className="w-full font-bold py-3.5 px-4 rounded text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 text-base" style={{ backgroundColor: accentColor }}>
+                      <button disabled={isSubmitting} type="submit" className="w-full font-bold py-4 px-4 rounded-xl text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 text-base" style={{ backgroundColor: accentColor }}>
                         {isSubmitting ? 'جاري المعالجة...' : 'اطلب الآن'}
                       </button>
                     </form>
