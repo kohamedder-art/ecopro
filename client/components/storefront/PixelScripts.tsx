@@ -186,12 +186,18 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     const ids = String(config.facebook_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return;
 
-    // Check if fbq already has the real SDK loaded (has callMethod from the real script)
-    if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
-      ids.forEach(id => {
-        try { window.fbq('init', id); } catch (e) { /* ignore */ }
-      });
-      try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
+    // Deduplicate IDs
+    const uniqueIds = [...new Set(ids)];
+
+    // Prevent duplicate script loading
+    if (document.getElementById('facebook-pixel-script')) {
+      // Script already loaded, just re-init pixels
+      if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
+        uniqueIds.forEach(id => {
+          try { window.fbq('init', id); } catch (e) { /* ignore */ }
+        });
+        try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
+      }
       return;
     }
 
@@ -213,21 +219,22 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       try { window.fbq.apply(null, args); } catch (e) { /* ignore */ }
     });
 
-    // Load the Facebook SDK via external script
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-    document.head.appendChild(script);
-
-    // Initialize each pixel id and fire pageview
-    ids.forEach(id => {
+    // Queue init and PageView events BEFORE loading the script (standard Facebook pattern)
+    uniqueIds.forEach(id => {
       try { window.fbq('init', id); } catch (e) { /* ignore */ }
     });
     try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
 
+    // Load the Facebook SDK via external script
+    const script = document.createElement('script');
+    script.id = 'facebook-pixel-script';
+    script.async = true;
+    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+    document.head.appendChild(script);
+
     // Add noscript fallbacks for each id
     const noscript = document.createElement('noscript');
-    ids.forEach(id => {
+    uniqueIds.forEach(id => {
       const img = document.createElement('img');
       img.height = 1;
       img.width = 1;
@@ -237,7 +244,7 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     });
     document.body.appendChild(noscript);
 
-    console.log('[Pixel] Facebook Pixel initialized:', ids.join(','));
+    console.log('[Pixel] Facebook Pixel initialized:', uniqueIds.join(','));
 
     return () => {
       // Cleanup not required in most SPA flows
@@ -251,12 +258,20 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     const ids = String(config.tiktok_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return;
 
+    // Deduplicate IDs
+    const uniqueIds = [...new Set(ids)];
+
     // If ttq exists, load/instantiate each id
     if (window.ttq) {
-      ids.forEach(id => {
+      uniqueIds.forEach(id => {
         try { window.ttq.load(id); } catch (e) { /* ignore */ }
       });
       try { window.ttq.page(); } catch (e) { /* ignore */ }
+      return;
+    }
+
+    // Prevent duplicate script loading
+    if (document.getElementById('tiktok-pixel-script')) {
       return;
     }
 
@@ -289,6 +304,7 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       ttq._o = ttq._o || {};
       ttq._o[e] = n || {};
       const o = document.createElement("script");
+      o.id = 'tiktok-pixel-script';
       o.type = "text/javascript";
       o.async = true;
       o.src = i + "?sdkid=" + e + "&lib=ttq";
@@ -296,12 +312,12 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       a?.parentNode?.insertBefore(o, a);
     };
 
-    ids.forEach(id => {
+    uniqueIds.forEach(id => {
       try { window.ttq.load(id); } catch (e) { /* ignore */ }
     });
     try { window.ttq.page(); } catch (e) { /* ignore */ }
 
-    console.log('[Pixel] TikTok Pixel initialized:', ids.join(','));
+    console.log('[Pixel] TikTok Pixel initialized:', uniqueIds.join(','));
 
     return () => {
       // Cleanup not required
