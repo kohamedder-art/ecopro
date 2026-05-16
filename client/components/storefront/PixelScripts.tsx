@@ -230,6 +230,13 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     script.id = 'facebook-pixel-script';
     script.async = true;
     script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+    script.onload = () => {
+      console.log('[Pixel] Facebook SDK loaded, fbq.callMethod:', typeof window.fbq?.callMethod);
+      console.log('[Pixel] Facebook queue length:', window.fbq?.queue?.length);
+    };
+    script.onerror = () => {
+      console.error('[Pixel] Facebook SDK failed to load');
+    };
     document.head.appendChild(script);
 
     // Add noscript fallbacks for each id
