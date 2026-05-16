@@ -35,6 +35,11 @@ export default function SpiriluxeTemplate({
   const [customerCommune, setCustomerCommune] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
+  // Sync quantity with selected offer
+  useEffect(() => {
+    if (selectedOffer) setQuantity(selectedOffer.quantity);
+  }, [selectedOffer]);
+
   // ── Product Images State ──
   const [productImages, setProductImages] = useState<string[]>([]);
   const [uploadingAbove, setUploadingAbove] = useState(false);
@@ -390,8 +395,8 @@ export default function SpiriluxeTemplate({
                 />
                 <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: '#f9fafb' }}>
                   <div className="flex justify-between text-sm">
-                    <span>{mainProduct?.title || 'المنتج'} × {quantity}</span>
-                    <span className="font-bold">{Math.round(productTotal).toLocaleString()} {currency}</span>
+                    <span>{mainProduct?.title || 'المنتج'} × {selectedOffer?.quantity ?? quantity}</span>
+                    <span className="font-bold">{Math.round(selectedOffer ? selectedOffer.bundle_price : (variantPrice ?? mainProduct?.price ?? 0) * (selectedOffer?.quantity ?? quantity)).toLocaleString()} {currency}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">التوصيل</span>
@@ -522,7 +527,7 @@ export default function SpiriluxeTemplate({
                   <div className="flex items-center justify-between bg-gray-50 border-2 border-gray-200 rounded-xl p-1">
                     <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">−</button>
                     <span className="font-black text-lg">{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">+</button>
+                    <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">+</button>
                   </div>
                 </div>
 
