@@ -647,11 +647,17 @@ export default function IycoTemplate({
                   {/* Quantity */}
                   <div className="pt-2">
                     <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الكمية</label>
-                    <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
-                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>−</button>
-                      <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
-                      <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>+</button>
-                    </div>
+                    {selectedOffer ? (
+                      <div className="rounded-lg p-2" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
+                        <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{selectedOffer.quantity} قطع</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
+                        <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>−</button>
+                        <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
+                        <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>+</button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Delivery Type Buttons */}

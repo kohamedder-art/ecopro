@@ -106,7 +106,7 @@ export default function OfferSelector({
         return (
           <label
             key={offer.id}
-            className="flex items-center justify-between w-full p-4 rounded-xl cursor-pointer transition-all"
+            className="flex items-center justify-between w-full p-3 rounded-lg cursor-pointer transition-all"
             style={{
               border: `2px solid ${active ? accentColor : borderColor}`,
               backgroundColor: active ? accentColor + '10' : (bgColor || '#fff'),
