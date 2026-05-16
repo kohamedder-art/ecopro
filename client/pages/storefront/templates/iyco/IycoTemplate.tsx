@@ -166,7 +166,6 @@ export default function IycoTemplate({
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const total = subtotal + deliveryFee;
 
   // ── Order Form State ──
   const [customerName, setCustomerName] = useState('');
@@ -175,6 +174,8 @@ export default function IycoTemplate({
   const [customerCommune, setCustomerCommune] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const effectiveSubtotal = selectedOffer ? selectedOffer.bundle_price * quantity : subtotal;
+  const total = effectiveSubtotal + deliveryFee;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -186,7 +187,7 @@ export default function IycoTemplate({
   // Sync quantity to match selected offer quantity
   useEffect(() => {
     if (selectedOffer) setQuantity(selectedOffer.quantity);
-  }, [selectedOffer]);
+  }, [selectedOffer?.id]);
 
   // ── Scroll-aware Header ──
   const [showHeader, setShowHeader] = useState(true);
@@ -289,9 +290,9 @@ export default function IycoTemplate({
             store_slug: storeSlug,
             product_id: item.id,
             ...(item.variant_id ? { variant_id: item.variant_id } : {}),
-            quantity: isOfferItem ? selectedOffer.quantity : item.qty,
+            quantity: isOfferItem ? selectedOffer.quantity * item.qty : item.qty,
             ...(isOfferItem ? { offer_id: selectedOffer.offer_id } : {}),
-            total_price: isOfferItem ? selectedOffer.bundle_price : item.price * item.qty,
+            total_price: isOfferItem ? selectedOffer.bundle_price * item.qty : item.price * item.qty,
             delivery_fee: deliveryFee,
             delivery_type: selectedDeliveryType,
             customer_name: customerName,
@@ -647,17 +648,11 @@ export default function IycoTemplate({
                   {/* Quantity */}
                   <div className="pt-2">
                     <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الكمية</label>
-                    {selectedOffer ? (
-                      <div className="rounded-lg p-2" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
-                        <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{selectedOffer.quantity} قطع</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
-                        <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>−</button>
-                        <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
-                        <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>+</button>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
+                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>−</button>
+                      <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
+                      <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>+</button>
+                    </div>
                   </div>
 
                   {/* Delivery Type Buttons */}
@@ -684,8 +679,8 @@ export default function IycoTemplate({
                   {/* Receipt Box */}
                   <div className="p-2.5 rounded-md mt-2 space-y-1.5" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
                     <div className="flex justify-between items-center text-xs font-bold" style={{ color: surfaceTextColor }}>
-                      <span className="flex items-center gap-1.5"><ShoppingCart size={13} /> سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${selectedOffer?.quantity ?? quantity})`}</span>
-                      <span dir="ltr">{Math.round(selectedOffer ? selectedOffer.bundle_price : ((selectedVariant?.price != null && selectedVariant.price > 0 ? selectedVariant.price : null) ?? mainProduct.price) * (selectedOffer?.quantity ?? quantity)).toLocaleString()} {currency}</span>
+                      <span className="flex items-center gap-1.5"><ShoppingCart size={13} /> سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity * quantity} قطعة)` : ` (${quantity})`}</span>
+                      <span dir="ltr">{Math.round(selectedOffer ? selectedOffer.bundle_price * quantity : ((selectedVariant?.price != null && selectedVariant.price > 0 ? selectedVariant.price : null) ?? mainProduct.price) * quantity).toLocaleString()} {currency}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs font-bold pb-1.5" style={{ color: surfaceTextColor, borderBottom: `1px solid ${borderColor}` }}>
                       <span className="flex items-center gap-1.5"><Truck size={13} /> التوصيل</span>
@@ -700,7 +695,7 @@ export default function IycoTemplate({
                     <div className="flex justify-between items-center font-black text-sm" style={{ color: surfaceTextColor }}>
                       <span className="flex items-center gap-1.5"><Calculator size={13} /> المجموع</span>
                       <span dir="ltr" style={{ color: accentColor }}>
-                        {!selectedWilayaId ? '--' : `${Math.round((selectedOffer ? selectedOffer.bundle_price : ((selectedVariant?.price != null && selectedVariant.price > 0 ? selectedVariant.price : null) ?? mainProduct.price) * (selectedOffer?.quantity ?? quantity)) + deliveryFee).toLocaleString()} ${currency}`}
+                        {!selectedWilayaId ? '--' : `${Math.round((selectedOffer ? selectedOffer.bundle_price * quantity : ((selectedVariant?.price != null && selectedVariant.price > 0 ? selectedVariant.price : null) ?? mainProduct.price) * quantity) + deliveryFee).toLocaleString()} ${currency}`}
                       </span>
                     </div>
                   </div>
