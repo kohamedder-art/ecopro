@@ -637,16 +637,16 @@ export default function LeRoiShopTemplate({
 
                       {/* 3 ── Customer fields ─────────── */}
                       <div className="grid grid-cols-2 gap-4">
-                        <input required name="name" type="text" placeholder="الإسم واللقب" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
-                        <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors text-right" dir="ltr" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
+                        <input required name="name" type="text" placeholder="الإسم واللقب" className="w-full px-4 py-3 rounded text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
+                        <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full px-4 py-3 rounded text-base md:text-sm outline-none transition-colors text-right" dir="ltr" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       </div>
                       <div className={`grid gap-4 ${showCommune ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                        <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-3 py-2.5 rounded text-sm outline-none appearance-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>
+                        <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded text-base md:text-sm outline-none appearance-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>
                           <option value="">الولاية</option>
                           {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                         </select>
                         {showCommune && (
-                          <input name="commune" type="text" placeholder="البلدية" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />)}
+                          <input name="commune" type="text" placeholder="البلدية" className="w-full px-4 py-3 rounded text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />)}
                       </div>
                       <div className="flex gap-2">
                         {showHomeDelivery && (
@@ -663,10 +663,10 @@ export default function LeRoiShopTemplate({
                         )}
                       </div>
                       {showAddress && (
-                        <input name="address" type="text" placeholder="العنوان الكامل (إختياري)" className="w-full px-3 py-2.5 rounded text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
+                        <input name="address" type="text" placeholder="العنوان الكامل (إختياري)" className="w-full px-4 py-3 rounded text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       )}
                       {showNotes && (
-                        <textarea name="notes" placeholder="ملاحظات إضافية" rows={2} className="w-full px-3 py-2.5 rounded text-sm outline-none resize-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
+                        <textarea name="notes" placeholder="ملاحظات إضافية" rows={2} className="w-full px-4 py-3 rounded text-base md:text-sm outline-none resize-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       )}
 
                       {/* 4 ── Quantity ─────────────────── */}
