@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/lib/i18n';
 import { RenderStorefront } from './storefront/templates';
 import UniversalStyleInjector from '@/components/storefront/UniversalStyleInjector';
-import PixelScripts, { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import PixelScripts, { trackAllPixels, PixelEvents, setStoreCurrency } from '@/components/storefront/PixelScripts';
 import StorefrontChatBubble from '@/components/storefront/StorefrontChatBubble';
 import { setWindowTemplateSettings } from '@/lib/templateWindow';
 import { formatMoney } from '@/utils/money';
@@ -303,6 +303,7 @@ export default function Storefront() {
   // Keep window.TEMPLATE_SETTINGS in sync so templates using hooks reflect current settings.
   useEffect(() => {
     setWindowTemplateSettings(storeSettings);
+    if (storeSettings?.currency_code) setStoreCurrency(storeSettings.currency_code);
   }, [storeSettings]);
 
   const handleProductView = useCallback((product: any) => {

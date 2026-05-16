@@ -14,6 +14,11 @@ interface PixelScriptsProps {
 
 // Module-level guards to prevent duplicate initialization across multiple instances
 let facebookPixelInitialized = false;
+let currentStoreCurrency = 'DZD';
+
+export function setStoreCurrency(code: string) {
+  currentStoreCurrency = code;
+}
 
 // Deduplication cache for ViewContent events (prevents rapid-fire duplicates)
 const lastViewContentTimestamps = new Map<string, number>();
@@ -188,7 +193,7 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
                 content_name: body.product_name || body.product_title || body.name || '',
                 content_type: 'product',
                 value: value,
-                currency: 'DZD',
+                currency: currentStoreCurrency,
                 order_id: orderId ? String(orderId) : undefined,
               });
             }).catch(() => {});
