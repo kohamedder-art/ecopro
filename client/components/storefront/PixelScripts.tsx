@@ -15,6 +15,27 @@ interface PixelScriptsProps {
 // Module-level guards to prevent duplicate initialization across multiple instances
 let facebookPixelInitialized = false;
 
+// Deduplication cache for ViewContent events (prevents rapid-fire duplicates)
+const lastViewContentTimestamps = new Map<string, number>();
+
+// Queue for events that fire before fbq('init') — replayed after init
+// (fbq stub queue only works for events fired AFTER the stub is created,
+//  but events BEFORE init are still ignored by the Facebook SDK)
+let pendingEvents: [string, Record<string, any> | undefined][] = [];
+
+// Module-level Facebook Pixel stub — created immediately so events fired
+// before async config loads are properly queued (not silently dropped)
+if (typeof window !== 'undefined' && !window.fbq) {
+  const n = window.fbq = function() {
+    n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+  } as any;
+  if (!window._fbq) window._fbq = n;
+  n.push = n;
+  n.loaded = true;
+  n.version = '2.0';
+  n.queue = [];
+}
+
 const CANONICAL_SESSION_KEY = 'ecopro_session_id';
 const CANONICAL_VISITOR_KEY = 'ecopro_visitor_id';
 const LEGACY_SESSION_KEYS = [CANONICAL_SESSION_KEY, 'pixel_session_id'];
@@ -201,27 +222,18 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
 
     facebookPixelInitialized = true;
 
-    // Preserve any events already queued by trackFacebookEvent before fbq loaded
-    const existingQueue = (window as any).fbq?.queue || [];
-
-    // Initialize fbq without inline script (CSP-safe)
-    const n = window.fbq = function() {
-      n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-    } as any;
-    if (!window._fbq) window._fbq = n;
-    n.push = n;
-    n.loaded = true;
-    n.version = '2.0';
-    n.queue = [];
-
-    // Re-queue any events fired before fbq was fully initialized
-    existingQueue.forEach((args: any[]) => {
-      try { window.fbq.apply(null, args); } catch (e) { /* ignore */ }
-    });
-
-    // Queue init events BEFORE loading the script (PageView will be auto-fired by SDK)
+    // Queue init events (PageView auto-fired by SDK on init)
     uniqueIds.forEach(id => {
       try { window.fbq('init', id); } catch (e) { /* ignore */ }
+    });
+
+    // Replay events that were queued before pixel was initialized.
+    // These land in fbq's stub queue AFTER init, so the SDK processes
+    // them after the pixel is initialized (not ignored like pre-init events).
+    const replay = pendingEvents;
+    pendingEvents = [];
+    replay.forEach(([name, params]) => {
+      try { window.fbq('track', name, params); } catch (e) { /* ignore */ }
     });
 
     // Load the Facebook SDK via external script
@@ -338,10 +350,17 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
  * Helper functions to track events from other components
  */
 export function trackFacebookEvent(eventName: string, params?: Record<string, any>) {
+  const p = params ? { ...params } : {};
+  if (p.value != null) p.value = Number(p.value);
+
   if (typeof window !== 'undefined' && window.fbq) {
-    const p = params ? { ...params } : {};
-    if (p.value != null) p.value = Number(p.value);
-    window.fbq('track', eventName, p);
+    if (facebookPixelInitialized) {
+      window.fbq('track', eventName, p);
+    } else if (eventName !== 'PageView') {
+      // Queue non-PageView events — replayed after init.
+      // PageView is excluded because the Facebook SDK auto-fires it on init.
+      pendingEvents.push([eventName, p]);
+    }
   }
 }
 
@@ -487,6 +506,19 @@ export function trackAllPixels(eventName: string, params?: Record<string, any>) 
     if (!Number.isNaN(numValue)) {
       normalizedParams.value = numValue;
     }
+  }
+
+  // Deduplicate rapid-fire ViewContent events (same product within 2s)
+  if (eventName === 'ViewContent') {
+    const dedupKey = `vc:${normalizedParams.content_ids?.[0]}`;
+    const last = lastViewContentTimestamps.get(dedupKey);
+    const now = Date.now();
+    if (last && now - last < 2000) {
+      // Skip Facebook/TikTok but still track to backend
+      trackToBackend(currentStoreSlug || localStorage.getItem('currentStoreSlug') || '', eventName, normalizedParams);
+      return;
+    }
+    lastViewContentTimestamps.set(dedupKey, now);
   }
 
   // Track to Facebook and TikTok SDKs (client-side)
