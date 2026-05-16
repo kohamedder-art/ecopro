@@ -67,7 +67,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 customer_phone: fd.get('phone'),
                 customer_address: (fd.get('address') as string) || selectedWilaya?.labelAR || '',
                 customer_commune: fd.get('commune') || '',
-                customer_notes: fd.get('notes') || ''
+                customer_notes: fd.get('notes') || '',
+                product_name: product.title || product.name || '',
             };
             const res = await fetch('/api/orders/create', {
                 method: 'POST',

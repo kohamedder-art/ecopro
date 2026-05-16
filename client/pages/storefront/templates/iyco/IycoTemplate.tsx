@@ -291,6 +291,7 @@ export default function IycoTemplate({
             customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune].filter(Boolean).join(' - '),
             customer_notes: customerNotes,
             shipping_wilaya_id: selectedWilayaId,
+            product_name: item.name || item.title || mainProduct?.title || mainProduct?.name || '',
           }),
         });
         if (!res.ok) {

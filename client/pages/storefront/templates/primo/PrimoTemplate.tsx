@@ -234,6 +234,7 @@ export default function PrimoTemplate({
           customer_address: address,
           customer_notes: customerNotes,
           shipping_wilaya_id: selectedWilayaId,
+          product_name: mainProduct.title || mainProduct.name || '',
         }),
       });
       const data = await res.json();

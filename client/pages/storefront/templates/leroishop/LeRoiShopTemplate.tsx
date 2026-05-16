@@ -249,6 +249,7 @@ export default function LeRoiShopTemplate({
           customer_notes: fd.get('notes') as string,
           customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address')].filter(Boolean).join(' - '),
           shipping_wilaya_id: selectedWilayaId,
+          product_name: activeProduct.title || activeProduct.name || '',
         }),
       });
       const data = await res.json();

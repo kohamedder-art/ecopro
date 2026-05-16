@@ -110,6 +110,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           customer_phone: customerPhone,
           customer_address: address,
           customer_notes: customerNotes,
+          product_name: mainProduct.title || mainProduct.name || '',
         }),
       });
 

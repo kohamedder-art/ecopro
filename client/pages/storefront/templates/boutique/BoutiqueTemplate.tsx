@@ -311,6 +311,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           customer_address: address,
           customer_notes: customerNotes,
           shipping_wilaya_id: selectedWilayaId,
+          product_name: orderProduct.title || orderProduct.name || '',
         }),
       });
 

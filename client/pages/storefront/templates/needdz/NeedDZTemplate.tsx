@@ -190,6 +190,7 @@ const parseVideoEmbed = (videoUrl: string) => {
         customer_phone: fd.get('phone'),
         customer_address: [selectedWilaya?.labelAR, customerCommune || fd.get('commune'), customerAddress].filter(Boolean).join(' - '),
         customer_notes: customerNotes,
+        product_name: selectedProduct.title || selectedProduct.name || '',
       };
       const res = await fetch('/api/orders/create', {
         method: 'POST',
