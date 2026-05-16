@@ -156,12 +156,15 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
             // Clone to read response without consuming it
             const cloned = response.clone();
             cloned.json().then((data: any) => {
+              const orderId = data?.order?.id || data?.orderId || data?.order_id || '';
+              const value = body.total_price || body.offer_bundle_price || body.unit_price || 0;
+              console.log('[Pixel] Purchase detected:', { orderId, value, product_id: body.product_id });
               trackAllPixels(PixelEvents.PURCHASE, {
                 content_ids: [body.product_id],
                 content_name: body.product_name || '',
-                value: body.total_price,
+                value: value,
                 currency: 'DZD',
-                order_id: data?.orderId || data?.order_id || '',
+                order_id: String(orderId),
               });
             }).catch(() => {});
           }
