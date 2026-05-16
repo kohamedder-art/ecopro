@@ -83,7 +83,6 @@ export default function SpiriluxeTemplate({
   useEffect(() => {
     if (!mainProduct?.id) return;
     const imgs = Array.isArray(mainProduct?.images) ? mainProduct.images.filter(Boolean) : [];
-    console.log('[Spiriluxe] product images effect:', { productId: mainProduct.id, imagesCount: imgs.length });
     setProductImages(imgs);
     setSelectedOffer(null);
   }, [mainProduct?.id]);
@@ -92,9 +91,9 @@ export default function SpiriluxeTemplate({
   useEffect(() => {
     if (!mainProduct?.id) return;
     const savedCount = settings?.[`spiriluxe_above_count_${mainProduct.id}`];
-    console.log('[Spiriluxe] settings effect:', { productId: mainProduct.id, savedCount, allSettingsKeys: Object.keys(settings).filter(k => k.includes('above_count')), aboveCountState: aboveCount });
-    if (savedCount != null) {
-      const count = Number(savedCount);
+    const localCount = (() => { try { const v = localStorage.getItem(`spiriluxe_above_count_${mainProduct.id}`); return v != null ? Number(v) : null; } catch { return null; } })();
+    const count = savedCount != null ? Number(savedCount) : localCount;
+    if (count != null && !isNaN(count)) {
       aboveCountRef.current = count;
       setAboveCount(count);
     }
@@ -187,7 +186,6 @@ export default function SpiriluxeTemplate({
   // Save aboveCount split to settings
   const saveAboveCount = async (count: number) => {
     if (!canManage || !mainProduct?.id) return;
-    console.log('[Spiriluxe] saveAboveCount called:', { count, productId: mainProduct.id, key: `spiriluxe_above_count_${mainProduct.id}` });
     try {
       const res = await fetch('/api/client/store/settings', {
         method: 'PUT',
@@ -195,11 +193,14 @@ export default function SpiriluxeTemplate({
         credentials: 'include',
         body: JSON.stringify({ [`spiriluxe_above_count_${mainProduct.id}`]: count })
       });
-      const data = await res.json();
-      console.log('[Spiriluxe] saveAboveCount response:', data);
     } catch (err) {
-      console.error('[Spiriluxe] Failed to save above count:', err);
+      console.error('Failed to save above count:', err);
     }
+    // Also persist locally so it survives refresh immediately
+    try {
+      const key = `spiriluxe_above_count_${mainProduct.id}`;
+      localStorage.setItem(key, String(count));
+    } catch {}
   };
 
   // Upload image and append to product images
