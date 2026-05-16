@@ -85,12 +85,9 @@ export default function SpiriluxeTemplate({
     const imgs = Array.isArray(mainProduct?.images) ? mainProduct.images.filter(Boolean) : [];
     setProductImages(imgs);
     setSelectedOffer(null);
-    // Default to all above until settings load
-    aboveCountRef.current = imgs.length;
-    setAboveCount(imgs.length);
   }, [mainProduct?.id]);
 
-  // When saved aboveCount setting arrives (async): apply it without resetting images
+  // When saved aboveCount setting arrives: apply it without resetting images
   useEffect(() => {
     if (!mainProduct?.id) return;
     const savedCount = settings?.[`spiriluxe_above_count_${mainProduct.id}`];
@@ -99,8 +96,7 @@ export default function SpiriluxeTemplate({
       aboveCountRef.current = count;
       setAboveCount(count);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.[`spiriluxe_above_count_${mainProduct?.id}`]]);
+  }, [mainProduct?.id, settings?.[`spiriluxe_above_count_${mainProduct?.id}`]]);
   
 
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
