@@ -743,11 +743,23 @@ export default function IycoTemplate({
                       className="w-full flex items-center justify-between p-4 transition-colors text-right"
                       style={{ backgroundColor: surfaceColor, color: surfaceTextColor }}
                     >
-                      <span className="font-bold text-sm">{faq.q}</span>
+                      <span
+                        className="font-bold text-sm"
+                        contentEditable={canManage}
+                        suppressContentEditableWarning
+                        onBlur={handleTextEdit(`iyco_faq${idx + 1}_q`)}
+                        style={{ color: surfaceTextColor }}
+                      >{faq.q}</span>
                       {openFaq === idx ? <ChevronUp size={16} style={{ color: surfaceTextMuted }} /> : <ChevronDown size={16} style={{ color: surfaceTextMuted }} />}
                     </button>
                     {openFaq === idx && (
-                      <div className="p-4 text-sm" style={{ backgroundColor: surfaceMuted, color: textMuted, borderTop: `1px solid ${borderColor}` }}>
+                      <div
+                        className="p-4 text-sm"
+                        contentEditable={canManage}
+                        suppressContentEditableWarning
+                        onBlur={handleTextEdit(`iyco_faq${idx + 1}_a`)}
+                        style={{ backgroundColor: surfaceMuted, color: textMuted, borderTop: `1px solid ${borderColor}` }}
+                      >
                         {faq.a}
                       </div>
                     )}
