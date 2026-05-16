@@ -21,7 +21,18 @@ export default function SpiriluxeTemplate({
   // ── Settings & State ──
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#8b5cf6';
   const bgColor = settings?.template_bg_color || '#ffffff';
-  const textColor = settings?.template_text_color || '#1f2937';
+  const isDark = useMemo(() => {
+    const hex = bgColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, [bgColor]);
+  const textColor = isDark ? '#f1f5f9' : '#1f2937';
+  const textMuted = isDark ? '#94a3b8' : '#6b7280';
+  const borderColor = isDark ? '#334155' : '#e5e7eb';
+  const cardBg = isDark ? '#1e293b' : '#ffffff';
+  const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
   const currency = settings?.currency_code || 'د.ج';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -374,7 +385,7 @@ export default function SpiriluxeTemplate({
 
         {/* Order Form */}
         <div className="px-6 py-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6">
+          <div className="rounded-2xl shadow-xl p-6" style={{ backgroundColor: cardBg }}>
             
             {orderSuccess ? (
               <div className="text-center py-8">
@@ -382,7 +393,7 @@ export default function SpiriluxeTemplate({
                   <Shield className="w-10 h-10 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-2 text-green-600">تم تسجيل طلبك بنجاح! 🎉</h3>
-                <p className="text-gray-600 mb-4">سنتصل بك قريباً لتأكيد الطلب</p>
+                <p className="mb-4" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
                 <OrderSuccessConnect 
                   storeSlug={storeSlug} 
                   accentColor={accentColor} 
@@ -390,16 +401,16 @@ export default function SpiriluxeTemplate({
                   telegramStartUrl={lastTelegramUrl} 
                   customerPhone={lastCustomerPhone || undefined} 
                 />
-                <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: '#f9fafb' }}>
+                <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: surfaceMuted }}>
                   <div className="flex justify-between text-sm">
                     <span>{mainProduct?.title || 'المنتج'} × {selectedOffer?.quantity ?? quantity}</span>
                     <span className="font-bold">{Math.round(selectedOffer ? selectedOffer.bundle_price : (variantPrice ?? mainProduct?.price ?? 0) * (selectedOffer?.quantity ?? quantity)).toLocaleString()} {currency}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">التوصيل</span>
+                    <span style={{ color: textMuted }}>التوصيل</span>
                     <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
                   </div>
-                  <div className="h-px bg-gray-200 my-1" />
+                  <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
                   <div className="flex justify-between font-black">
                     <span>المجموع</span>
                     <span className="text-base" style={{ color: accentColor }}>{Math.round(grandTotal).toLocaleString()} {currency}</span>
@@ -412,7 +423,7 @@ export default function SpiriluxeTemplate({
             ) : (
               <form onSubmit={handleOrder} className="space-y-5">
                 {orderError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-semibold rounded-xl px-4 py-3">
+                  <div className="text-sm font-semibold rounded-xl px-4 py-3" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
                     {orderError}
                   </div>
                 )}
@@ -435,28 +446,34 @@ export default function SpiriluxeTemplate({
                     onSelect={(o) => setSelectedOffer(o)}
                     accentColor={accentColor}
                     textColor={textColor}
-                    borderColor="#e5e7eb"
-                    
+                    borderColor={borderColor}
+                    bgColor={cardBg}
                   />
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-semibold mb-2">الاسم الكامل *</label>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>الاسم الكامل *</label>
                     <input 
                       name="name" 
                       type="text" 
                       required 
-                      className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 rounded-xl transition-all"
+                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
                       placeholder="أدخل اسمك الكامل"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-2">رقم الهاتف *</label>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>رقم الهاتف *</label>
                     <input 
                       name="phone" 
                       type="tel" 
                       required 
-                      className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 rounded-xl transition-all"
+                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
                       placeholder="رقم الواتساب الخاص بك"
                     />
                   </div>
@@ -464,12 +481,15 @@ export default function SpiriluxeTemplate({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-semibold mb-2">ولاية التوصيل *</label>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>ولاية التوصيل *</label>
                     <select 
                       value={selectedWilayaId || ''} 
                       onChange={e => setSelectedWilayaId(Number(e.target.value))}
                       required
-                      className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 rounded-xl transition-all"
+                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
                     >
                       <option value="">اختر ولايتك</option>
                       {wilayas.map(w => (
@@ -479,13 +499,16 @@ export default function SpiriluxeTemplate({
                   </div>
                   {showCommune && (
                     <div>
-                      <label className="block text-sm font-semibold mb-2">البلدية</label>
+                      <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>البلدية</label>
                       <input 
                         name="commune" 
                         type="text" 
                         value={customerCommune}
                         onChange={e => setCustomerCommune(e.target.value)}
-                        className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 rounded-xl transition-all"
+                        style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                        onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                        onBlur={e => e.currentTarget.style.borderColor = borderColor}
                         placeholder="أدخل بلديتك"
                       />
                     </div>
@@ -494,11 +517,14 @@ export default function SpiriluxeTemplate({
 
                 {showAddress && (
                   <div>
-                    <label className="block text-sm font-semibold mb-2">عنوان التوصيل</label>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>عنوان التوصيل</label>
                     <input 
                       name="address" 
                       type="text" 
-                      className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 rounded-xl transition-all"
+                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
                       placeholder="عنوان الشارع، المبنى، إلخ"
                     />
                   </div>
@@ -506,13 +532,16 @@ export default function SpiriluxeTemplate({
 
                 {showNotes && (
                   <div>
-                    <label className="block text-sm font-semibold mb-2">ملاحظات إضافية</label>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>ملاحظات إضافية</label>
                     <textarea 
                       name="notes" 
                       rows={3}
                       value={customerNotes}
                       onChange={e => setCustomerNotes(e.target.value)}
-                      className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
+                      className="w-full px-4 py-3 rounded-xl transition-all resize-none"
+                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
                       placeholder="أي طلبات خاصة أو ملاحظات (اختياري)"
                     />
                   </div>
@@ -520,26 +549,26 @@ export default function SpiriluxeTemplate({
 
                 {/* Quantity */}
                 <div className="pt-2">
-                  <label className="block text-sm font-semibold mb-2">الكمية</label>
-                  <div className="flex items-center justify-between bg-gray-50 border-2 border-gray-200 rounded-xl p-1">
-                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">−</button>
-                    <span className="font-black text-lg">{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border border-gray-200 rounded-lg font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center">+</button>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>الكمية</label>
+                  <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `2px solid ${borderColor}` }}>
+                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>−</button>
+                    <span className="font-black text-lg" style={{ color: textColor }}>{quantity}</span>
+                    <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>+</button>
                   </div>
                 </div>
 
                 {(showHomeDelivery || showDeskDelivery) && (
                   <div>
-                    <label className="block text-sm font-semibold mb-3">طريقة التوصيل *</label>
+                    <label className="block text-sm font-semibold mb-3" style={{ color: textColor }}>طريقة التوصيل *</label>
                     <div className="grid grid-cols-2 gap-3">
                       {showHomeDelivery && (
-                        <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'home' ? accentColor : '#374151' }}>
+                        <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
                           <Truck size={16} />
                           <span>توصيل للمنزل</span>
                         </button>
                       )}
                       {showDeskDelivery && (
-                        <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'desk' ? accentColor : '#374151' }}>
+                        <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
                           <Building2 size={16} />
                           <span>استلام من المكتب</span>
                         </button>
@@ -551,14 +580,14 @@ export default function SpiriluxeTemplate({
                 {/* Order Summary — always visible */}
                 <div className="p-3 rounded-xl text-sm space-y-2" style={{ backgroundColor: accentColor + '10', border: `1px solid ${accentColor}30` }}>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">سعر المنتجات</span>
+                    <span style={{ color: textMuted }}>سعر المنتجات</span>
                     <span className="font-bold">{Math.round(productTotal).toLocaleString()} {currency}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">سعر التوصيل</span>
+                    <span style={{ color: textMuted }}>سعر التوصيل</span>
                     {selectedWilayaId
                       ? <span className="font-bold" style={{ color: accentColor }}>{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
-                      : <span className="text-gray-400 text-xs">يُحدد عند اختيار الولاية</span>
+                      : <span style={{ color: textMuted }}>يُحدد عند اختيار الولاية</span>
                     }
                   </div>
                   <div className="flex justify-between pt-2" style={{ borderTop: `1px solid ${accentColor}40` }}>

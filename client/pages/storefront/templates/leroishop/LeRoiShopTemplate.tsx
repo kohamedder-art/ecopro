@@ -435,7 +435,7 @@ export default function LeRoiShopTemplate({
                           {Math.round(product.price ?? 0).toLocaleString()} <span className="text-xs font-semibold">{currency}</span>
                         </span>
                         {product.views > 0 && (
-                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: '#ea580c' }}>
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: textMuted }}>
                             🔥 {product.views > 1000 ? `${Math.floor(product.views/1000)}K+` : `${product.views}+`} sold
                           </span>
                         )}
@@ -595,7 +595,7 @@ export default function LeRoiShopTemplate({
                           <span style={{ color: textMuted }}>التوصيل</span>
                           <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${currency}`}</span>
                         </div>
-                        <div className="h-px bg-gray-200 my-1" />
+                        <div style={{ height: '1px', backgroundColor: borderColor }} className="my-1" />
                         <div className="flex justify-between font-black">
                           <span>المجموع</span>
                           <span style={{ color: accentColor }}>{Math.round(grandTotal ?? 0).toLocaleString()} {currency}</span>
@@ -619,7 +619,7 @@ export default function LeRoiShopTemplate({
                           accentColor={accentColor}
                           textColor={textColor}
                           borderColor={inputBorderColor}
-                          
+                          bgColor={cardBg}
                         />
                       )}
 
@@ -787,7 +787,7 @@ export default function LeRoiShopTemplate({
                               {Math.round(product.price ?? 0).toLocaleString()} <span className="text-xs font-semibold">{currency}</span>
                             </span>
                             {product.views > 0 && (
-                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: '#ea580c' }}>
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: textMuted }}>
                                 🔥 {product.views > 1000 ? `${Math.floor(product.views/1000)}K+` : `${product.views}+`} sold
                               </span>
                             )}

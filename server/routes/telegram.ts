@@ -785,7 +785,7 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
       // CRITICAL: Ensure bot_settings exists and is enabled for pre-connection
       try {
         const { ensureBotSettingsRow } = await import('../utils/client-provisioning');
-        await ensureBotSettingsRow(resolvedClientId, { enabled: true });
+        await ensureBotSettingsRow(resolvedClientId);
       } catch (err) {
         console.warn('[TelegramWebhook] Failed to ensure bot_settings for preconnect:', (err as any)?.message || err);
       }
@@ -953,7 +953,7 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
     // CRITICAL: Ensure bot_settings exists and is enabled when customer connects to receive order info
     try {
       const { ensureBotSettingsRow } = await import('../utils/client-provisioning');
-      await ensureBotSettingsRow(clientId, { enabled: true });
+      await ensureBotSettingsRow(clientId);
     } catch (err) {
       console.warn('[TelegramWebhook] Failed to ensure bot_settings enabled:', (err as any)?.message || err);
     }

@@ -42,11 +42,9 @@ function PixelCard({ px, onToggle, onDelete, t }: { px: PixelItem; onToggle: (id
         <p className="text-xs text-muted-foreground font-mono truncate">{px.pixel_id}</p>
       </div>
       <Switch checked={px.enabled} onCheckedChange={v => onToggle(px.id, v)} />
-      {!px.id.endsWith('-main') && (
-        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(px.id)}>
-          <MkrTrash className="h-3.5 w-3.5 text-red-400 hover:text-red-600 transition-colors" />
-        </Button>
-      )}
+      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(px.id)}>
+        <MkrTrash className="h-3.5 w-3.5 text-red-400 hover:text-red-600 transition-colors" />
+      </Button>
     </div>
   );
 }

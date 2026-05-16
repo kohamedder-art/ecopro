@@ -218,153 +218,139 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                       </div>
                     )}
 
-                    {/* Message Bubble */}
-                    <div
-                      className={`px-3.5 py-2 transition-all shadow-sm ${
-                        isOwnMessage
-                          ? `bg-violet-600 text-white ${isLastInGroup ? 'rounded-2xl rounded-br-sm' : 'rounded-2xl'}`
-                          : `bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 ${isLastInGroup ? 'rounded-2xl rounded-bl-sm' : 'rounded-2xl'}`
-                      }`}
-                    >
-                      {/* System Message */}
-                      {message.message_type === 'system' && (
-                        <p className={`text-xs italic text-center ${
-                          isOwnMessage ? 'text-violet-100' : 'text-slate-400 dark:text-slate-500'
-                        }`}>
-                          {message.message_content}
-                        </p>
-                      )}
-
-                      {/* Regular Text Message - with edit mode */}
-                      {message.message_type === 'text' && (
-                        editingId === message.id ? (
-                          <div className="space-y-2">
-                            <textarea
-                              value={editContent}
-                              onChange={(e) => setEditContent(e.target.value)}
-                              className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-xs text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
-                              rows={3}
-                              autoFocus
-                            />
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => {
-                                  setEditingId(null);
-                                  setEditContent('');
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition"
-                                title="Cancel"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  if (editContent.trim() && editContent !== message.message_content) {
-                                    await onMessageEdit?.(message.id, editContent.trim());
-                                  }
-                                  setEditingId(null);
-                                  setEditContent('');
-                                }}
-                                disabled={!editContent.trim()}
-                                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition disabled:opacity-50"
-                                title="Save"
-                              >
-                                <CheckIcon className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="text-xs break-words leading-relaxed whitespace-pre-wrap">
-                              {highlightText(message.message_content, searchHighlight)}
-                            </p>
-                            {message.metadata?.edited && (
-                              <span className="text-xs opacity-60 italic">(edited)</span>
-                            )}
-                          </div>
-                        )
-                      )}
-
-                      {/* Code Request Message */}
-                      {message.message_type === 'code_request' && (
-                        <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
-                          <div className="flex items-center gap-2 font-bold">
-                            <span className="text-lg">📋</span>
-                            <span>Code Request</span>
-                          </div>
-                          <div className={`space-y-1 text-xs ${isOwnMessage ? 'text-blue-50' : 'text-gray-400'}`}>
-                            <p><strong>Type:</strong> {message.metadata?.code_type || 'General'}</p>
-                            {message.metadata?.description && (
-                              <p className="italic">{message.metadata.description}</p>
-                            )}
-                            <p className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded-full bg-current"></span>
-                              Status: Pending Review
-                            </p>
-                          </div>
+                    {message.message_type === 'file_attachment' && message.metadata?.isImage ? (
+                      <>
+                        <img
+                          src={message.metadata.fileUrl}
+                          alt={message.metadata.fileName || 'Shared image'}
+                          className="cursor-pointer inline-block max-w-[300px] w-full"
+                          onClick={() => window.open(message.metadata.fileUrl, '_blank')}
+                        />
+                        <div className="flex items-center gap-1 text-[10px] mt-0.5 text-slate-400 dark:text-slate-500">
+                          <span className="truncate max-w-[140px]" title={message.metadata.fileName}>{message.metadata.fileName}</span>
+                          <a href={message.metadata.fileUrl} download className="p-0.5 hover:text-slate-600 dark:hover:text-slate-300">
+                            <Download className="w-3 h-3" />
+                          </a>
                         </div>
-                      )}
+                      </>
+                    ) : (
+                      <div
+                        className={`px-3.5 py-2 transition-all shadow-sm ${
+                          isOwnMessage
+                            ? `bg-violet-600 text-white ${isLastInGroup ? 'rounded-2xl rounded-br-sm' : 'rounded-2xl'}`
+                            : `bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 ${isLastInGroup ? 'rounded-2xl rounded-bl-sm' : 'rounded-2xl'}`
+                        }`}
+                      >
+                        {/* System Message */}
+                        {message.message_type === 'system' && (
+                          <p className={`text-xs italic text-center ${
+                            isOwnMessage ? 'text-violet-100' : 'text-slate-400 dark:text-slate-500'
+                          }`}>
+                            {message.message_content}
+                          </p>
+                        )}
 
-                      {/* Code Response Message */}
-                      {message.message_type === 'code_response' && (
-                        <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
-                          <div className="flex items-center gap-2 font-bold text-emerald-500 dark:text-emerald-400">
-                            <span className="text-lg">✅</span>
-                            <span>Code Issued!</span>
-                          </div>
-                          {message.metadata?.code && (
-                            <div className={`mt-2 p-3 rounded-lg font-mono text-center text-xs font-bold tracking-wider ${
-                              isOwnMessage 
-                                ? 'bg-violet-400/30 text-violet-50' 
-                                : 'bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-100'
-                            }`}>
-                              {message.metadata.code}
-                            </div>
-                          )}
-                          {message.metadata?.expiry_at && (
-                            <p className="text-xs opacity-75">
-                              Expires: {new Date(message.metadata.expiry_at).toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* File Attachment Message */}
-                      {message.message_type === 'file_attachment' && (
-                        <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
-                          {(() => {
-                            console.log('[MessageList] File attachment metadata:', message.metadata);
-                            return null;
-                          })()}
-                          {message.metadata?.isImage ? (
-                            // Image Preview
+                        {/* Regular Text Message - with edit mode */}
+                        {message.message_type === 'text' && (
+                          editingId === message.id ? (
                             <div className="space-y-2">
-                              <img
-                                src={message.metadata.fileUrl}
-                                alt={message.metadata.fileName || 'Shared image'}
-                                className="w-full max-w-[220px] rounded-lg shadow-lg cursor-pointer hover:opacity-90 transition block"
-                                onClick={() => window.open(message.metadata.fileUrl, '_blank')}
+                              <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-xs text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
+                                rows={3}
+                                autoFocus
                               />
-                              <div className="flex items-center justify-between gap-1 text-xs mt-1">
-                                <span className="truncate max-w-[140px] opacity-70" title={message.metadata.fileName}>{message.metadata.fileName}</span>
-                                <a
-                                  href={message.metadata.fileUrl}
-                                  download
-                                  className="flex-shrink-0 p-1 hover:bg-white/10 rounded transition"
-                                  title="Download file"
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingId(null);
+                                    setEditContent('');
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition"
+                                  title="Cancel"
                                 >
-                                  <Download className="w-3 h-3" />
-                                </a>
+                                  <X className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (editContent.trim() && editContent !== message.message_content) {
+                                      await onMessageEdit?.(message.id, editContent.trim());
+                                    }
+                                    setEditingId(null);
+                                    setEditContent('');
+                                  }}
+                                  disabled={!editContent.trim()}
+                                  className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition disabled:opacity-50"
+                                  title="Save"
+                                >
+                                  <CheckIcon className="w-4 h-4" />
+                                </button>
                               </div>
                             </div>
                           ) : (
-                            // File Attachment (non-image)
+                            <div>
+                              <p className="text-xs break-words leading-relaxed whitespace-pre-wrap">
+                                {highlightText(message.message_content, searchHighlight)}
+                              </p>
+                              {message.metadata?.edited && (
+                                <span className="text-xs opacity-60 italic">(edited)</span>
+                              )}
+                            </div>
+                          )
+                        )}
+
+                        {/* Code Request Message */}
+                        {message.message_type === 'code_request' && (
+                          <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                            <div className="flex items-center gap-2 font-bold">
+                              <span className="text-lg">📋</span>
+                              <span>Code Request</span>
+                            </div>
+                            <div className={`space-y-1 text-xs ${isOwnMessage ? 'text-blue-50' : 'text-gray-400'}`}>
+                              <p><strong>Type:</strong> {message.metadata?.code_type || 'General'}</p>
+                              {message.metadata?.description && (
+                                <p className="italic">{message.metadata.description}</p>
+                              )}
+                              <p className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-current"></span>
+                                Status: Pending Review
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Code Response Message */}
+                        {message.message_type === 'code_response' && (
+                          <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                            <div className="flex items-center gap-2 font-bold text-emerald-500 dark:text-emerald-400">
+                              <span className="text-lg">✅</span>
+                              <span>Code Issued!</span>
+                            </div>
+                            {message.metadata?.code && (
+                              <div className={`mt-2 p-3 rounded-lg font-mono text-center text-xs font-bold tracking-wider ${
+                                isOwnMessage 
+                                  ? 'bg-violet-400/30 text-violet-50' 
+                                  : 'bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-100'
+                              }`}>
+                                {message.metadata.code}
+                              </div>
+                            )}
+                            {message.metadata?.expiry_at && (
+                              <p className="text-xs opacity-75">
+                                Expires: {new Date(message.metadata.expiry_at).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* File Attachment Message (non-image) */}
+                        {message.message_type === 'file_attachment' && !message.metadata?.isImage && (
+                          <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
                             <div className="flex items-center gap-2 font-bold mb-2">
                               <File className="w-5 h-5" />
                               <span>File Shared</span>
                             </div>
-                          )}
-                          {!message.metadata?.isImage && (
                             <div className={`p-2.5 rounded-lg flex items-center gap-2 ${
                               isOwnMessage 
                                 ? 'bg-violet-400/30' 
@@ -386,30 +372,30 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                                 <Download className="w-4 h-4" />
                               </a>
                             </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Voice Message */}
-                      {message.message_type === 'voice' && (
-                        <div className={`text-xs ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-lg">🎤</span>
-                            <span className="font-medium">Voice Message</span>
                           </div>
-                          <audio
-                            src={message.metadata?.fileUrl}
-                            controls
-                            className="w-full max-w-full h-8"
-                          />
-                          {message.metadata?.duration && (
-                            <p className="text-xs opacity-75 mt-1">
-                              Duration: {Math.floor(message.metadata.duration / 60)}:{String(message.metadata.duration % 60).padStart(2, '0')}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                        )}
+
+                        {/* Voice Message */}
+                        {message.message_type === 'voice' && (
+                          <div className={`text-xs ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-lg">🎤</span>
+                              <span className="font-medium">Voice Message</span>
+                            </div>
+                            <audio
+                              src={message.metadata?.fileUrl}
+                              controls
+                              className="w-full max-w-full h-8"
+                            />
+                            {message.metadata?.duration && (
+                              <p className="text-xs opacity-75 mt-1">
+                                Duration: {Math.floor(message.metadata.duration / 60)}:{String(message.metadata.duration % 60).padStart(2, '0')}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Reactions Display */}
                     {message.reactions && Object.keys(message.reactions).length > 0 && (

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { ChevronDown, Phone, ShoppingCart, ShieldCheck } from 'lucide-react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
@@ -11,6 +11,19 @@ import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScript
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#000000';
+  const bgColor = settings?.template_bg_color || '#f3f4f6';
+  const isDark = useMemo(() => {
+    const hex = bgColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, [bgColor]);
+  const textColor = isDark ? '#f1f5f9' : '#1f2937';
+  const textMuted = isDark ? '#94a3b8' : '#6b7280';
+  const borderColor = isDark ? '#334155' : '#e5e7eb';
+  const cardBg = isDark ? '#1e293b' : '#ffffff';
+  const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
   const formRef = useRef<HTMLDivElement>(null);
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,20 +155,20 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   // Order success screen
   if (orderSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: '#f3f4f6', fontFamily: "'Cairo', sans-serif" }} dir="rtl">
-        <div className="max-w-md mx-auto bg-white rounded-2xl p-8 shadow-xl text-center w-full">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+        <div className="max-w-md mx-auto rounded-2xl p-8 shadow-xl text-center w-full" style={{ backgroundColor: cardBg }}>
           <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <ShieldCheck size={36} style={{ color: accentColor }} />
           </div>
-          <h2 className="text-2xl font-black text-gray-900 mb-2">تم تسجيل طلبك بنجاح! 🎉</h2>
-          <p className="text-gray-500 text-sm mb-6">سنتصل بك قريباً لتأكيد الطلب</p>
+          <h2 className="text-2xl font-black mb-2" style={{ color: textColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
+          <p className="text-sm mb-6" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
           <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
-          <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 text-right mb-4">
-            <div className="flex justify-between"><span className="text-gray-500">المنتج</span><span className="font-bold">{mainProduct.title}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">الكمية</span><span className="font-bold">{quantity}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">التوصيل</span><span className="font-bold">{deliveryFee} {currency}</span></div>
-            <div className="h-px bg-gray-200 my-1" />
-            <div className="flex justify-between"><span className="font-black">المجموع</span><span className="font-black text-lg">{totalCost} {currency}</span></div>
+          <div className="rounded-xl p-4 text-sm space-y-2 text-right mb-4" style={{ backgroundColor: surfaceMuted }}>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>المنتج</span><span className="font-bold" style={{ color: textColor }}>{mainProduct.title}</span></div>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>الكمية</span><span className="font-bold" style={{ color: textColor }}>{quantity}</span></div>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>التوصيل</span><span className="font-bold" style={{ color: textColor }}>{deliveryFee} {currency}</span></div>
+            <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
+            <div className="flex justify-between"><span className="font-black" style={{ color: textColor }}>المجموع</span><span className="font-black text-lg" style={{ color: textColor }}>{totalCost} {currency}</span></div>
           </div>
           <button onClick={() => setOrderSuccess(false)} className="px-6 py-2 rounded-lg text-white font-bold" style={{ backgroundColor: accentColor }}>
             تسوق مرة أخرى
@@ -166,17 +179,18 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   }
 
   return (
-    <div className="min-h-screen font-sans text-gray-900" style={{ backgroundColor: settings?.template_bg_color || '#f3f4f6' }} dir="rtl">
+    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
 
       {/* Mobile Container */}
-      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-md mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: settings?.template_bg_color || '#f3f4f6' }}>
+      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-md mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: bgColor }}>
 
         {/* ── STICKY HEADER ── */}
-        <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div className="sticky top-0 z-50 backdrop-blur-md px-4 py-3 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
           <div className="flex items-center gap-2">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover" />}
             <div
-              className="font-black text-xl tracking-wider text-black"
+              className="font-black text-xl tracking-wider"
+              style={{ color: textColor }}
               contentEditable={canManage}
               suppressContentEditableWarning
               onBlur={handleTextEdit('zenith_store_name')}
@@ -186,7 +200,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           </div>
           <div className="flex items-center gap-3">
             <div className="text-left flex flex-col">
-              <span className="text-xs text-gray-500 font-bold">السعر</span>
+              <span className="text-xs font-bold" style={{ color: textMuted }}>السعر</span>
               <span className="font-black text-lg leading-none" dir="ltr">
                 {productPrice} {currency}
               </span>
@@ -229,19 +243,20 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             ))
           ) : (
             <div className="w-full aspect-[3/4] bg-gradient-to-b from-gray-200 to-gray-300 flex items-center justify-center">
-              <p className="text-gray-500 text-sm">أضف صور المنتج من لوحة التحكم</p>
+              <p className="text-sm" style={{ color: textMuted }}>أضف صور المنتج من لوحة التحكم</p>
             </div>
           )}
         </div>
         
         {/* ── ORDER FORM ── */}
         <div ref={formRef} className="p-5 pb-24" id="checkout-form">
-          <div className="bg-white rounded-2xl p-5 shadow-sm relative" style={{ border: `2px solid ${accentColor}` }}>
+          <div className="rounded-2xl p-5 shadow-sm relative" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}` }}>
             <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
               أكمل البيانات للطلب
             </div>
             <h2
               className="text-xl font-black text-center mb-6 mt-2"
+              style={{ color: textColor }}
               contentEditable={canManage}
               suppressContentEditableWarning
               onBlur={handleTextEdit('zenith_form_title')}
@@ -271,9 +286,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   selectedOfferId={selectedOffer?.offer_id ?? null} 
                   onSelect={handleOfferSelect} 
                   accentColor={accentColor} 
-                  textColor="#1e293b" 
-                  borderColor="#e2e8f0" 
-                  
+                  textColor={textColor} 
+                  borderColor={borderColor} 
+                  bgColor={cardBg}
                 />
               )}
 
@@ -281,31 +296,37 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               <div className="grid grid-cols-2 gap-4">
                 {/* Name */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">الاسم واللقب</label>
+                  <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>الاسم واللقب</label>
                   <input
                     type="text"
                     required
                     placeholder="أدخل اسمك الكامل"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:border-black outline-none transition-all"
+                    className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all"
+                    style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
+                    onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                    onBlur={e => e.currentTarget.style.borderColor = borderColor}
                   />
                 </div>
 
                 {/* Phone */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">رقم الهاتف</label>
+                  <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>رقم الهاتف</label>
                   <div className="relative">
                     <input
                       type="tel"
                       required
                       dir="ltr"
                       placeholder="05 55 55 55 55"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 pl-10 py-3 text-right text-sm focus:ring-2 focus:border-black outline-none transition-all"
+                      className="w-full border rounded-lg px-4 pl-10 py-3 text-right text-sm focus:ring-2 outline-none transition-all"
+                      style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
+                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
                     />
-                    <Phone size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                    <Phone size={18} className="absolute left-3 top-3.5" style={{ color: textMuted }} />
                   </div>
                 </div>
               </div>
@@ -314,13 +335,16 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               <div className="grid grid-cols-2 gap-4">
                 {/* Wilaya */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">الولاية</label>
+                  <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>الولاية</label>
                   <div className="relative">
                     <select
                       required
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 focus:border-black outline-none transition-all"
+                      className="w-full border rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 outline-none transition-all"
+                      style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
                       value={selectedWilayaId ?? ''}
                       onChange={(e) => setSelectedWilayaId(e.target.value ? Number(e.target.value) : null)}
+                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
                     >
                       <option value="">اختر الولاية</option>
                       {wilayas.map((w) => (
@@ -330,21 +354,24 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                         </option>
                       ))}
                     </select>
-                    <ChevronDown size={18} className="absolute left-3 top-3.5 text-gray-500 pointer-events-none" />
+                    <ChevronDown size={18} className="absolute left-3 top-3.5 pointer-events-none" style={{ color: textMuted }} />
                   </div>
                 </div>
 
                 {/* Commune (when enabled) */}
                 {showCommune && (
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1.5">البلدية</label>
+                    <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>البلدية</label>
                     <input
                       type="text"
                       required
                       placeholder="أدخل بلديتك"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:border-black outline-none transition-all"
-                    value={commune}
-                    onChange={(e) => setCommune(e.target.value)}
+                      className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all"
+                      style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
+                      value={commune}
+                      onChange={(e) => setCommune(e.target.value)}
+                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
                     />
                   </div>
                 )}
@@ -353,29 +380,34 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               {/* Address (when enabled) */}
               {showAddress && (
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">العنوان</label>
+                  <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>العنوان</label>
                   <input
                     type="text"
                     placeholder="أدخل عنوانك"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:border-black outline-none transition-all"
+                    className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all"
+                    style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
+                    onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                    onBlur={e => e.currentTarget.style.borderColor = borderColor}
                   />
                 </div>
               )}
               <div className="pt-2">
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">الكمية</label>
-                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-1">
+                <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>الكمية</label>
+                <div className="flex items-center justify-between border rounded-lg p-1" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
+                    className="w-10 h-10 border rounded-md font-bold text-xl flex items-center justify-center"
+                    style={{ backgroundColor: cardBg, borderColor: borderColor, color: textMuted }}
                   >-</button>
-                  <span className="font-black text-lg">{quantity}</span>
+                  <span className="font-black text-lg" style={{ color: textColor }}>{quantity}</span>
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.min(safeProduct?.stock_quantity ?? 999, quantity + 1))}
-                    className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
+                    className="w-10 h-10 border rounded-md font-bold text-xl flex items-center justify-center"
+                    style={{ backgroundColor: cardBg, borderColor: borderColor, color: textMuted }}
                   >+</button>
                 </div>
               </div>
@@ -383,7 +415,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               {/* Delivery Type Buttons */}
               {(showHomeDelivery || showDeskDelivery) && (
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">نوع التوصيل</label>
+                  <label className="block text-sm font-bold mb-2" style={{ color: textColor }}>نوع التوصيل</label>
                   <div className="grid grid-cols-2 gap-3">
                     {showHomeDelivery && (
                       <button
@@ -391,9 +423,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                         onClick={() => setSelectedDeliveryType('home')}
                         className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
                         style={{
-                          borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb',
-                          backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#fff',
-                          color: selectedDeliveryType === 'home' ? accentColor : '#374151',
+                          borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor,
+                          backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg,
+                          color: selectedDeliveryType === 'home' ? accentColor : textColor,
                         }}
                       >
                         <span className="text-sm font-bold">التوصيل للمنزل</span>
@@ -405,9 +437,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                         onClick={() => setSelectedDeliveryType('desk')}
                         className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
                         style={{
-                          borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb',
-                          backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#fff',
-                          color: selectedDeliveryType === 'desk' ? accentColor : '#374151',
+                          borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor,
+                          backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg,
+                          color: selectedDeliveryType === 'desk' ? accentColor : textColor,
                         }}
                       >
                         <span className="text-sm font-bold">الاستلام من المكتب</span>
@@ -420,31 +452,34 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               {/* Notes (when enabled) */}
               {showNotes && (
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">ملاحظات</label>
+                  <label className="block text-sm font-bold mb-1" style={{ color: textColor }}>ملاحظات</label>
                   <textarea
                     placeholder="ملاحظات إضافية"
                     value={customerNotes}
                     onChange={(e) => setCustomerNotes(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:border-black outline-none transition-all text-sm bg-gray-50"
+                    className="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition-all text-sm"
+                    style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
                     rows={3}
+                    onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                    onBlur={e => e.currentTarget.style.borderColor = borderColor}
                   />
                 </div>
               )}
 
               {/* Order Summary */}
-              <div className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <div className="mt-6 border rounded-xl p-4" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
+                <div className="flex justify-between text-sm mb-2" style={{ color: textColor }}>
                   <span>سعر المنتج ({quantity})</span>
                   <span className="font-bold" dir="ltr">{productPrice * quantity} {currency}</span>
                 </div>
-                <div className="flex justify-between text-sm text-gray-600 mb-3">
+                <div className="flex justify-between text-sm mb-3" style={{ color: textColor }}>
                   <span>سعر التوصيل</span>
                   <span className="font-bold" dir="ltr">{deliveryFee} {currency}</span>
                 </div>
-                <div className="h-px w-full bg-gray-200 mb-3" />
+                <div className="h-px w-full mb-3" style={{ backgroundColor: borderColor }} />
                 <div className="flex justify-between items-center">
-                  <span className="font-black text-lg">المجموع:</span>
-                  <span className="font-black text-xl" dir="ltr">
+                  <span className="font-black text-lg" style={{ color: textColor }}>المجموع:</span>
+                  <span className="font-black text-xl" dir="ltr" style={{ color: textColor }}>
                     {totalCost} {currency}
                   </span>
                 </div>
@@ -475,7 +510,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                 )}
               </button>
 
-              <div className="flex items-center justify-center gap-1 mt-3 text-xs text-gray-500 font-bold">
+              <div className="flex items-center justify-center gap-1 mt-3 text-xs font-bold" style={{ color: textMuted }}>
                 <ShieldCheck size={14} className="text-green-600" />
                 الدفع يكون بعد استلام المنتج
               </div>

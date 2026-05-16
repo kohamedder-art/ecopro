@@ -90,6 +90,9 @@ export async function uploadToCloudinary(
   }
 
   const result = await cloudinary.uploader.upload(filePath, uploadOptions);
+  if (!result) {
+    throw new Error('Cloudinary upload returned empty result');
+  }
 
   return {
     url: result.secure_url,

@@ -565,7 +565,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             accentColor={accentColor}
                             textColor={surfaceTextColor}
                             borderColor={surfaceBorderColor}
-                            
+                            bgColor={surfaceMuted}
                           />
                         )}
                         <form id="orderForm" onSubmit={handleOrder} noValidate className="space-y-4">

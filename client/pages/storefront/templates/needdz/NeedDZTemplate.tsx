@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ShoppingBag,
   Truck,
@@ -59,6 +59,18 @@ const FALLBACK_PRODUCTS = [
 
 export default function NeedDZTemplate({ settings, products, canManage, storeSlug, navigate, initialProductSlug }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#059669';
+  const isDark = useMemo(() => {
+    const hex = (settings?.template_bg_color || '#ffffff').replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, [settings?.template_bg_color]);
+  const textColor = isDark ? '#f1f5f9' : '#1f2937';
+  const textMuted = isDark ? '#94a3b8' : '#6b7280';
+  const borderColor = isDark ? '#334155' : '#e5e7eb';
+  const cardBg = isDark ? '#1e293b' : '#ffffff';
+  const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
@@ -226,7 +238,7 @@ const parseVideoEmbed = (videoUrl: string) => {
 
   return (
     <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: settings?.template_bg_color || '#f1f5f9' }} dir="rtl">
-      <div className="w-full max-w-[480px] bg-white relative flex flex-col shadow-xl min-h-screen">
+      <div className="w-full max-w-[480px] relative flex flex-col shadow-xl min-h-screen" style={{ backgroundColor: cardBg }}>
         
         {/* Urgent Header */}
         {(showCountdown || canManage) && (
@@ -260,7 +272,7 @@ const parseVideoEmbed = (videoUrl: string) => {
         )}
 
         {/* Main Branding */}
-        <header className="px-6 py-5 flex justify-between items-center bg-white border-b border-slate-50">
+        <header className="px-6 py-5 flex justify-between items-center border-b" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
           <div className="flex items-center gap-2">
             {settings?.store_logo ? (
               <img src={settings.store_logo} alt={settings?.store_name || "متجري"} className="w-9 h-9 rounded-full object-cover border-2 shadow-sm" style={{ borderColor: accentColor + '4d' }} />
@@ -269,10 +281,10 @@ const parseVideoEmbed = (videoUrl: string) => {
                 {(settings?.store_name || 'م').charAt(0)}
               </div>
             )}
-            <span className="text-lg font-black text-slate-900">{settings?.store_name || "متجري"}</span>
+            <span className="text-lg font-black" style={{ color: textColor }}>{settings?.store_name || "متجري"}</span>
           </div>
           <div className="relative">
-            <ShoppingBag size={24} className="text-slate-800" />
+            <ShoppingBag size={24} style={{ color: textColor }} />
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold">2</span>
           </div>
         </header>
@@ -292,20 +304,20 @@ const parseVideoEmbed = (videoUrl: string) => {
                 </div>
             )}
             {showTrustBanner ? (
-            <div className="flex overflow-x-auto py-4 px-6 gap-4 no-scrollbar bg-slate-50/50">
+            <div className="flex overflow-x-auto py-4 px-6 gap-4 no-scrollbar" style={{ backgroundColor: surfaceMuted }}>
             {[
               { icon: <Truck size={16}/>, text: "توصيل 58 ولاية" },
               { icon: <ShieldCheck size={16}/>, text: "الدفع عند الاستلام" },
               { icon: <Clock size={16}/>, text: "ضمان 12 شهر" }
             ].map((item, i) => (
-              <div key={i} className="flex-shrink-0 flex items-center gap-2 bg-white px-3 py-2 rounded-full border border-slate-200 shadow-sm">
+              <div key={i} className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-full border shadow-sm" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
                 <span style={{ color: accentColor }}>{item.icon}</span>
-                <span className="text-[10px] font-bold text-slate-700 whitespace-nowrap">{item.text}</span>
+                <span className="text-[10px] font-bold whitespace-nowrap" style={{ color: textColor }}>{item.text}</span>
               </div>
             ))}
             </div>
             ) : canManage ? (
-                <div className="py-4 px-6 bg-slate-50/50"><span className="text-slate-400 text-[10px]">🛡️ Trust banner hidden</span></div>
+                <div className="py-4 px-6" style={{ backgroundColor: surfaceMuted }}><span className="text-[10px]" style={{ color: textMuted }}>🛡️ Trust banner hidden</span></div>
             ) : null}
           </div>
           )}
@@ -313,9 +325,9 @@ const parseVideoEmbed = (videoUrl: string) => {
           {/* Product Feed */}
           <div className="p-4 space-y-10 mt-2">
             {displayProducts.map(product => (
-              <div key={product.id} className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm group">
+              <div key={product.id} className="rounded-[32px] overflow-hidden border shadow-sm group" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
                 {/* Image Gallery */}
-                <div className="relative aspect-square overflow-hidden bg-slate-100">
+                <div className="relative aspect-square overflow-hidden" style={{ backgroundColor: surfaceMuted }}>
                   <div data-cr={product.id} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none', touchAction: 'pan-y' }}
                     onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
                     onTouchEnd={e => {
@@ -352,7 +364,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                         onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}
                       />
                     )) : (
-                      <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: '#94a3b8' }}>
+                      <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: textMuted }}>
                         <ShoppingBag size={48} strokeWidth={1} />
                       </div>
                     )}
@@ -401,20 +413,20 @@ const parseVideoEmbed = (videoUrl: string) => {
                 {/* Content */}
                 <div className="p-6 space-y-4">
                   <div className="flex justify-between items-start">
-                    <h2 className="text-xl font-bold text-slate-900 leading-tight w-2/3">{product.name}</h2>
+                    <h2 className="text-xl font-bold leading-tight w-2/3" style={{ color: textColor }}>{product.name}</h2>
                     <div className="text-right">
                       {product.oldPrice > product.price && (
-                          <div className="text-xs text-slate-400 line-through font-medium">{product.oldPrice} DA</div>
+                          <div className="text-xs line-through font-medium" style={{ color: textMuted }}>{product.oldPrice} DA</div>
                       )}
                       <div className="text-xl font-black" style={{ color: accentColor }}>{product.price} DA</div>
                     </div>
                   </div>
 
-                  <p className="text-slate-500 text-sm leading-relaxed">{product.description}</p>
+                  <p className="text-sm leading-relaxed" style={{ color: textMuted }}>{product.description}</p>
 
                   <div className="flex flex-wrap gap-2">
                     {product.features.map((f: string) => (
-                      <span key={f} className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-100 px-2 py-1 rounded-md italic"># {f}</span>
+                      <span key={f} className="text-[10px] font-bold px-2 py-1 rounded-md italic" style={{ color: textMuted, backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}># {f}</span>
                     ))}
                   </div>
 
@@ -427,7 +439,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                     <ArrowRight size={18} />
                   </button>
                   
-                  <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400">
+                  <div className="flex items-center justify-center gap-2 text-[10px] font-bold" style={{ color: textMuted }}>
                     <CheckCircle2 size={12} className="text-emerald-500" />
                     +45 توصيل هذا الصباح في الجزائر
                   </div>
@@ -480,11 +492,11 @@ const parseVideoEmbed = (videoUrl: string) => {
         {/* Improved Checkout Drawer */}
         {isCheckoutOpen && (
           <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm p-0">
-            <div className="w-full max-w-[480px] bg-white rounded-t-[40px] p-8 animate-slide-up relative max-h-[90vh] overflow-y-auto [scrollbar-hide::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="w-full max-w-[480px] rounded-t-[40px] p-8 animate-slide-up relative max-h-[90vh] overflow-y-auto [scrollbar-hide::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ backgroundColor: cardBg }}>
               
               <button 
                 onClick={() => { handleCloseCheckout(); setOrderStatus('idle'); }}
-                className="absolute top-6 right-8 text-slate-400 hover:text-black transition-colors"
+                className="absolute top-6 right-8 transition-colors" style={{ color: textMuted }}
               >
                 <X size={28} />
               </button>
@@ -496,19 +508,19 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </div>
                   <div>
                     <h2 className="text-2xl font-black" style={{ color: accentColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
-                    <p className="text-slate-500 mt-2 px-6">سنتصل بك قريباً لتأكيد الطلب</p>
+                    <p className="mt-2 px-6" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
                   </div>
                   <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={submittedPhone} />
-                  <div className="text-right rounded-xl p-4 space-y-2 border border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  <div className="text-right rounded-xl p-4 space-y-2 border" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
                     <div className="flex justify-between text-sm">
                       <span>{selectedProduct?.name || 'المنتج'} × {selectedOffer?.quantity || quantity}</span>
                       <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">التوصيل</span>
+                      <span style={{ color: textMuted }}>التوصيل</span>
                       <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
                     </div>
-                    <div className="h-px bg-slate-200 my-1" />
+                    <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
                     <div className="flex justify-between font-black">
                       <span>المجموع</span>
                       <span style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
@@ -524,10 +536,10 @@ const parseVideoEmbed = (videoUrl: string) => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4 border-b border-slate-100 pb-6">
-                    <img src={selectedProduct?.images[0]} className="w-20 h-20 rounded-2xl object-cover border border-slate-100" alt="" loading="lazy" />
+                  <div className="flex items-center gap-4 border-b pb-6" style={{ borderColor: borderColor }}>
+                    <img src={selectedProduct?.images[0]} className="w-20 h-20 rounded-2xl object-cover border" alt="" loading="lazy" style={{ borderColor: borderColor }} />
                     <div>
-                      <h4 className="font-bold text-slate-900">{selectedProduct?.name}</h4>
+                      <h4 className="font-bold" style={{ color: textColor }}>{selectedProduct?.name}</h4>
                       <p className="font-black" style={{ color: accentColor }}>{selectedProduct?.price} DA</p>
                     </div>
                   </div>
@@ -554,80 +566,80 @@ const parseVideoEmbed = (videoUrl: string) => {
                         selectedOfferId={selectedOffer?.offer_id ?? null} 
                         onSelect={handleOfferSelect} 
                         accentColor={accentColor} 
-                        textColor="#1e293b" 
-                        borderColor="#e2e8f0" 
-                        
+                        textColor={textColor} 
+                        borderColor={borderColor} 
+                        bgColor={cardBg}
                       />
                     )}
                     <div className="grid gap-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">الاسم واللقب</label>
-                          <input required name="name" type="text" placeholder="مثال: محمد علامي" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm focus:ring-2 ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>الاسم واللقب</label>
+                          <input required name="name" type="text" placeholder="مثال: محمد علامي" className="w-full px-4 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">رقم الهاتف</label>
+                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>رقم الهاتف</label>
                           <div className="relative">
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <input required name="phone" type="tel" placeholder="05 / 06 / 07 XX XX XX XX" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 pl-12 pr-5 text-sm focus:ring-2 ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: textMuted }} />
+                            <input required name="phone" type="tel" placeholder="05 / 06 / 07 XX XX XX XX" className="w-full pl-12 pr-5 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
                           </div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">الولاية</label>
-                          <select name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-4 text-sm font-medium outline-none">
+                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>الولاية</label>
+                          <select name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm font-medium" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
                             <option value="">اختر...</option>
                             {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                           </select>
                         </div>
                         {showCommune && (
                           <div className="space-y-1.5">
-                            <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">البلدية</label>
-                            <input name="commune" type="text" placeholder="المدينة" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm outline-none" />
+                            <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>البلدية</label>
+                            <input name="commune" type="text" placeholder="المدينة" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
                           </div>
                         )}
                       </div>
 
                       {showAddress && (
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">العنوان</label>
-                          <input name="address" type="text" placeholder="أدخل عنوانك" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm outline-none" />
+                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>العنوان</label>
+                          <input name="address" type="text" placeholder="أدخل عنوانك" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
                         </div>
                       )}
 
                       {showNotes && (
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider">ملاحظات</label>
-                          <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 text-sm outline-none resize-none" rows={2} />
+                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>ملاحظات</label>
+                          <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm resize-none" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} rows={2} />
                         </div>
                       )}
                     </div>
 
                     {/* Quantity */}
                     <div className="pt-2">
-                      <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider mb-2 block">الكمية</label>
-                      <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-1">
-                        <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-white border border-slate-200 rounded-lg font-bold text-xl text-slate-600 active:bg-slate-100 flex items-center justify-center">−</button>
+                      <label className="text-[11px] font-black uppercase mb-2 block" style={{ color: textMuted }}>الكمية</label>
+                      <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
+                        <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>−</button>
                         <span className="font-black text-lg">{quantity}</span>
-                        <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 bg-white border border-slate-200 rounded-lg font-bold text-xl text-slate-600 active:bg-slate-100 flex items-center justify-center">+</button>
+                        <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>+</button>
                       </div>
                     </div>
 
                     {/* Delivery Type Buttons */}
                     {(showHomeDelivery || showDeskDelivery) && (
                       <div>
-                        <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider mb-2 block">نوع التوصيل</label>
+                        <label className="text-[11px] font-black uppercase mb-2 block" style={{ color: textMuted }}>نوع التوصيل</label>
                         <div className="grid grid-cols-2 gap-3">
                           {showHomeDelivery && (
-                            <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'home' ? accentColor : '#374151' }}>
+                            <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
                               <Home size={16} />
                               <span>التوصيل للمنزل</span>
                             </button>
                           )}
                           {showDeskDelivery && (
-                            <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'desk' ? accentColor : '#374151' }}>
+                            <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
                               <Building2 size={16} />
                               <span>الاستلام من المكتب</span>
                             </button>
@@ -638,16 +650,16 @@ const parseVideoEmbed = (videoUrl: string) => {
 
                     {/* Price Breakdown */}
                     {selectedWilayaId && (
-                      <div className="bg-slate-50 p-4 rounded-2xl space-y-2 border border-slate-200">
+                      <div className="p-4 rounded-2xl space-y-2 border" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
                         <div className="flex justify-between text-sm">
-                          <span className="font-bold text-slate-700">سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
+                          <span className="font-bold" style={{ color: textColor }}>سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
                           <span className="font-black">{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="font-bold text-slate-700">التوصيل</span>
+                          <span className="font-bold" style={{ color: textColor }}>التوصيل</span>
                           <span className="font-black">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
                         </div>
-                        <div className="h-px bg-slate-200" />
+                        <div className="h-px" style={{ backgroundColor: borderColor }} />
                         <div className="flex justify-between">
                           <span className="font-black text-lg">المجموع</span>
                           <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>

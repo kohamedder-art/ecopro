@@ -610,7 +610,7 @@ export async function sendOrderConfirmationMessages(
     // Historical issue: some clients never get a bot_settings row unless they open Bot Settings.
     // Many bot codepaths expect a row to exist, so ensure one here.
     try {
-      await ensureBotSettingsRow(Number(clientId), { enabled: true });
+      await ensureBotSettingsRow(Number(clientId));
     } catch (e) {
       console.warn('[Bot] Failed to ensure bot_settings row:', (e as any)?.message || e);
     }

@@ -11,6 +11,7 @@ import path from 'path';
 import { fileTypeFromFile } from 'file-type';
 import { scanFileForMalware } from '../utils/malware-scan';
 import { signUploadPath, isSafeUploadName } from '../utils/upload-signing';
+import { isCloudinaryConfigured, uploadToCloudinary } from '../utils/cloudinary';
 import {
   SendMessageSchema,
   CreateChatSchema,
@@ -718,17 +719,32 @@ const handleChatFileUpload = async (req: Request, res: Response, next: Function)
       return res.status(400).json({ error: scan.reason });
     }
 
-    await fs.mkdir(UPLOAD_DIR, { recursive: true });
-    const finalName = `${crypto.randomUUID()}.${detected.ext}`;
-    if (!isSafeUploadName(finalName)) {
-      await fs.unlink(req.file.path).catch(() => null);
-      return res.status(400).json({ error: 'Invalid filename' });
+    let fileUrl: string;
+    const isCloudinary = isCloudinaryConfigured();
+    if (isCloudinary) {
+      try {
+        const cloudResult = await uploadToCloudinary(req.file.path, {
+          folder: `ecopro/chat_${chatId}`,
+          resourceType: detected.mime.startsWith('video/') ? 'video' : 'image',
+        });
+        await fs.unlink(req.file.path).catch(() => null);
+        fileUrl = cloudResult.url;
+      } catch (cloudErr) {
+        console.error('[chat upload] Cloudinary upload failed, falling back to local:', cloudErr);
+      }
     }
-    const finalPath = path.join(UPLOAD_DIR, finalName);
-    await fs.rename(req.file.path, finalPath);
-    const { exp, sig } = signUploadPath({ filename: finalName, expiresInSeconds: 10 * 60 });
-
-    const fileUrl = `/uploads/${finalName}?exp=${exp}&sig=${sig}`;
+    if (!fileUrl) {
+      await fs.mkdir(UPLOAD_DIR, { recursive: true });
+      const finalName = `${crypto.randomUUID()}.${detected.ext}`;
+      if (!isSafeUploadName(finalName)) {
+        await fs.unlink(req.file.path).catch(() => null);
+        return res.status(400).json({ error: 'Invalid filename' });
+      }
+      const finalPath = path.join(UPLOAD_DIR, finalName);
+      await fs.rename(req.file.path, finalPath);
+      const { exp, sig } = signUploadPath({ filename: finalName, expiresInSeconds: 10 * 60 });
+      fileUrl = `/uploads/${finalName}?exp=${exp}&sig=${sig}`;
+    }
     const fileName = req.file.originalname;
     const fileType = detected.mime;
     const isImage = fileType.startsWith('image/');

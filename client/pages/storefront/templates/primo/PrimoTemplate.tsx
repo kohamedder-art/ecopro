@@ -291,7 +291,7 @@ export default function PrimoTemplate({
               <span style={{ color: textMuted }}>التوصيل</span>
               <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${currency}`}</span>
             </div>
-            <div className="h-px bg-gray-200 my-1" />
+            <div style={{ height: '1px', backgroundColor: surfaceBorderColor }} />
             <div className="flex justify-between font-black">
               <span>المجموع</span>
               <span style={{ color: accentColor }}>{Math.round(total).toLocaleString()} {currency}</span>
@@ -572,7 +572,7 @@ export default function PrimoTemplate({
                 )}
 
                 {offers.length > 0 && (
-                  <OfferSelector offers={offers} unitPrice={mainProduct?.price || 0} currency={currency} selectedOfferId={selectedOffer?.offer_id ?? null} onSelect={handleOfferSelect} accentColor={accentColor} textColor={surfaceTextColor} borderColor={surfaceBorderColor}  />
+                  <OfferSelector offers={offers} unitPrice={mainProduct?.price || 0} currency={currency} selectedOfferId={selectedOffer?.offer_id ?? null} onSelect={handleOfferSelect} accentColor={accentColor} textColor={surfaceTextColor} borderColor={surfaceBorderColor} bgColor={surfaceMuted} />
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
