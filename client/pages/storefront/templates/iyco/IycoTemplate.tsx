@@ -555,21 +555,24 @@ export default function IycoTemplate({
               <form id="orderForm" className="rounded-xl p-4 md:p-5 shadow-sm mb-4" style={{ backgroundColor: surfaceColor, border: `1px solid ${borderColor}` }} onSubmit={handleOrder} noValidate>
                 <h3 className="font-black text-center text-sm mb-3 pb-2" style={{ color: surfaceTextColor, borderBottom: `1px solid ${borderColor}` }}>إستمارة الطلب</h3>
                 {offers.length > 0 && (
-                  <OfferSelector
-                    offers={offers}
-                    unitPrice={mainProduct?.price || 0}
-                    currency={currency}
-                    selectedOfferId={selectedOffer?.offer_id ?? null}
-                    onSelect={handleOfferSelect}
-                    accentColor={accentColor}
-                    textColor={surfaceTextColor}
-                    borderColor={borderColor}
-                    
-                  />
+                  <div className="mb-4">
+                    <OfferSelector
+                      offers={offers}
+                      unitPrice={mainProduct?.price || 0}
+                      currency={currency}
+                      selectedOfferId={selectedOffer?.offer_id ?? null}
+                      onSelect={handleOfferSelect}
+                      accentColor={accentColor}
+                      textColor={surfaceTextColor}
+                      borderColor={borderColor}
+                      bgColor={surfaceMuted}
+                      className="space-y-3"
+                    />
+                  </div>
                 )}
 
                 {mainProduct?.variants && mainProduct.variants.length > 0 && (
-                  <div className="mb-3">
+                  <div className="mb-4">
                     <VariantSelector
                       variants={mainProduct.variants}
                       selected={selectedVariant}
@@ -581,20 +584,20 @@ export default function IycoTemplate({
                   </div>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {/* Name + Phone */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="relative">
                       <input
                         required
                         type="text"
                         placeholder="أدخل الإسم الكامل"
-                        className="w-full pl-4 pr-11 py-3 md:py-2.5 text-base md:text-sm rounded-md outline-none transition-all"
+                        className="w-full pl-4 pr-11 py-3 text-base md:text-sm rounded-xl outline-none transition-all"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerName ? accentColor : borderColor}` }}
                         value={customerName}
                         onChange={e => setCustomerName(e.target.value)}
                       />
-                      <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-md" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
+                      <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-xl" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
                         <User size={16} />
                       </div>
                     </div>
@@ -603,23 +606,23 @@ export default function IycoTemplate({
                         required
                         type="tel"
                         placeholder="أدخل رقم الهاتف..."
-                        className="w-full pl-4 pr-11 py-3 md:py-2.5 text-base md:text-sm rounded-md outline-none transition-all text-right"
+                        className="w-full pl-4 pr-11 py-3 text-base md:text-sm rounded-xl outline-none transition-all text-right"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerPhone ? accentColor : borderColor}` }}
                         value={customerPhone}
                         onChange={e => setCustomerPhone(e.target.value)}
                       />
-                      <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-md" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
+                      <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-xl" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
                         <Phone size={16} />
                       </div>
                     </div>
                   </div>
 
                   {/* Wilaya + Commune */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="relative">
                       <select
                         required
-                        className="w-full pl-4 pr-11 md:pr-10 py-3 md:py-2.5 text-base md:text-sm rounded-md outline-none transition-all appearance-none cursor-pointer"
+                        className="w-full pl-4 pr-11 md:pr-10 py-3 text-base md:text-sm rounded-xl outline-none transition-all appearance-none cursor-pointer"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${selectedWilayaId ? accentColor : borderColor}` }}
                         value={selectedWilayaId ?? ''}
                         onChange={e => setSelectedWilayaId(Number(e.target.value) || null)}
@@ -629,24 +632,24 @@ export default function IycoTemplate({
                           <option key={w.id} value={w.id}>{w.labelAR}</option>
                         ))}
                       </select>
-                      <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-md pointer-events-none" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
+                      <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-xl pointer-events-none" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
                         <MapPin size={16} />
                       </div>
                     </div>
                     {showCommune && <div className="relative">
-                      <input type="text" placeholder="البلدية" className="w-full pl-4 pr-4 py-3 md:py-2.5 text-base md:text-sm rounded-md outline-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} />
+                      <input type="text" placeholder="البلدية" className="w-full pl-4 pr-4 py-3 text-base md:text-sm rounded-xl outline-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} />
                     </div>}
                   </div>
 
-                  {showAddress && <input type="text" placeholder="العنوان" className="w-full pl-4 pr-4 py-3 md:py-2.5 text-base md:text-sm rounded-md outline-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />}
-                  {showNotes && <textarea placeholder="ملاحظات" rows={2} className="w-full pl-4 pr-4 py-3 md:py-2.5 text-base md:text-sm rounded-md outline-none resize-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />}
+                  {showAddress && <input type="text" placeholder="العنوان" className="w-full pl-4 pr-4 py-3 text-base md:text-sm rounded-xl outline-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />}
+                  {showNotes && <textarea placeholder="ملاحظات" rows={2} className="w-full pl-4 pr-4 py-3 text-base md:text-sm rounded-xl outline-none resize-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />}
 
                   {/* Quantity */}
                   <div className="pt-2">
                     <label className="block text-sm font-bold mb-1.5" style={{ color: surfaceTextMuted }}>الكمية</label>
                     <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
                       <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>−</button>
-                      <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{selectedOffer?.quantity ?? quantity}</span>
+                      <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
                       <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-md font-bold text-xl" style={{ color: textColor, border: `1px solid ${borderColor}`, backgroundColor: surfaceColor }}>+</button>
                     </div>
                   </div>
