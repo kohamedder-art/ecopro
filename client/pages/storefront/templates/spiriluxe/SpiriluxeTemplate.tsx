@@ -35,11 +35,6 @@ export default function SpiriluxeTemplate({
   const [customerCommune, setCustomerCommune] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
-  // Sync quantity with selected offer
-  useEffect(() => {
-    if (selectedOffer) setQuantity(selectedOffer.quantity);
-  }, [selectedOffer]);
-
   // ── Product Images State ──
   const [productImages, setProductImages] = useState<string[]>([]);
   const [uploadingAbove, setUploadingAbove] = useState(false);
