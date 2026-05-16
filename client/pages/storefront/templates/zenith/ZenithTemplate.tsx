@@ -7,8 +7,6 @@ import { useImageClassifier } from '@/hooks/useImageClassifier';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
-import PixelScripts from '@/components/storefront/PixelScripts';
-import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#000000';
@@ -158,7 +156,6 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   return (
     <div className="min-h-screen font-sans text-gray-900" style={{ backgroundColor: settings?.template_bg_color || '#f3f4f6' }} dir="rtl">
-      <PixelScripts storeSlug={storeSlug} />
 
       {/* Mobile Container */}
       <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-md mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: settings?.template_bg_color || '#f3f4f6' }}>

@@ -310,6 +310,7 @@ export default function Storefront() {
     trackAllPixels(PixelEvents.VIEW_CONTENT, {
       content_ids: [product.id],
       content_name: product.title || product.name || '',
+      content_type: 'product',
       value: product.price,
       currency: storeSettings.currency_code || 'DZD',
     });

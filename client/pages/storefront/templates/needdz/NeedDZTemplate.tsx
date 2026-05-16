@@ -24,8 +24,6 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
-import PixelScripts from '@/components/storefront/PixelScripts';
-import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 const FALLBACK_PRODUCTS = [
   {
@@ -217,7 +215,6 @@ const parseVideoEmbed = (videoUrl: string) => {
 
   return (
     <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: settings?.template_bg_color || '#f1f5f9' }} dir="rtl">
-      <PixelScripts storeSlug={storeSlug} />
       <div className="w-full max-w-[480px] bg-white relative flex flex-col shadow-xl min-h-screen">
         
         {/* Urgent Header */}

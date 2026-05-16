@@ -5,8 +5,6 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
-import PixelScripts from '@/components/storefront/PixelScripts';
-import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { Truck, Shield, Trash2, Plus, Home, Building2 } from 'lucide-react';
 import { uploadImage } from '@/lib/api';
 
@@ -313,7 +311,6 @@ export default function SpiriluxeTemplate({
   // ─── Render ───
   return (
     <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, color: textColor }}>
-      <PixelScripts storeSlug={storeSlug} />
       <div className="max-w-md mx-auto">
 
         {/* Video Embed (above images) */}

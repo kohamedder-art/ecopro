@@ -5,8 +5,6 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
-import PixelScripts from '@/components/storefront/PixelScripts';
-import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 
 /* ═══════════════════════════════════════════════════════════
@@ -307,7 +305,6 @@ export default function LeRoiShopTemplate({
      ══════════════════════════════════════════════════════ */
   return (
     <div style={{ fontFamily: "'Cairo', sans-serif", backgroundColor: bgColor, color: textColor, minHeight: '100dvh' }} dir="rtl">
-      <PixelScripts storeSlug={storeSlug} />
       <style>{`
         [contenteditable="true"]:focus { outline: 2px solid ${accentColor}; border-radius: 4px; }
         .lrs-card { transition: all 0.3s ease; }

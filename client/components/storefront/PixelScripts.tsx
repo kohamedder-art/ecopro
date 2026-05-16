@@ -12,6 +12,9 @@ interface PixelScriptsProps {
   storeSlug: string;
 }
 
+// Module-level guards to prevent duplicate initialization across multiple instances
+let facebookPixelInitialized = false;
+
 const CANONICAL_SESSION_KEY = 'ecopro_session_id';
 const CANONICAL_VISITOR_KEY = 'ecopro_visitor_id';
 const LEGACY_SESSION_KEYS = [CANONICAL_SESSION_KEY, 'pixel_session_id'];
@@ -161,10 +164,11 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
               console.log('[Pixel] Purchase detected:', { orderId, value, product_id: body.product_id });
               trackAllPixels(PixelEvents.PURCHASE, {
                 content_ids: [body.product_id],
-                content_name: body.product_name || '',
+                content_name: body.product_name || body.product_title || body.name || '',
+                content_type: 'product',
                 value: value,
                 currency: 'DZD',
-                order_id: String(orderId),
+                order_id: orderId ? String(orderId) : undefined,
               });
             }).catch(() => {});
           }
@@ -185,6 +189,9 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
   useEffect(() => {
     if (!config?.facebook_pixel_id || !config.is_facebook_enabled) return;
 
+    // Module-level guard: only the first instance initializes
+    if (facebookPixelInitialized) return;
+
     // Support storing multiple pixel IDs as comma-separated values
     const ids = String(config.facebook_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return;
@@ -192,17 +199,7 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     // Deduplicate IDs
     const uniqueIds = [...new Set(ids)];
 
-    // Prevent duplicate script loading
-    if (document.getElementById('facebook-pixel-script')) {
-      // Script already loaded, just re-init pixels
-      if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
-        uniqueIds.forEach(id => {
-          try { window.fbq('init', id); } catch (e) { /* ignore */ }
-        });
-        try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
-      }
-      return;
-    }
+    facebookPixelInitialized = true;
 
     // Preserve any events already queued by trackFacebookEvent before fbq loaded
     const existingQueue = (window as any).fbq?.queue || [];
@@ -222,11 +219,10 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       try { window.fbq.apply(null, args); } catch (e) { /* ignore */ }
     });
 
-    // Queue init and PageView events BEFORE loading the script (standard Facebook pattern)
+    // Queue init events BEFORE loading the script (PageView will be auto-fired by SDK)
     uniqueIds.forEach(id => {
       try { window.fbq('init', id); } catch (e) { /* ignore */ }
     });
-    try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
 
     // Load the Facebook SDK via external script
     const script = document.createElement('script');
@@ -343,7 +339,9 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
  */
 export function trackFacebookEvent(eventName: string, params?: Record<string, any>) {
   if (typeof window !== 'undefined' && window.fbq) {
-    window.fbq('track', eventName, params);
+    const p = params ? { ...params } : {};
+    if (p.value != null) p.value = Number(p.value);
+    window.fbq('track', eventName, p);
   }
 }
 
@@ -482,15 +480,24 @@ export function setCurrentStoreSlug(slug: string) {
 }
 
 export function trackAllPixels(eventName: string, params?: Record<string, any>) {
+  // Normalize value to number if present
+  const normalizedParams = params ? { ...params } : {};
+  if (normalizedParams.value != null) {
+    const numValue = Number(normalizedParams.value);
+    if (!Number.isNaN(numValue)) {
+      normalizedParams.value = numValue;
+    }
+  }
+
   // Track to Facebook and TikTok SDKs (client-side)
-  trackFacebookEvent(eventName, params);
-  trackTikTokEvent(eventName, params);
+  trackFacebookEvent(eventName, normalizedParams);
+  trackTikTokEvent(eventName, normalizedParams);
   
   // Track to our backend for statistics (only ONE event, not duplicated)
   const storeSlug = currentStoreSlug || localStorage.getItem('currentStoreSlug') || '';
   if (storeSlug && eventName !== 'PageView') {
     // PageView is handled separately with deduplication
-    trackToBackend(storeSlug, eventName, params);
+    trackToBackend(storeSlug, eventName, normalizedParams);
   }
 }
 
