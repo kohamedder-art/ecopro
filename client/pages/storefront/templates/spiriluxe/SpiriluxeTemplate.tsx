@@ -79,25 +79,17 @@ export default function SpiriluxeTemplate({
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
 
-  // When product changes: reset images and offer
+  // When product changes: reset images and read split from product metadata
   useEffect(() => {
     if (!mainProduct?.id) return;
     const imgs = Array.isArray(mainProduct?.images) ? mainProduct.images.filter(Boolean) : [];
     setProductImages(imgs);
+    const fromMeta = (mainProduct as any)?.metadata?.spiriluxe_above_count;
+    const initial = fromMeta != null ? Number(fromMeta) : imgs.length;
+    setAboveCount(initial);
+    aboveCountRef.current = initial;
     setSelectedOffer(null);
   }, [mainProduct?.id]);
-
-  // When saved aboveCount setting arrives: apply it without resetting images
-  useEffect(() => {
-    if (!mainProduct?.id) return;
-    const savedCount = settings?.[`spiriluxe_above_count_${mainProduct.id}`];
-    const localCount = (() => { try { const v = localStorage.getItem(`spiriluxe_above_count_${mainProduct.id}`); return v != null ? Number(v) : null; } catch { return null; } })();
-    const count = savedCount != null ? Number(savedCount) : localCount;
-    if (count != null && !isNaN(count)) {
-      aboveCountRef.current = count;
-      setAboveCount(count);
-    }
-  }, [mainProduct?.id, settings?.[`spiriluxe_above_count_${mainProduct?.id}`]]);
   
 
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
@@ -168,39 +160,20 @@ export default function SpiriluxeTemplate({
   const fileInputAboveRef = useRef<HTMLInputElement>(null);
   const fileInputBelowRef = useRef<HTMLInputElement>(null);
 
-  // Save images array to product
-  const saveProductImages = async (images: string[]) => {
+  // Save images + split to product (single API call, single source of truth)
+  const saveProductData = async (images: string[], count: number) => {
     if (!canManage || !mainProduct?.id) return;
     try {
+      const existingMeta = (mainProduct as any)?.metadata || {};
       await fetch(`/api/client/store/products/${mainProduct.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ images })
+        body: JSON.stringify({ images, metadata: { ...existingMeta, spiriluxe_above_count: count } })
       });
     } catch (err) {
-      console.error('Failed to save product images:', err);
+      console.error('Failed to save product data:', err);
     }
-  };
-
-  // Save aboveCount split to settings
-  const saveAboveCount = async (count: number) => {
-    if (!canManage || !mainProduct?.id) return;
-    try {
-      const res = await fetch('/api/client/store/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ [`spiriluxe_above_count_${mainProduct.id}`]: count })
-      });
-    } catch (err) {
-      console.error('Failed to save above count:', err);
-    }
-    // Also persist locally so it survives refresh immediately
-    try {
-      const key = `spiriluxe_above_count_${mainProduct.id}`;
-      localStorage.setItem(key, String(count));
-    } catch {}
   };
 
   // Upload image and append to product images
@@ -210,19 +183,22 @@ export default function SpiriluxeTemplate({
     setUploading(true);
     try {
       const result = await uploadImage(file);
-      const currentAboveCount = aboveCount ?? productImages.length;
+      const currentCount = aboveCount ?? productImages.length;
       let nextImages: string[];
+      let nextCount: number;
       if (position === 'above') {
-        // Insert at end of above section
-        const above = productImages.slice(0, currentAboveCount);
-        const below = productImages.slice(currentAboveCount);
+        const above = productImages.slice(0, currentCount);
+        const below = productImages.slice(currentCount);
         nextImages = [...above, result.url, ...below];
-        setAboveCount(currentAboveCount + 1);
+        nextCount = currentCount + 1;
       } else {
         nextImages = [...productImages, result.url];
+        nextCount = currentCount;
       }
+      setAboveCount(nextCount);
+      aboveCountRef.current = nextCount;
       setProductImages(nextImages);
-      await saveProductImages(nextImages);
+      await saveProductData(nextImages, nextCount);
     } catch (err) {
       console.error('Upload failed:', err);
     } finally {
@@ -232,16 +208,13 @@ export default function SpiriluxeTemplate({
 
   // Remove image from product by index
   const handleRemoveImage = async (index: number) => {
-    const currentAboveCount = aboveCount ?? productImages.length;
+    const currentCount = aboveCount ?? productImages.length;
     const nextImages = productImages.filter((_, i) => i !== index);
-    // Adjust aboveCount if removing an above image
-    if (index < currentAboveCount) {
-      const newCount = Math.max(0, currentAboveCount - 1);
-      setAboveCount(newCount);
-      await saveAboveCount(newCount);
-    }
+    const nextCount = index < currentCount ? Math.max(0, currentCount - 1) : currentCount;
+    setAboveCount(nextCount);
+    aboveCountRef.current = nextCount;
     setProductImages(nextImages);
-    await saveProductImages(nextImages);
+    await saveProductData(nextImages, nextCount);
   };
 
   // Move image one position up or down in the array
@@ -250,21 +223,21 @@ export default function SpiriluxeTemplate({
     const imgs = [...productImages];
     const swapWith = direction === 'up' ? globalIndex - 1 : globalIndex + 1;
 
-    // Special case: last above-image moves ↓ into below (no swap needed, just shift boundary)
+    // Special case: last above-image moves ↓ into below (no swap, just shift boundary)
     if (direction === 'down' && globalIndex === current - 1) {
-      const newCount = current - 1;
-      aboveCountRef.current = newCount;
-      setAboveCount(newCount);
-      await saveAboveCount(newCount);
+      const nextCount = current - 1;
+      aboveCountRef.current = nextCount;
+      setAboveCount(nextCount);
+      await saveProductData(productImages, nextCount);
       return;
     }
 
-    // Special case: first below-image moves ↑ into above (no swap needed, just shift boundary)
+    // Special case: first below-image moves ↑ into above
     if (direction === 'up' && globalIndex === current) {
-      const newCount = current + 1;
-      aboveCountRef.current = newCount;
-      setAboveCount(newCount);
-      await saveAboveCount(newCount);
+      const nextCount = current + 1;
+      aboveCountRef.current = nextCount;
+      setAboveCount(nextCount);
+      await saveProductData(productImages, nextCount);
       return;
     }
 
@@ -272,7 +245,7 @@ export default function SpiriluxeTemplate({
     if (swapWith < 0 || swapWith >= imgs.length) return;
     [imgs[globalIndex], imgs[swapWith]] = [imgs[swapWith], imgs[globalIndex]];
     setProductImages(imgs);
-    await saveProductImages(imgs);
+    await saveProductData(imgs, current);
   };
 
   // Render a list of image items with delete/move buttons
