@@ -46,6 +46,7 @@ const createOrderBodySchema = z
     customer_phone: z.string().trim().min(7).max(50),
     customer_address: z.string().trim().max(1000).optional().nullable(),
     customer_notes: z.string().trim().max(2000).optional().nullable(),
+    product_name: z.string().trim().max(500).optional().nullable(),
     shipping_wilaya_id: z.preprocess(
       (v) => (v === '' || v === null || v === undefined ? undefined : typeof v === 'string' ? Number(v) : v),
       z.number().int().positive()
