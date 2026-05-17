@@ -339,7 +339,7 @@ export class DeliveryService {
          WHERE id = $5 AND client_id = $6`,
         [
           trackingNumber,
-          DeliveryStatus.IN_TRANSIT,
+          DeliveryStatus.ASSIGNED,
           shipmentResponse.label_url || null,
           JSON.stringify(shipmentResponse),
           orderId,
