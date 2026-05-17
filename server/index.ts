@@ -19,6 +19,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import crypto from 'crypto';
 import https from 'https';
+import tls from 'tls';
 import fs from 'fs/promises';
 import { readFileSync } from 'fs';
 import { handleDemo } from "./routes/demo";
@@ -109,6 +110,7 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
     const metaCaPath = path.resolve(process.cwd(), 'server/meta-root-ca.pem');
     const metaCert = readFileSync(metaCaPath, 'utf-8');
     https.globalAgent.options.ca = [
+      ...tls.rootCertificates,
       ...(Array.isArray(https.globalAgent.options.ca) ? https.globalAgent.options.ca : []),
       metaCert,
     ];
