@@ -69,6 +69,21 @@ export default function LeRoiShopTemplate({
   const currency = settings?.currency_code || 'د.ج';
 
   /* ── State ────────────────────────────────────────────── */
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const diff = currentY - lastScrollY.current;
+      if (Math.abs(diff) > 10) {
+        setHeaderHidden(diff > 0 && currentY > 80);
+      }
+      lastScrollY.current = currentY;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const [view, setView] = useState<'catalog' | 'product'>('catalog');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProduct(p); setView('product'); } } }, [initialProductSlug, products]);
@@ -326,7 +341,8 @@ export default function LeRoiShopTemplate({
         .lrs-offer-row input[type="radio"] { accent-color: ${accentColor}; width: 16px; height: 16px; }
       `}</style>
 
-      {/* ── ANNOUNCEMENT BAR ──────────────────────────── */}
+      {/* ── ANNOUNCEMENT BAR + HEADER (hide on scroll down) ── */}
+      <div className={`sticky top-0 z-40 transition-transform duration-300 ${headerHidden ? '-translate-y-full' : 'translate-y-0'}`}>
       <div className="text-center py-1.5 text-xs md:text-sm font-semibold" style={{ backgroundColor: accentColor, color: '#fff' }}>
         <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('lrs_announcement')}>
           {settings?.lrs_announcement || `${settings?.store_name || 'متجري'} — منصة التسوق الإلكتروني | قدم طلبك من هنا 👉`}
@@ -334,7 +350,7 @@ export default function LeRoiShopTemplate({
       </div>
 
       {/* ── HEADER ────────────────────────────────────── */}
-      <header className="shadow-sm sticky top-0 z-40" style={{ backgroundColor: headerColor, borderBottom: `1px solid ${surfaceBorderColor}` }}>
+      <header className="shadow-sm" style={{ backgroundColor: headerColor, borderBottom: `1px solid ${surfaceBorderColor}` }}>
         <div className="max-w-screen-xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <button onClick={goToCatalog} className="font-bold text-sm transition-colors hover:opacity-80" style={{ color: surfaceTextColor }}>
@@ -357,6 +373,7 @@ export default function LeRoiShopTemplate({
           )}
         </div>
       </header>
+      </div>
 
       <main className="max-w-screen-xl mx-auto px-2 sm:px-3 py-6 mb-20">
 
@@ -398,14 +415,19 @@ export default function LeRoiShopTemplate({
                     style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
                     onClick={() => openProduct(product)}
                   >
-                    {/* Image */}
+                    {/* Image / Video */}
                     <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 4', backgroundColor: surfaceMuted }}>
-                      <img
-                        src={product.images?.[0] || '/placeholder.png'}
-                        alt={product.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                      {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
+                        ? <video src={(product as any).metadata.video_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                      : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+                        ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                        : <img
+                            src={product.images?.[0] || '/placeholder.png'}
+                            alt={product.title}
+                            loading="lazy"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                      }
                       <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="absolute top-2 left-2 flex flex-col gap-1">
                         {discount > 0 && (
@@ -751,13 +773,18 @@ export default function LeRoiShopTemplate({
                         style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
                         onClick={() => { openProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       >
-                        {/* Image */}
+                        {/* Image / Video */}
                         <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 4', backgroundColor: surfaceMuted }}>
-                          <img
-                            src={product.images?.[0] || '/placeholder.png'}
-                            alt={product.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
+                          {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
+                            ? <video src={(product as any).metadata.video_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                          : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+                            ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                            : <img
+                                src={product.images?.[0] || '/placeholder.png'}
+                                alt={product.title}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                              />
+                          }
                           <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                           <div className="absolute top-2 left-2 flex flex-col gap-1">
                             {discount > 0 && (
