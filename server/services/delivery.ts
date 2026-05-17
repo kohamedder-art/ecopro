@@ -561,9 +561,9 @@ export class DeliveryService {
     const requestId = generateRequestId();
 
     try {
-      // Get delivery company
+      // Get delivery company (case-insensitive lookup)
       const companyResult = await pool.query(
-        'SELECT id FROM delivery_companies WHERE name = $1',
+        'SELECT id FROM delivery_companies WHERE LOWER(name) = LOWER($1)',
         [companyName]
       );
 

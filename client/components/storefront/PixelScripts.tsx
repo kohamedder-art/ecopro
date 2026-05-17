@@ -14,6 +14,7 @@ interface PixelScriptsProps {
 
 // Module-level guards to prevent duplicate initialization across multiple instances
 let facebookPixelInitialized = false;
+let pageViewFiredByInit = false; // fbq('init') auto-fires PageView; skip the first manual PageView
 let currentStoreCurrency = 'DZD';
 
 export function setStoreCurrency(code: string) {
@@ -168,49 +169,6 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     }
   }, [location.pathname, storeSlug]);
 
-  // Auto-track Purchase events by intercepting order creation API calls.
-  // This runs globally so ALL templates get tracking without individual changes.
-  useEffect(() => {
-    if (!storeSlug) return;
-
-    const originalFetch = window.fetch;
-    window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
-      const response = await originalFetch.call(window, input, init);
-
-      try {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-        if (url.includes('/api/orders/create') && init?.method?.toUpperCase() === 'POST' && response.ok) {
-          const body = typeof init.body === 'string' ? JSON.parse(init.body) : null;
-          if (body) {
-            // Clone to read response without consuming it
-            const cloned = response.clone();
-            cloned.json().then((data: any) => {
-              const orderId = data?.order?.id || data?.orderId || data?.order_id || '';
-              const value = body.total_price || body.offer_bundle_price || body.unit_price || 0;
-              console.log('[Pixel] Purchase detected:', { orderId, value, product_id: body.product_id });
-              trackAllPixels(PixelEvents.PURCHASE, {
-                content_ids: [body.product_id],
-                content_name: body.product_name || body.product_title || body.name || '',
-                content_type: 'product',
-                value: value,
-                currency: currentStoreCurrency,
-                order_id: orderId ? String(orderId) : undefined,
-              });
-            }).catch(() => {});
-          }
-        }
-      } catch {
-        // Non-critical: don't break order flow if tracking fails
-      }
-
-      return response;
-    };
-
-    return () => {
-      window.fetch = originalFetch;
-    };
-  }, [storeSlug]);
-
   // Inject Facebook Pixel (supports multiple comma-separated IDs)
   useEffect(() => {
     if (!config?.facebook_pixel_id || !config.is_facebook_enabled) return;
@@ -360,6 +318,11 @@ export function trackFacebookEvent(eventName: string, params?: Record<string, an
 
   if (typeof window !== 'undefined' && window.fbq) {
     if (facebookPixelInitialized) {
+      // fbq('init') auto-fires PageView; skip the first manual PageView to avoid duplicates
+      if (eventName === 'PageView' && !pageViewFiredByInit) {
+        pageViewFiredByInit = true;
+        return;
+      }
       window.fbq('track', eventName, p);
     } else if (eventName !== 'PageView') {
       // Queue non-PageView events — replayed after init.

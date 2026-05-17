@@ -820,33 +820,33 @@ export default function DeliveryCompanies() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <DialogTitle className="text-lg font-bold flex items-center gap-2 flex-wrap">
+                <DialogTitle className="text-lg font-bold flex items-center gap-2 flex-wrap text-foreground">
                   {selectedCompany?.name}
                   {selectedCompany?.id === 'dolivroo' && (
-                    <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 text-[10px]">
+                    <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 text-xs">
                       {t('delivery.aggregator')}
                     </Badge>
                   )}
                 </DialogTitle>
-                <DialogDescription className="text-xs mt-1 leading-relaxed">
+                <DialogDescription className="text-sm mt-1.5 leading-relaxed text-foreground/80">
                   {selectedCompany?.description}
                 </DialogDescription>
                 {selectedCompany && (
-                  <div className="flex items-center gap-1 mt-1.5">
+                  <div className="flex items-center gap-1 mt-2">
                     {renderStars(selectedCompany.apiRating)}
-                    <span className="text-[11px] text-muted-foreground">{t('delivery.apiQuality')}</span>
+                    <span className="text-sm text-muted-foreground">{t('delivery.apiQuality')}</span>
                   </div>
                 )}
               </div>
             </div>
           </DialogHeader>
 
-          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+          <div className="space-y-5 py-5 max-h-[65vh] overflow-y-auto">
             {/* Coming soon message */}
             {selectedCompany && !canConnectSelectedCompany && (
-              <div className="bg-muted/40 rounded-xl p-4 text-center">
-                <p className="text-sm font-bold mb-1">{t('delivery.comingSoon')}</p>
-                <p className="text-xs text-muted-foreground">{t('delivery.comingSoonDesc')}</p>
+              <div className="bg-muted/50 rounded-xl p-5 text-center">
+                <p className="text-base font-bold mb-1">{t('delivery.comingSoon')}</p>
+                <p className="text-sm text-foreground/80">{t('delivery.comingSoonDesc')}</p>
               </div>
             )}
 
@@ -860,7 +860,6 @@ export default function DeliveryCompanies() {
               const currentValue = credentials[field.field] || '';
               const placeholder = isSavedHidden && !currentValue ? t('delivery.savedHidden') : field.placeholder;
 
-              // Arabic label mapping
               const arabicLabels: Record<string, string> = {
                 apiToken: 'رمز API',
                 apiId: 'معرف API',
@@ -879,7 +878,7 @@ export default function DeliveryCompanies() {
 
               return (
                 <div key={field.field} className="space-y-2">
-                  <Label htmlFor={field.field} className="text-sm font-medium text-right">
+                  <Label htmlFor={field.field} className="text-sm font-semibold text-foreground">
                     {label}
                   </Label>
                   <Input
@@ -888,11 +887,11 @@ export default function DeliveryCompanies() {
                     placeholder={placeholder}
                     value={currentValue}
                     onChange={(e) => setCredentials({ ...credentials, [field.field]: e.target.value })}
-                    className="border-border/60 focus:border-primary/50 focus:ring-primary/20 text-right"
+                    className="border-border focus:border-primary focus:ring-primary/20 text-sm"
                     dir="ltr"
                   />
                   {isSavedHidden && !currentValue && (
-                    <p className="text-[11px] text-muted-foreground text-right">{t('delivery.savedHidden')}</p>
+                    <p className="text-xs text-muted-foreground">{t('delivery.savedHidden')}</p>
                   )}
                 </div>
               );
@@ -900,23 +899,23 @@ export default function DeliveryCompanies() {
             
             {/* Webhook URL */}
             {selectedCompany?.features.webhooks && (
-              <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/50 rounded-xl p-3 space-y-2">
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300/60 dark:border-amber-700/50 rounded-xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <Wifi className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                  <span className="text-xs font-bold text-amber-700 dark:text-amber-300">{t('delivery.webhookUrl')}</span>
+                  <Wifi className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <span className="text-sm font-bold text-amber-800 dark:text-amber-200">{t('delivery.webhookUrl')}</span>
                 </div>
-                <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 leading-relaxed">
+                <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed">
                   {t('delivery.webhookUrlDesc', { company: selectedCompany.name })}
                 </p>
-                <div className="flex gap-1.5">
-                  <code className="flex-1 text-[11px] bg-amber-100/60 dark:bg-amber-950/40 px-2 py-1.5 rounded-lg border border-amber-200/60 dark:border-amber-800/50 text-amber-800 dark:text-amber-200 truncate direction-ltr text-left font-mono">
-                    https://sahla4eco.com/api/delivery/webhooks/{selectedCompany.id}
+                <div className="flex gap-2">
+                  <code className="flex-1 text-sm bg-white/80 dark:bg-amber-950/50 px-3 py-2 rounded-lg border border-amber-300/60 dark:border-amber-700/50 text-amber-900 dark:text-amber-100 truncate direction-ltr text-left font-mono">
+                    https://sahla4eco.com/api/delivery/webhooks/{encodeURIComponent(selectedCompany.name)}
                   </code>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="shrink-0 h-7 text-[11px] border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/40"
-                    onClick={() => navigator.clipboard.writeText(`https://sahla4eco.com/api/delivery/webhooks/${selectedCompany.id}`)}
+                    className="shrink-0 h-9 text-sm border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
+                    onClick={() => navigator.clipboard.writeText(`https://sahla4eco.com/api/delivery/webhooks/${encodeURIComponent(selectedCompany.name)}`)}
                   >
                     {t('delivery.webhookUrlCopy')}
                   </Button>
@@ -926,21 +925,21 @@ export default function DeliveryCompanies() {
             
             {/* Documentation Link */}
             {selectedCompany?.docsUrl && (
-              <div className="bg-gradient-to-br from-blue-50/60 to-cyan-50/40 dark:from-blue-950/30 dark:to-cyan-950/20 border border-blue-200/50 dark:border-blue-800/50 rounded-xl p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-2.5">
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-300/60 dark:border-blue-700/50 rounded-xl p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex gap-2.5 items-start">
                     <Key className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                    <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
                       {t('delivery.getCredentials')}
                     </p>
                   </div>
                   <Button 
-                    variant="ghost" 
+                    variant="outline"
                     size="sm"
-                    className="text-blue-600 hover:text-blue-700 shrink-0"
+                    className="text-blue-700 border-blue-300 hover:bg-blue-100 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-900/40 shrink-0"
                     onClick={() => window.open(selectedCompany.docsUrl, '_blank')}
                   >
-                    <ExternalLink className="w-3 h-3 ml-1" />
+                    <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
                     {t('delivery.docs')}
                   </Button>
                 </div>
@@ -948,46 +947,46 @@ export default function DeliveryCompanies() {
             )}
           </div>
 
-          <DialogFooter className="gap-2 border-t border-border/50 pt-4 flex-row-reverse">
+          <DialogFooter className="gap-3 border-t border-border/50 pt-5 flex-row-reverse">
             <div className="flex-1">
               {saveError && (
-                <p className="text-sm text-destructive">{saveError}</p>
+                <p className="text-sm font-medium text-destructive">{saveError}</p>
               )}
               {saveSuccess && (
-                <p className="text-sm text-primary">{saveSuccess}</p>
+                <p className="text-sm font-medium text-primary">{saveSuccess}</p>
               )}
             </div>
             {selectedCompany?.enabled && (
               <Button
                 variant="destructive"
-                size="sm"
+                size="default"
                 onClick={() => {
                   if (selectedCompany) {
                     handleDisable(selectedCompany.id);
                     setShowConfigDialog(false);
                   }
                 }}
-                className="hover:bg-destructive/90"
+                className="hover:bg-destructive/90 text-sm"
               >
-                <X className="w-4 h-4 ml-1.5" />
+                <X className="w-4 h-4 ml-2" />
                 {t('delivery.disconnect')}
               </Button>
             )}
             <Button 
               variant="outline" 
-              size="sm"
+              size="default"
               onClick={() => setShowConfigDialog(false)}
-              className="border-border/60 hover:bg-muted/50"
+              className="border-border hover:bg-muted text-sm"
             >
               {t('cancel')}
             </Button>
             <Button 
-              size="sm"
+              size="default"
               onClick={handleSaveCredentials}
               disabled={saving || !canConnectSelectedCompany}
-              className="bg-gradient-to-r from-primary to-accent hover:shadow-lg"
+              className="bg-gradient-to-r from-primary to-accent hover:shadow-lg text-sm"
             >
-              <CheckCircle2 className="w-4 h-4 ml-1.5" />
+              <CheckCircle2 className="w-4 h-4 ml-2" />
               {canConnectSelectedCompany ? t('delivery.connectActivate') : t('delivery.comingSoon')}
             </Button>
           </DialogFooter>
