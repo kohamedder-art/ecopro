@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Shield, Activity, Ban, AlertTriangle, Terminal, RefreshCw, Globe, Lock, Unlock, Trash2, LogOut, Wifi, WifiOff, Clock, Eye, EyeOff, Network, XCircle, User, KeyRound, Loader2 } from "lucide-react"
+import { Shield, Activity, Ban, AlertTriangle, Terminal, RefreshCw, Globe, Lock, Unlock, Trash2, LogOut, XCircle, User, KeyRound, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -43,6 +43,8 @@ type SecurityEvent = {
   country_code: string | null
   fingerprint: string | null
   user_agent: string | null
+  user_id: string | null
+  metadata: Record<string, unknown> | null
 }
 
 type SummaryData = {
@@ -63,10 +65,10 @@ type BlockEntry = {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: "bg-red-500/20 text-red-400 border-red-500/40",
-  error: "bg-orange-500/20 text-orange-400 border-orange-500/40",
-  warn: "bg-yellow-500/20 text-yellow-400 border-yellow-500/40",
-  info: "bg-blue-500/20 text-blue-400 border-blue-500/40",
+  critical: "bg-red-100 text-red-700 border-red-300 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/40",
+  error: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/40",
+  warn: "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/40",
+  info: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/40",
 }
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -86,7 +88,60 @@ const EVENT_LABELS: Record<string, string> = {
   trap_hit: "Trap Hit",
   blocked_request: "Blocked",
   known_bot: "Known Bot",
+  honeypot_trap: "Honeypot",
   unknown: "Unknown",
+}
+
+function ToolBadge({ tool }: { tool: string | null }) {
+  if (!tool || tool === "unknown") return null
+  const colors: Record<string, string> = {
+    nmap: "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/40",
+    sqlmap: "bg-red-100 text-red-700 border-red-300 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/40",
+    ffuf: "bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-500/20 dark:text-pink-400 dark:border-pink-500/40",
+    gobuster: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/40",
+    nuclei: "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/40",
+    masscan: "bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/40",
+    nikto: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/40",
+    metasploit: "bg-red-100 text-red-700 border-red-300 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/40",
+    burp: "bg-indigo-100 text-indigo-700 border-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/40",
+  }
+  const c = colors[tool.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/40"
+  return (
+    <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-mono border", c)}>
+      {tool}
+    </Badge>
+  )
+}
+
+function getToolFromUA(ua: string | null): string | null {
+  if (!ua) return null
+  const patterns: [RegExp, string][] = [
+    [/nmap/i, "nmap"],
+    [/sqlmap/i, "sqlmap"],
+    [/ffuf|fuzz\//i, "ffuf"],
+    [/gobuster|dirbuster/i, "gobuster"],
+    [/nuclei/i, "nuclei"],
+    [/masscan/i, "masscan"],
+    [/^curl\//i, "curl"],
+    [/^wget\//i, "wget"],
+    [/python-requests|aiohttp|urllib/i, "python"],
+    [/Go-http-client/i, "go-http"],
+    [/^Java\//i, "java"],
+    [/nikto/i, "nikto"],
+    [/metasploit|msf/i, "metasploit"],
+    [/burp/i, "burp"],
+    [/ZAP/i, "zap"],
+    [/Postman/i, "postman"],
+    [/HTTPie/i, "httpie"],
+    [/^Mozilla\/.*Googlebot/i, "googlebot"],
+    [/facebookexternalhit/i, "facebook"],
+    [/Twitterbot/i, "twitter"],
+  ]
+  for (const [re, name] of patterns) {
+    if (re.test(ua)) return name
+  }
+  if (/Linux/i.test(ua) && !/Android/i.test(ua) && !/Mozilla/i.test(ua)) return "linux-scanner"
+  return null
 }
 
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
@@ -119,43 +174,43 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center z-50">
       <div className="w-full max-w-sm px-6">
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-900/30 border border-green-700/50 mb-4">
-            <Shield className="w-7 h-7 text-green-400" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700/50 mb-4">
+            <Shield className="w-7 h-7 text-green-600 dark:text-green-400" />
           </div>
-          <h1 className="text-xl font-semibold text-white tracking-tight">Kernel Security</h1>
-          <p className="text-sm text-zinc-500 mt-1">Root access required</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">Kernel Security</h1>
+          <p className="text-sm text-gray-500 dark:text-zinc-500 mt-1">Root access required</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Username</label>
+            <label className="text-xs text-gray-500 dark:text-zinc-500 font-medium uppercase tracking-wider">Username</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-600" />
               <Input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="pl-9 bg-zinc-900/80 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-green-700/50 focus:ring-green-900/30 h-10"
+                className="pl-9 bg-white dark:bg-zinc-900/80 border-gray-300 dark:border-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 focus:border-green-500 dark:focus:border-green-700/50 focus:ring-green-500/30 dark:focus:ring-green-900/30 h-10"
                 placeholder="root"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Password</label>
+            <label className="text-xs text-gray-500 dark:text-zinc-500 font-medium uppercase tracking-wider">Password</label>
             <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-600" />
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-9 bg-zinc-900/80 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-green-700/50 focus:ring-green-900/30 h-10"
+                className="pl-9 bg-white dark:bg-zinc-900/80 border-gray-300 dark:border-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 focus:border-green-500 dark:focus:border-green-700/50 focus:ring-green-500/30 dark:focus:ring-green-900/30 h-10"
                 placeholder="••••••••"
               />
             </div>
           </div>
           {error && (
-            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-900/40 px-3 py-2 rounded-lg">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 px-3 py-2 rounded-lg">
               <XCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>
@@ -163,7 +218,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-700 hover:bg-green-600 text-white h-10 font-medium"
+            className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white h-10 font-medium"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Authenticate"}
           </Button>
@@ -221,6 +276,7 @@ function Dashboard() {
       try {
         const d = JSON.parse(ev.data || "{}")
         if (d.type === "heartbeat") return
+        const tool = getToolFromUA(d.user_agent || null)
         const e: SecurityEvent = {
           id: d.id || Date.now(),
           created_at: d.created_at || new Date().toISOString(),
@@ -233,6 +289,8 @@ function Dashboard() {
           country_code: d.country_code || null,
           fingerprint: d.fingerprint || null,
           user_agent: d.user_agent || null,
+          user_id: d.user_id || null,
+          metadata: { ...(d.metadata || {}), detected_tool: tool },
         }
         setLiveEvents((prev) => [e, ...prev].slice(0, 100))
       } catch {
@@ -300,35 +358,35 @@ function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400 dark:text-zinc-500" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100">
+    <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-zinc-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5">
-              <Shield className="w-5 h-5 text-green-400" />
-              <h1 className="text-lg font-semibold tracking-tight text-white">Kernel Security</h1>
+              <Shield className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <h1 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white">Kernel Security</h1>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-zinc-600 border-l border-zinc-800 pl-3 ml-1">
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-600 border-l border-gray-200 dark:border-zinc-800 pl-3 ml-1">
               <div className={cn("w-1.5 h-1.5 rounded-full", connected ? "bg-green-500" : "bg-red-500")} />
               {connected ? "Live" : "Disconnected"}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="text-xs text-zinc-600 font-mono">
+            <div className="text-xs text-gray-500 dark:text-zinc-600 font-mono">
               {feed.length} events
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={fetchSummary}
-              className="text-zinc-500 hover:text-zinc-300 h-8 w-8 p-0"
+              className="text-gray-500 hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300 h-8 w-8 p-0"
             >
               <RefreshCw className="w-4 h-4" />
             </Button>
@@ -336,7 +394,7 @@ function Dashboard() {
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="text-zinc-500 hover:text-red-400 h-8 px-2"
+              className="text-gray-500 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 h-8 px-2"
             >
               <LogOut className="w-4 h-4 mr-1.5" />
               Exit
@@ -347,19 +405,19 @@ function Dashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: "Events Today", value: summary?.events_today ?? 0, icon: Activity, color: "text-blue-400" },
-            { label: "Blocked IPs", value: summary?.blocked_ips ?? 0, icon: Ban, color: "text-red-400" },
-            { label: "Active Threats", value: summary?.active_threats ?? 0, icon: AlertTriangle, color: "text-orange-400" },
-            { label: "Watchlist", value: summary?.watchlist_count ?? 0, icon: Eye, color: "text-yellow-400" },
+            { label: "Events Today", value: summary?.events_today ?? 0, icon: Activity, color: "text-blue-600 dark:text-blue-400" },
+            { label: "Blocked IPs", value: summary?.blocked_ips ?? 0, icon: Ban, color: "text-red-600 dark:text-red-400" },
+            { label: "Active Threats", value: summary?.active_threats ?? 0, icon: AlertTriangle, color: "text-orange-600 dark:text-orange-400" },
+            { label: "Watchlist", value: summary?.watchlist_count ?? 0, icon: Eye, color: "text-yellow-600 dark:text-yellow-400" },
           ].map((stat) => (
-            <Card key={stat.label} className="bg-zinc-900/60 border-zinc-800">
+            <Card key={stat.label} className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-zinc-800/50">
+                <div className="p-2 rounded-lg bg-gray-100 dark:bg-zinc-800/50">
                   <stat.icon className={cn("w-4 h-4", stat.color)} />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold text-white tabular-nums">{stat.value}</p>
-                  <p className="text-xs text-zinc-500">{stat.label}</p>
+                  <p className="text-2xl font-semibold text-gray-900 dark:text-white tabular-nums">{stat.value}</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-500">{stat.label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -370,13 +428,13 @@ function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Live Feed */}
           <div className="lg:col-span-2">
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardHeader className="px-4 py-3 border-b border-zinc-800 flex flex-row items-center justify-between">
+            <Card className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
+              <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-zinc-400" />
+                  <Terminal className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
                   Live Attack Feed
                   {connected && (
-                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-800 text-green-400 bg-green-950/30">
+                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-500 text-green-700 bg-green-50 dark:border-green-800 dark:text-green-400 dark:bg-green-950/30">
                       <span className="w-1 h-1 rounded-full bg-green-500 mr-1 inline-block" />
                       STREAMING
                     </Badge>
@@ -386,7 +444,7 @@ function Dashboard() {
                   variant="ghost"
                   size="sm"
                   onClick={handleClearEvents}
-                  className="text-zinc-500 hover:text-red-400 h-7 text-xs px-2"
+                  className="text-gray-500 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 h-7 text-xs px-2"
                 >
                   <Trash2 className="w-3 h-3 mr-1" />
                   Clear
@@ -394,52 +452,62 @@ function Dashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 {feed.length === 0 ? (
-                  <div className="flex items-center justify-center h-48 text-zinc-600 text-sm">
+                  <div className="flex items-center justify-center h-48 text-gray-400 dark:text-zinc-600 text-sm">
                     <Shield className="w-8 h-8 mr-2 opacity-30" />
                     No events recorded
                   </div>
                 ) : (
                   <ScrollArea className="h-[420px]">
-                    <div className="divide-y divide-zinc-800/50">
-                      {feed.map((e) => (
-                        <div
-                          key={e.id}
-                          className={cn(
-                            "px-4 py-2.5 flex items-start gap-3 hover:bg-zinc-800/30 transition-colors",
-                            e.severity === "critical" && "bg-red-950/10"
-                          )}
-                        >
-                          <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", SEVERITY_DOT[e.severity] || "bg-zinc-600")} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "text-[10px] h-5 px-1.5 font-mono border",
-                                  SEVERITY_COLORS[e.severity] || "border-zinc-700 text-zinc-400 bg-zinc-800/30"
+                    <div className="divide-y divide-gray-100 dark:divide-zinc-800/50">
+                      {feed.map((e) => {
+                        const tool = (e.metadata as { detected_tool?: string } | null)?.detected_tool || getToolFromUA(e.user_agent)
+                        return (
+                          <div
+                            key={e.id}
+                            className={cn(
+                              "px-4 py-2.5 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-zinc-800/30 transition-colors",
+                              e.severity === "critical" && "bg-red-50 dark:bg-red-950/10"
+                            )}
+                          >
+                            <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", SEVERITY_DOT[e.severity] || "bg-gray-400 dark:bg-zinc-600")} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[10px] h-5 px-1.5 font-mono border",
+                                    SEVERITY_COLORS[e.severity] || "border-gray-300 text-gray-600 bg-gray-50 dark:border-zinc-700 dark:text-zinc-400 dark:bg-zinc-800/30"
+                                  )}
+                                >
+                                  {EVENT_LABELS[e.event_type] || e.event_type}
+                                </Badge>
+                                {e.user_id && (
+                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-mono border border-cyan-300 text-cyan-700 bg-cyan-50 dark:border-cyan-800 dark:text-cyan-400 dark:bg-cyan-950/30">
+                                    <User className="w-2.5 h-2.5 mr-0.5" />
+                                    AUTH
+                                  </Badge>
                                 )}
-                              >
-                                {EVENT_LABELS[e.event_type] || e.event_type}
-                              </Badge>
-                              {e.ip && (
-                                <span className="text-xs font-mono text-zinc-400">
-                                  {countryFlag(e.country_code)} {e.ip}
-                                </span>
-                              )}
-                              {e.method && e.path && (
-                                <span className="text-xs text-zinc-600 font-mono truncate hidden sm:inline">
-                                  {e.method} {e.path}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-zinc-600 mt-0.5">
-                              {timeAgo(e.created_at)}
-                              {e.status_code && <span className="ml-2">status {e.status_code}</span>}
-                              {e.fingerprint && <span className="ml-2 font-mono">{e.fingerprint.slice(0, 16)}...</span>}
+                                <ToolBadge tool={tool} />
+                                {e.ip && (
+                                  <span className="text-xs font-mono text-gray-500 dark:text-zinc-400">
+                                    {countryFlag(e.country_code)} {e.ip}
+                                  </span>
+                                )}
+                                {e.method && e.path && (
+                                  <span className="text-xs text-gray-400 dark:text-zinc-600 font-mono truncate hidden sm:inline">
+                                    {e.method} {e.path}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-gray-400 dark:text-zinc-600 mt-0.5">
+                                {timeAgo(e.created_at)}
+                                {e.status_code && <span className="ml-2">status {e.status_code}</span>}
+                                {e.fingerprint && <span className="ml-2 font-mono">{e.fingerprint.slice(0, 16)}...</span>}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </ScrollArea>
                 )}
@@ -450,10 +518,10 @@ function Dashboard() {
           {/* Sidebar */}
           <div className="space-y-4">
             {/* Block IP */}
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardHeader className="px-4 py-3 border-b border-zinc-800">
+            <Card className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
+              <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Ban className="w-4 h-4 text-zinc-400" />
+                  <Ban className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
                   Block IP
                 </CardTitle>
               </CardHeader>
@@ -462,19 +530,19 @@ function Dashboard() {
                   value={blockIp}
                   onChange={(e) => setBlockIp(e.target.value)}
                   placeholder="IP address"
-                  className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 h-9 text-sm font-mono"
+                  className="bg-white dark:bg-zinc-800/50 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 h-9 text-sm font-mono"
                 />
                 <Input
                   value={blockReason}
                   onChange={(e) => setBlockReason(e.target.value)}
                   placeholder="Reason (optional)"
-                  className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 h-9 text-sm"
+                  className="bg-white dark:bg-zinc-800/50 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 h-9 text-sm"
                 />
                 <Button
                   onClick={handleBlock}
                   disabled={!blockIp.trim()}
                   size="sm"
-                  className="w-full bg-red-700 hover:bg-red-600 text-white h-9"
+                  className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white h-9"
                 >
                   <Lock className="w-3.5 h-3.5 mr-1.5" />
                   Block
@@ -484,10 +552,10 @@ function Dashboard() {
 
             {/* Top Countries */}
             {hasTopCountries && (
-              <Card className="bg-zinc-900/60 border-zinc-800">
-                <CardHeader className="px-4 py-3 border-b border-zinc-800">
+              <Card className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
+                <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-zinc-400" />
+                    <Globe className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
                     Top Origins
                   </CardTitle>
                 </CardHeader>
@@ -498,13 +566,13 @@ function Dashboard() {
                     return (
                       <div key={c.country_code} className="flex items-center gap-2">
                         <span className="text-sm">{countryFlag(c.country_code)}</span>
-                        <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="flex-1 h-2 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-red-700/60 rounded-full transition-all"
+                            className="h-full bg-red-500/60 dark:bg-red-700/60 rounded-full transition-all"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <span className="text-xs text-zinc-500 tabular-nums w-8 text-right">{pct}%</span>
+                        <span className="text-xs text-gray-500 dark:text-zinc-500 tabular-nums w-8 text-right">{pct}%</span>
                       </div>
                     )
                   })}
@@ -516,10 +584,10 @@ function Dashboard() {
 
         {/* IP Blocks Table */}
         {blocks.length > 0 && (
-          <Card className="bg-zinc-900/60 border-zinc-800">
-            <CardHeader className="px-4 py-3 border-b border-zinc-800">
+          <Card className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
+            <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Ban className="w-4 h-4 text-zinc-400" />
+                <Ban className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
                 Blocked IPs ({blocks.length})
               </CardTitle>
             </CardHeader>
@@ -527,29 +595,29 @@ function Dashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-800">
-                      <th className="text-left text-xs text-zinc-600 font-medium px-4 py-2.5">IP</th>
-                      <th className="text-left text-xs text-zinc-600 font-medium px-4 py-2.5 hidden sm:table-cell">Country</th>
-                      <th className="text-left text-xs text-zinc-600 font-medium px-4 py-2.5">Reason</th>
-                      <th className="text-left text-xs text-zinc-600 font-medium px-4 py-2.5 hidden md:table-cell">Blocked</th>
-                      <th className="text-right text-xs text-zinc-600 font-medium px-4 py-2.5">Action</th>
+                    <tr className="border-b border-gray-200 dark:border-zinc-800">
+                      <th className="text-left text-xs text-gray-500 dark:text-zinc-600 font-medium px-4 py-2.5">IP</th>
+                      <th className="text-left text-xs text-gray-500 dark:text-zinc-600 font-medium px-4 py-2.5 hidden sm:table-cell">Country</th>
+                      <th className="text-left text-xs text-gray-500 dark:text-zinc-600 font-medium px-4 py-2.5">Reason</th>
+                      <th className="text-left text-xs text-gray-500 dark:text-zinc-600 font-medium px-4 py-2.5 hidden md:table-cell">Blocked</th>
+                      <th className="text-right text-xs text-gray-500 dark:text-zinc-600 font-medium px-4 py-2.5">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-800/50">
+                  <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/50">
                     {blocks.map((b) => (
-                      <tr key={b.id} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="px-4 py-2.5 font-mono text-xs text-zinc-300">{b.ip}</td>
-                        <td className="px-4 py-2.5 text-xs text-zinc-500 hidden sm:table-cell">
+                      <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/30 transition-colors">
+                        <td className="px-4 py-2.5 font-mono text-xs text-gray-700 dark:text-zinc-300">{b.ip}</td>
+                        <td className="px-4 py-2.5 text-xs text-gray-500 dark:text-zinc-500 hidden sm:table-cell">
                           {countryFlag(b.country_code)} {b.country_code || "—"}
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-zinc-400">{b.reason || "—"}</td>
-                        <td className="px-4 py-2.5 text-xs text-zinc-600 hidden md:table-cell">{timeAgo(b.blocked_at)}</td>
+                        <td className="px-4 py-2.5 text-xs text-gray-500 dark:text-zinc-400">{b.reason || "—"}</td>
+                        <td className="px-4 py-2.5 text-xs text-gray-400 dark:text-zinc-600 hidden md:table-cell">{timeAgo(b.blocked_at)}</td>
                         <td className="px-4 py-2.5 text-right">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleUnblock(b.ip)}
-                            className="h-7 text-xs text-zinc-500 hover:text-green-400 hover:bg-green-950/20"
+                            className="h-7 text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 dark:text-zinc-500 dark:hover:text-green-400 dark:hover:bg-green-950/20"
                           >
                             <Unlock className="w-3 h-3 mr-1" />
                             Unblock
@@ -582,8 +650,8 @@ export default function Kernel() {
 
   if (state === "loading") {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-600" />
+      <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400 dark:text-zinc-600" />
       </div>
     )
   }

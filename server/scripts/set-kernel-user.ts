@@ -34,7 +34,7 @@ async function main() {
   );
 
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ username, password: '[REDACTED]' }));
+  console.log(JSON.stringify({ username, password }));
 }
 
 main().catch((e) => {
