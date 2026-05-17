@@ -344,14 +344,6 @@ export function trackFacebookEvent(eventName: string, params?: Record<string, an
     }
   }
 }
-      window.fbq('track', eventName, p);
-    } else if (eventName !== 'PageView') {
-      // Queue non-PageView events — replayed after init.
-      // PageView is excluded because the Facebook SDK auto-fires it on init.
-      pendingEvents.push([eventName, p]);
-    }
-  }
-}
 
 export function trackTikTokEvent(eventName: string, params?: Record<string, any>) {
   if (typeof window !== 'undefined' && window.ttq) {
