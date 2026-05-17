@@ -1,3 +1,0 @@
-client/components/ui/ghost.tsx
-client/components/ui/animated-ghosts.tsx
-client/ghosts.css

@@ -90,3 +90,31 @@ prisma/
 
 # Ghost files
 ghosts-to-delete.txt
+
+# Root-level junk (test scripts, scratch SQL, backup files, docs)
+*.sql
+!migrations/*.sql
+!server/migrations/*.sql
+*.cjs
+*.zip
+cookies.txt
+editor.txt
+sticky-zero-issues.txt
+
+# Root documentation / planning files (belong in wiki or docs/)
+CHAT_README.md
+CODE_GENERATION_REFACTOR_COMPLETE.md
+CODES_STORE_INTEGRATION_COMPLETE.md
+FILES_TO_DELETE.md
+INTEGRATION_VERIFICATION.md
+OAUTH_FIXES_SUMMARY.md
+PLATFORM_AUDIT_AND_STRATEGY.md
+PROJECT_MAP.md
+QUICK_REFERENCE.md
+TEMPLATE_CUSTOMIZATION_ROADMAP.md
+TESTING_REQUIREMENTS.md
+TESTING_RESULTS.md
+VOUCHER_CODE_TESTING_GUIDE.md
+
+# Uploaded assets (generated at runtime)
+public/uploads/
