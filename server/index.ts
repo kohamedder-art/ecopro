@@ -18,7 +18,9 @@ import { fileURLToPath } from "url";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import crypto from 'crypto';
+import https from 'https';
 import fs from 'fs/promises';
+import { readFileSync } from 'fs';
 import { handleDemo } from "./routes/demo";
 import * as authRoutes from "./routes/auth";
 import * as stockRoutes from "./routes/stock";
@@ -101,6 +103,20 @@ export function createServer(options?: { skipDbInit?: boolean }) {
       process.exit(1);
     }
   }
+
+  // Trust Meta's new root CA for mTLS webhooks (deadline: 31 March 2026)
+  const metaCaPath = path.join(__dirname, 'meta-root-ca.pem');
+  try {
+    const metaCert = readFileSync(metaCaPath, 'utf-8');
+    https.globalAgent.options.ca = [
+      ...(Array.isArray(https.globalAgent.options.ca) ? https.globalAgent.options.ca : []),
+      metaCert,
+    ];
+    console.log('✅ Meta root CA loaded for mTLS webhooks');
+  } catch {
+    // Fail silently — the file may not exist (e.g. dev environments)
+  }
+
   // Compression — max level for slow Algerian connections
   app.use(
     compression({
