@@ -11,40 +11,8 @@ import { generateText } from './gemini';
 
 type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 
-interface PendingOrderSession {
-  clientId: number;
-  platform: Platform;
-  platformChatId: string;
-  productId?: number;
-  productTitle?: string;
-  productPrice?: number;
-  customerName?: string;
-  customerPhone?: string;
-  customerAddress?: string;
-  wilayaId?: number;
-  wilayaName?: string;
-  deliveryType?: 'home' | 'desk';
-  step: 'product' | 'name' | 'phone' | 'wilaya' | 'address' | 'confirm';
-  createdAt: number;
-}
-
-// In-memory store for active AI order sessions (expires in 30 min)
-const pendingOrderSessions = new Map<string, PendingOrderSession>();
-const SESSION_TTL_MS = 30 * 60 * 1000;
-
 // Unified rate limiter
-import { checkRateLimit, getRateLimitResetTime, RATE_LIMITS, getRateLimitMessage } from '../utils/ai-rate-limiter';
-
-function sessionKey(clientId: number, platform: Platform, chatId: string): string {
-  return `${clientId}:${platform}:${chatId}`;
-}
-
-function cleanExpiredSessions(): void {
-  const now = Date.now();
-  for (const [key, s] of pendingOrderSessions) {
-    if (now - s.createdAt > SESSION_TTL_MS) pendingOrderSessions.delete(key);
-  }
-}
+import { checkRateLimit, checkGlobalRateLimit, getRateLimitResetTime, RATE_LIMITS, getRateLimitMessage } from '../utils/ai-rate-limiter';
 
 interface StoreContext {
   storeName: string;
@@ -298,53 +266,6 @@ function buildProductCatalog(ctx: StoreContext): string {
 }
 
 /**
- * Extract wilaya from message text.
- */
-async function extractWilayaFromMessage(message: string): Promise<{ id: number; name: string } | null> {
-  try {
-    const pool = await ensureConnection();
-    // Try to match wilaya name in message
-    const words = message.split(/\s+/);
-    for (const word of words) {
-      if (word.length < 3) continue;
-      const res = await pool.query(
-        `SELECT id, name_ar as name FROM wilayas 
-         WHERE lower(name_ar) LIKE lower($1) OR lower(name) LIKE lower($1) 
-         LIMIT 1`,
-        [`%${word}%`]
-      );
-      if (res.rows[0]) {
-        return { id: res.rows[0].id, name: res.rows[0].name };
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Extract address from message (anything after "عنوان" or "سكن" or long text after wilaya).
- */
-function extractAddressFromMessage(message: string): string | null {
-  // Try to find address markers
-  const markers = ['عنوان', 'العنوان', 'سكن', 'السكن', 'اقامة', 'الاقامة', 'حي', 'الحي', 'شارع', 'الشارع'];
-  for (const marker of markers) {
-    const regex = new RegExp(`${marker}[\\s:]*(.{10,100})`, 'i');
-    const match = message.match(regex);
-    if (match && match[1]) {
-      return match[1].trim();
-    }
-  }
-  // Try to get last long text segment (likely address)
-  const segments = message.split(/[،,\\.\\n]/).map(s => s.trim()).filter(s => s.length > 10);
-  if (segments.length > 0) {
-    return segments[segments.length - 1];
-  }
-  return null;
-}
-
-/**
  * Resolve customer phone from their platform chat ID.
  */
 async function resolveCustomerPhone(
@@ -444,13 +365,6 @@ function extractPhoneFromMessage(message: string): string | null {
     }
   }
   return null;
-}
-
-/**
- * Validate if a string is a proper Algerian phone number.
- */
-function isValidAlgerianPhone(phone: string): boolean {
-  return /^0[567]\d{8}$/.test(phone.replace(/\D/g, ''));
 }
 
 /**
@@ -609,21 +523,66 @@ async function loadCustomerOrders(
 }
 
 /**
- * Create an order from a completed AI chat session.
+ * Create an order from AI-extracted data.
  */
-async function createOrderFromChat(
-  session: PendingOrderSession
+interface CreateOrderData {
+  clientId: number;
+  platform: Platform;
+  platformChatId: string;
+  productTitle: string;
+  customerName: string;
+  customerPhone: string;
+  shippingAddress: string;
+  wilayaName?: string;
+  quantity?: number;
+}
+
+async function createOrderFromData(
+  data: CreateOrderData
 ): Promise<{ orderId: number; total: number } | null> {
   try {
     const pool = await ensureConnection();
-    const storeOrderColumns = await (async () => {
-      const res = await pool.query(
-        `SELECT column_name FROM information_schema.columns
-         WHERE table_schema = 'public' AND table_name = 'store_orders'`
-      );
-      return new Set<string>(res.rows.map((r: any) => String(r.column_name)));
-    })();
 
+    // Look up product by title
+    const productRes = await pool.query(
+      `SELECT id, price FROM client_store_products WHERE client_id = $1 AND title = $2 AND status = 'active' LIMIT 1`,
+      [data.clientId, data.productTitle]
+    );
+    if (!productRes.rows.length) {
+      console.error(`[AI-Customer] Product not found: "${data.productTitle}"`);
+      return null;
+    }
+    const productId = Number(productRes.rows[0].id);
+    const unitPrice = Number(productRes.rows[0].price);
+
+    // Resolve wilaya ID from name
+    let wilayaId: number | null = null;
+    if (data.wilayaName) {
+      const wRes = await pool.query(
+        `SELECT id FROM wilayas WHERE name_ar = $1 OR name = $1 LIMIT 1`,
+        [data.wilayaName]
+      );
+      if (wRes.rows[0]) wilayaId = Number(wRes.rows[0].id);
+    }
+
+    // Resolve delivery fee
+    const deliveryRes = wilayaId
+      ? await pool.query(
+          `SELECT home_delivery_price FROM delivery_prices
+           WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
+          [data.clientId, wilayaId]
+        )
+      : { rows: [] };
+    const deliveryFee = Number(deliveryRes.rows[0]?.home_delivery_price) || 0;
+    const qty = data.quantity || 1;
+    const total = (unitPrice * qty) + deliveryFee;
+
+    // Get order columns
+    const colRes = await pool.query(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'store_orders'`
+    );
+    const storeOrderColumns = new Set<string>(colRes.rows.map((r: any) => String(r.column_name)));
     const insertCols: string[] = [];
     const insertVals: any[] = [];
     const addCol = (col: string, val: any) => {
@@ -632,35 +591,20 @@ async function createOrderFromChat(
       insertVals.push(val);
     };
 
-    const deliveryRes = session.wilayaId
-      ? await pool.query(
-          `SELECT home_delivery_price, desk_delivery_price FROM delivery_prices
-           WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
-          [session.clientId, session.wilayaId]
-        )
-      : { rows: [] };
-    const deliveryFee = deliveryRes.rows[0]
-      ? Number(session.deliveryType === 'desk'
-          ? deliveryRes.rows[0].desk_delivery_price
-          : deliveryRes.rows[0].home_delivery_price) || 0
-      : 0;
-    const total = (session.productPrice || 0) + deliveryFee;
-
-    addCol('client_id', session.clientId);
-    addCol('product_id', session.productId || null);
-    addCol('quantity', 1);
-    addCol('unit_price', session.productPrice || 0);
+    addCol('client_id', data.clientId);
+    addCol('product_id', productId);
+    addCol('quantity', qty);
+    addCol('unit_price', unitPrice);
     addCol('total_price', total);
     addCol('delivery_fee', deliveryFee);
-    addCol('delivery_type', session.deliveryType || 'home');
-    addCol('customer_name', session.customerName || '');
-    addCol('customer_phone', session.customerPhone || '');
-    addCol('shipping_address', session.wilayaName || null);
-    addCol('shipping_wilaya_id', session.wilayaId || null);
+    addCol('customer_name', data.customerName);
+    addCol('customer_phone', data.customerPhone);
+    addCol('shipping_address', data.shippingAddress);
+    addCol('shipping_wilaya_id', wilayaId);
     addCol('status', 'pending');
     addCol('payment_status', 'unpaid');
     addCol('order_source', 'ai_chat');
-    addCol('source_platform', session.platform);
+    addCol('source_platform', data.platform);
     addCol('created_at', new Date());
 
     const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(',');
@@ -669,21 +613,32 @@ async function createOrderFromChat(
       insertVals
     );
 
-    // Send notification to store owner about new chat order
     const orderId = result.rows[0].id;
+
+    // Save customer phone for future lookups
+    try {
+      const phoneCol = data.platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
+      await pool.query(
+        `INSERT INTO customer_messaging_ids (client_id, ${phoneCol}, customer_phone)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (client_id, ${phoneCol}) DO UPDATE SET customer_phone = $3`,
+        [data.clientId, data.platformChatId, data.customerPhone]
+      );
+    } catch (_) {}
+
+    // Notify store owner
     try {
       await pool.query(
         `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
          VALUES ($1, $2, $3, 'telegram', $4, NOW())`,
-        [orderId, session.clientId, session.customerPhone || '', `📦 طلب جديد من AI Chat!\n\nرقم الطلب: #${orderId}\nالمنتج: ${session.productTitle}\nالسعر: ${session.productPrice} دج\nالاسم: ${session.customerName}\nالهاتف: ${session.customerPhone}\nالولاية: ${session.wilayaName}\nالعنوان: ${session.customerAddress}`]
+        [orderId, data.clientId, data.customerPhone,
+         `📦 طلب جديد من AI Chat!\n\nرقم الطلب: #${orderId}\nالمنتج: ${data.productTitle}\nالسعر: ${unitPrice} دج × ${qty}\nالمجموع: ${total} دج\nالاسم: ${data.customerName}\nالهاتف: ${data.customerPhone}\nالعنوان: ${data.shippingAddress}`]
       );
-    } catch (notifyErr) {
-      console.error('[AI-Customer] Failed to send notification:', notifyErr);
-    }
+    } catch (_) {}
 
     return { orderId, total: Number(result.rows[0].total_price) };
   } catch (err) {
-    console.error('[AI-Customer] createOrderFromChat error:', err);
+    console.error('[AI-Customer] createOrderFromData error:', err);
     return null;
   }
 }
@@ -715,6 +670,35 @@ export async function handleCustomerMessage(
   }
   // Strip /test prefix before processing so the actual message is clean
   const effectiveMessage = isTestMode ? customerMessage.trim().replace(/^\/test\s*/i, '') : customerMessage;
+
+  // ═══════════════════════════════════════════════════════════════
+  // SECURITY CHECKS — prevent abuse, spam, and cost exhaustion
+  // ═══════════════════════════════════════════════════════════════
+
+  // 1. Max message length (500 chars for customers)
+  if (effectiveMessage.length > 500) {
+    console.log(`[AI-Customer] Blocked long message (${effectiveMessage.length} chars) from client ${clientId}`);
+    return 'الرسالة طويلة جداً. يرجى اختصارها إلى 500 حرف كحد أقصى.';
+  }
+
+  // 2. Block messages that are mostly repeated characters (bot pattern)
+  if (effectiveMessage.length > 20) {
+    const charFreq: Record<string, number> = {};
+    for (const ch of effectiveMessage) {
+      charFreq[ch] = (charFreq[ch] || 0) + 1;
+    }
+    const maxFreq = Math.max(...Object.values(charFreq));
+    if (maxFreq / effectiveMessage.length > 0.7) {
+      console.log(`[AI-Customer] Blocked repetitive message pattern from client ${clientId}`);
+      return 'عذراً، لم يتم التعرف على رسالتك. يرجى كتابتها بطريقة طبيعية.';
+    }
+  }
+
+  // 3. Global platform-wide rate limit
+  if (!checkGlobalRateLimit()) {
+    console.log(`[AI-Customer] Global rate limit hit for client ${clientId}`);
+    return 'النظام مشغول حالياً، يرجى المحاولة لاحقاً.';
+  }
 
   // Load store context
   const ctx = await loadStoreContext(clientId);
@@ -760,6 +744,47 @@ export async function handleCustomerMessage(
 
   // Load conversation history
   const history = await getConversationHistory(clientId, platform, platformChatId);
+
+  // 4. Repetition detection — if the same message was sent 3+ times recently
+  if (history.length >= 2) {
+    const userMessages = history
+      .filter(h => h.role === 'user')
+      .slice(-5)
+      .map(h => h.parts[0]?.text || '')
+      .filter(Boolean);
+    
+    // Exact repetition check
+    const sameCount = userMessages.filter(m => m === effectiveMessage.trim()).length;
+    if (sameCount >= 3) {
+      console.log(`[AI-Customer] Blocked repeated message (${sameCount}x) from client ${clientId}`);
+      return 'لقد أرسلت هذه الرسالة مسبقاً. هل هناك شيء جديد تريد مساعدة فيه؟';
+    }
+
+    // Similarity check — if all recent messages look alike
+    if (userMessages.length >= 3) {
+      const ratios = userMessages.slice(0, -1).map(m => {
+        const len = Math.max(m.length, effectiveMessage.length);
+        if (len === 0) return 0;
+        let matches = 0;
+        for (let i = 0; i < Math.min(m.length, effectiveMessage.length); i++) {
+          if (m[i] === effectiveMessage[i]) matches++;
+        }
+        return matches / len;
+      });
+      const avgSimilarity = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+      if (avgSimilarity > 0.85 && effectiveMessage.length > 10) {
+        console.log(`[AI-Customer] Blocked near-identical messages (similarity=${avgSimilarity.toFixed(2)}) from client ${clientId}`);
+        return 'رسائلك متشابهة جداً. هل لديك سؤال جديد؟';
+      }
+    }
+  }
+
+  // 5. Conversation depth limit — max 30 AI replies per conversation
+  const aiReplies = history.filter(h => h.role === 'model').length;
+  if (aiReplies >= 30) {
+    console.log(`[AI-Customer] Conversation depth limit reached for client ${clientId} (${aiReplies} replies)`);
+    return 'عذراً، تم الوصول للحد الأقصى لهذه المحادثة. إذا كان لديك استفسار جديد، يرجى بدء محادثة جديدة.';
+  }
 
   // Resolve customer identity and load their orders
   let customerPhone = await resolveCustomerPhone(clientId, platform, platformChatId);
@@ -813,237 +838,6 @@ export async function handleCustomerMessage(
     orderSection = `\n[لم نتمكن من تحديد هوية هذا الزبون بعد. إذا سأل عن طلب، اطلب منه رقم هاتفه اللي طلب بيه وتاريخ الطلب التقريبي باش نقدرو نلقاو الطلب تاعو.]\n`;
   }
 
-  // ── Check for active order session ──────────────────────────────────────
-  cleanExpiredSessions();
-  const sKey = sessionKey(clientId, platform, platformChatId);
-  const activeSession = pendingOrderSessions.get(sKey);
-
-  // If we are in an active order collection session, handle it directly
-  if (activeSession) {
-    // ✅ FIX 7: Check if session is about to expire (warn at 25 min)
-    const sessionAge = Date.now() - activeSession.createdAt;
-    if (sessionAge > 25 * 60 * 1000 && sessionAge < 30 * 60 * 1000) {
-      // Session about to expire, warn user
-    }
-    
-    const msg = effectiveMessage.trim().toLowerCase();
-    // Broad cancel detection — any refusal, frustration, or stop intent
-    const isCancel = /إلغ|cancel|لا حاجة|مبقيتش|بطل|stop|ألغي|ألغى|توقف|لا اريد|لا أريد|مش حاب|ما حبيتش|خلاص|كفى|بلاش|لا شكرا|no|non|arrête|مجنون|تبا|منيش|منشريش|ما نشريش|مهبول|لا الشراء|ما نبغيش|ما حابش/i.test(effectiveMessage);
-    if (isCancel) {
-      pendingOrderSessions.delete(sKey);
-      return 'تم الإلغاء. كيف نقدر نعاونك؟';
-    }
-
-    // Detect if the message is clearly NOT order-related (question, confusion, tracking)
-    const isNotOrderInput = /من أنت|ماذا|لماذا|ما هذا|متابعة|تتبع|#\d+|طلبي رقم|مجنون|ما تقول|شنو هاد/i.test(effectiveMessage);
-    if (isNotOrderInput) {
-      pendingOrderSessions.delete(sKey);
-      // Fall through to normal AI handling below
-    }
-    
-    if (pendingOrderSessions.has(sKey)) {
-    // ✅ FIX 10: Handle change/modification requests
-    const isChangeRequest = /بدل|غير|بدلة|تغيير|تبديل|modif|change/i.test(effectiveMessage);
-    if (isChangeRequest && activeSession.step !== 'confirm') {
-      return `شنو تبي تبدل؟\n• المنتج: ${activeSession.productTitle}\n• الاسم: ${activeSession.customerName || '-'}\n• الهاتف: ${activeSession.customerPhone || '-'}\n\nقلي شنو تبي تبدل 👍`;
-    }
-
-    const isConfirm = /نعم|أكيد|موافق|تأكيد|confirm|اطلب|أطلب|اتمام|أتمم|واه|ايه|اه|ok|oui/i.test(effectiveMessage);
-
-    if (activeSession.step === 'confirm') {
-      if (isConfirm) {
-        const result = await createOrderFromChat(activeSession);
-        pendingOrderSessions.delete(sKey);
-        if (result) {
-          return `✅ تم تسجيل طلبك بنجاح!\n\n📦 رقم الطلب: #${result.orderId}\n💰 المبلغ: ${result.total} دج (الدفع عند الاستلام)\n\nشكراً ${activeSession.customerName}! سنتواصل معك قريباً لتأكيد موعد التوصيل 🚚`;
-        } else {
-          return 'عذراً، حصل خطأ في تسجيل طلبك. يرجى المحاولة مجدداً أو تواصل معنا مباشرة.';
-        }
-      } else {
-        return `عندك تعديل؟ قولي شو تبي تبدل، أو قل "تأكيد" باش نكمل.\n\n• الاسم: ${activeSession.customerName}\n• الهاتف: ${activeSession.customerPhone}\n• الولاية: ${activeSession.wilayaName || 'غير محددة'}\n• المنتج: ${activeSession.productTitle}\n• المبلغ: ${activeSession.productPrice} دج + توصيل`;
-      }
-    }
-
-    if (activeSession.step === 'name') {
-      // ✅ FIX 5: Handle all-at-once input - try to extract phone and wilaya too
-      const name = effectiveMessage.trim();
-      if (name.length < 2) return 'يرجى إدخال اسمك الكامل باش نقدر نسجل الطلب.';
-      activeSession.customerName = name;
-      
-      // Try to extract phone from same message
-      const extractedPhone = extractPhoneFromMessage(effectiveMessage);
-      if (extractedPhone && isValidAlgerianPhone(extractedPhone)) {
-        activeSession.customerPhone = extractedPhone;
-        
-        // Try to extract wilaya too
-        const wilayaMatch = await extractWilayaFromMessage(effectiveMessage);
-        if (wilayaMatch) {
-          activeSession.wilayaId = wilayaMatch.id;
-          activeSession.wilayaName = wilayaMatch.name;
-          
-          // Try to extract address
-          const address = extractAddressFromMessage(effectiveMessage);
-          if (address && address.length >= 5) {
-            activeSession.customerAddress = address;
-            activeSession.step = 'confirm';
-            
-            // Calculate delivery fee
-            const pool = await ensureConnection();
-            let deliveryFee = 0;
-            if (activeSession.wilayaId) {
-              const dRes = await pool.query(
-                `SELECT home_delivery_price, desk_delivery_price FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
-                [clientId, activeSession.wilayaId]
-              ).catch(() => ({ rows: [] }));
-              const homePrice = Number(dRes.rows[0]?.home_delivery_price) || 0;
-              deliveryFee = homePrice;
-            }
-            const total = (activeSession.productPrice || 0) + deliveryFee;
-            
-            return `ممتاز! جمعت كل المعلومات دفعة واحدة 👏
-
-تأكيد الطلب:
-📦 المنتج: ${activeSession.productTitle}
-💰 السعر: ${activeSession.productPrice} دج
-🚚 التوصيل: ${deliveryFee} دج
-💳 المجموع: ${total} دج
-👤 الاسم: ${activeSession.customerName}
-📱 الهاتف: ${activeSession.customerPhone}
-📍 الولاية: ${activeSession.wilayaName}
-🏠 العنوان: ${activeSession.customerAddress}
-
-✅ الدفع عند الاستلام
-
-اكتب "تأكيد" للتسجيل أو "إلغاء" للإلغاء`;
-          }
-          
-          activeSession.step = 'address';
-          return `تمام ${name}! لقيت رقمك (${extractedPhone}) والولاية (${wilayaMatch.name}) 👍
-
-الآن أعطني عنوانك الكامل (الحي، الشارع، رقم المبنى) 🏠`;
-        }
-        
-        activeSession.step = 'wilaya';
-        return `شكراً ${name}! لقيت رقم هاتفك: ${extractedPhone} 👍
-
-الآن أعطني اسم ولايتك للتوصيل 📍`;
-      }
-      
-      activeSession.step = 'phone';
-      return `شكراً ${name}! الآن أعطني رقم هاتفك (مثل: 0555123456) 📱`;
-    }
-
-    if (activeSession.step === 'phone') {
-      const extractedPhone = extractPhoneFromMessage(effectiveMessage) || effectiveMessage.trim().replace(/\s/g, '');
-      if (!/^0[5-7]\d{8}$/.test(extractedPhone)) {
-        return 'رقم الهاتف غير صحيح. يرجى إدخال رقم جزائري صحيح (مثال: 0555123456)';
-      }
-      activeSession.customerPhone = extractedPhone;
-      activeSession.step = 'wilaya';
-      return `تمام! الآن أعطني اسم ولايتك للتوصيل 📍`;
-    }
-
-    if (activeSession.step === 'wilaya') {
-      const pool = await ensureConnection();
-      const wilayaMatch = await pool.query(
-        `SELECT id, name_ar, name FROM wilayas WHERE lower(name_ar) LIKE lower($1) OR lower(name) LIKE lower($1) LIMIT 1`,
-        [`%${effectiveMessage.trim()}%`]
-      ).catch(() => ({ rows: [] }));
-      let wilayaId: number | undefined;
-      let wilayaName: string | undefined;
-      if (wilayaMatch.rows[0]) {
-        wilayaId = Number(wilayaMatch.rows[0].id);
-        wilayaName = wilayaMatch.rows[0].name_ar || wilayaMatch.rows[0].name;
-      } else {
-        wilayaName = effectiveMessage.trim();
-      }
-      activeSession.wilayaId = wilayaId;
-      activeSession.wilayaName = wilayaName;
-      activeSession.step = 'address';
-      return `تمام! الآن أعطني عنوانك الكامل (الحي، الشارع، رقم المبنى) 🏠`;
-    }
-
-    if (activeSession.step === 'address') {
-      const address = effectiveMessage.trim();
-      if (address.length < 5) return 'يرجى إدخال عنوانك الكامل باش نقدر نوصل الطلب.';
-      activeSession.customerAddress = address;
-      activeSession.step = 'confirm';
-
-      // Calculate delivery fee if wilaya found
-      const pool = await ensureConnection();
-      let deliveryFee = 0;
-      if (activeSession.wilayaId) {
-        const dRes = await pool.query(
-          `SELECT home_delivery_price, desk_delivery_price FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
-          [clientId, activeSession.wilayaId]
-        ).catch(() => ({ rows: [] }));
-        const homePrice = Number(dRes.rows[0]?.home_delivery_price) || 0;
-        const deskPrice = Number(dRes.rows[0]?.desk_delivery_price) || 0;
-        deliveryFee = homePrice; // Default to home delivery
-      }
-      const total = (activeSession.productPrice || 0) + deliveryFee;
-
-      return `تأكيد الطلب:\n\n📦 المنتج: ${activeSession.productTitle}\n💰 السعر: ${activeSession.productPrice} دج\n🚚 التوصيل: ${deliveryFee} دج\n💳 المجموع: ${total} دج\n👤 الاسم: ${activeSession.customerName}\n📱 الهاتف: ${activeSession.customerPhone}\n📍 الولاية: ${activeSession.wilayaName}\n🏠 العنوان: ${activeSession.customerAddress}\n\n✅ الدفع عند الاستلام\n\nاكتب "تأكيد" للتسجيل أو "إلغاء" للإلغاء`;
-    }
-    } // end if (pendingOrderSessions.has(sKey))
-  } // end if (activeSession)
-
-  // ── Detect new order intent from the message ──────────────────────────────
-  const orderIntentRegex = /(?:حاب نطلب|حابة نطلب|بغيت نشري|نطلب|أطلب|اطلب|نشري|أشري|نحب نطلب|نحب نشري|حابة نشري|أريد طلب|أريد طلبية|اريد طلب|اريد طلبية|أريد الشراء|اريد الشراء|أبغى طلب|أبغى الشراء|طلب منك|طلب من عندك|je veux commander|je veux acheter|i want to order|i want to buy|want to order|want to buy)/i;
-  // Don't trigger order flow if customer is asking about an existing order (tracking/follow-up)
-  const trackingIntentRegex = /متابعة|تتبع|وين طلب|اين طلب|فين طلب|حالة الطلب|رقم.*#\d+|#\d+|طلبي رقم|track|suivi|وصل|شحن|وصلني/i;
-  const isTrackingIntent = trackingIntentRegex.test(effectiveMessage);
-  // Don't trigger order if message contains negation (لا اريد, منيش حاب, ما نشريش, etc.)
-  const isNegated = /لا اريد|لا أريد|منيش|ما.*ش|مش حاب|ما حبيتش|ما نشريش|منشريش|ما نطلبش|مش باغي|لا أبغى|لا ابغى|don't want|je ne veux pas/i.test(effectiveMessage);
-  const hasOrderIntent = !isTrackingIntent && !isNegated && orderIntentRegex.test(effectiveMessage) && ctx.products.length > 0;
-  let orderIntentInstructions = '';
-  if (hasOrderIntent && !activeSession) {
-    // Pick the most likely product if mentioned in current message
-    let mentionedProduct = ctx.products.find(p => effectiveMessage.includes(p.title));
-
-    // If not mentioned in current message, check conversation history for product context
-    if (!mentionedProduct && history.length > 0) {
-      const historyText = history.map(h => h.parts[0]?.text || '').join(' ').toLowerCase();
-      mentionedProduct = ctx.products.find(p => historyText.includes(p.title.toLowerCase()));
-    }
-
-    // If still no product, use single product if only one exists
-    if (!mentionedProduct && ctx.products.length === 1) {
-      mentionedProduct = ctx.products[0];
-    }
-
-    if (mentionedProduct) {
-      // ❌ CRITICAL FIX: Check stock before starting order session
-      if (!mentionedProduct.inStock) {
-        return `عذراً، المنتج "${mentionedProduct.title}" غير متوفر حالياً في المخزون 😔\n\nهل تبي منتج آخر؟ شوف الكتالوج: ${ctx.storeLink || 'الموقع'}`;
-      }
-      
-      const newSession: PendingOrderSession = {
-        clientId,
-        platform,
-        platformChatId,
-        productId: undefined,
-        productTitle: mentionedProduct.title,
-        productPrice: mentionedProduct.price,
-        step: 'name',
-        createdAt: Date.now(),
-      };
-      // Try to find the product ID
-      try {
-        const pool = await ensureConnection();
-        const pRes = await pool.query(
-          `SELECT id FROM client_store_products WHERE client_id = $1 AND title = $2 LIMIT 1`,
-          [clientId, mentionedProduct.title]
-        );
-        if (pRes.rows[0]) newSession.productId = Number(pRes.rows[0].id);
-      } catch {}
-      pendingOrderSessions.set(sKey, newSession);
-      return `واو، خيار ممتاز! ${mentionedProduct.title} بـ ${mentionedProduct.price} دج 🙌\n\nباش نسجل طلبك، محتاج منك معلومات صغيرة:\n\nما هو اسمك الكامل؟`;
-    } else if (ctx.products.length > 0) {
-      orderIntentInstructions = `\n\n[الزبون يريد الطلب — اسأله عن المنتج الذي يريده من القائمة أعلاه، ثم قل له سنكمل باقي التفاصيل معه خطوة بخطوة]`;
-    }
-  }
-
   const prompt = `[متجر: ${ctx.storeName}]
 ${ctx.storeDescription ? ctx.storeDescription + '\n' : ''}${ctx.aiInstructions ? `\n[تعليمات خاصة من صاحب المتجر]: ${ctx.aiInstructions}\n` : ''}
 ═══ المنتجات المتوفرة ═══
@@ -1052,7 +846,7 @@ ${catalog}
 ═══ التوصيل ═══
 ${ctx.deliveryInfo}
 الدفع عند الاستلام (COD).${storeLinkSection}${storeOrderLink}
-${orderSection}${orderIntentInstructions}
+${orderSection}
 ═══ رسالة الزبون ═══
 ${effectiveMessage}`;
 
@@ -1063,6 +857,22 @@ ${effectiveMessage}`;
     return getRateLimitMessage(resetTime, 'customer', 'ar');
   }
 
+  // 6. Daily token budget check — max 5M customer tokens per store per day
+  try {
+    const pool = await ensureConnection();
+    const todayUsage = await pool.query(
+      `SELECT COALESCE(SUM(total_tokens), 0) AS total
+       FROM ai_usage_logs
+       WHERE client_id = $1 AND user_type = 'customer'
+         AND created_at >= CURRENT_DATE`,
+      [clientId]
+    );
+    if (Number(todayUsage.rows[0]?.total || 0) > 5_000_000) {
+      console.log(`[AI-Customer] Daily token limit exceeded for client ${clientId}`);
+      return 'عذراً، تم تجاوز الحد اليومي للردود الآلية. يرجى التواصل مع المتجر مباشرة.';
+    }
+  } catch (_) { /* non-critical — allow through if query fails */ }
+
   try {
     const response = await generateText(
       'customer',
@@ -1071,15 +881,54 @@ ${effectiveMessage}`;
       history
     );
 
-    // Clean garbled Latin/non-Arabic characters that Llama sometimes mixes in
-    let cleanResponse = response
-      .replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, '') // Polish chars
-      .replace(/[àâäéèêëïîôùûüÿçœæ]/g, '')     // French accented chars mixed in Arabic
-      .replace(/(?<=[\u0600-\u06FF])[a-zA-Z]{1,3}(?=[\u0600-\u06FF])/g, '') // stray Latin chars between Arabic
-      .replace(/\s{2,}/g, ' ')                   // collapse double spaces
-      .trim();
+    let cleanResponse = response;
 
-    // Save the conversation turn (non-blocking — don't let a DB error kill the reply)
+    // ── Detect ECOPRO_ACTION in AI response ──────────────────────────────
+    const actionRegex = /ECOPRO_ACTION:\s*(\{[\s\S]*\})/;
+    const actionMatch = cleanResponse.match(actionRegex);
+    if (actionMatch) {
+      try {
+        const actionData = JSON.parse(actionMatch[1]);
+        if (actionData.type === 'create_customer_order') {
+          const orderResult = await createOrderFromData({
+            clientId,
+            platform,
+            platformChatId,
+            productTitle: actionData.productTitle,
+            customerName: actionData.customerName,
+            customerPhone: actionData.customerPhone,
+            shippingAddress: actionData.shippingAddress,
+            wilayaName: actionData.wilayaName,
+            quantity: actionData.quantity || 1,
+          });
+
+          // Strip the action line from the response text
+          cleanResponse = cleanResponse.replace(actionRegex, '').trim();
+
+          if (orderResult) {
+            cleanResponse = `🎉 تم تأكيد طلبك بنجاح!\n\n📦 رقم الطلب: #${orderResult.orderId}\n💰 المبلغ الإجمالي: ${orderResult.total} دج (الدفع عند الاستلام)\n\nشكراً جزيلاً ${actionData.customerName}! سيتم التواصل معك قريباً لتأكيد موعد التوصيل 🚚`;
+
+            // Save customer phone for future lookups
+            try {
+              const pool = await ensureConnection();
+              const phoneCol = platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
+              await pool.query(
+                `INSERT INTO customer_messaging_ids (client_id, ${phoneCol}, customer_phone)
+                 VALUES ($1, $2, $3)
+                 ON CONFLICT (client_id, ${phoneCol}) DO UPDATE SET customer_phone = $3`,
+                [clientId, platformChatId, actionData.customerPhone]
+              );
+            } catch (_) {}
+          } else {
+            cleanResponse += '\n\nعذراً، حدث خطأ أثناء تسجيل الطلب. يرجى المحاولة مرة أخرى.';
+          }
+        }
+      } catch (parseErr) {
+        console.error('[AI-Customer] Failed to parse ECOPRO_ACTION:', parseErr);
+      }
+    }
+
+    // Save the conversation turn (non-blocking)
     saveConversationTurn(clientId, platform, platformChatId, effectiveMessage, cleanResponse)
       .catch(err => console.error(`[AI-Customer] Failed to save conversation:`, err));
 

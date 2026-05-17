@@ -2,10 +2,16 @@
  * Unified AI Rate Limiter
  * 
  * Provides rate limiting for all AI interactions:
- * - Customers: 5 requests/minute (prevents spam, controls costs)
+ * - Customers: 3 requests/minute (prevents spam, controls costs)
  * - Store Owners: 10 requests/minute (higher limit for business needs)
  * - Staff: 15 requests/minute
  * - Admin: 30 requests/minute
+ * - Per-IP: 10 requests/minute (for unauthenticated endpoints)
+ * - Global: 200 requests/minute across the entire platform
+ * 
+ * SECURITY: All rate limits are purely in-memory. They reset on server restart.
+ * This is acceptable because the purpose is to prevent burst abuse,
+ * not to enforce long-term quotas (which are handled by ai_usage_quotas in DB).
  */
 
 interface RateLimitRecord {
@@ -21,10 +27,12 @@ export interface RateLimitConfig {
 }
 
 export const RATE_LIMITS = {
-  customer: { maxRequests: 5, windowMs: 60 * 1000 },      // 5/min
+  customer: { maxRequests: 3, windowMs: 60 * 1000 },      // 3/min (was 5, tightened)
   store_owner: { maxRequests: 10, windowMs: 60 * 1000 },    // 10/min
   staff: { maxRequests: 15, windowMs: 60 * 1000 },        // 15/min
   admin: { maxRequests: 30, windowMs: 60 * 1000 },        // 30/min
+  ip: { maxRequests: 10, windowMs: 60 * 1000 },           // 10/min per IP
+  global: { maxRequests: 200, windowMs: 60 * 1000 },      // 200/min platform-wide
 } as const;
 
 export type UserRole = keyof typeof RATE_LIMITS;
@@ -53,6 +61,21 @@ export function checkRateLimit(key: string, config: RateLimitConfig): boolean {
   // Increment and allow
   record.count++;
   return true;
+}
+
+/**
+ * Check global rate limit (across ALL clients)
+ * This prevents platform-wide resource exhaustion even if individual keys are fine.
+ */
+export function checkGlobalRateLimit(): boolean {
+  return checkRateLimit('__global__', RATE_LIMITS.global);
+}
+
+/**
+ * Check IP-based rate limit for unauthenticated endpoints.
+ */
+export function checkIpRateLimit(ip: string): boolean {
+  return checkRateLimit(`ip:${ip}`, RATE_LIMITS.ip);
 }
 
 /**
