@@ -740,8 +740,8 @@ ${urls}
   
   app.use('/api/telemetry', telemetryRouter);
 
-  // Kernel (root-only) APIs — temporarily disabled
-  app.use('/api/kernel', (_req: any, res: any) => res.status(404).json({ error: 'Not found' }));
+  // Kernel (root-only) APIs — security monitoring & attack detection
+  app.use('/api/kernel', kernelRouter);
   
   // IP Intelligence APIs (public + admin)
   app.use('/api/intel', intelRouter);

@@ -1,599 +1,231 @@
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Shield, Activity, Ban, AlertTriangle, Terminal, RefreshCw, Globe, Lock, Unlock, Trash2, LogOut, Wifi, WifiOff, Clock, Eye, EyeOff, Network, XCircle, User, KeyRound, Loader2 } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
 
-// CSS for flashing red animation
-const flashingStyles = `
-@keyframes flash-red {
-  0%, 100% { 
-    background-color: rgba(239, 68, 68, 0.3);
-    border-color: rgba(239, 68, 68, 0.8);
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
-  }
-  50% { 
-    background-color: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.4);
-    box-shadow: 0 0 5px rgba(239, 68, 68, 0.2);
-  }
+function getCsrfToken(): string {
+  const m = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/)
+  return m?.[1] ?? ""
 }
-.threat-flash {
-  animation: flash-red 1s ease-in-out infinite;
-}
-.threat-row {
-  background-color: rgba(239, 68, 68, 0.15) !important;
-  border-left: 3px solid rgb(239, 68, 68) !important;
-}
-.threat-row:hover {
-  background-color: rgba(239, 68, 68, 0.25) !important;
-}
-`;
 
-type Summary = {
-  days: number;
-  blockedByCountry: Array<{ country_code: string; count: number }>;
-  topIps: Array<{ ip: string; count: number }>;
-  repeatFingerprints: Array<{ fingerprint: string; ip: string; user_agent: string; count: number; last_seen: string }>;
-};
+function timeAgo(iso: string): string {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 5) return "just now"
+  if (s < 60) return `${s}s ago`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
+function countryFlag(code: string | null): string {
+  if (!code || code.length !== 2) return "🌐"
+  const offset = 0x1f1e6
+  const a = code.charCodeAt(0) - 65 + offset
+  const b = code.charCodeAt(1) - 65 + offset
+  return String.fromCodePoint(a, b)
+}
 
 type SecurityEvent = {
-  id: number;
-  created_at: string;
-  event_type: string;
-  severity: string;
-  method: string | null;
-  path: string | null;
-  status_code: number | null;
-  ip: string | null;
-  country_code: string | null;
-  fingerprint: string | null;
-  user_agent: string | null;
-};
+  id: number
+  created_at: string
+  event_type: string
+  severity: string
+  method: string | null
+  path: string | null
+  status_code: number | null
+  ip: string | null
+  country_code: string | null
+  fingerprint: string | null
+  user_agent: string | null
+}
 
-type KernelStatus = {
-  environment: {
-    nodeEnv: string;
-    isRender: boolean;
-    renderServiceId: string | null;
-    renderServiceName: string | null;
-    renderExternalUrl: string | null;
-  };
-  server: {
-    now: string;
-    hostname: string;
-    pid: number;
-    node: string;
-    uptimeSeconds: number;
-  };
-  db?: {
-    database?: string;
-    server_addr?: string;
-    server_port?: number;
-    server_version?: string;
-    error?: string;
-  } | null;
-};
+type SummaryData = {
+  events_today: number
+  blocked_ips: number
+  active_threats: number
+  watchlist_count: number
+  top_countries: { country_code: string; count: number }[]
+}
 
-type TrafficSummary = {
-  minutes: number;
-  total: number;
-  byStatus: Array<{ status: number; count: number }>;
-  topPaths: Array<{ path: string; count: number }>;
-  topIps: Array<{ ip: string; count: number }>;
-};
+type BlockEntry = {
+  id: number
+  ip: string
+  reason: string | null
+  blocked_at: string
+  expires_at: string | null
+  country_code: string | null
+}
 
-type TrafficRow = {
-  ts: number;
-  method: string;
-  path: string;
-  status: number;
-  ip: string | null;
-  country_code: string | null;
-  user_agent: string | null;
-  fingerprint: string | null;
-  user_id: string | null;
-  user_type: string | null;
-  role: string | null;
-  ms: number;
-};
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: "bg-red-500/20 text-red-400 border-red-500/40",
+  error: "bg-orange-500/20 text-orange-400 border-orange-500/40",
+  warn: "bg-yellow-500/20 text-yellow-400 border-yellow-500/40",
+  info: "bg-blue-500/20 text-blue-400 border-blue-500/40",
+}
 
-type IpBlock = {
-  ip: string;
-  reason: string | null;
-  is_active: boolean;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
-};
+const SEVERITY_DOT: Record<string, string> = {
+  critical: "bg-red-500",
+  error: "bg-orange-500",
+  warn: "bg-yellow-500",
+  info: "bg-blue-500",
+}
 
-type LinuxActor = {
-  actor_key: string;
-  ua_class?: 'linux' | 'unknown_ua';
-  fingerprint: string | null;
-  ip: string | null;
-  country_code: string | null;
-  user_agent: string | null;
-  user_id: string | null;
-  user_type: string | null;
-  role: string | null;
-  user?: { id: number; email: string; full_name?: string | null } | null;
-  total_events: number;
-  suspicious_events: number;
-  trap_hits: number;
-  admin_forbidden: number;
-  suspicious_path: number;
-  first_seen: string;
-  last_seen: string;
-  is_trusted?: boolean;
-  trusted_label?: string | null;
-  emergency: boolean;
-  // IP Intelligence
-  intel?: {
-    isp: string | null;
-    org: string | null;
-    asn: string | null;
-    is_vpn: boolean;
-    is_proxy: boolean;
-    is_tor: boolean;
-    is_datacenter: boolean;
-    is_blacklisted: boolean;
-    fraud_score: number;
-    abuse_score: number;
-    risk_level: string;
-  } | null;
-};
+const EVENT_LABELS: Record<string, string> = {
+  rate_limit_hit: "Rate Limit",
+  suspicious_request: "Suspicious",
+  auth_failure: "Auth Failure",
+  sql_injection: "SQL Injection",
+  prompt_injection: "Prompt Injection",
+  auth_login_failed: "Login Failed",
+  trap_hit: "Trap Hit",
+  blocked_request: "Blocked",
+  known_bot: "Known Bot",
+  unknown: "Unknown",
+}
 
-type ActorDetails = {
-  fingerprint: string | null;
-  ip: string | null;
-  topPaths: Array<{ path: string; count: number }>;
-  eventTypes: Array<{ event_type: string; count: number }>;
-  events: Array<SecurityEvent & { metadata?: any; request_id?: string | null; region?: string | null; city?: string | null; user_id?: string | null; user_type?: string | null; role?: string | null; user?: { id: number; email: string; full_name?: string | null } | null }>;
-};
+function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  const [username, setUsername] = useState("root")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
-type IntelStats = {
-  days: number;
-  cache: {
-    total_cached: number;
-    vpn_count: number;
-    proxy_count: number;
-    tor_count: number;
-    blacklisted_count: number;
-    checked_today: number;
-  };
-  decisions: Array<{ decision: string; count: number }>;
-  fingerprints: {
-    total: number;
-    webrtc_leaks: number;
-    incognito_users: number;
-    unique_visitors: number;
-  };
-  risk_distribution: Array<{ risk_level: string; count: number }>;
-};
-
-type IPIntelCache = {
-  ip: string;
-  country_code: string | null;
-  isp: string | null;
-  org: string | null;
-  asn: string | null;
-  is_vpn: boolean;
-  is_proxy: boolean;
-  is_tor: boolean;
-  is_datacenter: boolean;
-  is_blacklisted: boolean;
-  fraud_score: number;
-  abuse_score: number;
-  risk_level: string;
-  last_checked_at: string;
-};
-
-export default function Kernel() {
-  const [token, setToken] = React.useState<string | null>(null);
-  const [username, setUsername] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [error, setError] = React.useState<string>("");
-
-  const [days, setDays] = React.useState(7);
-  const [loading, setLoading] = React.useState(false);
-  const [summary, setSummary] = React.useState<Summary | null>(null);
-  const [events, setEvents] = React.useState<SecurityEvent[]>([]);
-
-  const [status, setStatus] = React.useState<KernelStatus | null>(null);
-  const [trafficMinutes, setTrafficMinutes] = React.useState(15);
-  const [trafficSummary, setTrafficSummary] = React.useState<TrafficSummary | null>(null);
-  const [traffic, setTraffic] = React.useState<TrafficRow[]>([]);
-
-  const [blocks, setBlocks] = React.useState<IpBlock[]>([]);
-  const [blockIp, setBlockIp] = React.useState('');
-  const [blockReason, setBlockReason] = React.useState('');
-
-  const [me, setMe] = React.useState<{ ip: string | null; user_agent: string | null; fingerprint: string | null; trusted?: any } | null>(null);
-
-  const [linuxDays, setLinuxDays] = React.useState(7);
-  const [linuxActors, setLinuxActors] = React.useState<LinuxActor[]>([]);
-  const [openActorKey, setOpenActorKey] = React.useState<string | null>(null);
-  const [actorDetails, setActorDetails] = React.useState<Record<string, ActorDetails | null>>({});
-
-  // IP Intelligence state
-  const [intelStats, setIntelStats] = React.useState<IntelStats | null>(null);
-  const [intelCache, setIntelCache] = React.useState<IPIntelCache[]>([]);
-  const [lookupIp, setLookupIp] = React.useState('');
-  const [lookupResult, setLookupResult] = React.useState<IPIntelCache | null>(null);
-  const [lookupLoading, setLookupLoading] = React.useState(false);
-
-  // Threat tracking - IPs and fingerprints flagged as threats
-  const [threatIps, setThreatIps] = React.useState<Set<string>>(new Set());
-  const [threatFingerprints, setThreatFingerprints] = React.useState<Set<string>>(new Set());
-  const [testThreatIp, setTestThreatIp] = React.useState('');
-
-  // Emergency actors - must be defined before useEffect that uses it
-  const emergencyActors = React.useMemo(() => {
-    return linuxActors.filter((a) => !a.is_trusted && ((a.trap_hits || 0) > 0 || (a.admin_forbidden || 0) > 0));
-  }, [linuxActors]);
-
-  // Compute threat sets from various sources
-  // ONLY active/new threats flash - blocked IPs are handled (no flash)
-  React.useEffect(() => {
-    const ips = new Set<string>();
-    const fps = new Set<string>();
-    
-    // Get set of blocked IPs to exclude from flashing
-    const blockedIpSet = new Set<string>();
-    blocks.forEach(b => {
-      if (b.is_active && b.ip) blockedIpSet.add(b.ip);
-    });
-    
-    // Helper: only add if NOT already blocked
-    const addIfNotBlocked = (ip: string | null | undefined) => {
-      if (ip && !blockedIpSet.has(ip)) ips.add(ip);
-    };
-    
-    // Add emergency actors (trap hits, admin forbidden) - only if NOT blocked
-    emergencyActors.forEach(a => {
-      addIfNotBlocked(a.ip);
-      if (a.fingerprint) fps.add(a.fingerprint);
-    });
-    
-    // Add blacklisted/VPN/Tor/high-risk from intel cache - only if NOT blocked
-    intelCache.forEach(c => {
-      if (c.is_blacklisted || c.is_tor || c.risk_level === 'critical' || c.risk_level === 'high') {
-        addIfNotBlocked(c.ip);
-      }
-    });
-    
-    // HIGH-SEVERITY events - only if NOT blocked
-    events.forEach(ev => {
-      if (ev.severity === 'error' || ev.event_type === 'trap_hit' || ev.event_type === 'admin_forbidden') {
-        addIfNotBlocked(ev.ip);
-        if (ev.fingerprint) fps.add(ev.fingerprint);
-      }
-    });
-    
-    setThreatIps(ips);
-    setThreatFingerprints(fps);
-  }, [emergencyActors, intelCache, blocks, events, traffic, linuxActors]);
-
-  // Helper to check if an IP or fingerprint is a threat
-  const isThreat = (ip?: string | null, fingerprint?: string | null): boolean => {
-    if (ip && threatIps.has(ip)) return true;
-    if (fingerprint && threatFingerprints.has(fingerprint)) return true;
-    return false;
-  };
-
-  // Test function to simulate a threat
-  const simulateThreat = () => {
-    const testIp = testThreatIp.trim() || '192.168.99.99';
-    setThreatIps(prev => new Set([...prev, testIp]));
-    setError('');
-    // Auto-remove after 30 seconds
-    setTimeout(() => {
-      setThreatIps(prev => {
-        const next = new Set(prev);
-        next.delete(testIp);
-        return next;
-      });
-    }, 30000);
-  };
-
-  const myUaClass = React.useMemo(() => {
-    const ua = (me?.user_agent || '').trim();
-    if (!ua) return 'unknown_ua';
-    if (/Android/i.test(ua)) return 'android';
-    if (/Linux/i.test(ua)) return 'linux';
-    return 'other';
-  }, [me?.user_agent]);
-
-  React.useEffect(() => {
-    if (!token) return;
-    if (openActorKey) return;
-    if (emergencyActors.length === 0) return;
-    const first = emergencyActors[0];
-    setOpenActorKey(first.actor_key);
-    void loadActor(first.actor_key, first.fingerprint, first.ip);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, emergencyActors.length]);
-
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setLoading(true)
     try {
       const res = await fetch("/api/kernel/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
         body: JSON.stringify({ username, password }),
-      });
-      const data = await res.json().catch(() => ({}));
+      })
       if (!res.ok) {
-        throw new Error(data?.error || "Login failed");
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || "Login failed")
+        return
       }
-
-      setToken("ok");
-      setPassword("");
-    } catch (e: any) {
-      setError(e?.message || "Login failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function logout() {
-    try {
-      await fetch('/api/kernel/logout', { method: 'POST' });
+      onLogin()
     } catch {
-      // ignore
-    }
-    setToken(null);
-    setSummary(null);
-    setEvents([]);
-  }
-
-  async function loadAll() {
-    setLoading(true);
-    setError("");
-    try {
-      const [statusRes, meRes, summaryRes, eventsRes, trafficSummaryRes, trafficRes, blocksRes, linuxRes] = await Promise.all([
-        fetch(`/api/kernel/status`),
-        fetch(`/api/kernel/security/me`),
-        fetch(`/api/kernel/security/summary?days=${days}`),
-        fetch(`/api/kernel/security/events?limit=200`),
-        fetch(`/api/kernel/traffic/summary?minutes=${trafficMinutes}`),
-        fetch(`/api/kernel/traffic/recent?limit=200`),
-        fetch(`/api/kernel/blocks`),
-        fetch(`/api/kernel/security/linux/watchlist?days=${linuxDays}&limit=60`),
-      ]);
-
-      if (!statusRes.ok) throw new Error("Failed to load status");
-      if (!meRes.ok) throw new Error('Failed to load device fingerprint');
-      if (!summaryRes.ok) throw new Error("Failed to load summary");
-      if (!eventsRes.ok) throw new Error("Failed to load events");
-      if (!trafficSummaryRes.ok) throw new Error("Failed to load traffic summary");
-      if (!trafficRes.ok) throw new Error("Failed to load traffic");
-      if (!blocksRes.ok) throw new Error("Failed to load blocks");
-      if (!linuxRes.ok) throw new Error("Failed to load Linux watchlist");
-
-      const statusData = await statusRes.json();
-      const meData = await meRes.json();
-      const summaryData = await summaryRes.json();
-      const eventsData = await eventsRes.json();
-      const trafficSummaryData = await trafficSummaryRes.json();
-      const trafficData = await trafficRes.json();
-      const blocksData = await blocksRes.json();
-      const linuxData = await linuxRes.json();
-
-      setStatus(statusData);
-      setMe(meData);
-      setSummary(summaryData);
-      setEvents(eventsData?.events || []);
-      setTrafficSummary(trafficSummaryData);
-      setTraffic(trafficData?.events || []);
-      setBlocks(blocksData?.blocks || []);
-      setLinuxActors(linuxData?.actors || []);
-      
-      // Load IP Intelligence stats (separate try to not break main load)
-      try {
-        const [intelStatsRes, intelCacheRes] = await Promise.all([
-          fetch(`/api/intel/admin/stats?days=${days}`),
-          fetch(`/api/intel/admin/cache?limit=50`),
-        ]);
-        if (intelStatsRes.ok) {
-          const statsData = await intelStatsRes.json();
-          setIntelStats(statsData);
-        }
-        if (intelCacheRes.ok) {
-          const cacheData = await intelCacheRes.json();
-          setIntelCache(cacheData?.cache || []);
-        }
-      } catch {
-        // Intel endpoints may not exist yet, ignore
-      }
-    } catch (e: any) {
-      setError(e?.message || "Failed to load kernel data");
+      setError("Network error")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
-  async function lookupIpIntel() {
-    if (!token || !lookupIp.trim()) return;
-    setLookupLoading(true);
-    setLookupResult(null);
+  return (
+    <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+      <div className="w-full max-w-sm px-6">
+        <div className="mb-8 text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-900/30 border border-green-700/50 mb-4">
+            <Shield className="w-7 h-7 text-green-400" />
+          </div>
+          <h1 className="text-xl font-semibold text-white tracking-tight">Kernel Security</h1>
+          <p className="text-sm text-zinc-500 mt-1">Root access required</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Username</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="pl-9 bg-zinc-900/80 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-green-700/50 focus:ring-green-900/30 h-10"
+                placeholder="root"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Password</label>
+            <div className="relative">
+              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-9 bg-zinc-900/80 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-green-700/50 focus:ring-green-900/30 h-10"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-900/40 px-3 py-2 rounded-lg">
+              <XCircle className="w-4 h-4 shrink-0" />
+              {error}
+            </div>
+          )}
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-green-700 hover:bg-green-600 text-white h-10 font-medium"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Authenticate"}
+          </Button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function Dashboard() {
+  const [summary, setSummary] = useState<SummaryData | null>(null)
+  const [events, setEvents] = useState<SecurityEvent[]>([])
+  const [blocks, setBlocks] = useState<BlockEntry[]>([])
+  const [liveEvents, setLiveEvents] = useState<SecurityEvent[]>([])
+  const [connected, setConnected] = useState(false)
+  const [blockIp, setBlockIp] = useState("")
+  const [blockReason, setBlockReason] = useState("")
+  const [loading, setLoading] = useState(true)
+  const esRef = useRef<EventSource | null>(null)
+
+  const fetchSummary = useCallback(async () => {
     try {
-      const res = await fetch(`/api/intel/admin/lookup/${encodeURIComponent(lookupIp.trim())}`);
-      if (!res.ok) throw new Error('Lookup failed');
-      const data = await res.json();
-      setLookupResult(data);
-    } catch (e: any) {
-      setError(e?.message || 'IP lookup failed');
+      const [sRes, eRes, bRes] = await Promise.all([
+        fetch("/api/kernel/security/summary?days=1"),
+        fetch("/api/kernel/security/events?limit=50"),
+        fetch("/api/kernel/blocks"),
+      ])
+      if (sRes.ok) setSummary(await sRes.json())
+      if (eRes.ok) setEvents((await eRes.json()).events || [])
+      if (bRes.ok) setBlocks(await bRes.json())
+    } catch {
+      /* ignore */
     } finally {
-      setLookupLoading(false);
+      setLoading(false)
     }
-  }
+  }, [])
 
-  async function trustThisDevice() {
-    if (!token || !me?.fingerprint) return;
-    setError('');
+  useEffect(() => {
+    fetchSummary()
+    const interval = setInterval(fetchSummary, 15000)
+    return () => clearInterval(interval)
+  }, [fetchSummary])
+
+  useEffect(() => {
+    let es: EventSource | null = null
     try {
-      const res = await fetch('/api/kernel/security/trusted', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fingerprint: me.fingerprint, ip: me.ip, label: 'my_device' }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to trust device');
-      await loadAll();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to trust device');
+      es = new EventSource("/api/kernel/events/stream")
+    } catch {
+      return
     }
-  }
-
-  async function loadActor(key: string, fingerprint: string | null, ip: string | null) {
-    if (!token) return;
-    if (actorDetails[key]) return;
-    setActorDetails((prev) => ({ ...prev, [key]: null }));
-    try {
-      const qs = fingerprint ? `fingerprint=${encodeURIComponent(fingerprint)}` : `ip=${encodeURIComponent(ip || '')}`;
-      const res = await fetch(`/api/kernel/security/actor/events?${qs}&limit=200`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to load actor');
-      setActorDetails((prev) => ({ ...prev, [key]: data }));
-    } catch (e) {
-      setActorDetails((prev) => ({ ...prev, [key]: null }));
-    }
-  }
-
-  async function blockIpNow(ip: string, reason?: string) {
-    if (!token) return;
-    setError('');
-    try {
-      const res = await fetch('/api/kernel/blocks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ip, reason: reason || null }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to block IP');
-      setBlockIp('');
-      setBlockReason('');
-      await loadAll();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to block IP');
-    }
-  }
-
-  async function unblockIpNow(ip: string) {
-    if (!token) return;
-    setError('');
-    try {
-      const res = await fetch(`/api/kernel/blocks/${encodeURIComponent(ip)}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to unblock IP');
-      await loadAll();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to unblock IP');
-    }
-  }
-
-  // Clear security events functions
-  async function clearAllEvents() {
-    if (!token) return;
-    if (!confirm('Are you sure you want to delete ALL security events? This cannot be undone.')) return;
-    setError('');
-    try {
-      const res = await fetch('/api/kernel/security/events?confirm=yes', {
-        method: 'DELETE',
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to clear events');
-      alert(`Cleared ${data.deleted || 0} events`);
-      await loadAll();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to clear events');
-    }
-  }
-
-  async function clearLocalhostEvents() {
-    if (!token) return;
-    setError('');
-    try {
-      const res = await fetch('/api/kernel/security/events/localhost', {
-        method: 'DELETE',
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to clear localhost events');
-      alert(`Cleared ${data.deleted || 0} localhost events`);
-      await loadAll();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to clear localhost events');
-    }
-  }
-
-  async function clearEventsByIp(ip: string) {
-    if (!token || !ip) return;
-    if (!confirm(`Delete all events for IP: ${ip}?`)) return;
-    setError('');
-    try {
-      const res = await fetch(`/api/kernel/security/events/ip/${encodeURIComponent(ip)}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to clear events');
-      alert(`Cleared ${data.deleted || 0} events for ${ip}`);
-      await loadAll();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to clear events');
-    }
-  }
-
-  async function clearEventsByFingerprint(fp: string) {
-    if (!token || !fp) return;
-    if (!confirm(`Delete all events for fingerprint: ${fp.slice(0, 20)}...?`)) return;
-    setError('');
-    try {
-      const res = await fetch(`/api/kernel/security/events/fingerprint/${encodeURIComponent(fp)}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to clear events');
-      alert(`Cleared ${data.deleted || 0} events`);
-      await loadAll();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to clear events');
-    }
-  }
-
-  React.useEffect(() => {
-    if (token) {
-      void loadAll();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, days, trafficMinutes, linuxDays]);
-
-  // Subscribe to live security events via SSE and prepend them to lists
-  React.useEffect(() => {
-    if (!token) return;
-    let es: EventSource | null = null;
-    try {
-      es = new EventSource('/api/kernel/events/stream');
-    } catch (e) {
-      return;
-    }
-
+    esRef.current = es
+    es.onopen = () => setConnected(true)
+    es.onerror = () => setConnected(false)
     es.onmessage = (ev) => {
       try {
-        const d = JSON.parse(ev.data || '{}');
-        // Minimal mapping to SecurityEvent
-        const incoming: SecurityEvent = {
-          id: d.id || 0,
+        const d = JSON.parse(ev.data || "{}")
+        if (d.type === "heartbeat") return
+        const e: SecurityEvent = {
+          id: d.id || Date.now(),
           created_at: d.created_at || new Date().toISOString(),
-          event_type: d.event_type || 'unknown',
-          severity: d.severity || 'info',
+          event_type: d.event_type || "unknown",
+          severity: d.severity || "info",
           method: d.method || null,
           path: d.path || null,
           status_code: d.status_code ?? null,
@@ -601,1003 +233,364 @@ export default function Kernel() {
           country_code: d.country_code || null,
           fingerprint: d.fingerprint || null,
           user_agent: d.user_agent || null,
-        };
-
-        setEvents((prev) => {
-          const next = [incoming, ...prev];
-          return next.slice(0, 200);
-        });
-
-        // Also add a lightweight traffic row for recent traffic panel
-        const tr: TrafficRow = {
-          ts: d.created_at ? new Date(d.created_at).getTime() : Date.now(),
-          method: d.method || 'GET',
-          path: d.path || '/',
-          status: d.status_code ?? 0,
-          ip: d.ip || null,
-          country_code: d.country_code || null,
-          user_agent: d.user_agent || null,
-          fingerprint: d.fingerprint || null,
-          user_id: d.user_id != null ? String(d.user_id) : null,
-          user_type: d.user_type || null,
-          role: d.role || null,
-          ms: 0,
-        };
-        setTraffic((prev) => [tr, ...prev].slice(0, 200));
-      } catch (e) {
-        // ignore parse errors
+        }
+        setLiveEvents((prev) => [e, ...prev].slice(0, 100))
+      } catch {
+        /* ignore */
       }
-    };
-
-    es.onerror = () => {
-      // keep the connection open; EventSource will reconnect automatically
-    };
-
+    }
     return () => {
-      try {
-        es && es.close();
-      } catch {}
-    };
-  }, [token]);
+      es?.close()
+      esRef.current = null
+      setConnected(false)
+    }
+  }, [])
 
-  if (!token) {
+  const handleBlock = async () => {
+    if (!blockIp) return
+    try {
+      const res = await fetch("/api/kernel/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
+        body: JSON.stringify({ ip: blockIp.trim(), reason: blockReason || undefined }),
+      })
+      if (res.ok) {
+        setBlockIp("")
+        setBlockReason("")
+        fetchSummary()
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const handleUnblock = async (ip: string) => {
+    try {
+      await fetch(`/api/kernel/blocks/${encodeURIComponent(ip)}`, {
+        method: "DELETE",
+        headers: { "X-CSRF-Token": getCsrfToken() },
+      })
+      fetchSummary()
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const handleClearEvents = async () => {
+    try {
+      await fetch("/api/kernel/security/events", {
+        method: "DELETE",
+        headers: { "X-CSRF-Token": getCsrfToken() },
+      })
+      setEvents([])
+      setLiveEvents([])
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const handleLogout = async () => {
+    await fetch("/api/kernel/logout", { method: "POST" })
+    window.location.reload()
+  }
+
+  const feed = liveEvents.length > 0 ? liveEvents : events
+  const hasTopCountries = summary?.top_countries && summary.top_countries.length > 0
+
+  if (loading) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-background text-foreground flex items-center justify-center p-4">
-        <div className="w-full max-w-md border border-border rounded-xl bg-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg font-black tracking-tight">Kernel</h1>
-            <span className="text-[10px] text-muted-foreground">root-only</span>
-          </div>
-
-          {error && (
-            <div className="mb-3 text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-2">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={login} className="space-y-3">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Username</label>
-              <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="root" />
-            </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Password</label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-
-          <p className="mt-3 text-[10px] text-muted-foreground">
-            Not linked anywhere. Access requires kernel credentials.
-          </p>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-background text-foreground p-4">
-      {/* Inject flashing styles */}
-      <style dangerouslySetInnerHTML={{ __html: flashingStyles }} />
-      
-      {/* Global Threat Alert Banner */}
-      {(threatIps.size > 0 || threatFingerprints.size > 0) && (
-        <div className="fixed top-0 left-0 right-0 z-50 threat-flash">
-          <div className="bg-red-600 text-white text-center py-2 px-4 flex items-center justify-center gap-3">
-            <span className="text-lg">🚨</span>
-            <span className="font-bold text-sm">
-              ACTIVE THREATS DETECTED: {threatIps.size} IPs, {threatFingerprints.size} fingerprints
-            </span>
-            <span className="text-lg">🚨</span>
-          </div>
-        </div>
-      )}
-      
-      <div className={`max-w-6xl mx-auto ${(threatIps.size > 0 || threatFingerprints.size > 0) ? 'mt-10' : ''}`}>
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <div>
-            <h1 className="text-xl font-black tracking-tight">Kernel Security</h1>
-            <p className="text-xs text-muted-foreground">Blocked by country • Top attacker IPs • Repeat fingerprints</p>
+    <div className="min-h-screen bg-black text-zinc-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              <Shield className="w-5 h-5 text-green-400" />
+              <h1 className="text-lg font-semibold tracking-tight text-white">Kernel Security</h1>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-zinc-600 border-l border-zinc-800 pl-3 ml-1">
+              <div className={cn("w-1.5 h-1.5 rounded-full", connected ? "bg-green-500" : "bg-red-500")} />
+              {connected ? "Live" : "Disconnected"}
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Days</span>
-              <Input
-                value={String(days)}
-                onChange={(e) => setDays(Math.max(1, Math.min(90, parseInt(e.target.value || "7", 10) || 7)))}
-                className="w-20"
-              />
+            <div className="text-xs text-zinc-600 font-mono">
+              {feed.length} events
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Traffic (min)</span>
-              <Input
-                value={String(trafficMinutes)}
-                onChange={(e) => setTrafficMinutes(Math.max(1, Math.min(180, parseInt(e.target.value || '15', 10) || 15)))}
-                className="w-24"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Linux (days)</span>
-              <Input
-                value={String(linuxDays)}
-                onChange={(e) => setLinuxDays(Math.max(1, Math.min(90, parseInt(e.target.value || '7', 10) || 7)))}
-                className="w-24"
-              />
-            </div>
-            <Button variant="outline" onClick={() => token && loadAll()} disabled={loading}>
-              Refresh
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchSummary}
+              className="text-zinc-500 hover:text-zinc-300 h-8 w-8 p-0"
+            >
+              <RefreshCw className="w-4 h-4" />
             </Button>
-            <Button variant="destructive" onClick={logout}>
-              Logout
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-zinc-500 hover:text-red-400 h-8 px-2"
+            >
+              <LogOut className="w-4 h-4 mr-1.5" />
+              Exit
             </Button>
           </div>
         </div>
 
-        {/* Threat Test Panel */}
-        <div className="mb-4 border border-border rounded-xl bg-card p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold">🧪 Threat Simulation</span>
-              <Input
-                value={testThreatIp}
-                onChange={(e) => setTestThreatIp(e.target.value)}
-                placeholder="IP to flag (or leave empty for test IP)"
-                className="w-64 h-8 text-xs"
-              />
-              <Button 
-                variant="destructive" 
-                className="h-8 px-3 text-xs"
-                onClick={simulateThreat}
-              >
-                Simulate Threat
-              </Button>
-              {(threatIps.size > 0 || threatFingerprints.size > 0) && (
-                <Button 
-                  variant="outline" 
-                  className="h-8 px-3 text-xs border-green-500/50 text-green-400 hover:bg-green-500/10"
-                  onClick={() => {
-                    setThreatIps(new Set());
-                    setThreatFingerprints(new Set());
-                  }}
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: "Events Today", value: summary?.events_today ?? 0, icon: Activity, color: "text-blue-400" },
+            { label: "Blocked IPs", value: summary?.blocked_ips ?? 0, icon: Ban, color: "text-red-400" },
+            { label: "Active Threats", value: summary?.active_threats ?? 0, icon: AlertTriangle, color: "text-orange-400" },
+            { label: "Watchlist", value: summary?.watchlist_count ?? 0, icon: Eye, color: "text-yellow-400" },
+          ].map((stat) => (
+            <Card key={stat.label} className="bg-zinc-900/60 border-zinc-800">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-zinc-800/50">
+                  <stat.icon className={cn("w-4 h-4", stat.color)} />
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-white tabular-nums">{stat.value}</p>
+                  <p className="text-xs text-zinc-500">{stat.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Live Feed */}
+          <div className="lg:col-span-2">
+            <Card className="bg-zinc-900/60 border-zinc-800">
+              <CardHeader className="px-4 py-3 border-b border-zinc-800 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-zinc-400" />
+                  Live Attack Feed
+                  {connected && (
+                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-800 text-green-400 bg-green-950/30">
+                      <span className="w-1 h-1 rounded-full bg-green-500 mr-1 inline-block" />
+                      STREAMING
+                    </Badge>
+                  )}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearEvents}
+                  className="text-zinc-500 hover:text-red-400 h-7 text-xs px-2"
                 >
-                  ✓ Clear All Threats
+                  <Trash2 className="w-3 h-3 mr-1" />
+                  Clear
                 </Button>
-              )}
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Active threats:</span>
-              <span className={`font-bold ${threatIps.size > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                {threatIps.size} IPs
-              </span>
-              <span className={`font-bold ${threatFingerprints.size > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                {threatFingerprints.size} fingerprints
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-3 text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-2">
-            {error}
-          </div>
-        )}
-
-        {emergencyActors.length > 0 && (
-          <div className="mb-4 border border-red-500/30 bg-red-500/10 rounded-xl p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <div className="text-sm font-black text-red-100">EMERGENCY MODE</div>
-                <div className="text-[11px] text-red-200/80">
-                  {emergencyActors.length} suspicious actor(s) hit traps/admin without access. Tracking details below.
-                </div>
-              </div>
-              <Button
-                variant="destructive"
-                className="h-8 px-3 text-xs"
-                onClick={() => {
-                  const first = emergencyActors[0];
-                  setOpenActorKey(first.actor_key);
-                  void loadActor(first.actor_key, first.fingerprint, first.ip);
-                }}
-              >
-                Focus
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <div className="border border-border rounded-xl bg-card p-3">
-            <h2 className="text-sm font-bold mb-2">Environment</h2>
-            {!status ? (
-              <div className="text-xs text-muted-foreground">Loading…</div>
-            ) : (
-              <div className="space-y-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Server</span>
-                  <span className="text-foreground font-semibold">{status.environment.isRender ? 'Render' : 'Local'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">NODE_ENV</span>
-                  <span className="text-foreground">{status.environment.nodeEnv}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Host</span>
-                  <span className="text-foreground truncate max-w-[220px]" title={status.server.hostname}>{status.server.hostname}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Uptime</span>
-                  <span className="text-foreground">{Math.floor(status.server.uptimeSeconds / 60)}m</span>
-                </div>
-                {status.environment.renderExternalUrl && (
-                  <div className="text-[10px] text-muted-foreground truncate" title={status.environment.renderExternalUrl}>
-                    {status.environment.renderExternalUrl}
+              </CardHeader>
+              <CardContent className="p-0">
+                {feed.length === 0 ? (
+                  <div className="flex items-center justify-center h-48 text-zinc-600 text-sm">
+                    <Shield className="w-8 h-8 mr-2 opacity-30" />
+                    No events recorded
                   </div>
-                )}
-                {status.db?.database && (
-                  <div className="mt-2 text-[10px] text-muted-foreground">
-                    DB: {status.db.database}{status.db.server_addr ? ` @ ${status.db.server_addr}:${status.db.server_port}` : ''}
-                  </div>
-                )}
-                {status.db?.error && (
-                  <div className="mt-2 text-[10px] text-red-300">DB: {status.db.error}</div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="border border-border rounded-xl bg-card p-3">
-            <h2 className="text-sm font-bold mb-2">This Device</h2>
-            {!me ? (
-              <div className="text-xs text-muted-foreground">Loading…</div>
-            ) : (
-              <div className="space-y-2">
-                <div className="text-[10px] text-muted-foreground break-words">fp: {me.fingerprint || '(none)'}</div>
-                <div className="text-[10px] text-muted-foreground">ip: {me.ip || ''}</div>
-                <div className="text-[10px] text-muted-foreground truncate" title={me.user_agent || ''}>ua: {me.user_agent || '(missing)'}</div>
-                <div className="text-[10px] text-muted-foreground">
-                  ua_class: {myUaClass} • excluded from watchlist
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={me.trusted ? 'outline' : 'default'}
-                    className="h-8 px-3 text-xs"
-                    disabled={!me.fingerprint || !!me.trusted}
-                    onClick={trustThisDevice}
-                  >
-                    {me.trusted ? 'Trusted' : 'Mark Trusted'}
-                  </Button>
-                  {me.trusted?.label && (
-                    <span className="text-[10px] text-muted-foreground">{me.trusted.label}</span>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="border border-border rounded-xl bg-card p-3">
-            <h2 className="text-sm font-bold mb-2">Traffic Summary (suspicious only)</h2>
-            {!trafficSummary ? (
-              <div className="text-xs text-muted-foreground">No suspicious traffic</div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Last {trafficSummary.minutes}m</span>
-                  <span className="text-foreground font-semibold">{trafficSummary.total} req</span>
-                </div>
-                <div className="space-y-1">
-                  {(trafficSummary.byStatus || []).slice(0, 6).map((r) => (
-                    <div key={r.status} className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">{r.status}</span>
-                      <span className="text-foreground font-semibold">{r.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-          <div className="border border-border rounded-xl bg-card p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold">Recent Traffic (suspicious only)</h2>
-              <span className="text-[10px] text-muted-foreground">last 200</span>
-            </div>
-            <div className="overflow-auto">
-              <table className="w-full text-xs">
-                <thead className="text-muted-foreground">
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 pr-2">Time</th>
-                    <th className="text-left py-2 pr-2">Method</th>
-                    <th className="text-left py-2 pr-2">Path</th>
-                    <th className="text-left py-2 pr-2">Status</th>
-                    <th className="text-left py-2 pr-2">IP</th>
-                    <th className="text-left py-2 pr-2">Block</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {traffic.map((r, idx) => {
-                    const isThrt = isThreat(r.ip, r.fingerprint);
-                    return (
-                    <tr key={idx} className={`border-b border-border ${isThrt ? 'threat-row threat-flash' : 'hover:bg-muted/40'}`}>
-                      <td className="py-2 pr-2 whitespace-nowrap text-muted-foreground">{new Date(r.ts).toLocaleString()}</td>
-                      <td className="py-2 pr-2 text-foreground">{r.method}</td>
-                      <td className="py-2 pr-2 text-foreground truncate max-w-[360px]" title={r.path}>{r.path}</td>
-                      <td className="py-2 pr-2 text-foreground">{r.status}</td>
-                      <td className="py-2 pr-2 text-foreground truncate max-w-[200px]" title={r.ip || ''}>
-                        <div className="flex items-center gap-2">
-                          <span className={`truncate ${isThrt ? 'text-red-400 font-bold' : ''}`} title={r.ip || ''}>{r.ip || ''}</span>
-                          {isThrt && <span className="text-[10px] px-1 py-0.5 rounded bg-red-500 text-white font-bold">THREAT</span>}
-                          {me?.fingerprint && r.fingerprint && me.fingerprint === r.fingerprint && (
-                            <span className="text-[10px] px-2 py-1 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-100">Mine</span>
+                ) : (
+                  <ScrollArea className="h-[420px]">
+                    <div className="divide-y divide-zinc-800/50">
+                      {feed.map((e) => (
+                        <div
+                          key={e.id}
+                          className={cn(
+                            "px-4 py-2.5 flex items-start gap-3 hover:bg-zinc-800/30 transition-colors",
+                            e.severity === "critical" && "bg-red-950/10"
                           )}
-                        </div>
-                      </td>
-                      <td className="py-2 pr-2">
-                        <Button
-                          variant={isThrt ? "destructive" : "outline"}
-                          className="h-7 px-2 text-[10px]"
-                          disabled={!r.ip || (!!me?.ip && r.ip === me.ip)}
-                          onClick={() => r.ip && blockIpNow(r.ip, `traffic:${r.path}`)}
                         >
-                          Block
-                        </Button>
-                      </td>
-                    </tr>
-                    );
-                  })}
-                  {traffic.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-muted-foreground">No suspicious traffic captured</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="border border-border rounded-xl bg-card p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold">Blocked IPs</h2>
-              <span className="text-[10px] text-muted-foreground">last 500</span>
-            </div>
-            <div className="space-y-2">
-              {blocks.filter((b) => b.is_active).slice(0, 20).map((b) => (
-                <div key={b.ip} className="border border-border rounded-lg p-2 bg-muted/30">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-xs text-foreground truncate" title={b.ip}>{b.ip}</div>
-                      {b.reason && <div className="text-[10px] text-muted-foreground truncate" title={b.reason}>{b.reason}</div>}
-                    </div>
-                    <Button variant="destructive" className="h-7 px-2 text-[10px]" onClick={() => unblockIpNow(b.ip)}>
-                      Unblock
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {blocks.filter((b) => b.is_active).length === 0 && (
-                <div className="text-xs text-muted-foreground">No active blocks</div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="border border-border rounded-xl bg-card p-3 mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h2 className="text-sm font-bold">Linux Watchlist</h2>
-                <p className="text-[10px] text-muted-foreground">Linux UA (excluding Android) + UA-missing scanners that hit traps/admin/probes. Emergency = trap hit or forbidden admin access.</p>
-            </div>
-            <span className="text-[10px] text-muted-foreground">top 60</span>
-          </div>
-
-          <div className="overflow-auto">
-            <table className="w-full text-xs">
-              <thead className="text-muted-foreground">
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 pr-2">Last Seen</th>
-                  <th className="text-left py-2 pr-2">IP</th>
-                  <th className="text-left py-2 pr-2">CC</th>
-                  <th className="text-left py-2 pr-2">ISP</th>
-                  <th className="text-left py-2 pr-2">VPN</th>
-                  <th className="text-left py-2 pr-2">Proxy</th>
-                  <th className="text-left py-2 pr-2">Tor</th>
-                  <th className="text-left py-2 pr-2">Risk</th>
-                  <th className="text-left py-2 pr-2">UA</th>
-                  <th className="text-left py-2 pr-2">Trap</th>
-                  <th className="text-left py-2 pr-2">403</th>
-                  <th className="text-left py-2 pr-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {linuxActors.map((a) => {
-                  const isOpen = openActorKey === a.actor_key;
-                  const emergency = a.emergency;
-                  const uaMissing = (a.ua_class || 'linux') === 'unknown_ua';
-                  const trusted = !!a.is_trusted;
-                  const linuxThreat = isThreat(a.ip || '', a.fingerprint || '');
-                  const intel = a.intel;
-                  const rowClass = linuxThreat
-                    ? 'threat-row threat-flash'
-                    : emergency
-                    ? 'bg-red-500/10'
-                    : uaMissing
-                      ? 'bg-fuchsia-500/10'
-                      : a.suspicious_events > 0
-                      ? 'bg-amber-500/10'
-                      : '';
-                  return (
-                    <React.Fragment key={a.actor_key}>
-                      <tr className={`border-b border-border hover:bg-muted/40 ${rowClass}`}>
-                        <td className="py-2 pr-2 whitespace-nowrap text-muted-foreground text-[10px]">{new Date(a.last_seen).toLocaleString()}</td>
-                        <td className={`py-2 pr-2 truncate max-w-[140px] text-[10px] ${linuxThreat ? 'text-red-500 font-semibold' : 'text-foreground'}`} title={a.ip || ''}>
-                          {linuxThreat && <span className="mr-1">⚠️</span>}
-                          {a.ip || ''}
-                        </td>
-                        <td className="py-2 pr-2 text-foreground text-[10px]">{a.country_code || ''}</td>
-                        <td className="py-2 pr-2 text-foreground text-[10px] truncate max-w-[100px]" title={intel?.isp || ''}>{intel?.isp || '-'}</td>
-                        <td className="py-2 pr-2 text-[10px]">{intel?.is_vpn ? '🔴' : '🟢'}</td>
-                        <td className="py-2 pr-2 text-[10px]">{intel?.is_proxy ? '🔴' : '🟢'}</td>
-                        <td className="py-2 pr-2 text-[10px]">{intel?.is_tor ? '🔴' : '🟢'}</td>
-                        <td className={`py-2 pr-2 text-[10px] ${
-                          intel?.risk_level === 'critical' ? 'text-red-400 font-bold' :
-                          intel?.risk_level === 'high' ? 'text-orange-400' :
-                          intel?.risk_level === 'medium' ? 'text-amber-400' : 'text-green-400'
-                        }`}>{intel?.risk_level || '-'}</td>
-                        <td className="py-2 pr-2">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
-                            uaMissing
-                              ? 'border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-100'
-                              : 'border-border bg-muted/40 text-foreground'
-                          }`}>
-                            {uaMissing ? 'No UA' : 'Linux'}
-                          </span>
-                        </td>
-                        <td className="py-2 pr-2 text-foreground text-[10px]">{a.trap_hits}</td>
-                        <td className="py-2 pr-2 text-foreground text-[10px]">{a.admin_forbidden}</td>
-                        <td className="py-2 pr-2">
-                          <div className="flex items-center gap-1">
-                            {a.ip && (
-                              <Button
-                                variant={trusted ? 'outline' : (emergency ? 'destructive' : 'outline')}
-                                className="h-6 px-2 text-[9px]"
-                                disabled={trusted || (!!me?.ip && a.ip === me.ip)}
-                                onClick={() => blockIpNow(a.ip!, emergency ? 'EMERGENCY:linux_actor' : 'linux_actor')}
+                          <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", SEVERITY_DOT[e.severity] || "bg-zinc-600")} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px] h-5 px-1.5 font-mono border",
+                                  SEVERITY_COLORS[e.severity] || "border-zinc-700 text-zinc-400 bg-zinc-800/30"
+                                )}
                               >
-                                Block
-                              </Button>
-                            )}
-                            {trusted && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-100">
-                                OK
-                              </span>
-                            )}
-                            <Button
-                              variant="outline"
-                              className="h-6 px-2 text-[9px]"
-                              onClick={() => {
-                                const next = isOpen ? null : a.actor_key;
-                                setOpenActorKey(next);
-                                if (!isOpen) void loadActor(a.actor_key, a.fingerprint, a.ip);
-                              }}
-                            >
-                              {isOpen ? '▲' : '▼'}
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                      {isOpen && (
-                        <tr className="border-b border-border">
-                          <td colSpan={12} className="py-3">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                              {/* IP Intelligence Panel */}
-                              <div className="border border-border rounded-lg p-3 bg-muted/30">
-                                <div className="text-xs font-semibold mb-2">🔍 IP Intelligence</div>
-                                {intel ? (
-                                  <div className="space-y-1 text-[10px]">
-                                    <div><span className="text-muted-foreground">IP:</span> <span className="font-mono">{a.ip}</span></div>
-                                    <div><span className="text-muted-foreground">Country:</span> {a.country_code || 'Unknown'}</div>
-                                    <div><span className="text-muted-foreground">ISP:</span> {intel.isp || 'Unknown'}</div>
-                                    <div><span className="text-muted-foreground">Org:</span> {intel.org || 'Unknown'}</div>
-                                    <div><span className="text-muted-foreground">ASN:</span> {intel.asn || 'Unknown'}</div>
-                                    <div className="pt-1 border-t border-border mt-1">
-                                      <div><span className="text-muted-foreground">VPN:</span> {intel.is_vpn ? '🔴 Yes' : '🟢 No'}</div>
-                                      <div><span className="text-muted-foreground">Proxy:</span> {intel.is_proxy ? '🔴 Yes' : '🟢 No'}</div>
-                                      <div><span className="text-muted-foreground">Tor:</span> {intel.is_tor ? '🔴 Yes' : '🟢 No'}</div>
-                                      <div><span className="text-muted-foreground">Datacenter:</span> {intel.is_datacenter ? '⚠️ Yes' : '🟢 No'}</div>
-                                      <div><span className="text-muted-foreground">Blacklisted:</span> {intel.is_blacklisted ? '🔴 Yes' : '🟢 No'}</div>
-                                    </div>
-                                    <div className="pt-1 border-t border-border mt-1">
-                                      <div><span className="text-muted-foreground">Risk Level:</span> <span className={
-                                        intel.risk_level === 'critical' ? 'text-red-400 font-bold' :
-                                        intel.risk_level === 'high' ? 'text-orange-400 font-bold' :
-                                        intel.risk_level === 'medium' ? 'text-amber-400' : 'text-green-400'
-                                      }>{intel.risk_level?.toUpperCase()}</span></div>
-                                      <div><span className="text-muted-foreground">Fraud Score:</span> {intel.fraud_score}</div>
-                                      <div><span className="text-muted-foreground">Abuse Score:</span> {intel.abuse_score}</div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="text-[10px] text-muted-foreground">
-                                    No intel data. Use IP Lookup above to fetch.
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Actor Info Panel */}
-                              <div className="border border-border rounded-lg p-3 bg-muted/30">
-                                <div className="text-xs font-semibold mb-2">👤 Actor Info</div>
-                                <div className="text-[10px] text-muted-foreground break-words">UA: {a.user_agent || '(missing)'}</div>
-                                {a.fingerprint && <div className="text-[10px] text-muted-foreground break-words">fp: {a.fingerprint}</div>}
-                                {a.user && (
-                                  <div className="text-[10px] text-muted-foreground">account: {a.user.email} {a.user.full_name ? `(${a.user.full_name})` : ''}</div>
-                                )}
-                                {!a.user && a.user_id && <div className="text-[10px] text-muted-foreground">user_id: {a.user_id}</div>}
-                                <div className="text-[10px] text-muted-foreground">first: {new Date(a.first_seen).toLocaleString()}</div>
-                                <div className="text-[10px] text-muted-foreground">last: {new Date(a.last_seen).toLocaleString()}</div>
-                                <div className="mt-2 pt-2 border-t border-border">
-                                  <div className="text-[10px]"><span className="text-muted-foreground">Total Events:</span> {a.total_events}</div>
-                                  <div className="text-[10px]"><span className="text-muted-foreground">Suspicious:</span> {a.suspicious_events}</div>
-                                  <div className="text-[10px]"><span className="text-muted-foreground">Trap Hits:</span> <span className={a.trap_hits > 0 ? 'text-red-400 font-bold' : ''}>{a.trap_hits}</span></div>
-                                  <div className="text-[10px]"><span className="text-muted-foreground">Admin 403:</span> <span className={a.admin_forbidden > 0 ? 'text-red-400 font-bold' : ''}>{a.admin_forbidden}</span></div>
-                                </div>
-                                {emergency && (
-                                  <div className="mt-2 text-xs text-red-200 bg-red-500/10 border border-red-500/20 rounded-lg p-2">
-                                    🚨 EMERGENCY: Triggered traps/forbidden access!
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Activity Panel */}
-                              <div className="border border-border rounded-lg p-3 bg-muted/30">
-                                <div className="text-xs font-semibold mb-2">📊 Activity</div>
-                                <div className="text-[10px] text-muted-foreground mb-2">Top paths</div>
-                                <div className="space-y-1">
-                                  {(actorDetails[a.actor_key]?.topPaths || []).slice(0, 10).map((p) => (
-                                    <div key={p.path} className="flex items-center justify-between text-[10px]">
-                                      <span className="text-foreground truncate max-w-[200px]" title={p.path}>{p.path}</span>
-                                      <span className="text-foreground font-semibold">{p.count}</span>
-                                    </div>
-                                  ))}
-                                  {!actorDetails[a.actor_key] && (
-                                    <div className="text-[10px] text-muted-foreground">Loading…</div>
-                                  )}
-                                </div>
-
-                                {!!actorDetails[a.actor_key]?.eventTypes?.length && (
-                                  <>
-                                    <div className="mt-3 text-[10px] text-muted-foreground mb-2">Event types</div>
-                                    <div className="grid grid-cols-2 gap-1">
-                                      {(actorDetails[a.actor_key]?.eventTypes || []).slice(0, 8).map((t) => (
-                                        <div key={t.event_type} className="flex items-center justify-between text-[10px] border border-border rounded px-2 py-1 bg-muted/40">
-                                          <span className="text-foreground truncate" title={t.event_type}>{t.event_type}</span>
-                                          <span className="text-foreground font-semibold">{t.count}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Recent Events Panel */}
-                              <div className="border border-border rounded-lg p-3 bg-muted/30">
-                                <div className="text-xs font-semibold mb-2">📜 Recent Events</div>
-                                <div className="space-y-1">
-                                  {(actorDetails[a.actor_key]?.events || []).slice(0, 15).map((ev) => (
-                                    <div key={(ev as any).id} className={`text-[10px] border rounded px-2 py-1 ${
-                                      ev.severity === 'error'
-                                        ? 'border-red-500/30 bg-red-500/10 text-red-100'
-                                        : ev.severity === 'warn'
-                                          ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
-                                          : 'border-border bg-muted/40 text-foreground'
-                                    }`}>
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="truncate" title={ev.event_type}>{ev.event_type}</span>
-                                        <span className="text-muted-foreground">{new Date(ev.created_at).toLocaleString()}</span>
-                                      </div>
-                                      <div className="text-foreground truncate" title={ev.path || ''}>{ev.method || ''} {ev.path || ''}</div>
-                                      <div className="text-muted-foreground">
-                                        status: {(ev as any).status_code ?? ''} • cc: {(ev as any).country_code ?? ''}
-                                        {ev.user && (
-                                          <span className="ml-2">• account: {ev.user.email}</span>
-                                        )}
-                                        {(() => {
-                                          const s = (ev as any)?.metadata?._server;
-                                          if (!s) return null;
-                                          const label = s.isRender ? 'Render' : 'Local';
-                                          const host = s.hostname ? String(s.hostname) : '';
-                                          return (
-                                            <span className="ml-2">
-                                              • src: {label}{host ? ` (${host})` : ''}
-                                            </span>
-                                          );
-                                        })()}
-                                      </div>
-                                    </div>
-                                  ))}
-                                  {actorDetails[a.actor_key] && (actorDetails[a.actor_key]?.events || []).length === 0 && (
-                                    <div className="text-[10px] text-muted-foreground">No events</div>
-                                  )}
-                                  {!actorDetails[a.actor_key] && (
-                                    <div className="text-[10px] text-muted-foreground">Loading…</div>
-                                  )}
-                                </div>
-                              </div>
+                                {EVENT_LABELS[e.event_type] || e.event_type}
+                              </Badge>
+                              {e.ip && (
+                                <span className="text-xs font-mono text-zinc-400">
+                                  {countryFlag(e.country_code)} {e.ip}
+                                </span>
+                              )}
+                              {e.method && e.path && (
+                                <span className="text-xs text-zinc-600 font-mono truncate hidden sm:inline">
+                                  {e.method} {e.path}
+                                </span>
+                              )}
                             </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-                {linuxActors.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="py-4 text-muted-foreground">No suspicious Linux / UA-missing actors in range</td>
-                  </tr>
+                            <div className="text-[11px] text-zinc-600 mt-0.5">
+                              {timeAgo(e.created_at)}
+                              {e.status_code && <span className="ml-2">status {e.status_code}</span>}
+                              {e.fingerprint && <span className="ml-2 font-mono">{e.fingerprint.slice(0, 16)}...</span>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* IP Intelligence Section */}
-        <div className="border border-border rounded-xl bg-card p-3 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold">🔍 IP Intelligence</h2>
-            <span className="text-[10px] text-muted-foreground">VPN/Proxy/Tor detection • Risk scoring</span>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Stats Grid */}
-          {intelStats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-              <div className="border border-border rounded-lg p-2 bg-muted/30">
-                <div className="text-[10px] text-muted-foreground">Cached IPs</div>
-                <div className="text-lg font-bold text-foreground">{intelStats.cache?.total_cached || 0}</div>
-              </div>
-              <div className="border border-border rounded-lg p-2 bg-muted/30">
-                <div className="text-[10px] text-muted-foreground">VPNs Detected</div>
-                <div className="text-lg font-bold text-foreground">{intelStats.cache?.vpn_count || 0}</div>
-              </div>
-              <div className="border border-border rounded-lg p-2 bg-muted/30">
-                <div className="text-[10px] text-muted-foreground">Proxies</div>
-                <div className="text-lg font-bold text-foreground">{intelStats.cache?.proxy_count || 0}</div>
-              </div>
-              <div className="border border-border rounded-lg p-2 bg-muted/30">
-                <div className="text-[10px] text-muted-foreground">Tor Exit Nodes</div>
-                <div className="text-lg font-bold text-foreground">{intelStats.cache?.tor_count || 0}</div>
-              </div>
-              <div className="border border-border rounded-lg p-2 bg-muted/30">
-                <div className="text-[10px] text-muted-foreground">Blacklisted</div>
-                <div className="text-lg font-bold text-foreground">{intelStats.cache?.blacklisted_count || 0}</div>
-              </div>
-              <div className="border border-border rounded-lg p-2 bg-muted/30">
-                <div className="text-[10px] text-muted-foreground">Checked Today</div>
-                <div className="text-lg font-bold text-foreground">{intelStats.cache?.checked_today || 0}</div>
-              </div>
-              <div className="border border-border rounded-lg p-2 bg-muted/30">
-                <div className="text-[10px] text-muted-foreground">WebRTC Leaks</div>
-                <div className="text-lg font-bold text-foreground">{intelStats.fingerprints?.webrtc_leaks || 0}</div>
-              </div>
-              <div className="border border-border rounded-lg p-2 bg-muted/30">
-                <div className="text-[10px] text-muted-foreground">Unique Visitors</div>
-                <div className="text-lg font-bold text-foreground">{intelStats.fingerprints?.unique_visitors || 0}</div>
-              </div>
-            </div>
-          )}
+          {/* Sidebar */}
+          <div className="space-y-4">
+            {/* Block IP */}
+            <Card className="bg-zinc-900/60 border-zinc-800">
+              <CardHeader className="px-4 py-3 border-b border-zinc-800">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Ban className="w-4 h-4 text-zinc-400" />
+                  Block IP
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-2">
+                <Input
+                  value={blockIp}
+                  onChange={(e) => setBlockIp(e.target.value)}
+                  placeholder="IP address"
+                  className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 h-9 text-sm font-mono"
+                />
+                <Input
+                  value={blockReason}
+                  onChange={(e) => setBlockReason(e.target.value)}
+                  placeholder="Reason (optional)"
+                  className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 h-9 text-sm"
+                />
+                <Button
+                  onClick={handleBlock}
+                  disabled={!blockIp.trim()}
+                  size="sm"
+                  className="w-full bg-red-700 hover:bg-red-600 text-white h-9"
+                >
+                  <Lock className="w-3.5 h-3.5 mr-1.5" />
+                  Block
+                </Button>
+              </CardContent>
+            </Card>
 
-          {/* Risk Distribution */}
-          {intelStats?.risk_distribution && intelStats.risk_distribution.length > 0 && (
-            <div className="mb-4">
-              <div className="text-xs font-semibold mb-2">Risk Distribution</div>
-              <div className="flex flex-wrap gap-2">
-                {intelStats.risk_distribution.map((r) => (
-                  <div key={r.risk_level} className={`px-2 py-1 rounded text-xs ${
-                    r.risk_level === 'critical' ? 'bg-red-500/20 text-red-100 border border-red-500/30' :
-                    r.risk_level === 'high' ? 'bg-orange-500/20 text-orange-100 border border-orange-500/30' :
-                    r.risk_level === 'medium' ? 'bg-amber-500/20 text-amber-100 border border-amber-500/30' :
-                    r.risk_level === 'low' ? 'bg-green-500/20 text-green-100 border border-green-500/30' :
-                    'bg-muted text-muted-foreground border border-border'
-                  }`}>
-                    {r.risk_level}: {r.count}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* IP Lookup */}
-          <div className="border border-border rounded-lg p-3 bg-muted/30 mb-4">
-            <div className="text-xs font-semibold mb-2">IP Lookup</div>
-            <div className="flex gap-2">
-              <Input
-                value={lookupIp}
-                onChange={(e) => setLookupIp(e.target.value)}
-                placeholder="Enter IP address..."
-                className="flex-1 h-8 text-xs"
-                onKeyDown={(e) => e.key === 'Enter' && lookupIpIntel()}
-              />
-              <Button
-                onClick={lookupIpIntel}
-                disabled={lookupLoading || !lookupIp.trim()}
-                className="h-8 px-3 text-xs"
-              >
-                {lookupLoading ? 'Looking...' : 'Lookup'}
-              </Button>
-            </div>
-
-            {lookupResult && (
-              <div className="mt-3 border border-border rounded-lg p-3 bg-background">
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div><span className="text-muted-foreground">IP:</span> <span className="font-mono">{lookupResult.ip}</span></div>
-                  <div><span className="text-muted-foreground">Country:</span> {lookupResult.country_code || 'Unknown'}</div>
-                  <div><span className="text-muted-foreground">ISP:</span> {lookupResult.isp || 'Unknown'}</div>
-                  <div><span className="text-muted-foreground">ASN:</span> {lookupResult.asn || 'Unknown'}</div>
-                  <div><span className="text-muted-foreground">VPN:</span> {lookupResult.is_vpn ? '🔴 Yes' : '🟢 No'}</div>
-                  <div><span className="text-muted-foreground">Proxy:</span> {lookupResult.is_proxy ? '🔴 Yes' : '🟢 No'}</div>
-                  <div><span className="text-muted-foreground">Tor:</span> {lookupResult.is_tor ? '🔴 Yes' : '🟢 No'}</div>
-                  <div><span className="text-muted-foreground">Datacenter:</span> {lookupResult.is_datacenter ? '⚠️ Yes' : '🟢 No'}</div>
-                  <div><span className="text-muted-foreground">Blacklisted:</span> {lookupResult.is_blacklisted ? '🔴 Yes' : '🟢 No'}</div>
-                  <div>
-                    <span className="text-muted-foreground">Risk:</span>{' '}
-                    <span className={
-                      lookupResult.risk_level === 'critical' ? 'text-red-400 font-bold' :
-                      lookupResult.risk_level === 'high' ? 'text-orange-400 font-bold' :
-                      lookupResult.risk_level === 'medium' ? 'text-amber-400' :
-                      'text-green-400'
-                    }>
-                      {lookupResult.risk_level?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div><span className="text-muted-foreground">Fraud Score:</span> {lookupResult.fraud_score}</div>
-                  <div><span className="text-muted-foreground">Abuse Score:</span> {lookupResult.abuse_score}</div>
-                </div>
-                {lookupResult.is_vpn || lookupResult.is_proxy || lookupResult.is_tor ? (
-                  <div className="mt-2">
-                    <Button
-                      variant="destructive"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => blockIpNow(lookupResult.ip, 'intel_lookup_block')}
-                    >
-                      Block This IP
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
+            {/* Top Countries */}
+            {hasTopCountries && (
+              <Card className="bg-zinc-900/60 border-zinc-800">
+                <CardHeader className="px-4 py-3 border-b border-zinc-800">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-zinc-400" />
+                    Top Origins
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-2">
+                  {summary!.top_countries!.slice(0, 6).map((c) => {
+                    const total = summary!.events_today || 1
+                    const pct = Math.round((c.count / total) * 100)
+                    return (
+                      <div key={c.country_code} className="flex items-center gap-2">
+                        <span className="text-sm">{countryFlag(c.country_code)}</span>
+                        <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-red-700/60 rounded-full transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-zinc-500 tabular-nums w-8 text-right">{pct}%</span>
+                      </div>
+                    )
+                  })}
+                </CardContent>
+              </Card>
             )}
           </div>
+        </div>
 
-          {/* Recent Cache Entries */}
-          {intelCache.length > 0 && (
-            <div>
-              <div className="text-xs font-semibold mb-2">Recent IP Intelligence Cache</div>
-              <div className="overflow-auto max-h-64">
-                <table className="w-full text-[10px]">
-                  <thead className="text-muted-foreground sticky top-0 bg-card">
-                    <tr className="border-b border-border">
-                      <th className="text-left py-1 pr-2">IP</th>
-                      <th className="text-left py-1 pr-2">Country</th>
-                      <th className="text-left py-1 pr-2">ISP</th>
-                      <th className="text-left py-1 pr-2">VPN</th>
-                      <th className="text-left py-1 pr-2">Proxy</th>
-                      <th className="text-left py-1 pr-2">Tor</th>
-                      <th className="text-left py-1 pr-2">Risk</th>
-                      <th className="text-left py-1 pr-2">Fraud</th>
+        {/* IP Blocks Table */}
+        {blocks.length > 0 && (
+          <Card className="bg-zinc-900/60 border-zinc-800">
+            <CardHeader className="px-4 py-3 border-b border-zinc-800">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Ban className="w-4 h-4 text-zinc-400" />
+                Blocked IPs ({blocks.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-zinc-800">
+                      <th className="text-left text-xs text-zinc-600 font-medium px-4 py-2.5">IP</th>
+                      <th className="text-left text-xs text-zinc-600 font-medium px-4 py-2.5 hidden sm:table-cell">Country</th>
+                      <th className="text-left text-xs text-zinc-600 font-medium px-4 py-2.5">Reason</th>
+                      <th className="text-left text-xs text-zinc-600 font-medium px-4 py-2.5 hidden md:table-cell">Blocked</th>
+                      <th className="text-right text-xs text-zinc-600 font-medium px-4 py-2.5">Action</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {intelCache.map((c) => {
-                      const intelThreat = isThreat(c.ip, '') || c.risk_level === 'critical' || c.risk_level === 'high' || c.is_vpn || c.is_tor;
-                      return (
-                        <tr key={c.ip} className={`border-b border-border hover:bg-muted/40 ${intelThreat ? 'threat-row threat-flash' : ''}`}>
-                          <td className={`py-1 pr-2 font-mono ${intelThreat ? 'text-red-500 font-semibold' : ''}`}>
-                            {intelThreat && <span className="mr-1">⚠️</span>}
-                            {c.ip}
-                          </td>
-                          <td className="py-1 pr-2">{c.country_code || '-'}</td>
-                          <td className="py-1 pr-2 truncate max-w-[120px]" title={c.isp || ''}>{c.isp || '-'}</td>
-                          <td className="py-1 pr-2">{c.is_vpn ? '🔴' : '🟢'}</td>
-                          <td className="py-1 pr-2">{c.is_proxy ? '🔴' : '🟢'}</td>
-                          <td className="py-1 pr-2">{c.is_tor ? '🔴' : '🟢'}</td>
-                          <td className={`py-1 pr-2 ${
-                            c.risk_level === 'critical' ? 'text-red-400' :
-                            c.risk_level === 'high' ? 'text-orange-400' :
-                            c.risk_level === 'medium' ? 'text-amber-400' :
-                            'text-green-400'
-                          }`}>{c.risk_level}</td>
-                          <td className="py-1 pr-2">{c.fraud_score}</td>
-                        </tr>
-                      );
-                    })}
+                  <tbody className="divide-y divide-zinc-800/50">
+                    {blocks.map((b) => (
+                      <tr key={b.id} className="hover:bg-zinc-800/30 transition-colors">
+                        <td className="px-4 py-2.5 font-mono text-xs text-zinc-300">{b.ip}</td>
+                        <td className="px-4 py-2.5 text-xs text-zinc-500 hidden sm:table-cell">
+                          {countryFlag(b.country_code)} {b.country_code || "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-zinc-400">{b.reason || "—"}</td>
+                        <td className="px-4 py-2.5 text-xs text-zinc-600 hidden md:table-cell">{timeAgo(b.blocked_at)}</td>
+                        <td className="px-4 py-2.5 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleUnblock(b.ip)}
+                            className="h-7 text-xs text-zinc-500 hover:text-green-400 hover:bg-green-950/20"
+                          >
+                            <Unlock className="w-3 h-3 mr-1" />
+                            Unblock
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
-
-          {!intelStats && (
-            <div className="text-xs text-muted-foreground text-center py-4">
-              IP Intelligence data not available. Configure API keys (IPINFO_TOKEN, IPQS_KEY, ABUSEIPDB_KEY) to enable.
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <div className="border border-border rounded-xl bg-card p-3">
-            <h2 className="text-sm font-bold mb-2">Blocked by Country</h2>
-            <div className="space-y-1">
-              {(summary?.blockedByCountry || []).slice(0, 10).map((r) => (
-                <div key={r.country_code} className="flex items-center justify-between text-xs">
-                  <span className="text-foreground">{r.country_code}</span>
-                  <span className="text-foreground font-semibold">{r.count}</span>
-                </div>
-              ))}
-              {(!summary || summary.blockedByCountry.length === 0) && (
-                <div className="text-xs text-muted-foreground">No geo blocks in range</div>
-              )}
-            </div>
-          </div>
-
-          <div className="border border-border rounded-xl bg-card p-3">
-            <h2 className="text-sm font-bold mb-2">Top Attacker IPs</h2>
-            <div className="space-y-1">
-              {(summary?.topIps || []).slice(0, 10).map((r) => {
-                const attackerThreat = isThreat(r.ip, '');
-                return (
-                  <div key={r.ip} className={`flex items-center justify-between text-xs rounded px-1 ${attackerThreat ? 'threat-row threat-flash' : ''}`}>
-                    <span className={`truncate max-w-[120px] ${attackerThreat ? 'text-red-500 font-semibold' : 'text-foreground'}`} title={r.ip}>
-                      {attackerThreat && <span className="mr-1">⚠️</span>}
-                      {r.ip}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-foreground font-semibold">{r.count}</span>
-                      <Button
-                        variant="ghost"
-                        className="h-5 w-5 p-0 text-[10px] text-muted-foreground hover:text-red-500"
-                        onClick={() => clearEventsByIp(r.ip)}
-                        title="Clear events for this IP"
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-              {(!summary || summary.topIps.length === 0) && (
-                <div className="text-xs text-muted-foreground">No events in range</div>
-              )}
-            </div>
-          </div>
-
-          <div className="border border-border rounded-xl bg-card p-3">
-            <h2 className="text-sm font-bold mb-2">Repeat Fingerprints</h2>
-            <div className="space-y-2">
-              {(summary?.repeatFingerprints || []).slice(0, 6).map((r) => {
-                const fpThreat = isThreat(r.ip || '', r.fingerprint);
-                return (
-                  <div key={r.fingerprint} className={`text-xs border rounded-lg p-2 ${fpThreat ? 'threat-row threat-flash border-red-500/50' : 'border-border bg-muted/30'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={fpThreat ? 'text-red-500 font-semibold' : 'text-foreground'}>
-                        {fpThreat && <span className="mr-1">⚠️</span>}
-                        {r.ip || "unknown"}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-foreground font-semibold">{r.count}</span>
-                        <Button
-                          variant="ghost"
-                          className="h-5 w-5 p-0 text-[10px] text-muted-foreground hover:text-red-500"
-                          onClick={() => clearEventsByFingerprint(r.fingerprint)}
-                          title="Clear events for this fingerprint"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="mt-1 text-[10px] text-muted-foreground truncate" title={r.fingerprint}>
-                      fp: {r.fingerprint}
-                    </div>
-                  </div>
-                );
-              })}
-              {(!summary || summary.repeatFingerprints.length === 0) && (
-                <div className="text-xs text-muted-foreground">No repeats in range</div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="border border-border rounded-xl bg-card p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold">Recent Events</h2>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                className="h-6 px-2 text-[10px]"
-                onClick={clearLocalhostEvents}
-              >
-                🧹 Clear Localhost
-              </Button>
-              <Button
-                variant="outline"
-                className="h-6 px-2 text-[10px] text-red-500 hover:text-red-600"
-                onClick={clearAllEvents}
-              >
-                🗑️ Clear All
-              </Button>
-              <span className="text-[10px] text-muted-foreground">last 200</span>
-            </div>
-          </div>
-
-          <div className="overflow-auto">
-            <table className="w-full text-xs">
-              <thead className="text-muted-foreground">
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 pr-2">Time</th>
-                  <th className="text-left py-2 pr-2">Type</th>
-                  <th className="text-left py-2 pr-2">IP</th>
-                  <th className="text-left py-2 pr-2">CC</th>
-                  <th className="text-left py-2 pr-2">Path</th>
-                  <th className="text-left py-2 pr-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((ev) => {
-                  const eventThreat = isThreat(ev.ip || '', '');
-                  return (
-                    <tr key={ev.id} className={`border-b border-border hover:bg-muted/40 ${eventThreat ? 'threat-row threat-flash' : ''}`}>
-                      <td className="py-2 pr-2 whitespace-nowrap text-muted-foreground">{new Date(ev.created_at).toLocaleString()}</td>
-                      <td className="py-2 pr-2 text-foreground">
-                        <span className="flex items-center gap-2">
-                          {ev.event_type}
-                          {eventThreat && <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-600 text-white rounded">THREAT</span>}
-                        </span>
-                      </td>
-                      <td className={`py-2 pr-2 truncate max-w-[160px] ${eventThreat ? 'text-red-500 font-semibold' : 'text-foreground'}`} title={ev.ip || ""}>
-                        <div className="flex items-center gap-2">
-                          <span className="truncate" title={ev.ip || ''}>{ev.ip || ''}</span>
-                          {ev.ip && (
-                            <Button
-                              variant="outline"
-                              className="h-6 px-2 text-[10px]"
-                              onClick={() => blockIpNow(ev.ip!, `security_event:${ev.event_type}`)}
-                            >
-                              Block
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-2 pr-2 text-foreground">{ev.country_code || ""}</td>
-                      <td className="py-2 pr-2 text-foreground truncate max-w-[360px]" title={ev.path || ""}>{ev.path || ""}</td>
-                      <td className="py-2 pr-2 text-foreground">{ev.status_code ?? ""}</td>
-                    </tr>
-                  );
-                })}
-                {events.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-4 text-muted-foreground">No events yet</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Manual IP Block - at bottom */}
-        <div className="border border-border rounded-xl bg-card p-3 max-w-md">
-          <h2 className="text-sm font-bold mb-2">Manual IP Block</h2>
-          <div className="space-y-2">
-            <Input value={blockIp} onChange={(e) => setBlockIp(e.target.value)} placeholder="IP address" />
-            <Input value={blockReason} onChange={(e) => setBlockReason(e.target.value)} placeholder="Reason (optional)" />
-            <Button className="w-full" disabled={!blockIp || loading} onClick={() => blockIpNow(blockIp, blockReason)}>
-              Block IP
-            </Button>
-            <div className="text-[10px] text-muted-foreground">Blocks are enforced globally (API + pages).</div>
-          </div>
-        </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
-  );
+  )
+}
+
+export default function Kernel() {
+  const [state, setState] = useState<"loading" | "login" | "dashboard">("loading")
+
+  useEffect(() => {
+    fetch("/api/kernel/status", { credentials: "include" })
+      .then((r) => {
+        if (r.ok) setState("dashboard")
+        else setState("login")
+      })
+      .catch(() => setState("login"))
+  }, [])
+
+  if (state === "loading") {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-600" />
+      </div>
+    )
+  }
+
+  if (state === "login") {
+    return <LoginScreen onLogin={() => setState("dashboard")} />
+  }
+
+  return <Dashboard />
 }
