@@ -14,8 +14,21 @@ interface PixelScriptsProps {
 
 // Module-level guards to prevent duplicate initialization across multiple instances
 let facebookPixelInitialized = false;
-let pageViewFiredByInit = false; // fbq('init') auto-fires PageView; skip the first manual PageView
+let pageViewFiredByInit = false;
 let currentStoreCurrency = 'DZD';
+
+// Facebook only supports specific ISO 4217 currency codes.
+// Map unsupported currencies to a supported fallback.
+const FB_SUPPORTED_CURRENCIES = new Set([
+  'AED','ARS','AUD','BDT','BOB','BRL','BZD','CAD','CHF','CLP','CNY','COP','CRC','CZK',
+  'DKK','DOP','EGP','EUR','GBP','GTQ','HKD','HNL','HUF','IDR','ILS','INR','ISK','JPY',
+  'KES','KRW','KWD','MXN','MYR','NGN','NIO','NOK','NZD','PEN','PHP','PKR','PLN','PYG',
+  'QAR','RON','SAR','SEK','SGD','THB','TRY','TWD','UAH','USD','UYU','VND','XAF','ZAR'
+]);
+export function fbCurrency(code: string): string {
+  const upper = (code || 'USD').toUpperCase();
+  return FB_SUPPORTED_CURRENCIES.has(upper) ? upper : 'USD';
+}
 
 export function setStoreCurrency(code: string) {
   currentStoreCurrency = code;
@@ -174,7 +187,8 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     if (!config?.facebook_pixel_id || !config.is_facebook_enabled) return;
 
     // Module-level guard: only the first instance initializes
-    if (facebookPixelInitialized) return;
+    // Also checks DOM to survive HMR (which resets module state)
+    if (facebookPixelInitialized || document.getElementById('facebook-pixel-script')) return;
 
     // Support storing multiple pixel IDs as comma-separated values
     const ids = String(config.facebook_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
@@ -315,14 +329,21 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
 export function trackFacebookEvent(eventName: string, params?: Record<string, any>) {
   const p = params ? { ...params } : {};
   if (p.value != null) p.value = Number(p.value);
+  // Facebook only accepts specific currencies; map unsupported ones
+  if (p.currency) p.currency = fbCurrency(p.currency);
 
   if (typeof window !== 'undefined' && window.fbq) {
     if (facebookPixelInitialized) {
-      // fbq('init') auto-fires PageView; skip the first manual PageView to avoid duplicates
       if (eventName === 'PageView' && !pageViewFiredByInit) {
         pageViewFiredByInit = true;
         return;
       }
+      window.fbq('track', eventName, p);
+    } else if (eventName !== 'PageView') {
+      pendingEvents.push([eventName, p]);
+    }
+  }
+}
       window.fbq('track', eventName, p);
     } else if (eventName !== 'PageView') {
       // Queue non-PageView events — replayed after init.
