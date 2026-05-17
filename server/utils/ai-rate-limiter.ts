@@ -27,7 +27,7 @@ export interface RateLimitConfig {
 }
 
 export const RATE_LIMITS = {
-  customer: { maxRequests: 3, windowMs: 60 * 1000 },      // 3/min (was 5, tightened)
+  customer: { maxRequests: 30, windowMs: 60 * 60 * 1000 },    // 30/hour
   store_owner: { maxRequests: 10, windowMs: 60 * 1000 },    // 10/min
   staff: { maxRequests: 15, windowMs: 60 * 1000 },        // 15/min
   admin: { maxRequests: 30, windowMs: 60 * 1000 },        // 30/min
