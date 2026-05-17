@@ -920,6 +920,32 @@ export default function DeliveryCompanies() {
               </div>
             ))}
             
+            {/* Webhook URL */}
+            {selectedCompany?.features.webhooks && (
+              <div className="bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/50 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Wifi className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <span className="text-xs font-bold text-amber-700 dark:text-amber-300">Webhook URL</span>
+                </div>
+                <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 mb-2 leading-relaxed">
+                  Paste this URL in {selectedCompany.name}'s dashboard to receive automatic tracking updates:
+                </p>
+                <div className="flex gap-1.5">
+                  <code className="flex-1 text-[11px] bg-amber-100/60 dark:bg-amber-950/40 px-2 py-1.5 rounded border border-amber-200/60 dark:border-amber-800/50 text-amber-800 dark:text-amber-200 truncate direction-ltr text-left font-mono">
+                    https://sahla4eco.com/api/delivery/webhooks/{selectedCompany.id}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 h-7 text-[11px] border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/40"
+                    onClick={() => navigator.clipboard.writeText(`https://sahla4eco.com/api/delivery/webhooks/${selectedCompany.id}`)}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            )}
+            
             {/* Documentation Link */}
             {selectedCompany?.docsUrl && (
               <div className="bg-gradient-to-br from-blue-50/80 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/20 border border-blue-200/50 dark:border-blue-800/50 rounded-lg p-3">
