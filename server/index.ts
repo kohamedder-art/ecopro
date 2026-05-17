@@ -436,6 +436,18 @@ export function createServer(options?: { skipDbInit?: boolean }) {
   // Cookies (required for HttpOnly cookie auth + CSRF)
   app.use(cookieParser());
 
+  // Global Content-Type validation for API JSON endpoints
+  // Prevents 500 errors and parser confusion from bad Content-Type
+  app.use('/api/', (req, res, next) => {
+    const method = req.method.toUpperCase();
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS' || method === 'DELETE') return next();
+    const ct = (req.headers['content-type'] || '').toLowerCase();
+    if (ct && !ct.includes('application/json') && !ct.includes('multipart/form-data') && !ct.includes('application/x-www-form-urlencoded')) {
+      return res.status(400).json({ error: 'Content-Type must be application/json' });
+    }
+    next();
+  });
+
   // Minimal double-submit CSRF protection for cookie-authenticated requests
   // - Sets a readable CSRF cookie if missing
   // - For unsafe methods, requires X-CSRF-Token header to match the CSRF cookie
