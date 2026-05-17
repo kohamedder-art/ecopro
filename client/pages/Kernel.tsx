@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react"
-import { Shield, Activity, Ban, AlertTriangle, Terminal, RefreshCw, Globe, Lock, Unlock, Trash2, LogOut, XCircle, User, KeyRound, Loader2, Eye } from "lucide-react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import { Shield, Activity, Ban, AlertTriangle, Terminal, RefreshCw, Globe, Lock, Unlock, Trash2, LogOut, XCircle, User, KeyRound, Loader2, Eye, Search, X, Filter, BarChart3, Clock, Fingerprint, Wifi, WifiOff, Globe2, MapPin, Smartphone, Monitor, Code, ExternalLink, Copy } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,11 @@ function countryFlag(code: string | null): string {
   const a = code.charCodeAt(0) - 65 + offset
   const b = code.charCodeAt(1) - 65 + offset
   return String.fromCodePoint(a, b)
+}
+
+function fmt(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleString()
 }
 
 type SecurityEvent = {
@@ -89,8 +94,12 @@ const EVENT_LABELS: Record<string, string> = {
   blocked_request: "Blocked",
   known_bot: "Known Bot",
   honeypot_trap: "Honeypot",
+  geo_block: "Geo Block",
+  ip_block: "IP Block",
   unknown: "Unknown",
 }
+
+const EVENT_TYPES = Object.keys(EVENT_LABELS)
 
 function ToolBadge({ tool }: { tool: string | null }) {
   if (!tool || tool === "unknown") return null
@@ -142,6 +151,22 @@ function getToolFromUA(ua: string | null): string | null {
   }
   if (/Linux/i.test(ua) && !/Android/i.test(ua) && !/Mozilla/i.test(ua)) return "linux-scanner"
   return null
+}
+
+function computeTimeline(events: SecurityEvent[]): { hour: string; count: number }[] {
+  const buckets = new Map<string, number>()
+  const now = Date.now()
+  for (let i = 23; i >= 0; i--) {
+    const d = new Date(now - i * 3600000)
+    buckets.set(d.getHours() + ":00", 0)
+  }
+  for (const e of events) {
+    const d = new Date(e.created_at)
+    if (now - d.getTime() > 24 * 3600000) continue
+    const k = d.getHours() + ":00"
+    if (buckets.has(k)) buckets.set(k, (buckets.get(k) || 0) + 1)
+  }
+  return Array.from(buckets.entries()).map(([hour, count]) => ({ hour, count }))
 }
 
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
@@ -228,6 +253,94 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   )
 }
 
+function EventDetail({ event, onClose }: { event: SecurityEvent; onClose: () => void }) {
+  const tool = (event.metadata as { detected_tool?: string } | null)?.detected_tool || getToolFromUA(event.user_agent)
+  const rows: [string, React.ReactNode][] = [
+    ["ID", <span className="font-mono text-xs">{event.id}</span>],
+    ["Time", fmt(event.created_at)],
+    ["Event Type", <Badge variant="outline" className={cn("text-[11px] font-mono border", SEVERITY_COLORS[event.severity] || "")}>{EVENT_LABELS[event.event_type] || event.event_type}</Badge>],
+    ["Severity", <span className="capitalize">{event.severity}</span>],
+    ["IP", event.ip ? <span className="font-mono text-xs">{countryFlag(event.country_code)} {event.ip}</span> : "—"],
+    ["Country", event.country_code || "—"],
+    ["Method", event.method || "—"],
+    ["Path", event.path ? <span className="font-mono text-xs break-all">{event.method} {event.path}</span> : "—"],
+    ["Status Code", event.status_code?.toString() || "—"],
+    ["User Agent", event.user_agent ? <span className="font-mono text-[11px] break-all">{event.user_agent}</span> : "—"],
+    ["Fingerprint", event.fingerprint ? <span className="font-mono text-xs">{event.fingerprint}</span> : "—"],
+    ["Tool", tool ? <ToolBadge tool={tool} /> : "—"],
+    ["Auth Session", event.user_id ? <Badge variant="outline" className="border-cyan-300 text-cyan-700 bg-cyan-50 dark:border-cyan-800 dark:text-cyan-400 dark:bg-cyan-950/30 text-[11px]"><User className="w-3 h-3 mr-1" /> User #{event.user_id}</Badge> : "No"],
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 px-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50" />
+      <Card className="relative w-full max-w-lg bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <ExternalLink className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
+            Event Details
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300">
+            <X className="w-4 h-4" />
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          <ScrollArea className="max-h-[60vh]">
+            <div className="divide-y divide-gray-100 dark:divide-zinc-800/50">
+              {rows.map(([label, value]) => (
+                <div key={label} className="px-4 py-2.5 flex items-start gap-4">
+                  <span className="text-xs text-gray-500 dark:text-zinc-500 w-24 shrink-0 font-medium">{label}</span>
+                  <div className="flex-1 text-xs text-gray-900 dark:text-zinc-200 min-w-0">{value}</div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function TimelineChart({ events }: { events: SecurityEvent[] }) {
+  const data = useMemo(() => computeTimeline(events), [events])
+  const max = Math.max(...data.map((d) => d.count), 1)
+
+  return (
+    <Card className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
+      <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
+          24h Event Timeline
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-4">
+        <div className="flex items-end gap-[3px] h-24">
+          {data.map((d) => {
+            const h = Math.max(Math.round((d.count / max) * 100), d.count > 0 ? 8 : 0)
+            return (
+              <div key={d.hour} className="flex-1 flex flex-col items-center gap-1 group relative">
+                <span className="text-[10px] text-gray-400 dark:text-zinc-600 font-mono opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5">
+                  {d.count}
+                </span>
+                <div
+                  className={cn(
+                    "w-full rounded-sm transition-all",
+                    d.count > 0
+                      ? "bg-red-500/70 dark:bg-red-600/70 hover:bg-red-600 dark:hover:bg-red-500"
+                      : "bg-gray-100 dark:bg-zinc-800"
+                  )}
+                  style={{ height: `${h}%` }}
+                />
+                <span className="text-[9px] text-gray-400 dark:text-zinc-600 font-mono mt-auto">{d.hour}</span>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function Dashboard() {
   const [summary, setSummary] = useState<SummaryData | null>(null)
   const [events, setEvents] = useState<SecurityEvent[]>([])
@@ -237,6 +350,10 @@ function Dashboard() {
   const [blockIp, setBlockIp] = useState("")
   const [blockReason, setBlockReason] = useState("")
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState("")
+  const [filterType, setFilterType] = useState("all")
+  const [filterSeverity, setFilterSeverity] = useState("all")
+  const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null)
   const esRef = useRef<EventSource | null>(null)
 
   const fetchSummary = useCallback(async () => {
@@ -353,6 +470,20 @@ function Dashboard() {
   }
 
   const feed = liveEvents.length > 0 ? liveEvents : events
+  const allEvents = useMemo(() => [...liveEvents, ...events], [liveEvents, events])
+
+  const filtered = useMemo(() => {
+    return feed.filter((e) => {
+      if (search) {
+        const q = search.toLowerCase()
+        if (!e.ip?.toLowerCase().includes(q) && !e.fingerprint?.toLowerCase().includes(q) && !e.user_agent?.toLowerCase().includes(q) && !e.path?.toLowerCase().includes(q)) return false
+      }
+      if (filterType !== "all" && e.event_type !== filterType) return false
+      if (filterSeverity !== "all" && e.severity !== filterSeverity) return false
+      return true
+    })
+  }, [feed, search, filterType, filterSeverity])
+
   const hasTopCountries = summary?.top_countries && summary.top_countries.length > 0
 
   if (loading) {
@@ -382,20 +513,10 @@ function Dashboard() {
             <div className="text-xs text-gray-500 dark:text-zinc-600 font-mono">
               {feed.length} events
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={fetchSummary}
-              className="text-gray-500 hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300 h-8 w-8 p-0"
-            >
+            <Button variant="ghost" size="sm" onClick={fetchSummary} className="text-gray-500 hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300 h-8 w-8 p-0">
               <RefreshCw className="w-4 h-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-gray-500 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 h-8 px-2"
-            >
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-500 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 h-8 px-2">
               <LogOut className="w-4 h-4 mr-1.5" />
               Exit
             </Button>
@@ -424,61 +545,93 @@ function Dashboard() {
           ))}
         </div>
 
+        {/* Timeline */}
+        <TimelineChart events={allEvents} />
+
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Live Feed */}
           <div className="lg:col-span-2">
             <Card className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
-              <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
-                  Live Attack Feed
-                  {connected && (
-                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-500 text-green-700 bg-green-50 dark:border-green-800 dark:text-green-400 dark:bg-green-950/30">
-                      <span className="w-1 h-1 rounded-full bg-green-500 mr-1 inline-block" />
-                      STREAMING
-                    </Badge>
+              <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
+                    Live Attack Feed
+                    {connected && (
+                      <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-500 text-green-700 bg-green-50 dark:border-green-800 dark:text-green-400 dark:bg-green-950/30">
+                        <span className="w-1 h-1 rounded-full bg-green-500 mr-1 inline-block" />
+                        STREAMING
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={handleClearEvents} className="text-gray-500 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 h-7 text-xs px-2">
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Clear
+                  </Button>
+                </div>
+                {/* Filters */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-zinc-600" />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search IP, path, UA..."
+                      className="pl-8 h-8 text-xs bg-white dark:bg-zinc-800/50 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
+                    />
+                  </div>
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="h-8 text-xs rounded-md border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-white px-2"
+                  >
+                    <option value="all">All Types</option>
+                    {EVENT_TYPES.map((t) => <option key={t} value={t}>{EVENT_LABELS[t] || t}</option>)}
+                  </select>
+                  <select
+                    value={filterSeverity}
+                    onChange={(e) => setFilterSeverity(e.target.value)}
+                    className="h-8 text-xs rounded-md border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 text-gray-900 dark:text-white px-2"
+                  >
+                    <option value="all">All Severities</option>
+                    {["critical", "error", "warn", "info"].map((s) => <option key={s} value={s} className="capitalize">{s}</option>)}
+                  </select>
+                  {(search || filterType !== "all" || filterSeverity !== "all") && (
+                    <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setFilterType("all"); setFilterSeverity("all") }} className="h-8 text-xs text-gray-500 hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300 px-2">
+                      <X className="w-3 h-3 mr-1" />
+                      Clear
+                    </Button>
                   )}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearEvents}
-                  className="text-gray-500 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 h-7 text-xs px-2"
-                >
-                  <Trash2 className="w-3 h-3 mr-1" />
-                  Clear
-                </Button>
+                  <span className="text-[11px] text-gray-400 dark:text-zinc-600 font-mono whitespace-nowrap">
+                    {filtered.length}/{feed.length}
+                  </span>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
-                {feed.length === 0 ? (
+                {filtered.length === 0 ? (
                   <div className="flex items-center justify-center h-48 text-gray-400 dark:text-zinc-600 text-sm">
                     <Shield className="w-8 h-8 mr-2 opacity-30" />
-                    No events recorded
+                    {feed.length === 0 ? "No events recorded" : "No matches"}
                   </div>
                 ) : (
                   <ScrollArea className="h-[420px]">
                     <div className="divide-y divide-gray-100 dark:divide-zinc-800/50">
-                      {feed.map((e) => {
+                      {filtered.map((e) => {
                         const tool = (e.metadata as { detected_tool?: string } | null)?.detected_tool || getToolFromUA(e.user_agent)
                         return (
                           <div
                             key={e.id}
+                            onClick={() => setSelectedEvent(e)}
                             className={cn(
-                              "px-4 py-2.5 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-zinc-800/30 transition-colors",
+                              "px-4 py-2.5 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer",
                               e.severity === "critical" && "bg-red-50 dark:bg-red-950/10"
                             )}
                           >
                             <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", SEVERITY_DOT[e.severity] || "bg-gray-400 dark:bg-zinc-600")} />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    "text-[10px] h-5 px-1.5 font-mono border",
-                                    SEVERITY_COLORS[e.severity] || "border-gray-300 text-gray-600 bg-gray-50 dark:border-zinc-700 dark:text-zinc-400 dark:bg-zinc-800/30"
-                                  )}
-                                >
+                                <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-mono border", SEVERITY_COLORS[e.severity] || "border-gray-300 text-gray-600 bg-gray-50 dark:border-zinc-700 dark:text-zinc-400 dark:bg-zinc-800/30")}>
                                   {EVENT_LABELS[e.event_type] || e.event_type}
                                 </Badge>
                                 {e.user_id && (
@@ -517,7 +670,6 @@ function Dashboard() {
 
           {/* Sidebar */}
           <div className="space-y-4">
-            {/* Block IP */}
             <Card className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
               <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -538,19 +690,13 @@ function Dashboard() {
                   placeholder="Reason (optional)"
                   className="bg-white dark:bg-zinc-800/50 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 h-9 text-sm"
                 />
-                <Button
-                  onClick={handleBlock}
-                  disabled={!blockIp.trim()}
-                  size="sm"
-                  className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white h-9"
-                >
+                <Button onClick={handleBlock} disabled={!blockIp.trim()} size="sm" className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white h-9">
                   <Lock className="w-3.5 h-3.5 mr-1.5" />
                   Block
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Top Countries */}
             {hasTopCountries && (
               <Card className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
                 <CardHeader className="px-4 py-3 border-b border-gray-200 dark:border-zinc-800">
@@ -567,10 +713,7 @@ function Dashboard() {
                       <div key={c.country_code} className="flex items-center gap-2">
                         <span className="text-sm">{countryFlag(c.country_code)}</span>
                         <div className="flex-1 h-2 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-red-500/60 dark:bg-red-700/60 rounded-full transition-all"
-                            style={{ width: `${pct}%` }}
-                          />
+                          <div className="h-full bg-red-500/60 dark:bg-red-700/60 rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
                         <span className="text-xs text-gray-500 dark:text-zinc-500 tabular-nums w-8 text-right">{pct}%</span>
                       </div>
@@ -607,18 +750,11 @@ function Dashboard() {
                     {blocks.map((b) => (
                       <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/30 transition-colors">
                         <td className="px-4 py-2.5 font-mono text-xs text-gray-700 dark:text-zinc-300">{b.ip}</td>
-                        <td className="px-4 py-2.5 text-xs text-gray-500 dark:text-zinc-500 hidden sm:table-cell">
-                          {countryFlag(b.country_code)} {b.country_code || "—"}
-                        </td>
+                        <td className="px-4 py-2.5 text-xs text-gray-500 dark:text-zinc-500 hidden sm:table-cell">{countryFlag(b.country_code)} {b.country_code || "—"}</td>
                         <td className="px-4 py-2.5 text-xs text-gray-500 dark:text-zinc-400">{b.reason || "—"}</td>
                         <td className="px-4 py-2.5 text-xs text-gray-400 dark:text-zinc-600 hidden md:table-cell">{timeAgo(b.blocked_at)}</td>
                         <td className="px-4 py-2.5 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleUnblock(b.ip)}
-                            className="h-7 text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 dark:text-zinc-500 dark:hover:text-green-400 dark:hover:bg-green-950/20"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => handleUnblock(b.ip)} className="h-7 text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 dark:text-zinc-500 dark:hover:text-green-400 dark:hover:bg-green-950/20">
                             <Unlock className="w-3 h-3 mr-1" />
                             Unblock
                           </Button>
@@ -632,6 +768,9 @@ function Dashboard() {
           </Card>
         )}
       </div>
+
+      {/* Event Detail Overlay */}
+      {selectedEvent && <EventDetail event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
     </div>
   )
 }
