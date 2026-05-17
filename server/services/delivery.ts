@@ -616,8 +616,8 @@ export class DeliveryService {
         ]
       );
 
-      // Update order delivery status if final state
-      if (['delivered', 'failed', 'returned'].includes(event.event_type)) {
+      // Update order delivery status
+      if (event.event_type && !['fake', 'duplicate'].includes(event.event_type)) {
         await pool.query(
           `UPDATE store_orders
            SET delivery_status = $1, updated_at = NOW()

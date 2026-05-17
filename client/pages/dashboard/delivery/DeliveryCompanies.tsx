@@ -139,7 +139,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: true },
       docsUrl: "https://ecotrack.dz",
       apiRating: 4,
     },
@@ -156,7 +156,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: true },
       docsUrl: "https://beta.maystro-delivery.com",
       apiRating: 3,
     },
@@ -191,7 +191,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
+      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: true },
       apiRating: 2,
     },
     // ⭐ TIER 2: Zimou Express
@@ -243,7 +243,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
+      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: true },
       docsUrl: "https://dhd-dz.com",
       apiRating: 3,
     },
@@ -259,7 +259,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
+      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: true },
       docsUrl: "https://ecom-dz.net",
       apiRating: 3,
     },
@@ -289,7 +289,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: true,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: true },
       apiRating: 3,
     },
     {
@@ -319,7 +319,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: true },
       docsUrl: "https://api.mdm.express",
       apiRating: 3,
     },
@@ -803,12 +803,12 @@ export default function DeliveryCompanies() {
         })}
       </div>
 
-      {/* Configuration Dialog - Professional Styling */}
+      {/* Configuration Dialog */}
       <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
-        <DialogContent className="max-w-lg border-border/50 shadow-xl">
+        <DialogContent className="max-w-md border-border/50 shadow-xl sm:max-w-lg" dir="rtl">
           <DialogHeader className="space-y-3 pb-4 border-b border-border/50">
             <div className="flex items-start gap-3">
-              <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0 border border-primary/20">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center flex-shrink-0 border border-primary/20">
                 {selectedCompany?.logo.startsWith('/') ? (
                   <DeliveryCompanyLogo
                     name={selectedCompany?.name}
@@ -819,119 +819,97 @@ export default function DeliveryCompanies() {
                   <Truck className="w-7 h-7 text-primary" />
                 )}
               </div>
-              <div className="flex-1">
-                <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-lg font-bold flex items-center gap-2 flex-wrap">
                   {selectedCompany?.name}
                   {selectedCompany?.id === 'dolivroo' && (
-                    <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200">
+                    <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 text-[10px]">
                       {t('delivery.aggregator')}
                     </Badge>
                   )}
                 </DialogTitle>
-                <DialogDescription className="text-xs mt-1">
+                <DialogDescription className="text-xs mt-1 leading-relaxed">
                   {selectedCompany?.description}
                 </DialogDescription>
                 {selectedCompany && (
-                  <div className="flex items-center gap-1 mt-1">
+                  <div className="flex items-center gap-1 mt-1.5">
                     {renderStars(selectedCompany.apiRating)}
-                    <span className="text-xs text-muted-foreground ml-1">{t('delivery.apiQuality')}</span>
+                    <span className="text-[11px] text-muted-foreground">{t('delivery.apiQuality')}</span>
                   </div>
                 )}
               </div>
             </div>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* API Features Summary */}
-            {selectedCompany && (
-              <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">{t('delivery.supportedFeatures')}:</p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant={selectedCompany.features.createShipment ? "default" : "secondary"} className="text-xs">
-                    {selectedCompany.features.createShipment ? "✓" : "✗"} {t('delivery.createShipments')}
-                  </Badge>
-                  <Badge variant={selectedCompany.features.tracking ? "default" : "secondary"} className="text-xs">
-                    {selectedCompany.features.tracking ? "✓" : "✗"} {t('delivery.tracking')}
-                  </Badge>
-                  <Badge variant={selectedCompany.features.labels ? "default" : "secondary"} className="text-xs">
-                    {selectedCompany.features.labels ? "✓" : "✗"} {t('delivery.labels')}
-                  </Badge>
-                  <Badge variant={selectedCompany.features.cod ? "default" : "secondary"} className="text-xs">
-                    {selectedCompany.features.cod ? "✓" : "✗"} {t('delivery.cashOnDelivery')}
-                  </Badge>
-                  <Badge variant={selectedCompany.features.webhooks ? "default" : "secondary"} className="text-xs">
-                    {selectedCompany.features.webhooks ? "✓" : "✗"} {t('delivery.webhooks')}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
             {/* Coming soon message */}
             {selectedCompany && !canConnectSelectedCompany && (
-              <div className="bg-muted/30 rounded-lg p-3">
-                <p className="text-sm font-medium">{t('delivery.comingSoon')}</p>
-                <p className="text-xs text-muted-foreground mt-1">{t('delivery.comingSoonDesc')}</p>
+              <div className="bg-muted/40 rounded-xl p-4 text-center">
+                <p className="text-sm font-bold mb-1">{t('delivery.comingSoon')}</p>
+                <p className="text-xs text-muted-foreground">{t('delivery.comingSoonDesc')}</p>
               </div>
             )}
 
             {/* Credential Fields */}
-            {canConnectSelectedCompany && selectedCompany?.apiFields.map((field) => (
-              <div key={field.field} className="space-y-2">
-                <Label htmlFor={field.field} className="text-sm font-medium">
-                  {field.label}
-                </Label>
-                {(() => {
-                  const isPrimaryField = isPrimaryCredentialField(selectedCompany, field.field);
-                  const isSavedHidden =
-                    Boolean(selectedCompany?.enabled) &&
-                    Boolean(selectedIntegrationMeta) &&
-                    (isPrimaryField ? Boolean(selectedIntegrationMeta?.has_api_key) : Boolean(selectedIntegrationMeta?.has_api_secret));
+            {canConnectSelectedCompany && selectedCompany?.apiFields.map((field) => {
+              const isPrimaryField = isPrimaryCredentialField(selectedCompany, field.field);
+              const isSavedHidden =
+                Boolean(selectedCompany?.enabled) &&
+                Boolean(selectedIntegrationMeta) &&
+                (isPrimaryField ? Boolean(selectedIntegrationMeta?.has_api_key) : Boolean(selectedIntegrationMeta?.has_api_secret));
+              const currentValue = credentials[field.field] || '';
+              const placeholder = isSavedHidden && !currentValue ? t('delivery.savedHidden') : field.placeholder;
 
-                  const currentValue = credentials[field.field] || '';
-                  const placeholder = isSavedHidden && !currentValue ? 'Saved (hidden)' : field.placeholder;
+              // Arabic label mapping
+              const arabicLabels: Record<string, string> = {
+                apiToken: 'رمز API',
+                apiId: 'معرف API',
+                apiKey: 'مفتاح API',
+                storeId: 'معرف المتجر',
+                accountId: 'معرف الحساب',
+                productId: 'معرف المنتج',
+                connectionLabel: 'تسمية الاتصال',
+                apiUrl: 'رابط API',
+                apiSecret: 'المفتاح السري',
+                merchantId: 'معرف التاجر',
+                webhookSecret: 'مفتاح Webhook السري',
+                guid: 'المعرف الفريد (GUID)',
+              };
+              const label = arabicLabels[field.field] || field.label;
 
-                  return (
-                <Input
-                  id={field.field}
-                  type={field.type || "text"}
-                  placeholder={placeholder}
-                  value={credentials[field.field] || ''}
-                  onChange={(e) => setCredentials({ ...credentials, [field.field]: e.target.value })}
-                  className="border-border/60 focus:border-primary/50 focus:ring-primary/20"
-                />
-                  );
-                })()}
-                {(() => {
-                  const isPrimaryField = isPrimaryCredentialField(selectedCompany, field.field);
-                  const isSavedHidden =
-                    Boolean(selectedCompany?.enabled) &&
-                    Boolean(selectedIntegrationMeta) &&
-                    (isPrimaryField ? Boolean(selectedIntegrationMeta?.has_api_key) : Boolean(selectedIntegrationMeta?.has_api_secret));
-
-                  const currentValue = credentials[field.field] || '';
-                  if (!isSavedHidden || currentValue) return null;
-
-                  return (
-                    <p className="text-xs text-muted-foreground">
-                      Saved and hidden for security. Leave blank to keep it.
-                    </p>
-                  );
-                })()}
-              </div>
-            ))}
+              return (
+                <div key={field.field} className="space-y-2">
+                  <Label htmlFor={field.field} className="text-sm font-medium text-right">
+                    {label}
+                  </Label>
+                  <Input
+                    id={field.field}
+                    type={field.type || "text"}
+                    placeholder={placeholder}
+                    value={currentValue}
+                    onChange={(e) => setCredentials({ ...credentials, [field.field]: e.target.value })}
+                    className="border-border/60 focus:border-primary/50 focus:ring-primary/20 text-right"
+                    dir="ltr"
+                  />
+                  {isSavedHidden && !currentValue && (
+                    <p className="text-[11px] text-muted-foreground text-right">{t('delivery.savedHidden')}</p>
+                  )}
+                </div>
+              );
+            })}
             
             {/* Webhook URL */}
             {selectedCompany?.features.webhooks && (
-              <div className="bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/50 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1.5">
+              <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/50 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-2">
                   <Wifi className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                  <span className="text-xs font-bold text-amber-700 dark:text-amber-300">Webhook URL</span>
+                  <span className="text-xs font-bold text-amber-700 dark:text-amber-300">{t('delivery.webhookUrl')}</span>
                 </div>
-                <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 mb-2 leading-relaxed">
-                  Paste this URL in {selectedCompany.name}'s dashboard to receive automatic tracking updates:
+                <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 leading-relaxed">
+                  {t('delivery.webhookUrlDesc', { company: selectedCompany.name })}
                 </p>
                 <div className="flex gap-1.5">
-                  <code className="flex-1 text-[11px] bg-amber-100/60 dark:bg-amber-950/40 px-2 py-1.5 rounded border border-amber-200/60 dark:border-amber-800/50 text-amber-800 dark:text-amber-200 truncate direction-ltr text-left font-mono">
+                  <code className="flex-1 text-[11px] bg-amber-100/60 dark:bg-amber-950/40 px-2 py-1.5 rounded-lg border border-amber-200/60 dark:border-amber-800/50 text-amber-800 dark:text-amber-200 truncate direction-ltr text-left font-mono">
                     https://sahla4eco.com/api/delivery/webhooks/{selectedCompany.id}
                   </code>
                   <Button
@@ -940,7 +918,7 @@ export default function DeliveryCompanies() {
                     className="shrink-0 h-7 text-[11px] border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/40"
                     onClick={() => navigator.clipboard.writeText(`https://sahla4eco.com/api/delivery/webhooks/${selectedCompany.id}`)}
                   >
-                    Copy
+                    {t('delivery.webhookUrlCopy')}
                   </Button>
                 </div>
               </div>
@@ -948,7 +926,7 @@ export default function DeliveryCompanies() {
             
             {/* Documentation Link */}
             {selectedCompany?.docsUrl && (
-              <div className="bg-gradient-to-br from-blue-50/80 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/20 border border-blue-200/50 dark:border-blue-800/50 rounded-lg p-3">
+              <div className="bg-gradient-to-br from-blue-50/60 to-cyan-50/40 dark:from-blue-950/30 dark:to-cyan-950/20 border border-blue-200/50 dark:border-blue-800/50 rounded-xl p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex gap-2.5">
                     <Key className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
@@ -959,10 +937,10 @@ export default function DeliveryCompanies() {
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    className="text-blue-600 hover:text-blue-700"
+                    className="text-blue-600 hover:text-blue-700 shrink-0"
                     onClick={() => window.open(selectedCompany.docsUrl, '_blank')}
                   >
-                    <ExternalLink className="w-3 h-3 mr-1" />
+                    <ExternalLink className="w-3 h-3 ml-1" />
                     {t('delivery.docs')}
                   </Button>
                 </div>
@@ -970,17 +948,13 @@ export default function DeliveryCompanies() {
             )}
           </div>
 
-          <DialogFooter className="gap-2 border-t border-border/50 pt-4">
+          <DialogFooter className="gap-2 border-t border-border/50 pt-4 flex-row-reverse">
             <div className="flex-1">
               {saveError && (
-                <p className="text-sm text-destructive">
-                  {saveError}
-                </p>
+                <p className="text-sm text-destructive">{saveError}</p>
               )}
               {saveSuccess && (
-                <p className="text-sm text-primary">
-                  {saveSuccess}
-                </p>
+                <p className="text-sm text-primary">{saveSuccess}</p>
               )}
             </div>
             {selectedCompany?.enabled && (
@@ -995,7 +969,7 @@ export default function DeliveryCompanies() {
                 }}
                 className="hover:bg-destructive/90"
               >
-                <X className="w-4 h-4 mr-1.5" />
+                <X className="w-4 h-4 ml-1.5" />
                 {t('delivery.disconnect')}
               </Button>
             )}
@@ -1013,7 +987,7 @@ export default function DeliveryCompanies() {
               disabled={saving || !canConnectSelectedCompany}
               className="bg-gradient-to-r from-primary to-accent hover:shadow-lg"
             >
-              <CheckCircle2 className="w-4 h-4 mr-1.5" />
+              <CheckCircle2 className="w-4 h-4 ml-1.5" />
               {canConnectSelectedCompany ? t('delivery.connectActivate') : t('delivery.comingSoon')}
             </Button>
           </DialogFooter>

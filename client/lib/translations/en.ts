@@ -1932,6 +1932,11 @@ export const en = {
   "delivery.connectActivate": "Connect & Activate",
   "delivery.comingSoon": "Coming soon",
   "delivery.comingSoonDesc": "This provider isn’t integrated yet. You’ll be able to connect it in a future update.",
+  "delivery.webhookUrl": "Webhook URL",
+  "delivery.webhookUrlDesc": "Paste this URL in {company}'s dashboard to receive automatic tracking updates:",
+  "delivery.webhookUrlCopy": "Copy",
+  "delivery.savedHidden": "Saved and hidden for security. Leave blank to keep it.",
+  "delivery.configure": "Configure",
   
   // Delivery Pricing Page
   "delivery.pricingTitle": "Delivery Pricing",

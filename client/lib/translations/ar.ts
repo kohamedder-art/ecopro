@@ -2516,6 +2516,11 @@ export const ar = {
   "delivery.connectActivate": "الاتصال والتفعيل",
   "delivery.comingSoon": "قريباً",
   "delivery.comingSoonDesc": "هذا المزود غير مدمج بعد. ستتمكن من ربطه في تحديث قادم.",
+  "delivery.webhookUrl": "رابط Webhook",
+  "delivery.webhookUrlDesc": "انسخ هذا الرابط وألصقه في لوحة تحكم {company} لاستلام تحديثات التتبع تلقائياً:",
+  "delivery.webhookUrlCopy": "نسخ",
+  "delivery.savedHidden": "محفوظ ومخفي للأمان. اتركه فارغاً للاحتفاظ به.",
+  "delivery.configure": "إعداد",
 
   // Delivery Pricing Page
   "delivery.pricingTitle": "أسعار التوصيل",
