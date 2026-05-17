@@ -1,11 +1,19 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
   Users, Store, Lock, TrendingUp, ArrowUpRight, ArrowDownRight,
-  Activity, Clock, Zap, BarChart3, Eye, Loader2, Sparkles
+  Activity, Clock, Zap, BarChart3, Eye, Loader2, Sparkles, Globe, ShoppingBag
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n';
+
+interface VisitorAnalytics {
+  today: { total: number; platform: number; stores: number };
+  week: { total: number; platform: number; stores: number };
+  month: { total: number; platform: number; stores: number };
+  year: { total: number; platform: number; stores: number };
+  topStores: { slug: string; name: string; views: number }[];
+}
 
 interface PlatformStats {
   totalUsers: number;
@@ -149,14 +157,17 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
   const { t } = useTranslation();
   const [growth, setGrowth] = useState<GrowthMetrics | null>(null);
   const [growthLoading, setGrowthLoading] = useState(true);
+  const [visitors, setVisitors] = useState<VisitorAnalytics | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/admin/growth-metrics', { credentials: 'include' });
-        if (res.ok) {
-          setGrowth(await res.json());
-        }
+        const [gRes, vRes] = await Promise.all([
+          fetch('/api/admin/growth-metrics', { credentials: 'include' }),
+          fetch('/api/admin/visitor-analytics', { credentials: 'include' }),
+        ]);
+        if (gRes.ok) setGrowth(await gRes.json());
+        if (vRes.ok) setVisitors(await vRes.json());
       } catch { /* ignore */ }
       setGrowthLoading(false);
     })();
@@ -254,6 +265,40 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
         />
       </div>
 
+      {/* Visitor Stats Row */}
+      {visitors && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KPICard
+            title="Platform Today"
+            value={visitors.today.platform.toLocaleString()}
+            subtitle={`${visitors.today.stores} store · ${visitors.today.total} total`}
+            icon={Globe}
+            color="blue"
+          />
+          <KPICard
+            title="Platform This Week"
+            value={visitors.week.platform.toLocaleString()}
+            subtitle={`${visitors.week.stores} store · ${visitors.week.total} total`}
+            icon={Globe}
+            color="cyan"
+          />
+          <KPICard
+            title="Platform This Month"
+            value={visitors.month.platform.toLocaleString()}
+            subtitle={`${visitors.month.stores} store · ${visitors.month.total} total`}
+            icon={Globe}
+            color="purple"
+          />
+          <KPICard
+            title="Platform This Year"
+            value={visitors.year.platform.toLocaleString()}
+            subtitle={`${visitors.year.stores} store · ${visitors.year.total} total`}
+            icon={Globe}
+            color="emerald"
+          />
+        </div>
+      )}
+
       {/* Bento Section: Charts + Activity + Store Health */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Subscription Donut */}
@@ -293,39 +338,37 @@ export default function OverviewTab({ stats, onNavigate }: Props) {
           )}
         </div>
 
-        {/* Top Stores */}
+        {/* Top Stores by Visitors */}
         <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4 shadow-lg">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
-            <Store className="w-4 h-4 text-emerald-400" />
-            {t('platformAdmin.overview.topStores')}
+            <ShoppingBag className="w-4 h-4 text-emerald-400" />
+            Top Stores by Visitors
           </h3>
-          {growthLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
-            </div>
-          ) : topStores.length > 0 ? (
+          {visitors && visitors.topStores.length > 0 ? (
             <div className="space-y-2">
-              {topStores.map((s, i) => (
-                <div key={s.clientId} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50/40 dark:bg-slate-900/40 hover:bg-slate-900/60 transition-colors">
-                  <span className={`text-xs font-bold w-5 text-center ${
-                    i === 0 ? 'text-amber-400' : i === 1 ? 'text-gray-600 dark:text-slate-300' : i === 2 ? 'text-orange-400' : 'text-gray-500 dark:text-slate-500'
-                  }`}>#{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{s.storeName}</p>
-                    <p className="text-[10px] text-gray-500 dark:text-slate-500">{s.orders30d} {t('platformAdmin.overview.orders')} · {s.productCount} {t('platformAdmin.overview.products')}</p>
+              {visitors.topStores.slice(0, 7).map((s, i) => {
+                const maxViews = visitors.topStores[0].views || 1
+                const pct = Math.round((s.views / maxViews) * 100)
+                return (
+                  <div key={s.slug} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50/40 dark:bg-slate-900/40 hover:bg-slate-900/60 transition-colors">
+                    <span className={`text-xs font-bold w-5 text-center ${
+                      i === 0 ? 'text-amber-400' : i === 1 ? 'text-gray-600 dark:text-slate-300' : i === 2 ? 'text-orange-400' : 'text-gray-500 dark:text-slate-500'
+                    }`}>#{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{s.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500/70 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-gray-500 dark:text-slate-400 font-mono">{s.views.toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    s.healthScore >= 70 ? 'bg-emerald-500/20 text-emerald-300' :
-                    s.healthScore >= 40 ? 'bg-amber-500/20 text-amber-300' :
-                    'bg-red-500/20 text-red-300'
-                  }`}>
-                    {s.healthScore}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-slate-500 text-sm py-4 text-center">{t('platformAdmin.overview.noStoreData')}</p>
+            <p className="text-gray-500 dark:text-slate-500 text-sm py-4 text-center">No visitor data yet</p>
           )}
         </div>
 

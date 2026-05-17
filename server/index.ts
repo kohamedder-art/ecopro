@@ -508,6 +508,10 @@ export function createServer(options?: { skipDbInit?: boolean }) {
   // Lightweight in-memory traffic capture (used by Kernel portal)
   app.use(trafficMiddleware);
 
+    // Platform page view tracking (lightweight, batched)
+  const { pageViewMiddleware } = await import('./utils/pageViews');
+  app.use(pageViewMiddleware);
+
   // Security monitoring: DZ-only hard block for unauth admin/kernel traffic + event logging
   app.use(
     securityMiddleware({
@@ -1116,6 +1120,12 @@ ${urls}
     authenticate,
     requireAdmin,
     adminRoutes.getGrowthMetrics
+  );
+  app.get(
+    "/api/admin/visitor-analytics",
+    authenticate,
+    requireAdmin,
+    adminRoutes.getVisitorAnalytics
   );
 
   // Billing routes (both user and admin)

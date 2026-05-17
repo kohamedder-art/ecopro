@@ -2562,3 +2562,20 @@ export const getGrowthMetrics: RequestHandler = async (_req, res) => {
     return jsonError(res, 500, "Failed to fetch growth metrics");
   }
 };
+
+export const getVisitorAnalytics: RequestHandler = async (_req, res) => {
+  try {
+    const { getVisitorAnalytics: getAnalytics } = await import('../utils/pageViews');
+    const data = await getAnalytics();
+    res.json(data);
+  } catch (err) {
+    console.error('[ADMIN] Error fetching visitor analytics:', err);
+    res.json({
+      today: { total: 0, platform: 0, stores: 0 },
+      week: { total: 0, platform: 0, stores: 0 },
+      month: { total: 0, platform: 0, stores: 0 },
+      year: { total: 0, platform: 0, stores: 0 },
+      topStores: [],
+    });
+  }
+};
