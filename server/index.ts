@@ -105,8 +105,8 @@ export function createServer(options?: { skipDbInit?: boolean }) {
   }
 
   // Trust Meta's new root CA for mTLS webhooks (deadline: 31 March 2026)
-  const metaCaPath = path.join(__dirname, 'meta-root-ca.pem');
   try {
+    const metaCaPath = path.resolve(process.cwd(), 'server/meta-root-ca.pem');
     const metaCert = readFileSync(metaCaPath, 'utf-8');
     https.globalAgent.options.ca = [
       ...(Array.isArray(https.globalAgent.options.ca) ? https.globalAgent.options.ca : []),
