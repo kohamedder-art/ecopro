@@ -89,7 +89,7 @@ import { validateProductionEnv } from "./utils/required-env";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export function createServer(options?: { skipDbInit?: boolean }) {
+export async function createServer(options?: { skipDbInit?: boolean }) {
   const app = express();
   const isProduction = process.env.NODE_ENV === 'production';
 

@@ -9,7 +9,7 @@ import { initWebSocket } from "./utils/websocket";
 async function startServer() {
   try {
     // Create and start server with WebSocket support
-    const app = createServer();
+    const app = await createServer();
     const port = process.env.PORT || 3000;
     const server = http.createServer(app);
     

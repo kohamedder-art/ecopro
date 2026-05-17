@@ -27,7 +27,7 @@ async function startServer() {
   }
 
   // Start server immediately (don't block boot on remote DB + migrations).
-  const app = createServer({ skipDbInit: true });
+  const app = await createServer({ skipDbInit: true });
   const server = http.createServer(app);
   
   // Initialize WebSocket server for real-time chat
