@@ -156,34 +156,34 @@
   }
 
   .dark {
-    --background: 222 47% 4%; /* much darker background */
-    --foreground: 0 0% 100%; /* pure white text */
+    --background: 222 47% 4%;
+    --foreground: 0 0% 100%;
 
-    --card: 222 47% 8%; /* darker cards */
+    --card: 222 47% 11%;
     --card-foreground: 0 0% 100%;
 
-    --popover: 222 47% 6%;
+    --popover: 222 47% 9%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 210 100% 60%; /* brighter primary */
+    --primary: 210 100% 60%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 200 100% 40%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 222 47% 12%; /* darker muted */
-    --muted-foreground: 210 40% 85%; /* much lighter muted text */
+    --muted: 222 47% 15%;
+    --muted-foreground: 210 40% 82%;
 
-    --accent: 200 100% 50%; /* brighter accent */
+    --accent: 200 100% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 47% 22%; /* lighter borders for visibility */
+    --border: 222 47% 22%;
     --input: 222 47% 18%;
     --ring: 210 100% 60%;
-    --sidebar-background: 222 47% 6%;
+    --sidebar-background: 222 47% 7%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 210 100% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -193,16 +193,16 @@
     --sidebar-ring: 210 100% 60%;
 
     /* Header theming */
-    --header-bg-from: 222 47% 6%;
-    --header-bg-via: 222 47% 8%;
-    --header-bg-to: 222 47% 6%;
+    --header-bg-from: 222 47% 7%;
+    --header-bg-via: 222 47% 9%;
+    --header-bg-to: 222 47% 7%;
     --header-gradient-text-from: 190 100% 60%;
     --header-gradient-text-to: 270 100% 65%;
     --neon-glow: 190 100% 60%;
 
     /* Layered palette for dashboard comfort */
-    --bg-app: 0 0% 0%;
-    --bg-panel: 0 0% 0%;
+    --bg-app: var(--background);
+    --bg-panel: var(--card);
     --bg-card: var(--card);
     --border-subtle: 222 20% 20%;
     --text-muted-soft: 220 15% 70%;

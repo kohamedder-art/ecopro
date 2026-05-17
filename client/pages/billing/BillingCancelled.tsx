@@ -100,12 +100,12 @@ const BillingCancelled = () => {
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
             {t('billing.cancelled.troublePayment')}
           </p>
-          <a
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-            href={`mailto:${supportEmail}`}
+          <button
+            onClick={() => navigate('/chat')}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline bg-transparent border-0 p-0 cursor-pointer"
           >
-            contact {supportEmail}
-          </a>
+            {t('admin.billing.contactSupport')}
+          </button>
         </div>
 
         {/* Redirect Notice */}

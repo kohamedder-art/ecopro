@@ -105,18 +105,18 @@ function PaymentStatusDot({ status }: { status: string }) {
 
 // ─── Feature list ───────────────────────────────────────────────
 const FEATURES: { icon: React.ReactNode; label: string }[] = [
-  { icon: <Package className="h-3.5 w-3.5" />,      label: 'admin.billing.unlimitedProducts' },
-  { icon: <ShoppingCart className="h-3.5 w-3.5" />,  label: 'admin.billing.unlimitedOrders' },
-  { icon: <Layers className="h-3.5 w-3.5" />,       label: 'admin.billing.orderManagement' },
-  { icon: <Bot className="h-3.5 w-3.5" />,          label: 'admin.billing.whatsappSmsBot' },
-  { icon: <Truck className="h-3.5 w-3.5" />,        label: 'admin.billing.deliveryZoneSetup' },
-  { icon: <Users className="h-3.5 w-3.5" />,        label: 'admin.billing.staffManagement' },
-  { icon: <Palette className="h-3.5 w-3.5" />,      label: 'admin.billing.storeCustomization' },
-  { icon: <BarChart3 className="h-3.5 w-3.5" />,    label: 'admin.billing.advancedAnalytics' },
-  { icon: <Brain className="h-3.5 w-3.5" />,        label: 'admin.billing.aiFeatures' },
-  { icon: <Tag className="h-3.5 w-3.5" />,          label: 'admin.billing.vouchersDiscounts' },
-  { icon: <Shield className="h-3.5 w-3.5" />,       label: 'admin.billing.automatedNotifications' },
-  { icon: <Headphones className="h-3.5 w-3.5" />,   label: 'admin.billing.prioritySupport' },
+  { icon: <Package className="h-3.5 w-3.5" />,      label: 'pricing.f1' },
+  { icon: <ShoppingCart className="h-3.5 w-3.5" />,  label: 'pricing.f2' },
+  { icon: <Layers className="h-3.5 w-3.5" />,       label: 'pricing.f3' },
+  { icon: <Bot className="h-3.5 w-3.5" />,          label: 'pricing.f4' },
+  { icon: <Truck className="h-3.5 w-3.5" />,        label: 'pricing.f5' },
+  { icon: <Users className="h-3.5 w-3.5" />,        label: 'pricing.f6' },
+  { icon: <Palette className="h-3.5 w-3.5" />,      label: 'pricing.f7' },
+  { icon: <BarChart3 className="h-3.5 w-3.5" />,    label: 'pricing.f8' },
+  { icon: <Brain className="h-3.5 w-3.5" />,        label: 'pricing.f9' },
+  { icon: <Tag className="h-3.5 w-3.5" />,          label: 'pricing.f10' },
+  { icon: <Shield className="h-3.5 w-3.5" />,       label: 'pricing.f14' },
+  { icon: <Headphones className="h-3.5 w-3.5" />,   label: 'pricing.f15' },
 ];
 
 // ─── Main Component ─────────────────────────────────────────────
@@ -185,7 +185,7 @@ const AdminBilling = () => {
             <AlertCircle className="h-4 w-4 text-white" />
           </div>
           <p className="flex-1 text-sm font-bold text-red-700 dark:text-red-300">{t('admin.billing.expiredAlert')}</p>
-          <Link to="/dashboard/chat">
+          <Link to="/chat">
             <Button size="sm" className="h-8 rounded-xl text-xs bg-red-600 hover:bg-red-700 text-white gap-1.5">
               <MessageCircle className="h-3.5 w-3.5" /> {t('admin.billing.contactSupport')}
             </Button>
@@ -243,7 +243,7 @@ const AdminBilling = () => {
                       <Clock className="h-3.5 w-3.5 flex-shrink-0" />
                       {t('admin.billing.trialDaysLeft', { n: daysLeft })}
                     </div>
-                    <Link to="/dashboard/chat">
+                    <Link to="/chat">
                       <Button size="sm" className="h-9 rounded-xl text-xs bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white gap-1.5 shadow-md">
                         <MessageCircle className="h-3.5 w-3.5" /> {t('admin.billing.contactSupportToPay')}
                       </Button>
@@ -257,7 +257,7 @@ const AdminBilling = () => {
                   </div>
                 )}
                 {isExpired && (
-                  <Link to="/dashboard/chat" className="flex-1">
+                  <Link to="/chat" className="flex-1">
                     <Button className="w-full h-9 rounded-xl text-xs bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white gap-1.5 shadow-md">
                       <MessageCircle className="h-3.5 w-3.5" /> {t('admin.billing.contactSupport')}
                     </Button>

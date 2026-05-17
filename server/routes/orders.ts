@@ -621,8 +621,13 @@ export const createClientOrder: RequestHandler = async (req, res) => {
     customer_phone,
     customer_address,
     product_id,
+    variant_id,
     quantity = 1,
     total_price,
+    delivery_type = 'home',
+    shipping_wilaya_id,
+    shipping_commune_id,
+    shipping_hai,
     notes,
     order_source = 'manual',
     source_platform,
@@ -644,9 +649,12 @@ export const createClientOrder: RequestHandler = async (req, res) => {
       insertVals.push(val);
     };
 
-    // Resolve product if given, otherwise use a manual total_price
     let unitPrice = 0;
     let resolvedProductId: number | null = product_id ? Number(product_id) : null;
+    let resolvedVariantId: number | null = variant_id ? Number(variant_id) : null;
+    let resolvedDeliveryType = delivery_type === 'desk' ? 'desk' : 'home';
+    let resolvedWilayaId = shipping_wilaya_id ? Number(shipping_wilaya_id) : null;
+
     if (resolvedProductId) {
       const pRes = await pool.query(
         `SELECT id, price FROM client_store_products WHERE id = $1 AND client_id = $2 LIMIT 1`,
@@ -654,37 +662,78 @@ export const createClientOrder: RequestHandler = async (req, res) => {
       );
       if (pRes.rows.length === 0) return res.status(404).json({ error: 'Product not found in your store' });
       unitPrice = Number(pRes.rows[0].price);
+
+      // Resolve variant if given
+      if (resolvedVariantId) {
+        const vRes = await pool.query(
+          `SELECT id, price, variant_name, color, size FROM product_variants
+           WHERE id = $1 AND product_id = $2 AND client_id = $3 AND is_active = true LIMIT 1`,
+          [resolvedVariantId, resolvedProductId, clientId]
+        );
+        if (vRes.rows.length === 0) return res.status(400).json({ error: 'Variant not found or inactive' });
+        const variant = vRes.rows[0];
+        if (variant.price != null) unitPrice = Number(variant.price);
+        addCol('variant_id', Number(variant.id));
+        addCol('variant_name', variant.variant_name || null);
+        addCol('variant_color', variant.color || null);
+        addCol('variant_size', variant.size || null);
+      }
     }
+
+    const resolvedQty = Math.max(1, Number(quantity) || 1);
+
+    // Resolve delivery fee
+    let deliveryFee = 0;
+    try {
+      const { deliveryFee: df } = await resolveDeliveryFee({
+        clientId: Number(clientId),
+        deliveryType: resolvedDeliveryType,
+        wilayaId: resolvedWilayaId,
+      });
+      deliveryFee = df;
+    } catch {}
 
     const orderTotal = Number.isFinite(Number(total_price)) && Number(total_price) > 0
       ? Number(total_price)
-      : unitPrice * Number(quantity);
+      : (unitPrice * resolvedQty) + deliveryFee;
 
     addCol('client_id', clientId);
     addCol('product_id', resolvedProductId);
-    addCol('quantity', Number(quantity) || 1);
+    addCol('quantity', resolvedQty);
     addCol('total_price', orderTotal);
     addCol('unit_price', unitPrice);
+    addCol('delivery_fee', deliveryFee);
     addCol('customer_name', trimName);
     addCol('customer_phone', trimPhone);
     addCol('shipping_address', typeof customer_address === 'string' ? customer_address.trim() || null : null);
+    addCol('shipping_wilaya_id', resolvedWilayaId);
+    addCol('shipping_commune_id', shipping_commune_id ? Number(shipping_commune_id) : null);
+    addCol('shipping_hai', typeof shipping_hai === 'string' ? shipping_hai.trim() || null : null);
     addCol('notes', typeof notes === 'string' ? notes.trim() || null : null);
 
-    // Auto-detect duplicate: check if this phone already has an active order for this store
+    // Fraud + duplicate detection
     let clientOrderStatus = 'pending';
     try {
-      const dupCheck = await pool.query(
-        `SELECT id FROM store_orders
-         WHERE client_id = $1 AND customer_phone = $2
-           AND status NOT IN ('cancelled','failed','fake','duplicate','completed','delivered','returned')
-         LIMIT 1`,
-        [clientId, trimPhone]
-      );
-      if (dupCheck.rows.length > 0) clientOrderStatus = 'duplicate';
+      const risk = await assessOrderRisk(Number(clientId), trimPhone, customer_address || undefined);
+      if (risk.level === 'critical' || risk.level === 'high') {
+        clientOrderStatus = 'fake';
+      }
     } catch {}
+    if (clientOrderStatus === 'pending') {
+      try {
+        const dupCheck = await pool.query(
+          `SELECT id FROM store_orders
+           WHERE client_id = $1 AND customer_phone = $2
+             AND status NOT IN ('cancelled','failed','fake','duplicate','completed','delivered','returned')
+           LIMIT 1`,
+          [clientId, trimPhone]
+        );
+        if (dupCheck.rows.length > 0) clientOrderStatus = 'duplicate';
+      } catch {}
+    }
     addCol('status', clientOrderStatus);
     addCol('payment_status', 'unpaid');
-    addCol('delivery_type', 'home');
+    addCol('delivery_type', resolvedDeliveryType);
     addCol('order_source', order_source || 'manual');
     addCol('source_platform', source_platform || null);
     addCol('created_at', new Date());

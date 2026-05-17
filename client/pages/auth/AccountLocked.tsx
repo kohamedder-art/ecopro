@@ -102,7 +102,7 @@ const AccountLocked = () => {
 
           {/* Secondary: Contact Support */}
           <button
-            onClick={() => window.open(`mailto:${supportEmail}`)}
+            onClick={() => navigate('/chat')}
             className="w-full bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold py-3 px-4 rounded-lg transition-colors border border-gray-200 dark:border-gray-700"
           >
             {t("accountLocked.contactSupport") || "Contact Support"}
@@ -123,7 +123,7 @@ const AccountLocked = () => {
         {/* Footer text */}
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center text-xs text-gray-500 dark:text-gray-400">
           <p>
-            {t("accountLocked.needHelp") || "Need help?"} <a href="/contact" className="text-blue-600 dark:text-blue-400 hover:underline">{t("accountLocked.contactPage") || "Check our contact page"}</a>
+            {t("accountLocked.needHelp") || "Need help?"} <a href="/chat" className="text-blue-600 dark:text-blue-400 hover:underline">{t("accountLocked.contactSupport") || "Contact Support"}</a>
           </p>
         </div>
       </div>

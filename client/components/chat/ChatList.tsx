@@ -1,7 +1,8 @@
 // Chat List Component - Side Panel with Rich UI
 
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Plus, Search, ArrowLeft, Zap, AlertCircle } from 'lucide-react';
+import { MessageCircle, Plus, Search, AlertCircle } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 interface ChatPreview {
   id: number;
@@ -28,6 +29,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'unread'>('recent');
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadChats();
@@ -79,7 +81,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
   };
 
   const formatTime = (dateString?: string) => {
-    if (!dateString) return 'No messages';
+    if (!dateString) return t('chatList.noMessages');
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
@@ -87,7 +89,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'Now';
+    if (minutes < 1) return t('chatList.now');
     if (minutes < 60) return `${minutes}m`;
     if (hours < 24) return `${hours}h`;
     if (days < 7) return `${days}d`;
@@ -97,7 +99,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
   const getTierBadge = (tier?: string) => {
     const colors: Record<string, string> = {
       bronze: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
-      silver: 'bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-300',
+      silver: 'bg-muted text-foreground',
       gold: 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
     };
     const icons: Record<string, string> = {
@@ -114,19 +116,21 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
     );
   };
 
+  const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
+    <div className="flex flex-col h-full bg-card">
       {/* Header */}
       <div className="px-5 pt-5 pb-3 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-            {userRole === 'admin' ? 'Tickets' : 'Messages'}
+          <h2 className="text-xl font-bold text-card-foreground tracking-tight">
+            {t(userRole === 'admin' ? 'chatList.title.admin' : 'chatList.title.client')}
           </h2>
           {userRole === 'client' && onCreateChat && (
             <button
               onClick={onCreateChat}
               className="w-8 h-8 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center transition shadow-sm"
-              title="New chat"
+              title={t('chatList.newChat')}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -137,13 +141,13 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
         {(userRole === 'admin' || userRole === 'seller') && (
           <div className="space-y-2.5">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search conversations…"
+                placeholder={t('chatList.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder-slate-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 border-0"
+                className="w-full pl-10 pr-4 py-2.5 bg-muted text-foreground placeholder-slate-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 border-0"
               />
             </div>
 
@@ -153,20 +157,20 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
                 className={`text-xs font-medium py-1.5 px-3.5 rounded-full transition ${
                   sortBy === 'recent'
                     ? 'bg-violet-600 text-white shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    : 'bg-muted text-muted-foreground hover:bg-muted'
                 }`}
               >
-                Recent
+                {t('chatList.recent')}
               </button>
               <button
                 onClick={() => setSortBy('unread')}
                 className={`text-xs font-medium py-1.5 px-3.5 rounded-full transition ${
                   sortBy === 'unread'
                     ? 'bg-red-500 text-white shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    : 'bg-muted text-muted-foreground hover:bg-muted'
                 }`}
               >
-                Unread ({chats.reduce((sum, c) => sum + (c.unread_count || 0), 0)})
+                {t('chatList.unread', { count: totalUnread })}
               </button>
             </div>
           </div>
@@ -183,18 +187,31 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
         )}
 
         {loading ? (
-          <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-violet-200 border-t-violet-600 mx-auto mb-3"></div>
-            <p className="text-slate-400 text-sm">Loading…</p>
+          <div className="px-4 py-2 space-y-1">
+            {[1,2,3,4,5].map((i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3.5 animate-pulse">
+                <div className="w-11 h-11 rounded-full bg-muted flex-shrink-0" />
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="h-3.5 bg-muted rounded w-24" />
+                    <div className="h-3 bg-muted rounded w-10" />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="h-3 bg-muted rounded w-40" />
+                    <div className="h-5 bg-muted rounded-full w-12" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredChats.length === 0 ? (
           <div className="p-12 text-center">
-            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center mx-auto mb-3">
-              <MessageCircle className="w-6 h-6 text-slate-400 dark:text-slate-600" />
+            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+              <MessageCircle className="w-6 h-6 text-muted-foreground" />
             </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No conversations</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              {searchTerm ? 'Try a different search' : 'Start a new conversation'}
+            <p className="text-sm font-medium text-muted-foreground">{t('chatList.noConversations')}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {searchTerm ? t('chatList.tryDifferentSearch') : t('chatList.startNewConversation')}
             </p>
           </div>
         ) : (
@@ -203,8 +220,8 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
               const isSelected = selectedChatId === chat.id;
               const hasUnread = (chat.unread_count || 0) > 0;
               const displayName = (userRole === 'admin' || userRole === 'seller')
-                ? (chat.client_name || 'Unknown')
-                : 'Support Team';
+                ? (chat.client_name || t('chatList.unknown'))
+                : t('chatList.supportTeam');
               const initials = displayName.slice(0, 2).toUpperCase();
 
               return (
@@ -214,7 +231,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
                   className={`w-full px-4 py-3.5 text-left flex items-center gap-3 transition-colors ${
                     isSelected
                       ? 'bg-violet-50 dark:bg-violet-500/10'
-                      : 'hover:bg-slate-50 dark:hover:bg-white/[0.03]'
+                      : 'hover:bg-muted'
                   }`}
                 >
                   {/* Avatar */}
@@ -229,16 +246,16 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-0.5">
-                      <p className={`truncate text-sm ${hasUnread ? 'font-bold text-slate-900 dark:text-white' : 'font-medium text-slate-700 dark:text-slate-200'}`}>
+                      <p className={`truncate text-sm ${hasUnread ? 'font-bold text-card-foreground' : 'font-medium text-foreground'}`}>
                         {displayName}
                       </p>
-                      <span className={`text-[11px] flex-shrink-0 ${hasUnread ? 'text-violet-600 dark:text-violet-400 font-semibold' : 'text-slate-400'}`}>
+                      <span className={`text-[11px] flex-shrink-0 ${hasUnread ? 'text-violet-600 dark:text-violet-400 font-semibold' : 'text-muted-foreground'}`}>
                         {formatTime(chat.last_message_at)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <p className={`text-xs truncate ${hasUnread ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>
-                        {chat.tier ? `${chat.tier.charAt(0).toUpperCase() + chat.tier.slice(1)} Plan` : (chat.client_email || 'Tap to view messages')}
+                      <p className={`text-xs truncate ${hasUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {chat.client_email || t('chatList.tapToView')}
                       </p>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {chat.status && chat.status !== 'active' && (

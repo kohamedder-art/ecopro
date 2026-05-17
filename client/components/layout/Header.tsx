@@ -82,7 +82,7 @@ export default function Header() {
   const navLinks = [
     { name: t("menu.pricing") || "الأسعار", href: "/pricing", icon: CreditCard },
     { name: t("menu.about") || "حولنا", href: "/about", icon: Info },
-    { name: t("features.support") || "الدعم", href: "/contact", icon: Headset },
+    { name: t("features.support") || "الدعم", href: "/chat", icon: Headset },
   ];
 
   const getDashboardLink = () => {

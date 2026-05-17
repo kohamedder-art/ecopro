@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ChatList, ChatWindow } from '../../components/chat';
 import { apiFetch } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
+import { MessageCircle } from 'lucide-react';
 
 interface User {
   id: number;
@@ -91,10 +92,24 @@ export function ChatPage() {
 
   if (loading || creatingChat) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50 overflow-hidden">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">{creatingChat ? (t("chat.connecting") || 'Connecting to support...') : (t("chat.loading") || 'Loading...')}</p>
+      <div className="flex items-center justify-center h-screen bg-background overflow-hidden">
+        <div className="space-y-4 w-full max-w-md px-6">
+          <div className="flex items-center gap-3 animate-pulse">
+            <div className="w-11 h-11 rounded-full bg-muted flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3.5 bg-muted rounded w-24" />
+              <div className="h-3 bg-muted rounded w-40" />
+            </div>
+          </div>
+          {[1,2,3].map(i => (
+            <div key={i} className="flex items-center gap-3 animate-pulse">
+              <div className="w-11 h-11 rounded-full bg-muted flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3.5 bg-muted rounded w-32" />
+                <div className="h-3 bg-muted rounded w-48" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -102,11 +117,14 @@ export function ChatPage() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50 overflow-hidden">
+      <div className="flex items-center justify-center h-screen bg-background overflow-hidden">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Please log in to access chat</p>
-          <a href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-            Go to Login
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <MessageCircle className="w-7 h-7 text-muted-foreground" />
+          </div>
+          <p className="text-muted-foreground mb-4">{t('chatPage.loginRequired')}</p>
+          <a href="/login" className="text-primary hover:text-primary/80 font-medium">
+            {t('chatPage.goToLogin')}
           </a>
         </div>
       </div>
@@ -117,9 +135,9 @@ export function ChatPage() {
   const userId = user.clientId || user.sellerId || 0;
 
   return (
-    <div className="flex w-full h-full bg-white dark:bg-slate-950 overflow-hidden">
+    <div className="flex w-full h-full bg-card overflow-hidden">
       {/* Sidebar — chat list */}
-      <div className={`w-full md:w-[360px] lg:w-[380px] border-r border-slate-200 dark:border-slate-800 flex flex-col min-h-0 flex-shrink-0 ${
+      <div className={`w-full md:w-[360px] lg:w-[380px] border-r border-border flex flex-col min-h-0 flex-shrink-0 ${
         selectedChatId ? 'hidden md:flex' : 'flex'
       }`}>
         <ChatList
@@ -141,18 +159,16 @@ export function ChatPage() {
             onClose={() => setSelectedChatId(null)}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900/50">
+          <div className="flex-1 flex items-center justify-center bg-muted">
             <div className="text-center px-6 max-w-sm">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-500/10 dark:to-purple-500/10 flex items-center justify-center mx-auto mb-5">
                 <svg className="w-9 h-9 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
               </div>
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-1.5">
-                {userRole === 'seller' ? 'Select a conversation' : 'Welcome to Support'}
+              <h3 className="text-lg font-semibold text-card-foreground mb-1.5">
+                {t(userRole === 'seller' ? 'chatPage.selectConversation' : 'chatPage.welcomeSupport')}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                {userRole === 'seller'
-                  ? 'Choose a customer from the sidebar to view and respond to their messages'
-                  : 'Send us a message and we\'ll get back to you as soon as possible'}
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {t(userRole === 'seller' ? 'chatPage.selectHint' : 'chatPage.welcomeHint')}
               </p>
             </div>
           </div>

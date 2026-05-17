@@ -519,25 +519,25 @@ export default function AdminBotSettings() {
 
             <details className="group">
               <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو بوت تحديثات الطلب؟' : 'What is the Order Updates Bot?'}</span>
+                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو بوت التحديثات؟' : 'What is the Updates Bot?'}</span>
                 <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
               </summary>
               <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 {isRTL 
-                  ? 'يرسل البوت إشعارات للعملاء عند تغيير حالة الطلب - مثل تأكيد الدفع، الشحن، أو التسليم. يساعد هذا العملاء على متابعة طلباتهم في الوقت الفعلي.'
-                  : 'The bot sends notifications to customers when order status changes - like payment confirmation, shipping, or delivery. This helps customers track their orders in real-time.'}
+                  ? 'ينشئ البوت حملات تسويقية للعملاء - مثل إرسال عروض الخصم أو إشعارات وصول منتجات جديدة لتشجيعهم على العودة للتسوق مرة أخرى. يمكنك اختيار من تريد إرسال الحملة له، مثلاً الإرسال لكل العملاء.'
+                  : 'The bot creates marketing campaigns for customers - like sending discount offers or new product arrival notifications to encourage them to come back and shop again. You can choose who to send the campaign to, for example all customers.'}
               </div>
             </details>
 
             <details className="group">
               <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو بوت تتبع الشحن؟' : 'What is the Tracking Bot?'}</span>
+                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو بوت التتبع والتوصيل؟' : 'What is the Tracking & Delivery Bot?'}</span>
                 <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
               </summary>
               <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 {isRTL 
-                  ? 'يقدم البوت معلومات تتبع الشحن للعملاء. عند إضافة رقم تتبع للطلب، يستطيع العملاء الاستعلام عن موقع شحنتهم في أي وقت.'
-                  : 'The bot provides shipping tracking information to customers. When you add a tracking number to an order, customers can inquire about their shipment location at any time.'}
+                  ? 'يرسل البوت إشعارات للعملاء عند تغيير حالة الطلب - مثل تأكيد الدفع، الشحن، أو التسليم. يساعد هذا العملاء على متابعة طلباتهم في الوقت الفعلي. كما يقدم معلومات تتبع الشحن، فعند إضافة رقم تتبع للطلب، يستطيع العملاء الاستعلام عن موقع شحنتهم في أي وقت.'
+                  : 'The bot sends notifications to customers when order status changes - like payment confirmation, shipping, or delivery. This helps customers track their orders in real-time. It also provides shipping tracking information — when you add a tracking number, customers can check their shipment location at any time.'}
               </div>
             </details>
 

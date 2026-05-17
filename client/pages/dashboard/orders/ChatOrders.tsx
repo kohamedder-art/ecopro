@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getAlgeriaCommunesByWilayaId, getAlgeriaWilayas } from "@/lib/algeriaGeo";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ChatOrder {
@@ -22,6 +23,8 @@ interface ChatOrder {
   status: string;
   delivery_type: string;
   shipping_address: string;
+  shipping_wilaya_id?: number | null;
+  shipping_commune_id?: number | null;
   source_platform: string;
   tracking_number?: string;
   delivery_status?: string;
@@ -112,6 +115,7 @@ export default function ChatOrders() {
   const [orders,         setOrders]         = useState<ChatOrder[]>([]);
   const [total,          setTotal]           = useState(0);
   const [loading,        setLoading]         = useState(true);
+  const [loadingMore,    setLoadingMore]     = useState(false);
   const [isRefreshing,   setIsRefreshing]    = useState(false);
   const [search,         setSearch]          = useState("");
   const [platformFilter, setPlatformFilter]  = useState("all");
@@ -127,10 +131,14 @@ export default function ChatOrders() {
   const [toast,          setToast]           = useState<{ text: string; ok: boolean } | null>(null);
   const [showEditModal,  setShowEditModal]   = useState(false);
   const [editingOrder,   setEditingOrder]    = useState<ChatOrder | null>(null);
-  const [editForm,       setEditForm]        = useState({ customer_name: "", customer_phone: "", shipping_address: "" });
+  const [editForm,       setEditForm]        = useState({ customer_name: "", customer_phone: "", shipping_address: "", quantity: 1, delivery_type: "home", shipping_wilaya_id: "", shipping_commune_id: "" });
   const [savingEdit,     setSavingEdit]      = useState(false);
   const [deliveryOrder,  setDeliveryOrder]   = useState<ChatOrder | null>(null);
+  const [hasMore,        setHasMore]         = useState(false);
+  const [confirmStatus,  setConfirmStatus]   = useState<{ orderId: number; status: string } | null>(null);
   const prevCountRef = useRef(0);
+  const offsetRef = useRef(0);
+  const LIMIT = 50;
 
   const showToast = (text: string, ok = true) => {
     setToast({ text, ok });
@@ -145,30 +153,42 @@ export default function ChatOrders() {
   };
 
   // ── Load ──
-  const load = useCallback(async (silent = false) => {
+  const load = useCallback(async (silent = false, append = false) => {
     if (!silent) { setIsRefreshing(true); setLoading(true); }
+    if (append) setLoadingMore(true);
     try {
-      const params = new URLSearchParams({ limit: "200" });
+      const params = new URLSearchParams({ limit: String(LIMIT) });
       if (platformFilter !== "all") params.set("platform", platformFilter);
+      if (append) params.set("offset", String(offsetRef.current));
       const res  = await fetch(`/api/client/orders/chat?${params}`, { credentials: "include" });
       const data = await res.json();
       const arr  = data.orders || [];
-      setOrders(arr);
+      setOrders(prev => append ? [...prev, ...arr] : arr);
       setTotal(data.total || arr.length);
+      setHasMore(data.hasMore || false);
+      if (!append) offsetRef.current = arr.length;
+      else offsetRef.current += arr.length;
     } catch {
-      setOrders([]);
+      if (!append) setOrders([]);
     } finally {
       setIsRefreshing(false);
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [platformFilter]);
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Poll 30 s ──
+  // ── Poll 30 s, pause when tab hidden ──
   useEffect(() => {
-    const id = setInterval(() => load(true), 30000);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval>;
+    const tick = () => {
+      if (!document.hidden) load(true);
+    };
+    id = setInterval(tick, 30000);
+    const onVis = () => { if (!document.hidden) load(true); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVis); };
   }, [load]);
 
   // ── New-order badge ──
@@ -181,8 +201,17 @@ export default function ChatOrders() {
 
   // ── Update status ──
   const updateStatus = async (orderId: number, newStatus: string) => {
+    if (["cancelled", "fake"].includes(newStatus)) {
+      setConfirmStatus({ orderId, status: newStatus });
+      return;
+    }
+    await doUpdateStatus(orderId, newStatus);
+  };
+
+  const doUpdateStatus = async (orderId: number, newStatus: string) => {
     setActionLoading(orderId);
     setStatusDropdown(null);
+    setConfirmStatus(null);
     try {
       const csrf = document.cookie.match(/ecopro_csrf=([^;]*)/)?.[1] || "";
       const res = await fetch(`/api/client/orders/${orderId}/status`, {
@@ -227,7 +256,15 @@ export default function ChatOrders() {
   // ── Edit order ──
   const openEdit = (o: ChatOrder) => {
     setEditingOrder(o);
-    setEditForm({ customer_name: o.customer_name || "", customer_phone: o.customer_phone || "", shipping_address: o.shipping_address || "" });
+    setEditForm({
+      customer_name: o.customer_name || "",
+      customer_phone: o.customer_phone || "",
+      shipping_address: o.shipping_address || "",
+      quantity: o.quantity,
+      delivery_type: o.delivery_type || "home",
+      shipping_wilaya_id: o.shipping_wilaya_id != null ? String(o.shipping_wilaya_id) : "",
+      shipping_commune_id: o.shipping_commune_id != null ? String(o.shipping_commune_id) : "",
+    });
     setShowEditModal(true);
   };
 
@@ -236,14 +273,36 @@ export default function ChatOrders() {
     setSavingEdit(true);
     try {
       const csrf = document.cookie.match(/ecopro_csrf=([^;]*)/)?.[1] || "";
+      const body: Record<string, any> = {
+        customer_name: editForm.customer_name,
+        customer_phone: editForm.customer_phone,
+        shipping_address: editForm.shipping_address,
+        quantity: editForm.quantity,
+        delivery_type: editForm.delivery_type,
+      };
+      if (editForm.shipping_wilaya_id) body.shipping_wilaya_id = Number(editForm.shipping_wilaya_id);
+      if (editForm.shipping_commune_id) body.shipping_commune_id = Number(editForm.shipping_commune_id);
       const res = await fetch(`/api/client/orders/${editingOrder.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": decodeURIComponent(csrf) },
         credentials: "include",
-        body: JSON.stringify({ customer_name: editForm.customer_name, customer_phone: editForm.customer_phone, shipping_address: editForm.shipping_address }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error();
-      setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...editForm } : o));
+      const updated = await res.json();
+      setOrders(prev => prev.map(o => o.id === editingOrder.id ? {
+        ...o,
+        customer_name: updated.customer_name ?? editForm.customer_name,
+        customer_phone: updated.customer_phone ?? editForm.customer_phone,
+        shipping_address: updated.shipping_address ?? editForm.shipping_address,
+        quantity: Number(updated.quantity ?? editForm.quantity),
+        delivery_type: updated.delivery_type ?? editForm.delivery_type,
+        total_price: Number(updated.total_price ?? o.total_price),
+        unit_price: Number(updated.unit_price ?? o.unit_price),
+        delivery_fee: Number(updated.delivery_fee ?? o.delivery_fee),
+        shipping_wilaya_id: updated.shipping_wilaya_id ?? o.shipping_wilaya_id,
+        shipping_commune_id: updated.shipping_commune_id ?? o.shipping_commune_id,
+      } : o));
       setShowEditModal(false);
       setEditingOrder(null);
       showToast("✓ تم حفظ التعديلات");
@@ -452,12 +511,54 @@ export default function ChatOrders() {
         {/* ── Body ── */}
         <div className="overflow-x-auto">
           {loading && (
-            <div className="p-8 text-center">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-violet-500/10 mb-3">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-violet-500" />
+            <>
+              {/* Desktop skeleton */}
+              <div className="hidden lg:block">
+                <table className="w-full text-sm font-semibold">
+                  <thead>
+                    <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
+                      {["الصورة", "رقم الطلب", "المنصة", "المنتج", "العميل", "المبلغ", "الحالة", "الوقت", ""].map(h => (
+                        <th key={h} className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <tr key={i} className="border-b border-border/30">
+                        <td className="px-3 py-2.5"><div className="w-11 h-11 rounded-xl bg-muted/60 animate-pulse ml-auto" /></td>
+                        <td className="px-3 py-2.5"><div className="h-5 w-20 rounded-md bg-muted/60 animate-pulse" /></td>
+                        <td className="px-3 py-2.5"><div className="h-5 w-16 rounded-full bg-muted/60 animate-pulse" /></td>
+                        <td className="px-3 py-2.5"><div className="h-5 w-32 rounded bg-muted/60 animate-pulse" /></td>
+                        <td className="px-3 py-2.5"><div className="h-5 w-24 rounded bg-muted/60 animate-pulse" /></td>
+                        <td className="px-3 py-2.5"><div className="h-5 w-14 rounded bg-muted/60 animate-pulse" /></td>
+                        <td className="px-3 py-2.5"><div className="h-5 w-16 rounded-full bg-muted/60 animate-pulse" /></td>
+                        <td className="px-3 py-2.5"><div className="h-5 w-12 rounded bg-muted/60 animate-pulse" /></td>
+                        <td className="px-2 py-2.5"><div className="h-4 w-4 rounded bg-muted/60 animate-pulse" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <p className="text-xs text-muted-foreground">جارٍ تحميل الطلبات...</p>
-            </div>
+              {/* Mobile skeleton */}
+              <div className="lg:hidden space-y-3 p-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="rounded-2xl border border-border/50 bg-card p-3 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-xl bg-muted/60 animate-pulse shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-24 rounded bg-muted/60 animate-pulse" />
+                        <div className="h-3 w-40 rounded bg-muted/60 animate-pulse" />
+                        <div className="h-3 w-16 rounded bg-muted/60 animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="h-5 w-20 rounded bg-muted/60 animate-pulse" />
+                      <div className="h-5 w-16 rounded-full bg-muted/60 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           {!loading && orders.length === 0 && (
@@ -843,16 +944,16 @@ export default function ChatOrders() {
                           </button>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 relative">
                         <button
-                          onClick={() => setStatusDropdown(statusDropdown === o.id ? null : o.id)}
+                          onClick={(e) => { e.stopPropagation(); setStatusDropdown(statusDropdown === o.id ? null : o.id); }}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold"
                           style={{ color: sm.color, background: `${sm.color}18`, border: `1px solid ${sm.color}30` }}
                         >
                           {sm.icon} {sm.label}
                         </button>
                         {statusDropdown === o.id && (
-                          <div className="absolute mt-8 z-30 bg-card border border-border rounded-xl shadow-xl py-1 min-w-[140px]">
+                          <div className="absolute top-full mt-1 right-0 z-30 bg-card border border-border rounded-xl shadow-xl py-1 min-w-[140px]">
                             {STATUS_OPTIONS.map(opt => (
                               <button
                                 key={opt.value}
@@ -966,69 +1067,175 @@ export default function ChatOrders() {
             <span className="text-xs text-muted-foreground">
               عرض <strong>{filtered.length}</strong> من <strong>{total}</strong> طلب
             </span>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Bot className="w-3 h-3 text-violet-500" />
-              مصدر: الذكاء الاصطناعي
-            </span>
+            <div className="flex items-center gap-2">
+              {hasMore && (
+                <button
+                  onClick={() => load(true, true)}
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-border bg-background text-xs font-bold hover:bg-muted transition-all disabled:opacity-50"
+                >
+                  {loadingMore ? (
+                    <span className="w-3 h-3 border-2 border-violet-400/40 border-t-violet-500 rounded-full animate-spin" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3" />
+                  )}
+                  تحميل المزيد
+                </button>
+              )}
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Bot className="w-3 h-3 text-violet-500" />
+                مصدر: الذكاء الاصطناعي
+              </span>
+            </div>
           </div>
         )}
       </div>
 
       {/* ── Edit order modal ── */}
       <Dialog open={showEditModal} onOpenChange={v => { if (!v) { setShowEditModal(false); setEditingOrder(null); } }}>
-        <DialogContent dir="rtl" className="max-w-md">
+        <DialogContent dir="rtl" className="max-w-lg max-h-[85dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit3 className="w-4 h-4 text-blue-500" />
               تعديل الطلب {editingOrder ? `ORD-${String(editingOrder.id).padStart(3,"0")}` : ""}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-muted-foreground">اسم الزبون</label>
-              <input
-                value={editForm.customer_name}
-                onChange={e => setEditForm(p => ({ ...p, customer_name: e.target.value }))}
-                className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                placeholder="اسم الزبون"
-              />
+          {editingOrder && (
+            <div className="space-y-4 pt-2">
+              {/* Product summary (read-only) */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/50">
+                {editingOrder.product_images?.[0] ? (
+                  <img src={editingOrder.product_images[0]} alt="" className="w-12 h-12 rounded-lg object-cover border border-border/40" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-muted/60 flex items-center justify-center"><ShoppingBag className="w-5 h-5 text-muted-foreground/50" /></div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate">{editingOrder.product_title}</p>
+                  {editingOrder.variant_name && <p className="text-xs text-muted-foreground">{editingOrder.variant_name}</p>}
+                  {(editingOrder.variant_color || editingOrder.variant_size) && (
+                    <p className="text-xs text-muted-foreground">
+                      {editingOrder.variant_color && <span className="inline-block w-2 h-2 rounded-full mr-1 align-middle" style={{ backgroundColor: editingOrder.variant_color }}></span>}
+                      {editingOrder.variant_color}{editingOrder.variant_size ? ` / ${editingOrder.variant_size}` : ''}
+                    </p>
+                  )}
+                </div>
+                <span className="text-sm font-black">{fmtPrice(Number(editingOrder.unit_price))} دج</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground">اسم الزبون</label>
+                  <input
+                    value={editForm.customer_name}
+                    onChange={e => setEditForm(p => ({ ...p, customer_name: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    placeholder="اسم الزبون"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground">رقم الهاتف</label>
+                  <input
+                    value={editForm.customer_phone}
+                    onChange={e => setEditForm(p => ({ ...p, customer_phone: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    placeholder="رقم الهاتف"
+                    dir="ltr"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground">الولاية</label>
+                  <select
+                    value={editForm.shipping_wilaya_id}
+                    onChange={e => setEditForm(p => ({ ...p, shipping_wilaya_id: e.target.value, shipping_commune_id: "" }))}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  >
+                    <option value="">اختر الولاية</option>
+                    {getAlgeriaWilayas().map(w => (
+                      <option key={w.id} value={String(w.id)}>{String(w.code).padStart(2, '0')} - {w.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground">البلدية</label>
+                  <select
+                    value={editForm.shipping_commune_id}
+                    onChange={e => setEditForm(p => ({ ...p, shipping_commune_id: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-50"
+                    disabled={!editForm.shipping_wilaya_id}
+                  >
+                    <option value="">اختر البلدية</option>
+                    {getAlgeriaCommunesByWilayaId(editForm.shipping_wilaya_id).map(c => (
+                      <option key={c.id} value={String(c.id)}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground">العنوان التفصيلي</label>
+                  <input
+                    value={editForm.shipping_address}
+                    onChange={e => setEditForm(p => ({ ...p, shipping_address: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    placeholder="الحي، الشارع، رقم البناية..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground">الكمية</label>
+                  <div className="flex h-9">
+                    <button
+                      onClick={() => setEditForm(p => ({ ...p, quantity: Math.max(1, p.quantity - 1) }))}
+                      className="w-9 rounded-r-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-sm font-bold transition-all"
+                    >−</button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={9999}
+                      value={editForm.quantity}
+                      onChange={e => setEditForm(p => ({ ...p, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                      className="flex-1 h-full border-y border-border bg-muted/30 text-sm text-center font-bold tabular-nums focus:outline-none"
+                      style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                    />
+                    <button
+                      onClick={() => setEditForm(p => ({ ...p, quantity: Math.min(9999, p.quantity + 1) }))}
+                      className="w-9 rounded-l-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-sm font-bold transition-all"
+                    >+</button>
+                  </div>
+                  {editingOrder && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      المجموع: <strong className="text-foreground">{fmtPrice(Number(editingOrder.unit_price) * editForm.quantity + Number(editingOrder.delivery_fee || 0))} دج</strong>
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground">نوع التوصيل</label>
+                  <select
+                    value={editForm.delivery_type}
+                    onChange={e => setEditForm(p => ({ ...p, delivery_type: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  >
+                    <option value="home">🏠 توصيل للمنزل</option>
+                    <option value="desk">🏪 توصيل للمكتب</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={saveEdit}
+                  disabled={savingEdit}
+                  className="flex-1 h-10 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  حفظ التعديلات
+                </button>
+                <button
+                  onClick={() => { setShowEditModal(false); setEditingOrder(null); }}
+                  className="h-10 px-4 rounded-xl border border-border text-sm font-bold hover:bg-muted transition-all"
+                >
+                  إلغاء
+                </button>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-muted-foreground">رقم الهاتف</label>
-              <input
-                value={editForm.customer_phone}
-                onChange={e => setEditForm(p => ({ ...p, customer_phone: e.target.value }))}
-                className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                placeholder="رقم الهاتف"
-                dir="ltr"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-muted-foreground">عنوان التوصيل</label>
-              <input
-                value={editForm.shipping_address}
-                onChange={e => setEditForm(p => ({ ...p, shipping_address: e.target.value }))}
-                className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                placeholder="العنوان"
-              />
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={saveEdit}
-                disabled={savingEdit}
-                className="flex-1 h-10 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-              >
-                {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                حفظ التعديلات
-              </button>
-              <button
-                onClick={() => { setShowEditModal(false); setEditingOrder(null); }}
-                className="h-10 px-4 rounded-xl border border-border text-sm font-bold hover:bg-muted transition-all"
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -1056,6 +1263,40 @@ export default function ChatOrders() {
               onDeliveryAssigned={() => { setDeliveryOrder(null); load(); showToast("✓ تم رفع الطلب للتوصيل"); }}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Confirm destructive status change ── */}
+      <Dialog open={!!confirmStatus} onOpenChange={v => { if (!v) setConfirmStatus(null); }}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              {confirmStatus?.status === "cancelled" ? "تأكيد إلغاء الطلب" : "تأكيد الطلب المشبوه"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">
+              {confirmStatus?.status === "cancelled"
+                ? "هل أنت متأكد من إلغاء هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء."
+                : "هل أنت متأكد من وضع هذا الطلب كمشبوه؟ لا يمكن التراجع عن هذا الإجراء."}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => confirmStatus && doUpdateStatus(confirmStatus.orderId, confirmStatus.status)}
+                className="flex-1 h-10 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all"
+              >
+                <CheckCircle className="w-4 h-4" />
+                {confirmStatus?.status === "cancelled" ? "تأكيد الإلغاء" : "تأكيد كمشبوه"}
+              </button>
+              <button
+                onClick={() => setConfirmStatus(null)}
+                className="h-10 px-4 rounded-xl border border-border text-sm font-bold hover:bg-muted transition-all"
+              >
+                رجوع
+              </button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

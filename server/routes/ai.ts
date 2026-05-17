@@ -1086,13 +1086,17 @@ router.post('/faq', publicAiLimiter, async (req: Request, res: Response) => {
     if (!question) return res.status(400).json({ error: 'question is required' });
 
     const context = `
-EcoPro is an Algerian e-commerce platform where store owners create online storefronts.
-- Store owners pay $7/month after a 30-day free trial
-- Products support variants (size, color, etc.)
-- Delivery is Cash on Delivery (COD)
-- Orders are confirmed via WhatsApp
-- Staff can be added with specific permissions
-- Affiliates can refer new stores and earn commissions
+Sahla4Eco is an Algerian e-commerce SaaS platform (sahla4eco.com). Store owners create professional storefronts in minutes — no coding required.
+- Pricing: $7/month after a 30-day free trial
+- 8 storefront templates, all mobile-first (99% of traffic is mobile), with dynamic colors/themes
+- Products: unlimited products, variants (size/color), stock management, bulk import
+- Delivery: COD (Cash on Delivery) with delivery zones/prices per wilaya (58 wilayas)
+- Orders: managed via dashboard, auto-confirmed via Telegram/Messenger/WhatsApp bots
+- AI assistant: built-in AI helps manage orders, products, analytics, and answers customer questions
+- Staff: add staff with specific permissions
+- Affiliates: refer new stores, earn commissions
+- Marketing: Facebook & TikTok pixel tracking, promo codes, image split for product showcases
+- Integrations: Telegram bot, Facebook Messenger, WhatsApp Cloud API
     `.trim();
 
     const prompt = `${context}
@@ -1779,7 +1783,7 @@ EcoPro: Algerian e-commerce SaaS. Subscription $7/month. Store owners manage the
     }
 
     // ── Public / unauthenticated — same as /faq ──
-    const context = `EcoPro is an Algerian e-commerce platform. Store owners create storefronts, sell products, manage orders via WhatsApp. Delivery is COD.`;
+    const context = `Sahla4Eco is an Algerian e-commerce SaaS platform (sahla4eco.com). Store owners create mobile-first storefronts with 8 templates, dynamic colors, AI assistant, delivery to 58 wilayas, COD payment, Telegram/Messenger/WhatsApp bots, pixel tracking, and staff management. $7/month after 30-day free trial.`;
     const prompt = `${context}\n\nUser asked: "${question}"\n\nAnswer in 2-3 sentences. Respond in the language of the question.`;
     const answer = await generateText('public', prompt);
     return res.json({ answer });
@@ -3351,6 +3355,235 @@ router.post('/test-customer', authAiLimiter, async (req: Request, res: Response)
     }
     
     return res.json({ answer: response });
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+/**
+ * GET /api/ai/persona
+ * Load the AI persona configuration for the authenticated store owner.
+ */
+router.get('/persona', authenticate, requireClient, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id;
+    const result = await pool.query(
+      `SELECT * FROM ai_personas WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+    if (!result.rows.length) {
+      return res.json({
+        persona_name: 'المساعد الافتراضي',
+        tone: 'friendly',
+        personality_note: '',
+        business_type: '',
+        expertise_areas: [],
+        primary_language: 'ar',
+        use_emojis: true,
+        emoji_style: 'minimal',
+        store_story: '',
+        product_philosophy: '',
+        unique_selling_points: [],
+        forbidden_topics: [],
+        competitor_policy: 'ignore',
+        upsell_enabled: true,
+        cross_sell_enabled: true,
+        discount_policy: '',
+        urgency_enabled: false,
+        response_length: 'medium',
+        greeting_template: '',
+        closing_template: '',
+        faq_entries: [],
+        common_objections: [],
+      });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+/**
+ * PUT /api/ai/persona
+ * Save the AI persona configuration.
+ */
+router.put('/persona', authenticate, requireClient, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id;
+    const {
+      persona_name, tone, personality_note, business_type, expertise_areas,
+      primary_language, use_emojis, emoji_style,
+      store_story, product_philosophy, unique_selling_points,
+      forbidden_topics, competitor_policy,
+      upsell_enabled, cross_sell_enabled, discount_policy, urgency_enabled,
+      response_length, greeting_template, closing_template,
+      faq_entries, common_objections,
+    } = req.body;
+
+    await pool.query(
+      `INSERT INTO ai_personas (
+        client_id, persona_name, tone, personality_note, business_type, expertise_areas,
+        primary_language, use_emojis, emoji_style,
+        store_story, product_philosophy, unique_selling_points,
+        forbidden_topics, competitor_policy,
+        upsell_enabled, cross_sell_enabled, discount_policy, urgency_enabled,
+        response_length, greeting_template, closing_template,
+        faq_entries, common_objections
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+      ON CONFLICT (client_id) DO UPDATE SET
+        persona_name = COALESCE($2, ai_personas.persona_name),
+        tone = COALESCE($3, ai_personas.tone),
+        personality_note = $4,
+        business_type = $5,
+        expertise_areas = COALESCE($6, ai_personas.expertise_areas),
+        primary_language = COALESCE($7, ai_personas.primary_language),
+        use_emojis = COALESCE($8, ai_personas.use_emojis),
+        emoji_style = COALESCE($9, ai_personas.emoji_style),
+        store_story = $10,
+        product_philosophy = $11,
+        unique_selling_points = COALESCE($12, ai_personas.unique_selling_points),
+        forbidden_topics = COALESCE($13, ai_personas.forbidden_topics),
+        competitor_policy = COALESCE($14, ai_personas.competitor_policy),
+        upsell_enabled = COALESCE($15, ai_personas.upsell_enabled),
+        cross_sell_enabled = COALESCE($16, ai_personas.cross_sell_enabled),
+        discount_policy = $17,
+        urgency_enabled = COALESCE($18, ai_personas.urgency_enabled),
+        response_length = COALESCE($19, ai_personas.response_length),
+        greeting_template = $20,
+        closing_template = $21,
+        faq_entries = COALESCE($22, ai_personas.faq_entries),
+        common_objections = COALESCE($23, ai_personas.common_objections),
+        updated_at = NOW()`,
+      [
+        clientId,
+        persona_name || 'المساعد الافتراضي',
+        tone || 'friendly',
+        personality_note || null,
+        business_type || null,
+        JSON.stringify(expertise_areas || []),
+        primary_language || 'ar',
+        use_emojis !== false,
+        emoji_style || 'minimal',
+        store_story || null,
+        product_philosophy || null,
+        JSON.stringify(unique_selling_points || []),
+        JSON.stringify(forbidden_topics || []),
+        competitor_policy || 'ignore',
+        upsell_enabled !== false,
+        cross_sell_enabled !== false,
+        discount_policy || null,
+        urgency_enabled === true,
+        response_length || 'medium',
+        greeting_template || null,
+        closing_template || null,
+        JSON.stringify(faq_entries || []),
+        JSON.stringify(common_objections || []),
+      ]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+/**
+ * POST /api/ai/persona/test
+ * Test the customer AI with a message, using the current persona.
+ */
+router.post('/persona/test', authenticate, requireClient, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id;
+    const { message } = req.body;
+    if (!message) return res.status(400).json({ error: 'message is required' });
+
+    // Load store context (same as ai-customer.ts)
+    const storeRes = await pool.query(
+      `SELECT store_name, store_description, store_slug FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+    if (!storeRes.rows.length) return res.status(404).json({ error: 'Store not found' });
+    const { store_name, store_description, store_slug } = storeRes.rows[0];
+
+    // Load products
+    const productsRes = await pool.query(
+      `SELECT title, price, original_price, description, category, stock_quantity
+       FROM client_store_products WHERE client_id = $1 AND status = 'active' ORDER BY is_featured DESC NULLS LAST LIMIT 10`,
+      [clientId]
+    );
+    const products = productsRes.rows.map((p: any) => ({
+      title: p.title, price: Number(p.price),
+      originalPrice: p.original_price ? Number(p.original_price) : undefined,
+      description: p.description?.slice(0, 200), category: p.category,
+      inStock: (p.stock_quantity ?? 1) > 0,
+    }));
+
+    // Load delivery
+    const delRes = await pool.query(
+      `SELECT COUNT(*) as zones, MIN(home_delivery_price) as min_p, MAX(home_delivery_price) as max_p
+       FROM delivery_prices WHERE client_id = $1 AND is_active = true`,
+      [clientId]
+    );
+    const d = delRes.rows[0];
+    const deliveryInfo = d?.zones > 0
+      ? `التوصيل متاح إلى ${d.zones} ولاية. سعر التوصيل من ${d.min_p} إلى ${d.max_p} دج.`
+      : 'معلومات التوصيل غير متوفرة حالياً.';
+
+    // Load persona
+    const personaRes = await pool.query(`SELECT * FROM ai_personas WHERE client_id = $1 LIMIT 1`, [clientId]);
+    let personaObj: any = undefined;
+    if (personaRes.rows.length) {
+      const p = personaRes.rows[0];
+      personaObj = {
+        personaName: p.persona_name,
+        tone: p.tone,
+        personalityNote: p.personality_note,
+        businessType: p.business_type,
+        primaryLanguage: p.primary_language,
+        useEmojis: p.use_emojis,
+        emojiStyle: p.emoji_style,
+        storeStory: p.store_story,
+        productPhilosophy: p.product_philosophy,
+        uniqueSellingPoints: p.unique_selling_points || [],
+        discountPolicy: p.discount_policy,
+        greetingTemplate: p.greeting_template,
+        closingTemplate: p.closing_template,
+        faqEntries: p.faq_entries || [],
+        commonObjections: p.common_objections || [],
+        upsellEnabled: p.upsell_enabled,
+        crossSellEnabled: p.cross_sell_enabled,
+        urgencyEnabled: p.urgency_enabled,
+        forbiddenTopics: p.forbidden_topics || [],
+        competitorPolicy: p.competitor_policy,
+        responseLength: p.response_length,
+      };
+    }
+
+    const catalog = products.map((p: any, i: number) =>
+      `${i + 1}. ${p.title} — ${p.price} دج${p.inStock ? '' : ' (غير متوفر)'}`
+    ).join('\n');
+
+    const storeLink = store_slug ? `https://www.sahla4eco.com/store/${store_slug}` : '';
+    const prompt = `[متجر: ${store_name}]
+${store_description ? store_description + '\n' : ''}
+═══ المنتجات المتوفرة ═══
+${catalog}
+
+═══ التوصيل ═══
+${deliveryInfo}
+الدفع عند الاستلام (COD).
+رابط المتجر: ${storeLink}
+
+═══ رسالة الزبون ═══
+${message}`;
+
+    const response = await generateText(
+      'customer',
+      prompt,
+      { storeId: clientId, storeName: store_name, clientId, userType: 'customer', persona: personaObj },
+    );
+
+    res.json({ answer: response });
   } catch (err) {
     return serverError(res, err);
   }

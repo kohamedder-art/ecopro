@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload, ChevronRight, Search, Copy, Check, StickyNote, AlertTriangle, Bell, Calendar, Phone, Edit3, User, MapPin, Package, Hash, Loader2, Save } from "lucide-react";
+import { MoreHorizontal, Download, ShoppingBag, TrendingUp, Plus, Settings, X, Trash2, Truck, CheckSquare, Square, Upload, ChevronRight, Search, Copy, Check, StickyNote, AlertTriangle, Bell, Calendar, Phone, Edit3, User, MapPin, Package, Hash, Loader2, Save, ShieldAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "@/lib/i18n";
 import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
@@ -82,6 +82,10 @@ export default function OrdersAdmin() {
   const [newOrderCount, setNewOrderCount] = useState(0);
   const prevOrderCountRef = useRef<number>(0);
 
+  // Delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pendingDeleteOrderId, setPendingDeleteOrderId] = useState<number | null>(null);
+
   // Order editing (store owner)
   const [showEditOrder, setShowEditOrder] = useState(false);
   const [editOrder, setEditOrder] = useState<any | null>(null);
@@ -112,11 +116,23 @@ export default function OrdersAdmin() {
     (selectedDeliveryCompanyData as any)?.features?.supports_labels
   ) || isNoestSelected || isDhdSelected;
   
+  const [storeProducts, setStoreProducts] = useState<any[]>([]);
+  const [addVariants, setAddVariants] = useState<any[]>([]);
+  const [loadingAddVariants, setLoadingAddVariants] = useState(false);
+  const [addOrderProductSearch, setAddOrderProductSearch] = useState('');
+
   const [newOrder, setNewOrder] = useState({
     customer_name: '',
     customer_phone: '',
     customer_address: '',
     total_price: '',
+    product_id: '',
+    variant_id: '',
+    quantity: 1,
+    delivery_type: 'home' as 'home' | 'desk',
+    shipping_wilaya_id: '',
+    shipping_commune_id: '',
+    shipping_hai: '',
   });
 
   const customerNames = {
@@ -139,16 +155,25 @@ export default function OrdersAdmin() {
 
   // Delete order handler
   const handleDeleteOrder = async (orderId: number) => {
-    if (!window.confirm('Are you sure you want to delete this order? This cannot be undone.')) return;
+    setPendingDeleteOrderId(orderId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteOrder = async () => {
+    if (pendingDeleteOrderId == null) return;
     try {
-      const res = await fetch(`/api/client/orders/${orderId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/client/orders/${pendingDeleteOrderId}`, { method: 'DELETE' });
       if (res.ok) {
+        toast({ description: t('orders.orderDeleted') });
         await loadOrders();
       } else {
-        alert('Failed to delete order');
+        toast({ variant: 'destructive', description: t('orders.orderDeleteFailed') });
       }
     } catch (error) {
-      alert('Error deleting order');
+      toast({ variant: 'destructive', description: t('orders.orderDeleteFailed') });
+    } finally {
+      setShowDeleteConfirm(false);
+      setPendingDeleteOrderId(null);
     }
   };
 
@@ -217,6 +242,17 @@ export default function OrdersAdmin() {
     orders.forEach(o => { if (o.phone) counts[o.phone] = (counts[o.phone] || 0) + 1; });
     return new Set(Object.entries(counts).filter(([, v]) => v > 1).map(([k]) => k));
   })();
+
+  // Risk detection for each order
+  const getOrderRisk = (order: any): { level: 'high' | 'medium' | 'safe'; label: string; reason: string } => {
+    const isFake = order.status === 'fake';
+    const isDuplicateStatus = order.status === 'duplicate';
+    const isDuplicatePhone = order.phone && duplicatePhones.has(order.phone);
+    if (isFake) return { level: 'high', label: t('orders.riskHigh'), reason: t('orders.status.fake') };
+    if (isDuplicateStatus) return { level: 'high', label: t('orders.riskHigh'), reason: t('orders.status.duplicate') };
+    if (isDuplicatePhone) return { level: 'medium', label: t('orders.riskMedium'), reason: t('orders.duplicatePhone') };
+    return { level: 'safe', label: t('orders.riskSafe'), reason: '' };
+  };
 
   // CSV export
   const exportCSV = () => {
@@ -487,7 +523,35 @@ export default function OrdersAdmin() {
     loadOrders();
     loadStatuses();
     loadDeliveryCompanies();
+    loadStoreProducts();
   },[]);
+
+  const loadStoreProducts = async () => {
+    try {
+      const res = await fetch('/api/client/store/products?limit=500');
+      if (res.ok) {
+        const data = await res.json();
+        setStoreProducts(Array.isArray(data) ? data : (data.products || []));
+      }
+    } catch {}
+  };
+
+  const loadAddVariants = async (productId: number) => {
+    setLoadingAddVariants(true);
+    try {
+      const r = await fetch(`/api/client/store/products/${productId}/variants`);
+      if (r.ok) {
+        const data = await r.json();
+        setAddVariants(Array.isArray(data) ? data : (data.variants || []));
+      } else {
+        setAddVariants([]);
+      }
+    } catch {
+      setAddVariants([]);
+    } finally {
+      setLoadingAddVariants(false);
+    }
+  };
 
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
 
@@ -503,11 +567,11 @@ export default function OrdersAdmin() {
       if (response.ok) {
         await loadOrders();
       } else {
-        alert('Failed to update order status');
+        toast({ variant: 'destructive', description: t('orders.statusUpdateFailed') });
       }
     } catch (error) {
       console.error('Error updating order:', error);
-      alert('Error updating order status');
+      toast({ variant: 'destructive', description: t('orders.statusUpdateFailed') });
     } finally {
       setUpdatingOrderId(null);
     }
@@ -702,7 +766,7 @@ export default function OrdersAdmin() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        alert(err?.error || 'Failed to update order');
+        toast({ variant: 'destructive', description: err?.error || t('orders.statusUpdateFailed') });
         return;
       }
 
@@ -712,7 +776,7 @@ export default function OrdersAdmin() {
       setEditVariants([]);
     } catch (e) {
       console.error('Save order edits failed:', e);
-      alert('Failed to update order');
+      toast({ variant: 'destructive', description: t('orders.statusUpdateFailed') });
     } finally {
       setSavingEditOrder(false);
     }
@@ -736,14 +800,13 @@ export default function OrdersAdmin() {
       });
 
       if (res.ok) {
-        // Reload orders after status update
         await loadOrders();
       } else {
-        alert('Failed to update order status');
+        toast({ variant: 'destructive', description: t('orders.statusUpdateFailed') });
       }
     } catch (error) {
       console.error('Failed to update status:', error);
-      alert('Error updating status');
+      toast({ variant: 'destructive', description: t('orders.statusUpdateFailed') });
     } finally {
       setUpdatingOrderId(null);
     }
@@ -751,34 +814,49 @@ export default function OrdersAdmin() {
 
   async function handleAddOrder() {
     try {
-      if (!newOrder.customer_name || !newOrder.total_price) {
-        alert('Please fill in customer name and total price');
+      if (!newOrder.customer_name || !newOrder.customer_phone) {
+        toast({ variant: 'destructive', description: t('orders.orderCreateFailed') });
         return;
       }
+
+      const payload: any = {
+        customer_name: newOrder.customer_name,
+        customer_phone: newOrder.customer_phone,
+        customer_address: newOrder.customer_address || null,
+        product_id: newOrder.product_id ? Number(newOrder.product_id) : null,
+        variant_id: newOrder.variant_id ? Number(newOrder.variant_id) : null,
+        quantity: Number(newOrder.quantity) || 1,
+        delivery_type: newOrder.delivery_type || 'home',
+        shipping_wilaya_id: newOrder.shipping_wilaya_id ? Number(newOrder.shipping_wilaya_id) : null,
+        shipping_commune_id: newOrder.shipping_commune_id ? Number(newOrder.shipping_commune_id) : null,
+        shipping_hai: newOrder.shipping_hai || null,
+      };
+      if (newOrder.total_price) payload.total_price = parseFloat(newOrder.total_price);
 
       const res = await fetch('/api/client/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          total_price: parseFloat(newOrder.total_price),
-          customer_name: newOrder.customer_name,
-          customer_phone: newOrder.customer_phone || null,
-          customer_address: newOrder.customer_address || null,
-        })
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         setShowAddOrder(false);
-        setNewOrder({ customer_name: '', customer_phone: '', customer_address: '', total_price: '' });
+        setNewOrder({
+          customer_name: '', customer_phone: '', customer_address: '', total_price: '',
+          product_id: '', variant_id: '', quantity: 1, delivery_type: 'home',
+          shipping_wilaya_id: '', shipping_commune_id: '', shipping_hai: '',
+        });
+        setAddVariants([]);
+        setAddOrderProductSearch('');
         await loadOrders();
       } else {
         const errData = await res.json().catch(() => ({}));
-        alert(errData.error || 'Failed to create order');
+        toast({ variant: 'destructive', description: errData.error || t('orders.orderCreateFailed') });
       }
     } catch (error) {
       console.error('Error adding order:', error);
-      alert('Error creating order');
+      toast({ variant: 'destructive', description: t('orders.orderCreateFailed') });
     }
   }
 
@@ -806,9 +884,9 @@ export default function OrdersAdmin() {
           </div>
           <div>
             <span className="text-sm font-bold text-green-700 dark:text-green-400 block">
-              🎉 {newOrderCount} طلب جديد وصل!
+              🎉 {t('orders.newOrdersArrived').replace('{count}', String(newOrderCount))}
             </span>
-            <span className="text-xs text-green-600/70">انقر للتحديث</span>
+            <span className="text-xs text-green-600/70">{t('orders.clickToUpdate')}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs font-bold bg-green-500 text-white px-2.5 py-1 rounded-full animate-pulse">{newOrderCount}</span>
@@ -818,7 +896,7 @@ export default function OrdersAdmin() {
       )}
       
       {/* Header Stats */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
         <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-primary/50 transition-all duration-200 shadow-sm">
           <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow">
             <ShoppingBag className="h-3.5 w-3.5 text-white" />
@@ -857,6 +935,15 @@ export default function OrdersAdmin() {
             <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('orders.revenue')} · DZD</div>
           </div>
         </div>
+        <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-red-500/50 transition-all duration-200 shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-red-500 flex items-center justify-center shrink-0 shadow">
+            <ShieldAlert className="h-3.5 w-3.5 text-white" />
+          </div>
+          <div>
+            <div className="text-xl font-black tabular-nums leading-none text-red-500">{orders.filter(o => getOrderRisk(o).level !== 'safe').length}</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('orders.atRisk')}</div>
+          </div>
+        </div>
       </div>
 
       {/* Orders Table */}
@@ -866,7 +953,7 @@ export default function OrdersAdmin() {
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base md:text-lg font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent flex items-center gap-2">
               <span className="inline-block w-1 h-5 rounded-full bg-gradient-to-b from-primary to-accent"></span>
-              {t('orders.orders')}
+              {t('orders.title')}
             </h3>
             <div className="flex items-center gap-2">
 
@@ -905,7 +992,7 @@ export default function OrdersAdmin() {
                 type="text"
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                placeholder="Search by customer, phone, order ID, product..."
+                placeholder={t('orders.searchPlaceholder')}
                 className="w-full h-9 pl-9 pr-3 rounded-lg border border-border/60 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 focus:bg-background transition-all duration-200"
               />
               {searchQuery && (
@@ -921,7 +1008,7 @@ export default function OrdersAdmin() {
                   onClick={() => { setDateRange(r); setCurrentPage(1); }}
                   className={`px-2.5 h-7 rounded-md text-xs font-bold transition-all duration-200 flex-1 sm:flex-none ${dateRange === r ? 'bg-primary text-white shadow-sm shadow-primary/30' : 'text-muted-foreground hover:text-foreground hover:bg-background'}`}
                 >
-                  {r === 'all' ? 'الكل' : r === 'today' ? 'اليوم' : r === 'week' ? '7 أيام' : '30 يوم'}
+                  {r === 'all' ? t('orders.dateAll') : r === 'today' ? t('orders.dateToday') : r === 'week' ? t('orders.dateWeek') : t('orders.dateMonth')}
                 </button>
               ))}
             </div>
@@ -999,13 +1086,44 @@ export default function OrdersAdmin() {
         )}
 
         <div className="md:overflow-x-auto overflow-x-hidden">
-          {/* Loading State */}
+          {/* Loading State — Skeleton */}
           {isLoading && (
-            <div className="p-3 md:p-3 text-center">
-              <div className="inline-flex items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <div className="p-3">
+              {/* Desktop skeleton table rows */}
+              <div className="hidden md:block space-y-2">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-3 animate-pulse">
+                    <div className="w-10 h-4 bg-muted rounded" />
+                    <div className="w-11 h-11 bg-muted rounded-xl" />
+                    <div className="w-20 h-4 bg-muted rounded" />
+                    <div className="flex-1 h-4 bg-muted rounded" />
+                    <div className="w-32 h-4 bg-muted rounded" />
+                    <div className="w-16 h-4 bg-muted rounded" />
+                    <div className="w-20 h-6 bg-muted rounded-full" />
+                    <div className="w-16 h-4 bg-muted rounded" />
+                  </div>
+                ))}
               </div>
-              <p className="mt-1 md:mt-2 text-muted-foreground text-xs">{t('orders.loadingOrders')}</p>
+              {/* Mobile skeleton cards */}
+              <div className="md:hidden space-y-2">
+                {[1,2,3].map(i => (
+                  <div key={i} className="bg-card rounded-2xl border border-border/40 p-3 space-y-2 animate-pulse">
+                    <div className="flex items-start gap-3">
+                      <div className="w-14 h-14 bg-muted rounded-xl shrink-0" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="w-3/4 h-4 bg-muted rounded" />
+                        <div className="w-1/2 h-3 bg-muted rounded" />
+                        <div className="w-1/3 h-3 bg-muted rounded" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1 h-8 bg-muted rounded-xl" />
+                      <div className="flex-1 h-8 bg-muted rounded-xl" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-center text-muted-foreground text-xs">{t('orders.loadingOrders')}</p>
             </div>
           )}
 
@@ -1140,6 +1258,20 @@ export default function OrdersAdmin() {
                       <span className="text-sm font-semibold max-w-[160px] truncate block" title={o.product_title}>
                         {o.product_title || t('orders.noProduct')}
                       </span>
+                      {(() => {
+                        const risk = getOrderRisk(o);
+                        if (risk.level === 'safe') return null;
+                        return (
+                          <div title={risk.reason} className={`inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                            risk.level === 'high' 
+                              ? 'bg-red-500/15 text-red-500 border-red-500/30' 
+                              : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                          }`}>
+                            <ShieldAlert className="h-3 w-3" />
+                            {risk.label}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex flex-col items-end gap-0.5">
@@ -1152,7 +1284,7 @@ export default function OrdersAdmin() {
                             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors group/phone"
                             title="Copy phone"
                           >
-                            {duplicatePhones.has(o.phone) && <AlertTriangle className="h-3.5 w-3.5 text-red-500 animate-pulse" />}
+                            {duplicatePhones.has(o.phone) && <AlertTriangle className="h-3.5 w-3.5 text-red-500 animate-pulse" title={t('orders.duplicatePhone')} />}
                             {o.phone}
                             {copiedKey === `phone-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/phone:opacity-60" />}
                           </button>
@@ -1220,13 +1352,29 @@ export default function OrdersAdmin() {
                                 {o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}
                               </div>
                             </div>
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="text-xs font-semibold text-foreground/60">{t('orders.product')}</div>
-                              <div className="flex items-center gap-2">
-                                {o.product_image ? (
-                                  <img 
-                                    src={o.product_image} 
-                                    alt={o.product_title || 'Product'} 
+                    <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
+                      <div className="text-xs font-semibold text-foreground/60">{t('orders.product')}</div>
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const risk = getOrderRisk(o);
+                          if (risk.level !== 'safe') {
+                            return (
+                              <span title={risk.reason} className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border mr-1 ${
+                                risk.level === 'high' 
+                                  ? 'bg-red-500/15 text-red-500 border-red-500/30' 
+                                  : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                              }`}>
+                                <ShieldAlert className="h-3 w-3" />
+                                {risk.label}
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
+                        {o.product_image ? (
+                          <img 
+                            src={o.product_image} 
+                            alt={o.product_title || 'Product'} 
                                     className="w-8 h-8 rounded object-cover border border-border/50"
                                   />
                                 ) : (
@@ -1504,18 +1652,18 @@ export default function OrdersAdmin() {
 
       {/* Edit Order Modal (store owner) */}
       {showEditOrder && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-2 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full my-4 sm:my-0 max-h-none sm:max-h-[90vh] sm:overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2">
+          <div className="bg-card border border-border shadow-2xl max-w-md w-full my-4 sm:my-0 max-h-[80dvh] overflow-y-auto rounded-xl">
             {/* Header */}
-            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center justify-between z-10">
+            <div className="bg-card border-b border-border px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
                   <Edit3 className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white">{t('orders.editOrder')}</h2>
+                  <h2 className="text-base font-bold text-foreground">{t('orders.editOrder')}</h2>
                   {editOrder?.id && (
-                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                       {editOrder.id}
                     </span>
                   )}
@@ -1527,10 +1675,10 @@ export default function OrdersAdmin() {
                   setEditOrder(null);
                   setEditVariants([]);
                 }}
-                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors"
                 aria-label="Close"
               >
-                <X className="h-4 w-4 text-slate-500" />
+                <X className="h-4 w-4 text-muted-foreground" />
               </button>
             </div>
 
@@ -1538,31 +1686,31 @@ export default function OrdersAdmin() {
 
               {/* Customer Info Section */}
               <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
                   <User className="h-3.5 w-3.5" />
                   <span className="text-[10px] font-bold uppercase tracking-wider">{t('orders.customerInfo')}</span>
                 </div>
 
                 <div className="space-y-2">
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 block">{t('orders.customerNameRequired')}</label>
+                    <label className="text-[11px] font-medium text-foreground/80 mb-1 block">{t('orders.customerNameRequired')}</label>
                     <input
                       type="text"
                       value={editForm.customer_name}
                       onChange={(e) => setEditForm({ ...editForm, customer_name: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 block">{t('orders.phoneNumber')}</label>
+                    <label className="text-[11px] font-medium text-foreground/80 mb-1 block">{t('orders.phoneNumber')}</label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
                       <input
                         type="tel"
                         value={editForm.customer_phone}
                         onChange={(e) => setEditForm({ ...editForm, customer_phone: e.target.value })}
-                        className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
+                        className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
                       />
                     </div>
                   </div>
@@ -1571,24 +1719,24 @@ export default function OrdersAdmin() {
 
               {/* Shipping Section */}
               <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5" />
                   <span className="text-[10px] font-bold uppercase tracking-wider">{t('orders.shippingInfo')}</span>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 block">{t('orders.shippingAddress')}</label>
+                  <label className="text-[11px] font-medium text-foreground/80 mb-1 block">{t('orders.shippingAddress')}</label>
                   <input
                     type="text"
                     value={editForm.shipping_address}
                     onChange={(e) => setEditForm({ ...editForm, shipping_address: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 block">{t('orders.wilaya')}</label>
+                    <label className="text-[11px] font-medium text-foreground/80 mb-1 block">{t('orders.wilaya')}</label>
                     <select
                       value={editForm.shipping_wilaya_id}
                       onChange={(e) =>
@@ -1598,7 +1746,7 @@ export default function OrdersAdmin() {
                           shipping_commune_id: '',
                         })
                       }
-                      className="w-full px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                      className="w-full px-2 py-2 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                     >
                       <option value="">{t('orders.selectWilaya')}</option>
                       {dzWilayas.map((w) => (
@@ -1610,11 +1758,11 @@ export default function OrdersAdmin() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 block">{t('orders.commune')}</label>
+                    <label className="text-[11px] font-medium text-foreground/80 mb-1 block">{t('orders.commune')}</label>
                     <select
                       value={editForm.shipping_commune_id}
                       onChange={(e) => setEditForm({ ...editForm, shipping_commune_id: e.target.value })}
-                      className="w-full px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50"
+                      className="w-full px-2 py-2 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50"
                       disabled={!editForm.shipping_wilaya_id}
                     >
                       <option value="">{t('orders.selectCommune')}</option>
@@ -1629,21 +1777,21 @@ export default function OrdersAdmin() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 block">{t('orders.hai')}</label>
+                    <label className="text-[11px] font-medium text-foreground/80 mb-1 block">{t('orders.hai')}</label>
                     <input
                       type="text"
                       value={editForm.shipping_hai}
                       onChange={(e) => setEditForm({ ...editForm, shipping_hai: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 block">{t('orders.deliveryType')}</label>
+                    <label className="text-[11px] font-medium text-foreground/80 mb-1 block">{t('orders.deliveryType')}</label>
                     <select
                       value={editForm.delivery_type}
                       onChange={(e) => setEditForm({ ...editForm, delivery_type: e.target.value as any })}
-                      className="w-full px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                      className="w-full px-2 py-2 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                     >
                       <option value="home">🏠 {t('orders.deliveryHome')}</option>
                       <option value="desk">📦 {t('orders.deliveryDesk')}</option>
@@ -1654,36 +1802,36 @@ export default function OrdersAdmin() {
 
               {/* Product Section */}
               <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Package className="h-3.5 w-3.5" />
                   <span className="text-[10px] font-bold uppercase tracking-wider">{t('orders.productDetails')}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 block">{t('orders.quantity')}</label>
+                    <label className="text-[11px] font-medium text-foreground/80 mb-1 block">{t('orders.quantity')}</label>
                     <div className="relative">
-                      <Hash className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                      <Hash className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
                       <input
                         type="number"
                         min={1}
                         step={1}
                         value={editForm.quantity}
                         onChange={(e) => setEditForm({ ...editForm, quantity: Number(e.target.value) })}
-                        className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
+                        className="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="col-span-2">
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 block">{t('orders.variant')}</label>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">
+                    <label className="text-[11px] font-medium text-foreground/80 mb-1 block">{t('orders.variant')}</label>
+                    <div className="text-[10px] text-muted-foreground mb-1">
                       {loadingEditVariants ? t('orders.loadingVariants') : editVariants.length ? t('orders.variantHint') : t('orders.noVariantsForProduct')}
                     </div>
                     <select
                       value={editForm.variant_id}
                       onChange={(e) => setEditForm({ ...editForm, variant_id: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50"
                       disabled={loadingEditVariants || editVariants.length === 0}
                     >
                       <option value="">{editVariants.length ? t('orders.selectVariant') : t('orders.noVariants')}</option>
@@ -1706,7 +1854,7 @@ export default function OrdersAdmin() {
             </div>
 
             {/* Footer Actions */}
-            <div className="border-t border-slate-100 dark:border-slate-800 p-3">
+            <div className="border-t border-border p-3">
               {(() => {
                 const hasVariants = editVariants.length > 0;
                 const requiresVariant = hasVariants;
@@ -1724,7 +1872,7 @@ export default function OrdersAdmin() {
                         setEditOrder(null);
                         setEditVariants([]);
                       }}
-                      className="flex-1 px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm font-medium text-slate-700 dark:text-slate-300"
+                      className="flex-1 px-3 py-2.5 rounded-lg border border-border hover:bg-muted transition-all text-sm font-medium text-foreground/80"
                       disabled={savingEditOrder}
                     >
                       {t('cancel')}
@@ -1756,67 +1904,262 @@ export default function OrdersAdmin() {
 
       {/* Add Order Modal */}
       {showAddOrder && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
-          <div className="bg-card rounded-lg border border-primary/20 shadow-xl max-w-xs w-full p-3 space-y-2">
-            <h2 className="text-lg font-bold">{t('orders.addNewOrderTitle')}</h2>
-            
-            <div>
-              <label className="text-sm font-bold">{t('orders.customerNameRequired')}</label>
-              <input
-                type="text"
-                value={newOrder.customer_name}
-                onChange={(e) => setNewOrder({...newOrder, customer_name: e.target.value})}
-                className="w-full mt-0.5 px-2 py-1 rounded border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-primary h-9 text-sm"
-                placeholder={t('orders.enterCustomerName')}
-              />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2">
+          <div className="bg-card border border-border shadow-2xl max-w-md w-full my-4 sm:my-0 max-h-[80dvh] overflow-y-auto rounded-xl">
+            {/* Header */}
+            <div className="bg-card border-b border-border px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/25">
+                  <Plus className="h-4 w-4 text-white" />
+                </div>
+                <h2 className="text-base font-bold">{t('orders.addNewOrderTitle')}</h2>
+              </div>
+              <button onClick={() => { setShowAddOrder(false); setAddVariants([]); setAddOrderProductSearch(''); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
             </div>
 
-            <div>
-              <label className="text-sm font-bold">{t('orders.phoneNumber')}</label>
-              <input
-                type="tel"
-                value={newOrder.customer_phone}
-                onChange={(e) => setNewOrder({...newOrder, customer_phone: e.target.value})}
-                className="w-full mt-0.5 px-2 py-1 rounded border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-primary h-9 text-sm"
-                placeholder="+213..."
-              />
+            <div className="p-3 space-y-3">
+              {/* Product Section */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Package className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">{t('orders.product')}</span>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={addOrderProductSearch}
+                    onChange={e => {
+                      setAddOrderProductSearch(e.target.value);
+                      if (!e.target.value) {
+                        setNewOrder(p => ({ ...p, product_id: '', variant_id: '' }));
+                        setAddVariants([]);
+                      }
+                    }}
+                    className="w-full h-9 pl-9 pr-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                    placeholder="Search products..."
+                  />
+                </div>
+                {addOrderProductSearch && (
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-card divide-y divide-border/40">
+                    {storeProducts
+                      .filter((p: any) => (p.title || '').toLowerCase().includes(addOrderProductSearch.toLowerCase()))
+                      .slice(0, 20)
+                      .map((p: any) => {
+                        const selected = Number(newOrder.product_id) === Number(p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setNewOrder(prev => ({ ...prev, product_id: String(p.id), variant_id: '' }));
+                              setAddVariants([]);
+                              setAddOrderProductSearch(p.title || '');
+                              loadAddVariants(Number(p.id));
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-muted/50 transition-colors ${selected ? 'bg-green-500/10 font-bold' : ''}`}
+                          >
+                            {p.images?.[0] ? (
+                              <img src={p.images[0]} alt="" className="w-8 h-8 rounded object-cover border border-border/40" />
+                            ) : (
+                              <div className="w-8 h-8 rounded bg-muted flex items-center justify-center"><ShoppingBag className="h-4 w-4 text-muted-foreground/50" /></div>
+                            )}
+                            <span className="truncate flex-1">{p.title}</span>
+                            <span className="text-xs font-bold text-muted-foreground">{Math.round(Number(p.price) || 0).toLocaleString()} DZD</span>
+                          </button>
+                        );
+                      })}
+                    {storeProducts.filter((p: any) => (p.title || '').toLowerCase().includes(addOrderProductSearch.toLowerCase())).length === 0 && (
+                      <div className="px-3 py-4 text-center text-xs text-muted-foreground">No products found</div>
+                    )}
+                  </div>
+                )}
+                {Number(newOrder.product_id) > 0 && addVariants.length > 0 && (
+                  <div>
+                    <label className="text-xs font-bold text-foreground/80 mb-1 block">{t('orders.variant')}</label>
+                    <select
+                      value={newOrder.variant_id}
+                      onChange={e => setNewOrder(p => ({ ...p, variant_id: e.target.value }))}
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                    >
+                      <option value="">{t('orders.selectVariant')}</option>
+                      {addVariants.filter((v: any) => v?.is_active !== false).map((v: any) => {
+                        const labelParts = [String(v.variant_name || '').trim(), String(v.color || '').trim(), String(v.size || '').trim()].filter(Boolean);
+                        const label = labelParts.join(' / ') || `Variant #${v.id}`;
+                        const stock = v.stock_quantity != null ? Number(v.stock_quantity) : null;
+                        return (
+                          <option key={v.id} value={String(v.id)}>
+                            {label}{stock != null ? ` (stock: ${stock})` : ''} — {Math.round(Number(v.price ?? 0)).toLocaleString()} DZD
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Customer Info */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <User className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">{t('orders.customerInfo')}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-bold text-foreground/80 mb-1 block">{t('orders.customerNameRequired')}</label>
+                    <input
+                      type="text"
+                      value={newOrder.customer_name}
+                      onChange={e => setNewOrder(p => ({ ...p, customer_name: e.target.value }))}
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                      placeholder={t('orders.enterCustomerName')}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground/80 mb-1 block">{t('orders.phoneNumber')}</label>
+                    <input
+                      type="tel"
+                      value={newOrder.customer_phone}
+                      onChange={e => setNewOrder(p => ({ ...p, customer_phone: e.target.value }))}
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                      placeholder="+213..."
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Shipping Section */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">{t('orders.shippingInfo')}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-bold text-foreground/80 mb-1 block">{t('orders.wilaya')}</label>
+                    <select
+                      value={newOrder.shipping_wilaya_id}
+                      onChange={e => setNewOrder(p => ({ ...p, shipping_wilaya_id: e.target.value, shipping_commune_id: '' }))}
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                    >
+                      <option value="">{t('orders.selectWilaya')}</option>
+                      {dzWilayas.map(w => (
+                        <option key={w.id} value={String(w.id)}>{String(w.code).padStart(2, '0')} - {w.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground/80 mb-1 block">{t('orders.commune')}</label>
+                    <select
+                      value={newOrder.shipping_commune_id}
+                      onChange={e => setNewOrder(p => ({ ...p, shipping_commune_id: e.target.value }))}
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 disabled:opacity-50"
+                      disabled={!newOrder.shipping_wilaya_id}
+                    >
+                      <option value="">{t('orders.selectCommune')}</option>
+                      {getAlgeriaCommunesByWilayaId(newOrder.shipping_wilaya_id).map(c => (
+                        <option key={c.id} value={String(c.id)}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-foreground/80 mb-1 block">{t('orders.address')}</label>
+                  <input
+                    type="text"
+                    value={newOrder.customer_address}
+                    onChange={e => setNewOrder(p => ({ ...p, customer_address: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                    placeholder={t('orders.enterAddress')}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-bold text-foreground/80 mb-1 block">{t('orders.deliveryType')}</label>
+                    <select
+                      value={newOrder.delivery_type}
+                      onChange={e => setNewOrder(p => ({ ...p, delivery_type: e.target.value as any }))}
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                    >
+                      <option value="home">🏠 {t('orders.deliveryHome')}</option>
+                      <option value="desk">📦 {t('orders.deliveryDesk')}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-foreground/80 mb-1 block">{t('orders.quantity')}</label>
+                    <div className="flex h-9">
+                      <button
+                        onClick={() => setNewOrder(p => ({ ...p, quantity: Math.max(1, p.quantity - 1) }))}
+                        className="w-9 rounded-r-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-sm font-bold transition-all"
+                      >−</button>
+                      <input
+                        type="number"
+                        min={1}
+                        max={9999}
+                        value={newOrder.quantity}
+                        onChange={e => setNewOrder(p => ({ ...p, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        className="flex-1 h-full border-y border-border bg-muted/30 text-sm text-center font-bold tabular-nums focus:outline-none"
+                        style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                      />
+                      <button
+                        onClick={() => setNewOrder(p => ({ ...p, quantity: Math.min(9999, p.quantity + 1) }))}
+                        className="w-9 rounded-l-lg border border-border bg-muted/50 hover:bg-muted flex items-center justify-center text-sm font-bold transition-all"
+                      >+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="text-sm font-bold">{t('orders.address')}</label>
-              <input
-                type="text"
-                value={newOrder.customer_address}
-                onChange={(e) => setNewOrder({...newOrder, customer_address: e.target.value})}
-                className="w-full mt-0.5 px-2 py-1 rounded border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-primary h-9 text-sm"
-                placeholder={t('orders.enterAddress')}
-              />
+            {/* Footer Actions */}
+            <div className="border-t border-border p-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowAddOrder(false); setAddVariants([]); setAddOrderProductSearch(''); }}
+                  className="flex-1 h-10 rounded-xl border border-border hover:bg-muted transition-all text-sm font-bold"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  onClick={handleAddOrder}
+                  className="flex-1 h-10 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-bold hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg shadow-green-500/25 flex items-center justify-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t('orders.addOrder')}
+                </button>
+              </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            <div>
-              <label className="text-sm font-bold">{t('orders.totalRequired')}</label>
-              <input
-                type="number"
-                value={newOrder.total_price}
-                onChange={(e) => setNewOrder({...newOrder, total_price: e.target.value})}
-                className="w-full mt-0.5 px-2 py-1 rounded border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-primary h-9 text-sm"
-                placeholder="0"
-                step="0.01"
-              />
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[300] p-3">
+          <div className="bg-card rounded-2xl border border-border shadow-xl max-w-sm w-full p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
+                <ShieldAlert className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base">{t('orders.confirmDeleteTitle')}</h3>
+                <p className="text-sm text-muted-foreground">{t('orders.confirmDeleteMessage')}</p>
+              </div>
             </div>
-
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-1">
               <button
-                onClick={() => setShowAddOrder(false)}
-                className="flex-1 px-3 py-2 rounded border border-primary/30 hover:bg-primary/10 transition-colors text-sm h-9 font-bold"
+                onClick={() => { setShowDeleteConfirm(false); setPendingDeleteOrderId(null); }}
+                className="flex-1 px-3 py-2 rounded-xl border border-border hover:bg-muted transition-colors text-sm font-bold"
               >
                 {t('cancel')}
               </button>
               <button
-                onClick={handleAddOrder}
-                className="flex-1 px-3 py-2 rounded bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-bold hover:from-green-600 hover:to-green-700 transition-colors shadow h-9"
+                onClick={confirmDeleteOrder}
+                className="flex-1 px-3 py-2 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors shadow-md shadow-red-500/20"
               >
-                {t('orders.addOrder')}
+                {t('orders.delete')}
               </button>
             </div>
           </div>
@@ -2071,7 +2414,7 @@ export default function OrdersAdmin() {
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                               isSelected
                                 ? 'bg-blue-500 text-white'
-                                : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600'
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-muted-foreground/70 group-hover:bg-blue-100 group-hover:text-blue-600'
                             }`}>
                               {isSelected ? <Check className="h-4 w-4" /> : <Truck className="h-4 w-4" />}
                             </div>

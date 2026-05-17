@@ -401,10 +401,14 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     const whatsappTokenSent = 'whatsappToken' in req.body;
     const telegramBotTokenSent = 'telegramBotToken' in req.body;
     const fbPageIdSent = 'fbPageId' in req.body;
+    const updatesEnabledSent = 'updatesEnabled' in req.body;
+    const trackingEnabledSent = 'trackingEnabled' in req.body;
+    const deliveryNotificationsEnabledSent = 'deliveryNotificationsEnabled' in req.body;
 
     // Load existing secrets so we can preserve them unless explicitly replaced.
     const existingSecretsRes = await pool.query(
-      `SELECT whatsapp_phone_id, whatsapp_token, telegram_bot_token, telegram_bot_username, fb_page_id, fb_page_access_token
+      `SELECT whatsapp_phone_id, whatsapp_token, telegram_bot_token, telegram_bot_username, fb_page_id, fb_page_access_token,
+              updates_enabled, tracking_enabled, delivery_notifications_enabled
        FROM bot_settings WHERE client_id = $1`,
       [clientId]
     );
@@ -478,6 +482,11 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     }
     // else: keep existing
 
+    // Only update sub-toggles when explicitly sent; otherwise preserve DB values.
+    const effectiveUpdatesEnabled = updatesEnabledSent ? (updatesEnabled ?? false) : (existingSecrets.updates_enabled ?? true);
+    const effectiveTrackingEnabled = trackingEnabledSent ? (trackingEnabled ?? false) : (existingSecrets.tracking_enabled ?? true);
+    const effectiveDeliveryNotificationsEnabled = deliveryNotificationsEnabledSent ? (deliveryNotificationsEnabled ?? true) : (existingSecrets.delivery_notifications_enabled ?? true);
+
     let effectiveEnabled: boolean = enabled ?? true;
     let botDisabledReason: string | undefined;
 
@@ -507,13 +516,14 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           telegram_bot_username, telegram_webhook_secret,
           template_greeting, template_instant_order, template_pin_instructions, template_order_confirmation, template_payment, template_shipping,
           messenger_enabled, fb_page_id, fb_page_access_token, messenger_delay_minutes,
+          delivery_notifications_enabled, delivery_status_template,
           created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NOW(), NOW())`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, NOW(), NOW())`,
         [
           clientId,
           effectiveEnabled,
-          updatesEnabled ?? false,
-          trackingEnabled ?? false,
+          effectiveUpdatesEnabled,
+          effectiveTrackingEnabled,
           effectiveProvider,
           finalWhatsappPhoneId,
           finalWhatsappToken,
@@ -535,6 +545,8 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           finalFbPageId,
           finalFbPageAccessToken,
           messengerDelayMinutes ?? 5,
+          effectiveDeliveryNotificationsEnabled,
+          deliveryStatusTemplate ?? null,
         ]
       );
     } else {
@@ -571,8 +583,8 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
         [
           clientId,
           effectiveEnabled,
-          updatesEnabled ?? false,
-          trackingEnabled ?? false,
+          effectiveUpdatesEnabled,
+          effectiveTrackingEnabled,
           effectiveProvider,
           finalWhatsappPhoneId,
           finalWhatsappToken,
@@ -592,7 +604,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           finalFbPageId,
           finalFbPageAccessToken,
           messengerDelayMinutes ?? 5,
-          deliveryNotificationsEnabled ?? true,
+          effectiveDeliveryNotificationsEnabled,
           deliveryStatusTemplate ?? null,
           finalWhatsappDisplayPhone,
         ]

@@ -1632,7 +1632,7 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
       await sendMessengerMessage(
         pageAccessToken,
         senderId,
-        `مرحباً بك في ${store_name}! 👋\n\nأرسل أي سؤال وسنرد عليك في أقرب وقت.`
+        `مرحباً بك في ${store_name}! 👋 كيف أقدر أساعدك؟`
       );
     }
   } catch (error) {

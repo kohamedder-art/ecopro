@@ -6,6 +6,7 @@ import { MessageList } from './MessageList';
 import { FileUploadUI } from './FileUploadUI';
 import { VoiceRecorder } from './VoiceRecorder';
 import { useWebSocket, ChatMessageWS } from '../../hooks/useWebSocket';
+import { useTranslation } from '@/lib/i18n';
 
 interface ChatMessage {
   id: number;
@@ -64,6 +65,7 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
   const isUserScrollingRef = useRef<boolean>(false);
   const shouldScrollRef = useRef<boolean>(true);
   const scrollRafRef = useRef<number | null>(null);
+  const { t } = useTranslation();
 
   // WebSocket connection for real-time updates
   const {
@@ -263,14 +265,14 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
     try {
       const response = await fetch(`/api/chat/${chatId}/messages?limit=50&offset=0`);
 
-      if (!response.ok) throw new Error('Failed to load messages');
+      if (!response.ok) throw new Error(t('chatWindow.errorLoadMessages'));
 
       const data = await response.json();
       setMessages(data.items || data.messages || []);
       setError(null);
     } catch (err: any) {
       console.error('Failed to load messages:', err);
-      setError(err.message);
+      setError(err.message || t('chatWindow.errorLoadMessages'));
     } finally {
       setLoading(false);
     }
@@ -316,13 +318,13 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to edit message');
+        throw new Error(data.error || t('chatWindow.errorEdit'));
       }
 
       await loadMessages();
     } catch (err: any) {
       console.error('Failed to edit message:', err);
-      setError(err.message || 'Failed to edit message');
+      setError(err.message || t('chatWindow.errorEdit'));
     }
   };
 
@@ -334,13 +336,13 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to delete message');
+        throw new Error(data.error || t('chatWindow.errorDelete'));
       }
 
       await loadMessages();
     } catch (err: any) {
       console.error('Failed to delete message:', err);
-      setError(err.message || 'Failed to delete message');
+      setError(err.message || t('chatWindow.errorDelete'));
     }
   };
 
@@ -356,7 +358,7 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to add reaction');
+        throw new Error(data.error || t('chatWindow.errorReaction'));
       }
 
       // Update local state immediately for responsiveness
@@ -378,7 +380,7 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
       }));
     } catch (err: any) {
       console.error('Failed to add reaction:', err);
-      setError(err.message || 'Failed to add reaction');
+      setError(err.message || t('chatWindow.errorReaction'));
     }
   };
 
@@ -423,7 +425,7 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || data.details?.[0]?.message || `Failed: ${response.status}`);
+        throw new Error(data.error || data.details?.[0]?.message || t('chatWindow.errorSend'));
       }
 
       setMessageInput('');
@@ -434,7 +436,7 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
       await loadMessages();
     } catch (err: any) {
       console.error('Send message error:', err.message);
-      setError(err.message || 'Failed to send message');
+      setError(err.message || t('chatWindow.errorSend'));
     } finally {
       setSending(false);
     }
@@ -476,12 +478,31 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
 
   if (loading) {
     return (
-      <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-violet-200 border-t-violet-600 mx-auto mb-3"></div>
-            <p className="text-slate-400 text-sm">Loading messages…</p>
+      <div className="flex flex-col h-full bg-muted">
+        {/* Skeleton header */}
+        <div className="flex items-center gap-2 px-3 py-2 bg-card border-border flex-shrink-0">
+          <div className="w-7 h-7 rounded-full bg-muted flex-shrink-0 animate-pulse" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 bg-muted rounded w-28 animate-pulse" />
+            <div className="h-2.5 bg-muted rounded w-16 animate-pulse" />
           </div>
+        </div>
+        {/* Skeleton messages */}
+        <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 space-y-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className={`flex items-start gap-2.5 ${i % 2 === 0 ? 'justify-end' : ''}`}>
+              {i % 2 !== 0 && <div className="w-8 h-8 rounded-full bg-muted flex-shrink-0 animate-pulse" />}
+              <div className={`space-y-2 ${i % 2 === 0 ? 'items-end' : ''}`}>
+                <div className={`h-8 bg-muted rounded-2xl animate-pulse ${i % 2 === 0 ? 'w-48' : 'w-36'}`} />
+                <div className={`h-8 bg-muted rounded-2xl animate-pulse ${i % 2 === 0 ? 'w-32' : 'w-52'}`} />
+              </div>
+              {i % 2 === 0 && <div className="w-8 h-8 rounded-full bg-muted flex-shrink-0 animate-pulse" />}
+            </div>
+          ))}
+        </div>
+        {/* Skeleton input */}
+        <div className="bg-card border-border flex-shrink-0 px-4 py-3">
+          <div className="h-10 bg-muted rounded-2xl animate-pulse" />
         </div>
       </div>
     );
@@ -498,14 +519,14 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
     } as Chat);
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
+    <div className="flex flex-col h-full bg-card">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+      <div className="flex items-center gap-2 px-3 py-2 bg-card border-border flex-shrink-0">
         {onClose && (
           <button
             onClick={onClose}
-            className="md:hidden p-1 -ml-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition"
-            aria-label="Back"
+            className="md:hidden p-1 -ml-1 rounded-lg hover:bg-muted text-muted-foreground transition"
+            aria-label={t('chatWindow.back')}
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -514,20 +535,20 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
           <span className="text-white text-[10px]">🛟</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-            {userRole === 'admin' ? 'Support Chat' : 'Support Agent'}
+          <p className="text-xs font-semibold text-card-foreground truncate">
+            {t(userRole === 'admin' ? 'chatWindow.title.admin' : 'chatWindow.title.client')}
           </p>
           <div className="flex items-center gap-1">
-            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isConnected ? 'bg-emerald-400' : 'bg-slate-300 dark:bg-slate-600'}`} />
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">
-              {isConnected ? 'Online' : 'Connecting…'}
+            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isConnected ? 'bg-emerald-400' : 'bg-muted-foreground'}`} />
+            <span className="text-[10px] text-muted-foreground">
+              {t(isConnected ? 'chatWindow.online' : 'chatWindow.connecting')}
             </span>
           </div>
         </div>
         <button
           onClick={() => setShowSearch(!showSearch)}
-          className={`p-2 rounded-lg transition ${showSearch ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-          title="Search messages"
+          className={`p-2 rounded-lg transition ${showSearch ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+          title={t('chatWindow.searchMessages')}
         >
           <Search className="w-4 h-4" />
         </button>
@@ -535,24 +556,24 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
 
       {/* Search Bar */}
       {showSearch && (
-        <div className="px-4 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+        <div className="px-4 py-2.5 bg-card border-border flex items-center gap-2">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search messages…"
-              className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 border-0"
+              placeholder={t('chatWindow.searchPlaceholder')}
+              className="w-full pl-10 pr-4 py-2 bg-muted text-foreground placeholder-muted-foreground rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 border-0"
               autoFocus
             />
           </div>
           {searchQuery && (
-            <span className="text-xs text-slate-400 font-medium">
-              {messages.filter(m => m.message_content.toLowerCase().includes(searchQuery.toLowerCase())).length} found
+            <span className="text-xs text-muted-foreground font-medium">
+              {t('chatWindow.searchResults', { count: messages.filter(m => m.message_content.toLowerCase().includes(searchQuery.toLowerCase())).length })}
             </span>
           )}
-          <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+          <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -562,10 +583,10 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 space-y-1 scroll-smooth bg-slate-50 dark:bg-slate-950"
+        className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 space-y-1 scroll-smooth bg-muted"
         style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0)', backgroundSize: '24px 24px' }}>
         {error && (
-          <div className="mb-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+          <div className="mb-3 p-2.5 bg-destructive/10 border border-destructive/20 rounded-xl text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
             <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -574,12 +595,12 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-3">
-              <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center mx-auto">
-                <svg className="w-7 h-7 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+              <div className="w-16 h-16 rounded-full bg-card shadow-sm flex items-center justify-center mx-auto">
+                <svg className="w-7 h-7 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-300">No messages yet</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Send a message to start the conversation</p>
+                <p className="text-sm font-medium text-foreground">{t('chatWindow.noMessagesYet')}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t('chatWindow.startConversationHint')}</p>
               </div>
             </div>
           </div>
@@ -606,14 +627,14 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
         {/* Typing Indicator */}
         {typingUsers.size > 0 && (
           <div className="flex items-start gap-2 px-1">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm flex items-center gap-2">
+            <div className="bg-card rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm flex items-center gap-2">
               <div className="flex gap-1">
                 <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                 <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
                 <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
               </div>
-              <span className="text-xs text-slate-400">
-                {Array.from(typingUsers.values()).map(u => u.userName || 'Agent').join(', ')} typing…
+              <span className="text-xs text-muted-foreground">
+                {t('chatWindow.typing', { name: Array.from(typingUsers.values()).map(u => u.userName || t('chatWindow.agent')).join(', ') })}
               </span>
             </div>
           </div>
@@ -622,7 +643,7 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
 
       {/* File Upload UI */}
       {showFileUpload && (userRole === 'client' || userRole === 'admin') && (
-        <div className="border-t border-slate-100 dark:border-white/5 bg-violet-50/50 dark:bg-violet-500/5 p-3">
+        <div className="border-t border-border bg-accent/5 p-3">
           <FileUploadUI
             chatId={chatId}
             onClose={() => setShowFileUpload(false)}
@@ -635,19 +656,19 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
       )}
 
       {/* Input Area */}
-      <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
+      <div className="bg-card border-border flex-shrink-0">
         {/* Reply Preview */}
         {replyingTo && (
-          <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3 px-4 py-2 bg-muted/50 border-b border-border">
             <div className="w-1 h-8 bg-violet-500 rounded-full flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-medium text-violet-600 dark:text-violet-400">Replying to {replyingTo.sender_type}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{replyingTo.message_content}</p>
+              <p className="text-[11px] font-medium text-violet-600 dark:text-violet-400">{t('chatWindow.replyingTo', { type: t('chatWindow.role.' + replyingTo.sender_type) })}</p>
+              <p className="text-xs text-muted-foreground truncate">{replyingTo.message_content}</p>
             </div>
             <button
               type="button"
               onClick={() => setReplyingTo(null)}
-              className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 transition"
+              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -657,13 +678,13 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
         {/* Emoji Picker */}
         {showEmojiPicker && (
           <div className="px-4 pt-3 pb-1">
-            <div className="grid grid-cols-8 gap-1 bg-slate-50 dark:bg-slate-800 rounded-xl p-2">
+            <div className="grid grid-cols-8 gap-1 bg-muted rounded-xl p-2">
               {['😀', '😂', '😍', '🤔', '😢', '😡', '👍', '👎', '❤️', '🔥', '✨', '🎉', '🎈', '🎁', '💡', '🚀'].map(emoji => (
                 <button
                   key={emoji}
                   type="button"
                   onClick={() => addEmoji(emoji)}
-                  className="p-1.5 text-lg hover:bg-white dark:hover:bg-slate-700 rounded-lg transition"
+                  className="p-1.5 text-lg hover:bg-muted rounded-lg transition"
                 >
                   {emoji}
                 </button>
@@ -692,8 +713,8 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
               <button
                 type="button"
                 onClick={() => setShowFileUpload(!showFileUpload)}
-                className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors"
-                title="Upload file"
+                className="p-2 rounded-lg text-muted-foreground hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors"
+                title={t('chatWindow.uploadFile')}
               >
                 <Paperclip className="w-5 h-5" />
               </button>
@@ -701,8 +722,8 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className={`p-2 rounded-lg transition-colors ${showEmojiPicker ? 'text-violet-600 bg-violet-50 dark:bg-violet-500/10' : 'text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10'}`}
-              title="Emoji"
+              className={`p-2 rounded-lg transition-colors ${showEmojiPicker ? 'text-violet-600 bg-violet-50 dark:bg-violet-500/10' : 'text-muted-foreground hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10'}`}
+              title={t('chatWindow.emoji')}
             >
               <Smile className="w-5 h-5" />
             </button>
@@ -715,10 +736,10 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onFocus={handleInputFocus}
-              placeholder="Type a message…"
+              placeholder={t('chatWindow.typeMessage')}
               disabled={sending}
               rows={1}
-              className="w-full text-sm rounded-2xl bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50 resize-none overflow-hidden border-0"
+              className="w-full text-sm rounded-2xl bg-muted px-4 py-2.5 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50 resize-none overflow-hidden border-0"
             />
           </div>
 
@@ -738,8 +759,8 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
             <button
               type="button"
               onClick={() => setShowVoiceRecorder(true)}
-              className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full transition"
-              title="Voice message"
+              className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full transition"
+              title={t('chatWindow.voiceMessage')}
             >
               <Mic className="w-5 h-5" />
             </button>

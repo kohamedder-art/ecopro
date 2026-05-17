@@ -246,7 +246,7 @@ export default function Index() {
               <div className="bg-slate-50 dark:bg-slate-800/50">
                 <img
                   src="/screenshots/home-admin-analytics.png"
-                  className="w-full object-cover object-top max-h-[420px]"
+                  className="w-full"
                   alt="لوحة الإحصائيات"
                   onError={(e) => { e.currentTarget.src = "/screenshots/main-dashboard.png"; }}
                 />

@@ -722,6 +722,40 @@ export async function handleCustomerMessage(
     console.log(`[AI-Customer] No store context for client ${clientId}`);
     return null;
   }
+
+  // Load persona configuration for personalized AI behavior
+  const persona = await (async () => {
+    try {
+      const pool = await ensureConnection();
+      const res = await pool.query(`SELECT * FROM ai_personas WHERE client_id = $1 LIMIT 1`, [clientId]);
+      if (!res.rows.length) return null;
+      const p = res.rows[0];
+      return {
+        personaName: p.persona_name,
+        tone: p.tone,
+        personalityNote: p.personality_note,
+        businessType: p.business_type,
+        primaryLanguage: p.primary_language,
+        useEmojis: p.use_emojis,
+        emojiStyle: p.emoji_style,
+        storeStory: p.store_story,
+        productPhilosophy: p.product_philosophy,
+        uniqueSellingPoints: p.unique_selling_points || [],
+        discountPolicy: p.discount_policy,
+        greetingTemplate: p.greeting_template,
+        closingTemplate: p.closing_template,
+        faqEntries: p.faq_entries || [],
+        commonObjections: p.common_objections || [],
+        upsellEnabled: p.upsell_enabled,
+        crossSellEnabled: p.cross_sell_enabled,
+        urgencyEnabled: p.urgency_enabled,
+        forbiddenTopics: p.forbidden_topics || [],
+        competitorPolicy: p.competitor_policy,
+        responseLength: p.response_length,
+      };
+    } catch { return null; }
+  })();
+
   console.log(`[AI-Customer] Processing msg for client ${clientId} (${ctx.storeName}), platform=${platform}, chatId=${platformChatId}`);
 
   // Load conversation history
@@ -1033,7 +1067,7 @@ ${effectiveMessage}`;
     const response = await generateText(
       'customer',
       prompt,
-      { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'customer', platformChatId },
+      { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'customer', platformChatId, persona: persona || undefined },
       history
     );
 
