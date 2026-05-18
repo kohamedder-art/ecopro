@@ -622,8 +622,15 @@ export default function LeRoiShopTemplate({
                         {allMedia.map((item, i) => (
                           <button key={i} onClick={() => goTo(i + 1)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${i === dotIndex ? accentColor : 'transparent'}`, opacity: i === dotIndex ? 1 : 0.6 }}>
                             {item.type === 'video' ? (
-                              <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }}>
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+                              <div className="w-full h-full relative">
+                                {item.embed.type === 'youtube' ? (
+                                  <img src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }} />
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                  <svg width="22" height="22" viewBox="0 0 24 24" fill="white" className="drop-shadow-lg"><polygon points="5,3 19,12 5,21"/></svg>
+                                </div>
                               </div>
                             ) : (
                               <img src={item.src} alt="" className="w-full h-full object-contain" loading="lazy" />

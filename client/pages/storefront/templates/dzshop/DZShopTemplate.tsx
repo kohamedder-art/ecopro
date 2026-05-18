@@ -376,8 +376,17 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         {hasProductImages && galleryImages.length > 0 ? (
                             <>
                                 {videoEmbed && (
-                                    <div key="video" onClick={() => handleThumbClick(-1)} className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg bg-gray-900 overflow-hidden cursor-pointer flex items-center justify-center" style={{ border: selectedImageIndex === -1 ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
-                                        <i className="ph ph-play-circle text-white text-xl md:text-2xl"></i>
+                                    <div key="video" onClick={() => handleThumbClick(-1)} className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden cursor-pointer relative" style={{ border: selectedImageIndex === -1 ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
+                                        {videoEmbed.type === 'youtube' ? (
+                                            <img src={`https://img.youtube.com/vi/${videoEmbed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }}>
+                                                <i className="ph ph-video text-white text-xl md:text-2xl"></i>
+                                            </div>
+                                        )}
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                            <i className="ph ph-play-circle text-white text-xl md:text-2xl drop-shadow-lg"></i>
+                                        </div>
                                     </div>
                                 )}
                                 {galleryImages.map((img, idx) => (
