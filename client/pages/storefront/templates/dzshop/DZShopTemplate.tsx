@@ -6,8 +6,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
-import { CheckCircle2 } from 'lucide-react';
-import { Eye, EyeOff } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 export default function DZShopTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
@@ -251,6 +250,25 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         wrapRef.current = false;
     }, [selectedImageIndex, videoEmbed]);
 
+    const thumbnailRowRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!thumbnailRowRef.current) return;
+        const container = thumbnailRowRef.current;
+        const idx = selectedImageIndex < 0 ? 0 : selectedImageIndex;
+        const thumb = container.children[idx] as HTMLElement | undefined;
+        if (thumb) {
+            thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    }, [selectedImageIndex]);
+
+    // Separate lightbox image index so gallery navigation is unaffected
+    const [lightboxImgIdx, setLightboxImgIdx] = useState(0);
+    useEffect(() => {
+        if (lightboxOpen) {
+            setLightboxImgIdx(selectedImageIndex < 0 ? 0 : selectedImageIndex);
+        }
+    }, [lightboxOpen]);
+
     return (
         <div className="min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: bgColor, color: textColor, marginTop: 'calc(-1 * env(safe-area-inset-top))' }} dir="rtl">
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
@@ -304,7 +322,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     {/* Main Product Image (Swipeable Carousel) */}
                     <div className="w-full aspect-[3/4] md:aspect-[4/5] rounded-none md:rounded-2xl overflow-hidden shadow-none md:shadow-sm relative">
                         {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
+                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', direction: 'ltr', touchAction: 'none' }}
                               onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                               onTouchEnd={e => {
                                 const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
@@ -353,17 +371,17 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         {galleryImages.length + (videoEmbed ? 1 : 0) > 1 && (
                             <>
                                 <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const n = (c + 1) % t; handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n)); }}
-                                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronLeft className="w-5 h-5" /></button>
                                 <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const p = (c - 1 + t) % t; handleThumbClick(p === 0 && videoEmbed ? -1 : (videoEmbed ? p - 1 : p)); }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronRight className="w-5 h-5" /></button>
                             </>
                         )}
                     </div>
 
                     {/* Thumbnail Scrollable Row */}
-                    <div className="flex gap-1.5 md:gap-2 overflow-x-auto px-2 md:px-0 pb-2 hide-scrollbar">
+                    <div ref={thumbnailRowRef} className="flex gap-1.5 md:gap-2 overflow-x-auto px-2 md:px-0 pb-2 hide-scrollbar" style={{ direction: 'ltr' }}>
                         {hasProductImages && galleryImages.length > 0 ? (
                             <>
                                 {videoEmbed && (
@@ -694,12 +712,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     <button className="absolute top-4 right-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={() => setLightboxOpen(false)}>✕</button>
                     {galleryImages.length > 1 && (
                         <>
-                            <button className="absolute left-2 md:left-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); const idx = selectedImageIndex < 0 ? 0 : ((selectedImageIndex - 1 + galleryImages.length) % galleryImages.length); setSelectedImageIndex(idx); }}>‹</button>
-                            <button className="absolute right-2 md:right-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); const idx = selectedImageIndex < 0 ? 0 : ((selectedImageIndex + 1) % galleryImages.length); setSelectedImageIndex(idx); }}>›</button>
+                            <button className="absolute left-2 md:left-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); setLightboxImgIdx(i => (i - 1 + galleryImages.length) % galleryImages.length); }}><ChevronLeft className="w-8 h-8" /></button>
+                            <button className="absolute right-2 md:right-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); setLightboxImgIdx(i => (i + 1) % galleryImages.length); }}><ChevronRight className="w-8 h-8" /></button>
                         </>
                     )}
                     <img
-                        src={galleryImages[selectedImageIndex < 0 ? 0 : selectedImageIndex] || galleryImages[0]}
+                        src={galleryImages[lightboxImgIdx] || galleryImages[0]}
                         alt={product?.title || ''}
                         className="max-w-[95vw] max-h-[85vh] object-contain rounded-lg"
                         onClick={(e) => e.stopPropagation()}
@@ -707,7 +725,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     {galleryImages.length > 1 && (
                         <div className="flex gap-2 mt-4 px-4 overflow-x-auto hide-scrollbar" onClick={(e) => e.stopPropagation()}>
                             {galleryImages.map((img, idx) => (
-                                <div key={idx} onClick={() => setSelectedImageIndex(idx)} className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden cursor-pointer" style={{ border: (selectedImageIndex < 0 ? 0 : selectedImageIndex) === idx ? '2px solid white' : '2px solid transparent' }}>
+                                <div key={idx} onClick={() => setLightboxImgIdx(idx)} className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden cursor-pointer" style={{ border: lightboxImgIdx === idx ? '2px solid white' : '2px solid transparent' }}>
                                     <img src={img} className="w-full h-full object-cover" />
                                 </div>
                             ))}
