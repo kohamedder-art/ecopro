@@ -313,7 +313,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     {/* Main Product Image (Swipeable Carousel) */}
                     <div className="w-full aspect-[3/4] md:aspect-[4/5] rounded-none md:rounded-2xl overflow-hidden shadow-none md:shadow-sm relative">
                         {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
+                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', direction: 'ltr', touchAction: 'none' }}
                               onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                               onTouchEnd={e => {
                                 const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
@@ -321,8 +321,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 const total = galleryImages.length + (videoEmbed ? 1 : 0);
                                 if (total <= 1) return;
                                 const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex);
-                                const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
-                                const wrap = diff > 0 ? n > c : n < c;
+                                const n = diff > 0 ? (c + 1) % total : (c - 1 + total) % total;
+                                const wrap = diff > 0 ? n < c : n > c;
                                 if (wrap) wrapRef.current = true;
                                 handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n));
                               }}
@@ -372,7 +372,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     </div>
 
                     {/* Thumbnail Scrollable Row */}
-                    <div ref={thumbnailRowRef} className="flex gap-1.5 md:gap-2 overflow-x-auto px-2 md:px-0 pb-2 hide-scrollbar">
+                    <div ref={thumbnailRowRef} className="flex gap-1.5 md:gap-2 overflow-x-auto px-2 md:px-0 pb-2 hide-scrollbar" style={{ direction: 'ltr' }}>
                         {hasProductImages && galleryImages.length > 0 ? (
                             <>
                                 {videoEmbed && (
