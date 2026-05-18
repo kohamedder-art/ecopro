@@ -7,6 +7,7 @@ import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════
    LeRoi Shop — Multi-product catalog + product detail + order form
@@ -537,8 +538,8 @@ export default function LeRoiShopTemplate({
                       )}
                       {imgs.length > 1 && !showVideo && (
                         <>
-                          <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current - 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
-                          <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current + 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+                          <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current - 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronLeft className="w-5 h-5" /></button>
+                          <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current + 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronRight className="w-5 h-5" /></button>
                           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                             {imgs.map((_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full transition-all" style={{ backgroundColor: i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.4)', transform: i === activeImageIndex ? 'scale(1.4)' : 'scale(1)' }} />)}
                           </div>
