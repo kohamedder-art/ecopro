@@ -322,7 +322,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     {/* Main Product Image (Swipeable Carousel) */}
                     <div className="w-full aspect-[3/4] md:aspect-[4/5] rounded-none md:rounded-2xl overflow-hidden shadow-none md:shadow-sm relative">
                         {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', direction: 'ltr', touchAction: 'none' }}
+                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
                               onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                               onTouchEnd={e => {
                                 const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
@@ -370,10 +370,10 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         )}
                         {galleryImages.length + (videoEmbed ? 1 : 0) > 1 && (
                             <>
-                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const n = (c + 1) % t; handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n)); }}
+                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const p = (c - 1 + t) % t; handleThumbClick(p === 0 && videoEmbed ? -1 : (videoEmbed ? p - 1 : p)); }}
                                     className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
                                     style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronLeft className="w-5 h-5" /></button>
-                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const p = (c - 1 + t) % t; handleThumbClick(p === 0 && videoEmbed ? -1 : (videoEmbed ? p - 1 : p)); }}
+                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const n = (c + 1) % t; handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n)); }}
                                     className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
                                     style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronRight className="w-5 h-5" /></button>
                             </>
@@ -381,7 +381,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     </div>
 
                     {/* Thumbnail Scrollable Row */}
-                    <div ref={thumbnailRowRef} className="flex gap-1.5 md:gap-2 overflow-x-auto px-2 md:px-0 pb-2 hide-scrollbar" style={{ direction: 'ltr' }}>
+                    <div ref={thumbnailRowRef} className="flex gap-1.5 md:gap-2 overflow-x-auto px-2 md:px-0 pb-2 hide-scrollbar">
                         {hasProductImages && galleryImages.length > 0 ? (
                             <>
                                 {videoEmbed && (
