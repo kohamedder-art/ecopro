@@ -313,7 +313,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     {/* Main Product Image (Swipeable Carousel) */}
                     <div className="w-full aspect-[3/4] md:aspect-[4/5] rounded-none md:rounded-2xl overflow-hidden shadow-none md:shadow-sm relative">
                         {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', direction: 'ltr', touchAction: 'none', scrollbarWidth: 'none' }}
+                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', touchAction: 'none' }}
                               onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                               onTouchEnd={e => {
                                 const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
