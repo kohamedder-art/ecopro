@@ -251,15 +251,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     }, [selectedImageIndex, videoEmbed]);
 
     const thumbnailRowRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (!thumbnailRowRef.current) return;
-        const container = thumbnailRowRef.current;
-        const idx = selectedImageIndex < 0 ? 0 : selectedImageIndex;
-        const thumb = container.children[idx] as HTMLElement | undefined;
-        if (thumb) {
-            thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }
-    }, [selectedImageIndex]);
 
     // Separate lightbox image index so gallery navigation is unaffected
     const [lightboxImgIdx, setLightboxImgIdx] = useState(0);
