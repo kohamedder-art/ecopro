@@ -134,8 +134,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 }
                 .hide-scrollbar::-webkit-scrollbar { display: none; }
                 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .carousel-container { overflow-x: auto; display: flex; scroll-snap-type: x mandatory; }
-                .carousel-container > img { flex: 0 0 100%; scroll-snap-align: center; height: 100%; object-fit: cover; }
                 [contenteditable="true"] { outline: none; transition: all 0.2s; display: inline-block; min-width: 20px; }
                 [contenteditable="true"]:hover { background: rgba(37, 99, 235, 0.05); border-radius: 4px; cursor: text; }
                 [contenteditable="true"]:focus { background: #fff; box-shadow: 0 0 0 2px var(--dz-primary); border-radius: 4px; padding: 0 4px; }
@@ -231,32 +229,73 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         }
     };
 
-    // Image Gallery State
-    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-    const carouselRef = useRef<HTMLDivElement>(null);
-    const wrapRef = useRef(false);
+    // Image Gallery State — transform-based (like LeRoiShop)
+    const [activeImageIndex, setActiveImageIndex] = useState(1);
 
-    const handleThumbClick = (idx: number) => {
-        setSelectedImageIndex(idx);
-    };
-    
-    // Scroll carousel when selectedImageIndex changes
-    useEffect(() => {
-        if (!carouselRef.current) return;
-        const container = carouselRef.current;
-        const hasVideo = videoEmbed !== null;
-        const scrollIdx = selectedImageIndex < 0 ? 0 : selectedImageIndex + (hasVideo ? 1 : 0);
-        container.children[scrollIdx]?.scrollIntoView({ behavior: wrapRef.current ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
-        wrapRef.current = false;
-    }, [selectedImageIndex, videoEmbed]);
+    // Build unified media array: video + images
+    const allMedia = useMemo(() => {
+        const items: ({ type: 'video'; embed: typeof videoEmbed } | { type: 'image'; src: string })[] = [];
+        if (videoEmbed) items.push({ type: 'video', embed: videoEmbed });
+        galleryImages.forEach((src: string) => items.push({ type: 'image', src }));
+        return items;
+    }, [videoEmbed, galleryImages]);
 
+    const loopedMedia = useMemo(() => {
+        const len = allMedia.length;
+        if (len <= 1) return allMedia;
+        return [allMedia[len - 1], ...allMedia, allMedia[0]];
+    }, [allMedia]);
+
+    // Map looped index → real allMedia index
+    const realMediaIndex = useMemo(() => {
+        const n = allMedia.length;
+        if (n <= 1) return 0;
+        if (activeImageIndex === 0) return n - 1;
+        if (activeImageIndex === loopedMedia.length - 1) return 0;
+        return activeImageIndex - 1;
+    }, [activeImageIndex, allMedia, loopedMedia]);
+
+    const galleryStripRef = useRef<HTMLDivElement>(null);
     const thumbnailRowRef = useRef<HTMLDivElement>(null);
+    const galleryIdxRef = useRef(1);
+    const wrapRef = useRef(false);
+    galleryIdxRef.current = activeImageIndex;
+
+    const goTo = (idx: number) => {
+        const clamped = Math.max(0, Math.min(idx, loopedMedia.length - 1));
+        galleryIdxRef.current = clamped;
+        setActiveImageIndex(clamped);
+    };
+
+    // Infinite loop snap-back
+    useEffect(() => {
+        if (allMedia.length <= 1) return;
+        const idx = activeImageIndex;
+        const len = loopedMedia.length;
+        if (idx === len - 1) {
+            const timer = setTimeout(() => {
+                wrapRef.current = true;
+                galleryIdxRef.current = 1;
+                setActiveImageIndex(1);
+            }, 300);
+            return () => { clearTimeout(timer); wrapRef.current = false; };
+        } else if (idx === 0) {
+            const timer = setTimeout(() => {
+                wrapRef.current = true;
+                galleryIdxRef.current = allMedia.length;
+                setActiveImageIndex(allMedia.length);
+            }, 300);
+            return () => { clearTimeout(timer); wrapRef.current = false; };
+        } else {
+            wrapRef.current = false;
+        }
+    }, [activeImageIndex, allMedia.length, loopedMedia.length]);
 
     // Separate lightbox image index so gallery navigation is unaffected
     const [lightboxImgIdx, setLightboxImgIdx] = useState(0);
     useEffect(() => {
         if (lightboxOpen) {
-            setLightboxImgIdx(selectedImageIndex < 0 ? 0 : selectedImageIndex);
+            setLightboxImgIdx(Math.max(0, realMediaIndex - (videoEmbed ? 1 : 0)));
         }
     }, [lightboxOpen]);
 
@@ -312,42 +351,29 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 <div className="space-y-0 md:space-y-4">
                     {/* Main Product Image (Swipeable Carousel) */}
                     <div className="w-full aspect-[3/4] md:aspect-[4/5] rounded-none md:rounded-2xl overflow-hidden shadow-none md:shadow-sm relative">
-                        {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', touchAction: 'none' }}
+                        {allMedia.length > 0 ? (
+                            <div ref={galleryStripRef}
+                              style={{ position: 'absolute', top: 0, left: 0, bottom: 0, display: 'flex', direction: 'ltr', transform: `translateX(-${(activeImageIndex * 100) / loopedMedia.length}%)`, transition: `transform ${wrapRef.current ? '0s' : '0.3s'} ease`, willChange: 'transform', width: `${loopedMedia.length * 100}%` }}
                               onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                               onTouchEnd={e => {
                                 const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
                                 if (Math.abs(diff) < 50) return;
-                                const total = galleryImages.length + (videoEmbed ? 1 : 0);
-                                if (total <= 1) return;
-                                const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex);
-                                const n = diff > 0 ? (c + 1) % total : (c - 1 + total) % total;
-                                const wrap = diff > 0 ? n < c : n > c;
-                                if (wrap) wrapRef.current = true;
-                                handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n));
-                              }}
-                            >
-                                {videoEmbed && (
-                                    <div key="video" className="snap-center" style={{ flex: '0 0 100%', height: '100%', scrollSnapAlign: 'center' }}>
-                                        {videoEmbed.type === 'youtube' ? (
-                                            <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                                        ) : videoEmbed.type === 'video' ? (
-                                            <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                                diff > 0 ? goTo(galleryIdxRef.current + 1) : goTo(galleryIdxRef.current - 1);
+                              }}>
+                                {loopedMedia.map((item, i) => (
+                                    <div key={i} style={{ width: `${100 / loopedMedia.length}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }} onClick={() => item.type === 'image' && setLightboxOpen(true)}>
+                                        {item.type === 'video' ? (
+                                            item.embed.type === 'youtube' ? (
+                                                <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${item.embed.id}?autoplay=1&mute=1&loop=1&playlist=${item.embed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                                            ) : item.embed.type === 'video' ? (
+                                                <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline />
+                                            ) : (
+                                                <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
+                                            )
                                         ) : (
-                                            <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
+                                            <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', cursor: 'pointer' }} loading="lazy" />
                                         )}
                                     </div>
-                                )}
-                                {galleryImages.map((img, idx) => (
-                                    <img
-                                        key={idx}
-                                        src={img}
-                                        alt={`${product.title} ${idx + 1}`}
-                                        className="snap-center cursor-pointer"
-                                        loading="lazy"
-                                        onClick={() => setLightboxOpen(true)}
-                                        style={{ flex: '0 0 100%', height: '100%', objectFit: 'cover', scrollSnapAlign: 'center' }}
-                                    />
                                 ))}
                             </div>
                         ) : (
@@ -359,12 +385,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 {canManage && <input type="file" ref={mainFileInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} /> }
                             </>
                         )}
-                        {galleryImages.length + (videoEmbed ? 1 : 0) > 1 && (
+                        {allMedia.length > 1 && (
                             <>
-                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const p = (c - 1 + t) % t; handleThumbClick(p === 0 && videoEmbed ? -1 : (videoEmbed ? p - 1 : p)); }}
+                                <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current - 1); }}
                                     className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
                                     style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronLeft className="w-5 h-5" /></button>
-                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const n = (c + 1) % t; handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n)); }}
+                                <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current + 1); }}
                                     className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
                                     style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronRight className="w-5 h-5" /></button>
                             </>
@@ -372,13 +398,13 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     </div>
 
                     {/* Thumbnail Scrollable Row */}
-                    <div ref={thumbnailRowRef} className="flex gap-1.5 md:gap-2 overflow-x-auto px-0 pb-2 hide-scrollbar" style={{ justifyContent: 'center' }}>
-                        {hasProductImages && galleryImages.length > 0 ? (
-                            <>
-                                {videoEmbed && (
-                                    <div key="video" onClick={() => handleThumbClick(-1)} className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden cursor-pointer relative" style={{ border: selectedImageIndex === -1 ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
-                                        {videoEmbed.type === 'youtube' ? (
-                                            <img src={`https://img.youtube.com/vi/${videoEmbed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    <div ref={thumbnailRowRef} className="flex gap-1.5 md:gap-2 overflow-x-auto px-0 pb-2 hide-scrollbar" style={{ direction: 'ltr', justifyContent: 'center' }}>
+                        {allMedia.length > 1 && allMedia.map((item, i) => (
+                            <div key={i} onClick={() => goTo(i + 1)} className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden cursor-pointer relative" style={{ backgroundColor: surfaceMuted, border: i === realMediaIndex ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
+                                {item.type === 'video' ? (
+                                    <>
+                                        {item.embed.type === 'youtube' ? (
+                                            <img src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }}>
                                                 <i className="ph ph-video text-white text-xl md:text-2xl"></i>
@@ -387,22 +413,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                                             <i className="ph ph-play-circle text-white text-xl md:text-2xl drop-shadow-lg"></i>
                                         </div>
-                                    </div>
+                                    </>
+                                ) : (
+                                    <img src={item.src} alt="" className="w-full h-full object-cover" loading="lazy" />
                                 )}
-                                {galleryImages.map((img, idx) => (
-                                    <div key={idx} onClick={() => handleThumbClick(idx)} className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden cursor-pointer" style={{ backgroundColor: surfaceMuted, border: selectedImageIndex === idx ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
-                                        <img src={img} className="w-full h-full object-cover" loading="lazy" />
-                                    </div>
-                                ))}
-                            </>
-                        ) : (
-                            <div className="flex gap-2">
-                                <div className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg border-2 overflow-hidden" style={{ backgroundColor: surfaceMuted, borderColor: 'var(--dz-primary)' }}></div>
-                                <div className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden" style={{ backgroundColor: surfaceMuted }}></div>
-                                <div className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden" style={{ backgroundColor: surfaceMuted }}></div>
-                                <div className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden" style={{ backgroundColor: surfaceMuted }}></div>
                             </div>
-                        )}
+                        ))}
                     </div>
 
                     {/* Trust Badges (Desktop) */}
