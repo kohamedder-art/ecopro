@@ -88,7 +88,7 @@ export default function LeRoiShopTemplate({
   const [view, setView] = useState<'catalog' | 'product'>('catalog');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProduct(p); setView('product'); } } }, [initialProductSlug, products]);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [activeImageIndex, setActiveImageIndex] = useState(1);
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -97,9 +97,18 @@ export default function LeRoiShopTemplate({
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
   const [lastCustomerPhone, setLastCustomerPhone] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImgIdx, setLightboxImgIdx] = useState(0);
+  useEffect(() => {
+    if (lightboxOpen) {
+      // Map realMediaIndex to image-only index (subtract 1 if video is first)
+      setLightboxImgIdx(videoEmbed ? Math.max(0, realMediaIndex - 1) : realMediaIndex);
+    }
+  }, [lightboxOpen]);
   const [emblaApi, setEmblaApi] = useState<any>(null);
   const galleryStripRef = useRef<HTMLDivElement>(null);
+  const thumbnailRowRef = useRef<HTMLDivElement>(null);
   const galleryIdxRef = useRef(0);
+  const wrapRef = useRef(false);
   galleryIdxRef.current = activeImageIndex;
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
@@ -141,6 +150,7 @@ export default function LeRoiShopTemplate({
   // Reset offer when active product changes
   useEffect(() => {
     setSelectedOffer(null);
+    setActiveImageIndex(1);
   }, [activeProduct?.id]);
 
   const videoUrl = (activeProduct as any)?.metadata?.video_url || '';
@@ -151,7 +161,64 @@ export default function LeRoiShopTemplate({
     if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
     return { type: 'iframe' as const, url: videoUrl };
   }, [videoUrl]);
-  const [showVideo, setShowVideo] = useState(true);
+
+  // Build unified media array: video (if exists) + images, all swipable
+  const enabledVideo = Boolean(videoEmbed);
+  const allMedia = useMemo(() => {
+    const items: ({ type: 'video'; embed: typeof videoEmbed } | { type: 'image'; src: string })[] = [];
+    if (videoEmbed) items.push({ type: 'video', embed: videoEmbed });
+    (activeProduct?.images?.filter(Boolean) || []).forEach((src: string) => items.push({ type: 'image', src }));
+    return items;
+  }, [videoEmbed, activeProduct?.images]);
+
+  const loopedMedia = useMemo(() => {
+    const len = allMedia.length;
+    if (len <= 1) return allMedia;
+    return [allMedia[len - 1], ...allMedia, allMedia[0]];
+  }, [allMedia]);
+
+  // Map looped index → real allMedia index
+  const realMediaIndex = useMemo(() => {
+    const n = allMedia.length;
+    if (n <= 1) return 0;
+    if (activeImageIndex === 0) return n - 1;
+    if (activeImageIndex === loopedMedia.length - 1) return 0;
+    return activeImageIndex - 1;
+  }, [activeImageIndex, allMedia, loopedMedia]);
+
+  // Auto-scroll thumbnails when active media changes
+  useEffect(() => {
+    if (!thumbnailRowRef.current) return;
+    const container = thumbnailRowRef.current;
+    const thumb = container.children[realMediaIndex] as HTMLElement | undefined;
+    if (thumb) {
+      thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [realMediaIndex]);
+
+  // Infinite loop: when reaching a clone, snap to the real item after transition
+  useEffect(() => {
+    if (allMedia.length <= 1) return;
+    const idx = activeImageIndex;
+    const len = loopedMedia.length;
+    if (idx === len - 1) {
+      const timer = setTimeout(() => {
+        wrapRef.current = true;
+        galleryIdxRef.current = 1;
+        setActiveImageIndex(1);
+      }, 300);
+      return () => { clearTimeout(timer); wrapRef.current = false; };
+    } else if (idx === 0) {
+      const timer = setTimeout(() => {
+        wrapRef.current = true;
+        galleryIdxRef.current = allMedia.length;
+        setActiveImageIndex(allMedia.length);
+      }, 300);
+      return () => { clearTimeout(timer); wrapRef.current = false; };
+    } else {
+      wrapRef.current = false;
+    }
+  }, [activeImageIndex, allMedia.length, loopedMedia.length]);
 
   const comparePrice = (activeProduct as any)?.compare_at_price;
   const unitPrice = activeProduct?.price || 0;
@@ -217,8 +284,7 @@ export default function LeRoiShopTemplate({
 
   const openProduct = (product: any) => {
     setSelectedProduct(product);
-    setActiveImageIndex(0);
-    setShowVideo(!!videoEmbed);
+    setActiveImageIndex(1);
     setView('product');
     setQuantity(1);
     setOrderSuccess(false);
@@ -487,80 +553,84 @@ export default function LeRoiShopTemplate({
 
               {/* Image */}
               {(() => {
-                const imgs: string[] = activeProduct.images?.filter(Boolean) || [];
-
                 const goTo = (idx: number) => {
-                  const wrapped = ((idx % imgs.length) + imgs.length) % imgs.length;
-                  // console.log('[LeRoiGallery] goTo', { idx, wrapped, imgsLen: imgs.length });
-                  galleryIdxRef.current = wrapped;
-                  setActiveImageIndex(wrapped);
+                  const clamped = Math.max(0, Math.min(idx, loopedMedia.length - 1));
+                  galleryIdxRef.current = clamped;
+                  setActiveImageIndex(clamped);
                 };
+                // Map looped index → real index for dots
+                const dotIndex = (() => {
+                  const i = activeImageIndex;
+                  const n = allMedia.length;
+                  if (n <= 1) return i;
+                  if (i === 0) return n - 1;
+                  if (i === loopedMedia.length - 1) return 0;
+                  return i - 1;
+                })();
 
                 return (
                   <div className="w-full md:w-1/2 flex flex-col">
                     {/* Main image viewport */}
                     <div className="overflow-hidden aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] md:rounded-xl select-none" style={{ backgroundColor: surfaceMuted, position: 'relative', touchAction: 'pan-y' }}
                       onTouchStart={e => {
-                        if (showVideo) return;
                         const t = e.currentTarget as any;
                         t._ts = e.touches[0].clientX;
                         t._tsy = e.touches[0].clientY;
                       }}
                       onTouchEnd={e => {
-                        if (showVideo) return;
                         const t = e.currentTarget as any;
                         const dx = t._ts - e.changedTouches[0].clientX;
                         const dy = t._tsy - e.changedTouches[0].clientY;
                         if (t._ts == null || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
                         dx > 0 ? goTo(galleryIdxRef.current + 1) : goTo(galleryIdxRef.current - 1);
                       }}>
-                      {showVideo && videoEmbed ? (
-                        <div style={{ position: 'absolute', inset: 0 }}>
-                          {videoEmbed.type === 'youtube' ? (
-                            <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                          ) : videoEmbed.type === 'video' ? (
-                            <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                          ) : (
-                            <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                          )}
-                        </div>
-                      ) : imgs.length > 0 ? (
+                      {allMedia.length > 0 ? (
                         <div ref={galleryStripRef}
-                          style={{ position: 'absolute', top: 0, left: 0, bottom: 0, display: 'flex', transform: `translateX(-${(activeImageIndex * 100) / imgs.length}%)`, transition: 'transform 0.3s ease', willChange: 'transform', width: `${imgs.length * 100}%` }}>
-                          {imgs.map((img, i) => (
-                            <div key={i} style={{ width: `${100 / imgs.length}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }} onClick={() => setLightboxOpen(true)}>
-                              <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', cursor: 'pointer' }} loading="lazy" />
+                          style={{ position: 'absolute', top: 0, left: 0, bottom: 0, display: 'flex', direction: 'ltr', transform: `translateX(-${(activeImageIndex * 100) / loopedMedia.length}%)`, transition: `transform ${wrapRef.current ? '0s' : '0.3s'} ease`, willChange: 'transform', width: `${loopedMedia.length * 100}%` }}>
+                          {loopedMedia.map((item, i) => (
+                            <div key={i} style={{ width: `${100 / loopedMedia.length}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }} onClick={() => item.type === 'image' && setLightboxOpen(true)}>
+                              {item.type === 'video' ? (
+                                item.embed.type === 'youtube' ? (
+                                  <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${item.embed.id}?autoplay=1&mute=1&loop=1&playlist=${item.embed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                                ) : item.embed.type === 'video' ? (
+                                  <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline />
+                                ) : (
+                                  <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
+                                )
+                              ) : (
+                                <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', cursor: 'pointer' }} loading="lazy" />
+                              )}
                             </div>
                           ))}
                         </div>
                       ) : (
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textMuted }}><span>لا توجد صور</span></div>
                       )}
-                      {imgs.length > 1 && !showVideo && (
+                      {allMedia.length > 1 && (
                         <>
                           <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current - 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronLeft className="w-5 h-5" /></button>
                           <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current + 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronRight className="w-5 h-5" /></button>
                           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                            {imgs.map((_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full transition-all" style={{ backgroundColor: i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.4)', transform: i === activeImageIndex ? 'scale(1.4)' : 'scale(1)' }} />)}
+                            {allMedia.map((_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full transition-all" style={{ backgroundColor: i === dotIndex ? '#fff' : 'rgba(255,255,255,0.4)', transform: i === dotIndex ? 'scale(1.4)' : 'scale(1)' }} />)}
                           </div>
                         </>
                       )}
                     </div>
                     {/* Thumbnails */}
-                    {(videoEmbed || imgs.length > 1) && (
-                      <div className="flex gap-3 mt-4 overflow-x-auto pb-1 px-4 md:px-0">
-                        {videoEmbed && (
-                          <button onClick={() => setShowVideo(true)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `3px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
-                          </button>
-                        )}
-                        {imgs.map((img, i) => (
-                          <button key={i} onClick={() => { setShowVideo(false); goTo(i); }} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${!showVideo && i === activeImageIndex ? accentColor : 'transparent'}`, opacity: !showVideo && i === activeImageIndex ? 1 : 0.6 }}>
-                            <img src={img} alt="" className="w-full h-full object-contain" loading="lazy" />
+                    {allMedia.length > 1 && (
+                      <div ref={thumbnailRowRef} className="flex gap-3 mt-4 overflow-x-auto pb-1 px-2 md:px-0" style={{ direction: 'ltr' }}>
+                        {allMedia.map((item, i) => (
+                          <button key={i} onClick={() => goTo(i + 1)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${i === dotIndex ? accentColor : 'transparent'}`, opacity: i === dotIndex ? 1 : 0.6 }}>
+                            {item.type === 'video' ? (
+                              <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+                              </div>
+                            ) : (
+                              <img src={item.src} alt="" className="w-full h-full object-contain" loading="lazy" />
+                            )}
                           </button>
                         ))}
-                      </div>
-                    )}
+                      </div>)}
                   </div>
                 );
               })()}
@@ -851,12 +921,12 @@ export default function LeRoiShopTemplate({
           <button className="absolute top-4 right-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={() => setLightboxOpen(false)}>✕</button>
           {activeProduct.images?.length > 1 && (
             <>
-              <button className="absolute left-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); setActiveImageIndex(i => (i + 1) % activeProduct.images.length); }}>‹</button>
-              <button className="absolute right-14 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); setActiveImageIndex(i => (i - 1 + activeProduct.images.length) % activeProduct.images.length); }}>›</button>
+              <button className="absolute left-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); setLightboxImgIdx(i => (i + 1) % activeProduct.images.length); }}>‹</button>
+              <button className="absolute right-14 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); setLightboxImgIdx(i => (i - 1 + activeProduct.images.length) % activeProduct.images.length); }}>›</button>
             </>
           )}
           <img
-            src={activeProduct.images?.[activeImageIndex] || activeProduct.images?.[0] || '/placeholder.png'}
+            src={activeProduct.images?.[lightboxImgIdx] || activeProduct.images?.[0] || '/placeholder.png'}
             alt={activeProduct.title}
             className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
