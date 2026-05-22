@@ -68,8 +68,8 @@ const createOrderBodySchema = z
       (v) => (v === '' || v === null || v === undefined ? undefined : typeof v === 'string' ? Number(v) : v),
       z.number().finite().positive()
     ).optional(),
-  })
-  .strict();
+    customer_commune: z.string().trim().max(200).optional().nullable(),
+  });
 
 async function resolveDeliveryFee(params: {
   clientId: number;
@@ -133,7 +133,13 @@ export const createOrder: RequestHandler = async (req, res) => {
       shipping_hai,
       offer_id,
       customer_notes,
+      customer_commune,
     } = parsed.data;
+
+    // Merge customer_commune into shipping_address if both exist
+    const fullAddress = customer_commune && customer_address
+      ? `${customer_address}، ${customer_commune}`
+      : (customer_address || customer_commune || '');
 
     const normalizedPhone = String(customer_phone).replace(/\s/g, '');
     if (!/^\+?[0-9]{7,}$/.test(normalizedPhone)) {
@@ -296,7 +302,7 @@ export const createOrder: RequestHandler = async (req, res) => {
     addCol('customer_name', customer_name);
     addCol('customer_email', customer_email || null);
     addCol('customer_phone', normalizedPhone || null);
-    addCol('shipping_address', customer_address || null);
+    addCol('shipping_address', fullAddress || null);
     addCol('notes', customer_notes || null);
     addCol('shipping_wilaya_id', shipping_wilaya_id || null);
     addCol('shipping_commune_id', shipping_commune_id || null);

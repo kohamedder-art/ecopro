@@ -543,14 +543,36 @@ async function createOrderFromData(
   try {
     const pool = await ensureConnection();
 
-    // Look up product by title
+    // Look up product by title (case-insensitive, the AI may slightly reformat the title)
     const productRes = await pool.query(
-      `SELECT id, price FROM client_store_products WHERE client_id = $1 AND title = $2 AND status = 'active' LIMIT 1`,
-      [data.clientId, data.productTitle]
+      `SELECT id, price FROM client_store_products WHERE client_id = $1 AND status = 'active' AND (title ILIKE $2 OR LOWER(title) = LOWER($2)) LIMIT 1`,
+      [data.clientId, `%${data.productTitle}%`]
     );
     if (!productRes.rows.length) {
-      console.error(`[AI-Customer] Product not found: "${data.productTitle}"`);
-      return null;
+      // If no match found via fuzzy search, log and try a broader search
+      const broadRes = await pool.query(
+        `SELECT id, price, title FROM client_store_products WHERE client_id = $1 AND status = 'active' ORDER BY CHAR_LENGTH(title) ASC LIMIT 50`,
+        [data.clientId]
+      );
+      // Find the closest match by counting shared words
+      const words = data.productTitle.toLowerCase().split(/\s+/);
+      let bestMatch: { id: number; price: number } | null = null;
+      let bestScore = 0;
+      for (const row of broadRes.rows) {
+        const rowWords = row.title.toLowerCase().split(/\s+/);
+        const score = words.filter(w => rowWords.includes(w)).length;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = { id: Number(row.id), price: Number(row.price) };
+        }
+      }
+      if (bestMatch && bestScore > 0) {
+        console.log(`[AI-Customer] Fuzzy-matched "${data.productTitle}" → "${broadRes.rows.find(r => Number(r.id) === bestMatch!.id)?.title}" (score=${bestScore})`);
+        productRes.rows = [{ id: bestMatch.id, price: bestMatch.price } as any];
+      } else {
+        console.error(`[AI-Customer] Product not found: "${data.productTitle}"`);
+        return null;
+      }
     }
     const productId = Number(productRes.rows[0].id);
     const unitPrice = Number(productRes.rows[0].price);
@@ -929,7 +951,7 @@ ${effectiveMessage}`;
               );
             } catch (_) {}
           } else {
-            cleanResponse += '\n\nعذراً، حدث خطأ أثناء تسجيل الطلب. يرجى المحاولة مرة أخرى.';
+            cleanResponse = 'عذراً، حدث خطأ أثناء تسجيل الطلب. يرجى المحاولة مرة أخرى.';
           }
         }
       } catch (parseErr) {
