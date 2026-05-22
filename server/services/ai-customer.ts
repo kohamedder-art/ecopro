@@ -266,6 +266,43 @@ function buildProductCatalog(ctx: StoreContext): string {
 }
 
 /**
+ * Search products matching a keyword query from the database directly.
+ * This lets the AI find relevant products beyond the static catalog limit.
+ */
+async function searchProductsByQuery(clientId: number, query: string): Promise<string> {
+  try {
+    const pool = await ensureConnection();
+    const searchTerm = `%${query.replace(/\s+/g, '%')}%`;
+    const res = await pool.query(
+      `SELECT id, title, price, original_price, description, category, stock_quantity, images
+       FROM client_store_products
+       WHERE client_id = $1 AND status = 'active'
+         AND (title ILIKE $2 OR description ILIKE $2 OR category ILIKE $2)
+       ORDER BY is_featured DESC NULLS LAST, created_at DESC
+       LIMIT 15`,
+      [clientId, `%${query}%`]
+    );
+    if (!res.rows.length) return '';
+    return res.rows.map((p: any, i: number) => {
+      let line = `${i + 1}. ${p.title} — ${Number(p.price).toFixed(0)} دج`;
+      if (p.original_price && Number(p.original_price) > Number(p.price)) {
+        const disc = Math.round((1 - Number(p.price) / Number(p.original_price)) * 100);
+        line += ` (خصم ${disc}%)`;
+      }
+      const stock = p.stock_quantity;
+      if (stock !== null && stock <= 0) line += ' [نفذ]';
+      else if (stock !== null && stock <= 5) line += ` [⚡ ${stock} قطع]`;
+      else line += ' [متوفر]';
+      if (p.category) line += ` | ${p.category}`;
+      if (p.description) line += `\n   ${String(p.description).slice(0, 150)}`;
+      return line;
+    }).join('\n');
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Resolve customer phone from their platform chat ID.
  */
 async function resolveCustomerPhone(
@@ -851,6 +888,12 @@ export async function handleCustomerMessage(
 
   // Build the prompt — context-only, the system prompt handles personality and rules
   const catalog = buildProductCatalog(ctx);
+  
+  // Search for products matching the user's question (RAG)
+  const searchResults = effectiveMessage.length > 3
+    ? await searchProductsByQuery(clientId, effectiveMessage)
+    : '';
+  
   const storeLinkSection = ctx.storeLink ? `\nرابط المتجر: ${ctx.storeLink}` : '';
   const storeOrderLink = ctx.storeLink ? `\nرابط الطلب: ${ctx.storeLink}` : '';
 
@@ -873,7 +916,7 @@ export async function handleCustomerMessage(
 ${ctx.storeDescription ? ctx.storeDescription + '\n' : ''}${ctx.aiInstructions ? `\n[تعليمات خاصة من صاحب المتجر]: ${ctx.aiInstructions}\n` : ''}
 ═══ المنتجات المتوفرة ═══
 ${catalog}
-
+${searchResults ? `\n═══ نتائج بحث خاصة بسؤالك ═══\n${searchResults}\n` : ''}
 ═══ التوصيل ═══
 ${ctx.deliveryInfo}
 الدفع عند الاستلام (COD).${storeLinkSection}${storeOrderLink}
