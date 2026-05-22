@@ -1172,6 +1172,14 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
       let blacklistCount = 0;
       // Store design state
       let storeDesign: Record<string, string> = {};
+      // Customer AI persona
+      let aiPersona: Record<string, any> = {};
+      // Customer AI instructions
+      let aiInstructions = '';
+      // Delivery integrations
+      let deliveryIntegrations: any[] = [];
+      // Template info
+      let templateInfo = { name: '', settings: {} as Record<string, any> };
 
       try {
         const [
@@ -1181,6 +1189,7 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
           pixelSettingsRes, pixelStatsRes,
           stockRes, lowStockRes, botRes,
           flaggedOrdersRes, deliveryPricesRes, staffActivityRes, blacklistRes,
+          aiPersonaRes, aiSettingsRes, deliveryIntegrationRes,
         ] = await Promise.all([
           // Store settings
           pool.query(
@@ -1315,6 +1324,25 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
             `SELECT COUNT(*) as count FROM customer_blacklist WHERE client_id = $1`,
             [clientId]
           ).catch(() => ({ rows: [{ count: 0 }] as any[] })),
+          // AI persona (customer-facing AI configuration)
+          pool.query(
+            `SELECT * FROM ai_personas WHERE client_id = $1 LIMIT 1`,
+            [clientId]
+          ).catch(() => ({ rows: [] as any[] })),
+          // AI settings (instructions field)
+          pool.query(
+            `SELECT ai_instructions FROM ai_settings WHERE client_id = $1 LIMIT 1`,
+            [clientId]
+          ).catch(() => ({ rows: [] as any[] })),
+          // Delivery integrations (connected couriers)
+          pool.query(
+            `SELECT dc.name, dc.slug, di.is_enabled, di.configured_at
+             FROM delivery_integrations di
+             JOIN delivery_companies dc ON dc.id = di.delivery_company_id
+             WHERE di.client_id = $1
+             ORDER BY di.configured_at DESC`,
+            [clientId]
+          ).catch(() => ({ rows: [] as any[] })),
         ]);
 
         // Store
@@ -1416,6 +1444,34 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
 
         // Blacklist count
         blacklistCount = parseInt(String(blacklistRes.rows[0]?.count || '0'));
+
+        // Customer AI persona
+        aiPersona = aiPersonaRes.rows[0] || {};
+
+        // AI instructions
+        aiInstructions = aiSettingsRes.rows[0]?.ai_instructions || '';
+
+        // Delivery integrations
+        deliveryIntegrations = deliveryIntegrationRes.rows;
+
+        // Template info
+        if (storeRes.rows[0]) {
+          const sr = storeRes.rows[0];
+          templateInfo.name = sr.template || '';
+          templateInfo.settings = {
+            primary_color: sr.primary_color || '',
+            secondary_color: sr.secondary_color || '',
+            template_accent_color: sr.template_accent_color || '',
+            template_bg_color: sr.template_bg_color || '',
+            template_hero_heading: sr.template_hero_heading || '',
+            template_hero_subtitle: sr.template_hero_subtitle || '',
+            template_button_text: sr.template_button_text || '',
+            font_family: sr.font_family || 'Inter',
+            text_color: sr.text_color || '',
+            border_radius: sr.border_radius || '',
+            store_description: sr.store_description || '',
+          };
+        }
       } catch (dbErr: any) { /* DB error — still answer with what we have */ }
 
       const statusSummary = Object.entries(ordersByStatus)
@@ -1423,7 +1479,7 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
         .join(', ') || 'no orders yet';
 
       // Detect if the question needs live store data or is a how-to/feature question
-      const dataKeywords = ['طلب','طلبية','طلبيات','revenue','إيراد','مبيعات','منتج','مخزون','stock','orders','أرباح','زبون','زبائن','إحصاء','تقرير','كم','عدد','قيمة','أجمالي','status','حالة','delivery','توصيل','اشتراك','subscription','دفع','payment','موظف','staff','بيكسل','pixel'];
+      const dataKeywords = ['طلب','طلبية','طلبيات','revenue','إيراد','مبيعات','منتج','مخزون','stock','orders','أرباح','زبون','زبائن','إحصاء','تقرير','كم','عدد','قيمة','أجمالي','status','حالة','delivery','توصيل','اشتراك','subscription','دفع','payment','موظف','staff','بيكسل','pixel','الشخصية','persona','البوت','bot','بيانات','show','أظهر','عرض','تفاصيل','قائمة','delivery','كوليس','courier','شحن','transport','توصيل']; // second occurrence intentional for Arabic variants
       const needsData = dataKeywords.some(kw => question.toLowerCase().includes(kw));
 
       const storeContext = `
@@ -1515,8 +1571,71 @@ ${staffActivity.length > 0
 === CUSTOMER BLACKLIST ===
 Blacklisted customers: ${blacklistCount}
 ` : ''}
+
+=== CUSTOMER-FACING AI CONFIG ===
+This is YOUR customer-facing AI — what it tells your customers. You can change this anytime.
+${aiPersona.persona_name ? `Persona name: "${aiPersona.persona_name}" | Tone: ${aiPersona.tone || 'friendly'} | Language: ${aiPersona.primary_language || 'ar'} | Emoji style: ${aiPersona.emoji_style || 'minimal'}
+Upsell enabled: ${aiPersona.upsell_enabled !== false ? 'yes' : 'no'} | Cross-sell: ${aiPersona.cross_sell_enabled !== false ? 'yes' : 'no'} | Urgency: ${aiPersona.urgency_enabled ? 'yes' : 'no'}
+Response length: ${aiPersona.response_length || 'medium'} | Competitor policy: ${aiPersona.competitor_policy || 'ignore'}
+${aiPersona.personality_note ? `Personality note: ${aiPersona.personality_note}` : ''}
+${aiPersona.store_story ? `Store story: ${aiPersona.store_story}` : ''}
+${aiPersona.product_philosophy ? `Product philosophy: ${aiPersona.product_philosophy}` : ''}
+${aiPersona.unique_selling_points?.length ? `USPs: ${aiPersona.unique_selling_points.join(', ')}` : ''}
+${aiPersona.discount_policy ? `Discount policy: ${aiPersona.discount_policy}` : ''}
+${aiPersona.greeting_template ? `Greeting: "${aiPersona.greeting_template}"` : ''}
+${aiPersona.closing_template ? `Closing: "${aiPersona.closing_template}"` : ''}
+${aiPersona.forbidden_topics?.length ? `Forbidden topics: ${aiPersona.forbidden_topics.join(', ')}` : ''}
+${aiPersona.faq_entries?.length ? `\nFAQ (${aiPersona.faq_entries.length} entries):\n${aiPersona.faq_entries.map((f: any) => `  Q: ${f.q}\n  A: ${f.a}`).join('\n')}` : ''}
+${aiPersona.common_objections?.length ? `\nObjection handling (${aiPersona.common_objections.length} rules):\n${aiPersona.common_objections.map((o: any) => `  When "${o.q}" → reply "${o.a}"`).join('\n')}` : ''}
+${aiInstructions ? `\nCustom AI instructions: "${aiInstructions}"` : ''}
+` : '(no AI persona configured yet — customer AI uses defaults)\nYou can configure the persona via the AI Settings page or by asking me to update it.'}
+
+=== DELIVERY INTEGRATIONS (COURIERS) ===
+${deliveryIntegrations.length > 0
+  ? deliveryIntegrations.map(di => `  ${di.name} (${di.slug}) | enabled: ${di.is_enabled ? 'yes' : 'no'} | configured: ${di.configured_at ? new Date(di.configured_at).toLocaleDateString() : 'N/A'}`).join('\n')
+  : '  (no delivery companies integrated yet)'}
+Available couriers: Yalidine, ZR Express, Noest, Maystro, Guepex, Ecotrack, Dolivroo, Zimou Express, Anderson, DHD, Ecom Delivery, Elogistia, MDM. To integrate, visit the Delivery page.
+
+=== PLATFORM FEATURES & PAGES ===
+You are the store OWNER AI — you have FULL access to the store owner dashboard and can answer ANY question about it.
+Here is every page and what it does. When the owner asks about a feature, explain it naturally.
+
+• Dashboard (/) — Revenue graph, order chart, latest orders, top products, recent staff activity, quick stats. Key metrics: revenue (today/week/month), orders, conversion rate.
+• Orders (/orders) — Full order management. Filter by status (pending/confirmed/processing/shipped/delivered/cancelled/fake/duplicate/no_answer/returned/waiting_callback/postponed). Assign delivery company, generate labels, track courier status. View order timeline, notes, payment status, delivery location map. Export to Excel.
+• Products (/products) — Add/edit/delete products. Fields: title, price, original price (for discounts), stock quantity, category, description, images, featured flag, status (active/inactive). Product variants (color, size) supported.
+• Stock (/stock) — Internal inventory management. Track quantities, SKUs, reorder levels, low stock alerts. Separate from store products.
+• Staff (/staff) — Manage team members. Roles: admin, manager, staff. Each role has granular permissions. Activity log shows who did what.
+• Customers (/customers) — View customer list, their orders, contact info (phone, Telegram ID, Messenger ID). Filter and search.
+• Chat Orders (/chat-orders) — Orders created by the customer-facing AI chatbot. Separate from regular orders.
+• Messenger Bot (/messenger) — Facebook Messenger bot integration. Toggle on/off, set welcome message, configure reply delay, manage conversation history.
+• WhatsApp Bot (/whatsapp) — WhatsApp Cloud API integration. Connect WhatsApp Business number. Toggle, configure templates (greeting, order confirm, shipping, payment).
+• Telegram Bot (/telegram-bot) — Telegram bot integration. Connect bot token, set commands, manage conversations.
+• Delivery (/delivery) — Integrate with 13+ Algerian couriers (Yalidine, ZR Express, Noest, Maystro, Guepex, etc.). Configure API keys, set wilaya-based delivery prices (home delivery and desk delivery with estimated days), assign orders to couriers, generate and print shipping labels.
+• AI Settings (/ai-settings) — Configure the customer-facing AI: persona name, tone (professional/friendly/casual/luxury), language, emoji style, FAQ entries, objection handling, custom instructions, discount policy, upsell/cross-sell, urgency, forbidden topics. Test your AI responses before deploying.
+• Pixel Tracking (/pixel) — Facebook Pixel and TikTok Pixel integration. View pixel stats (views, purchases, revenue) for last 7 days.
+• Store Settings (/store) — Store name, slug, currency, template selection, public/private toggle. Customize: accent color, background, text color, font, border radius, hero heading, hero subtitle, button text. SEO meta tags (meta title, description).
+• Design / Templates (/store?tab=templates) — Switch between storefront templates. Available templates include: dzshop, leroishop, classic, modern, minimalist, fashion, electronics, food. Each template can be fully customized (colors, fonts, hero section, layout).
+• Billing (/billing) — Subscription plan (tier, status, trial end, period end). Payment history. Plan: $7/month, includes all features.
+• Profile (/profile) — Personal info: name, email, phone, business name, country, city.
+• General Bot Settings (/bot-settings) — Master bot toggle (enables/disables Telegram + Messenger + WhatsApp together). Language, company name that appears in messages, support phone number.
+
+All pages are in the left sidebar of the dashboard. Features marked as Coming Soon or disabled for your plan will be indicated.
+
+Available ACTIONS you can perform via ECOPRO_ACTION:
+• update_order_status(orderId, newStatus) — Change order status
+• create_product(title, price, stock, category, description) — Add new product
+• edit_product(productId, field, value) — Edit a single product field (price/stock/status/title)
+• delete_product(productId, title) — Archive/soft-delete a product
+• update_store_settings(field, value) — Update store name, description, currency
+• update_store_design(changes) — Bulk update store design (colors, fonts, hero text, etc.)
+• bot_toggle(enable) — Turn bot on/off
+• bot_set_schedule(delayMinutes) — Change auto-reply delay
+• bot_update_templates(language, tone) — Rewrite bot messages with AI
+• bot_auto_configure(language, tone) — Full bot setup in one shot
+• bot_send_message(orderId, intent, channel) — Send message to customer immediately
+
 === PLATFORM INFO ===
-EcoPro: Algerian e-commerce SaaS. Subscription $7/month. Delivery: COD, Wilaya-based. Orders confirmed via WhatsApp/Telegram/Messenger. Staff permissions can be customized.
+EcoPro: Algerian e-commerce SaaS. Subscription $7/month (~1400 DZD). Delivery: Cash on Delivery (COD), Wilaya-based pricing. Orders confirmed via WhatsApp/Telegram/Messenger. Staff permissions can be customized per role. Font-end storefront accessible at https://your-slug.sahla4eco.com (or your custom domain).
       `.trim();
 
       const historyText = prevHistory.length > 0
