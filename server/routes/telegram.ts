@@ -282,7 +282,7 @@ export const getTelegramBotLink: RequestHandler = async (req, res) => {
     
     // Generate a pre-connect token based on phone (if provided)
     let startToken = '';
-    let botUrl = `https://t.me/${botUsername}`;
+    let botUrl = `https://t.me/${botUsername}?start=store`;
     
     if (phone) {
       // Normalize phone

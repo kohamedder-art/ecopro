@@ -625,12 +625,12 @@ export default function ProductCheckout() {
   const getTelegramConnectUrl = () => {
     if (!telegramBotInfo?.enabled || !telegramBotInfo?.botUsername) return null;
     if (!formData.phone || formData.phone.replace(/\D/g, '').length < 9) {
-      return `https://t.me/${telegramBotInfo.botUsername}`;
+      return `https://t.me/${telegramBotInfo.botUsername}?start=store`;
     }
     // Re-fetch with phone to get personalized link
     const normalizedPhone = formData.phone.replace(/\D/g, '');
     const slug = storeSlug || product?.store_slug || localStorage.getItem('currentStoreSlug');
-    if (!slug) return `https://t.me/${telegramBotInfo.botUsername}`;
+    if (!slug) return `https://t.me/${telegramBotInfo.botUsername}?start=store`;
     return `/api/telegram/bot-link/${slug}?phone=${normalizedPhone}`;
   };
 
@@ -646,7 +646,7 @@ export default function ProductCheckout() {
       return;
     }
     
-    let url = `https://t.me/${telegramBotInfo.botUsername}`;
+    let url = `https://t.me/${telegramBotInfo.botUsername}?start=store`;
     const slug = storeSlug || product?.store_slug || localStorage.getItem('currentStoreSlug');
     
     if (slug && formData.phone && formData.phone.replace(/\D/g, '').length >= 9) {

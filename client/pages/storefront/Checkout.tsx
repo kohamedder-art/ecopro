@@ -323,7 +323,7 @@ export default function Checkout() {
     const botUsername = telegramBotInfo?.botUsername;
     if (!slug || !botUsername) return;
 
-    let url = `https://t.me/${botUsername}`;
+    let url = `https://t.me/${botUsername}?start=store`;
     const normalizedPhone = (formData.phone || '').replace(/\D/g, '');
     if (normalizedPhone.length >= 9) {
       try {
