@@ -20,6 +20,7 @@
 
 import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
 import { generateText, generateTextWithSearch, generateJSON, analyzeProductImage } from '../services/gemini';
 import { verifyToken } from '../utils/auth';
 import { authenticate, requireAdmin, requireClient } from '../middleware/auth';
@@ -3343,9 +3344,12 @@ router.post('/test-customer', authAiLimiter, async (req: Request, res: Response)
     // Import the customer handler
     const { handleCustomerMessage } = await import('../services/ai-customer');
     
+    // Use a unique chat ID per request so test conversations don't bleed into each other
+    const uniqueChatId = `test_${effectiveClientId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    
     // Test mode: prefix with /test tells the handler this is the store owner testing
     const testMessage = '/test ' + message;
-    const response = await handleCustomerMessage(effectiveClientId, 'whatsapp', 'test_chat_id', testMessage);
+    const response = await handleCustomerMessage(effectiveClientId, 'whatsapp', uniqueChatId, testMessage);
     
     if (!response) {
       return res.json({ 
