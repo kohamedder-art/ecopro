@@ -555,25 +555,34 @@ async function createOrderFromData(
     const productId = Number(productRes.rows[0].id);
     const unitPrice = Number(productRes.rows[0].price);
 
-    // Resolve wilaya ID from name
+    // Resolve wilaya ID from name (table may not exist)
     let wilayaId: number | null = null;
     if (data.wilayaName) {
-      const wRes = await pool.query(
-        `SELECT id FROM wilayas WHERE name_ar = $1 OR name = $1 LIMIT 1`,
-        [data.wilayaName]
-      );
-      if (wRes.rows[0]) wilayaId = Number(wRes.rows[0].id);
+      try {
+        const wRes = await pool.query(
+          `SELECT id FROM wilayas WHERE name_ar = $1 OR name = $1 LIMIT 1`,
+          [data.wilayaName]
+        );
+        if (wRes.rows[0]) wilayaId = Number(wRes.rows[0].id);
+      } catch (_) {
+        // wilayas table may not exist — continue without wilaya id
+      }
     }
 
     // Resolve delivery fee
-    const deliveryRes = wilayaId
-      ? await pool.query(
+    let deliveryFee = 0;
+    if (wilayaId) {
+      try {
+        const deliveryRes = await pool.query(
           `SELECT home_delivery_price FROM delivery_prices
            WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`,
           [data.clientId, wilayaId]
-        )
-      : { rows: [] };
-    const deliveryFee = Number(deliveryRes.rows[0]?.home_delivery_price) || 0;
+        );
+        deliveryFee = Number(deliveryRes.rows[0]?.home_delivery_price) || 0;
+      } catch (_) {
+        // delivery_prices table or query may fail — continue with 0
+      }
+    }
     const qty = data.quantity || 1;
     const total = (unitPrice * qty) + deliveryFee;
 
