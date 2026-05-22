@@ -175,13 +175,14 @@ export default function Storefront() {
       try {
         setLoading(true);
         setError('');
-        // Fetch settings first so we can canonicalize slug and avoid slow DB fallbacks
-        const settingsRes = await fetchWithTimeout(
-          `/api/storefront/${encodeURIComponent(String(storeSlug))}/settings?_t=${Date.now()}`,
-          25000,
-          undefined,
-          1
-        );
+        // Fetch settings and products in parallel using the URL slug
+        // Canonicalization redirect will re-fetch if needed
+        const slug = String(storeSlug);
+        const encodedSlug = encodeURIComponent(slug);
+        const [settingsRes, productsRes] = await Promise.all([
+          fetchWithTimeout(`/api/storefront/${encodedSlug}/settings`, 25000, undefined, 1),
+          fetchWithTimeout(`/api/storefront/${encodedSlug}/products`, 35000, undefined, 1),
+        ]);
 
         if (!settingsRes.ok) {
           if (settingsRes.status === 404) throw new Error(t('storefront.notAvailable'));
@@ -214,25 +215,25 @@ export default function Storefront() {
         const canonical = String(newSettings.store_slug || storeSlug);
 
         // If we need to canonicalize, do it first; view tracking will happen on the next render.
-        if (canonical && canonical !== storeSlug && location.pathname === `/store/${storeSlug}`) {
+        if (canonical && canonical !== slug && location.pathname === `/store/${slug}`) {
           navigate(`/store/${canonical}${location.search}`, { replace: true });
           return;
         }
 
-        // Now fetch products using the canonical slug to avoid expensive name-normalization scans
-        const productsRes = await fetchWithTimeout(
-          `/api/storefront/${encodeURIComponent(canonical)}/products?_t=${Date.now()}`,
-          35000,
-          undefined,
-          1
-        );
-
-        if (!productsRes.ok) {
-          if (productsRes.status === 404) throw new Error(t('storefront.notAvailable'));
-          throw new Error('Failed to load store');
+        // If products already fetched in parallel, use them; otherwise fetch separately
+        let productsData: any = null;
+        if (productsRes && productsRes.ok) {
+          productsData = await productsRes.json();
         }
-
-        const productsData = await productsRes.json();
+        if (!productsData) {
+          // Re-fetch products with canonical slug if parallel fetch failed or slug changed
+          const refetchRes = await fetchWithTimeout(
+            `/api/storefront/${encodeURIComponent(canonical)}/products`,
+            35000, undefined, 1
+          );
+          if (refetchRes.ok) productsData = await refetchRes.json();
+          else throw new Error(t('storefront.notAvailable'));
+        }
         if (!isMounted) return;
 
         // Track storefront page view once per canonical slug.

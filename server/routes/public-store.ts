@@ -27,10 +27,10 @@ type CacheEntry<T> = { value: T; expiresAt: number };
 
 const isDev = process.env.NODE_ENV !== 'production';
 const SETTINGS_CACHE_TTL_MS = Number(
-  process.env.STOREFRONT_SETTINGS_CACHE_TTL_MS ?? (isDev ? 5_000 : 5_000)
+  process.env.STOREFRONT_SETTINGS_CACHE_TTL_MS ?? (isDev ? 5_000 : 60_000)
 );
 const PRODUCTS_CACHE_TTL_MS = Number(
-  process.env.STOREFRONT_PRODUCTS_CACHE_TTL_MS ?? (isDev ? 10_000 : 10_000)
+  process.env.STOREFRONT_PRODUCTS_CACHE_TTL_MS ?? (isDev ? 10_000 : 120_000)
 );
 
 const storefrontSettingsCache = new Map<string, CacheEntry<any>>();

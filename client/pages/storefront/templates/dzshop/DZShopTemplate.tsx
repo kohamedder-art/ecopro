@@ -707,9 +707,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         {/* Landing Page Style Image (Bottom image) */}
                             <div className="rounded-xl overflow-hidden mt-4 relative" style={{ backgroundColor: surfaceMuted }} ref={bottomImagePlaceholderRef} onClick={handleBottomImageClick}>
                             {settings?.banner_url ? (
-                                <img src={settings.banner_url} className="w-full h-full object-cover" />
+                                <img src={settings.banner_url} alt={settings?.store_name || ''} className="w-full h-full object-cover" loading="eager" />
                             ) : autoBannerImage ? (
-                                <img src={autoBannerImage} className="w-full h-full object-cover" />
+                                <img src={autoBannerImage} alt={settings?.store_name || ''} className="w-full h-full object-cover" loading="eager" />
                             ) : (
                                 <div className="p-10 flex flex-col items-center justify-center pointer-events-none">
                                     <i className="ph ph-plus-circle text-3xl mb-2" style={{ color: textMuted }}></i>
@@ -742,7 +742,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         <div className="flex gap-2 mt-4 px-4 overflow-x-auto hide-scrollbar" onClick={(e) => e.stopPropagation()}>
                             {galleryImages.map((img, idx) => (
                                 <div key={idx} onClick={() => setLightboxImgIdx(idx)} className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden cursor-pointer" style={{ border: lightboxImgIdx === idx ? '2px solid white' : '2px solid transparent' }}>
-                                    <img src={img} className="w-full h-full object-cover" />
+                                    <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" />
                                 </div>
                             ))}
                         </div>
