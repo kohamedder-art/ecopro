@@ -1180,6 +1180,14 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
       let deliveryIntegrations: any[] = [];
       // Template info
       let templateInfo = { name: '', settings: {} as Record<string, any> };
+      // Customers
+      let customerList: any[] = [];
+      let totalCustomers = 0;
+      // Bot message templates
+      let botTemplates: Record<string, string> = {};
+      // Analytics / traffic
+      let weeklyViews = 0, monthlyViews = 0;
+      let conversionRate = 0;
 
       try {
         const [
@@ -1190,6 +1198,7 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
           stockRes, lowStockRes, botRes,
           flaggedOrdersRes, deliveryPricesRes, staffActivityRes, blacklistRes,
           aiPersonaRes, aiSettingsRes, deliveryIntegrationRes,
+          customersRes, botTemplatesRes, analyticsViewsRes,
         ] = await Promise.all([
           // Store settings
           pool.query(
@@ -1237,7 +1246,7 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
           ),
           // Staff list (table: staff, not staff_members)
           pool.query(
-            `SELECT full_name, role, status FROM staff WHERE client_id = $1 ORDER BY created_at`,
+            `SELECT full_name, role, status, permissions FROM staff WHERE client_id = $1 ORDER BY created_at`,
             [clientId]
           ).catch(() => ({ rows: [] })),
           // Profile data
@@ -1343,6 +1352,29 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
              ORDER BY di.configured_at DESC`,
             [clientId]
           ).catch(() => ({ rows: [] as any[] })),
+          // Customers — unique customers from orders (name, phone, count, last order)
+          pool.query(
+            `SELECT customer_name, customer_phone, COUNT(*) as order_count, MAX(created_at) as last_order
+             FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND customer_phone IS NOT NULL
+             GROUP BY customer_name, customer_phone ORDER BY MAX(created_at) DESC LIMIT 20`,
+            [clientId]
+          ).catch(() => ({ rows: [] as any[] })),
+          // Bot message templates
+          pool.query(
+            `SELECT template_greeting, template_instant_order, template_pin_instructions,
+                    template_order_confirmation, template_payment, template_shipping,
+                    delivery_status_template
+             FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+            [clientId]
+          ).catch(() => ({ rows: [] as any[] })),
+          // Analytics: weekly and monthly page views
+          pool.query(
+            `SELECT
+               COALESCE(SUM(views) FILTER (WHERE view_date >= CURRENT_DATE - INTERVAL '7 days'), 0) as weekly,
+               COALESCE(SUM(views) FILTER (WHERE view_date >= CURRENT_DATE - INTERVAL '30 days'), 0) as monthly
+             FROM client_store_daily_views WHERE client_id = $1`,
+            [clientId]
+          ).catch(() => ({ rows: [{ weekly: 0, monthly: 0 }] as any[] })),
         ]);
 
         // Store
@@ -1472,6 +1504,28 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
             store_description: sr.store_description || '',
           };
         }
+
+        // Customers
+        customerList = customersRes.rows;
+        totalCustomers = customersRes.rows.length;
+
+        // Bot message templates
+        const bt = botTemplatesRes.rows[0] || {};
+        if (bt.template_greeting) botTemplates.greeting = bt.template_greeting;
+        if (bt.template_instant_order) botTemplates.instantOrder = bt.template_instant_order;
+        if (bt.template_pin_instructions) botTemplates.pinInstructions = bt.template_pin_instructions;
+        if (bt.template_order_confirmation) botTemplates.orderConfirmation = bt.template_order_confirmation;
+        if (bt.template_payment) botTemplates.payment = bt.template_payment;
+        if (bt.template_shipping) botTemplates.shipping = bt.template_shipping;
+        if (bt.delivery_status_template) botTemplates.deliveryStatus = bt.delivery_status_template;
+
+        // Analytics
+        const av = analyticsViewsRes.rows[0] || {};
+        weeklyViews = parseInt(av.weekly || '0');
+        monthlyViews = parseInt(av.monthly || '0');
+        conversionRate = totalOrders > 0 && monthlyViews > 0
+          ? Math.round((totalOrders / monthlyViews) * 10000) / 100
+          : 0;
       } catch (dbErr: any) { /* DB error — still answer with what we have */ }
 
       const statusSummary = Object.entries(ordersByStatus)
@@ -1540,12 +1594,22 @@ ${lowStockItems.length > 0 ? 'Low/reorder needed:\n' + lowStockItems.map(i => ` 
 === STAFF ===
 Total: ${staffList.length}
 ${staffList.length > 0
-  ? staffList.map(m => `  ${m.full_name || 'Unnamed'} | role: ${m.role} | status: ${m.status}`).join('\n')
+  ? staffList.map((m: any) => {
+      let perms: any = {};
+      try { perms = typeof m.permissions === 'string' ? JSON.parse(m.permissions) : (m.permissions || {}); } catch {}
+      const permKeys = typeof perms === 'object' && perms !== null
+        ? Object.entries(perms).filter(([,v]) => v).map(([k]) => k).join(', ')
+        : '';
+      return `  ${m.full_name || 'Unnamed'} | role: ${m.role} | status: ${m.status}${permKeys ? ` | permissions: ${permKeys}` : ''}`;
+    }).join('\n')
   : '  (none)'}
+Permissions available: view_orders_list, edit_order_status, delete_orders, add_products, edit_products, delete_products, view_analytics, view_settings, manage_staff, manage_bot_settings, manage_broadcasting
 
 === BOT / WHATSAPP ENGINE ===
 Enabled: ${botEnabled ? 'yes' : 'no'} | Language: ${botLanguage || 'N/A'}
 Company name in messages: ${botCompanyName || 'N/A'} | Support phone: ${botSupportPhone || 'N/A'}
+${Object.keys(botTemplates).length > 0 ? `Current bot templates configured: greeting, instantOrder, orderConfirmation, payment, shipping, deliveryStatus` : ''}
+(To see actual template content, ask "show me my bot templates" — I'll use search_store_data to fetch them)
 
 === PIXEL TRACKING ===
 Facebook pixel: ${fbPixelEnabled ? `enabled (ID: ${fbPixelId})` : 'disabled'}
@@ -1570,6 +1634,17 @@ ${staffActivity.length > 0
 
 === CUSTOMER BLACKLIST ===
 Blacklisted customers: ${blacklistCount}
+
+=== CUSTOMERS (RECENT 20) ===
+${customerList.length > 0
+  ? `Total unique customers: ${totalCustomers}\n` + customerList.map(c =>
+      `  "${c.customer_name}" | ${c.customer_phone} | ${c.order_count} order(s) | last: ${new Date(c.last_order).toLocaleDateString()}`
+    ).join('\n')
+  : '  (no customer data yet)'}
+
+=== TRAFFIC & ANALYTICS ===
+Weekly page views: ${weeklyViews} | Monthly page views: ${monthlyViews}
+Conversion rate (orders/views): ${conversionRate}%
 ` : ''}
 
 === CUSTOMER-FACING AI CONFIG ===
@@ -1633,6 +1708,8 @@ Available ACTIONS you can perform via ECOPRO_ACTION:
 • bot_update_templates(language, tone) — Rewrite bot messages with AI
 • bot_auto_configure(language, tone) — Full bot setup in one shot
 • bot_send_message(orderId, intent, channel) — Send message to customer immediately
+• search_store_data(dataType, query) — 🔍 SEARCH tool: query ANY specific data on demand. dataType: "orders" (by ID/name/phone/status), "products" (by title/category/ID), "customers" (by name/phone), "staff" (by name/role), "conversations" (recent customer-AI chats), "bot_templates" (full template text), "analytics" (trends, conversion, traffic). Use this when the user asks about something specific not in your pre-fetched data.
+• test_customer_ai(message) — 🧪 TEST tool: send a test message to your customer-facing AI and see how it responds. Use this to debug your AI's behavior, check if it speaks Arabic correctly, or verify it handles specific scenarios properly.
 
 === PLATFORM INFO ===
 EcoPro: Algerian e-commerce SaaS. Subscription $7/month (~1400 DZD). Delivery: Cash on Delivery (COD), Wilaya-based pricing. Orders confirmed via WhatsApp/Telegram/Messenger. Staff permissions can be customized per role. Font-end storefront accessible at https://your-slug.sahla4eco.com (or your custom domain).
@@ -1860,6 +1937,160 @@ Answer using the store data above. Be direct and brief — max 2 lines, no long 
       if (actionParts.length === 2) {
         try { action = JSON.parse(actionParts[1].trim()); } catch { /* ignore malformed */ }
       }
+
+      // Inline tool execution — handle search_store_data and test_customer_ai automatically
+      if (action && (action.type === 'search_store_data' || action.type === 'test_customer_ai')) {
+        let toolResult = '';
+
+        if (action.type === 'search_store_data') {
+          const { dataType, query } = action;
+          const searchQ = `%${query || ''}%`;
+          try {
+            switch (dataType) {
+              case 'orders':
+                const orderRows = await pool.query(
+                  `SELECT id, customer_name, customer_phone, total_price, status, payment_status,
+                          delivery_status, variant_color, variant_size, notes, wilaya_name, created_at
+                   FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND (
+                     id::text ILIKE $2 OR customer_name ILIKE $2 OR customer_phone ILIKE $2 OR status ILIKE $2
+                   ) ORDER BY created_at DESC LIMIT 10`,
+                  [clientId, searchQ]
+                );
+                toolResult = orderRows.rows.length > 0
+                  ? orderRows.rows.map((o: any) =>
+                      `  #${o.id} | ${o.customer_name || 'N/A'} | ${o.customer_phone || 'N/A'} | ${o.total_price} DZD | status: ${o.status} | payment: ${o.payment_status || 'N/A'} | ${o.wilaya_name || ''} | ${new Date(o.created_at).toLocaleDateString()}${o.notes ? ` | notes: ${o.notes}` : ''}`
+                    ).join('\n')
+                  : '  (no matching orders found)';
+                break;
+              case 'products':
+                const productRows = await pool.query(
+                  `SELECT id, title, price, original_price, stock_quantity, status, category, views, is_featured
+                   FROM client_store_products WHERE client_id = $1 AND (
+                     id::text ILIKE $2 OR title ILIKE $2 OR category ILIKE $2
+                   ) ORDER BY views DESC LIMIT 15`,
+                  [clientId, searchQ]
+                );
+                toolResult = productRows.rows.length > 0
+                  ? productRows.rows.map((p: any) =>
+                      `  [#${p.id}] "${p.title}" | ${p.price} DZD${p.original_price && p.original_price > p.price ? ` (was ${p.original_price})` : ''} | stock: ${p.stock_quantity ?? 'N/A'} | ${p.status} | category: ${p.category || 'N/A'} | views: ${p.views || 0}${p.is_featured ? ' | FEATURED' : ''}`
+                    ).join('\n')
+                  : '  (no matching products found)';
+                break;
+              case 'customers':
+                const customerRows = await pool.query(
+                  `SELECT customer_name, customer_phone, COUNT(*) as order_count, MAX(created_at) as last_order,
+                          SUM(total_price) as total_spent
+                   FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND customer_phone IS NOT NULL AND (
+                     customer_name ILIKE $2 OR customer_phone ILIKE $2
+                   ) GROUP BY customer_name, customer_phone ORDER BY MAX(created_at) DESC LIMIT 15`,
+                  [clientId, searchQ]
+                );
+                toolResult = customerRows.rows.length > 0
+                  ? customerRows.rows.map((c: any) =>
+                      `  "${c.customer_name}" | ${c.customer_phone} | ${c.order_count} order(s) | spent: ${parseFloat(c.total_spent || '0').toLocaleString()} DZD | last: ${new Date(c.last_order).toLocaleDateString()}`
+                    ).join('\n')
+                  : '  (no matching customers found)';
+                break;
+              case 'staff':
+                const staffRows = await pool.query(
+                  `SELECT full_name, role, status, permissions, phone, email
+                   FROM staff WHERE client_id = $1 AND (
+                     full_name ILIKE $2 OR role ILIKE $2 OR phone ILIKE $2
+                   ) ORDER BY created_at LIMIT 15`,
+                  [clientId, searchQ]
+                );
+                toolResult = staffRows.rows.length > 0
+                  ? staffRows.rows.map((s: any) => {
+                      const perms = typeof s.permissions === 'string' ? JSON.parse(s.permissions) : (s.permissions || {});
+                      const permKeys = Object.entries(perms).filter(([,v]) => v).map(([k]) => k).join(', ');
+                      return `  ${s.full_name || 'Unnamed'} | role: ${s.role} | status: ${s.status}${s.phone ? ` | ${s.phone}` : ''}${permKeys ? ` | perms: ${permKeys}` : ''}`;
+                    }).join('\n')
+                  : '  (no matching staff found)';
+                break;
+              case 'conversations':
+                const convRows = await pool.query(
+                  `SELECT cc.role, cc.message, cc.platform, cc.created_at,
+                          COALESCE(o.customer_name, 'Unknown') as customer_name
+                   FROM customer_conversations cc
+                   LEFT JOIN store_orders o ON o.client_id = cc.client_id AND o.customer_phone = cc.platform_chat_id
+                   WHERE cc.client_id = $1 AND (
+                     cc.message ILIKE $2 OR cc.platform_chat_id ILIKE $2
+                   )
+                   ORDER BY cc.created_at DESC LIMIT 20`,
+                  [clientId, searchQ]
+                );
+                toolResult = convRows.rows.length > 0
+                  ? convRows.rows.map((c: any) =>
+                      `  [${new Date(c.created_at).toLocaleString()}] ${c.platform} | ${c.role}: ${c.message.slice(0, 200)}`
+                    ).join('\n')
+                  : '  (no matching conversations found)';
+                break;
+              case 'bot_templates':
+                const btRows = await pool.query(
+                  `SELECT template_greeting, template_instant_order, template_pin_instructions,
+                          template_order_confirmation, template_payment, template_shipping,
+                          delivery_status_template
+                   FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+                  [clientId]
+                );
+                const bt = btRows.rows[0] || {};
+                const templateParts: string[] = [];
+                if (bt.template_greeting) templateParts.push(`GREETING:\n${bt.template_greeting}`);
+                if (bt.template_instant_order) templateParts.push(`INSTANT ORDER:\n${bt.template_instant_order}`);
+                if (bt.template_pin_instructions) templateParts.push(`PIN INSTRUCTIONS:\n${bt.template_pin_instructions}`);
+                if (bt.template_order_confirmation) templateParts.push(`ORDER CONFIRMATION:\n${bt.template_order_confirmation}`);
+                if (bt.template_payment) templateParts.push(`PAYMENT:\n${bt.template_payment}`);
+                if (bt.template_shipping) templateParts.push(`SHIPPING:\n${bt.template_shipping}`);
+                if (bt.delivery_status_template) templateParts.push(`DELIVERY STATUS:\n${bt.delivery_status_template}`);
+                toolResult = templateParts.length > 0 ? templateParts.join('\n\n') : '  (no bot templates configured)';
+                break;
+              case 'analytics':
+                const analyticsData = await pool.query(
+                  `SELECT view_date, views FROM client_store_daily_views
+                   WHERE client_id = $1 AND view_date >= CURRENT_DATE - INTERVAL '30 days'
+                   ORDER BY view_date ASC`,
+                  [clientId]
+                );
+                const dailyViews = analyticsData.rows.map((r: any) => `${r.view_date}: ${r.views}`).join('\n  ');
+                toolResult = `Daily views (last 30 days):\n  ${dailyViews || '(no data)'}`;
+                break;
+              default:
+                toolResult = `Unknown dataType "${dataType}". Available: orders, products, customers, staff, conversations, bot_templates, analytics`;
+            }
+          } catch (err: any) {
+            toolResult = `Error querying ${dataType}: ${err.message}`;
+          }
+        } else if (action.type === 'test_customer_ai') {
+          try {
+            const { handleCustomerMessage } = await import('../services/ai-customer');
+            const uniqueChatId = `tool_${clientId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+            const testResponse = await handleCustomerMessage(
+              clientId, 'whatsapp', uniqueChatId, '/test ' + (action.message || '')
+            );
+            toolResult = testResponse
+              ? `Customer AI responded:\n---\n${testResponse}\n---`
+              : 'Customer AI did not respond (auto-reply may be disabled for this store).';
+          } catch (err: any) {
+            toolResult = `Error testing customer AI: ${err.message}`;
+          }
+        }
+
+        // Make second AI call with tool result
+        const toolPrompt = `${storeContext}${historyText}${actionInstruction}
+
+The user asked: "${question}"
+
+I used the ${action.type} tool to fetch additional data. Here is the result:
+
+--- TOOL RESULT (${action.type}) ---
+${toolResult}
+--- END TOOL RESULT ---
+
+Now answer the user's question using ALL the context above, including the tool result. Be concise (max 3-4 lines). Do NOT output another ECOPRO_ACTION. Respond in the language of the question.`;
+        const { text: finalAnswer } = await generateTextWithSearch('store_owner', toolPrompt, { storeId: clientId, storeName });
+        return res.json({ answer: finalAnswer, [action.type === 'test_customer_ai' ? 'testResult' : 'searchResult']: toolResult });
+      }
+
       return res.json({ answer, ...(sources.length > 0 ? { sources } : {}), ...(action ? { action } : {}) });
     }
 
