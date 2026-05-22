@@ -1927,7 +1927,7 @@ Present 3-5 specific products with real numbers. After presenting, offer: "Want 
 
 Current question: "${question}"
 
-Answer using the store data above. Be direct and brief — max 2 lines, no long messages. Respond in the language of the question.`;
+Answer using the store data above. Be concise but thorough — explain clearly when the question needs detail. Respond in the language of the question.`;
 
       const { text: rawAnswer, sources } = await generateTextWithSearch('store_owner', prompt, { storeId: clientId, storeName });
       // Strip optional action marker from the visible answer
