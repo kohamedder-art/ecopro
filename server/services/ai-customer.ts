@@ -958,8 +958,11 @@ ${effectiveMessage}`;
     let cleanResponse = response;
 
     // ── Detect ECOPRO_ACTION in AI response ──────────────────────────────
-    const actionRegex = /ECOPRO_ACTION:\s*(\{[\s\S]*\})/;
-    const actionMatch = cleanResponse.match(actionRegex);
+    // Use non-greedy match to only capture the FIRST valid JSON block
+    const actionRegex = /ECOPRO_ACTION:\s*(\{[\s\S]*?\})\s*(?:\n|$|\.|،)/;
+    // Also try loose match (no trailing boundary) in case the action is at the very end
+    const actionRegexLoose = /ECOPRO_ACTION:\s*(\{[\s\S]*?\})/;
+    let actionMatch = cleanResponse.match(actionRegex) || cleanResponse.match(actionRegexLoose);
     if (actionMatch) {
       try {
         const actionData = JSON.parse(actionMatch[1]);
