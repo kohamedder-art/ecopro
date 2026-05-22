@@ -95,7 +95,7 @@ async function loadStoreContext(clientId: number): Promise<StoreContext | null> 
      FROM client_store_products p
      WHERE p.client_id = $1 AND p.status = 'active'
      ORDER BY p.is_featured DESC NULLS LAST, p.created_at DESC
-     LIMIT 50`,
+     LIMIT 30`,
     [clientId]
   );
 

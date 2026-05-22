@@ -679,7 +679,7 @@ const MAX_PROMPT_LENGTHS: Record<AIUserRole, number> = {
   admin: 8000,
   store_owner: 8000,
   staff: 8000,
-  customer: 10000,
+  customer: 15000,
   public: 2000,
 };
 
@@ -717,16 +717,16 @@ export async function generateText(
   const error = validatePrompt(prompt, role);
   if (error) return error;
 
-  // Customer-facing conversations use higher temperature for more natural, human-like responses
-  const temp = role === 'customer' ? 0.9 : 0.7;
+  // Customer-facing conversations - moderate temperature for coherent, natural responses
+  const temp = role === 'customer' ? 0.7 : 0.7;
   // Select model based on role
   const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
 
-  // Limit chat history to last 5 messages for customers to reduce token burn
-  const limitedHistory = role === 'customer' ? history.slice(-5) : history;
+  // Limit chat history to last 20 messages for customers to keep context
+  const limitedHistory = role === 'customer' ? history.slice(-20) : history;
 
-  // Set max_tokens for customer replies; generous to leave room after stripped reasoning
-  const maxTokens = role === 'customer' ? 600 : undefined;
+  // Set max_tokens for customer replies; allow complete responses
+  const maxTokens = role === 'customer' ? 1024 : undefined;
 
   // Check quota if clientId and userType are provided
   if (ctx.clientId && ctx.userType) {
