@@ -27,6 +27,25 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
       ? (selectedDeliveryType === 'desk' ? (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0) : (selectedWilaya.homePrice ?? 0))
       : 0;
 
+    // Scroll-hide header
+    const [headerVisible, setHeaderVisible] = useState(true);
+    const lastScrollY = useRef(0);
+    useEffect(() => {
+      const handleScroll = () => {
+        const currentY = window.scrollY;
+        if (currentY < 60) {
+          setHeaderVisible(true);
+        } else if (currentY > lastScrollY.current) {
+          setHeaderVisible(false);
+        } else {
+          setHeaderVisible(true);
+        }
+        lastScrollY.current = currentY;
+      };
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
     // Section visibility toggles
     const showBanner = settings?.dzshop_show_banner !== false;
     const showTrustBadges = settings?.dzshop_show_trust !== false;
@@ -328,7 +347,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             )}
 
             {/* Header */}
-            <header className="border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm" style={{ backgroundColor: headerColor }}>
+            <header className={`border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} style={{ backgroundColor: headerColor }}>
                 <div className="flex items-center gap-2">
                     {settings?.store_logo ? (
                         <img src={settings.store_logo} alt={settings?.store_name || "متجري"} className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
