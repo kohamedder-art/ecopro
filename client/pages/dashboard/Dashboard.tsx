@@ -36,7 +36,7 @@ export default function Dashboard() {
     products: 0, orders: 0, revenue: 0, pendingOrders: 0, completedOrders: 0, visitors: 0
   });
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [dayRange, setDayRange] = useState(7);
+  const [dayRange, setDayRange] = useState(90);
   const [showDayPicker, setShowDayPicker] = useState(false);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [showNotif, setShowNotif] = useState(false);
