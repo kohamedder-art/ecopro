@@ -488,8 +488,8 @@ async function callAIWithSearch(
  * Checks quota before calling AI and records usage after successful response.
  */
 const MAX_PROMPT_LENGTHS: Record<AIUserRole, number> = {
-  admin: 8000,
-  store_owner: 8000,
+  admin: 12000,
+  store_owner: 16000,
   staff: 8000,
   customer: 15000,
   public: 2000,
