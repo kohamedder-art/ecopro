@@ -1399,7 +1399,7 @@ export default function StockManagement() {
           setOffersDirty(false);
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background via-background to-primary/5 dark:from-slate-950 dark:to-slate-900/30 p-3 md:p-4">
+        <DialogContent className="max-w-2xl bg-gradient-to-br from-background via-background to-primary/5 dark:from-slate-950 dark:to-slate-900/30 p-3 md:p-4">
           <DialogHeader className="space-y-1 pb-2 md:pb-3 border-b border-border/50">
             <DialogTitle className="text-lg md:text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
               {showAddModal ? t('stock.addNewProduct') : t('stock.editProduct')}

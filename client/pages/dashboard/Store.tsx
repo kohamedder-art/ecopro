@@ -1742,7 +1742,7 @@ export default function Store() {
           setSelectedInventoryVariantIds([]);
         }
       }}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t('stock.addFromStockTitle')}</DialogTitle>
             <DialogDescription className="text-sm">
@@ -2032,7 +2032,7 @@ export default function Store() {
           setProductFormServerError(null);
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background via-background to-primary/5 dark:from-slate-950 dark:to-slate-900/30 p-3 md:p-4">
+        <DialogContent className="max-w-2xl bg-gradient-to-br from-background via-background to-primary/5 dark:from-slate-950 dark:to-slate-900/30 p-3 md:p-4">
           <DialogHeader className="space-y-1 pb-2 md:pb-3 border-b border-border/50">
             <DialogTitle className="text-lg md:text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
               {showAddModal ? t('store.createProduct') : t('store.updateProduct')}
@@ -3462,7 +3462,7 @@ export default function Store() {
           if (open) markOnboardingStepComplete('store_settings_opened');
         }}
       >
-        <DialogContent className="max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <DialogContent className="max-w-2xl w-full p-6 bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
           <DialogHeader className="pb-4 border-b border-slate-200 dark:border-slate-700">
             <DialogTitle className="text-2xl font-bold">{t('store.settingsModal.tabs.templates')}</DialogTitle>
             <DialogDescription className="text-base">

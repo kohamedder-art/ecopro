@@ -150,7 +150,7 @@ export default function StaffManagement() {
               <UserPlus className="h-3.5 w-3.5" /> {t('staff.createAccount')}
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-slate-200/80 dark:border-slate-700/70 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
+          <DialogContent className="max-w-2xl rounded-2xl border-slate-200/80 dark:border-slate-700/70 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
             <DialogHeader className="border-b border-slate-200/70 dark:border-slate-700/60 pb-4">
               <DialogTitle className="text-base font-extrabold flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600">
@@ -331,7 +331,7 @@ export default function StaffManagement() {
 
       {/* ─── Edit Permissions Dialog ──────────────────────── */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border-slate-200/80 dark:border-slate-700/70 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
+        <DialogContent className="max-w-3xl rounded-2xl border-slate-200/80 dark:border-slate-700/70 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
           <DialogHeader className="border-b border-slate-200/70 dark:border-slate-700/60 pb-4">
             <DialogTitle className="text-base font-extrabold flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-500">
