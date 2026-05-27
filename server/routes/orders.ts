@@ -7,6 +7,7 @@ import { replaceTemplateVariables, sendTelegramMessage } from "../utils/bot-mess
 import { assessOrderRisk, getHighRiskOrders } from "../utils/fraud-detection";
 import { z } from 'zod';
 import { ensureSystemOrderStatuses } from '../utils/client-provisioning';
+import { notifyOrderCreated } from '../services/push-notifications';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -411,6 +412,9 @@ export const createOrder: RequestHandler = async (req, res) => {
       global.broadcastOrderUpdate(result.rows[0]);
     }
 
+    // Notify store owner
+    notifyOrderCreated(Number(resolvedClientId), Number(result.rows[0].id), String(customer_name));
+
     // Audit log
     try {
       await pool.query(
@@ -750,6 +754,7 @@ export const createClientOrder: RequestHandler = async (req, res) => {
       insertVals
     );
     clearOrdersCache(Number(clientId));
+    notifyOrderCreated(Number(clientId), Number(result.rows[0].id), trimName);
     return res.status(201).json({ success: true, order: result.rows[0] });
   } catch (err: any) {
     console.error('[createClientOrder]', err);

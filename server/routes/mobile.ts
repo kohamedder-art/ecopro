@@ -1,5 +1,6 @@
 import { Router, RequestHandler } from 'express';
 import { ensureConnection } from '../utils/database';
+import { notifyOrderStatusChanged } from '../services/push-notifications';
 
 const router = Router();
 
@@ -161,12 +162,13 @@ const updateOrderStatus: RequestHandler = async (req, res) => {
     }
 
     const ownerCheck = await pool.query(
-      'SELECT id, status FROM store_orders WHERE id = $1 AND client_id = $2 AND deleted_at IS NULL',
+      'SELECT id, status, customer_name FROM store_orders WHERE id = $1 AND client_id = $2 AND deleted_at IS NULL',
       [id, clientId]
     );
     if (ownerCheck.rows.length === 0) { res.status(404).json({ error: 'Order not found' }); return; }
 
     const oldStatus = ownerCheck.rows[0].status;
+    const customerName = ownerCheck.rows[0].customer_name;
     await pool.query('UPDATE store_orders SET status = $1, updated_at = NOW() WHERE id = $2', [status, id]);
 
     try {
@@ -176,6 +178,8 @@ const updateOrderStatus: RequestHandler = async (req, res) => {
         [id, oldStatus, status, clientId]
       );
     } catch { /* optional */ }
+
+    notifyOrderStatusChanged(clientId, id, status, customerName || '');
 
     res.json({ success: true });
   } catch (error) {

@@ -7,6 +7,7 @@ import { ensureBotSettingsRow } from "../utils/client-provisioning";
 import { assessOrderRisk } from "../utils/fraud-detection";
 import { z, ZodError } from "zod";
 import type { Pool } from "pg";
+import { notifyOrderCreated } from '../services/push-notifications';
 
 const StoreSlugSchema = z
   .string()
@@ -1310,6 +1311,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
 
     // Return only safe fields - don't expose client_id to buyers
     const { client_id, ...safeOrder } = result.rows[0];
+    notifyOrderCreated(Number(clientId), Number(result.rows[0].id), String(customer_name));
     res.status(201).json({ success: true, order: safeOrder, telegramStartUrl: telegram?.startUrl || null, confirmationUrl });
   } catch (error) {
     const isMissingSchemaError = (err: any): boolean => {

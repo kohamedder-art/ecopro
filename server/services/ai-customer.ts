@@ -8,6 +8,7 @@
 
 import { ensureConnection } from '../utils/database';
 import { generateText } from './gemini';
+import { notifyOrderCreated } from './push-notifications';
 
 type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 
@@ -703,6 +704,9 @@ async function createOrderFromData(
          `📦 طلب جديد من AI Chat!\n\nرقم الطلب: #${orderId}\nالمنتج: ${data.productTitle}\nالسعر: ${unitPrice} دج × ${qty}\nالمجموع: ${total} دج\nالاسم: ${data.customerName}\nالهاتف: ${data.customerPhone}\nالعنوان: ${data.shippingAddress}`]
       );
     } catch (_) {}
+
+    // Send push notification
+    notifyOrderCreated(data.clientId, orderId, data.customerName);
 
     return { orderId, total: Number(result.rows[0].total_price) };
   } catch (err) {
