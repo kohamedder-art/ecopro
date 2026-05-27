@@ -205,6 +205,86 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     );
   }
 
+  // ── STORE GRID VIEW (multi-product, no product selected) ──
+  const showStoreGrid = !currentSlug && (products?.length || 0) > 1;
+
+  if (showStoreGrid) {
+    return (
+      <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
+        {/* Header */}
+        <div className="sticky top-0 z-50 backdrop-blur-md px-4 py-4 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
+          <div className="flex items-center gap-2">
+            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover" />}
+            <div className="font-black text-xl tracking-wider" style={{ color: textColor }}>
+              {storeName}
+            </div>
+          </div>
+          <span className="text-xs font-bold" style={{ color: textMuted }}>{products?.length} منتج</span>
+        </div>
+
+        {/* Masonry Grid */}
+        <div className="p-3" style={{ columnCount: 2, columnGap: '12px' }}>
+          {products?.map((product: any, index: number) => {
+            const thumb = product.images?.[0] || '';
+            const price = product.price || 0;
+            const hasVideo = product.metadata?.video_url;
+            // Vary card height based on image aspect or position
+            const isLarge = index % 5 === 0 || hasVideo;
+
+            return (
+              <button
+                key={product.id}
+                onClick={() => goToProduct(product)}
+                className="break-inside-avoid mb-3 w-full rounded-2xl overflow-hidden text-right transition-all active:scale-[0.97]"
+                style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}
+              >
+                {/* Image */}
+                <div className="relative w-full" style={{ paddingBottom: isLarge ? '130%' : '100%' }}>
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt={product.title || ''}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ backgroundColor: surfaceMuted }}>
+                      📦
+                    </div>
+                  )}
+                  {hasVideo && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                        <span className="text-xl ml-[-2px]">▶</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="p-3">
+                  <h3 className="text-sm font-bold truncate" style={{ color: textColor }}>
+                    {product.title || product.name || 'منتج'}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm font-black" style={{ color: accentColor }}>
+                      {price} {currency}
+                    </span>
+                    {product.original_price && product.original_price > price && (
+                      <span className="text-xs line-through" style={{ color: textMuted }}>
+                        {product.original_price}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
 
