@@ -962,14 +962,40 @@ ${effectiveMessage}`;
     let cleanResponse = response;
 
     // ── Detect ECOPRO_ACTION in AI response ──────────────────────────────
-    // Use non-greedy match to only capture the FIRST valid JSON block
     const actionRegex = /ECOPRO_ACTION:\s*(\{[\s\S]*?\})\s*(?:\n|$|\.|،)/;
-    // Also try loose match (no trailing boundary) in case the action is at the very end
     const actionRegexLoose = /ECOPRO_ACTION:\s*(\{[\s\S]*?\})/;
     let actionMatch = cleanResponse.match(actionRegex) || cleanResponse.match(actionRegexLoose);
     if (actionMatch) {
       try {
-        const actionData = JSON.parse(actionMatch[1]);
+        // Try to fix common JSON malformation from LLM output
+        let jsonStr = actionMatch[1]
+          .replace(/'/g, '"')                    // single quotes → double quotes
+          .replace(/,\s*}/g, '}')               // trailing comma
+          .replace(/,\s*]/g, ']')               // trailing comma in array
+          .replace(/(\w+):/g, '"$1":')          // unquoted keys
+          .replace(/""+/g, '"')                 // double double-quotes
+          .replace(/"\s+"/g, '""');             // empty string gaps
+        
+        // If still broken, try extracting key-value pairs manually
+        let actionData: any;
+        try {
+          actionData = JSON.parse(jsonStr);
+        } catch {
+          // Manual extraction fallback
+          const extract = (key: string) => {
+            const m = jsonStr.match(new RegExp(`"${key}"\\s*:\\s*"?([^",}]+)"?`));
+            return m ? m[1].trim() : null;
+          };
+          actionData = {
+            type: extract('type'),
+            productTitle: extract('productTitle'),
+            customerName: extract('customerName'),
+            customerPhone: extract('customerPhone'),
+            shippingAddress: extract('shippingAddress'),
+            wilayaName: extract('wilayaName'),
+            quantity: parseInt(extract('quantity') || '1', 10),
+          };
+        }
         if (actionData.type === 'create_customer_order') {
           const orderResult = await createOrderFromData({
             clientId,
