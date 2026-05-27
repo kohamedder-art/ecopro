@@ -1,5 +1,5 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { ChevronDown, Phone, ShoppingCart, ShieldCheck } from 'lucide-react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { ChevronDown, Phone, ShoppingCart, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
@@ -9,7 +9,7 @@ import VariantSelector, { SelectedVariant } from '@/components/storefront/Varian
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
-export default function ZenithTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
+export default function ZenithTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#000000';
   const bgColor = settings?.template_bg_color || '#f3f4f6';
   const isDark = useMemo(() => {
@@ -36,10 +36,66 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
 
-  // Main product
-  const mainProduct = (settings?.dzp_main_product_id
-    ? products?.find((p: any) => String(p.id) === String(settings?.dzp_main_product_id))
-    : null) || products?.[0];
+  // Main product — supports initialProductSlug for direct URL access
+  const [currentSlug, setCurrentSlug] = useState<string | null>(initialProductSlug || null);
+
+  const mainProduct = useMemo(() => {
+    // 1. If URL has a product slug, find it
+    if (currentSlug) {
+      const found = products?.find((p: any) => p.slug === currentSlug);
+      if (found) return found;
+    }
+    // 2. If settings has a main product ID, find it
+    if (settings?.dzp_main_product_id) {
+      const found = products?.find((p: any) => String(p.id) === String(settings?.dzp_main_product_id));
+      if (found) return found;
+    }
+    // 3. Fallback to first product
+    return products?.[0] || null;
+  }, [currentSlug, products, settings?.dzp_main_product_id]);
+
+  // Other products (for the selector)
+  const otherProducts = useMemo(() => {
+    if (!products || products.length <= 1) return [];
+    return products.filter((p: any) => p.id !== mainProduct?.id);
+  }, [products, mainProduct?.id]);
+
+  const hasMultipleProducts = (products?.length || 0) > 1;
+
+  // Navigate to a product
+  const goToProduct = useCallback((product: any) => {
+    if (product?.slug) {
+      setCurrentSlug(product.slug);
+      // Update URL without reload
+      if (typeof window !== 'undefined' && navigate) {
+        navigate(`/store/${storeSlug}/${product.slug}`);
+      }
+      // Reset form state
+      setQuantity(1);
+      setSelectedVariant(null);
+      setSelectedOffer(null);
+      setOrderError(null);
+      setOrderSuccess(false);
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerAddress('');
+      setCommune('');
+      setCustomerNotes('');
+      setSelectedDeliveryType('home');
+      setSelectedWilayaId(null);
+      // Scroll to top
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [storeSlug, navigate]);
+
+  // Sync with initialProductSlug changes
+  useEffect(() => {
+    if (initialProductSlug && initialProductSlug !== currentSlug) {
+      setCurrentSlug(initialProductSlug);
+    }
+  }, [initialProductSlug]);
 
   // Variant and Offer support
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -199,6 +255,35 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Prev/Next arrows for multi-product stores */}
+            {hasMultipleProducts && (() => {
+              const currentIndex = products?.findIndex((p: any) => p.id === mainProduct?.id) ?? -1;
+              const prevProduct = currentIndex > 0 ? products[currentIndex - 1] : null;
+              const nextProduct = currentIndex < (products?.length || 0) - 1 ? products[currentIndex + 1] : null;
+              return (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => prevProduct && goToProduct(prevProduct)}
+                    disabled={!prevProduct}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
+                    style={{ backgroundColor: accentColor + '15', color: accentColor }}
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                  <span className="text-[10px] font-bold min-w-[30px] text-center" style={{ color: textMuted }}>
+                    {currentIndex + 1}/{products?.length}
+                  </span>
+                  <button
+                    onClick={() => nextProduct && goToProduct(nextProduct)}
+                    disabled={!nextProduct}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
+                    style={{ backgroundColor: accentColor + '15', color: accentColor }}
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                </div>
+              );
+            })()}
             <div className="text-left flex flex-col">
               <span className="text-xs font-bold" style={{ color: textMuted }}>السعر</span>
               <span className="font-black text-lg leading-none" dir="ltr">
@@ -217,6 +302,43 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             </button>
           </div>
         </div>
+
+        {/* ── PRODUCT SELECTOR (multi-product stores) ── */}
+        {hasMultipleProducts && (
+          <div className="px-4 py-3" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
+            <div className="flex items-center gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+              {products?.map((product: any) => {
+                const isActive = product.id === mainProduct?.id;
+                const thumb = product.images?.[0] || '';
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => goToProduct(product)}
+                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-all"
+                    style={{
+                      borderColor: isActive ? accentColor : borderColor,
+                      backgroundColor: isActive ? accentColor + '10' : 'transparent',
+                    }}
+                  >
+                    {thumb ? (
+                      <img src={thumb} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ backgroundColor: surfaceMuted }}>📦</div>
+                    )}
+                    <div className="text-right min-w-0">
+                      <div className="text-xs font-bold truncate max-w-[100px]" style={{ color: isActive ? accentColor : textColor }}>
+                        {product.title || product.name || 'منتج'}
+                      </div>
+                      <div className="text-[10px] font-bold" dir="ltr" style={{ color: textMuted }}>
+                        {product.price} {currency}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── LONG IMAGE STACK ── */}
         <div className="w-full flex flex-col">
