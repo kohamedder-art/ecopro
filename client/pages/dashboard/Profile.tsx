@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
-import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, ShieldCheck, BadgeCheck, Mail, Phone, Building2, MapPin, Globe, CheckCircle2, AlertCircle, Sparkles, Tag } from 'lucide-react';
+import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, ShieldCheck, BadgeCheck, Mail, Phone, Building2, MapPin, Globe, CheckCircle2, AlertCircle, Sparkles, Tag, Smartphone, Download, QrCode } from 'lucide-react';
 
 type SubscriptionRow = {
   tier?: string | null;
@@ -532,6 +532,69 @@ export default function Profile() {
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* ── Download Mobile App ── */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-blue-50/50 dark:bg-blue-950/20">
+          <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
+            <Smartphone className="w-4 h-4 text-blue-500" />
+          </div>
+          <span className="text-sm font-bold">تطبيق الهاتف المحمول</span>
+        </div>
+
+        <div className="p-5">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            {/* QR Code */}
+            <div className="shrink-0">
+              <div className="w-40 h-40 bg-white rounded-xl border border-border p-2 flex items-center justify-center">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent('https://expo.dev/accounts/sahla4eco-organization/projects/ssahla4eco/builds')}`}
+                  alt="Download App QR Code"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center mt-2 font-medium">امسح الرمز للتحميل</p>
+            </div>
+
+            {/* Info + Download Button */}
+            <div className="flex-1 space-y-3">
+              <h3 className="text-base font-bold text-foreground">Sahla4Eco Mobile</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                تطبيق الهاتف المحمول لإدارة متجرك في أي مكان. تابع الطلبات، غيّر الحالات، وتواصل مع العملاء مباشرة من هاتفك.
+              </p>
+              <ul className="text-xs text-muted-foreground space-y-1.5">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>إدارة الطلبات والحالات</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>إشعارات فورية عند وصول طلب جديد</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>الوضع الداكن والفاتح</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>تسجيل الدخول بالبريد أو رمز QR</span>
+                </li>
+              </ul>
+              <div className="flex gap-2 pt-1">
+                <a
+                  href="https://expo.dev/accounts/sahla4eco-organization/projects/ssahla4eco/builds"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm shadow-blue-600/20"
+                >
+                  <Download className="w-4 h-4" />
+                  تحميل التطبيق
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
