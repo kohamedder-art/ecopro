@@ -59,6 +59,7 @@ const getOrders: RequestHandler = async (req, res) => {
     const result = await pool.query(
       `SELECT o.id, o.customer_name, o.customer_phone, o.total_price,
               o.status, o.quantity, o.created_at, o.shipping_wilaya_id,
+              o.order_source, o.source_platform, o.delivery_type, o.tracking_number,
               COALESCE(p.title, 'منتج محذوف') as product_title
        FROM store_orders o
        LEFT JOIN client_store_products p ON o.product_id = p.id
@@ -73,12 +74,23 @@ const getOrders: RequestHandler = async (req, res) => {
       returned: 'مرتجع', fake: 'مزيف', duplicate: 'مكرر',
     };
 
+    const sourceLabels: Record<string, string> = {
+      manual: 'يدوي', ai_customer: 'محادثة ذكية', import: 'استيراد', api: 'API',
+    };
+    const platformLabels: Record<string, string> = {
+      telegram: 'تلغرام', messenger: 'ماسنجر', instagram: 'انستغرام', web: 'الموقع',
+    };
+
     res.json(result.rows.map(r => ({
       id: r.id, customer_name: r.customer_name, customer_phone: r.customer_phone,
       total_price: parseFloat(r.total_price), currency: 'DZD',
       status: r.status, status_label: statusLabels[r.status] || r.status,
       quantity: r.quantity, created_at: r.created_at,
       wilaya_id: r.shipping_wilaya_id, product_title: r.product_title,
+      order_source: r.order_source, source_platform: r.source_platform,
+      order_source_label: sourceLabels[r.order_source] || r.order_source,
+      source_platform_label: platformLabels[r.source_platform] || r.source_platform,
+      delivery_type: r.delivery_type, tracking_number: r.tracking_number,
     })));
   } catch (error) {
     console.error('[mobile] orders error:', error);
@@ -100,6 +112,7 @@ const getOrderDetail: RequestHandler = async (req, res) => {
               o.status, o.quantity, o.created_at, o.notes,
               o.shipping_wilaya_id, o.shipping_commune_id, o.shipping_address,
               o.variant_name, o.delivery_type, o.tracking_number,
+              o.order_source, o.source_platform,
               COALESCE(p.title, 'منتج محذوف') as product_title
        FROM store_orders o
        LEFT JOIN client_store_products p ON o.product_id = p.id
@@ -114,6 +127,12 @@ const getOrderDetail: RequestHandler = async (req, res) => {
       pending: 'قيد الانتظار', confirmed: 'مؤكد', processing: 'قيد التجهيز',
       shipped: 'تم الشحن', delivered: 'تم التوصيل', cancelled: 'ملغي',
       returned: 'مرتجع', fake: 'مزيف', duplicate: 'مكرر',
+    };
+    const sourceLabels: Record<string, string> = {
+      manual: 'يدوي', ai_customer: 'محادثة ذكية', import: 'استيراد', api: 'API',
+    };
+    const platformLabels: Record<string, string> = {
+      telegram: 'تلغرام', messenger: 'ماسنجر', instagram: 'انستغرام', web: 'الموقع',
     };
 
     let timeline: any[] = [];
@@ -140,6 +159,9 @@ const getOrderDetail: RequestHandler = async (req, res) => {
       address: order.shipping_address, quantity: order.quantity,
       variant_name: order.variant_name, notes: order.notes,
       delivery_type: order.delivery_type, tracking_number: order.tracking_number,
+      order_source: order.order_source, source_platform: order.source_platform,
+      order_source_label: sourceLabels[order.order_source] || order.order_source,
+      source_platform_label: platformLabels[order.source_platform] || order.source_platform,
       created_at: order.created_at, timeline,
     });
   } catch (error) {
