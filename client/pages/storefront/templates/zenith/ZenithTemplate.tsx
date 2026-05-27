@@ -54,6 +54,13 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     return products?.[0] || null;
   }, [currentSlug, products, settings?.dzp_main_product_id]);
 
+  // Navigate to a product
+  const goToProduct = useCallback((product: any) => {
+    if (product?.slug && navigate) {
+      navigate(`/store/${storeSlug}/${product.slug}`);
+    }
+  }, [storeSlug, navigate]);
+
   // Go to full store page
   const goToStore = useCallback(() => {
     if (navigate) {
