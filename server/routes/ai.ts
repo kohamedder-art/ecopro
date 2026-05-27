@@ -1722,38 +1722,23 @@ EcoPro: Algerian e-commerce SaaS. Subscription $7/month (~1400 DZD). Delivery: C
 
 const actionInstruction = `
 ═══ ACTIONS ═══
-Add one ECOPRO_ACTION line at the end of your response when the user asks for an action. Ask for confirmation before destructive actions (delete, status change to cancelled/refunded).
+Add one ECOPRO_ACTION line at the end when user asks for an action. Ask confirmation for destructive actions.
 
-═══ ORDERS ═══
-ECOPRO_ACTION:{"type":"update_order_status","orderId":<number>,"newStatus":"<status>"}
-Statuses: pending, confirmed, processing, shipped, delivered, cancelled, refunded, at_delivery, returned, fake, duplicate, no_answer_1, no_answer_2, no_answer_3, waiting_callback, postponed.
+Orders: ECOPRO_ACTION:{"type":"update_order_status","orderId":<n>,"newStatus":"<status>"}
+Statuses: pending, confirmed, processing, shipped, delivered, cancelled, returned, fake, duplicate
 
-═══ PRODUCTS ═══
-ECOPRO_ACTION:{"type":"create_product","title":"<title>","price":<number>,"stock":<number>,"category":"<category>","description":"<description>"}
-ECOPRO_ACTION:{"type":"edit_product","productId":<number>,"field":"price|stock|status|title","value":"<new value>"}
-ECOPRO_ACTION:{"type":"delete_product","productId":<number>,"title":"<product title>"}
+Products: ECOPRO_ACTION:{"type":"create_product","title":"<t>","price":<n>,"stock":<n>,"category":"<c>","description":"<d>"}
+ECOPRO_ACTION:{"type":"edit_product","productId":<n>,"field":"price|stock|status|title","value":"<v>"}
+ECOPRO_ACTION:{"type":"delete_product","productId":<n>,"title":"<t>"}
 
-═══ STORE SETTINGS ═══
-ECOPRO_ACTION:{"type":"update_store_settings","field":"store_name|store_description|currency_code","value":"<new value>"}
+Store: ECOPRO_ACTION:{"type":"update_store_settings","field":"store_name|store_description|currency_code","value":"<v>"}
+Design: ECOPRO_ACTION:{"type":"update_store_design","changes":{"field":"value",...}}
 
-═══ DESIGN ═══
-ECOPRO_ACTION:{"type":"update_store_design","changes":{"field1":"value1","field2":"value2",...}}
-Color fields (hex): template_accent_color, template_bg_color, primary_color, secondary_color, text_color, secondary_text_color, template_text_color, template_muted_color, template_card_bg, template_product_title_color, template_product_price_color, template_header_bg, template_header_text, template_footer_bg, template_section_title_color, template_section_subtitle_color
-Content fields: store_name, store_description, template_hero_heading, template_hero_subtitle, template_button_text, template_button2_text, template_hero_kicker, template_featured_title, template_featured_subtitle, template_add_to_cart_label, template_footer_text, template_copyright, footer_about, meta_title, meta_description, meta_keywords
-Typography: template_font_family, font_family
-Borders: template_border_radius, template_card_border_radius, template_button_border_radius
-Template keys: {template}_hero_title, {template}_hero_subtitle, {template}_tagline, {template}_brand_name, {template}_accent_color, {template}_bg_color, {template}_cta_text, {template}_heading, {template}_subheading, {template}_badge_text
+Bot: ECOPRO_ACTION:{"type":"bot_toggle","enable":true|false}
+ECOPRO_ACTION:{"type":"bot_send_message","orderId":<n>,"intent":"<msg>","channel":"telegram|messenger|whatsapp"}
 
-═══ BOT ═══
-ECOPRO_ACTION:{"type":"bot_toggle","enable":true|false}
-ECOPRO_ACTION:{"type":"bot_set_schedule","delayMinutes":<number>}
-ECOPRO_ACTION:{"type":"bot_update_templates","language":"ar|fr|en","tone":"<optional>"}
-ECOPRO_ACTION:{"type":"bot_auto_configure","language":"ar|fr|en","tone":"<optional>"}
-ECOPRO_ACTION:{"type":"bot_send_message","orderId":<number>,"intent":"<message text>","channel":"telegram|messenger|whatsapp"}
-
-═══ SEARCH / TEST ═══
-ECOPRO_ACTION:{"type":"search_store_data","dataType":"orders|products|customers|staff|conversations|bot_templates|analytics","query":"<search term>"}
-ECOPRO_ACTION:{"type":"test_customer_ai","message":"<test message in Arabic>"}`;
+Search: ECOPRO_ACTION:{"type":"search_store_data","dataType":"orders|products|customers|staff|analytics","query":"<q>"}
+Test: ECOPRO_ACTION:{"type":"test_customer_ai","message":"<msg>"}`;
 
       const prompt = `${storeContext}${historyText}${actionInstruction}
 
