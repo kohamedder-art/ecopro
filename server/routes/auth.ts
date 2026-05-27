@@ -1131,3 +1131,70 @@ export const resetPassword: RequestHandler = async (req, res) => {
     return jsonError(res, 500, 'Failed to reset password');
   }
 };
+
+/* ── QR Auth (mobile app) ── */
+
+export const qrRequest: RequestHandler = async (req, res) => {
+  try {
+    const pool = await ensureConnection();
+    const clientId = (req as any).user?.id;
+    if (!clientId) return jsonError(res, 401, 'Unauthorized');
+
+    const qrToken = crypto.randomBytes(24).toString('hex');
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO qr_auth_tokens (client_id, token, expires_at, created_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (client_id) DO UPDATE SET token = $2, expires_at = $3, created_at = NOW()`,
+      [clientId, qrToken, expiresAt]
+    );
+
+    res.json({ qr_token: qrToken, expires_in: 120 });
+  } catch (error) {
+    console.error('[qr] request error:', error);
+    return jsonError(res, 500, 'Failed to generate QR token');
+  }
+};
+
+export const qrLogin: RequestHandler = async (req, res) => {
+  try {
+    const pool = await ensureConnection();
+    const { qr_token } = req.body;
+    if (!qr_token) return jsonError(res, 400, 'qr_token is required');
+
+    const result = await pool.query(
+      'SELECT client_id, expires_at FROM qr_auth_tokens WHERE token = $1',
+      [qr_token]
+    );
+
+    if (result.rows.length === 0) return jsonError(res, 401, 'Invalid QR token');
+
+    const { client_id: clientId, expires_at } = result.rows[0];
+    if (new Date() > new Date(expires_at)) return jsonError(res, 401, 'QR token expired');
+
+    const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'fallback-secret';
+    const token = jwt.sign(
+      { id: clientId, role: 'client', user_type: 'client', clientId },
+      secret,
+      { expiresIn: '30d' }
+    );
+
+    const userRes = await pool.query(
+      `SELECT c.id, c.name, c.email, c.phone, c.business_name,
+              css.store_slug, css.store_name
+       FROM clients c
+       LEFT JOIN client_store_settings css ON css.client_id = c.id
+       WHERE c.id = $1`,
+      [clientId]
+    );
+    if (userRes.rows.length === 0) return jsonError(res, 404, 'User not found');
+
+    await pool.query('DELETE FROM qr_auth_tokens WHERE token = $1', [qr_token]);
+
+    res.json({ token, refresh_token: null, user: userRes.rows[0] });
+  } catch (error) {
+    console.error('[qr] login error:', error);
+    return jsonError(res, 500, 'QR login failed');
+  }
+};

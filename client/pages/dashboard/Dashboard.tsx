@@ -6,6 +6,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useAI } from '@/hooks/useAI';
 import { useToast } from '@/components/ui/use-toast';
 import { getCurrentUser } from '@/lib/auth';
+import { OnboardingWizard } from '@/components/admin/OnboardingWizard';
 
 interface DashboardStats {
   products: number;
@@ -344,6 +345,9 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* Onboarding wizard for new stores */}
+      <OnboardingWizard />
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 gap-2 w-full max-w-[1400px] mx-auto">

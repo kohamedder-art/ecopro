@@ -75,6 +75,8 @@ import whatsappCloudRouter from "./routes/whatsapp-cloud";
 import legalRouter from "./routes/legal";
 import * as platformBillsRoutes from "./routes/platform-bills";
 import deliveryPricesRouter, { getStorefrontDeliveryPrices } from "./routes/delivery-prices";
+import mobileRouter from "./routes/mobile";
+import notificationsRouter from "./routes/notifications";
 import {
   validate,
   registerValidation,
@@ -736,6 +738,10 @@ ${urls}
   app.post('/api/auth/2fa/disable', authenticate, requireAdmin, authRoutes.disableAdmin2FA);
   app.get("/api/auth/me", authenticate, authRoutes.getCurrentUser);
   app.post("/api/auth/change-password", authenticate, authRoutes.changePassword);
+
+  // QR Auth (mobile app)
+  app.post("/api/auth/qr-request", authenticate, requireClient, authRoutes.qrRequest);
+  app.post("/api/auth/qr-login", apiLimiter, authRoutes.qrLogin);
 
   // OAuth Social Login routes (public)
   app.use('/api/oauth', oauthRouter);
@@ -1638,9 +1644,9 @@ ${urls}
   app.get("/api/client/orders", authenticate, requireClient, orderRoutes.getClientOrders);
   app.get("/api/client/orders/chat", authenticate, requireClient, orderRoutes.getChatOrders);
   app.get("/api/orders/new-count", authenticate, requireClient, orderRoutes.getNewOrdersCount); // Get count of new orders;
-  
-  // Fraud detection routes (authenticated - client only)
-  app.get("/api/orders/high-risk", authenticate, requireClient, orderRoutes.getHighRiskOrdersHandler);
+
+  app.get("/api/client/orders/flagged-count", authenticate, requireClient, orderRoutes.getFlaggedOrdersCount); // Get count of flagged orders
+
   app.get("/api/orders/:id/risk", authenticate, requireClient, orderRoutes.getOrderRisk);
   app.post("/api/orders/check-risk", authenticate, requireClient, orderRoutes.checkPhoneRisk);
 
@@ -1702,6 +1708,12 @@ ${urls}
 
   // Store Slug Management (authenticated store owners)
   app.use('/api/store/slug', authenticate, requireClient, storeSlugRouter);
+
+  // Mobile app API (authenticated clients)
+  app.use('/api/mobile', authenticate, requireClient, mobileRouter);
+
+  // Push notification device registration (authenticated clients)
+  app.use('/api/notifications', authenticate, notificationsRouter);
 
   // Checkout session routes (database-backed, not localStorage)
   app.post("/api/checkout/save-product", orderRoutes.saveProductForCheckout); // Public - save product for checkout

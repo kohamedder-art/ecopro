@@ -1721,215 +1721,47 @@ EcoPro: Algerian e-commerce SaaS. Subscription $7/month (~1400 DZD). Delivery: C
         : '';
 
 const actionInstruction = `
-CRITICAL SAFETY RULES — READ CAREFULLY BEFORE RESPONDING
-════════════════════════════════════════════════════════════
+═══ ACTIONS ═══
+Add one ECOPRO_ACTION line at the end of your response when the user asks for an action. Ask for confirmation before destructive actions (delete, status change to cancelled/refunded).
 
-🚨 FORBIDDEN — NEVER add ECOPRO_ACTION unless ALL 3 conditions are TRUE:
-1. User EXPLICITLY names a specific action (e.g., "cancel", "confirm", "change status to")
-2. User provides the exact order/product ID or it was just discussed
-3. User explicitly CONFIRMS (says "ok", "yes", "do it", "sure")
-
-🚨 Situations where you MUST NOT add actions:
-• Any question (starting with "?", "what", "how", "كم", "شنو", "عطيني")
-• Requests without specific ID ("cancel an order" without order #)
-• Ambiguous requests ("أريد إلغاء طلب" - WHICH order?)
-• Any response that doesn't explicitly ask for an action
-• When you are uncertain — Ask first: "أي طلب تقصد؟"
-
-════════════════════════════════════════════════════
-MEMORY & CONTEXT — CRITICAL FOR CONFIRMATIONS
-════════════════════════════════════════════════════
-You have access to PRIOR CONVERSATION above. USE IT to track context:
-• If you asked user to confirm something, WAIT for their answer
-• After user confirms, THEN add the action
-• If user says "ok"/"نعم"/"yes" AFTER you asked confirmation → Execute the pending action
-• If context is unclear → Ask "ماذا تريد تأكيد؟" (what do you want to confirm?)
-
-════════════════════════════════════════════════════
-🚨 CONFIRMATION REQUIRED — ALWAYS ASK FIRST
-════════════════════════════════════════════════════
-NEVER execute an action immediately. ALWAYS ask confirmation first:
-✅ "هل أنت متأكد من إلغاء الطلب #149؟" → WAIT for answer
-✅ "تأكيد: تغيير الحالة إلى confirmed؟" → WAIT for answer
-
-Only add ECOPRO_ACTION AFTER user confirms with explicit intent.
-
-Examples of CORRECT confirmation:
-✅ User: "cancel order 149" → AI: "هل أنت متأكد؟" → User: "نعم" → AI adds action
-✅ User: "yes confirm order 149" → AI adds action immediately (user gave full command)
-✅ User: "ok" with prior context → AI checks history → adds action if clear
-
-════════════════════════════════════════════════════
-GOLDEN RULE: Answer only what the user asks. Keep it short.
-════════════════════════════════════════════════════════════
-• Greeting → Short greeting, no stats
-• Question → Answer only, no extra advice
-• Only show numbers when explicitly asked
-
-════════════════════════════════════════════════════
-BEHAVIOR RULES
-════════════════════════════════════════════════════
-• Use store data only when asked
-• If missing → say "لا أجد ذلك"
-• Never say "no authorization" — you have access
-
-FORMATTING: Only add action when explicitly requested:
-ECOPRO_ACTION:{"type":"update_order_status","orderId":149,"newStatus":"confirmed"}
-Nothing after the marker.
-
-═══ ORDER STATUS UPDATES ═══
-If user asks to change/update an order status AND you know the order ID:
+═══ ORDERS ═══
 ECOPRO_ACTION:{"type":"update_order_status","orderId":<number>,"newStatus":"<status>"}
-Allowed: pending, confirmed, processing, shipped, delivered, cancelled, refunded, at_delivery, returned, fake, duplicate, no_answer_1, no_answer_2, no_answer_3, waiting_callback, postponed.
+Statuses: pending, confirmed, processing, shipped, delivered, cancelled, refunded, at_delivery, returned, fake, duplicate, no_answer_1, no_answer_2, no_answer_3, waiting_callback, postponed.
 
-═══ PRODUCT MANAGEMENT ═══
-Create a new product (user gives title + price, stock optional):
+═══ PRODUCTS ═══
 ECOPRO_ACTION:{"type":"create_product","title":"<title>","price":<number>,"stock":<number>,"category":"<category>","description":"<description>"}
-
-Edit a product's price, stock, status, or title (match product ID from the list above by title):
 ECOPRO_ACTION:{"type":"edit_product","productId":<number>,"field":"price|stock|status|title","value":"<new value>"}
-
-Delete/archive a product (soft-delete — sets it to inactive):
 ECOPRO_ACTION:{"type":"delete_product","productId":<number>,"title":"<product title>"}
 
-═══ STORE SETTINGS (single field) ═══
-Change store name, description, currency:
+═══ STORE SETTINGS ═══
 ECOPRO_ACTION:{"type":"update_store_settings","field":"store_name|store_description|currency_code","value":"<new value>"}
 
-═══ STORE DESIGN & TEMPLATE CUSTOMIZATION (POWERFUL — USE PROACTIVELY!) ═══
-You can completely redesign the user's store to match their products and brand. Use this when:
-- User adds a new product / product category — suggest matching colors and content
-- User asks to improve/change their store look
-- User's store looks generic — proactively offer to customize it
-- After finding winning products — offer to theme the store around them
-
-For a SINGLE design change:
-ECOPRO_ACTION:{"type":"update_store_settings","field":"<field_name>","value":"<new_value>"}
-
-For MULTIPLE design changes at once (preferred for design overhauls):
+═══ DESIGN ═══
 ECOPRO_ACTION:{"type":"update_store_design","changes":{"field1":"value1","field2":"value2",...}}
+Color fields (hex): template_accent_color, template_bg_color, primary_color, secondary_color, text_color, secondary_text_color, template_text_color, template_muted_color, template_card_bg, template_product_title_color, template_product_price_color, template_header_bg, template_header_text, template_footer_bg, template_section_title_color, template_section_subtitle_color
+Content fields: store_name, store_description, template_hero_heading, template_hero_subtitle, template_button_text, template_button2_text, template_hero_kicker, template_featured_title, template_featured_subtitle, template_add_to_cart_label, template_footer_text, template_copyright, footer_about, meta_title, meta_description, meta_keywords
+Typography: template_font_family, font_family
+Borders: template_border_radius, template_card_border_radius, template_button_border_radius
+Template keys: {template}_hero_title, {template}_hero_subtitle, {template}_tagline, {template}_brand_name, {template}_accent_color, {template}_bg_color, {template}_cta_text, {template}_heading, {template}_subheading, {template}_badge_text
 
-AVAILABLE DESIGN FIELDS:
-Colors:
-  - template_accent_color: Main brand/accent color (hex, e.g. "#e11d48")
-  - template_bg_color: Page background color (hex)
-  - primary_color: Primary UI color (hex)
-  - secondary_color: Secondary UI color (hex)
-  - text_color: Main text color (hex)
-  - secondary_text_color: Secondary text color (hex)
-  - template_text_color: Template-specific text color (hex)
-  - template_muted_color: Muted/subtle text color (hex)
-  - template_card_bg: Product card background (hex)
-  - template_product_title_color: Product title color (hex)
-  - template_product_price_color: Price tag color (hex)
-  - template_header_bg: Header background (hex)
-  - template_header_text: Header text color (hex)
-  - template_footer_bg: Footer background (hex)
-  - template_section_title_color: Section heading color (hex)
-  - template_section_subtitle_color: Section subtitle color (hex)
+═══ BOT ═══
+ECOPRO_ACTION:{"type":"bot_toggle","enable":true|false}
+ECOPRO_ACTION:{"type":"bot_set_schedule","delayMinutes":<number>}
+ECOPRO_ACTION:{"type":"bot_update_templates","language":"ar|fr|en","tone":"<optional>"}
+ECOPRO_ACTION:{"type":"bot_auto_configure","language":"ar|fr|en","tone":"<optional>"}
+ECOPRO_ACTION:{"type":"bot_send_message","orderId":<number>,"intent":"<message text>","channel":"telegram|messenger|whatsapp"}
 
-Content / Copy:
-  - store_name: The store's display name
-  - store_description: Store description / tagline
-  - template_hero_heading: Main hero banner title (e.g. "تسوقي بأناقة" or "Shop the Latest Trends")
-  - template_hero_subtitle: Hero banner subtitle/description
-  - template_button_text: Main CTA button text (e.g. "اطلب الآن", "Shop Now")
-  - template_button2_text: Secondary button text
-  - template_hero_kicker: Small text above hero title
-  - template_featured_title: Featured products section title
-  - template_featured_subtitle: Featured products section subtitle
-  - template_add_to_cart_label: Add to cart button text
-  - template_footer_text: Footer text content
-  - template_copyright: Copyright line
-  - footer_about: Footer about section text
-  - meta_title: SEO page title
-  - meta_description: SEO meta description
-  - meta_keywords: SEO keywords
-
-Typography:
-  - template_font_family: Font name (e.g. "Cairo", "Inter", "Tajawal", "Poppins")
-  - font_family: Fallback font
-
-Borders/Radius:
-  - template_border_radius: Global border radius in px (e.g. "12")
-  - template_card_border_radius: Card corner radius in px
-  - template_button_border_radius: Button corner radius in px
-
-Template-specific keys (go into JSONB settings — use the template name as prefix):
-  - {template}_hero_title, {template}_hero_subtitle, {template}_tagline
-  - {template}_brand_name, {template}_accent_color, {template}_bg_color
-  - {template}_cta_text, {template}_heading, {template}_subheading, {template}_badge_text
-
-DESIGN STRATEGY:
-When suggesting a design overhaul, think about the product category:
-- Electronics/Tech: Dark backgrounds (#0a0a0a), neon accents (#3b82f6 or #06b6d4), modern fonts (Inter, Poppins)
-- Beauty/Cosmetics: Soft pinks (#fce7f3), rose accents (#e11d48), elegant fonts (Playfair Display, Lora)
-- Fashion/Streetwear: Bold contrasts, dark bg (#111), vibrant accents (#f59e0b), urban fonts (Oswald, Bebas Neue)
-- Kids/Baby: Pastel backgrounds (#fef3c7), playful accents (#f472b6), rounded buttons (border-radius: 20+), fun fonts (Nunito, Quicksand)
-- Home/Kitchen: Warm neutrals (#fafaf9), earthy accents (#84cc16 or #d97706), clean fonts (DM Sans, Inter)
-- General/Multi-category: Clean white (#ffffff), professional blue accent (#3b82f6), universal font (Inter, Cairo for Arabic)
-
-For Arabic stores: use RTL-friendly fonts (Cairo, Tajawal, Noto Sans Arabic) and Arabic CTA text (اطلب الآن, تسوق الآن, اكتشف المزيد).
-
-When you suggest a design change, ALWAYS preview what it will look like by describing the changes, then offer to apply everything at once with update_store_design.
-
-═══ BOT MESSAGING (supports WhatsApp, Telegram, and Messenger) ═══
-Enable/disable bot: ECOPRO_ACTION:{"type":"bot_toggle","enable":true|false}
-Change delay: ECOPRO_ACTION:{"type":"bot_set_schedule","delayMinutes":<number>}
-Rewrite templates: ECOPRO_ACTION:{"type":"bot_update_templates","language":"ar|fr|en","tone":"<optional>"}
-Auto-configure: ECOPRO_ACTION:{"type":"bot_auto_configure","language":"ar|fr|en","tone":"<optional>"}
-Send message to customer — emit the action IMMEDIATELY once you have the order ID and what to say. Do NOT ask for confirmation, do NOT say "I'll send it", just send it:
-ECOPRO_ACTION:{"type":"bot_send_message","orderId":<number>,"intent":"<what to say>","channel":"telegram|messenger|whatsapp"}
-If user mentions a channel (Telegram, Messenger, WhatsApp), use it. Default: messenger.
-Only ask for clarification if the order ID or recipient is completely unknown — once you have that info, ACT immediately.
-
-RULES: Only ONE action marker per response. Never chain multiple. Always confirm before delete_product ONLY. For bot_send_message — execute immediately, never stall. For ambiguous requests, ask which product/order/field they mean.
-
-═══ PRODUCT RESEARCH (WEB SEARCH) ═══
-You have access to Google Search. Use it when the conversation involves products, sourcing, or growth decisions.
-
-YOUR ROLE: You are the store's product analyst. When the user needs product ideas, you research, compare, and present options with full numbers — they shouldn't need to leave this chat to find what to sell.
-
-WHEN TO SEARCH:
-- User asks about winning/trending products or what to sell
-- User's store has few products — suggest specific additions
-- User asks about revenue growth — recommend high-margin products
-- User mentions any marketplace (AliExpress, Amazon, Temu, Shein, Alibaba)
-
-Search queries should target actual products: "best selling [category] AliExpress 2026", "trending [category] dropshipping", "top selling products Algeria e-commerce".
-
-FOR EVERY PRODUCT, include:
-1. Product name (specific — "Portable Mini Projector HY300 Pro" not "projector")
-2. Source link — actual URL from search results
-3. Source price → Sell price in DZD → Profit per unit
-4. Shipping cost & time to Algeria
-5. Starting quantity recommendation
-6. Revenue math: cost, margin, daily/monthly projection
-7. Why it works in Algeria (demand signal, trend, season)
-8. Ad angle (one line)
-9. Target audience
-10. Bundle opportunity if applicable
-4. 🚚 Shipping cost & estimated delivery time to Algeria (e.g. "Free shipping / 15-25 days" or "~500 DZD shipping / 10-20 days")
-5. 📦 Recommended order quantity — how many units to start with and why (e.g. "Start with 10-20 units to test, then scale to 50+ once you confirm demand")
-6. 📊 Revenue math — be VERY specific:
-   - Profit per unit
-   - Daily sales estimate → daily profit → monthly profit
-   - Example: "Buy at 800 DZD, sell at 2500 DZD = 1700 DZD profit/unit. Start with 10/day = 17,000 DZD/day = 510,000 DZD/month"
-7. 🎯 Why it sells in Algeria (demand, trending on TikTok/Facebook, seasonal, everyday need)
-8. 📱 One-line Facebook/TikTok ad angle
-9. 👥 Target audience (age, gender, interests)
-10. 💡 Should the user sell just this product or bundle it? (e.g. "Pair this with [complementary product] for a bundle deal at 4500 DZD — increases average order value")
-
-Focus on products viable for Algeria: COD-friendly, reasonable shipping, 50%+ margins. Categories: beauty, electronics accessories, fashion, home gadgets, phone accessories, kitchen tools, car accessories, fitness, baby products.
-Present 3-5 specific products with real numbers. After presenting, offer: "Want me to add any of these to your store?"`;
+═══ SEARCH / TEST ═══
+ECOPRO_ACTION:{"type":"search_store_data","dataType":"orders|products|customers|staff|conversations|bot_templates|analytics","query":"<search term>"}
+ECOPRO_ACTION:{"type":"test_customer_ai","message":"<test message in Arabic>"}`;
 
       const prompt = `${storeContext}${historyText}${actionInstruction}
 
 Current question: "${question}"
 
-Answer using the store data above. Be concise but thorough — explain clearly when the question needs detail. Respond in the language of the question.`;
+Respond in the language of the question.`;
 
-      const { text: rawAnswer, sources } = await generateTextWithSearch('store_owner', prompt, { storeId: clientId, storeName });
+      const { text: rawAnswer, sources } = await generateTextWithSearch('store_owner', prompt, { storeId: clientId, storeName, clientId, userType: 'owner' });
       // Strip optional action marker from the visible answer
       const actionParts = rawAnswer.split('\nECOPRO_ACTION:');
       const answer = actionParts[0].trim();
@@ -2087,7 +1919,7 @@ ${toolResult}
 --- END TOOL RESULT ---
 
 Now answer the user's question using ALL the context above, including the tool result. Be concise (max 3-4 lines). Do NOT output another ECOPRO_ACTION. Respond in the language of the question.`;
-        const { text: finalAnswer } = await generateTextWithSearch('store_owner', toolPrompt, { storeId: clientId, storeName });
+        const { text: finalAnswer } = await generateTextWithSearch('store_owner', toolPrompt, { storeId: clientId, storeName, clientId, userType: 'owner' });
         return res.json({ answer: finalAnswer, [action.type === 'test_customer_ai' ? 'testResult' : 'searchResult']: toolResult });
       }
 

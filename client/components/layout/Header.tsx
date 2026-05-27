@@ -25,6 +25,7 @@ import { useState, useRef, useEffect } from "react";
 import { authApi } from "@/lib/auth";
 import { safeJsonParse } from "@/utils/safeJson";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 export default function Header() {
   const { toggle, theme } = useTheme();
@@ -43,23 +44,13 @@ export default function Header() {
   
   const { storeSlug } = useStoreSettings({ enabled: Boolean(user && isClient) });
 
-  const [alertCount, setAlertCount] = useState(0);
-
-  useEffect(() => {
-    if (isClient) {
-      fetch('/api/ai/alerts', { credentials: 'include' })
-        .then(r => r.json())
-        .then(data => setAlertCount((data.alerts || []).filter((a: any) => a.status === 'unread').length))
-        .catch(() => {});
-      const interval = setInterval(() => {
-        fetch('/api/ai/alerts', { credentials: 'include' })
-          .then(r => r.json())
-          .then(data => setAlertCount((data.alerts || []).filter((a: any) => a.status === 'unread').length))
-          .catch(() => {});
-      }, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [isClient]);
+  let totalAlerts = 0;
+  try {
+    const notifCtx = useNotifications();
+    totalAlerts = notifCtx.totalAlerts;
+  } catch {
+    // NotificationProvider might not be mounted (landing pages)
+  }
 
   const handleLogout = async () => {
     try {
@@ -129,9 +120,9 @@ export default function Header() {
             {isClient && (
               <Link to="/dashboard/alerts" className="relative p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                 <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                {alertCount > 0 && (
+                {totalAlerts > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-red-500/30">
-                    {alertCount > 9 ? '9+' : alertCount}
+                    {totalAlerts > 9 ? '9+' : totalAlerts}
                   </span>
                 )}
               </Link>

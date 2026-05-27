@@ -49,6 +49,31 @@ export function CreativesTab({ creatives, toxicCreativeCount, sessions }: Creati
         )}
 
         {creatives.length > 0 && (
+          <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-[9px]">
+            <div className="rounded-xl border border-emerald-200/50 dark:border-emerald-800/50 bg-emerald-50/60 dark:bg-emerald-900/20 p-[11px]">
+              <p className="text-[10px] text-muted-foreground font-medium">{t('marketing.creatives.col.netProfit')}</p>
+              <p className="text-lg font-black mt-1 text-emerald-600 dark:text-emerald-400">
+                {fmtCurrency(creatives.reduce((s, c) => s + c.netProfit, 0))}
+              </p>
+            </div>
+            <div className="rounded-xl border border-violet-200/50 dark:border-violet-800/50 bg-violet-50/60 dark:bg-violet-900/20 p-[11px]">
+              <p className="text-[10px] text-muted-foreground font-medium">POAS ({t('marketing.creatives.best')})</p>
+              <p className="text-lg font-black mt-1 text-violet-600 dark:text-violet-400">
+                {fmtPoas(Math.max(...creatives.map(c => c.poas ?? 0)))}
+              </p>
+            </div>
+            <div className="rounded-xl border border-amber-200/50 dark:border-amber-800/50 bg-amber-50/60 dark:bg-amber-900/20 p-[11px]">
+              <p className="text-[10px] text-muted-foreground font-medium">{t('marketing.creatives.col.spend')}</p>
+              <p className="text-lg font-black mt-1 text-amber-600 dark:text-amber-400">
+                {fmtCurrency(creatives.reduce((s, c) => s + c.spend, 0))}
+              </p>
+            </div>
+            <div className="rounded-xl border border-sky-200/50 dark:border-sky-800/50 bg-sky-50/60 dark:bg-sky-900/20 p-[11px]">
+              <p className="text-[10px] text-muted-foreground font-medium">{t('marketing.creatives.ads')}</p>
+              <p className="text-lg font-black mt-1 text-sky-600 dark:text-sky-400">{creatives.length}</p>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-[9px]">
             {creatives.map(c => {
               const isOpen = expandedCreative === c.key;
@@ -122,6 +147,7 @@ export function CreativesTab({ creatives, toxicCreativeCount, sessions }: Creati
               );
             })}
           </div>
+          </>
         )}
 
         {/* Recent Sessions */}

@@ -7,7 +7,7 @@ import {
     Divide, Palette, User, Lock, Image, Brain, MapPin, MessageSquare,
   Receipt, Bell
 } from "lucide-react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -28,6 +28,8 @@ interface MenuItem {
 
 interface EnhancedSidebarProps {
   onCollapseChange?: (collapsed: boolean) => void;
+  mobileOpen?: boolean;
+  onMobileOpenChange?: (open: boolean) => void;
 }
 
 // Professional color themes for sidebar - 4 light + 4 dark
@@ -53,8 +55,6 @@ const CATEGORY_COLORS: { [key: string]: string } = {
   images: '#0ea5e9',    // Sky Blue
   orders: '#ef4444',    // Red
   delivery: '#8b5cf6',  // Purple
-  addons: '#ec4899',    // Pink
-  wasselni: '#06b6d4',  // Cyan
   analytics: '#6366f1', // Indigo
   billing: '#14b8a6',   // Teal
   settings: '#6b7280',  // Gray
@@ -78,6 +78,7 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
       ],
     },
     { titleKey: "sidebar.stock", path: "/dashboard/stock", icon: <Package className="w-[18px] h-[18px]" />, permission: "view_inventory" },
+    { titleKey: "sidebar.images", path: "/dashboard/images", icon: <Image className="w-[18px] h-[18px]" />, permission: "view_settings" },
     { titleKey: "sidebar.orders", path: "/dashboard/orders", icon: <ShoppingCart className="w-[18px] h-[18px]" />, permission: "view_orders_list" },
     { titleKey: "sidebar.tracking", path: "/dashboard/tracking", icon: <MapPin className="w-[18px] h-[18px]" />, permission: "view_orders_list" },
     { titleKey: "sidebar.chatOrders", path: "/dashboard/orders/chat", icon: <MessageSquare className="w-[18px] h-[18px]" />, permission: "view_orders_list" },
@@ -127,12 +128,14 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
   ];
 };
 
-export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {}) {
+export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobileOpen, onMobileOpenChange }: EnhancedSidebarProps = {}) {
   const { t, locale } = useTranslation();
   const { theme: platformTheme } = useTheme();
   const { isStaff, hasPermission } = useStaffPermissions();
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+  const mobileOpen = controlledMobileOpen !== undefined ? controlledMobileOpen : internalMobileOpen;
+  const setMobileOpen = onMobileOpenChange || setInternalMobileOpen;
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   
@@ -149,7 +152,22 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
   });
   
   const location = useLocation();
-  const { newOrdersCount } = useNotifications();
+  const { newOrdersCount, totalAlerts } = useNotifications();
+
+  // Swipe to close mobile sidebar
+  const touchStartX = useRef(0);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const threshold = 80;
+    if (isRTL) {
+      if (dx > threshold) setMobileOpen(false);
+    } else {
+      if (dx < -threshold) setMobileOpen(false);
+    }
+  };
 
   const { storeSlug } = useStoreSettings({ enabled: true });
 
@@ -215,6 +233,7 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
 
     const badgeCount =
       item.titleKey === 'sidebar.orders' ? newOrdersCount :
+      item.titleKey === 'sidebar.alerts' ? totalAlerts :
       0;
 
     return (
@@ -477,7 +496,10 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
             className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-[105] transition-colors duration-200"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className={cn(
+          <aside
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className={cn(
             "lg:hidden fixed top-0 h-screen w-[270px] max-w-[85vw] z-[110] border-r transition-all duration-300 overflow-x-hidden",
             isRTL ? "right-0" : "left-0"
           )}
@@ -493,16 +515,7 @@ export function EnhancedSidebar({ onCollapseChange }: EnhancedSidebarProps = {})
         </>
       )}
 
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed bottom-4 left-4 p-3.5 rounded-full text-white shadow-2xl z-[120] hover:scale-110 active:scale-95 transition-transform"
-        style={{
-          backgroundColor: SIDEBAR_THEMES[activeTheme].accent,
-        }}
-      >
-        <Menu className="w-6 h-6" />
-      </button>
+
     </>
   );
 }

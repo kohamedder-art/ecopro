@@ -1185,6 +1185,22 @@ export const fr = {
   // Footer
   "footer.copyright": "© {year} Sahla4Eco. Tous droits réservés",
 
+  // Onboarding Wizard
+  "onboarding.title": "Bienvenue ! Configurons votre boutique",
+  "onboarding.subtitle": "Completez ces étapes pour commencer à recevoir des commandes",
+  "onboarding.product.title": "Ajoutez votre premier produit",
+  "onboarding.product.desc": "Commencez à vendre en ajoutant des produits",
+  "onboarding.product.action": "Ajouter",
+  "onboarding.delivery.title": "Définir les prix de livraison",
+  "onboarding.delivery.desc": "Configurez les frais d'expédition par wilaya",
+  "onboarding.delivery.action": "Configurer",
+  "onboarding.bot.title": "Activez votre bot",
+  "onboarding.bot.desc": "Activez le bot pour gérer les commandes automatiquement",
+  "onboarding.bot.action": "Activer",
+  "onboarding.order.title": "Obtenez votre première commande",
+  "onboarding.order.desc": "Partagez le lien de votre boutique et commencez à vendre",
+  "onboarding.order.action": "Voir les commandes",
+
   // Sidebar Navigation
   "sidebar.home": "Accueil",
   "sidebar.profile": "Profil",
@@ -1193,10 +1209,8 @@ export const fr = {
   "sidebar.images": "Images",
   "sidebar.orders": "Commandes Boutique",
   "sidebar.delivery": "Livraison",
-  "sidebar.addons": "Extensions",
   "sidebar.pixels": "Statistiques Pixel",
   "sidebar.marketing": "Marketing & Analytique",
-  "sidebar.wasselni": "Bot",
   "sidebar.bot": "Bot",
   "sidebar.integrations": "Intégrations",
   "sidebar.staff": "Personnel",

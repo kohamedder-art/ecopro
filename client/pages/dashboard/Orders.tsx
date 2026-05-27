@@ -1177,8 +1177,8 @@ export default function OrdersAdmin() {
 
           {/* Orders Table */}
           {!isLoading && !error && orders.length > 0 && getFilteredOrders().length > 0 && (
-          <table className="w-full text-sm font-semibold md:table hidden">
-            <thead className="hidden md:table-header-group">
+          <table className="w-full text-sm font-semibold md:table hidden border-separate border-spacing-0">
+            <thead className="hidden md:table-header-group sticky top-0 z-10">
               <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
                 <th className="whitespace-nowrap px-3 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider w-10">
                   <button 

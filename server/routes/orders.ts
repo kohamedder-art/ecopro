@@ -1920,6 +1920,28 @@ export const getHighRiskOrdersHandler: RequestHandler = async (req, res) => {
 };
 
 /**
+ * Get count of flagged/problematic orders (fake, duplicate, returned)
+ * GET /api/client/orders/flagged-count
+ */
+export const getFlaggedOrdersCount: RequestHandler = async (req, res) => {
+  try {
+    const clientId = (req as any).user?.id;
+    if (!clientId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND status IN ('fake', 'duplicate', 'returned')`,
+      [clientId]
+    );
+    res.json({ count: result.rows[0]?.count || 0 });
+  } catch (error) {
+    console.error("Get flagged orders count error:", error);
+    res.status(500).json({ error: "Failed to get flagged orders count" });
+  }
+};
+
+/**
  * Assess risk for a phone number (without creating order)
  * POST /api/orders/check-risk
  */

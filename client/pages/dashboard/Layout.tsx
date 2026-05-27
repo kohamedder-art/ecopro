@@ -1,5 +1,6 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { EnhancedSidebar } from "@/components/admin/EnhancedSidebar";
+import { MobileBottomBar } from "@/components/admin/MobileBottomBar";
 import { useState, useEffect } from "react";
 import { useTranslation } from "../../lib/i18n";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function AdminLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { locale, t } = useTranslation();
   const { toggle, theme } = useTheme();
   const isDark = theme === "dark";
@@ -57,7 +59,11 @@ export default function AdminLayout() {
       
       {/* Main content area with sidebar */}
       <div className="flex flex-1">
-        <EnhancedSidebar onCollapseChange={setSidebarCollapsed} />
+        <EnhancedSidebar
+          onCollapseChange={setSidebarCollapsed}
+          mobileOpen={mobileSidebarOpen}
+          onMobileOpenChange={setMobileSidebarOpen}
+        />
         {/* Adjust margin based on sidebar state and language direction - only on lg screens */}
         <main 
           className={cn(
@@ -89,7 +95,7 @@ export default function AdminLayout() {
             </Button>
           </div>
         )}
-        <div className="px-4 md:px-6 pt-4 pb-24 lg:pb-6">
+        <div className="px-4 md:px-6 pt-4 pb-20 lg:pb-6">
           {/* Wrap outlet with PermissionGate - auto-detects permission from route */}
           <PermissionGate>
             <ErrorBoundary fallback={
@@ -111,6 +117,9 @@ export default function AdminLayout() {
         </div>
         </main>
       </div>
+
+      {/* Mobile bottom tab bar */}
+      <MobileBottomBar onMenuClick={() => setMobileSidebarOpen(true)} />
     </div>
   );
 }

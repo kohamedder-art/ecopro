@@ -182,8 +182,6 @@ COMMON PITFALLS TO AVOID:
 
       return `${identity}${ownerPersonaSection}
 
-You are the personal AI assistant for a Store Owner on Sahla4Eco.
-
 ${E_COMMERCE_KNOWLEDGE}
 
 RULES:
@@ -782,8 +780,47 @@ export async function generateTextWithSearch(
   history: GeminiContent[] = [],
 ): Promise<SearchGroundedResult> {
   const systemPrompt = buildSystemPrompt(role, ctx);
+
+  // Validate prompt length and patterns
+  const error = validatePrompt(prompt, role);
+  if (error) return { text: error, sources: [] };
+
+  const temp = 0.7;
   const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
-  const aiResponse = await callAI(systemPrompt, prompt, history, undefined, 0.7, model);
+
+  // Limit chat history to last 20 messages for customers
+  const limitedHistory = role === 'customer' ? history.slice(-20) : history;
+
+  const maxTokens = role === 'customer' ? 1024 : undefined;
+
+  // Check quota if clientId and userType are provided
+  if (ctx.clientId && ctx.userType) {
+    const quotaStatus = await checkQuota(ctx.clientId, ctx.userType);
+    if (!quotaStatus.allowed) {
+      const text = ctx.userType === 'customer'
+        ? 'عذراً، تم تجاوز الحد الشهري للردود الآلية. يرجى التواصل مع المتجر مباشرة.'
+        : 'تم تجاوز الحد الشهري لاستخدام المساعد الذكي. يرجى ترقية حسابك للحصول على المزيد.';
+      return { text, sources: [] };
+    }
+  }
+
+  const aiResponse = await callAI(systemPrompt, prompt, limitedHistory, undefined, temp, model, maxTokens);
+
+  // Record usage if clientId and userType are provided
+  if (ctx.clientId && ctx.userType) {
+    await recordUsage({
+      clientId: ctx.clientId,
+      userType: ctx.userType,
+      platformChatId: ctx.platformChatId,
+      modelUsed: model,
+      tokensInput: aiResponse.tokensInput,
+      tokensOutput: aiResponse.tokensOutput,
+      totalTokens: aiResponse.totalTokens,
+      costUsd: aiResponse.costUsd,
+      messagePreview: prompt,
+    });
+  }
+
   return { text: stripThinkTags(aiResponse.text), sources: [] };
 }
 

@@ -11,6 +11,30 @@
 .drop-shadow-glow {
   filter: drop-shadow(0 0 8px #a855f7) drop-shadow(0 0 16px #a855f7aa);
 }
+
+/* Animated ghost effects for admin placeholder */
+.ghost-float {
+  pointer-events: none;
+  opacity: 0.85;
+  will-change: transform, opacity;
+}
+
+@keyframes ghost-move {
+  0% { transform: translateX(-20%); opacity: 0; }
+  10% { opacity: 0.9; }
+  100% { transform: translateX(120%); opacity: 0; }
+}
+
+.ghost-bg {
+  opacity: 0.25;
+  filter: blur(2px) saturate(0.8);
+}
+
+@keyframes ghostMove {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

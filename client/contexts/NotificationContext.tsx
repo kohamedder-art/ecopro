@@ -11,10 +11,18 @@ import { Bell, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { safeJsonParse } from '@/utils/safeJson';
 
+interface AlertCounts {
+  lowStock: number;
+  flaggedOrders: number;
+  aiAlerts: number;
+}
+
 interface NotificationContextType {
   notificationPermission: NotificationPermission | 'unsupported';
   newOrdersCount: number;
   unreadMessagesCount: number;
+  alertCounts: AlertCounts;
+  totalAlerts: number;
   requestPermission: () => Promise<NotificationPermission>;
   showPrompt: boolean;
   dismissPrompt: () => void;
@@ -39,12 +47,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [alertCounts, setAlertCounts] = useState<AlertCounts>({ lowStock: 0, flaggedOrders: 0, aiAlerts: 0 });
   const [showPrompt, setShowPrompt] = useState(false);
   
   const prevOrdersCount = useRef(0);
   const prevMessagesCount = useRef(0);
   const ordersInFlight = useRef(false);
   const unreadInFlight = useRef(false);
+  const alertsInFlight = useRef(false);
 
   // Check permission on mount
   useEffect(() => {
@@ -139,6 +149,38 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [isAdmin, navigate]);
 
+  // Fetch alert counts (low stock, flagged orders, AI alerts)
+  const fetchAlertCounts = useCallback(async () => {
+    if (!isClient) return;
+    if (alertsInFlight.current) return;
+    alertsInFlight.current = true;
+    try {
+      const [lowStockRes, flaggedRes] = await Promise.allSettled([
+        fetch('/api/client/stock/alerts/low-stock', { credentials: 'include' }),
+        fetch('/api/client/orders/flagged-count', { credentials: 'include' }),
+      ]);
+
+      let lowStock = 0;
+      let flaggedOrders = 0;
+
+      if (lowStockRes.status === 'fulfilled' && lowStockRes.value.ok) {
+        const data = await lowStockRes.value.json();
+        lowStock = data.count ?? data.length ?? 0;
+      }
+
+      if (flaggedRes.status === 'fulfilled' && flaggedRes.value.ok) {
+        const data = await flaggedRes.value.json();
+        flaggedOrders = data.count ?? 0;
+      }
+
+      setAlertCounts({ lowStock, flaggedOrders, aiAlerts: 0 });
+    } catch {
+      // silently fail
+    } finally {
+      alertsInFlight.current = false;
+    }
+  }, [isClient]);
+
   // Allow non-route-based chat experiences (floating messenger overlay) to clear badges immediately
   useEffect(() => {
     if (!user) return;
@@ -186,11 +228,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     // Initial fetch
     fetchNewOrdersCount();
     fetchUnreadCount();
+    fetchAlertCounts();
     
     // Poll every 30 seconds
     const interval = setInterval(() => {
       fetchNewOrdersCount();
       fetchUnreadCount();
+      fetchAlertCounts();
     }, 30000);
     
     return () => clearInterval(interval);
@@ -201,6 +245,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       notificationPermission,
       newOrdersCount,
       unreadMessagesCount,
+      alertCounts,
+      totalAlerts: newOrdersCount + unreadMessagesCount + alertCounts.lowStock + alertCounts.flaggedOrders + alertCounts.aiAlerts,
       requestPermission,
       showPrompt,
       dismissPrompt,
