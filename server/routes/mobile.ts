@@ -258,4 +258,44 @@ router.patch('/orders/:id/status', updateOrderStatus);
 router.get('/notifications', getNotifications);
 router.patch('/notifications/read-all', markNotificationsRead);
 
+// Public: get latest app download URL
+router.get('/download', async (_req, res) => {
+  try {
+    const pool = await ensureConnection();
+    const result = await pool.query(
+      `SELECT download_url, version, created_at FROM app_downloads
+       WHERE platform = 'android' ORDER BY created_at DESC LIMIT 1`
+    );
+    if (result.rows.length === 0) {
+      return res.json({ download_url: null });
+    }
+    const row = result.rows[0];
+    res.json({ download_url: row.download_url, version: row.version, updated_at: row.created_at });
+  } catch {
+    res.json({ download_url: null });
+  }
+});
+
+// Admin: update app download URL
+router.post('/download', async (req, res) => {
+  try {
+    const pool = await ensureConnection();
+    const clientId = (req as any).user?.id;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Only super admin can update
+    const { download_url, version, platform = 'android' } = req.body;
+    if (!download_url) return res.status(400).json({ error: 'download_url required' });
+
+    await pool.query(
+      `INSERT INTO app_downloads (platform, download_url, version, created_at)
+       VALUES ($1, $2, $3, NOW())`,
+      [platform, download_url, version || 'latest']
+    );
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to update' });
+  }
+});
+
 export default router;

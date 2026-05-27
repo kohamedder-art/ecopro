@@ -70,6 +70,8 @@ export default function Profile() {
     discount_percent?: number; discount_applied?: boolean;
   } | null>(null);
 
+  const [appDownload, setAppDownload] = useState<{ download_url: string | null; version?: string } | null>(null);
+
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -201,7 +203,14 @@ export default function Profile() {
     }
   };
 
-  useEffect(() => { load(); loadAffiliateInfo(); }, []);
+  useEffect(() => { load(); loadAffiliateInfo(); fetchAppDownload(); }, []);
+
+  const fetchAppDownload = async () => {
+    try {
+      const res = await fetch('/api/mobile/download');
+      if (res.ok) setAppDownload(await res.json());
+    } catch {}
+  };
 
   const subStatus = access?.status || profile?.subscription?.status || 'unknown';
   const trialEnds = profile?.subscription?.trial_ends_at || null;
@@ -549,11 +558,18 @@ export default function Profile() {
             {/* QR Code */}
             <div className="shrink-0">
               <div className="w-40 h-40 bg-white rounded-xl border border-border p-2 flex items-center justify-center">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent('https://expo.dev/accounts/sahla4eco-organization/projects/ssahla4eco/builds')}`}
-                  alt="Download App QR Code"
-                  className="w-full h-full object-contain"
-                />
+                {appDownload?.download_url ? (
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appDownload.download_url)}`}
+                    alt="Download App QR Code"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <QrCode className="w-10 h-10 mb-2 opacity-30" />
+                    <p className="text-[10px] text-center">التطبيق غير متوفر حالياً</p>
+                  </div>
+                )}
               </div>
               <p className="text-[10px] text-muted-foreground text-center mt-2 font-medium">امسح الرمز للتحميل</p>
             </div>
@@ -583,15 +599,22 @@ export default function Profile() {
                 </li>
               </ul>
               <div className="flex gap-2 pt-1">
-                <a
-                  href="https://expo.dev/accounts/sahla4eco-organization/projects/ssahla4eco/builds"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm shadow-blue-600/20"
-                >
-                  <Download className="w-4 h-4" />
-                  تحميل التطبيق
-                </a>
+                {appDownload?.download_url ? (
+                  <a
+                    href={appDownload.download_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm shadow-blue-600/20"
+                  >
+                    <Download className="w-4 h-4" />
+                    تحميل التطبيق
+                  </a>
+                ) : (
+                  <span className="h-9 px-5 bg-muted text-muted-foreground rounded-xl text-sm font-semibold flex items-center gap-2 cursor-not-allowed">
+                    <Download className="w-4 h-4" />
+                    التطبيق غير متوفر
+                  </span>
+                )}
               </div>
             </div>
           </div>
