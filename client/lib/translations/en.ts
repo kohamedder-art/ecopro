@@ -1670,6 +1670,7 @@ export const en = {
   "sidebar.deliveryPricing": "Pricing",
   "sidebar.pixels": "Pixel Statistics",
   "sidebar.marketing": "Marketing & Analytics",
+  "sidebar.ads": "My Ads",
   "sidebar.bot": "Bot",
   "sidebar.integrations": "Integrations",
   "sidebar.aiSettings": "AI Autopilot",
