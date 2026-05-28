@@ -1642,7 +1642,6 @@ ${customerList.length > 0
 === TRAFFIC & ANALYTICS ===
 Weekly page views: ${weeklyViews} | Monthly page views: ${monthlyViews}
 Conversion rate (orders/views): ${conversionRate}%
-`
 
 === CUSTOMER-FACING AI CONFIG ===
 This is YOUR customer-facing AI — what it tells your customers. You can change this anytime.
