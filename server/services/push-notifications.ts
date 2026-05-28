@@ -40,6 +40,18 @@ export async function sendPushNotification(clientId: number, title: string, body
       const errors = tickets.filter((t: any) => t.status === 'error');
       if (errors.length > 0) {
         console.error('[push] Expo push errors:', errors);
+        const invalidTokens: string[] = [];
+        for (const ticket of errors) {
+          if (ticket.details?.error === 'DeviceNotRegistered' || ticket.details?.error === 'InvalidCredentials') {
+            invalidTokens.push(ticket.details.expoPushToken || '');
+          }
+        }
+        if (invalidTokens.length > 0) {
+          pool.query(
+            'DELETE FROM push_devices WHERE push_token = ANY($1)',
+            [invalidTokens.filter(Boolean)]
+          ).catch((e: any) => console.error('[push] cleanup error:', e));
+        }
       }
     }
   } catch (error) {

@@ -1163,6 +1163,10 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
       global.broadcastOrderUpdate(result.rows[0]);
     }
 
+    // Push notification to mobile app (fire-and-forget)
+    const { notifyOrderStatusChanged } = await import('../services/push-notifications');
+    notifyOrderStatusChanged(req.user.id, result.rows[0].id, status, result.rows[0].customer_name || '').catch(() => {});
+
     // Telegram tracking updates (fire-and-forget)
     // Send if we have a telegram_bot_token, regardless of provider setting
     try {
