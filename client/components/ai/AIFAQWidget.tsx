@@ -40,7 +40,7 @@ export default function AIFAQWidget() {
           credentials: 'include',
           body: JSON.stringify({
             question: q,
-            history: messages.slice(-8).map(m => ({ role: m.role, content: m.content })),
+            history: messages.slice(-20).map(m => ({ role: m.role, content: m.content })),
           }),
           signal: controller.signal,
         });

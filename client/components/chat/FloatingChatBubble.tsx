@@ -176,7 +176,7 @@ export default function FloatingChatBubble() {
         const endpoint = attachedImg ? '/api/ai/vision/chat' : '/api/ai/chat';
         const body: any = {
           question: q || 'What do you see in this image? Describe it in detail.',
-          history: aiMessages.slice(-8).map(m => ({ role: m.role, content: m.content })),
+          history: aiMessages.slice(-20).map(m => ({ role: m.role, content: m.content })),
         };
         if (attachedImg) body.imageUrl = attachedImg;
         const res = await fetch(endpoint, {

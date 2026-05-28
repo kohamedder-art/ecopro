@@ -1129,9 +1129,9 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
   try {
     const { question, history } = req.body;
     if (!question) return res.status(400).json({ error: 'question is required' });
-    // Accept last 8 prior turns for context (client sends [{role, content}])
+    // Accept last 20 prior turns for context (client sends [{role, content}])
     type HistoryMsg = { role: string; content: string };
-    const prevHistory: HistoryMsg[] = Array.isArray(history) ? history.slice(-8) : [];
+    const prevHistory: HistoryMsg[] = Array.isArray(history) ? history.slice(-20) : [];
 
     // Try to identify user from cookie (optional auth — don't reject if not logged in)
     const user = extractAiUser(req);
@@ -1532,9 +1532,7 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
         .map(([s, c]) => `${s}: ${c}`)
         .join(', ') || 'no orders yet';
 
-      // Detect if the question needs live store data or is a how-to/feature question
-      const dataKeywords = ['طلب','طلبية','طلبيات','revenue','إيراد','مبيعات','منتج','مخزون','stock','orders','أرباح','زبون','زبائن','إحصاء','تقرير','كم','عدد','قيمة','أجمالي','status','حالة','delivery','توصيل','اشتراك','subscription','دفع','payment','موظف','staff','بيكسل','pixel','الشخصية','persona','البوت','bot','بيانات','show','أظهر','عرض','تفاصيل','قائمة','delivery','كوليس','courier','شحن','transport','توصيل']; // second occurrence intentional for Arabic variants
-      const needsData = dataKeywords.some(kw => question.toLowerCase().includes(kw));
+      // Always include full store data — the AI is smart enough to know what's relevant
 
       const storeContext = `
 === PROFILE ===
@@ -1558,7 +1556,7 @@ Font: ${storeDesign.font || 'Inter'}
 Border radius: ${storeDesign.borderRadius || '(default)'}px
 (You can change ANY of these via update_store_settings or update_store_design actions)
 
-${needsData ? `
+`
 === BILLING ===
 Plan: ${subTier || 'N/A'} | Status: ${subStatus || 'N/A'}
 ${subTrialEnds ? `Trial ends: ${subTrialEnds}` : ''}${subPeriodEnd ? ` | Period ends: ${subPeriodEnd}` : ''}
@@ -1645,7 +1643,7 @@ ${customerList.length > 0
 === TRAFFIC & ANALYTICS ===
 Weekly page views: ${weeklyViews} | Monthly page views: ${monthlyViews}
 Conversion rate (orders/views): ${conversionRate}%
-` : ''}
+`
 
 === CUSTOMER-FACING AI CONFIG ===
 This is YOUR customer-facing AI — what it tells your customers. You can change this anytime.
@@ -3290,7 +3288,7 @@ router.post('/vision/chat', authAiLimiter, async (req: Request, res: Response) =
 
     // Map prior history
     type HistoryMsg = { role: string; content: string };
-    const prevHistory: HistoryMsg[] = Array.isArray(history) ? history.slice(-8) : [];
+    const prevHistory: HistoryMsg[] = Array.isArray(history) ? history.slice(-20) : [];
     const geminiHistory = prevHistory.map(m => ({
       role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
       parts: [{ text: m.content }],
