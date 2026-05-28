@@ -10,7 +10,6 @@ import {
 } from '@/components/icons/MarketingIcons';
 import { OverviewTab } from '@/components/marketing/OverviewTab';
 import { CreativesTab } from '@/components/marketing/CreativesTab';
-import AdsPage from './AdsPage';
 
 type OmniSnapshot = any;
 type CustomerAnalytics = any;
@@ -47,7 +46,6 @@ export default function MarketingAnalytics() {
   const tabs = [
     { value: 'dashboard', icon: MkrDashboard, labelKey: 'marketing.tab.overview' },
     { value: 'campaigns', icon: MkrMegaphone, labelKey: 'marketing.tab.creatives' },
-    { value: 'ads', icon: MkrMegaphone, labelKey: 'sidebar.ads' },
   ] as const;
 
   return (
@@ -151,10 +149,6 @@ export default function MarketingAnalytics() {
           ) : (
             <CreativesTab creatives={creatives} toxicCreativeCount={overview?.toxicCreativeCount ?? 0} sessions={sessions} />
           )}
-        </TabsContent>
-
-        <TabsContent value="ads" className="mt-[9px]">
-          <AdsPage />
         </TabsContent>
       </Tabs>
     </div>

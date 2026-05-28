@@ -475,23 +475,6 @@ export default function Store() {
                 if (createdId && offersDraft.length > 0) {
                   await saveProductOffers(createdId);
                 }
-                // Save product costs if provided
-                if (createdId && ((formData as any).buy_cost > 0 || (formData as any).packaging_cost > 0 || (formData as any).handling_cost > 0)) {
-                  try {
-                    await fetch('/api/pixels/omni/product-economics', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify({
-                        productId: createdId,
-                        buyCost: (formData as any).buy_cost || 0,
-                        packagingCost: (formData as any).packaging_cost || 0,
-                        handlingCost: (formData as any).handling_cost || 0,
-                        fallbackShippingCost: 0,
-                      }),
-                    });
-                  } catch {}
-                }
                 // reload products
                 await reloadProducts();
                 setShowAddModal(false);
@@ -561,23 +544,6 @@ export default function Store() {
                 }
                 if (offersDirty) {
                   await saveProductOffers(Number(selectedProduct.id));
-                }
-                // Save product costs if provided
-                if ((formData as any).buy_cost > 0 || (formData as any).packaging_cost > 0 || (formData as any).handling_cost > 0) {
-                  try {
-                    await fetch('/api/pixels/omni/product-economics', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify({
-                        productId: Number(selectedProduct.id),
-                        buyCost: (formData as any).buy_cost || 0,
-                        packagingCost: (formData as any).packaging_cost || 0,
-                        handlingCost: (formData as any).handling_cost || 0,
-                        fallbackShippingCost: 0,
-                      }),
-                    });
-                  } catch {}
                 }
                 // reload products
                 await reloadProducts();
@@ -1227,21 +1193,6 @@ export default function Store() {
       notes: typeof metadata.notes === 'string' ? metadata.notes : '',
       video_url: typeof metadata.video_url === 'string' ? metadata.video_url : '',
     });
-    // Load product costs from economics API
-    (async () => {
-      try {
-        const data = await fetch('/api/pixels/omni/inputs', { credentials: 'include' }).then(r => r.json());
-        const econ = data.products?.find((p: any) => p.id === product.id);
-        if (econ) {
-          setFormData(prev => ({
-            ...prev,
-            buy_cost: econ.buy_cost || 0,
-            packaging_cost: econ.packaging_cost || 0,
-            handling_cost: econ.handling_cost || 0,
-          }));
-        }
-      } catch {}
-    })();
     setShowEditModal(true);
     setVariantsDraft([]);
     setVariantsLoaded(false);
@@ -2296,51 +2247,6 @@ export default function Store() {
                     className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
                   />
                   <p className="text-xs text-muted-foreground">{t('store.productForm.stockHint')}</p>
-                </div>
-
-                {/* ── Product Costs ── */}
-                <div className="border-t border-emerald-500/20 pt-3 mt-3">
-                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">تكاليف المنتج (اختياري — لحساب الأرباح)</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">سعر الشراء (التكلفة)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={(formData as any).buy_cost ?? ''}
-                        onChange={(e) => setFormData({ ...formData, buy_cost: e.target.value === '' ? undefined : Number(e.target.value) } as any)}
-                        placeholder="0"
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">التغليف</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={(formData as any).packaging_cost ?? ''}
-                        onChange={(e) => setFormData({ ...formData, packaging_cost: e.target.value === '' ? undefined : Number(e.target.value) } as any)}
-                        placeholder="0"
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">المناولة</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={(formData as any).handling_cost ?? ''}
-                        onChange={(e) => setFormData({ ...formData, handling_cost: e.target.value === '' ? undefined : Number(e.target.value) } as any)}
-                        placeholder="0"
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                  </div>
-                  {(formData as any).buy_cost > 0 && formData.price > 0 && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 font-semibold">
-                      هامش الربح: {(((formData.price - ((formData as any).buy_cost || 0) - ((formData as any).packaging_cost || 0) - ((formData as any).handling_cost || 0)) / formData.price) * 100).toFixed(0)}%
-                    </p>
-                  )}
                 </div>
               </div>
             )}
