@@ -223,10 +223,10 @@ export default function Dashboard() {
   const netProfit = stats.revenue - adSpend;
 
   const topCards = [
-    { label: t('dashboard.kpi.earnMonth'), val: stats.revenue > 0 ? stats.revenue.toLocaleString() : '0', bg: 'bg-[#4379EE]', shadow: 'shadow-[#4379EE]/30', icon: '💰' },
-    { label: t('dashboard.kpi.adSpend') || 'إنفاق الإعلانات', val: adSpend > 0 ? adSpend.toLocaleString() : '0', bg: 'bg-[#FF5A5F]', shadow: 'shadow-[#FF5A5F]/30', icon: '📣' },
+    { label: t('dashboard.kpi.earnMonth'), val: stats.revenue > 0 ? `${stats.revenue.toLocaleString()} DA` : '0 DA', bg: 'bg-[#4379EE]', shadow: 'shadow-[#4379EE]/30', icon: '💰' },
+    { label: t('dashboard.kpi.adSpend') || 'إنفاق الإعلانات', val: adSpend > 0 ? `${adSpend.toLocaleString()} DA` : '0 DA', bg: 'bg-[#FF5A5F]', shadow: 'shadow-[#FF5A5F]/30', icon: '📣' },
     { label: t('dashboard.kpi.totalOrders') || 'إجمالي الطلبات', val: String(totalOrders), bg: 'bg-[#FFAB00]', shadow: 'shadow-[#FFAB00]/30', icon: '🛒' },
-    { label: t('dashboard.kpi.netProfit') || 'صافي الربح', val: netProfit > 0 ? netProfit.toLocaleString() : netProfit < 0 ? `-${Math.abs(netProfit).toLocaleString()}` : '0', bg: 'bg-[#10B981]', shadow: 'shadow-[#10B981]/30', icon: '📈' }
+    { label: t('dashboard.kpi.netProfit') || 'صافي الربح', val: netProfit > 0 ? `${netProfit.toLocaleString()} DA` : netProfit < 0 ? `-${Math.abs(netProfit).toLocaleString()} DA` : '0 DA', bg: netProfit >= 0 ? 'bg-[#10B981]' : 'bg-[#EF4444]', shadow: netProfit >= 0 ? 'shadow-[#10B981]/30' : 'shadow-[#EF4444]/30', icon: netProfit >= 0 ? '📈' : '📉' }
   ];
 
   return (
