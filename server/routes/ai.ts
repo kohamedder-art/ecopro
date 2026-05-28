@@ -139,7 +139,7 @@ Requirements:
 - Do not add a price
 - Do not include HTML tags`;
 
-    const description = await generateText('store_owner', prompt, { storeId: user.id, storeName });
+    const description = await generateText('store_owner', prompt, { storeId: user.id, storeName, clientId: user.id, userType: 'owner' });
     return res.json({ description });
   } catch (err) {
     return serverError(res, err);
@@ -205,7 +205,7 @@ router.post('/product/alt-text', authenticate, requireClient, authAiLimiter, asy
     if (!productTitle) return res.status(400).json({ error: 'productTitle is required' });
 
     const prompt = `Write a concise, SEO-friendly image alt text (max 15 words) for a product image of: "${productTitle}". Return only the alt text string, no quotes.`;
-    const altText = await generateText('store_owner', prompt, { storeId: user.id });
+    const altText = await generateText('store_owner', prompt, { storeId: user.id, clientId: user.id, userType: 'owner' });
     return res.json({ altText });
   } catch (err) {
     return serverError(res, err);
@@ -252,7 +252,7 @@ Requirements:
 - No HTML, no links (the system adds them)
 - Start with a greeting emoji`;
 
-    const message = await generateText('store_owner', prompt, { storeId: user.id, storeName });
+    const message = await generateText('store_owner', prompt, { storeId: user.id, storeName, clientId: user.id, userType: 'owner' });
     return res.json({ message });
   } catch (err) {
     return serverError(res, err);
@@ -366,7 +366,7 @@ ${JSON.stringify(summary)}
 Include: total orders, revenue in DZD, top-selling products, top cities, and one actionable recommendation.
 You MUST write exclusively in ${lang}. Do not use any other language.`;
 
-    const narrative = await generateText('store_owner', prompt, { storeId: user.id });
+    const narrative = await generateText('store_owner', prompt, { storeId: user.id, clientId: user.id, userType: 'owner' });
     return res.json({ narrative });
   } catch (err) {
     return serverError(res, err);
@@ -545,7 +545,7 @@ ${JSON.stringify({
   recommendations: snapshot.recommendations,
 })}`;
 
-      const aiSummary = await generateText('store_owner', aiPrompt, { storeId: user.id });
+      const aiSummary = await generateText('store_owner', aiPrompt, { storeId: user.id, clientId: user.id, userType: 'owner' });
       if (aiSummary && aiSummary.trim()) {
         summary = aiSummary.trim();
       }
@@ -2469,7 +2469,7 @@ Language: ${language === 'ar' ? 'Arabic' : language === 'fr' ? 'French' : langua
 ${availableVars}
 Write only the message template text. No explanation. Keep it under 200 words.`;
 
-    const template = await generateText('store_owner', prompt, { storeId: clientId, storeName });
+    const template = await generateText('store_owner', prompt, { storeId: clientId, storeName, clientId, userType: 'owner' });
     return res.json({ template: template.trim(), templateType });
   } catch (err) {
     return serverError(res, err);
@@ -2860,7 +2860,7 @@ Message purpose: ${requested}
 
 Write a professional, friendly message in Arabic (Algerian dialect preferred). Keep it concise (under 150 words). Use actual order values — do NOT use placeholder variables.`;
 
-      messageText = await generateText('store_owner', prompt, { storeId: clientId, storeName });
+      messageText = await generateText('store_owner', prompt, { storeId: clientId, storeName, clientId, userType: 'owner' });
     }
 
     if (!messageText) return res.status(500).json({ error: 'AI failed to generate message text.' });
@@ -3047,7 +3047,7 @@ Return JSON only:
 Order #${order.id} | Product: ${order.product_name || 'N/A'} | Total: ${order.total_price} DZD | Status: ${order.status} | Address: ${order.delivery_address || 'N/A'}
 Purpose: ${intent || 'a helpful order update'}
 Write in Arabic (Algerian dialect). Be direct and friendly. Under 150 words. Use actual values, not placeholders.`;
-      const messageText = await generateText('store_owner', msgPrompt, { storeId: clientId, storeName });
+      const messageText = await generateText('store_owner', msgPrompt, { storeId: clientId, storeName, clientId, userType: 'owner' });
       await pool.query(
         `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
          VALUES ($1, $2, $3, $4, $5, NOW())`,
@@ -3237,7 +3237,7 @@ router.post('/vision/analyze-product', authenticate, requireClient, visionAiLimi
       storeName = r.rows[0]?.store_name || '';
     } catch { /* non-critical */ }
 
-    const result = await analyzeProductImage(base64, contentType, { storeId: user.id, storeName }, String(req.body.language || 'ar'));
+    const result = await analyzeProductImage(base64, contentType, { storeId: user.id, storeName, clientId: user.id, userType: 'owner' }, String(req.body.language || 'ar'));
 
     // Track vision usage
     try {
@@ -3350,7 +3350,7 @@ router.post('/vision/quality-check', authenticate, requireClient, visionAiLimite
 }
 IMPORTANT: Respond ONLY with valid JSON.`;
 
-    const result = await generateJSON('store_owner', prompt, { storeId: user.id }, [{ mimeType: contentType, base64 }]);
+    const result = await generateJSON('store_owner', prompt, { storeId: user.id, clientId: user.id, userType: 'owner' }, [{ mimeType: contentType, base64 }]);
     return res.json(result);
   } catch (err) {
     return serverError(res, err);
@@ -3482,7 +3482,7 @@ Requirements:
 
 Write only the message text, no explanations.`;
 
-    const message = await generateText('store_owner', prompt, { storeId: clientId, storeName });
+    const message = await generateText('store_owner', prompt, { storeId: clientId, storeName, clientId, userType: 'owner' });
     return res.json({ message: message.trim(), segment, campaignType, language: lang });
   } catch (err) {
     return serverError(res, err);

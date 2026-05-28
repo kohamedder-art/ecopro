@@ -625,8 +625,28 @@ export async function generateJSON<T = any>(
   const systemPrompt = buildSystemPrompt(role, ctx);
   const jsonPrompt = `${prompt}\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no explanation text.`;
   const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
+
+  if (ctx.clientId && ctx.userType) {
+    const quotaStatus = await checkQuota(ctx.clientId, ctx.userType);
+    if (!quotaStatus.allowed) return '{}' as T;
+  }
+
   const aiResponse = await callAI(systemPrompt, jsonPrompt, [], images, 0.7, model);
-  // Strip markdown fences if model ignores the instruction
+
+  if (ctx.clientId && ctx.userType) {
+    await recordUsage({
+      clientId: ctx.clientId,
+      userType: ctx.userType,
+      platformChatId: ctx.platformChatId,
+      modelUsed: model,
+      tokensInput: aiResponse.tokensInput,
+      tokensOutput: aiResponse.tokensOutput,
+      totalTokens: aiResponse.totalTokens,
+      costUsd: aiResponse.costUsd,
+      messagePreview: prompt,
+    });
+  }
+
   const cleaned = aiResponse.text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
   return JSON.parse(cleaned) as T;
 }
@@ -674,6 +694,21 @@ Context: This is for the Algerian market. Currency is DZD (Algerian Dinar). Pric
 IMPORTANT: Respond ONLY with valid JSON. No markdown fences.`;
 
   const aiResponse = await callAI(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }], 0.7, OWNER_AI_MODEL);
+
+  if (ctx.clientId && ctx.userType) {
+    await recordUsage({
+      clientId: ctx.clientId,
+      userType: ctx.userType,
+      platformChatId: ctx.platformChatId,
+      modelUsed: OWNER_AI_MODEL,
+      tokensInput: aiResponse.tokensInput,
+      tokensOutput: aiResponse.tokensOutput,
+      totalTokens: aiResponse.totalTokens,
+      costUsd: aiResponse.costUsd,
+      messagePreview: 'image analysis',
+    });
+  }
+
   const cleaned = aiResponse.text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
   return JSON.parse(cleaned);
 }
