@@ -76,7 +76,8 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
 
   // Pre-select product from URL slug on mount
   useEffect(() => {
-    if (initialProductSlug && products?.length) {
+    if (!initialProductSlug) { setSelectedProduct(null); setIsCheckoutOpen(false); return; }
+    if (products?.length) {
       const match = products.find((p: any) => p.slug === initialProductSlug);
       if (match) { setSelectedProduct(match); setIsCheckoutOpen(true); }
     }

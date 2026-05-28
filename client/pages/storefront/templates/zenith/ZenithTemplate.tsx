@@ -68,10 +68,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     }
   }, [storeSlug, navigate]);
 
-  // Sync with initialProductSlug changes
+  // Sync with initialProductSlug changes (bidirectional — clears when navigating back to store)
   useEffect(() => {
-    if (initialProductSlug && initialProductSlug !== currentSlug) {
-      setCurrentSlug(initialProductSlug);
+    const next = initialProductSlug || null;
+    if (next !== currentSlug) {
+      setCurrentSlug(next);
     }
   }, [initialProductSlug]);
 

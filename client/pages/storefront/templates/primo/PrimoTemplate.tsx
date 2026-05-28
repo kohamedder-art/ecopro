@@ -98,6 +98,12 @@ export default function PrimoTemplate({
   }, [products, settings?.dzp_main_product_id, initialProductSlug]);
   const mainProduct = activeMainProduct ?? baseMainProduct;
 
+  // Sync viewMode with URL — reset to catalog when product slug is removed
+  useEffect(() => {
+    if (initialProductSlug) { setViewMode('product'); }
+    else { setViewMode('catalog'); setActiveMainProduct(null); }
+  }, [initialProductSlug]);
+
   // ── Other products ──
   const otherProducts = useMemo(() => {
     if (!products) return [];

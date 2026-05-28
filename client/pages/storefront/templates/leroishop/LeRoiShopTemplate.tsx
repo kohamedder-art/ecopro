@@ -87,7 +87,10 @@ export default function LeRoiShopTemplate({
 
   const [view, setView] = useState<'catalog' | 'product'>('catalog');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProduct(p); setView('product'); } } }, [initialProductSlug, products]);
+  useEffect(() => {
+    if (!initialProductSlug) { setView('catalog'); setSelectedProduct(null); return; }
+    if (products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProduct(p); setView('product'); } }
+  }, [initialProductSlug, products]);
   const [activeImageIndex, setActiveImageIndex] = useState(1);
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);

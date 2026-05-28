@@ -103,6 +103,8 @@ export default function IycoTemplate({
       ? products?.find((p: any) => String(p.id) === String(mainId))
       : products?.[0];
   }, [products, settings?.dzp_main_product_id, initialProductSlug]);
+  // Clear activeMainProduct when navigating back to store grid
+  useEffect(() => { if (!initialProductSlug) setActiveMainProduct(null); }, [initialProductSlug]);
   const mainProduct = activeMainProduct ?? baseMainProduct;
 
   // ── Delivery System ──

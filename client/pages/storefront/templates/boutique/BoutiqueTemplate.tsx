@@ -158,7 +158,10 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const [orderProduct, setOrderProduct] = useState<any>(null);
   const [orderVariant, setOrderVariant] = useState<SelectedVariant | null>(null);
   const [orderQty, setOrderQty] = useState(1);
-  useEffect(() => { if (initialProductSlug && products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) setDetailProduct(p); } }, [initialProductSlug, products]);
+  useEffect(() => {
+    if (!initialProductSlug) { setDetailProduct(null); return; }
+    if (products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) setDetailProduct(p); }
+  }, [initialProductSlug, products]);
 
   const currency = settings?.currency_code || 'د.ج';
   const accentColor = settings?.template_accent_color || propPrimaryColor || '#f59e0b'; // amber-500
