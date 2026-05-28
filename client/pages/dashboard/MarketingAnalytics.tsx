@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTranslation } from '@/lib/i18n';
 import { apiFetch } from '@/lib/api';
+import { useToast } from '@/components/ui/use-toast';
 import {
-  MkrBrain, MkrMegaphone, MkrRefresh, MkrDashboard, MkrAudience,
+  MkrBrain, MkrMegaphone, MkrRefresh, MkrDashboard, MkrAudience, MkrConfigure,
 } from '@/components/icons/MarketingIcons';
 import { OverviewTab } from '@/components/marketing/OverviewTab';
 import { CreativesTab } from '@/components/marketing/CreativesTab';
+import { ConfigureTab } from '@/components/marketing/ConfigureTab';
 
 type OmniSnapshot = any;
 type CustomerAnalytics = any;
@@ -18,6 +20,8 @@ type GenderAnalytics = any;
 export default function MarketingAnalytics() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedDays, setSelectedDays] = useState('30');
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -36,6 +40,44 @@ export default function MarketingAnalytics() {
     queryFn: () => apiFetch<GenderAnalytics>(`/api/pixels/omni/gender?days=${selectedDays}`),
   });
 
+  const { data: inputs, isLoading: inputsLoading } = useQuery<any>({
+    queryKey: ['omni-inputs'],
+    queryFn: () => apiFetch<any>('/api/pixels/omni/inputs'),
+  });
+
+  const { data: pixelSettings } = useQuery<any>({
+    queryKey: ['pixel-settings'],
+    queryFn: () => apiFetch<any>('/api/pixels/settings'),
+  });
+
+  const saveEconomicsMutation = useMutation({
+    mutationFn: (payload: any) => apiFetch('/api/pixels/omni/product-economics', { method: 'PUT', body: JSON.stringify(payload) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['omni-inputs'] }); toast({ title: t('marketing.toast.saved') || 'تم الحفظ' }); },
+    onError: () => { toast({ title: t('marketing.toast.error') || 'خطأ', variant: 'destructive' }); },
+  });
+
+  const saveSpendMutation = useMutation({
+    mutationFn: (payload: any) => apiFetch('/api/pixels/omni/creative-spend', { method: 'POST', body: JSON.stringify(payload) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['omni-inputs'] }); toast({ title: t('marketing.toast.saved') || 'تم الحفظ' }); },
+    onError: () => { toast({ title: t('marketing.toast.error') || 'خطأ', variant: 'destructive' }); },
+  });
+
+  const deleteSpendMutation = useMutation({
+    mutationFn: (id: number) => apiFetch(`/api/pixels/omni/creative-spend/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['omni-inputs'] }); },
+  });
+
+  const savePixelSettingsMutation = useMutation({
+    mutationFn: (payload: any) => apiFetch('/api/pixels/settings', { method: 'PUT', body: JSON.stringify(payload) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pixel-settings'] }); toast({ title: t('marketing.toast.saved') || 'تم الحفظ' }); },
+    onError: () => { toast({ title: t('marketing.toast.error') || 'خطأ', variant: 'destructive' }); },
+  });
+
+  const backfillMutation = useMutation({
+    mutationFn: (days: number) => apiFetch('/api/pixels/omni/import-historical-sessions', { method: 'POST', body: JSON.stringify({ days }) }),
+    onSuccess: () => { toast({ title: t('marketing.toast.saved') || 'تم الحفظ' }); },
+  });
+
   const overview = snapshot?.overview;
   const funnel = snapshot?.funnel || [];
   const creatives = snapshot?.creativeComparison || [];
@@ -46,6 +88,7 @@ export default function MarketingAnalytics() {
   const tabs = [
     { value: 'dashboard', icon: MkrDashboard, labelKey: 'marketing.tab.overview' },
     { value: 'campaigns', icon: MkrMegaphone, labelKey: 'marketing.tab.creatives' },
+    { value: 'configure', icon: MkrConfigure, labelKey: 'marketing.tab.configure' || 'التكاليف والإعلانات' },
   ] as const;
 
   return (
@@ -148,6 +191,25 @@ export default function MarketingAnalytics() {
             <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
           ) : (
             <CreativesTab creatives={creatives} toxicCreativeCount={overview?.toxicCreativeCount ?? 0} sessions={sessions} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="configure" className="mt-[9px]">
+          {inputsLoading ? (
+            <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
+          ) : (
+            <ConfigureTab
+              inputs={inputs}
+              settings={pixelSettings}
+              onSaveEconomics={(p) => saveEconomicsMutation.mutate(p)}
+              onSaveSpend={(p) => saveSpendMutation.mutate(p)}
+              onDeleteSpend={(id) => deleteSpendMutation.mutate(id)}
+              onRunBackfill={(days) => backfillMutation.mutate(days)}
+              onSaveSettings={(p) => savePixelSettingsMutation.mutate(p)}
+              savingSpend={saveSpendMutation.isPending}
+              runningBackfill={backfillMutation.isPending}
+              savingSettings={savePixelSettingsMutation.isPending}
+            />
           )}
         </TabsContent>
       </Tabs>
