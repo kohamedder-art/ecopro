@@ -99,12 +99,6 @@ const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
       permission: "view_settings"
     },
     {
-      titleKey: "sidebar.ads",
-      path: "/dashboard/ads",
-      icon: <Megaphone className="w-[18px] h-[18px]" />,
-      permission: "view_settings"
-    },
-    {
       titleKey: "sidebar.pixels",
       path: "/dashboard/pixel-settings",
       icon: <Settings className="w-[18px] h-[18px]" />,
