@@ -1556,7 +1556,6 @@ Font: ${storeDesign.font || 'Inter'}
 Border radius: ${storeDesign.borderRadius || '(default)'}px
 (You can change ANY of these via update_store_settings or update_store_design actions)
 
-`
 === BILLING ===
 Plan: ${subTier || 'N/A'} | Status: ${subStatus || 'N/A'}
 ${subTrialEnds ? `Trial ends: ${subTrialEnds}` : ''}${subPeriodEnd ? ` | Period ends: ${subPeriodEnd}` : ''}
