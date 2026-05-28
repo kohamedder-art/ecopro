@@ -40,7 +40,7 @@ export const getDashboardStats: RequestHandler = async (req, res) => {
     // Include built-in 'completed' status (مكتملة) for revenue calculation
     revenueStatuses.push('completed');
     
-    const [productsRes, ordersRes, revenueRes, pendingRes, completedRes] = await Promise.all([
+    const [productsRes, ordersRes, revenueRes, pendingRes, completedRes, adSpendRes] = await Promise.all([
       pool.query(
         `SELECT COUNT(*)::int AS products FROM client_store_products WHERE client_id = $1 AND status = 'active'`,
         [clientId]
@@ -61,6 +61,10 @@ export const getDashboardStats: RequestHandler = async (req, res) => {
         `SELECT COUNT(*)::int AS completed FROM store_orders WHERE client_id = $1 AND status = ANY($2) ${dateFilter}`,
         [clientId, revenueStatuses]
       ),
+      pool.query(
+        `SELECT COALESCE(SUM(spend),0)::float AS ad_spend FROM creative_spend_entries WHERE client_id = $1 AND entry_date >= CURRENT_DATE - INTERVAL '${days} days'`,
+        [clientId]
+      ),
     ]);
 
     // Get store page views count for the selected date range
@@ -76,6 +80,7 @@ export const getDashboardStats: RequestHandler = async (req, res) => {
       pendingOrders: pendingRes.rows[0]?.pending ?? 0,
       completedOrders: completedRes.rows[0]?.completed ?? 0,
       visitors: viewsRes.rows[0]?.total_views ?? 0,
+      adSpend: adSpendRes.rows[0]?.ad_spend ?? 0,
     };
 
     res.json(stats);

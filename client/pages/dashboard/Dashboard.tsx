@@ -219,11 +219,14 @@ export default function Dashboard() {
     : '0%';
   const grossMargin = stats.revenue > 0 ? ((stats.revenue - (stats.revenue * 0.6)) / stats.revenue * 100).toFixed(1) : '0';
 
+  const adSpend = stats.adSpend || 0;
+  const netProfit = stats.revenue - adSpend;
+
   const topCards = [
     { label: t('dashboard.kpi.earnMonth'), val: stats.revenue > 0 ? stats.revenue.toLocaleString() : '0', bg: 'bg-[#4379EE]', shadow: 'shadow-[#4379EE]/30', icon: '💰' },
-    { label: t('dashboard.kpi.earnGrowth'), val: revenueGrowth, bg: 'bg-[#FF5A5F]', shadow: 'shadow-[#FF5A5F]/30', icon: '📈' },
-    { label: t('dashboard.conversionRate'), val: `${conversionRate}%`, bg: 'bg-[#FFAB00]', shadow: 'shadow-[#FFAB00]/30', icon: '🛒' },
-    { label: t('dashboard.kpi.grossProfit'), val: `${grossMargin}%`, bg: 'bg-[#FF8A00]', shadow: 'shadow-[#FF8A00]/30', icon: '⚖️' }
+    { label: t('dashboard.kpi.adSpend') || 'إنفاق الإعلانات', val: adSpend > 0 ? adSpend.toLocaleString() : '0', bg: 'bg-[#FF5A5F]', shadow: 'shadow-[#FF5A5F]/30', icon: '📣' },
+    { label: t('dashboard.kpi.totalOrders') || 'إجمالي الطلبات', val: String(totalOrders), bg: 'bg-[#FFAB00]', shadow: 'shadow-[#FFAB00]/30', icon: '🛒' },
+    { label: t('dashboard.kpi.netProfit') || 'صافي الربح', val: netProfit > 0 ? netProfit.toLocaleString() : netProfit < 0 ? `-${Math.abs(netProfit).toLocaleString()}` : '0', bg: 'bg-[#10B981]', shadow: 'shadow-[#10B981]/30', icon: '📈' }
   ];
 
   return (
