@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTranslation } from '@/lib/i18n';
 import { apiFetch } from '@/lib/api';
 import {
-  MkrBrain, MkrMegaphone, MkrRefresh, MkrDashboard, MkrAudience,
+  MkrBrain, MkrMegaphone, MkrRefresh, MkrDashboard,
 } from '@/components/icons/MarketingIcons';
-import { OverviewTab } from '@/components/marketing/OverviewTab';
+import { SummaryTab } from '@/components/marketing/SummaryTab';
 import { CreativesTab } from '@/components/marketing/CreativesTab';
 
 type OmniSnapshot = any;
 type CustomerAnalytics = any;
-type GenderAnalytics = any;
 
 export default function MarketingAnalytics() {
   const { t, locale } = useTranslation();
@@ -31,17 +29,8 @@ export default function MarketingAnalytics() {
     queryFn: () => apiFetch<CustomerAnalytics>(`/api/pixels/omni/customers?days=${selectedDays}`),
   });
 
-  const { data: genderData, isLoading: genderLoading } = useQuery<GenderAnalytics>({
-    queryKey: ['omni-gender', selectedDays],
-    queryFn: () => apiFetch<GenderAnalytics>(`/api/pixels/omni/gender?days=${selectedDays}`),
-  });
-
   const overview = snapshot?.overview;
-  const funnel = snapshot?.funnel || [];
   const creatives = snapshot?.creativeComparison || [];
-  const sessions = snapshot?.recentSessions || [];
-  const sources = snapshot?.sourceBreakdown || [];
-  const clusters = snapshot?.frictionClusters || [];
 
   const tabs = [
     { value: 'dashboard', icon: MkrDashboard, labelKey: 'marketing.tab.overview' },
@@ -50,19 +39,16 @@ export default function MarketingAnalytics() {
 
   return (
     <div className={`space-y-[9px] pb-8 ${isRTL ? 'text-right' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* ── Hero header ── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-[18px] shadow-sm">
-        <div className="absolute inset-0 bg-grid-white/[0.02] pointer-events-none" />
-        <div className="absolute -top-8 -right-8 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-accent/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative flex items-start justify-between gap-4">
+      {/* ── Header ── */}
+      <div className="rounded-xl bg-card border border-border p-[13px] shadow-sm">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20 shrink-0">
-              <MkrBrain className="w-5 h-5 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent shadow-sm shrink-0">
+              <MkrBrain className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="text-base font-extrabold tracking-tight text-foreground">{t('marketing.title')}</h1>
-              <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('marketing.subtitle')}</p>
+              <h1 className="text-sm font-extrabold text-foreground">{t('marketing.title')}</h1>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{t('marketing.subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -86,24 +72,6 @@ export default function MarketingAnalytics() {
             </button>
           </div>
         </div>
-
-        {/* Live stat pills */}
-        {overview && (
-          <div className="relative flex flex-wrap gap-2 mt-4">
-            <div className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full px-3 py-1 text-[11px] font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-              {overview.sessions?.toLocaleString() ?? 0} {t('marketing.kpi.sessions')}
-            </div>
-            <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full px-3 py-1 text-[11px] font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              {overview.totalOrders?.toLocaleString() ?? 0} {t('marketing.kpi.orders')}
-            </div>
-            <div className="flex items-center gap-1.5 bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 rounded-full px-3 py-1 text-[11px] font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
-              {overview.netProfit > 0 ? `+${overview.netProfit.toLocaleString()} DA` : `${overview.netProfit.toLocaleString()} DA`}
-            </div>
-          </div>
-        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -119,26 +87,29 @@ export default function MarketingAnalytics() {
           ))}
         </TabsList>
 
-        <TabsContent value="dashboard" className="mt-[9px] space-y-[9px]">
-          {snapshotLoading || customersLoading || genderLoading ? (
+        <TabsContent value="dashboard" className="mt-[9px]">
+          {snapshotLoading || customersLoading ? (
             <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
           ) : !overview ? (
             <div className="flex flex-col items-center justify-center py-20 text-center bg-card border border-border rounded-xl p-[13px]">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-900/30 mb-[11px]">
-                <MkrAudience className="h-7 w-7 text-primary" />
+                <MkrDashboard className="h-7 w-7 text-primary" />
               </div>
               <p className="text-sm font-bold mb-1">{t('marketing.noData')}</p>
-              <p className="text-xs text-muted-foreground max-w-xs">{t('marketing.noDataHint') || 'Analytics data will appear here once your store starts receiving traffic and orders.'}</p>
+              <p className="text-xs text-muted-foreground max-w-xs">{t('marketing.noDataHint')}</p>
             </div>
           ) : (
-            <OverviewTab
-              overview={overview}
-              funnel={funnel}
-              sources={sources}
-              customerData={customerData}
-              genderData={genderData}
-              clusters={clusters}
-              sessions={sessions}
+            <SummaryTab
+              overview={{
+                sessions: overview.sessions,
+                totalOrders: overview.totalOrders,
+                deliveredOrders: overview.deliveredOrders,
+                returnedOrders: overview.returnedOrders,
+                realizedRevenue: overview.realizedRevenue,
+                netProfit: overview.netProfit,
+              }}
+              wilayaBreakdown={customerData?.wilayaBreakdown}
+              ordersByDay={customerData?.ordersByDay}
             />
           )}
         </TabsContent>
@@ -147,7 +118,7 @@ export default function MarketingAnalytics() {
           {snapshotLoading ? (
             <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
           ) : (
-            <CreativesTab creatives={creatives} toxicCreativeCount={overview?.toxicCreativeCount ?? 0} sessions={sessions} />
+            <CreativesTab creatives={creatives} />
           )}
         </TabsContent>
       </Tabs>
