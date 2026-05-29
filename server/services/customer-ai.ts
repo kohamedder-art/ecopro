@@ -1,8 +1,25 @@
 /**
- * Customer AI — Clean, Simple, Human
+ * Customer AI — Natural conversation with customers
  *
- * One file. One purpose: make the customer feel like they're talking to a real person.
- * No context dumps. No complex prompts. Just smart, natural conversation.
+ * ═══════════════════════════════════════════════════════════════
+ * !! AGENT INSTRUCTIONS — READ BEFORE EDITING SYSTEM_PROMPT !!
+ * ═══════════════════════════════════════════════════════════════
+ * 
+ * DO:
+ * - Write SYSTEM_PROMPT like a skilled person's innate knowledge
+ * - Short sentences, natural flow, like telling a friend
+ * - Fix only the specific problem, don't rewrite the whole prompt
+ * - If adding a skill, phrase it as "أنت فاهم..." not "افعل كذا"
+ * 
+ * DON'T:
+ * - Don't add numbered lists or bullet-point rule books
+ * - Don't use "⚠️" "❌" "✅" emojis as instructional markers
+ * - Don't turn it into a programming manual / robot instructions
+ * - Don't rewrite the entire prompt for every small fix
+ * - Don't add the same instruction in multiple places
+ * 
+ * Test rule: Read this block before editing SYSTEM_PROMPT.
+ * ═══════════════════════════════════════════════════════════════
  */
 
 import { ensureConnection } from '../utils/database';

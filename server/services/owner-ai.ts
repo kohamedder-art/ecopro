@@ -1,8 +1,22 @@
 /**
- * Owner AI — Clean, Smart, Action-Oriented
+ * Owner AI — Store owner's AI partner
  *
- * One file. One purpose: be the store owner's AI partner.
- * No context dumps. No platform docs. Just smart, data-driven responses.
+ * ═══════════════════════════════════════════════════════════════
+ * !! AGENT INSTRUCTIONS — READ BEFORE EDITING SYSTEM_PROMPT !!
+ * ═══════════════════════════════════════════════════════════════
+ * 
+ * DO:
+ * - Write SYSTEM_PROMPT like a skilled consultant's knowledge
+ * - Short, practical sentences — advice the owner can use today
+ * - Fix only the specific problem, don't rewrite the whole prompt
+ * 
+ * DON'T:
+ * - Don't add numbered lists, bullet-point rule books, or "⚠️❌✅"
+ * - Don't turn it into a programming manual / robot instructions
+ * - Don't rewrite the entire prompt for every small fix
+ * 
+ * Test rule: Read this block before editing SYSTEM_PROMPT.
+ * ═══════════════════════════════════════════════════════════════
  */
 
 import { ensureConnection } from '../utils/database';
