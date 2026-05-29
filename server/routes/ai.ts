@@ -2740,10 +2740,11 @@ Write only the message text, no explanations.`;
 // AI CUSTOMER FLOW TEST — POST /api/ai/test-customer
 // ═════════════════════════════════════════════════════
 // Simulates how the AI talks to customers (WhatsApp/Telegram/Messenger)
-// Body: { message: string, clientId?: number }
+// For multi-turn testing, pass the same chatId each time.
+// Body: { message: string, clientId?: number, chatId?: string }
 router.post('/test-customer', authAiLimiter, async (req: Request, res: Response) => {
   try {
-    const { message, clientId } = req.body;
+    const { message, clientId, chatId } = req.body;
     if (!message) return res.status(400).json({ error: 'message is required' });
 
     // Use logged-in user's store, or the provided clientId
@@ -2756,8 +2757,8 @@ router.post('/test-customer', authAiLimiter, async (req: Request, res: Response)
     // Import the customer handler
     const { handleCustomerMessage } = await import('../services/customer-ai');
     
-    // Use a unique chat ID per request so test conversations don't bleed into each other
-    const uniqueChatId = `test_${effectiveClientId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    // Use provided chatId for multi-turn, or create a new one
+    const uniqueChatId = chatId || `test_${effectiveClientId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     
     // Test mode: prefix with /test tells the handler this is the store owner testing
     const testMessage = '/test ' + message;
@@ -2770,7 +2771,7 @@ router.post('/test-customer', authAiLimiter, async (req: Request, res: Response)
       });
     }
     
-    return res.json({ answer: response });
+    return res.json({ answer: response, chatId: uniqueChatId });
   } catch (err) {
     return serverError(res, err);
   }
