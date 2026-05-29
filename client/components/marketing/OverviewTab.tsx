@@ -246,9 +246,13 @@ export function OverviewTab({ overview, funnel, sources, customerData, genderDat
           {/* Gender + Order Trend */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-[11px]">
             {genderData && genderData.total > 0 && (
-              <Card className={surfaceCard}>
-                <SectionHeader icon={<MkrPerson className="h-[11px] w-[11px]" />} title={t('marketing.customers.gender')} />
-                <CardContent className="p-[13px] pt-[9px]">
+              <details className={`${surfaceCard} group`}>
+                <summary className="flex items-center gap-[7px] px-[13px] pt-[13px] pb-[9px] cursor-pointer list-none marker:hidden [&::-webkit-details-marker]:hidden">
+                  <MkrPerson className="h-[11px] w-[11px] text-primary shrink-0" />
+                  <span className="text-[13px] font-bold flex-1">{t('marketing.customers.gender')}</span>
+                  <span className="text-[10px] text-muted-foreground">{t('marketing.customers.gender.hint') || 'إحصاءات إضافية'}</span>
+                </summary>
+                <div className="p-[13px] pt-[9px]">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-[11px] items-start">
                     <div className="flex flex-col items-center">
                       <ResponsiveContainer width="100%" height={180}>
@@ -303,8 +307,8 @@ export function OverviewTab({ overview, funnel, sources, customerData, genderDat
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </details>
             )}
 
             {customerData.ordersByDay.length > 0 && (

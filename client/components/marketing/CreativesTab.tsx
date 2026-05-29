@@ -127,7 +127,7 @@ export function CreativesTab({ creatives, toxicCreativeCount, sessions }: Creati
       emptyIcon={<MkrMegaphone className="h-7 w-7 text-orange-500" />}
       emptyGradient="from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30"
       emptyTitle={t('marketing.creatives.noData')}
-      emptyHint="Creative performance data will appear once campaigns are tracked through your pixel."
+      emptyHint={t('marketing.creatives.noDataHint')}
     >
       <div className="space-y-[9px]">
         {toxicCreativeCount > 0 && (
