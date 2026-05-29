@@ -16,7 +16,7 @@ const DEEPINFRA_API_BASE = 'https://api.deepinfra.com/v1/openai';
 
 // Dual-AI Model Strategy
 const OWNER_AI_MODEL = 'Qwen/Qwen2.5-72B-Instruct'; // Better instruction following than Llama 70B
-const CUSTOMER_AI_MODEL = 'Qwen/Qwen2.5-14B-Instruct'; // Customer chat ($0.04/1M tokens)
+const CUSTOMER_AI_MODEL = 'Qwen/Qwen2.5-14B-Instruct'; // Customer chat ($0.12/1M input, $0.24/1M output)
 const AI_FALLBACK_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Fallback if primary fails
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 3000, 6000]; // ms
@@ -406,10 +406,19 @@ async function callAI(
       const tokensOutput = usage.completion_tokens || 0;
       const totalTokens = usage.total_tokens || (tokensInput + tokensOutput);
       
-      // Calculate actual cost based on model
-      // Owner (70B): $0.40/1M tokens, Customer (Qwen 7B): $0.02/1M tokens
-      const costPerToken = useModel === OWNER_AI_MODEL ? 0.0000004 : 0.00000002;
-      const costUsd = totalTokens * costPerToken;
+      // Calculate actual cost based on model using separate input/output pricing
+      // DeepInfra pricing (May 2026):
+      //   Qwen2.5-72B-Instruct: $0.36/1M input, $0.40/1M output
+      //   Qwen3-14B:            $0.12/1M input, $0.24/1M output
+      //   Fallback (7B):        $0.03/1M flat
+      let costUsd = 0;
+      if (useModel === OWNER_AI_MODEL) {
+        costUsd = (tokensInput * 0.36 + tokensOutput * 0.40) / 1_000_000;
+      } else if (useModel === AI_FALLBACK_MODEL) {
+        costUsd = totalTokens * 0.03 / 1_000_000;
+      } else {
+        costUsd = (tokensInput * 0.12 + tokensOutput * 0.24) / 1_000_000;
+      }
       
       return { 
         text: text.trim(), 
