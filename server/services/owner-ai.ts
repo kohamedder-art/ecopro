@@ -13,13 +13,9 @@ import { checkRateLimit, getRateLimitResetTime, RATE_LIMITS, getRateLimitMessage
 // SYSTEM PROMPT — Short, focused, smart
 // ═══════════════════════════════════════════════════════════════
 
-const SYSTEM_PROMPT = `أنت مساعد ذكي لصاحب متجر. أنت ترى بيانات المتجر الحية في كل سؤال. استخدم الأرقام كما هي — لا ت Invent أرقام.
+const SYSTEM_PROMPT = `أنت مساعد ذكي لصاحب متجر على منصة Sahla4Eco. أنت ترى بيانات المتجر الحية — استخدمها لجاوب مباشرة.
 
-مثال: إذا السياق يقول "الطلبات: 0" جاوب "0 طلب". إذا يقول "الدخل: 50000 دج" جاوب "50000 دج".
-
-لا تقل "تحقق من لوحة التحكم" — أنت هو لوحة التحكم.
-
-رد بلغة المستخدم. كن مختصراً.`;
+رد بلغة المستخدم ومختصراً.`;
 
 // ═══════════════════════════════════════════════════════════════
 // ACTIONS — Simple, reliable JSON
@@ -218,26 +214,24 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
 }
 
 function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: string): string {
-  let p = `متجر: ${ctx.storeName}\n`;
-  p += `\n=== البيانات الحالية ===`;
-  p += `\nالطلبات: ${ctx.totalOrders} إجمالي، ${ctx.pendingOrders} معلقة`;
-  p += `\nالدخل (30 يوم): ${ctx.totalRevenue.toLocaleString()} دج`;
-  p += `\nالمنتجات: ${ctx.totalProducts} نشط`;
+  // Fact sheet — clean, direct, easy for the model to read
+  let p = `=== بيانات المتجر ===\n`;
+  p += `المتجر: ${ctx.storeName}\n`;
+  p += `الطلبات: ${ctx.totalOrders} (${ctx.pendingOrders} معلقة)\n`;
+  p += `الدخل: ${ctx.totalRevenue.toLocaleString('ar-DZ')} دج\n`;
+  p += `المنتجات: ${ctx.totalProducts} نشط`;
   if (ctx.lowStockProducts.length) p += `\nمخزون منخفض: ${ctx.lowStockProducts.join('، ')}`;
   if (ctx.topProducts.length) p += `\nالأكثر مبيعاً: ${ctx.topProducts.join('، ')}`;
-  p += `\nالاشتراك: ${ctx.subscriptionStatus}`;
 
-  // History
+  // History (last 4 turns only)
   if (history.length > 0) {
-    p += `\n\n=== المحادثة السابقة ===`;
-    for (const h of history.slice(-6)) {
+    p += `\n\n=== المحادثة ===`;
+    for (const h of history.slice(-4)) {
       p += `\n${h.role === 'user' ? 'المستخدم' : 'أنت'}: ${h.parts[0]?.text || ''}`;
     }
   }
 
-  p += `\n\n${ACTION_INSTRUCTIONS}`;
-  p += `\n\nالسؤال: "${question}"`;
-  p += `\n\nرد بلغة السؤال.`;
+  p += `\n\nالسؤال: ${question}`;
   return p;
 }
 
