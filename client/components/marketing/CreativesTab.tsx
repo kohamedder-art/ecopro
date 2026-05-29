@@ -95,16 +95,6 @@ export function CreativesTab({ creatives, toxicCreativeCount, sessions }: Creati
 
   const spendEntries: SpendEntry[] = inputs?.spendEntries || [];
 
-  const campaigns = spendEntries.reduce((acc: Record<string, { spend: number; impressions: number; clicks: number; entries: SpendEntry[] }>, e) => {
-    const key = e.campaign_name || 'بدون حملة';
-    if (!acc[key]) acc[key] = { spend: 0, impressions: 0, clicks: 0, entries: [] };
-    acc[key].spend += e.spend || 0;
-    acc[key].impressions += e.impressions || 0;
-    acc[key].clicks += e.clicks || 0;
-    acc[key].entries.push(e);
-    return acc;
-  }, {});
-
   const totalSpend = spendEntries.reduce((s, e) => s + (e.spend || 0), 0);
   const totalImpressions = spendEntries.reduce((s, e) => s + (e.impressions || 0), 0);
   const totalClicks = spendEntries.reduce((s, e) => s + (e.clicks || 0), 0);
@@ -232,37 +222,6 @@ export function CreativesTab({ creatives, toxicCreativeCount, sessions }: Creati
                 </div>
               </div>
 
-              {Object.keys(campaigns).length > 0 && (
-                <div className="space-y-2 mb-3">
-                  <h4 className="text-xs font-bold text-foreground">الحملات</h4>
-                  {Object.entries(campaigns).map(([name, data]) => (
-                    <div key={name} className="bg-muted/20 border border-border rounded-lg p-2.5">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="text-xs font-bold text-foreground">{name}</p>
-                          <p className="text-[10px] text-muted-foreground">{data.entries.length} إدخال</p>
-                        </div>
-                        <span className="text-sm font-extrabold text-foreground">{fmt(data.spend)} دج</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="bg-background/50 rounded-lg p-1.5">
-                          <p className="text-xs font-bold text-foreground">{data.impressions.toLocaleString()}</p>
-                          <p className="text-[9px] text-muted-foreground">مشاهدات</p>
-                        </div>
-                        <div className="bg-background/50 rounded-lg p-1.5">
-                          <p className="text-xs font-bold text-foreground">{data.clicks.toLocaleString()}</p>
-                          <p className="text-[9px] text-muted-foreground">نقرات</p>
-                        </div>
-                        <div className="bg-background/50 rounded-lg p-1.5">
-                          <p className="text-xs font-bold text-foreground">{data.impressions > 0 ? ((data.clicks / data.impressions) * 100).toFixed(2) : '0'}%</p>
-                          <p className="text-[9px] text-muted-foreground">CTR</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {spendEntries.length > 0 && (
                 <div className="overflow-x-auto border border-border rounded-lg">
                   <table className="w-full text-xs">
@@ -322,7 +281,7 @@ export function CreativesTab({ creatives, toxicCreativeCount, sessions }: Creati
               </p>
             </div>
             <div className="rounded-xl border border-violet-200/50 dark:border-violet-800/50 bg-violet-50/60 dark:bg-violet-900/20 p-[11px]">
-              <p className="text-[10px] text-muted-foreground font-medium">POAS ({t('marketing.creatives.best')})</p>
+              <p className="text-[10px] text-muted-foreground font-medium">{t('marketing.creatives.col.poas')} ({t('marketing.creatives.best')})</p>
               <p className="text-lg font-black mt-1 text-violet-600 dark:text-violet-400">
                 {fmtPoas(Math.max(...creatives.map(c => c.poas ?? 0)))}
               </p>
@@ -370,7 +329,7 @@ export function CreativesTab({ creatives, toxicCreativeCount, sessions }: Creati
                         <p className={`text-xs font-bold mt-[3px] ${c.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{fmtCurrency(c.netProfit)}</p>
                       </div>
                       <div className="rounded-lg bg-slate-50 dark:bg-slate-800/40 p-[7px] text-center">
-                        <p className="text-[10px] text-muted-foreground font-medium">POAS</p>
+                        <p className="text-[10px] text-muted-foreground font-medium">{t('marketing.creatives.col.poas')}</p>
                         <p className={`text-xs font-bold mt-[3px] ${c.poas !== null && c.poas >= 1 ? 'text-emerald-600' : c.poas !== null && c.poas >= 0.5 ? 'text-amber-600' : 'text-slate-500'}`}>{fmtPoas(c.poas)}</p>
                       </div>
                     </div>

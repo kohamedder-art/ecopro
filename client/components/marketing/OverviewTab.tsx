@@ -93,7 +93,7 @@ export function OverviewTab({ overview, funnel, sources, customerData, genderDat
         <div className="sm:col-span-2"><KPICard icon={<MkrPerson className="h-[13px] w-[13px] text-white" />} iconBg="bg-blue-600" label={t('marketing.kpi.sessions')} value={fmtNum(overview.sessions)} sub={overview.partialSessions > 0 ? t('marketing.kpi.partial', { count: fmtNum(overview.partialSessions) }) : undefined} /></div>
         <KPICard icon={<MkrCart className="h-[13px] w-[13px] text-white" />} iconBg="bg-orange-600" label={t('marketing.kpi.orders')} value={fmtNum(overview.totalOrders)} sub={overview.totalOrders > 0 ? t('marketing.kpi.deliveredPct', { pct: fmtPct((overview.deliveredOrders / overview.totalOrders) * 100) }) : undefined} />
         <KPICard icon={<MkrCheck className="h-[13px] w-[13px] text-white" />} iconBg="bg-emerald-600" label={t('marketing.kpi.delivered')} value={fmtNum(overview.deliveredOrders)} sub={fmtCurrency(overview.realizedRevenue)} positive={overview.deliveredOrders > 0} />
-        <KPICard icon={<MkrDollar className="h-[13px] w-[13px] text-white" />} iconBg="bg-teal-600" label={t('marketing.kpi.netProfit')} value={fmtCurrency(overview.netProfit)} sub={overview.poas !== null ? `POAS ${fmtPoas(overview.poas)}` : t('marketing.kpi.noSpend')} positive={overview.netProfit > 0} />
+        <KPICard icon={<MkrDollar className="h-[13px] w-[13px] text-white" />} iconBg="bg-teal-600" label={t('marketing.kpi.netProfit')} value={fmtCurrency(overview.netProfit)} sub={overview.poas !== null ? `${t('marketing.creatives.col.poas')} ${fmtPoas(overview.poas)}` : t('marketing.kpi.noSpend')} positive={overview.netProfit > 0} />
         <KPICard icon={<MkrPackage className="h-[13px] w-[13px] text-white" />} iconBg="bg-rose-600" label={t('marketing.kpi.returnRate')} value={overview.deliveredOrders + overview.returnedOrders > 0 ? fmtPct((overview.returnedOrders / (overview.deliveredOrders + overview.returnedOrders)) * 100) : '—'} sub={t('marketing.kpi.returned', { count: fmtNum(overview.returnedOrders) })} positive={false} />
       </div>
 
@@ -116,9 +116,9 @@ export function OverviewTab({ overview, funnel, sources, customerData, genderDat
         <div className="rounded-xl bg-card border border-border p-[11px]">
           <div className="flex items-center gap-[7px] mb-[7px]">
             <MkrDollar className="h-[11px] w-[11px] text-primary" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t('marketing.mini.grossProfit') || 'Gross Profit'}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t('marketing.mini.grossProfit') || 'Revenue'}</span>
           </div>
-          <p className="text-lg font-extrabold">{fmtCurrency(overview.grossProfit)}</p>
+          <p className="text-lg font-extrabold">{fmtCurrency(overview.realizedRevenue)}</p>
         </div>
         <div className="rounded-xl bg-card border border-border p-[11px]">
           <div className="flex items-center gap-[7px] mb-[7px]">
@@ -186,12 +186,11 @@ export function OverviewTab({ overview, funnel, sources, customerData, genderDat
       {/* ── Audience KPIs ── */}
       {customerData && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-[9px]">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-[9px]">
             <KPICard icon={<MkrPerson className="h-[13px] w-[13px] text-white" />} iconBg="bg-blue-600" label={t('marketing.customers.total')} value={fmtNum(customerData.totalCustomers)} />
             <KPICard icon={<MkrRepeat className="h-[13px] w-[13px] text-white" />} iconBg="bg-violet-600" label={t('marketing.customers.repeat')} value={fmtNum(customerData.repeatCustomers)} sub={`${fmtPct(customerData.repeatRate)} ${t('marketing.customers.repeatRate')}`} positive={customerData.repeatRate > 15} />
             <KPICard icon={<MkrDollar className="h-[13px] w-[13px] text-white" />} iconBg="bg-emerald-600" label={t('marketing.customers.aov')} value={fmtCurrency(customerData.averageOrderValue)} />
             <KPICard icon={<MkrTarget className="h-[13px] w-[13px] text-white" />} iconBg="bg-rose-600" label={t('marketing.customers.conversion')} value={fmtPct(customerData.conversionRate)} positive={customerData.conversionRate > 2} />
-            <KPICard icon={<MkrCart className="h-[13px] w-[13px] text-white" />} iconBg="bg-red-600" label={t('marketing.customers.cartAbandonment')} value={fmtPct(customerData.cartAbandonmentRate)} positive={false} />
           </div>
 
           {/* New vs Returning + Devices */}
