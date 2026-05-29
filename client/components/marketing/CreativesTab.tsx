@@ -6,7 +6,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { apiFetch } from '@/lib/api';
 import { MkrMegaphone } from '@/components/icons/MarketingIcons';
-import { Plus, Trash2, DollarSign, Target, TrendingUp, TrendingDown, Loader, X, Megaphone } from 'lucide-react';
+import { Plus, Trash2, DollarSign, Target, TrendingUp, TrendingDown, Loader2, X, Megaphone } from 'lucide-react';
 import ProductCostsSection from '@/components/ProductCostsSection';
 
 interface SpendEntry {
@@ -175,7 +175,7 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
                 disabled={addSpendMutation.isPending}
                 className="flex items-center gap-1.5 h-8 px-4 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
               >
-                {addSpendMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                {addSpendMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                 إضافة
               </button>
             </div>
