@@ -76,6 +76,9 @@ export async function handleOwnerMessage(
       action = null;
     }
 
+    // Validate: if AI said "check dashboard" but we have actual data, override with direct answer
+    answer = validateResponse(answer, question, ctx);
+
     return { answer, action };
   } catch (err) {
     console.error(`[OwnerAI] Error for client ${clientId}:`, err);
@@ -119,6 +122,48 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
     console.error('[OwnerAI] executeAction error:', err);
     return { success: false, message: 'حدث خطأ أثناء التنفيذ' };
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RESPONSE VALIDATION — Fix "check dashboard" responses
+// ═══════════════════════════════════════════════════════════════
+
+const DASHBOARD_PATTERNS = /تحقق|لوحة التحكم|يمكنك رؤية|يمكنك الاطلاع|تستطيع رؤية|يمكنك مراجعة|من خلال قسم|في قسم|صفحة.*الإعدادات|تقرير مفصل/i;
+
+function validateResponse(answer: string, question: string, ctx: SlimContext): string {
+  // Only override if the response is a "check dashboard" type AND we have actual data
+  if (!DASHBOARD_PATTERNS.test(answer)) return answer;
+
+  const q = question.toLowerCase();
+
+  // Questions about orders
+  if (q.includes('طلبات') || q.includes('طلب')) {
+    if (q.includes('معلق') || q.includes('بانتظار')) {
+      return `عندك ${ctx.pendingOrders} طلب معلق حالياً من أصل ${ctx.totalOrders} طلب إجمالي.`;
+    }
+    return `عندك ${ctx.totalOrders} طلب إجمالي.`;
+  }
+
+  // Questions about revenue/income
+  if (q.includes('دخل') || q.includes('ارباح') || q.includes('أرباح') || q.includes('مبيعات') || q.includes('إيرادات')) {
+    return `الدخل هاد الشهر: ${ctx.totalRevenue.toLocaleString('ar-DZ')} دج.`;
+  }
+
+  // Questions about products
+  if (q.includes('منتج') || q.includes('منتجات')) {
+    let response = `عندك ${ctx.totalProducts} منتج نشط.`;
+    if (ctx.lowStockProducts.length) response += ` المخزون منخفض: ${ctx.lowStockProducts.join('، ')}.`;
+    if (ctx.topProducts.length) response += ` الأكثر مبيعاً: ${ctx.topProducts.join('، ')}.`;
+    return response;
+  }
+
+  // Questions about store name
+  if (q.includes('اسم') && (q.includes('متجر') || q.includes('المتجر'))) {
+    return `اسم متجرك: ${ctx.storeName}.`;
+  }
+
+  // If we can't match a specific question, return original answer
+  return answer;
 }
 
 // ═══════════════════════════════════════════════════════════════
