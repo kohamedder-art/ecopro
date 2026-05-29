@@ -15,7 +15,7 @@
 const DEEPINFRA_API_BASE = 'https://api.deepinfra.com/v1/openai';
 
 // Dual-AI Model Strategy
-const OWNER_AI_MODEL = 'meta-llama/Meta-Llama-3.1-70B-Instruct'; // Powerful model for business advice
+const OWNER_AI_MODEL = 'Qwen/Qwen2.5-72B-Instruct'; // Better instruction following than Llama 70B
 const CUSTOMER_AI_MODEL = 'Qwen/Qwen2.5-14B-Instruct'; // Customer chat ($0.04/1M tokens)
 const AI_FALLBACK_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Fallback if primary fails
 const MAX_RETRIES = 3;
