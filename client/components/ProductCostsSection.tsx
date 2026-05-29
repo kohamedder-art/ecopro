@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { apiFetch } from '@/lib/api';
-import { Package, Save, TrendingUp, TrendingDown, DollarSign, Edit3, X, Check } from 'lucide-react';
+import { Package, Save, TrendingUp, TrendingDown, DollarSign, Edit3, X, Check, Loader2 } from 'lucide-react';
 
 interface ProductEcon {
   id: number;
@@ -91,7 +91,7 @@ export default function ProductCostsSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader className="w-5 h-5 animate-spin text-primary" />
+        <Loader2 className="w-5 h-5 animate-spin text-primary" />
       </div>
     );
   }
