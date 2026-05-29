@@ -2,7 +2,8 @@
  * AI Quota Management
  *
  * Tracks per-store AI usage and enforces monthly dollar-based budgets.
- * Each store gets a $2/month budget shared between owner AI and customer AI.
+ * Budget resets when the store owner pays for a new billing period
+ * (tied to subscriptions.current_period_start, NOT calendar month).
  */
 
 import { ensureConnection } from '../utils/database';
@@ -13,66 +14,69 @@ interface QuotaStatus {
   allowed: boolean;
   remaining: number;
   limit: number;
-  resetDate: Date;
+  resetDate: Date | null;
   userType: UserType;
 }
 
 const DEFAULT_MONTHLY_BUDGET = 2.00;
 
-function getPeriodStart(): Date {
+/**
+ * Get the billing period start for a store owner from their subscription.
+ * Falls back to first day of month if no subscription found.
+ */
+async function getBillingPeriodStart(clientId: number): Promise<Date> {
+  const pool = await ensureConnection();
+  const result = await pool.query(
+    `SELECT s.current_period_start, s.current_period_end
+     FROM subscriptions s
+     JOIN users u ON u.id = s.user_id
+     JOIN clients c ON c.email = u.email
+     WHERE c.id = $1
+     ORDER BY s.created_at DESC
+     LIMIT 1`,
+    [clientId]
+  );
+
+  if (result.rows.length > 0 && result.rows[0].current_period_start) {
+    return new Date(result.rows[0].current_period_start);
+  }
+
+  // Fallback: first day of current month
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
-function getNextMonth(): Date {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
-}
-
 /**
- * Get or create a quota record for the current month.
+ * Get the billing period end for a store owner from their subscription.
  */
-async function getOrCreateQuota(clientId: number): Promise<any> {
+async function getBillingPeriodEnd(clientId: number): Promise<Date | null> {
   const pool = await ensureConnection();
-  const periodStart = getPeriodStart();
-
-  const existing = await pool.query(
-    `SELECT * FROM ai_usage_quotas WHERE client_id = $1 AND period_start = $2`,
-    [clientId, periodStart]
+  const result = await pool.query(
+    `SELECT s.current_period_end
+     FROM subscriptions s
+     JOIN users u ON u.id = s.user_id
+     JOIN clients c ON c.email = u.email
+     WHERE c.id = $1
+     ORDER BY s.created_at DESC
+     LIMIT 1`,
+    [clientId]
   );
 
-  if (existing.rows.length > 0) {
-    const row = existing.rows[0];
-    if (!row.monthly_budget_usd || Number(row.monthly_budget_usd) <= 0) {
-      await pool.query(
-        `UPDATE ai_usage_quotas
-         SET monthly_budget_usd = $3, updated_at = NOW()
-         WHERE id = $1 AND (monthly_budget_usd IS NULL OR monthly_budget_usd <= 0)`,
-        [row.id, periodStart, DEFAULT_MONTHLY_BUDGET]
-      );
-      row.monthly_budget_usd = DEFAULT_MONTHLY_BUDGET;
-    }
-    return row;
+  if (result.rows.length > 0 && result.rows[0].current_period_end) {
+    return new Date(result.rows[0].current_period_end);
   }
 
-  const created = await pool.query(
-    `INSERT INTO ai_usage_quotas (client_id, period_start, monthly_budget_usd, owner_token_limit, customer_token_limit)
-     VALUES ($1, $2, $3, 0, 0)
-     RETURNING *`,
-    [clientId, periodStart, DEFAULT_MONTHLY_BUDGET]
-  );
-
-  return created.rows[0];
+  return null;
 }
 
 /**
- * Check if a store has remaining AI budget for the current month.
+ * Check if a store has remaining AI budget for the current billing period.
  */
 export async function checkQuota(clientId: number, userType: UserType): Promise<QuotaStatus> {
-  const quota = await getOrCreateQuota(clientId);
-  const budget = Number(quota.monthly_budget_usd || DEFAULT_MONTHLY_BUDGET);
-  const periodStart = getPeriodStart();
   const pool = await ensureConnection();
+  const budget = DEFAULT_MONTHLY_BUDGET;
+  const periodStart = await getBillingPeriodStart(clientId);
+  const periodEnd = await getBillingPeriodEnd(clientId);
 
   const result = await pool.query(
     `SELECT COALESCE(SUM(cost_usd), 0) as total_spent
@@ -88,7 +92,7 @@ export async function checkQuota(clientId: number, userType: UserType): Promise<
     allowed: remaining > 0,
     remaining,
     limit: budget,
-    resetDate: getNextMonth(),
+    resetDate: periodEnd,
     userType,
   };
 }
@@ -108,16 +112,6 @@ export async function recordUsage(params: {
   messagePreview: string;
 }): Promise<void> {
   const pool = await ensureConnection();
-  const quota = await getOrCreateQuota(params.clientId);
-
-  const usedField = params.userType === 'owner' ? 'owner_tokens_used' : 'customer_tokens_used';
-  await pool.query(
-    `UPDATE ai_usage_quotas
-     SET ${usedField} = ${usedField} + $1,
-         updated_at = NOW()
-     WHERE id = $2`,
-    [params.totalTokens, quota.id]
-  );
 
   await pool.query(
     `INSERT INTO ai_usage_logs
@@ -138,52 +132,36 @@ export async function recordUsage(params: {
 }
 
 /**
- * Get quota usage summary for a store in dollars.
- * Also provides estimated conversation counts for display to store owners.
+ * Get quota usage summary for a store.
+ * Returns token counts for display (old UI format) but budget is enforced in dollars.
  */
 export async function getQuotaSummary(clientId: number): Promise<{
   ownerUsed: number;
   ownerLimit: number;
   customerUsed: number;
   customerLimit: number;
-  totalUsed: number;
-  totalLimit: number;
-  conversationsUsed: number;
-  conversationsLimit: number;
   periodStart: Date;
 }> {
-  const quota = await getOrCreateQuota(clientId);
-  const budget = Number(quota.monthly_budget_usd || DEFAULT_MONTHLY_BUDGET);
-  const periodStart = getPeriodStart();
   const pool = await ensureConnection();
+  const periodStart = await getBillingPeriodStart(clientId);
 
   const result = await pool.query(
     `SELECT
-       COALESCE(SUM(CASE WHEN user_type = 'owner' THEN cost_usd ELSE 0 END), 0) as owner_spent,
-       COALESCE(SUM(CASE WHEN user_type = 'customer' THEN cost_usd ELSE 0 END), 0) as customer_spent
+       COALESCE(SUM(CASE WHEN user_type = 'owner' THEN total_tokens ELSE 0 END), 0) as owner_tokens,
+       COALESCE(SUM(CASE WHEN user_type = 'customer' THEN total_tokens ELSE 0 END), 0) as customer_tokens
      FROM ai_usage_logs
      WHERE client_id = $1 AND created_at >= $2`,
     [clientId, periodStart]
   );
 
-  const ownerUsed = Number(result.rows[0].owner_spent);
-  const customerUsed = Number(result.rows[0].customer_spent);
-  const totalUsed = ownerUsed + customerUsed;
-
-  // ~250 conversations per dollar (~$0.004 per full 8-exchange conversation)
-  const CONVERSATIONS_PER_DOLLAR = 250;
-  const conversationsLimit = Math.floor(budget * CONVERSATIONS_PER_DOLLAR);
-  const conversationsUsed = Math.floor(totalUsed * CONVERSATIONS_PER_DOLLAR);
+  const ownerUsed = Number(result.rows[0].owner_tokens);
+  const customerUsed = Number(result.rows[0].customer_tokens);
 
   return {
     ownerUsed,
-    ownerLimit: budget,
+    ownerLimit: 5_000_000,
     customerUsed,
-    customerLimit: budget,
-    totalUsed,
-    totalLimit: budget,
-    conversationsUsed,
-    conversationsLimit,
-    periodStart: quota.period_start,
+    customerLimit: 100_000_000,
+    periodStart,
   };
 }
