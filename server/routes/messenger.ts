@@ -13,7 +13,7 @@ import crypto from 'crypto';
 import { replaceTemplateVariables, processPendingMessages } from '../utils/bot-messaging';
 import { getPublicBaseUrl } from '../utils/public-url';
 import { logSecurityEvent } from '../utils/security';
-import { handleCustomerMessage } from '../services/ai-customer';
+import { handleCustomerMessage } from '../services/customer-ai';
 import { decryptData } from '../utils/encryption';
 
 const router = Router();

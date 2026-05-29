@@ -5,7 +5,7 @@ import { replaceTemplateVariables, sendTelegramMessage } from '../utils/bot-mess
 import { registerTelegramWebhook, upsertTelegramWebhookSecret } from '../utils/telegram';
 import { getPublicBaseUrl } from '../utils/public-url';
 import { logSecurityEvent, getClientIp, computeFingerprint } from '../utils/security';
-import { handleCustomerMessage, resolveClientFromTelegramSecret, resolveClientFromTelegramChatId } from '../services/ai-customer';
+import { handleCustomerMessage, resolveClientFromTelegramSecret, resolveClientFromTelegramChatId } from '../services/customer-ai';
 import crypto from 'crypto';
 
 const PLATFORM_TELEGRAM_BOT_TOKEN = String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim();

@@ -6,7 +6,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { apiFetch } from '@/lib/api';
 import { MkrMegaphone } from '@/components/icons/MarketingIcons';
-import { Plus, Trash2, DollarSign, Target, TrendingUp, TrendingDown, Loader2, X, Megaphone } from 'lucide-react';
+import { Plus, Trash2, DollarSign, Loader2, X, Megaphone } from 'lucide-react';
 import ProductCostsSection from '@/components/ProductCostsSection';
 
 interface SpendEntry {
@@ -15,8 +15,6 @@ interface SpendEntry {
   platform: string;
   campaign_name: string | null;
   spend: number;
-  impressions: number;
-  clicks: number;
   notes: string | null;
 }
 
@@ -60,8 +58,6 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
     platform: 'facebook',
     campaignName: '',
     spend: '',
-    impressions: '',
-    clicks: '',
     notes: '',
   });
 
@@ -76,7 +72,7 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
       queryClient.invalidateQueries({ queryKey: ['omni-inputs'] });
       toast({ title: 'تمت الإضافة' });
       setShowSpendForm(false);
-      setSpendForm({ entryDate: new Date().toISOString().slice(0, 10), platform: 'facebook', campaignName: '', spend: '', impressions: '', clicks: '', notes: '' });
+      setSpendForm({ entryDate: new Date().toISOString().slice(0, 10), platform: 'facebook', campaignName: '', spend: '', notes: '' });
     },
     onError: () => toast({ title: 'خطأ', variant: 'destructive' }),
   });
@@ -89,10 +85,6 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
   const spendEntries: SpendEntry[] = inputs?.spendEntries || [];
 
   const totalSpend = spendEntries.reduce((s, e) => s + (e.spend || 0), 0);
-  const totalImpressions = spendEntries.reduce((s, e) => s + (e.impressions || 0), 0);
-  const totalClicks = spendEntries.reduce((s, e) => s + (e.clicks || 0), 0);
-  const ctr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0';
-  const cpc = totalClicks > 0 ? (totalSpend / totalClicks).toFixed(2) : '0';
 
   const fmt = (n: number) => Math.round(n).toLocaleString('ar-DZ');
 
@@ -106,8 +98,6 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
       platform: spendForm.platform,
       campaignName: spendForm.campaignName || undefined,
       spend: parseFloat(spendForm.spend) || 0,
-      impressions: parseInt(spendForm.impressions) || undefined,
-      clicks: parseInt(spendForm.clicks) || undefined,
       notes: spendForm.notes || undefined,
     });
   };
@@ -157,14 +147,6 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
                   <label className="text-[10px] text-muted-foreground mb-1 block">المبلغ (دج)</label>
                   <input className={inputCls} type="number" placeholder="0" value={spendForm.spend} onChange={e => setSpendForm(f => ({ ...f, spend: e.target.value }))} />
                 </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block">المشاهدات</label>
-                  <input className={inputCls} type="number" placeholder="اختياري" value={spendForm.impressions} onChange={e => setSpendForm(f => ({ ...f, impressions: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block">النقرات</label>
-                  <input className={inputCls} type="number" placeholder="اختياري" value={spendForm.clicks} onChange={e => setSpendForm(f => ({ ...f, clicks: e.target.value }))} />
-                </div>
                 <div className="md:col-span-2">
                   <label className="text-[10px] text-muted-foreground mb-1 block">ملاحظات</label>
                   <input className={inputCls} placeholder="اختياري" value={spendForm.notes} onChange={e => setSpendForm(f => ({ ...f, notes: e.target.value }))} />
@@ -183,26 +165,11 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
 
           {showSpend && (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                <div className="bg-muted/30 rounded-lg p-2.5">
+              <div className="flex gap-2 mb-3">
+                <div className="bg-muted/30 rounded-lg p-2.5 min-w-[160px]">
                   <DollarSign className="w-4 h-4 text-red-500 mb-1" />
                   <p className="text-base font-extrabold text-foreground">{fmt(totalSpend)} دج</p>
                   <p className="text-[10px] text-muted-foreground">إجمالي الإنفاق</p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-2.5">
-                  <Target className="w-4 h-4 text-blue-500 mb-1" />
-                  <p className="text-base font-extrabold text-foreground">{totalImpressions.toLocaleString()}</p>
-                  <p className="text-[10px] text-muted-foreground">المشاهدات</p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-2.5">
-                  <TrendingUp className="w-4 h-4 text-emerald-500 mb-1" />
-                  <p className="text-base font-extrabold text-foreground">{ctr}%</p>
-                  <p className="text-[10px] text-muted-foreground">معدل النقر (CTR)</p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-2.5">
-                  <TrendingDown className="w-4 h-4 text-orange-500 mb-1" />
-                  <p className="text-base font-extrabold text-foreground">{cpc} دج</p>
-                  <p className="text-[10px] text-muted-foreground">تكلفة النقرة (CPC)</p>
                 </div>
               </div>
             </>
@@ -266,8 +233,6 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
                     <th className="text-right px-2 py-2 font-semibold text-muted-foreground">التاريخ</th>
                     <th className="text-right px-2 py-2 font-semibold text-muted-foreground">المنصة</th>
                     <th className="text-right px-2 py-2 font-semibold text-muted-foreground">الحملة</th>
-                    <th className="text-right px-2 py-2 font-semibold text-muted-foreground">المشاهدات</th>
-                    <th className="text-right px-2 py-2 font-semibold text-muted-foreground">النقرات</th>
                     <th className="text-right px-2 py-2 font-semibold text-muted-foreground">المبلغ</th>
                     <th className="w-8"></th>
                   </tr>
@@ -278,8 +243,6 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
                       <td className="px-2 py-2">{e.entry_date}</td>
                       <td className="px-2 py-2 capitalize">{e.platform}</td>
                       <td className="px-2 py-2 truncate max-w-[100px]">{e.campaign_name || '—'}</td>
-                      <td className="px-2 py-2">{(e.impressions || 0).toLocaleString()}</td>
-                      <td className="px-2 py-2">{(e.clicks || 0).toLocaleString()}</td>
                       <td className="px-2 py-2 font-bold">{fmt(e.spend)} دج</td>
                       <td className="px-2 py-2">
                         <button

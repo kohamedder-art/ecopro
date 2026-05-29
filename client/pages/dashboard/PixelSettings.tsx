@@ -81,8 +81,37 @@ export default function PixelSettings() {
       queryClient.invalidateQueries({ queryKey: ['pixel-settings'] });
       toast({ title: t('marketing.toast.settingsSaved') });
     },
-    onError: () => toast({ title: t('marketing.toast.error'), description: t('marketing.toast.settingsFailed'), variant: 'destructive' }),
+    onError: (err) => {
+      console.error('Save pixel settings error:', err);
+      toast({ title: t('marketing.toast.error'), description: t('marketing.toast.settingsFailed'), variant: 'destructive' });
+    },
   });
+
+  const buildPayload = (items: PixelItem[]) => {
+    let mainFb: PixelItem | null = null;
+    let mainTt: PixelItem | null = null;
+    const additional: PixelItem[] = [];
+    for (const px of items) {
+      if (px.type === 'facebook') { if (!mainFb) mainFb = px; else additional.push(px); }
+      else if (px.type === 'tiktok') { if (!mainTt) mainTt = px; else additional.push(px); }
+    }
+    return {
+      facebook_pixel_id: mainFb?.pixel_id || null,
+      facebook_access_token: mainFb?.access_token || null,
+      is_facebook_enabled: mainFb?.enabled ?? false,
+      tiktok_pixel_id: mainTt?.pixel_id || null,
+      tiktok_access_token: mainTt?.access_token || null,
+      is_tiktok_enabled: mainTt?.enabled ?? false,
+      additional_pixels: additional,
+    };
+  };
+
+  const handleDeletePixel = (id: string) => {
+    if (saveSettings.isPending) return;
+    const remaining = pixels.filter(p => p.id !== id);
+    setPixels(remaining);
+    saveSettings.mutate(buildPayload(remaining));
+  };
 
   const handleAddPixel = () => {
     if (!newPixel.pixel_id?.trim()) {
@@ -101,29 +130,7 @@ export default function PixelSettings() {
   };
 
   const handleSavePixels = () => {
-    let mainFb: PixelItem | null = null;
-    let mainTt: PixelItem | null = null;
-    const additional: PixelItem[] = [];
-
-    for (const px of pixels) {
-      if (px.type === 'facebook') {
-        if (!mainFb) mainFb = px;
-        else additional.push(px);
-      } else if (px.type === 'tiktok') {
-        if (!mainTt) mainTt = px;
-        else additional.push(px);
-      }
-    }
-
-    saveSettings.mutate({
-      facebook_pixel_id: mainFb?.pixel_id || null,
-      facebook_access_token: mainFb?.access_token || null,
-      is_facebook_enabled: mainFb?.enabled ?? false,
-      tiktok_pixel_id: mainTt?.pixel_id || null,
-      tiktok_access_token: mainTt?.access_token || null,
-      is_tiktok_enabled: mainTt?.enabled ?? false,
-      additional_pixels: additional,
-    });
+    saveSettings.mutate(buildPayload(pixels));
   };
 
   const activeCount = pixels.filter(p => p.enabled).length;
@@ -176,8 +183,14 @@ export default function PixelSettings() {
                       key={px.id}
                       px={px}
                       t={t}
-                      onToggle={(id, v) => setPixels(prev => prev.map(p => p.id === id ? { ...p, enabled: v } : p))}
-                      onDelete={(id) => setPixels(prev => prev.filter(p => p.id !== id))}
+                      onToggle={(id, v) => {
+                        setPixels(prev => {
+                          const next = prev.map(p => p.id === id ? { ...p, enabled: v } : p);
+                          saveSettings.mutate(buildPayload(next));
+                          return next;
+                        });
+                      }}
+                      onDelete={handleDeletePixel}
                     />
                   ))}
                 </div>
@@ -229,18 +242,16 @@ export default function PixelSettings() {
               </Button>
             </div>
 
-            {pixels.length > 0 && (
-              <div className="border-t border-border pt-4">
-                <Button className="h-11 rounded-xl w-full text-sm font-bold" disabled={saveSettings.isPending} onClick={handleSavePixels}>
-                  {saveSettings.isPending ? (
-                    <span className="h-4 w-4 animate-spin block border-2 border-current border-t-transparent rounded-full mr-2" />
-                  ) : (
-                    <MkrSave className="h-4 w-4 mr-2" />
-                  )}
-                  {t('marketing.settings.save')}
-                </Button>
-              </div>
-            )}
+            <div className="border-t border-border pt-4">
+              <Button className="h-11 rounded-xl w-full text-sm font-bold" disabled={saveSettings.isPending} onClick={handleSavePixels}>
+                {saveSettings.isPending ? (
+                  <span className="h-4 w-4 animate-spin block border-2 border-current border-t-transparent rounded-full mr-2" />
+                ) : (
+                  <MkrSave className="h-4 w-4 mr-2" />
+                )}
+                {t('marketing.settings.save')}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

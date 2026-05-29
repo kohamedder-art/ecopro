@@ -502,9 +502,10 @@ export async function generateText(
   prompt: string,
   ctx: RoleContext = {},
   history: GeminiContent[] = [],
-  images?: { mimeType: string; base64: string }[]
+  images?: { mimeType: string; base64: string }[],
+  systemPromptOverride?: string
 ): Promise<string> {
-  const systemPrompt = buildSystemPrompt(role, ctx);
+  const systemPrompt = systemPromptOverride || buildSystemPrompt(role, ctx);
 
   // Validate prompt length and patterns
   const error = validatePrompt(prompt, role);

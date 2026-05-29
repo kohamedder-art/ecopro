@@ -16,7 +16,7 @@
 import { Router, RequestHandler } from 'express';
 import { ensureConnection } from '../utils/database';
 import crypto from 'crypto';
-import { handleCustomerMessage } from '../services/ai-customer';
+import { handleCustomerMessage } from '../services/customer-ai';
 import { logSecurityEvent } from '../utils/security';
 
 const router = Router();
