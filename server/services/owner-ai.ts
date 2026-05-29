@@ -77,7 +77,11 @@ export async function handleOwnerMessage(
     }
 
     // Validate: if AI said "check dashboard" but we have actual data, override with direct answer
-    answer = validateResponse(answer, question, ctx);
+    const validated = validateResponse(answer, question, ctx);
+    if (validated !== answer) {
+      console.log(`[OwnerAI] Validation overridden. Original: "${answer.slice(0, 80)}..." → "${validated.slice(0, 80)}..."`);
+    }
+    answer = validated;
 
     return { answer, action };
   } catch (err) {
