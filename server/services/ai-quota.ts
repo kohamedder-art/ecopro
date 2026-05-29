@@ -27,12 +27,9 @@ const DEFAULT_MONTHLY_BUDGET = 2.00;
 async function getBillingPeriodStart(clientId: number): Promise<Date> {
   const pool = await ensureConnection();
   const result = await pool.query(
-    `SELECT s.current_period_start, s.current_period_end
-     FROM subscriptions s
-     JOIN users u ON u.id = s.user_id
-     JOIN clients c ON c.email = u.email
-     WHERE c.id = $1
-     ORDER BY s.created_at DESC
+    `SELECT current_period_start
+     FROM subscriptions
+     WHERE user_id = $1
      LIMIT 1`,
     [clientId]
   );
@@ -41,23 +38,16 @@ async function getBillingPeriodStart(clientId: number): Promise<Date> {
     return new Date(result.rows[0].current_period_start);
   }
 
-  // Fallback: first day of current month
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
-/**
- * Get the billing period end for a store owner from their subscription.
- */
 async function getBillingPeriodEnd(clientId: number): Promise<Date | null> {
   const pool = await ensureConnection();
   const result = await pool.query(
-    `SELECT s.current_period_end
-     FROM subscriptions s
-     JOIN users u ON u.id = s.user_id
-     JOIN clients c ON c.email = u.email
-     WHERE c.id = $1
-     ORDER BY s.created_at DESC
+    `SELECT current_period_end
+     FROM subscriptions
+     WHERE user_id = $1
      LIMIT 1`,
     [clientId]
   );
