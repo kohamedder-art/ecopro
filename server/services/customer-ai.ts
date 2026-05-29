@@ -28,6 +28,14 @@ const SYSTEM_PROMPT = `أنت شخص حقيقي يعمل في متجر. ودود
 التعامل مع استفسارات الزبون (مرحلة ما قبل الطلب):
 الزبون الجزائري يطرح أسئلة كثيرة قبل أن يقرر الشراء. أجب عن كل سؤال بمعلومة مباشرة من البيانات المرفقة. إذا كانت المعلومة غير متوفرة، قل ذلك بصراحة.
 
+⚠️ لا تنس أبداً المنتج الذي تم التحدث عنه سابقاً. إذا سأل الزبون في أول مرة عن منتج ثم سأل أسئلة متابعة عنه (ألوان، مقاسات، توصيل، سعر)، استخدم تاريخ المحادثة لتعرف أي منتج كان يتحدث عنه. لا تطلب منه إعادة ذكر اسم المنتج مرة أخرى.
+
+مثال:
+- الزبون: "بغيت الروب"
+- أنت: "الروب متوفر ب 1400 دج..."
+- الزبون: "واش كاين فيه ليطاي وليكولور؟"
+- أنت: (من تاريخ المحادثة تعرف أنه يقصد نفس الروب) "الروب متوفر باللون الأسود والبيج، المقاسات M و L و XL. شنو تحب؟"
+
 انظر إلى عنوان المنتج ووصفه وتصنيفه لتعرف أي نوع من المنتجات هو، ثم توقع الأسئلة المناسبة له:
 
 🛍️ **ملابس وإكسسوارات**: الألوان، المقاسات (وهل حقيقية)، نوع القماش، هل يحول أو يزول بعد الغسيل، جودة الخياطة, العناية بالغسل
@@ -180,8 +188,8 @@ export async function handleCustomerMessage(
   // Search products matching the question
   const search = msg.length > 3 ? await searchProducts(clientId, msg) : '';
 
-  // Build slim user prompt
-  const prompt = buildUserPrompt(ctx, search, orderText, phone, phoneFromMsg, msg);
+  // Build slim user prompt (pass history so it can highlight the last discussed product)
+  const prompt = buildUserPrompt(ctx, search, orderText, phone, phoneFromMsg, msg, history);
 
   // Rate limit
   const rlKey = `${clientId}:${platform}:${platformChatId}`;
@@ -290,10 +298,29 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
   };
 }
 
-function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, phone: string | null, phoneFromMsg: boolean, msg: string): string {
+/** Extract the last product title mentioned by the assistant in conversation history */
+function extractLastProductFromHistory(history: GeminiContent[]): string | null {
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].role === 'model') {
+      const text = history[i].parts[0]?.text || '';
+      // Match patterns like "product X متوفرة" or "product X متوفر"
+      const match = text.match(/([^\n]+?)\s+(متوفرة?|موجود|بسعر|موجودة)/);
+      if (match) return match[1].replace(/^[""«»""]|[""«»""]$/g, '').trim();
+    }
+  }
+  return null;
+}
+
+function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, phone: string | null, phoneFromMsg: boolean, msg: string, history: GeminiContent[] = []): string {
   let p = `متجر: ${ctx.storeName}\n`;
   if (ctx.storeDescription) p += `${ctx.storeDescription}\n`;
   if (ctx.aiInstructions) p += `[تعليمات]: ${ctx.aiInstructions}\n`;
+
+  // Highlight the last product mentioned by the assistant in history
+  const lastProduct = extractLastProductFromHistory(history);
+  if (lastProduct) {
+    p += `\n[آخر منتج تم الحديث عنه: ${lastProduct}]\n`;
+  }
 
   // Products — with descriptions
   p += `\nالمنتجات:\n`;
