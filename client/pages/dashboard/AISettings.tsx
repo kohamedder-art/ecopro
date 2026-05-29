@@ -138,6 +138,12 @@ export default function AISettingsPage() {
   const [testLoading, setTestLoading] = useState(false);
   const [testChat, setTestChat] = useState<{role: 'user'|'ai', text: string}[]>([]);
 
+  // Customer AI test chat state (uses /api/ai/test-customer)
+  const [customerTestMessage, setCustomerTestMessage] = useState('');
+  const [customerTestLoading, setCustomerTestLoading] = useState(false);
+  const [customerTestChat, setCustomerTestChat] = useState<{role: 'user'|'ai', text: string}[]>([]);
+  const customerTestChatId = 'web_ui_test'; // persistent chatId for multi-turn
+
   useEffect(() => {
     Promise.all([
       fetch('/api/ai-settings', { credentials: 'include' }).then(r => r.json()),
@@ -233,6 +239,29 @@ export default function AISettingsPage() {
     } finally {
       setTestLoading(false);
       setTestMessage('');
+    }
+  };
+
+  const handleCustomerTestSend = async () => {
+    if (!customerTestMessage.trim()) return;
+    setCustomerTestLoading(true);
+    setCustomerTestChat(prev => [...prev, { role: 'user', text: customerTestMessage }]);
+    try {
+      const res = await fetch('/api/ai/test-customer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: customerTestMessage, chatId: customerTestChatId }),
+      });
+      const data = await res.json();
+      if (data.answer) {
+        setCustomerTestChat(prev => [...prev, { role: 'ai', text: data.answer }]);
+      }
+    } catch {
+      setCustomerTestChat(prev => [...prev, { role: 'ai', text: isRTL ? 'حدث خطأ' : 'An error occurred' }]);
+    } finally {
+      setCustomerTestLoading(false);
+      setCustomerTestMessage('');
     }
   };
 
@@ -787,9 +816,51 @@ export default function AISettingsPage() {
                         <div className="flex justify-start">
                           <div className="px-3 py-2 rounded-2xl rounded-bl-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 shadow-sm">
                             <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
-                          </div>
-                        </div>
-                      )}
+          </div>
+
+          {/* ── Customer AI Test Chat ── */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-3">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <Send className="w-4 h-4 text-green-500" /> {isRTL ? 'تجربة الرد على العملاء' : 'Test Customer AI'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {isRTL ? 'أرسل رسالة كأنك زبون وشوف كيفيرد المساعد' : 'Send a message as a customer and see how the AI responds'}
+            </p>
+            <div className="max-h-[300px] overflow-y-auto space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50">
+              {customerTestChat.length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-8">{isRTL ? 'أرسل رسالة لبدء الاختبار' : 'Send a message to start testing'}</p>
+              )}
+              {customerTestChat.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-xs ${
+                    msg.role === 'user'
+                      ? 'bg-purple-600 text-white rounded-br-sm'
+                      : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm shadow-sm border border-slate-100 dark:border-slate-700/50'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {customerTestLoading && (
+                <div className="flex justify-start">
+                  <div className="px-3 py-2 rounded-2xl rounded-bl-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 shadow-sm">
+                    <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Input value={customerTestMessage} onChange={e => setCustomerTestMessage(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCustomerTestSend(); } }}
+                placeholder={isRTL ? 'اكتب رسالة زبون...' : 'Type a customer message...'} className="text-sm flex-1" />
+              <Button onClick={handleCustomerTestSend} disabled={customerTestLoading || !customerTestMessage.trim()} size="sm"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                {customerTestLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
                     </div>
 
                     {/* Input */}
