@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
-import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, ShieldCheck, BadgeCheck, Mail, Phone, Building2, MapPin, Globe, CheckCircle2, AlertCircle, Sparkles, Tag, Smartphone, Download, QrCode, Package } from 'lucide-react';
-import ProductCostsSection from '@/components/ProductCostsSection';
+import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, ShieldCheck, BadgeCheck, Mail, Phone, Building2, MapPin, Globe, CheckCircle2, AlertCircle, Sparkles, Tag, Smartphone, Download, QrCode } from 'lucide-react';
 
 type SubscriptionRow = {
   tier?: string | null;
@@ -620,11 +619,6 @@ export default function Profile() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Product Costs Section */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-        <ProductCostsSection />
       </div>
     </div>
   );

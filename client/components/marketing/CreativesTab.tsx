@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { apiFetch } from '@/lib/api';
 import { MkrMegaphone } from '@/components/icons/MarketingIcons';
 import { Plus, Trash2, DollarSign, Target, TrendingUp, TrendingDown, Loader, X, Megaphone } from 'lucide-react';
+import ProductCostsSection from '@/components/ProductCostsSection';
 
 interface SpendEntry {
   id: number;
@@ -295,6 +296,11 @@ export function CreativesTab({ creatives }: CreativesTabProps) {
             </div>
           </div>
         )}
+
+        {/* ── Product Costs ── */}
+        <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+          <ProductCostsSection />
+        </div>
       </div>
     </TabShell>
   );
