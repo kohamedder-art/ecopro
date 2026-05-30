@@ -188,10 +188,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const onChatSeen = () => {
       localStorage.setItem(CHAT_LAST_SEEN_KEY, new Date().toISOString());
       setUnreadMessagesCount(0);
-      // Prevent re-firing notifications during the immediate re-sync.
-      prevMessagesCount.current = Number.MAX_SAFE_INTEGER;
-      // Re-sync from server quickly
-      void fetchUnreadCount();
+      prevMessagesCount.current = 0;
     };
 
     window.addEventListener('ecopro:chat-seen', onChatSeen as EventListener);

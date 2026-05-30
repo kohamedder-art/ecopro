@@ -323,7 +323,6 @@ export default function FloatingChatBubble() {
     const ensureChat = async () => {
       if (!open || !user || !userId) return;
       localStorage.setItem('chat_last_seen_at', new Date().toISOString());
-      window.dispatchEvent(new CustomEvent('ecopro:chat-seen'));
       if (isAdmin || chatId) return;
 
       setBootingChat(true);
@@ -342,6 +341,26 @@ export default function FloatingChatBubble() {
     };
     void ensureChat();
   }, [open, user, userId, isAdmin, chatId]);
+
+  // Mark support chat messages as read when bubble opens
+  useEffect(() => {
+    if (!open || !userId) return;
+    const markRead = async () => {
+      const csrfM = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
+      const csrf = csrfM ? decodeURIComponent(csrfM[1]) : '';
+      try {
+        const res = await fetch('/api/chat/mark-all-read', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'X-CSRF-Token': csrf },
+        });
+        if (res.ok) {
+          window.dispatchEvent(new CustomEvent('ecopro:chat-seen'));
+        }
+      } catch {}
+    };
+    void markRead();
+  }, [open, userId]);
 
   // Allow quick hide via Escape
   useEffect(() => {

@@ -215,6 +215,25 @@ router.post('/:chatId/message', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/chat/mark-all-read
+ * Mark all messages as read across all user's chats
+ */
+router.post('/mark-all-read', async (req: Request, res: Response) => {
+  const { userId, role } = getUserRole(req);
+
+  if (!userId || !role) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    await chatService.markAllAsRead(userId, role as 'client' | 'seller' | 'admin');
+    res.json({ success: true });
+  } catch (error: any) {
+    return serverError(res, error);
+  }
+});
+
+/**
  * POST /api/chat/:chatId/mark-read
  * Mark messages as read
  */

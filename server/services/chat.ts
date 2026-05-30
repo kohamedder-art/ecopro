@@ -245,6 +245,40 @@ export class ChatService {
   }
 
   /**
+   * Mark all messages across all user's chats as read
+   */
+  async markAllAsRead(readerId: number, readerType: 'client' | 'seller' | 'admin'): Promise<void> {
+    try {
+      if (readerType === 'admin') {
+        await pool.query(
+          `UPDATE chat_messages SET is_read = true, updated_at = NOW()
+           WHERE chat_id IN (SELECT id FROM chats) AND is_read = false`
+        );
+      } else if (readerType === 'client') {
+        await pool.query(
+          `UPDATE chat_messages SET is_read = true, updated_at = NOW()
+           WHERE chat_id IN (SELECT id FROM chats WHERE client_id = $1)
+           AND sender_type != 'client' AND is_read = false`,
+          [readerId]
+        );
+        await pool.query(
+          'UPDATE clients SET unread_chat_count = 0 WHERE id = $1',
+          [readerId]
+        );
+      } else if (readerType === 'seller') {
+        await pool.query(
+          `UPDATE chat_messages SET is_read = true, updated_at = NOW()
+           WHERE chat_id IN (SELECT id FROM chats WHERE seller_id = $1)
+           AND sender_type != 'seller' AND is_read = false`,
+          [readerId]
+        );
+      }
+    } catch (error: any) {
+      throw new Error(`Failed to mark all as read: ${error.message}`);
+    }
+  }
+
+  /**
    * Request a code (client side)
    */
   async requestCode(chatId: number, clientId: number, codeType: string): Promise<CodeRequest> {
