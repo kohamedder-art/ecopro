@@ -210,7 +210,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       location.pathname === '/chat' ||
       location.pathname.startsWith('/chat/') ||
       location.pathname === '/platform-admin/chat' ||
-      location.pathname.startsWith('/platform-admin/chat/')
+      location.pathname.startsWith('/platform-admin/chat/') ||
+      location.pathname === '/dashboard/orders/chat'
     ) {
       localStorage.setItem(CHAT_LAST_SEEN_KEY, new Date().toISOString());
       setUnreadMessagesCount(0);

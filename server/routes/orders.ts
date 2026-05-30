@@ -1816,12 +1816,10 @@ export const getNewOrdersCount: RequestHandler = async (req, res) => {
     let params: any[];
 
     if (since) {
-      // Count orders created since the given timestamp
-      query = `SELECT COUNT(*)::int AS count FROM store_orders WHERE client_id = $1 AND created_at > $2`;
+      query = `SELECT COUNT(*)::int AS count FROM store_orders WHERE client_id = $1 AND created_at > $2 AND (order_source IS NULL OR order_source != 'ai_chat')`;
       params = [clientId, since];
     } else {
-      // Count all pending orders if no timestamp provided
-      query = `SELECT COUNT(*)::int AS count FROM store_orders WHERE client_id = $1 AND status = 'pending'`;
+      query = `SELECT COUNT(*)::int AS count FROM store_orders WHERE client_id = $1 AND status = 'pending' AND (order_source IS NULL OR order_source != 'ai_chat')`;
       params = [clientId];
     }
 
