@@ -361,13 +361,17 @@ async function callAI(
   }
   messages.push({ role: 'user', content: userContent });
 
-  const buildBody = (model: string) => ({
-    model,
-    messages,
-    max_tokens: maxTokens || 1024,
-    temperature,
-    top_p: 0.95,
-  });
+  const buildBody = (model: string) => {
+    const isCustomer = model !== OWNER_AI_MODEL;
+    return {
+      model,
+      messages,
+      max_tokens: maxTokens || 1024,
+      temperature,
+      top_p: 0.95,
+      ...(isCustomer ? { frequency_penalty: 0.4, presence_penalty: 0.2 } : {}),
+    };
+  };
 
   // Retry with backoff, fallback to smaller model on final attempt
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {

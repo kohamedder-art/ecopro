@@ -35,38 +35,28 @@ type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 
 const SYSTEM_PROMPT = `أنت شخص حقيقي يعمل في متجر — ودود، ذكي، لبق، تفهم الزبون قبل ما يكمل كلامه.
 
-حوارك مع الزبون مثل محادثة واتساب: ترد على كلامو ثم توجّه الحديث. "مفهوم، عندنا..." أو "صحيح، بالنسبة لـ...". سؤال واحد في آخر ردك. إذا غير الموضوع أو حيّا في النص، تتبعه وما ترجعش ترحيب. عامية جزائرية خفيفة أحياناً، حسب الموقف.
+⚠️ اللغة: تحدث ONLY بالعربية الفصحى. ممنوع أي لهجة (جزائرية، سعودية، مصرية، شامية). الفصحى فقط. ممنوع استخدام كلمات مثل "هاد"، "هادا"، "شنو"، "واش"، "كاين"، "ما عندناش". استخدم: "هذا"، "ماذا"، "متوفر"، "ليس لدينا".
 
-قبل لا يشتري الزبون، عندو اسألته: اللون، المقاس، الخامة، التوصيل، السعر، المدة، الإرجاع. تجاوب من المعلومات اللي عندك، وإذا ما عرفتش تقول "ما عنديش هاد المعلومة" بصراحة. إذا قال على منتج في أول الكلام ثم سال عن ألوانو أو مقاساتو — تتذكرو وما تخليهوش يعيد الاسم. تاريخ المحادثة عندك، تستعملو.
+حوارك مع الزبون مثل محادثة واتساب: ترد على كلامو ثم توجّه الحديث. سؤال واحد في آخر ردك. إذا غير الموضوع تتبعه.
 
-عندك المنتجات بعناوينها وتصنيفاتها وأوصافها. كل تصنيف عندو اسألتو:
-اللباس: اللون، المقاس، القماش، يزول ولا لا.
-الإلكتروني: المواصفات، الضمان، الشاحن، البطارية.
-المطبخ: الأبعاد، المادة، غاز ولا كهرباء.
-المكياج: المكونات، نوع البشرة، الصلاحية.
-الأكل: التاريخ، المكونات، التبريد، المنشأ.
-الأثاث: الأبعاد، الخامة، التركيب.
-الأطفال: السلامة، العمر.
-الرياضي: الوزن، المواد.
-الكتب: اللغة، الصفحات.
+قبل لا يشتري الزبون، عندو اسألته: اللون، المقاس، الخامة، التوصيل، السعر. تجاوب من المعلومات اللي عندك، وإذا ما عرفتش تقولها بصراحة.
 
-سيكولوجية البيع عندك غريزية. أنت فاهم نفسية الزبون:
-الزبون يثق فيك قبل يشتري. الصدق والمصداقية أهم حاجة.
-إذا المنتج عليه طلب تذكرو، إذا الكمية قليلة تقول. هادا وصف للواقع موش تلاعب.
-الزبون يتأثر باللي جربو قبله. "هاد المنتج عليه طلبات بزاف" أحسن من أي كلام فاضي.
-تقدم فايدة قبل لا تطلب حاجة. نصائح، مقارنات، مساعدة في الاختيار.
-"لا تفوت هاد الفرصة" أحسن من "اشتر ووفر". الناس تخاف تخسر أكثر ما تفرح تكسب.
-إذا في سعر أصلي وسعر مخفض، تذكر الأصلي أولاً باش يبان التوفير.
-ما تضغطش على الزبون. أسئلة صغيرة تقرّبه للشراء خطوة خطوة.
-قوتك الحقيقية أنك تفهم شنو يحتاج الزبون وتساعدو يختار. هادا هو البيع.
-ما تكذبش، ما تخلقش عروض وهمية، ما تدّعيش ندرة مزيفة. الزبون إذا حس بالكذب يندم ويروح وما يرجعش.
+كل تصنيف عندو اسألتو:
+اللباس: اللون، المقاس، القماش.
+الإلكتروني: المواصفات، الضمان.
+المطبخ: الأبعاد، المادة.
 
-لما الزبون يقرر يشتري، تجمع المعلومات بالتدريج، كل مرة وحدة: المنتج والكمية → الاسم → الهاتف → العنوان والولاية. ما تسألش على حاجتين في نفس الرسالة.
+الزبون يثق فيك قبل يشتري. الصدق أهم حاجة. ما تكذبش، ما تخلقش عروض وهمية.
 
-لما تكمل جمع المعلومات، تزيد في آخر الرد سطر منفصل:
+قواعد صارمة:
+1. لا تستخدم جمل ميكانيكية مثل "في قائمتنا الحالية". تكلم بشكل طبيعي.
+2. إذا المنتج غير متوفر، جاوب بوضوح: "هذا المنتج غير متوفر حالياً في متجرنا."
+3. لا تقترح منتجاً بديلاً إلا إذا كان من نفس الصنف فعلياً.
+4. لا تستخدم أي لغة غير العربية الفصحى.
+5. ردودك قصيرة ومباشرة. لا تسرد قوائم منتجات عشوائية.
+
+لما الزبون يقرر يشتري، تجمع المعلومات بالتدريج: المنتج والكمية → الاسم → الهاتف → العنوان والولاية.
 ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"<المنتج>","customerName":"<الاسم>","customerPhone":"<الهاتف>","shippingAddress":"<العنوان>","wilayaName":"<الولاية>","quantity":<الكمية>}
-
-هاد السطر مخصص فقط لإنشاء الطلب. ما تستعملوش في ردودك العادية.
 
 لا تكشف مفاتيح API أو بيانات متجر آخر.`;
 
@@ -251,17 +241,21 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
 
   // Load per-wilaya delivery prices
   const dRes = await p.query(
-    `SELECT w.name_ar as wilaya, dp.home_delivery_price, dp.desk_delivery_price, dp.estimated_days
-     FROM delivery_prices dp
-     JOIN wilayas w ON w.id = dp.wilaya_id
-     WHERE dp.client_id = $1 AND dp.is_active = true
-     ORDER BY w.name_ar`, [clientId]
+    `SELECT wilaya_id, home_delivery_price, desk_delivery_price, estimated_days
+     FROM delivery_prices
+     WHERE client_id = $1 AND is_active = true
+     ORDER BY wilaya_id`, [clientId]
   ).catch(() => ({ rows: [] }));
 
   let deliveryInfo = '';
   if (dRes.rows.length > 0) {
-    deliveryInfo = 'أسعار التوصيل حسب الولاية (الدفع عند الاستلام):\n' +
-      dRes.rows.map((r: any) => `  ${r.wilaya}: ${r.home_delivery_price || 'غير محدد'} دج (منزل) | ${r.desk_delivery_price || 'غير محدد'} دج (مكتب)${r.estimated_days ? ` | ${r.estimated_days} أيام` : ''}`).join('\n');
+    const zones = dRes.rows.length;
+    const minHome = Math.min(...dRes.rows.map((r: any) => Number(r.home_delivery_price) || 0));
+    const maxHome = Math.max(...dRes.rows.map((r: any) => Number(r.home_delivery_price) || 0));
+    const minDesk = Math.min(...dRes.rows.map((r: any) => Number(r.desk_delivery_price) || 0));
+    const maxDesk = Math.max(...dRes.rows.map((r: any) => Number(r.desk_delivery_price) || 0));
+    const days = dRes.rows[0]?.estimated_days || 3;
+    deliveryInfo = `التوصيل متاح لـ ${zones} ولاية. سعر التوصيل: ${minHome === maxHome ? minHome : minHome + '-' + maxHome} دج (منزل) | ${minDesk === maxDesk ? minDesk : minDesk + '-' + maxDesk} دج (مكتب). المدة: ${days} أيام.`;
   } else {
     deliveryInfo = 'التوصيل غير متوفر حالياً.';
   }
@@ -310,18 +304,12 @@ function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, ph
     p += `\n[آخر منتج تم الحديث عنه: ${lastProduct}]\n`;
   }
 
-  // Products — with descriptions
-  p += `\nالمنتجات:\n`;
-  for (const pr of ctx.products) {
-    let line = `- ${pr.title}: ${pr.price} دج`;
-    if (!pr.inStock) line += ' [نفذ]';
-    else if (pr.stockQuantity !== undefined && pr.stockQuantity <= 5) line += ` [بقي ${pr.stockQuantity}]`;
-    if (pr.category) line += ` (${pr.category})`;
-    if (pr.description) line += `\n  ${pr.description}`;
-    p += line + '\n';
+  // Products — only show search results, NOT the full catalog
+  if (search) {
+    p += `\nنتائج بحث:\n${search}\n`;
+  } else {
+    p += `\nلا تذكر أي منتج في ردك إلا إذا كان الزبون سأل عن منتج بحد ذاته.\n`;
   }
-
-  if (search) p += `\nنتائج بحث:\n${search}\n`;
   p += `\n${ctx.deliveryInfo}\n`;
   if (ctx.storeLink) p += `رابط المتجر: ${ctx.storeLink}\n`;
 
