@@ -142,6 +142,12 @@ const handleWebhook: RequestHandler = async (req, res) => {
       return;
     }
     const pool = await ensureConnection();
+    const old = await pool.query(
+      `SELECT proxy_page_id, proxy_provider FROM bot_settings WHERE client_id = $1`,
+      [clientId]
+    );
+    const oldAccountId = old.rows[0]?.proxy_page_id;
+    const oldProvider = old.rows[0]?.proxy_provider;
     await pool.query(
       `UPDATE bot_settings SET
          proxy_enabled = true,
@@ -151,7 +157,11 @@ const handleWebhook: RequestHandler = async (req, res) => {
        WHERE client_id = $3`,
       [accountId, accountType, clientId]
     );
-    console.log(`[Unipile] Account ${accountId} connected for client ${clientId}`);
+    if (oldAccountId && oldAccountId !== accountId) {
+      console.log(`[Unipile] Client ${clientId} switched from ${oldProvider}(${oldAccountId}) to ${accountType}(${accountId})`);
+    } else {
+      console.log(`[Unipile] Account ${accountId} connected for client ${clientId}`);
+    }
     return;
   }
 
@@ -292,6 +302,17 @@ const generateConnectLink: RequestHandler = async (req, res) => {
     const clientId = (req as any).user?.id;
     if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
 
+    const { provider } = req.body as { provider?: string };
+    const validProviders = ['FACEBOOK_PAGE', 'INSTAGRAM', 'WHATSAPP'];
+    const requested = validProviders.find(
+      p => p === provider?.toUpperCase().replace('MESSENGER', 'FACEBOOK_PAGE')
+    );
+    if (!requested) {
+      return res.status(400).json({
+        error: 'Invalid or missing provider. Choose: FACEBOOK_PAGE, INSTAGRAM, or WHATSAPP',
+      });
+    }
+
     const baseUrl = getProxyBaseUrl();
     const secret = getProxyMasterSecretKey();
     if (!baseUrl || !secret) {
@@ -313,7 +334,7 @@ const generateConnectLink: RequestHandler = async (req, res) => {
       },
       body: JSON.stringify({
         type: 'create',
-        providers: ['FACEBOOK_PAGE', 'INSTAGRAM'],
+        providers: [requested],
         api_url: baseUrl,
         expiresOn,
         notify_url: notifyUrl,
