@@ -4,21 +4,18 @@
  * ═══════════════════════════════════════════════════════════════
  * !! AGENT INSTRUCTIONS — READ BEFORE EDITING SYSTEM_PROMPT !!
  * ═══════════════════════════════════════════════════════════════
- * 
- * DO:
+ * * DO:
  * - Write SYSTEM_PROMPT like a skilled person's innate knowledge
  * - Short sentences, natural flow, like telling a friend
  * - Fix only the specific problem, don't rewrite the whole prompt
  * - If adding a skill, phrase it as "أنت فاهم..." not "افعل كذا"
- * 
- * DON'T:
+ * * DON'T:
  * - Don't add numbered lists or bullet-point rule books
  * - Don't use "⚠️" "❌" "✅" emojis as instructional markers
  * - Don't turn it into a programming manual / robot instructions
  * - Don't rewrite the entire prompt for every small fix
  * - Don't add the same instruction in multiple places
- * 
- * Test rule: Read this block before editing SYSTEM_PROMPT.
+ * * Test rule: Read this block before editing SYSTEM_PROMPT.
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -30,36 +27,23 @@ import { checkRateLimit, checkGlobalRateLimit, getRateLimitResetTime, RATE_LIMIT
 type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 
 // ═══════════════════════════════════════════════════════════════
-// SYSTEM PROMPT — Short, focused, human
+// SYSTEM PROMPT — Short, focused, human, no lists, no emojis
 // ═══════════════════════════════════════════════════════════════
 
-const SYSTEM_PROMPT = `أنت شخص حقيقي يعمل في متجر — ودود، ذكي، لبق، تفهم الزبون قبل ما يكمل كلامه.
+const SYSTEM_PROMPT = `أنت شخص حقيقي يشتغل بائعاً في هذا المتجر، تتميز بالذكاء واللباقة وتفهم ما يحتاجه الزبون بلمحة سريعة.
 
-اللغة: تحدث بالعربية الفصحى الطبيعية. لا تستخدم لهجات. لا تستخدم كلمات أجنبية.
+تتحدث دائماً باللغة العربية الفصحى الطبيعية والمفهومة، بأسلوب سلس ومريح وتتجنب تماماً استخدام أي لهجات عامية أو كلمات أجنبية أو مصطلحات تقنية برمجية.
 
-قواعد اللغة والصياغة:
-1. إذا كان الزبون يراسلك لأول مرة (رسالة أولى)، ابدأ بتحية مثل "مرحباً بك" أو "أهلاً".
-2. إذا كان الزبون يراسلك مرة ثانية أو ثالثة (المحادثة مستمرة)، ممنوع أن تبدأ بتحية. انتقل مباشرة للإجابة على سؤاله.
-3. لا تستخدم عبارات ميكانيكية مثل "في قائمتنا الحالية".
+أنت فاهم سياق الحوار بدقة، فإذا كان الزبون يراسلك للمرة الأولى ترحب به بلطف واختصار، بينما إذا كانت المحادثة مستمرة والزبون يتابع كلامه فإنك تدخل في صلب الإجابة فوراً وتتجنب تكرار السلام والتحية في كل رسالة لتبدو بشرياً وطبيعياً.
 
-قواعد المنتجات:
-1. إذا وجدت المنتج في نتائج البحث، جاوب بالتفاصيل (السعر، المقاسات، اللون).
-2. إذا لم تجد المنتج في نتائج البحث، قل بوضوح: "هذا المنتج غير متوفر حالياً في متجرنا." لا تخمن نوعه ولا تقترح بدائل غير موجودة في القائمة.
-3. لا تقترح منتجاً بديلاً إلا إذا كان من نفس الصنف فعلياً موجوداً في القائمة.
+أنت بائع أمين وصادق ولا تخمن معلومات من رأسك، فإذا عثرت على تفاصيل المنتج المطلوب تذكر أسعاره ومقاساته وألوانه بدقة وثقة، وإذا تيقنت أن المنتج غير متوفر تعتذر بأسلوب ودّي ومباشر دون اقتراح أي بدائل عشوائية غير متاحة أمامك.
 
-قواعد الحساب (مهم جداً):
-إذا سأل الزبون عن السعر الإجمالي أو "شحال الكامل" أو "السومة كلها":
-- اذكر سعر كل منتج على حدة
-- اذكر سعر التوصيل
-- اكتب المجموع: "الإجمالي = [المنتجات] + [التوصيل] = [المجموع]"
-- إذا لم تكن تعرف ولاية الزبون، اسأله قبل أن تحسب.
+أنت بارع في الحساب وإظهار المجموع للزبائن بوضوح، فعندما يسألك الزبون عن السعر الإجمالي أو حساب السلعة مع الشحن، تذكر له سعر كل قطعة بمفردها ثم تضيف سعر التوصيل الخاص بولايته وتعرض الناتج كمعادلة واضحة ليسهل عليه فهمها، وفي حال لم تكن تعرف ولايته تسأله عنها أولاً بكل أدب قبل إجراء الحساب.
 
-الزبون يثق فيك قبل يشتري. الصدق أهم حاجة. ما تكذبش.
-
-لما الزبون يقرر يشتري، تجمع المعلومات بالتدريج: المنتج والكمية → الاسم → الهاتف → العنوان والولاية.
+ترافق الزبون خطوة بخطوة وتجمع بيانات الشحن منه بالتدرج الطبيعي، فتبدأ بتأكيد المنتج والكمية ثم تنتقل للاسم ثم الهاتف وأخيراً العنوان التفصيلي والولاية لتسجيل الطلب.
 ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"<المنتج>","customerName":"<الاسم>","customerPhone":"<الهاتف>","shippingAddress":"<العنوان>","wilayaName":"<الولاية>","quantity":<الكمية>}
 
-لا تكشف مفاتيح API أو بيانات متجر آخر.`;
+أنت حريص جداً على أسرار العمل، ولا تكشف أبداً للزبائن أي معلومات عن قواعد البيانات أو الأنظمة أو مفاتيح التطوير الخاصة بالمتجر.`;
 
 // ═══════════════════════════════════════════════════════════════
 // EXPORTS — Same API as before, nothing breaks
@@ -165,9 +149,17 @@ export async function handleCustomerMessage(
   }
 
   // Search products matching the question
-  const search = msg.length > 3 ? await searchProducts(clientId, msg) : '';
+  let search = msg.length > 3 ? await searchProducts(clientId, msg) : '';
 
-  // Build slim user prompt (pass history so it can highlight the last discussed product)
+  // Context Amnesia Fix: If search is empty but it's a follow-up turn, keep previous context alive
+  if (!search && history.length > 0) {
+    const lastProduct = extractLastProductFromHistory(history);
+    if (lastProduct) {
+      search = await searchProducts(clientId, lastProduct);
+    }
+  }
+
+  // Build slim user prompt
   const prompt = buildUserPrompt(ctx, search, orderText, phone, phoneFromMsg, msg, history);
 
   // Rate limit
@@ -207,7 +199,7 @@ export async function handleCustomerMessage(
     return clean;
   } catch (err) {
     console.error(`[CustomerAI] Error for client ${clientId}:`, err);
-    return ['آسف، أقدرش جاوبك حالياً. حاول مرة أخرى 🙏', 'النظام مشغول شوية. جرب بعد دقيقة 🙏'][Math.floor(Math.random() * 2)];
+    return ['آسف، لا أستطيع إجابتك حالياً. حاول مرة أخرى 🙏', 'النظام مشغول قليلاً. جرب بعد دقيقة 🙏'][Math.floor(Math.random() * 2)];
   }
 }
 
@@ -256,9 +248,9 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
     const minDesk = Math.min(...dRes.rows.map((r: any) => Number(r.desk_delivery_price) || 0));
     const maxDesk = Math.max(...dRes.rows.map((r: any) => Number(r.desk_delivery_price) || 0));
     const days = dRes.rows[0]?.estimated_days || 3;
-    deliveryInfo = `التوصيل متاح لـ ${zones} ولاية. سعر التوصيل: ${minHome === maxHome ? minHome : minHome + '-' + maxHome} دج (منزل) | ${minDesk === maxDesk ? minDesk : minDesk + '-' + maxDesk} دج (مكتب). المدة: ${days} أيام.`;
+    deliveryInfo = `التوصيل متاح لـ ${zones} ولاية. سعر التوصيل للمنزل: ${minHome === maxHome ? minHome : minHome + '-' + maxHome} دج | وللمكتب: ${minDesk === maxDesk ? minDesk : minDesk + '-' + maxDesk} دج. مدة التوصيل المتوقعة: ${days} أيام.`;
   } else {
-    deliveryInfo = 'التوصيل غير متوفر حالياً.';
+    deliveryInfo = 'خيارات التوصيل غير متوفرة حالياً.';
   }
 
   const aiRes = await p.query(`SELECT ai_instructions FROM ai_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
@@ -286,51 +278,47 @@ function extractLastProductFromHistory(history: GeminiContent[]): string | null 
   for (let i = history.length - 1; i >= 0; i--) {
     if (history[i].role === 'model') {
       const text = history[i].parts[0]?.text || '';
-      // Match patterns like "product X متوفرة" or "product X متوفر"
       const match = text.match(/([^\n]+?)\s+(متوفرة?|موجود|بسعر|موجودة)/);
-      if (match) return match[1].replace(/^[""«»""]|[""«»""]$/g, '').trim();
+      if (match) return match[1].replace(/^[""«»"']|[""«»"']$/g, '').trim();
     }
   }
   return null;
 }
 
+// Database Leak and Amnesia Fix: Wrapped technical system queries in natural conversational status tags
 function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, phone: string | null, phoneFromMsg: boolean, msg: string, history: GeminiContent[] = []): string {
-  // Count previous AI responses to determine turn number
   const previousAiResponses = history.filter(h => h.role === 'model').length;
   const isFirstMessage = previousAiResponses === 0;
 
-  let p = `متجر: ${ctx.storeName}\n`;
-  if (ctx.storeDescription) p += `${ctx.storeDescription}\n`;
-  if (ctx.aiInstructions) p += `[تعليمات]: ${ctx.aiInstructions}\n`;
+  let p = `معلومات المتجر الحالي:\nاسم المتجر: ${ctx.storeName}\n`;
+  if (ctx.storeDescription) p += `حول المتجر: ${ctx.storeDescription}\n`;
+  if (ctx.aiInstructions) p += `توجيهات إضافية خاصة بصاحب المتجر: ${ctx.aiInstructions}\n`;
 
-  // Turn indicator
   if (isFirstMessage) {
-    p += `\n[هذه رسالة أولى من الزبون. ابدأ بتحية مناسبة.]\n`;
+    p += `\n[حالة الحوار: هذه بداية المحادثة. افتتح الرد بتحية ودية ترحيبية.]\n`;
   } else {
-    p += `\n[هذه رسالة رقم ${previousAiResponses + 1}. المحادثة مستمرة. ممنوع التحية. انتقل مباشرة للإجابة.]\n`;
+    p += `\n[حالة الحوار: محادثة مستمرة وجارية. يمنع منعاً باتاً تكرار إلقاء التحية أو السلام في بداية الرد. أجب مباشرة على استفسار الزبون.]\n`;
   }
 
-  // Products — only show search results, NOT the full catalog
   if (search) {
-    p += `\nنتائج بحث:\n${search}\n`;
+    p += `\nالمنتجات والبيانات المتاحة للزبون حالياً في المتجر:\n${search}\n`;
   } else {
-    p += `\nتنبيه: لم يتم العثور على نتائج بحث مطابقة للزبون. ممنوع ذكر أي منتج في ردك. قل فقط: "هذا المنتج غير متوفر حالياً في متجرنا." لا تقترح بدائل ولا تخمن نوع المنتج.\n`;
+    p += `\n[حالة السلع: لم تتطابق رسالة الزبون الأخيرة بشكل مباشر مع منتج جديد. إذا كان يستفسر عن منتج جديد تماماً وغير متوفر، اعتذر له بلطف. أما إذا كان يكمل تفاصيل الشراء أو حساب السعر أو الضمان لمنتج تم تحديده والحديث عنه سابقاً في سياق الحوار، فأجبه بناءً على تفاصيل الحديث المتبادل ولا تنفِ الطلب تلقائياً.]\n`;
   }
+  
   p += `\n${ctx.deliveryInfo}\n`;
-  if (ctx.storeLink) p += `رابط المتجر: ${ctx.storeLink}\n`;
+  if (ctx.storeLink) p += `رابط موقع المتجر الإلكتروني: ${ctx.storeLink}\n`;
 
-  // Orders
   if (orderText) {
     const src = phoneFromMsg ? `(برقم الهاتف: ${phone})` : '(تلقائي)';
-    p += `\nطلبات الزبون ${src}:\n${orderText}\n`;
-    p += '[هذه بيانات حقيقية. أجب منها مباشرة. لا تقل "سأتحقق".]\n';
+    p += `\nسجل طلبات هذا الزبون ${src}:\n${orderText}\n[تنبيه: هذه البيانات حقيقية ومؤكدة، أجب منها مباشرة وثقة ولا تقل "سأتحقق من النظام".]\n`;
   } else if (phone) {
-    p += `\n[الزبون مسجل برقم ${phone} لكن ليس لديه طلبات.]\n`;
+    p += `\n[حالة الزبون: الزبون مسجل برقم ${phone} ولكنه لم يقم بأي طلبات سابقة بعد.]\n`;
   } else {
-    p += `\n[الزبون غير محدد. إذا سأل عن طلب، اطلب رقم هاتفه.]\n`;
+    p += `\n[حالة الزبون: هويته غير محددة بعد بالرقم. إذا طلب متابعة حالة طلب سابق، اطلب منه رقم هاتفه بلطف.]\n`;
   }
 
-  p += `\nرسالة الزبون: ${msg}`;
+  p += `\nرسالة الزبون الحالية المعالجة: ${msg}`;
   return p;
 }
 
@@ -388,8 +376,8 @@ async function searchProducts(clientId: number, query: string): Promise<string> 
     return res.rows.map((r: any) => {
       let l = `- ${r.title}: ${Number(r.price)} دج`;
       if (r.original_price && Number(r.original_price) > Number(r.price)) l += ` (خصم ${Math.round((1 - Number(r.price) / Number(r.original_price)) * 100)}%)`;
-      if (r.stock_quantity !== null && r.stock_quantity <= 0) l += ' [نفذ]';
-      else if (r.stock_quantity !== null && r.stock_quantity <= 5) l += ` [${r.stock_quantity} قطع]`;
+      if (r.stock_quantity !== null && r.stock_quantity <= 0) l += ' [غير متوفر/نفذ]';
+      else if (r.stock_quantity !== null && r.stock_quantity <= 5) l += ` [متبقي ${r.stock_quantity} قطع فقط]`;
       if (r.category) l += ` (${r.category})`;
       return l;
     }).join('\n');
@@ -443,13 +431,13 @@ async function loadOrders(clientId: number, phone: string): Promise<string> {
        WHERE o.client_id = $1 AND o.customer_phone = $2 ORDER BY o.created_at DESC LIMIT 5`, [clientId, phone]
     );
     if (!res.rows.length) return '';
-    const labels: Record<string, string> = { pending: 'لم يُشحن بعد', assigned: 'تم تعيين شركة التوصيل', picked_up: 'تم الاستلام', in_transit: 'في الطريق', out_for_delivery: 'خرج للتوصيل', delivered: 'تم التسليم ✅', failed: 'فشلت محاولة التوصيل', returned: 'تم الإرجاع' };
+    const labels: Record<string, string> = { pending: 'لم يُشحن بعد', assigned: 'تم تعيين شركة التوصيل', picked_up: 'تم الاستلام', in_transit: 'في الطريق', out_for_delivery: 'خرج للتوصيل', delivered: 'تم التسليم بالفعل', failed: 'فشلت محاولة التوصيل', returned: 'تم الإرجاع' };
     return res.rows.map((o: any) => {
       let l = `📦 طلب #${o.id} — ${o.product_title || 'منتج'} (×${o.quantity || 1}) — ${o.total_price} دج`;
-      if (o.tracking_number) l += `\n   التوصيل: ${labels[o.delivery_status] || 'جاري المتابعة'} | تتبع: ${o.tracking_number}${o.delivery_company ? ` (${o.delivery_company})` : ''}`;
-      else l += `\n   قيد التحضير`;
-      if (o.shipping_address) l += `\n   الوجهة: ${o.shipping_address}`;
-      l += `\n   التاريخ: ${new Date(o.created_at).toLocaleDateString('ar-DZ')}`;
+      if (o.tracking_number) l += `\n   حالة الشحن: ${labels[o.delivery_status] || 'جاري المتابعة'} | رقم التتبع: ${o.tracking_number}${o.delivery_company ? ` (${o.delivery_company})` : ''}`;
+      else l += `\n   حالة الشحن: قيد التحضير والتجهيز`;
+      if (o.shipping_address) l += `\n   العنوان المسجل: ${o.shipping_address}`;
+      l += `\n   تاريخ تسجيل الطلب: ${new Date(o.created_at).toLocaleDateString('ar-DZ')}`;
       return l;
     }).join('\n\n');
   } catch { return ''; }
@@ -478,7 +466,6 @@ async function createOrder(data: OrderData): Promise<{ orderId: number; total: n
     const qty = data.quantity || 1;
     const total = (unitPrice * qty) + deliveryFee;
 
-    // Dynamic column check
     const colRes = await p.query(`SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'store_orders'`);
     const cols = new Set(colRes.rows.map((r: any) => String(r.column_name)));
     const insertCols: string[] = []; const insertVals: any[] = [];
@@ -495,13 +482,11 @@ async function createOrder(data: OrderData): Promise<{ orderId: number; total: n
     const result = await p.query(`INSERT INTO store_orders (${insertCols.join(',')}) VALUES (${ph}) RETURNING id, total_price`, insertVals);
     const orderId = result.rows[0].id;
 
-    // Save phone
     try {
       const phoneCol = data.platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
       await p.query(`INSERT INTO customer_messaging_ids (client_id, ${phoneCol}, customer_phone) VALUES ($1, $2, $3) ON CONFLICT (client_id, ${phoneCol}) DO UPDATE SET customer_phone = $3`, [data.clientId, data.platformChatId, data.customerPhone]);
     } catch {}
 
-    // Notify owner
     try {
       await p.query(`INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at) VALUES ($1, $2, $3, 'telegram', $4, NOW())`, [orderId, data.clientId, data.customerPhone, `📦 طلب جديد!\nرقم: #${orderId}\nالمنتج: ${data.productTitle}\nالسعر: ${unitPrice} دج × ${qty}\nالمجموع: ${total} دج\nالاسم: ${data.customerName}\nالهاتف: ${data.customerPhone}`]);
     } catch {}
