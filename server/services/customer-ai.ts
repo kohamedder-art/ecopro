@@ -35,29 +35,26 @@ type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 
 const SYSTEM_PROMPT = `أنت شخص حقيقي يعمل في متجر — ودود، ذكي، لبق، تفهم الزبون قبل ما يكمل كلامه.
 
-اللغة: تحدث بالعربية الفصحى الطبيعية. لا تستخدم لهجات (جزائرية، سعودية، مصرية). لا تستخدم كلمات أجنبية.
+اللغة: تحدث بالعربية الفصحى الطبيعية. لا تستخدم لهجات. لا تستخدم كلمات أجنبية.
 
-حوارك مع الزبون مثل محادثة واتساب: ترد على كلامو ثم توجّه الحديث. سؤال واحد في آخر ردك. إذا غير الموضوع تتبعه.
+قواعد اللغة والصياغة:
+1. إذا كان الزبون يراسلك لأول مرة (رسالة أولى)، ابدأ بتحية مثل "مرحباً بك" أو "أهلاً".
+2. إذا كان الزبون يراسلك مرة ثانية أو ثالثة (المحادثة مستمرة)، ممنوع أن تبدأ بتحية. انتقل مباشرة للإجابة على سؤاله.
+3. لا تستخدم عبارات ميكانيكية مثل "في قائمتنا الحالية".
 
-قبل لا يشتري الزبون، عندو اسألته: اللون، المقاس، الخامة، التوصيل، السعر. تجاوب من المعلومات اللي عندك، وإذا ما عرفتش تقولها بصراحة.
+قواعد المنتجات:
+1. إذا وجدت المنتج في نتائج البحث، جاوب بالتفاصيل (السعر، المقاسات، اللون).
+2. إذا لم تجد المنتج في نتائج البحث، قل بوضوح: "هذا المنتج غير متوفر حالياً في متجرنا." لا تخمن نوعه ولا تقترح بدائل غير موجودة في القائمة.
+3. لا تقترح منتجاً بديلاً إلا إذا كان من نفس الصنف فعلياً موجوداً في القائمة.
 
-كل تصنيف عندو اسألتو:
-اللباس: اللون، المقاس، القماش.
-الإلكتروني: المواصفات، الضمان.
-المطبخ: الأبعاد، المادة.
+قواعد الحساب (مهم جداً):
+إذا سأل الزبون عن السعر الإجمالي أو "شحال الكامل" أو "السومة كلها":
+- اذكر سعر كل منتج على حدة
+- اذكر سعر التوصيل
+- اكتب المجموع: "الإجمالي = [المنتجات] + [التوصيل] = [المجموع]"
+- إذا لم تكن تعرف ولاية الزبون، اسأله قبل أن تحسب.
 
-الزبون يثق فيك قبل يشتري. الصدق أهم حاجة. ما تكذبش، ما تخلقش عروض وهمية.
-
-قواعد صارمة:
-1. لا تستخدم جمل ميكانيكية مثل "في قائمتنا الحالية". تكلم بشكل طبيعي.
-2. إذا المنتج غير متوفر، قل بوضوح: "هذا المنتج غير متوفر حالياً في متجرنا." لا تخمن نوعه ولا تقول "لا نبيع X" لأنك لا تعرف ماذا يقصد الزبون.
-3. لا تقترح منتجاً بديلاً إلا إذا كان من نفس الصنف فعلياً.
-4. الكلمات البديلة المسموحة:
-   - بدلاً من "أتمام/تسجيل الطلب": "تأكيد الطلب" أو "إدخال الطلب"
-   - بدلاً من "استرجاع": "استرداد" أو "إعادة المنتج"
-   - أي كلمة عربية واضحة ومباشرة.
-5. ممنوع استخدام أي كلمة غير عربية أو مختلطة.
-6. ردودك قصيرة ومباشرة. لا تسرد قوائم منتجات عشوائية.
+الزبون يثق فيك قبل يشتري. الصدق أهم حاجة. ما تكذبش.
 
 لما الزبون يقرر يشتري، تجمع المعلومات بالتدريج: المنتج والكمية → الاسم → الهاتف → العنوان والولاية.
 ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"<المنتج>","customerName":"<الاسم>","customerPhone":"<الهاتف>","shippingAddress":"<العنوان>","wilayaName":"<الولاية>","quantity":<الكمية>}
@@ -298,21 +295,26 @@ function extractLastProductFromHistory(history: GeminiContent[]): string | null 
 }
 
 function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, phone: string | null, phoneFromMsg: boolean, msg: string, history: GeminiContent[] = []): string {
+  // Count previous AI responses to determine turn number
+  const previousAiResponses = history.filter(h => h.role === 'model').length;
+  const isFirstMessage = previousAiResponses === 0;
+
   let p = `متجر: ${ctx.storeName}\n`;
   if (ctx.storeDescription) p += `${ctx.storeDescription}\n`;
   if (ctx.aiInstructions) p += `[تعليمات]: ${ctx.aiInstructions}\n`;
 
-  // Highlight the last product mentioned by the assistant in history
-  const lastProduct = extractLastProductFromHistory(history);
-  if (lastProduct) {
-    p += `\n[آخر منتج تم الحديث عنه: ${lastProduct}]\n`;
+  // Turn indicator
+  if (isFirstMessage) {
+    p += `\n[هذه رسالة أولى من الزبون. ابدأ بتحية مناسبة.]\n`;
+  } else {
+    p += `\n[هذه رسالة رقم ${previousAiResponses + 1}. المحادثة مستمرة. ممنوع التحية. انتقل مباشرة للإجابة.]\n`;
   }
 
   // Products — only show search results, NOT the full catalog
   if (search) {
     p += `\nنتائج بحث:\n${search}\n`;
   } else {
-    p += `\nلا تذكر أي منتج في ردك إلا إذا كان الزبون سأل عن منتج بحد ذاته.\n`;
+    p += `\nتنبيه: لم يتم العثور على نتائج بحث مطابقة للزبون. ممنوع ذكر أي منتج في ردك. قل فقط: "هذا المنتج غير متوفر حالياً في متجرنا." لا تقترح بدائل ولا تخمن نوع المنتج.\n`;
   }
   p += `\n${ctx.deliveryInfo}\n`;
   if (ctx.storeLink) p += `رابط المتجر: ${ctx.storeLink}\n`;
@@ -363,10 +365,26 @@ async function isOverDailyBudget(clientId: number): Promise<boolean> {
 async function searchProducts(clientId: number, query: string): Promise<string> {
   try {
     const p = await pool();
-    const res = await p.query(
+
+    // First try: full query match
+    let res = await p.query(
       `SELECT title, price, original_price, stock_quantity, category FROM client_store_products WHERE client_id = $1 AND status = 'active' AND (title ILIKE $2 OR description ILIKE $2 OR category ILIKE $2) ORDER BY is_featured DESC NULLS LAST LIMIT 10`,
       [clientId, `%${query}%`]
     );
+
+    // Second try: split query into words and match any word
+    if (res.rows.length === 0 && query.length > 3) {
+      const words = query.split(/\s+/).filter(w => w.length > 2);
+      if (words.length > 1) {
+        const conditions = words.map((_, i) => `(title ILIKE $${i + 2} OR description ILIKE $${i + 2} OR category ILIKE $${i + 2})`).join(' OR ');
+        const params = [clientId, ...words.map(w => `%${w}%`)];
+        res = await p.query(
+          `SELECT title, price, original_price, stock_quantity, category FROM client_store_products WHERE client_id = $1 AND status = 'active' AND (${conditions}) ORDER BY is_featured DESC NULLS LAST LIMIT 10`,
+          params
+        );
+      }
+    }
+
     return res.rows.map((r: any) => {
       let l = `- ${r.title}: ${Number(r.price)} دج`;
       if (r.original_price && Number(r.original_price) > Number(r.price)) l += ` (خصم ${Math.round((1 - Number(r.price) / Number(r.original_price)) * 100)}%)`;
