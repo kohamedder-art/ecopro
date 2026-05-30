@@ -147,11 +147,15 @@ export async function getQuotaSummary(clientId: number): Promise<{
   const ownerUsed = Number(result.rows[0].owner_tokens);
   const customerUsed = Number(result.rows[0].customer_tokens);
 
+  // Show token-equivalent of the $2 budget at 14B rates (~$0.156/1M avg)
+  // This is what store owners see in the UI (not dollars)
+  const CUSTOMER_TOKEN_LIMIT = 12_000_000;
+
   return {
     ownerUsed,
     ownerLimit: 5_000_000,
     customerUsed,
-    customerLimit: 100_000_000,
+    customerLimit: CUSTOMER_TOKEN_LIMIT,
     periodStart,
   };
 }
