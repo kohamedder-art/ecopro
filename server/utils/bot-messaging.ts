@@ -1054,57 +1054,110 @@ export async function processPendingMessages(): Promise<void> {
           } else {
             sendResult = await sendWhatsAppCloudMessage(accessToken, phoneNumberId, message.customer_phone, message.message_content);
           }
-        } else if (message.message_type === 'messenger') {
-          // Facebook Messenger handling
-          const settingsResult = await client.query(
-            `SELECT fb_page_access_token FROM bot_settings WHERE client_id = $1`,
-            [message.client_id]
-          );
-          const pageAccessToken = String(settingsResult.rows[0]?.fb_page_access_token || '').trim() || getPlatformFbPageAccessToken();
+    } else if (message.message_type === 'messenger') {
+      // Facebook Messenger handling
+      const settingsResult = await client.query(
+        `SELECT fb_page_access_token, proxy_enabled, proxy_provider, proxy_page_id, proxy_api_key, proxy_channel_id
+         FROM bot_settings WHERE client_id = $1`,
+        [message.client_id]
+      );
+      const row = settingsResult.rows[0];
+      const pageAccessToken = String(row?.fb_page_access_token || '').trim() || getPlatformFbPageAccessToken();
+      const proxyEnabled = row?.proxy_enabled === true;
+      const proxyPageId = String(row?.proxy_page_id || '').trim();
+      const proxyApiKey = String(row?.proxy_api_key || '').trim();
+      const proxyChannelId = String(row?.proxy_channel_id || '').trim();
 
-          if (!pageAccessToken) {
-            await client.query(
-              `UPDATE bot_messages SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
-              ['MISSING_MESSENGER_PAGE_ACCESS_TOKEN', message.id]
-            );
-            continue;
-          }
-          
-          // Try to get PSID from order_messenger_chats first, then customer_messaging_ids
-          let psid: string | null = null;
-          
-          const orderChatRes = await client.query(
-            `SELECT messenger_psid FROM order_messenger_chats WHERE order_id = $1 AND client_id = $2 LIMIT 1`,
-            [message.order_id, message.client_id]
+      // When proxy is enabled, use Unipile API instead of Graph API
+      if (proxyEnabled && proxyPageId && proxyApiKey) {
+        // Look up Unipile chat_id from messenger_subscribers
+        let unipileChatId: string | null = null;
+        const chatRes = await client.query(
+          `SELECT unipile_chat_id FROM messenger_subscribers WHERE client_id = $1 AND customer_phone = $2 AND unipile_chat_id IS NOT NULL LIMIT 1`,
+          [message.client_id, message.customer_phone]
+        );
+        unipileChatId = chatRes.rows[0]?.unipile_chat_id || null;
+
+        if (!unipileChatId) {
+          // No chat mapping yet — customer hasn't messaged the store through Unipile
+          await client.query(
+            `UPDATE bot_messages SET send_at = NOW() + INTERVAL '5 minutes', error_message = $1, updated_at = NOW() WHERE id = $2`,
+            ['WAITING_FOR_UNIPILE_CHAT', message.id]
           );
-          psid = orderChatRes.rows[0]?.messenger_psid;
-          
-          if (!psid) {
-            const idRes = await client.query(
-              `SELECT messenger_psid FROM customer_messaging_ids WHERE client_id = $1 AND customer_phone = $2`,
-              [message.client_id, message.customer_phone]
-            );
-            psid = idRes.rows[0]?.messenger_psid;
-          }
-          
-          if (pageAccessToken && psid) {
-            if (message.confirmation_link) {
-              sendResult = await sendMessengerOrderConfirmationDirect(pageAccessToken, psid, {
-                text: String(message.message_content || ''),
-                orderId: Number(message.order_id),
-              });
-            } else {
-              sendResult = await sendMessengerMessageDirect(pageAccessToken, psid, message.message_content);
-            }
-          } else {
-            // Customer hasn't connected Messenger yet; retry later
-            await client.query(
-              `UPDATE bot_messages SET send_at = NOW() + INTERVAL '5 minutes', error_message = $1, updated_at = NOW() WHERE id = $2`,
-              ['WAITING_FOR_MESSENGER_PSID', message.id]
+          continue;
+        }
+
+        const proxyBaseUrl = String(process.env.PROXY_BASE_URL || '').trim();
+        if (!proxyBaseUrl) {
+            await markFailed(client, message.id,
+                ['PROXY_NOT_CONFIGURED', message.id]
             );
             continue;
-          }
         }
+          const baseUrl = proxyBaseUrl.startsWith('http') ? proxyBaseUrl : `https://${proxyBaseUrl}`;
+          const formData = new FormData();
+          formData.append('text', message.message_content);
+
+          const unipileRes = await fetch(
+            `${baseUrl}/api/v1/chats/${encodeURIComponent(unipileChatId)}/messages`,
+            {
+              method: 'POST',
+              headers: {
+                'X-API-KEY': proxyApiKey,
+                'accept': 'application/json',
+              },
+              body: formData,
+            },
+          );
+
+          if (unipileRes.ok) {
+            sendResult = { success: true };
+          } else {
+            const errBody = await unipileRes.text();
+            sendResult = { success: false, error: `Unipile ${unipileRes.status}: ${errBody}` };
+          }
+        } catch (err) {
+          sendResult = { success: false, error: (err as any)?.message || 'Unipile send error' };
+        }
+      } else if (pageAccessToken) {
+        // Standard Graph API path
+        let psid: string | null = null;
+        const orderChatRes = await client.query(
+          `SELECT messenger_psid FROM order_messenger_chats WHERE order_id = $1 AND client_id = $2 LIMIT 1`,
+          [message.order_id, message.client_id]
+        );
+        psid = orderChatRes.rows[0]?.messenger_psid;
+        if (!psid) {
+          const idRes = await client.query(
+            `SELECT messenger_psid FROM customer_messaging_ids WHERE client_id = $1 AND customer_phone = $2`,
+            [message.client_id, message.customer_phone]
+          );
+          psid = idRes.rows[0]?.messenger_psid;
+        }
+        if (psid) {
+          if (message.confirmation_link) {
+            sendResult = await sendMessengerOrderConfirmationDirect(pageAccessToken, psid, {
+              text: String(message.message_content || ''),
+              orderId: Number(message.order_id),
+            });
+          } else {
+            sendResult = await sendMessengerMessageDirect(pageAccessToken, psid, message.message_content);
+          }
+        } else {
+          await client.query(
+            `UPDATE bot_messages SET send_at = NOW() + INTERVAL '5 minutes', error_message = $1, updated_at = NOW() WHERE id = $2`,
+            ['WAITING_FOR_MESSENGER_PSID', message.id]
+          );
+          continue;
+        }
+      } else {
+        await client.query(
+          `UPDATE bot_messages SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
+          ['MISSING_MESSENGER_PAGE_ACCESS_TOKEN', message.id]
+        );
+        continue;
+      }
+    }
 
         // Update message status
         if (sendResult?.success) {

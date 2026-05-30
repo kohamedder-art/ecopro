@@ -77,6 +77,7 @@ import * as platformBillsRoutes from "./routes/platform-bills";
 import deliveryPricesRouter, { getStorefrontDeliveryPrices } from "./routes/delivery-prices";
 import mobileRouter from "./routes/mobile";
 import notificationsRouter from "./routes/notifications";
+import proxyRouter from "./routes/proxy";
 import {
   validate,
   registerValidation,
@@ -491,6 +492,11 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
     // whenever a user has an auth cookie.
     if (p === '/api/telemetry/client-error') return next();
 
+    // Mobile API routes use Bearer token (not cookie) auth, so they're not susceptible to CSRF.
+    // The mobile app doesn't send X-CSRF-Token, but React Native stores cookies set during
+    // login (ecopro_at, ecopro_csrf, etc.), which would trigger the CSRF check and fail.
+    if (p.startsWith('/api/mobile/')) return next();
+
     const hasAuthCookie = Boolean(
       req.cookies?.[ACCESS_COOKIE] ||
         req.cookies?.[REFRESH_COOKIE] ||
@@ -751,6 +757,9 @@ ${urls}
   
   // WhatsApp Cloud API webhook (public for Meta verification)
   app.use('/api/whatsapp', whatsappCloudRouter);
+  
+  // Proxy gateway webhook (for Meta review bypass via Whapi/aggregator)
+  app.use('/api/proxy', proxyRouter);
   
   app.use('/api/telemetry', telemetryRouter);
 
