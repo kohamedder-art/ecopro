@@ -303,11 +303,16 @@ const generateConnectLink: RequestHandler = async (req, res) => {
     if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { provider } = req.body as { provider?: string };
-    const validProviders = ['FACEBOOK_PAGE', 'INSTAGRAM', 'WHATSAPP'];
-    const requested = validProviders.find(
-      p => p === provider?.toUpperCase().replace('MESSENGER', 'FACEBOOK_PAGE')
-    );
-    if (!requested) {
+    const providerMap: Record<string, string> = {
+      FACEBOOK_PAGE: 'MESSENGER',
+      FACEBOOK: 'MESSENGER',
+      MESSENGER: 'MESSENGER',
+      INSTAGRAM: 'INSTAGRAM',
+      WHATSAPP: 'WHATSAPP',
+      TELEGRAM: 'TELEGRAM',
+    };
+    const unipileProvider = providerMap[provider?.toUpperCase() || ''];
+    if (!unipileProvider) {
       return res.status(400).json({
         error: 'Invalid or missing provider. Choose: FACEBOOK_PAGE, INSTAGRAM, or WHATSAPP',
       });
@@ -334,7 +339,7 @@ const generateConnectLink: RequestHandler = async (req, res) => {
       },
       body: JSON.stringify({
         type: 'create',
-        providers: [requested],
+        providers: [unipileProvider],
         api_url: baseUrl,
         expiresOn,
         notify_url: notifyUrl,
