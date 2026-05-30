@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Loader2, AlertTriangle, CheckCircle2, CheckCircle, XCircle, WifiOff, Zap } from "lucide-react";
+import { Loader2, AlertTriangle, CheckCircle2, XCircle, WifiOff, Zap } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -69,11 +69,7 @@ export default function Integrations() {
   const isRTL = locale === 'ar';
   const { toast } = useToast();
   const [params, setParams] = useSearchParams();
-  const [fbConnecting, setFbConnecting] = useState(false);
-  const [fbSavingPage, setFbSavingPage] = useState(false);
-  const [fbPages, setFbPages] = useState<{ id: string; name: string; hasInstagram: boolean }[]>([]);
-  const [fbShowPagePicker, setFbShowPagePicker] = useState(false);
-  const [fbSelectedPageId, setFbSelectedPageId] = useState<string | null>(null);
+  const [proxyConnecting, setProxyConnecting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
@@ -91,43 +87,37 @@ export default function Integrations() {
 
   useEffect(() => {
     const fb = params.get("fb");
-    if (fb === "connected") {
-      toast({ title: isRTL ? "تم الربط بـ Facebook" : "Facebook Connected", description: isRTL ? "تم ربط الصفحة بنجاح" : "Page linked successfully" });
+    if (fb === "connected" || fb === "error") {
+      toast({ title: fb === "connected"
+        ? (isRTL ? "تم الربط بـ Facebook" : "Facebook Connected")
+        : (isRTL ? "فشل الربط" : "Connection Failed"),
+        variant: fb === "error" ? "destructive" : undefined,
+        description: fb === "connected" ? (isRTL ? "تم ربط الصفحة بنجاح" : "Page linked successfully") : undefined,
+      });
       params.delete("fb"); setParams(params, { replace: true }); loadSettings(true);
-    } else if (fb === "select-page") {
-      loadFbPages(); params.delete("fb"); setParams(params, { replace: true });
-    } else if (fb === "error") {
+    }
+    const proxy = params.get("proxy");
+    if (proxy === "connected") {
+      toast({ title: isRTL ? "تم الربط" : "Connected", description: isRTL ? "تم ربط الحساب بنجاح" : "Account linked successfully" });
+      params.delete("proxy"); setParams(params, { replace: true }); loadSettings(true);
+    } else if (proxy === "failed") {
       toast({ title: isRTL ? "فشل الربط" : "Connection Failed", variant: "destructive" });
-      params.delete("fb"); setParams(params, { replace: true });
+      params.delete("proxy"); setParams(params, { replace: true });
     }
   }, [params]);
 
-  async function connectFacebook() {
+  async function connectProxy(provider: string) {
     try {
-      setFbConnecting(true);
-      const data = await apiFetch<{ url: string }>("/api/facebook/auth-url");
+      setProxyConnecting(true);
+      const data = await apiFetch<{ url: string }>("/api/proxy/connect-link", {
+        method: "POST",
+        body: JSON.stringify({ provider }),
+      });
       if (data?.url) window.location.href = data.url;
     } catch {
       toast({ title: isRTL ? "خطأ في الاتصال" : "Connection Error", variant: "destructive" });
-      setFbConnecting(false);
+      setProxyConnecting(false);
     }
-  }
-
-  async function loadFbPages() {
-    try {
-      const data = await apiFetch<{ pages: { id: string; name: string; hasInstagram: boolean }[] }>("/api/facebook/pages");
-      if (data?.pages?.length) { setFbPages(data.pages); setFbShowPagePicker(true); }
-    } catch { toast({ title: isRTL ? "فشل تحميل الصفحات" : "Failed to load pages", variant: "destructive" }); }
-  }
-
-  async function selectFbPage() {
-    if (!fbSelectedPageId) return;
-    try {
-      setFbSavingPage(true);
-      const data = await apiFetch<{ success: boolean; pageName: string }>("/api/facebook/select-page", { method: "POST", body: JSON.stringify({ pageId: fbSelectedPageId }) });
-      if (data?.success) { setFbShowPagePicker(false); setFbPages([]); toast({ title: isRTL ? "تم الربط" : "Connected", description: data.pageName }); loadSettings(true); }
-    } catch { toast({ title: isRTL ? "فشل الحفظ" : "Failed to save page", variant: "destructive" }); }
-    finally { setFbSavingPage(false); }
   }
 
   const loadSettings = async (background = false) => {
@@ -200,22 +190,28 @@ export default function Integrations() {
   }
 
   async function handleDisconnect(platform: Platform) {
-    if (platform === 'facebook' || platform === 'instagram') {
-      setSaving(platform);
-      try {
-        await apiFetch('/api/facebook/disconnect', { method: 'POST' });
-        toast({ title: isRTL ? 'تم إلغاء الربط' : 'Disconnected' });
-        await loadSettings(true);
-      } catch {
-        toast({ title: isRTL ? 'فشل إلغاء الربط' : 'Disconnect failed', variant: 'destructive' });
-      } finally { setSaving(null); }
-      return;
-    }
-    const payload: Record<string, any> = { provider: platform };
-    if (platform === 'telegram') { payload.telegramBotToken = ''; payload.telegramBotUsername = ''; payload.usePlatformTelegram = false; }
-    else if (platform === 'whatsapp_cloud') { payload.whatsappToken = ''; payload.whatsappPhoneId = ''; payload.usePlatformWhatsapp = false; }
-    else if (platform === 'viber') { payload.viberAuthToken = ''; payload.usePlatformViber = false; }
-    saveSettings(payload, platform);
+    setSaving(platform);
+    try {
+      if (platform === 'facebook' || platform === 'instagram') {
+        const r = await fetch('/api/proxy/disconnect', { method: 'POST' });
+        if (r.ok) {
+          toast({ title: isRTL ? 'تم إلغاء الربط' : 'Disconnected' });
+          await loadSettings(true);
+          return;
+        }
+      }
+      // Fallback to settings-based disconnect
+      const payload: Record<string, any> = { provider: platform };
+      if (platform === 'facebook' || platform === 'instagram') {
+        payload.proxyEnabled = false;
+        payload.proxyPageId = null;
+      } else if (platform === 'telegram') { payload.telegramBotToken = ''; payload.telegramBotUsername = ''; payload.usePlatformTelegram = false; }
+      else if (platform === 'whatsapp_cloud') { payload.whatsappToken = ''; payload.whatsappPhoneId = ''; payload.usePlatformWhatsapp = false; }
+      else if (platform === 'viber') { payload.viberAuthToken = ''; payload.usePlatformViber = false; }
+      await saveSettings(payload, platform);
+    } catch {
+      toast({ title: isRTL ? 'فشل إلغاء الربط' : 'Disconnect failed', variant: 'destructive' });
+    } finally { setSaving(null); }
   }
 
   function isUsingPlatform(platform: Platform) {
@@ -368,62 +364,25 @@ export default function Integrations() {
           {/* ── FACEBOOK ── */}
           {activePlatform === 'facebook' && !connected && (
             <div className="space-y-4">
-              <Button onClick={connectFacebook} disabled={fbConnecting}
+              <Button onClick={() => connectProxy('FACEBOOK_PAGE')} disabled={proxyConnecting}
                 className="w-full h-12 rounded-xl font-bold text-white text-base bg-[#1877F2] hover:bg-[#166FE5] shadow gap-2">
-                {fbConnecting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                {proxyConnecting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
                   <svg width="20" height="20" viewBox="0 0 640 640" fill="white"><path d="M240 363.3V576h116V363.3h86.5l18-97.8H356v-34.6c0-51.7 20.3-71.5 72.7-71.5 16.3 0 29.4.4 37 1.2V71.9C451.4 68 416.4 64 396.2 64 289.3 64 240 114.5 240 223.4v42.1h-66v97.8h66z"/></svg>
                 )}
                 {isRTL ? 'الاتصال بـ Facebook' : 'Connect with Facebook'}
               </Button>
-
-              {/* Page Picker */}
-              {fbShowPagePicker && fbPages.length > 0 && (
-                <div className="rounded-xl border-2 border-blue-300 dark:border-blue-700 overflow-hidden">
-                  <div className="px-4 py-3 bg-blue-50/80 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-800">
-                    <p className="text-sm font-bold text-slate-800 dark:text-white">{isRTL ? 'اختر الصفحة' : 'Select a Page'}</p>
-                    <p className="text-xs text-slate-500">{isRTL ? 'اختر الصفحة التي تريد ربطها' : 'Choose which page to connect'}</p>
-                  </div>
-                  <div className="p-3 space-y-2">
-                    {fbPages.map(page => (
-                      <button key={page.id} onClick={() => setFbSelectedPageId(page.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-start ${
-                          fbSelectedPageId === page.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
-                        }`}>
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${fbSelectedPageId === page.id ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
-                          <svg width="16" height="16" viewBox="0 0 640 640" fill="currentColor"><path d="M240 363.3V576h116V363.3h86.5l18-97.8H356v-34.6c0-51.7 20.3-71.5 72.7-71.5 16.3 0 29.4.4 37 1.2V71.9C451.4 68 416.4 64 396.2 64 289.3 64 240 114.5 240 223.4v42.1h-66v97.8h66z"/></svg>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-slate-800 dark:text-white">{page.name}</p>
-                          {page.hasInstagram && <p className="text-[10px] text-pink-500 font-semibold">{isRTL ? '+ Instagram مربوط' : '+ Instagram linked'}</p>}
-                        </div>
-                        {fbSelectedPageId === page.id && <CheckCircle className="w-5 h-5 text-blue-500 shrink-0" />}
-                      </button>
-                    ))}
-                    <Button className="w-full h-10 rounded-xl font-bold mt-1 bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2"
-                      disabled={!fbSelectedPageId || fbSavingPage} onClick={selectFbPage}>
-                      {fbSavingPage ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                      {isRTL ? 'تأكيد الاختيار' : 'Confirm Selection'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
             </div>
           )}
 
           {/* ── INSTAGRAM ── */}
-          {activePlatform === 'instagram' && (
-            <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-              <div>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{isRTL ? 'ربط Instagram عبر Facebook' : 'Connect Instagram via Facebook'}</p>
-                <p className="text-xs text-slate-500">{isRTL ? 'إذا كانت صفحة Facebook مرتبطة بحساب Instagram، سيتم ربطه تلقائياً عند ربط Facebook.' : 'If your Facebook Page is linked to an Instagram Business account, it connects automatically when you connect Facebook.'}</p>
-              </div>
-              <Button onClick={connectFacebook} disabled={fbConnecting}
-                className="w-full h-11 rounded-xl font-bold text-white bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-90 gap-2">
-                {fbConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0 5.838c-2.209 0-4 1.791-4 4s1.791 4 4 4 4-1.791 4-4-1.791-4-4-4zm0 6.162c-1.205 0-2.162-.957-2.162-2.162s.957-2.162 2.162-2.162 2.162.957 2.162 2.162-.957 2.162-2.162 2.162zm5.406-7.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          {activePlatform === 'instagram' && !connected && (
+            <div className="space-y-4">
+              <Button onClick={() => connectProxy('INSTAGRAM')} disabled={proxyConnecting}
+                className="w-full h-12 rounded-xl font-bold text-white bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-90 gap-2">
+                {proxyConnecting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0 5.838c-2.209 0-4 1.791-4 4s1.791 4 4 4 4-1.791 4-4-1.791-4-4-4zm0 6.162c-1.205 0-2.162-.957-2.162-2.162s.957-2.162 2.162-2.162 2.162.957 2.162 2.162-.957 2.162-2.162 2.162zm5.406-7.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
                 )}
-                {isRTL ? 'ربط عبر Facebook' : 'Connect via Facebook'}
+                {isRTL ? 'الاتصال بـ Instagram' : 'Connect Instagram'}
               </Button>
             </div>
           )}
@@ -463,23 +422,12 @@ export default function Integrations() {
           {/* ── WHATSAPP ── */}
           {activePlatform === 'whatsapp_cloud' && !connected && (
             <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{isRTL ? 'بيانات WhatsApp Cloud API' : 'WhatsApp Cloud API Credentials'}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">{t('bot.whatsappPhoneId')}</Label>
-                  <Input className="h-10 rounded-lg" value={settings.whatsappPhoneId || ''} onChange={e => updateSetting('whatsappPhoneId', e.target.value)} placeholder="123456789012345" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">{t('bot.whatsappAccessToken')}</Label>
-                  <Input className="h-10 rounded-lg" type="password" value={settings.whatsappToken || ''} onChange={e => updateSetting('whatsappToken', e.target.value)} placeholder="Paste access token" />
-                  {settings.whatsappTokenConfigured && !settings.whatsappToken?.trim() && <p className="text-[10px] text-slate-400">{t('bot.tokenSavedHidden')}</p>}
-                </div>
-              </div>
-              <Button onClick={() => {
-                if (!settings.whatsappPhoneId?.trim() || !settings.whatsappToken?.trim()) { toast({ title: isRTL ? 'أدخل البيانات' : 'Enter credentials', variant: 'destructive' }); return; }
-                saveSettings({ provider: 'whatsapp_cloud', whatsappPhoneId: settings.whatsappPhoneId, whatsappToken: settings.whatsappToken, usePlatformWhatsapp: false }, 'whatsapp_cloud');
-              }} disabled={saving === 'whatsapp_cloud'} className="h-9 px-5 rounded-lg font-bold bg-[#25D366] hover:bg-[#1fad52] text-white">
-                {saving === 'whatsapp_cloud' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'حفظ' : 'Save'}
+              <Button onClick={() => connectProxy('WHATSAPP')} disabled={proxyConnecting}
+                className="w-full h-11 rounded-xl font-bold text-white bg-[#25D366] hover:bg-[#1fad52] gap-2">
+                {proxyConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                  <svg width="18" height="18" viewBox="0 0 448 512" fill="white"><path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3 18.6-68-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>
+                )}
+                {isRTL ? 'ربط WhatsApp' : 'Connect WhatsApp'}
               </Button>
             </div>
           )}
