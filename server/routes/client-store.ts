@@ -1276,7 +1276,8 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       'magenta-mall', 'berry-market', 'rose-catalog',
       'lime-direct', 'emerald-shop', 'neon-store',
       'clean-single', 'pure-product', 'snow-shop',
-      'gallery-pro', 'showcase-plus', 'exhibit-store'
+      'gallery-pro', 'showcase-plus', 'exhibit-store',
+      'zenith'
     ]);
 
     // If the store currently has a removed/legacy template, migrate it on any save.
