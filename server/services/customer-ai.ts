@@ -26,6 +26,10 @@ import { checkRateLimit, checkGlobalRateLimit, getRateLimitResetTime, RATE_LIMIT
 
 type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 
+// Last search result cache per chat — survives when checkout keywords skip search
+const searchCache = new Map<string, { result: string; timestamp: number }>();
+const SEARCH_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // ═══════════════════════════════════════════════════════════════
 // SYSTEM PROMPT — Short, focused, human, no lists, no emojis
 // ═══════════════════════════════════════════════════════════════
@@ -196,11 +200,23 @@ export async function handleCustomerMessage(
     search = await searchProducts(clientId, msg);
   }
 
+  // Cache the last search result per chat
+  if (search) {
+    searchCache.set(`${clientId}:${platform}:${platformChatId}`, { result: search, timestamp: Date.now() });
+  }
+
   // Context Amnesia Fix: If search is empty but it's a follow-up turn, keep previous context alive
   if (!search && history.length > 0) {
     const lastProduct = extractLastProductFromHistory(history);
     if (lastProduct) {
       search = await searchProducts(clientId, lastProduct);
+    }
+    // Fallback: reuse cached search result from last conversation turn
+    if (!search) {
+      const cached = searchCache.get(`${clientId}:${platform}:${platformChatId}`);
+      if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
+        search = cached.result;
+      }
     }
   }
 
