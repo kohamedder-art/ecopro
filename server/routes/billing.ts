@@ -49,7 +49,7 @@ async function getTrialDaysFromSettings(): Promise<number> {
  */
 export const getPublicBillingInfo: RequestHandler = async (_req, res) => {
   const trialDaysRaw = await getNumberSetting('trial_days', 30);
-  const subscriptionPriceRaw = await getNumberSetting('subscription_price', 2900);
+  const subscriptionPriceRaw = await getNumberSetting('subscription_price', 3500);
 
   const trialDays = Math.max(1, Math.min(365, Math.floor(trialDaysRaw)));
   const subscriptionPrice = Math.max(0, Math.min(999999, subscriptionPriceRaw));

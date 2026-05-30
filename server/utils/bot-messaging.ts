@@ -1094,6 +1094,7 @@ export async function processPendingMessages(): Promise<void> {
             );
             continue;
         }
+        try {
           const baseUrl = proxyBaseUrl.startsWith('http') ? proxyBaseUrl : `https://${proxyBaseUrl}`;
           const formData = new FormData();
           formData.append('text', message.message_content);

@@ -2485,7 +2485,7 @@ export const getGrowthMetrics: RequestHandler = async (_req, res) => {
       SELECT
         COUNT(DISTINCT s.user_id) FILTER (WHERE s.status = 'active')::int AS active_subs,
         COUNT(DISTINCT c.id) FILTER (WHERE c.is_paid_temporarily = true AND c.subscription_extended_until > NOW())::int AS temp_paid,
-        COALESCE((SELECT setting_value::numeric FROM platform_settings WHERE setting_key = 'subscription_price'), 2900) AS sub_price
+        COALESCE((SELECT setting_value::numeric FROM platform_settings WHERE setting_key = 'subscription_price'), 3500) AS sub_price
       FROM subscriptions s
       LEFT JOIN clients c ON c.id = s.user_id
     `);

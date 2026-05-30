@@ -407,7 +407,7 @@ export async function redeemSubscriptionCode(
         [
           userId,
           subscriptionId,
-          2900, // Code value in DZD
+           3500, // Code value in DZD
           code, // Use the redeemed code as transaction_id for traceability
           JSON.stringify({ code_redeemed: code, method: 'voucher_code', duration_days: 30 })
         ]

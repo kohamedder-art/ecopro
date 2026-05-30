@@ -29,10 +29,10 @@ export default function Pricing() {
         if (res && res.trialDays) {
           setPublicBilling(res);
         } else {
-          setPublicBilling({ trialDays: 30, subscriptionPrice: 2900 });
+          setPublicBilling({ trialDays: 30, subscriptionPrice: 3500 });
         }
       } catch {
-        setPublicBilling({ trialDays: 30, subscriptionPrice: 2900 });
+        setPublicBilling({ trialDays: 30, subscriptionPrice: 3500 });
       } finally {
         setLoading(false);
       }
@@ -65,7 +65,7 @@ export default function Pricing() {
   }
 
   const trialDays = publicBilling?.trialDays ?? 30;
-  const price = publicBilling?.subscriptionPrice ?? 2900;
+  const price = publicBilling?.subscriptionPrice ?? 3500;
 
   return (
     <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden relative font-['Noto_Sans_Arabic'] pt-32 pb-16 px-4 md:px-6">

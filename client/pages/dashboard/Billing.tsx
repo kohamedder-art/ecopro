@@ -340,7 +340,7 @@ const AdminBilling = () => {
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">{t('admin.billing.monthlyPrice')}</p>
-            <p className="text-4xl font-black bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">2900 <span className="text-lg">{t('pricing.currency')}</span></p>
+            <p className="text-4xl font-black bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">3500 <span className="text-lg">{t('pricing.currency')}</span></p>
             <p className="text-sm text-muted-foreground mt-0.5">{t('admin.billing.billedMonthly')}</p>
           </div>
           <div className="flex-1 p-3 space-y-1.5 overflow-y-auto">
