@@ -218,36 +218,39 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   if (showStoreGrid) {
     return (
-      <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
+      <div className="min-h-screen font-sans" style={{ backgroundColor: '#f5f5f5', color: textColor }} dir="rtl">
         {/* Header */}
-        <div className="sticky top-0 z-50 backdrop-blur-md px-4 py-4 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
+        <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#fff', borderBottom: '1px solid #f0f0f0' }}>
           <div className="flex items-center gap-2">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover" />}
-            <div className="font-black text-xl tracking-wider" style={{ color: textColor }}>
+            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" />}
+            <div className="font-bold text-base" style={{ color: '#222' }}>
               {storeName}
             </div>
           </div>
-          <span className="text-xs font-bold" style={{ color: textMuted }}>{products?.length} منتج</span>
+          <span className="text-xs" style={{ color: '#999' }}>{products?.length} منتج</span>
         </div>
 
-        {/* Masonry Grid */}
-        <div className="p-3" style={{ columnCount: 2, columnGap: '12px' }}>
+        {/* Temu-style Product Grid */}
+        <div className="grid grid-cols-2 gap-2 p-2">
           {products?.map((product: any, index: number) => {
             const thumb = product.images?.[0] || '';
             const price = product.price || 0;
             const hasVideo = product.metadata?.video_url;
-            // Vary card height based on image aspect or position
-            const isLarge = index % 5 === 0 || hasVideo;
+            const discount = product.original_price && product.original_price > price
+              ? Math.round(((product.original_price - price) / product.original_price) * 100)
+              : 0;
+            const salesCount = product.views || 0;
+            const salesLabel = salesCount >= 1000 ? `${(salesCount / 1000).toFixed(1)}K+` : salesCount > 0 ? `${salesCount}+` : '';
 
             return (
               <button
                 key={product.id}
                 onClick={() => goToProduct(product)}
-                className="break-inside-avoid mb-3 w-full rounded-2xl overflow-hidden text-right transition-all active:scale-[0.97]"
-                style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}
+                className="w-full text-right overflow-hidden"
+                style={{ backgroundColor: '#fff' }}
               >
                 {/* Image / Video */}
-                <div className="relative w-full" style={{ paddingBottom: isLarge ? '130%' : '100%' }}>
+                <div className="relative w-full" style={{ paddingBottom: '100%' }}>
                   {hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
                     <video src={hasVideo} autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" />
                   ) : hasVideo?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
@@ -260,25 +263,57 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       loading="lazy"
                     />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ backgroundColor: surfaceMuted }}>
+                    <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ backgroundColor: '#f5f5f5' }}>
                       📦
                     </div>
                   )}
+                  {/* Discount badge */}
+                  {discount > 0 && (
+                    <div className="absolute top-0 left-0 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: '#ff4d4f' }}>
+                      {discount}% OFF
+                    </div>
+                  )}
+                  {/* Add to cart button */}
+                  <div className="absolute bottom-2 left-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md" style={{ backgroundColor: accentColor }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                      <path d="m1 1 4 0 2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                    </svg>
+                  </div>
                 </div>
 
                 {/* Info */}
-                <div className="p-3">
-                  <h3 className="text-sm font-bold truncate" style={{ color: textColor }}>
+                <div className="p-2">
+                  <h3 className="text-xs font-medium leading-tight mb-1 line-clamp-2" style={{ color: '#222', minHeight: '2.5em' }}>
                     {product.title || product.name || 'منتج'}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm font-black" style={{ color: accentColor }}>
-                      {price} {currency}
+                  {/* Stars */}
+                  <div className="flex items-center gap-0.5 mb-1">
+                    {[1,2,3,4,5].map(i => (
+                      <svg key={i} width="10" height="10" viewBox="0 0 24 24" fill={i <= 4 ? '#ffad33' : '#e0e0e0'}>
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                    ))}
+                    {salesLabel && (
+                      <span className="text-[9px] mr-0.5" style={{ color: '#999' }}>({salesLabel})</span>
+                    )}
+                  </div>
+                  {/* Price */}
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm font-black" style={{ color: '#222' }}>
+                      {price.toLocaleString()}
                     </span>
+                    <span className="text-[10px] font-medium" style={{ color: '#222' }}>{currency}</span>
+                  </div>
+                  {/* Original price + sales */}
+                  <div className="flex items-center gap-1 mt-0.5">
                     {product.original_price && product.original_price > price && (
-                      <span className="text-xs line-through" style={{ color: textMuted }}>
-                        {product.original_price}
+                      <span className="text-[10px] line-through" style={{ color: '#999' }}>
+                        {product.original_price.toLocaleString()}
                       </span>
+                    )}
+                    {salesLabel && (
+                      <span className="text-[9px]" style={{ color: '#999' }}>{salesLabel} sold</span>
                     )}
                   </div>
                 </div>
