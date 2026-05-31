@@ -471,6 +471,32 @@ export function TemplatesTab({ storeSettings, setStoreSettings }: TemplatesTabPr
             </div>
           </div>
         </div>
+        <Button
+          onClick={async () => {
+            try {
+              const res = await fetch('/api/client/store/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                credentials: 'include',
+                body: JSON.stringify({
+                  template_hero_heading: storeSettings.template_hero_heading || null,
+                  template_hero_subtitle: storeSettings.template_hero_subtitle || null,
+                  template_button_text: storeSettings.template_button_text || null,
+                  template_accent_color: storeSettings.template_accent_color || null,
+                }),
+              });
+              if (!res.ok) throw new Error('Save failed');
+              const data = await res.json();
+              setStoreSettings(() => data);
+              queryClient.invalidateQueries({ queryKey: ['storeSettings'] });
+            } catch (e) {
+              console.error('Failed to save template settings:', e);
+            }
+          }}
+          className="w-full h-10 rounded-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+        >
+          {t('common.save') || 'حفظ الإعدادات'}
+        </Button>
       </div>
     </div>
   );

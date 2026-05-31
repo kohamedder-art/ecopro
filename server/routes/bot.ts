@@ -263,13 +263,6 @@ export const getBotSettings: RequestHandler = async (req, res) => {
       platformInstagramAvailable: getPlatformInstagramAvailable(),
       usePlatformInstagram: getPlatformInstagramAvailable(),
       instagramUsingPlatform: getPlatformInstagramAvailable(),
-      // Proxy integration (Meta review bypass)
-      proxyEnabled: !!settings.proxy_enabled,
-      proxyProvider: settings.proxy_provider || '',
-      proxyPageId: settings.proxy_page_id || '',
-      proxyChannelId: settings.proxy_channel_id || '',
-      proxyApiKeyConfigured: !!settings.proxy_api_key,
-      proxyApiKey: '',
       instagramBusinessAccountId: settings.instagram_business_account_id || '',
     };
 
@@ -393,12 +386,6 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
       instagramPageAccessToken,
       deliveryNotificationsEnabled,
       deliveryStatusTemplate,
-      // Proxy integration fields
-      proxyEnabled,
-      proxyProvider,
-      proxyPageId,
-      proxyChannelId,
-      proxyApiKey,
       instagramBusinessAccountId,
     } = req.body;
 
@@ -419,15 +406,10 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     const updatesEnabledSent = 'updatesEnabled' in req.body;
     const trackingEnabledSent = 'trackingEnabled' in req.body;
     const deliveryNotificationsEnabledSent = 'deliveryNotificationsEnabled' in req.body;
-    const proxyApiKeySent = 'proxyApiKey' in req.body;
-    const proxyPageIdSent = 'proxyPageId' in req.body;
-    const proxyEnabledSent = 'proxyEnabled' in req.body;
-
     // Load existing secrets so we can preserve them unless explicitly replaced.
     const existingSecretsRes = await pool.query(
-      `SELECT whatsapp_phone_id, whatsapp_token, telegram_bot_token, telegram_bot_username, fb_page_id, fb_page_access_token,
+      `      SELECT whatsapp_phone_id, whatsapp_token, telegram_bot_token, telegram_bot_username, fb_page_id, fb_page_access_token,
               updates_enabled, tracking_enabled, delivery_notifications_enabled,
-              proxy_enabled, proxy_provider, proxy_page_id, proxy_channel_id, proxy_api_key,
               instagram_business_account_id
        FROM bot_settings WHERE client_id = $1`,
       [clientId]
@@ -502,17 +484,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     }
     // else: keep existing
 
-    // ── Proxy Integration ──
-    const finalProxyEnabled = proxyEnabledSent ? (proxyEnabled ?? false) : (existingSecrets.proxy_enabled ?? false);
-    const finalProxyProvider = proxyProvider ? String(proxyProvider).trim() : (existingSecrets.proxy_provider || null);
-    const finalProxyChannelId = proxyChannelId ? String(proxyChannelId).trim() : (existingSecrets.proxy_channel_id || null);
     const finalInstagramBusinessAccountId = instagramBusinessAccountId ? String(instagramBusinessAccountId).trim() : (existingSecrets.instagram_business_account_id || null);
-
-    // Proxy page ID & API key: only update when explicitly sent (allows clearing)
-    let finalProxyPageId: string | null = existingSecrets.proxy_page_id ?? null;
-    let finalProxyApiKey: string | null = existingSecrets.proxy_api_key ?? null;
-    if (proxyPageIdSent) finalProxyPageId = proxyPageId ? String(proxyPageId).trim() : null;
-    if (proxyApiKeySent) finalProxyApiKey = proxyApiKey ? String(proxyApiKey).trim() : null;
 
     // Only update sub-toggles when explicitly sent; otherwise preserve DB values.
     const effectiveUpdatesEnabled = updatesEnabledSent ? (updatesEnabled ?? false) : (existingSecrets.updates_enabled ?? true);
@@ -549,9 +521,9 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           template_greeting, template_instant_order, template_pin_instructions, template_order_confirmation, template_payment, template_shipping,
           messenger_enabled, fb_page_id, fb_page_access_token, messenger_delay_minutes,
           delivery_notifications_enabled, delivery_status_template,
-          proxy_enabled, proxy_provider, proxy_page_id, proxy_channel_id, proxy_api_key, instagram_business_account_id,
+          instagram_business_account_id,
           created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, NOW(), NOW())`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, NOW(), NOW())`,
         [
           clientId,
           effectiveEnabled,
@@ -580,11 +552,6 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           messengerDelayMinutes ?? 5,
           effectiveDeliveryNotificationsEnabled,
           deliveryStatusTemplate ?? null,
-          finalProxyEnabled,
-          finalProxyProvider,
-          finalProxyPageId,
-          finalProxyChannelId,
-          finalProxyApiKey,
           finalInstagramBusinessAccountId,
         ]
       );
@@ -617,12 +584,7 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           delivery_notifications_enabled = $24,
           delivery_status_template = $25,
           whatsapp_display_phone = $26,
-          proxy_enabled = $27,
-          proxy_provider = $28,
-          proxy_page_id = $29,
-          proxy_channel_id = $30,
-          proxy_api_key = $31,
-          instagram_business_account_id = $32,
+          instagram_business_account_id = $27,
           updated_at = NOW()
         WHERE client_id = $1`,
         [
@@ -652,11 +614,6 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           effectiveDeliveryNotificationsEnabled,
           deliveryStatusTemplate ?? null,
           finalWhatsappDisplayPhone,
-          finalProxyEnabled,
-          finalProxyProvider,
-          finalProxyPageId,
-          finalProxyChannelId,
-          finalProxyApiKey,
           finalInstagramBusinessAccountId,
         ]
       );

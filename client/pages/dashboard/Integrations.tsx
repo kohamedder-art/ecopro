@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Loader2, AlertTriangle, CheckCircle2, XCircle, WifiOff, Zap } from "lucide-react";
+import { Loader2, AlertTriangle, CheckCircle2, XCircle, WifiOff, Zap, Clock } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/api";
+
 
 type Platform = 'facebook' | 'instagram' | 'telegram' | 'whatsapp_cloud' | 'viber';
 
@@ -57,8 +56,8 @@ const ICONS: Record<Platform, () => JSX.Element> = {
 };
 
 const PLATFORM_DEFS: PlatformDef[] = [
-  { value: 'facebook',       label: 'Facebook',  desc: 'Messenger',      bgColor: '#1877F2' },
-  { value: 'instagram',      label: 'Instagram', desc: 'Instagram DMs',  bgColor: '#E4405F' },
+  { value: 'facebook',       label: 'Facebook',  desc: 'Coming Soon',      bgColor: '#1877F2' },
+  { value: 'instagram',      label: 'Instagram', desc: 'Coming Soon',      bgColor: '#E4405F' },
   { value: 'telegram',       label: 'Telegram',  desc: 'Chat Bot',       bgColor: '#08c'    },
   { value: 'whatsapp_cloud', label: 'WhatsApp',  desc: 'Cloud API',      bgColor: '#25D366' },
   { value: 'viber',          label: 'Viber',     desc: 'Coming Soon',    bgColor: '#7360F2' },
@@ -68,8 +67,6 @@ export default function Integrations() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
-  const [params, setParams] = useSearchParams();
-  const [proxyConnecting, setProxyConnecting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
@@ -84,41 +81,6 @@ export default function Integrations() {
   const [settings, setSettings] = useState<BotSettings>({ provider: 'telegram', autoExpireHours: 24 });
 
   useEffect(() => { loadSettings(false); }, []);
-
-  useEffect(() => {
-    const fb = params.get("fb");
-    if (fb === "connected" || fb === "error") {
-      toast({ title: fb === "connected"
-        ? (isRTL ? "تم الربط بـ Facebook" : "Facebook Connected")
-        : (isRTL ? "فشل الربط" : "Connection Failed"),
-        variant: fb === "error" ? "destructive" : undefined,
-        description: fb === "connected" ? (isRTL ? "تم ربط الصفحة بنجاح" : "Page linked successfully") : undefined,
-      });
-      params.delete("fb"); setParams(params, { replace: true }); loadSettings(true);
-    }
-    const proxy = params.get("proxy");
-    if (proxy === "connected") {
-      toast({ title: isRTL ? "تم الربط" : "Connected", description: isRTL ? "تم ربط الحساب بنجاح" : "Account linked successfully" });
-      params.delete("proxy"); setParams(params, { replace: true }); loadSettings(true);
-    } else if (proxy === "failed") {
-      toast({ title: isRTL ? "فشل الربط" : "Connection Failed", variant: "destructive" });
-      params.delete("proxy"); setParams(params, { replace: true });
-    }
-  }, [params]);
-
-  async function connectProxy(provider: string) {
-    try {
-      setProxyConnecting(true);
-      const data = await apiFetch<{ url: string }>("/api/proxy/connect-link", {
-        method: "POST",
-        body: JSON.stringify({ provider }),
-      });
-      if (data?.url) window.location.href = data.url;
-    } catch {
-      toast({ title: isRTL ? "خطأ في الاتصال" : "Connection Error", variant: "destructive" });
-      setProxyConnecting(false);
-    }
-  }
 
   const loadSettings = async (background = false) => {
     if (!background) setLoading(true); else setRefreshing(true);
@@ -221,8 +183,8 @@ export default function Integrations() {
   }
 
   function isConnected(platform: Platform) {
-    if (platform === 'facebook') return !!(settings.fbPageAccessTokenConfigured && !settings.messengerUsingPlatform) || !!(settings.usePlatformMessenger || settings.messengerUsingPlatform);
-    if (platform === 'instagram') return !!(settings.instagramTokenConfigured || settings.usePlatformInstagram);
+    if (platform === 'facebook') return false;
+    if (platform === 'instagram') return false;
     if (platform === 'telegram') return !!(settings.telegramTokenConfigured || settings.telegramUsingPlatform);
     if (platform === 'whatsapp_cloud') return !!settings.whatsappTokenConfigured;
     if (platform === 'viber') return !!settings.viberAuthToken;
@@ -233,7 +195,7 @@ export default function Integrations() {
   const connected = isConnected(activePlatform);
   const usingPlatform = isUsingPlatform(activePlatform);
   const ping = pingState[activePlatform];
-  const isViber = activePlatform === 'viber';
+  const comingSoon = activePlatform === 'facebook' || activePlatform === 'instagram' || activePlatform === 'viber';
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -261,8 +223,8 @@ export default function Integrations() {
         {PLATFORM_DEFS.map(p => {
           const c = isConnected(p.value);
           const active = activePlatform === p.value;
-          const vib = p.value === 'viber';
-          const color = vib ? '#7360F2' : p.bgColor;
+          const soon = p.value === 'facebook' || p.value === 'instagram' || p.value === 'viber';
+          const color = soon ? '#94a3b8' : p.bgColor;
           return (
             <button key={p.value} onClick={() => setActivePlatform(p.value)}
               className={`relative flex flex-col items-center gap-2 py-4 px-2 rounded-2xl border-2 transition-all duration-200 ${
@@ -277,7 +239,7 @@ export default function Integrations() {
               {c && !active && (
                 <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
               )}
-              {vib && !active && (
+              {soon && !active && (
                 <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-black bg-slate-400 text-white px-1.5 py-0.5 rounded-full whitespace-nowrap">{isRTL ? 'قريباً' : 'Soon'}</span>
               )}
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${active ? 'bg-white/20' : ''}`}
@@ -286,8 +248,8 @@ export default function Integrations() {
               </div>
               <div className="text-center">
                 <p className={`text-[11px] font-bold ${active ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{p.label}</p>
-                <p className={`text-[9px] mt-0.5 font-semibold ${active ? 'text-white/70' : c ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                  {vib ? (isRTL ? 'قريباً' : 'Soon') : c ? (isRTL ? 'متصل' : 'Connected') : (isRTL ? 'غير متصل' : 'Not set')}
+                <p className={`text-[9px] mt-0.5 font-semibold ${active ? 'text-white/70' : soon ? 'text-slate-400' : c ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                  {soon ? (isRTL ? 'قريباً' : 'Soon') : c ? (isRTL ? 'متصل' : 'Connected') : (isRTL ? 'غير متصل' : 'Not set')}
                 </p>
               </div>
             </button>
@@ -300,14 +262,14 @@ export default function Integrations() {
 
         {/* Panel Header */}
         <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-100 dark:border-slate-800"
-          style={{ background: `linear-gradient(135deg, ${isViber ? '#7360F2' : plat.bgColor}15 0%, transparent 70%)` }}>
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow" style={{ backgroundColor: isViber ? '#7360F2' : plat.bgColor }}>
+          style={{ background: `linear-gradient(135deg, ${comingSoon ? '#94a3b8' : plat.bgColor}15 0%, transparent 70%)` }}>
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow" style={{ backgroundColor: comingSoon ? '#94a3b8' : plat.bgColor }}>
             <span className="text-white">{ICONS[plat.value]()}</span>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">{plat.label}</h2>
-              {isViber ? <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-500">{isRTL ? 'قريباً' : 'Soon'}</span>
+              {comingSoon ? <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-500">{isRTL ? 'قريباً' : 'Soon'}</span>
               : connected ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />{isRTL ? 'متصل' : 'Connected'}</span>
               : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500"><WifiOff className="w-3 h-3" />{isRTL ? 'غير متصل' : 'Not connected'}</span>}
               {ping === 'ok'   && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-[10px] font-bold text-emerald-600"><CheckCircle2 className="w-3 h-3" />{isRTL ? 'يعمل!' : 'Working!'}</span>}
@@ -317,14 +279,14 @@ export default function Integrations() {
             <p className="text-xs text-slate-400 mt-0.5">{plat.desc}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {connected && !isViber && !usingPlatform && (
+            {connected && !comingSoon && !usingPlatform && (
               <button onClick={() => pingPlatform(activePlatform)} disabled={ping === 'loading'}
                 className="h-8 px-3 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 flex items-center gap-1.5">
                 {ping === 'loading' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                 {isRTL ? 'اختبار' : 'Test'}
               </button>
             )}
-            {connected && !isViber && (
+            {connected && !comingSoon && (
               <button onClick={() => handleDisconnect(activePlatform)} disabled={saving === activePlatform}
                 className="h-8 px-3 rounded-lg text-xs font-semibold text-red-500 border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 flex items-center gap-1.5">
                 {saving === activePlatform ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
@@ -337,7 +299,7 @@ export default function Integrations() {
         <div className="p-6 space-y-5">
 
           {/* Connected state banner */}
-          {!isViber && connected && (
+          {!comingSoon && connected && (
             <div className="flex items-center gap-4 p-4 rounded-xl border" style={{ background: `${plat.bgColor}10`, borderColor: `${plat.bgColor}40` }}>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${plat.bgColor}20` }}>
                 <CheckCircle2 className="w-5 h-5" style={{ color: plat.bgColor }} />
@@ -361,29 +323,16 @@ export default function Integrations() {
             </div>
           )}
 
-          {/* ── FACEBOOK ── */}
-          {activePlatform === 'facebook' && !connected && (
-            <div className="space-y-4">
-              <Button onClick={() => connectProxy('FACEBOOK_PAGE')} disabled={proxyConnecting}
-                className="w-full h-12 rounded-xl font-bold text-white text-base bg-[#1877F2] hover:bg-[#166FE5] shadow gap-2">
-                {proxyConnecting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                  <svg width="20" height="20" viewBox="0 0 640 640" fill="white"><path d="M240 363.3V576h116V363.3h86.5l18-97.8H356v-34.6c0-51.7 20.3-71.5 72.7-71.5 16.3 0 29.4.4 37 1.2V71.9C451.4 68 416.4 64 396.2 64 289.3 64 240 114.5 240 223.4v42.1h-66v97.8h66z"/></svg>
-                )}
-                {isRTL ? 'الاتصال بـ Facebook' : 'Connect with Facebook'}
-              </Button>
-            </div>
-          )}
-
-          {/* ── INSTAGRAM ── */}
-          {activePlatform === 'instagram' && !connected && (
-            <div className="space-y-4">
-              <Button onClick={() => connectProxy('INSTAGRAM')} disabled={proxyConnecting}
-                className="w-full h-12 rounded-xl font-bold text-white bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-90 gap-2">
-                {proxyConnecting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0 5.838c-2.209 0-4 1.791-4 4s1.791 4 4 4 4-1.791 4-4-1.791-4-4-4zm0 6.162c-1.205 0-2.162-.957-2.162-2.162s.957-2.162 2.162-2.162 2.162.957 2.162 2.162-.957 2.162-2.162 2.162zm5.406-7.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-                )}
-                {isRTL ? 'الاتصال بـ Instagram' : 'Connect Instagram'}
-              </Button>
+          {/* ── FACEBOOK / INSTAGRAM / VIBER — Coming Soon ── */}
+          {(activePlatform === 'facebook' || activePlatform === 'instagram' || activePlatform === 'viber') && !connected && (
+            <div className="flex flex-col items-center gap-4 py-10">
+              <Clock className="w-12 h-12 text-slate-300" />
+              <p className="text-sm font-bold text-slate-400">{isRTL ? 'قريباً...' : 'Coming Soon...'}</p>
+              <p className="text-xs text-slate-400 text-center max-w-sm">
+                {isRTL
+                  ? 'هذه المنصة ستكون متاحة قريباً. اشترك في النشرة البريدية ليصلك الإشعار.'
+                  : 'This platform will be available soon. Stay tuned for updates.'}
+              </p>
             </div>
           )}
 
@@ -422,18 +371,34 @@ export default function Integrations() {
           {/* ── WHATSAPP ── */}
           {activePlatform === 'whatsapp_cloud' && !connected && (
             <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-              <Button onClick={() => connectProxy('WHATSAPP')} disabled={proxyConnecting}
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{isRTL ? 'بيانات WhatsApp' : 'WhatsApp Credentials'}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">{isRTL ? 'معرف الهاتف' : 'Phone Number ID'}</Label>
+                  <Input className="h-10 rounded-lg" value={settings.whatsappPhoneId || ''} onChange={e => updateSetting('whatsappPhoneId', e.target.value)} placeholder="123456789" />
+                  {settings.whatsappTokenConfigured && !settings.whatsappPhoneId?.trim() && <p className="text-[10px] text-slate-400">{isRTL ? 'المعرف محفوظ' : 'Saved ID hidden'}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">{isRTL ? 'رمز الوصول' : 'Access Token'}</Label>
+                  <Input className="h-10 rounded-lg" type="password" value={settings.whatsappToken || ''} onChange={e => updateSetting('whatsappToken', e.target.value)} placeholder="EAAB..." />
+                  {settings.whatsappTokenConfigured && !settings.whatsappToken?.trim() && <p className="text-[10px] text-slate-400">{isRTL ? 'الرمز محفوظ' : 'Saved token hidden'}</p>}
+                </div>
+              </div>
+              <Button onClick={() => {
+                if (!settings.whatsappPhoneId?.trim() || !settings.whatsappToken?.trim()) { toast({ title: isRTL ? 'أدخل جميع البيانات' : 'Fill all fields', variant: 'destructive' }); return; }
+                saveSettings({ provider: 'whatsapp_cloud', whatsappPhoneId: settings.whatsappPhoneId, whatsappToken: settings.whatsappToken, usePlatformWhatsapp: false }, 'whatsapp_cloud');
+              }} disabled={saving === 'whatsapp_cloud'}
                 className="w-full h-11 rounded-xl font-bold text-white bg-[#25D366] hover:bg-[#1fad52] gap-2">
-                {proxyConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                {saving === 'whatsapp_cloud' ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                   <svg width="18" height="18" viewBox="0 0 448 512" fill="white"><path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3 18.6-68-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>
                 )}
-                {isRTL ? 'ربط WhatsApp' : 'Connect WhatsApp'}
+                {isRTL ? 'حفظ وإعداد WhatsApp' : 'Save & Connect WhatsApp'}
               </Button>
             </div>
           )}
 
           {/* ── Timing Settings — only when connected ── */}
-          {!isViber && connected && (
+          {!comingSoon && connected && (
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
               <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3">{isRTL ? 'إعدادات الرد' : 'Reply Settings'}</p>
               <div className="flex items-end gap-3">

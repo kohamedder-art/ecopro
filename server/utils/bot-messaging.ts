@@ -1057,70 +1057,13 @@ export async function processPendingMessages(): Promise<void> {
     } else if (message.message_type === 'messenger') {
       // Facebook Messenger handling
       const settingsResult = await client.query(
-        `SELECT fb_page_access_token, proxy_enabled, proxy_provider, proxy_page_id, proxy_api_key, proxy_channel_id
-         FROM bot_settings WHERE client_id = $1`,
+        `SELECT fb_page_access_token FROM bot_settings WHERE client_id = $1`,
         [message.client_id]
       );
       const row = settingsResult.rows[0];
       const pageAccessToken = String(row?.fb_page_access_token || '').trim() || getPlatformFbPageAccessToken();
-      const proxyEnabled = row?.proxy_enabled === true;
-      const proxyPageId = String(row?.proxy_page_id || '').trim();
-      const proxyApiKey = String(row?.proxy_api_key || '').trim();
-      const proxyChannelId = String(row?.proxy_channel_id || '').trim();
 
-      // When proxy is enabled, use Unipile API instead of Graph API
-      if (proxyEnabled && proxyPageId && proxyApiKey) {
-        // Look up Unipile chat_id from messenger_subscribers
-        let unipileChatId: string | null = null;
-        const chatRes = await client.query(
-          `SELECT unipile_chat_id FROM messenger_subscribers WHERE client_id = $1 AND customer_phone = $2 AND unipile_chat_id IS NOT NULL LIMIT 1`,
-          [message.client_id, message.customer_phone]
-        );
-        unipileChatId = chatRes.rows[0]?.unipile_chat_id || null;
-
-        if (!unipileChatId) {
-          // No chat mapping yet — customer hasn't messaged the store through Unipile
-          await client.query(
-            `UPDATE bot_messages SET send_at = NOW() + INTERVAL '5 minutes', error_message = $1, updated_at = NOW() WHERE id = $2`,
-            ['WAITING_FOR_UNIPILE_CHAT', message.id]
-          );
-          continue;
-        }
-
-        const proxyBaseUrl = String(process.env.PROXY_BASE_URL || '').trim();
-        if (!proxyBaseUrl) {
-            await markFailed(client, message.id,
-                ['PROXY_NOT_CONFIGURED', message.id]
-            );
-            continue;
-        }
-        try {
-          const baseUrl = proxyBaseUrl.startsWith('http') ? proxyBaseUrl : `https://${proxyBaseUrl}`;
-          const formData = new FormData();
-          formData.append('text', message.message_content);
-
-          const unipileRes = await fetch(
-            `${baseUrl}/api/v1/chats/${encodeURIComponent(unipileChatId)}/messages`,
-            {
-              method: 'POST',
-              headers: {
-                'X-API-KEY': proxyApiKey,
-                'accept': 'application/json',
-              },
-              body: formData,
-            },
-          );
-
-          if (unipileRes.ok) {
-            sendResult = { success: true };
-          } else {
-            const errBody = await unipileRes.text();
-            sendResult = { success: false, error: `Unipile ${unipileRes.status}: ${errBody}` };
-          }
-        } catch (err) {
-          sendResult = { success: false, error: (err as any)?.message || 'Unipile send error' };
-        }
-      } else if (pageAccessToken) {
+      if (pageAccessToken) {
         // Standard Graph API path
         let psid: string | null = null;
         const orderChatRes = await client.query(

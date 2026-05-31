@@ -77,7 +77,6 @@ import * as platformBillsRoutes from "./routes/platform-bills";
 import deliveryPricesRouter, { getStorefrontDeliveryPrices } from "./routes/delivery-prices";
 import mobileRouter from "./routes/mobile";
 import notificationsRouter from "./routes/notifications";
-import proxyRouter from "./routes/proxy";
 import {
   validate,
   registerValidation,
@@ -758,8 +757,6 @@ ${urls}
   // WhatsApp Cloud API webhook (public for Meta verification)
   app.use('/api/whatsapp', whatsappCloudRouter);
   
-  // Proxy gateway webhook (for Meta review bypass via Whapi/aggregator)
-  app.use('/api/proxy', proxyRouter);
   
   app.use('/api/telemetry', telemetryRouter);
 
