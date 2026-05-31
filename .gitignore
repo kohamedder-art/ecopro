@@ -118,3 +118,17 @@ VOUCHER_CODE_TESTING_GUIDE.md
 
 # Uploaded assets (generated at runtime)
 public/uploads/
+
+# Test artifacts
+browser_automation_env/
+*_screenshots/
+*_test_screenshots/
+*.py
+!server/**/*.py
+!client/**/*.py
+test_*.html
+platform_test_screenshots/
+deep_test_screenshots/
+full_test_screenshots/
+full_journey_screenshots/
+systematic_test_screenshots/
