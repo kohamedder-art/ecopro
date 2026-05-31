@@ -1,0 +1,274 @@
+[
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 1: AUTH ═══"
+  },
+  {
+    "level": "INFO",
+    "msg": "After signup URL: https://www.sahla4eco.com/dashboard"
+  },
+  {
+    "level": "INFO",
+    "msg": "Final auth URL: https://www.sahla4eco.com/dashboard"
+  },
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 2: SIDEBAR NAVIGATION ═══"
+  },
+  {
+    "level": "INFO",
+    "msg": "Found 26 sidebar links"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Navigated: 'SAHLA4ECO' → https://www.sahla4eco.com/"
+  },
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 3: STORE CRUD ═══"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Dialog opened — filling fields..."
+  },
+  {
+    "level": "INFO",
+    "msg": "  Filled 3 inputs in [product_dialog]"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Filled product name"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Clicked [product_dialog]: 'المنتج'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Clicked [product_dialog]: 'السعر والمخزون'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Clicked [product_dialog]: 'الأنواع'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Clicked [product_dialog]: 'العروض الخاصة'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Clicked [product_dialog]: 'الحالة'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Total clicked in [product_dialog]: 5"
+  },
+  {
+    "level": "INFO",
+    "msg": "  ⚠️ Save button not found or disabled"
+  },
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 4: ORDERS DEEP ═══"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 4 filter tabs"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Clicked tab: '0'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Clicked tab: '0'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Clicked tab: '0'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Clicked tab: '0'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  ✅ Search filled"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Testing Add Order form..."
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 8 form fields"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Submit button found and enabled"
+  },
+  {
+    "level": "INFO",
+    "msg": "  ⏸️ Skipping actual submit to avoid test data"
+  },
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 5: DELIVERY DEEP ═══"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 0 selectors"
+  },
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 6: BOT/INTEGRATIONS/AI DEEP ═══"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Bot settings: 0 input fields"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Filled 0 inputs in [bot_settings]"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 5 platform cards"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Switched to: 'Facebook\n\nغير متصل'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Switched to: 'Instagram\n\nغير متصل'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Switched to: 'Telegram\n\nمتصل'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Switched to: 'WhatsApp\n\nغير متصل'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Switched to: 'قريباً\n\nViber\n\nقريباً'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 0 connect buttons"
+  },
+  {
+    "level": "INFO",
+    "msg": "  AI settings: 1 input fields"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 8 toggle switches"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Toggle: 'toggle'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Toggle: 'toggle'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Toggle: 'toggle'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Toggle: 'toggle'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Toggle: 'toggle'"
+  },
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 7: STAFF DEEP ═══"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Filled 2 inputs in [add_staff]"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 32 permission checkboxes"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 0 staff rows"
+  },
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 8: BILLING + PROFILE DEEP ═══"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Billing button: '🇩🇿'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Billing button: 'متجر اختبار عميق'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Billing button: 'اختر المظهر'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Billing button: 'تحديث'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Billing button: 'تواصل مع الدعم للدفع'"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Profile: 11 input fields"
+  },
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 9: TEMPLATE EDITOR ═══"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 9 template cards"
+  },
+  {
+    "level": "INFO",
+    "msg": "  Found 19 buttons in editor"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Editor button: 'رجوع (العودة إلى لوح'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Editor button: 'نشر التغييرات'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Editor button: 'المظهر'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Editor button: 'الأصول'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Editor button: 'التخطيط'"
+  },
+  {
+    "level": "INFO",
+    "msg": "    Editor button: 'تطبيق الإطار — بوتيك'"
+  },
+  {
+    "level": "INFO",
+    "msg": "\n═══ PHASE 10: MOBILE DEEP ═══"
+  }
+]

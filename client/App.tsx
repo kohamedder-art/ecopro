@@ -59,7 +59,6 @@ const AlertsPage = lazy(() => import("./pages/dashboard/Alerts"));
 const StaffManagement = lazy(() => import("./pages/dashboard/StaffManagement"));
 
 // ── Dashboard sub-pages ──
-const AddOrder = lazy(() => import("./pages/dashboard/orders/AddOrder"));
 const ChatOrders = lazy(() => import("./pages/dashboard/orders/ChatOrders"));
 const DeliveryCompanies = lazy(() => import("./pages/dashboard/delivery/DeliveryCompanies"));
 const DeliveryPricing = lazy(() => import("./pages/dashboard/delivery/DeliveryPricing"));
@@ -520,7 +519,6 @@ const App = () => (
                     <Route path="alerts" element={<AlertsPage />} />
                     {/* Orders submenu routes */}
                     <Route path="orders" element={<SubscriptionPageLock><AdminOrders /></SubscriptionPageLock>} />
-                    <Route path="orders/add" element={<SubscriptionPageLock><AddOrder /></SubscriptionPageLock>} />
                     <Route path="orders/chat" element={<SubscriptionPageLock><ChatOrders /></SubscriptionPageLock>} />
                     <Route path="tracking" element={<OrderTracking />} />
                     {/* Products management moved to Store page */}
