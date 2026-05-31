@@ -1269,6 +1269,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       'pro-aurora', 'pro-vertex', 'pro-atelier', 'pro-orbit', 'pro-zen',
       'pro-studio', 'pro-mosaic', 'pro-grid', 'pro-catalog',
       'dzshop', 'dzpremium', 'luxedrop', 'needdz',
+      'boutique', 'iyco', 'primo', 'spiriluxe', 'leroishop',
       'dzshop', 'dzpremium',
       // Screenshot-inspired templates
       'sage-boutique', 'mint-elegance', 'forest-store',
