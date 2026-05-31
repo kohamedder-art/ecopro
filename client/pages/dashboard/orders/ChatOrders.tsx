@@ -757,7 +757,7 @@ export default function ChatOrders() {
 
                                 <div className="flex flex-col gap-1">
                                   <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">تفاصيل المبلغ</span>
-                                  <span className="text-xs text-muted-foreground">سعر الوحدة: <strong className="text-foreground">{fmtPrice(Number(o.unit_price))} دج</strong></span>
+                                  <span className="text-xs text-muted-foreground">{fmtPrice(Number(o.unit_price))} دج × <strong className="text-foreground">{o.quantity}</strong></span>
                                   <span className="text-xs text-muted-foreground">رسوم التوصيل: <strong className="text-foreground">{fmtPrice(Number(o.delivery_fee))} دج</strong></span>
                                   <span className="text-xs font-black text-amber-600">الإجمالي: {fmtPrice(Number(o.total_price))} دج</span>
                                 </div>
