@@ -1772,6 +1772,14 @@ export default function GoldTemplateEditor() {
                           <Input value={settings.store_name || ''} onChange={(e) => handleSettingChange('store_name', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 rounded-xl h-10" placeholder="My Awesome Store" />
                         </div>
                         <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">الرابط المختصر / Subdomain</label>
+                          <div className="flex items-center gap-1.5">
+                            <Input value={settings.subdomain || ''} onChange={(e) => handleSettingChange('subdomain', e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase())} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 rounded-xl h-10 font-mono text-sm ltr" placeholder="mystore" dir="ltr" />
+                            <span className="text-xs text-slate-400 font-mono shrink-0">.sahla4eco.com</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500">أحرف إنجليزية وأرقام فقط. الرابط يصبح mystore.sahla4eco.com</p>
+                        </div>
+                        <div className="space-y-1.5">
                           <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.heroTitle')}</label>
                           <Input value={settings.template_hero_heading || ''} onChange={(e) => handleSettingChange('template_hero_heading', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 rounded-xl h-10" placeholder="توصيل 58 ولاية" dir="rtl" />
                         </div>
@@ -2209,6 +2217,14 @@ export default function GoldTemplateEditor() {
                         <div className="space-y-2">
                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.storeName')}</label>
                            <Input value={settings.store_name || ''} onChange={(e) => handleSettingChange('store_name', e.target.value)} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl focus-visible:ring-indigo-500" placeholder="My Awesome Store" />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">الرابط المختصر / Subdomain</label>
+                           <div className="flex items-center gap-1.5">
+                             <Input value={settings.subdomain || ''} onChange={(e) => handleSettingChange('subdomain', e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase())} className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 text-slate-900 dark:text-white rounded-xl focus-visible:ring-indigo-500 font-mono text-sm ltr" placeholder="mystore" dir="ltr" />
+                             <span className="text-xs text-slate-400 font-mono shrink-0">.sahla4eco.com</span>
+                           </div>
+                           <p className="text-[10px] text-slate-400 dark:text-slate-500">أحرف إنجليزية وأرقام فقط. الرابط يصبح mystore.sahla4eco.com</p>
                         </div>
                         <div className="space-y-2">
                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('editor.heroTitle')}</label>

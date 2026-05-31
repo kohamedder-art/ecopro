@@ -3,9 +3,11 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, XCircle, Edit2 } from "lucide-react";
 import { useTranslation } from '@/lib/i18n';
+import { getResolvedStoreSlug } from '@/lib/resolvedStore';
 
 export default function OrderConfirmation() {
-  const { storeSlug, orderId } = useParams<{ storeSlug: string; orderId: string }>();
+  const { storeSlug: urlSlug, orderId } = useParams<{ storeSlug: string; orderId: string }>();
+  const storeSlug = urlSlug || getResolvedStoreSlug() || '';
   const navigate = useNavigate();
   const location = useLocation();
   const { t, locale, setLocale } = useTranslation();

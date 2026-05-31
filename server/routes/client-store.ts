@@ -952,6 +952,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       'template_button_text',
       'template_accent_color',
       'template_bg_color',
+      'subdomain',
       'seller_name',
       'seller_email',
     ]);
@@ -992,6 +993,23 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       ));
     }
     const existingRow = existingRes.rows[0];
+
+    // Validate subdomain if provided
+    if (updates.subdomain !== undefined && updates.subdomain !== null) {
+      const sd = String(updates.subdomain).trim().toLowerCase();
+      if (sd === '') {
+        updates.subdomain = null;
+      } else {
+        if (!/^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/.test(sd)) {
+          return res.status(400).json({ error: 'Subdomain must be 2-50 characters, lowercase letters, numbers, and hyphens only. Cannot start or end with a hyphen.' });
+        }
+        const reserved = new Set(['www', 'api', 'admin', 'mail', 'ftp', 'app', 'store', 'dev', 'test', 'blog', 'shop', 'help', 'support', 'status', 'webmail', 'smtp', 'imap', 'pop', 'm', 'dashboard', 'docs', 'wiki', 'forum', 'cdn', 'static', 'assets', 'img', 'images', 'upload', 'uploads', 'files', 'media', 'video', 'videos', 'player', 'stream', 'live', 'tv', 'radio', 'news', 'info', 'legal', 'terms', 'privacy', 'security', 'login', 'signup', 'register', 'auth', 'oauth', 'api', 'graphql', 'socket', 'ws', 'wss', 'chat', 'mail', 'email', 'webmail', 'calendar', 'drive', 'docs', 'sheets', 'slides', 'meet', 'zoom', 'team', 'teams', 'community', 'podcast', 'music', 'event', 'events', 'ticket', 'tickets', 'payment', 'pay', 'billing', 'invoice', 'invoices', 'subscription', 'subscriptions', 'checkout', 'cart', 'shop', 'order', 'orders', 'track', 'tracking', 'support', 'help', 'faq', 'knowledgebase', 'kb']);
+        if (reserved.has(sd)) {
+          return res.status(400).json({ error: `"${sd}" is a reserved subdomain. Please choose a different one.` });
+        }
+        updates.subdomain = sd;
+      }
+    }
 
     // Detect available columns (cached to avoid slow information_schema queries)
     const existingCols = await getStoreSettingsColumns(await ensureConnection());
@@ -1086,6 +1104,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       'template_custom_css', 'template_social_links', 'template_nav_links',
       // Product card settings
       'template_add_to_cart_label',
+      'subdomain',
       // allow older/client payloads to include seller fields without failing
       'seller_name', 'seller_email'
     ].filter((col) => existingCols.has(col)));
@@ -1427,6 +1446,13 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       invalidateStorefrontSettingsCache(merged.store_slug);
     } else {
       invalidateAllStorefrontSettingsCache();
+    }
+    // Invalidate subdomain cache if subdomain changed
+    if (updates.subdomain !== undefined) {
+      try {
+        const { invalidateSubdomainCache } = await import('./subdomain-resolver');
+        invalidateSubdomainCache(String(updates.subdomain));
+      } catch {}
     }
     // Also update cache with new data
     setCachedSettings(clientId, merged);

@@ -460,12 +460,17 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               {collectionProducts.map(product => (
                 <div key={product.id} className="group cursor-pointer rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor }} onClick={() => { setDetailProduct(product); onProductView?.(product); }}>
                   <div className="relative aspect-[4/5] overflow-hidden">
-                    <img
-                      src={product.images?.[0] || ''}
-                      alt={product.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      loading="lazy"
-                    />
+                    {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
+                      ? <video src={(product as any).metadata.video_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                      : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+                        ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                        : <img
+                            src={product.images?.[0] || ''}
+                            alt={product.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            loading="lazy"
+                          />
+                    }
                     {(product as any).original_price && (product as any).original_price > product.price && (
                       <div className="absolute top-2 right-2 text-white text-[9px] font-black px-2 py-0.5 rounded-full" style={{ backgroundColor: accentColor }}>
                         -{Math.round((1 - product.price / (product as any).original_price) * 100)}%

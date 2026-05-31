@@ -784,12 +784,17 @@ export default function IycoTemplate({
                   onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 >
                   <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3" style={{ backgroundColor: surfaceMuted }}>
-                    <img
-                      src={prod.images?.[0] || '/placeholder.png'}
-                      alt={prod.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
+                    {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
+                      ? <video src={(prod as any).metadata.video_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                      : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+                        ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                        : <img
+                            src={prod.images?.[0] || '/placeholder.png'}
+                            alt={prod.title}
+                            loading="lazy"
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          />
+                    }
                     {prod.original_price && (
                       <div className="absolute top-2 right-2 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded shadow-sm" style={{ backgroundColor: surfaceColor + 'e6', color: textColor }}>
                         تخفيض

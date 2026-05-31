@@ -12,6 +12,7 @@ import StorefrontChatBubble from '@/components/storefront/StorefrontChatBubble';
 import { setWindowTemplateSettings } from '@/lib/templateWindow';
 import { formatMoney } from '@/utils/money';
 import { STOREFRONT_SETTINGS_KEY, STOREFRONT_TEMPLATE_KEY } from '@/lib/storefrontStorage';
+import { getResolvedStoreSlug } from '@/lib/resolvedStore';
 
 interface StoreProduct {
   id: number;
@@ -42,7 +43,7 @@ export default function Storefront() {
   const { t } = useTranslation();
   // Support both new (:storeSlug) and legacy (:clientId) route params
   const params = useParams();
-  const storeSlug = (params as any).storeSlug || (params as any).clientId;
+  const storeSlug = (params as any).storeSlug || (params as any).clientId || getResolvedStoreSlug() || '';
   const initialProductSlug = (params as any).productSlug;
   const navigate = useNavigate();
   const location = useLocation();

@@ -439,6 +439,10 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
     })
   );
 
+  // Subdomain resolver: detect *.sahla4eco.com and resolve to store slug
+  const { subdomainResolver, resolveSubdomainApi } = await import('./routes/subdomain-resolver');
+  app.use(subdomainResolver);
+
   // Cookies (required for HttpOnly cookie auth + CSRF)
   app.use(cookieParser());
 
@@ -1715,6 +1719,9 @@ ${urls}
   // Store Slug Management (authenticated store owners)
   app.use('/api/store/slug', authenticate, requireClient, storeSlugRouter);
 
+  // Subdomain resolution API (public - resolves current subdomain to store data)
+  app.get('/api/resolve-subdomain', resolveSubdomainApi);
+
   // Mobile app API (authenticated clients)
   app.use('/api/mobile', authenticate, requireClient, mobileRouter);
 
@@ -1830,16 +1837,17 @@ ${urls}
               : html;
             let withMeta = withBuild;
 
-            // Inject dynamic meta tags for store pages so crawlers see real titles
+            // Inject dynamic meta tags for store pages (from URL slug or subdomain resolution)
             const storeMatch = req.path.match(/^\/store\/([^/]+)/);
-            if (storeMatch) {
+            const resolvedSlug = (req as any).storeSlug;
+            const targetSlug = storeMatch ? storeMatch[1] : resolvedSlug;
+            if (targetSlug) {
               try {
                 const { ensureConnection: getPool } = await import('./utils/database');
                 const dbPool = await getPool();
-                const storeSlug = storeMatch[1];
                 const storeRes = await dbPool.query(
                   `SELECT store_name, seo_description FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
-                  [storeSlug]
+                  [targetSlug]
                 );
                 const store = storeRes.rows[0];
                 if (store?.store_name) {
@@ -1855,6 +1863,12 @@ ${urls}
                     .replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${storeUrl}" />`);
                 }
               } catch { /* ignore — serve default meta */ }
+            }
+
+            // Inject store slug for subdomain-based SPA access so client can read it without an API call
+            if (resolvedSlug) {
+              const slugJson = JSON.stringify(resolvedSlug);
+              withMeta = withMeta.replace('</head>', `<script>window.__STORE_SLUG=${slugJson}</script></head>`);
             }
 
             const injected = nonce

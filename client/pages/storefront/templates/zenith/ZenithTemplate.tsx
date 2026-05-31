@@ -246,9 +246,13 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                 className="break-inside-avoid mb-3 w-full rounded-2xl overflow-hidden text-right transition-all active:scale-[0.97]"
                 style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}
               >
-                {/* Image */}
+                {/* Image / Video */}
                 <div className="relative w-full" style={{ paddingBottom: isLarge ? '130%' : '100%' }}>
-                  {thumb ? (
+                  {hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
+                    <video src={hasVideo} autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" />
+                  ) : hasVideo?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
+                    <iframe className="absolute inset-0 w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                  ) : thumb ? (
                     <img
                       src={thumb}
                       alt={product.title || ''}
@@ -258,13 +262,6 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ backgroundColor: surfaceMuted }}>
                       📦
-                    </div>
-                  )}
-                  {hasVideo && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                      <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                        <span className="text-xl ml-[-2px]">▶</span>
-                      </div>
                     </div>
                   )}
                 </div>
