@@ -4,6 +4,7 @@ import {
   X, Copy, Check, Download, ChevronRight, Phone, MapPin,
   Send, Truck, CheckCircle, XCircle, Clock, Package,
   AlertTriangle, ChevronDown, MessageCircle, Edit3, Save, Loader2,
+  Undo2, PhoneOff, Calendar,
 } from "lucide-react";
 import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -45,14 +46,24 @@ const PLATFORM_META: Record<string, { label: string; emoji: string; color: strin
 
 // ─── Status config (mirrors Orders page built-ins) ────────────────────────────
 const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
-  pending:    { label: "قيد الانتظار",  color: "#eab308", icon: "●"  },
-  confirmed:  { label: "مؤكد",          color: "#22c55e", icon: "✓"  },
-  processing: { label: "قيد التجهيز",   color: "#3b82f6", icon: "◐"  },
-  shipped:    { label: "تم الشحن",      color: "#8b5cf6", icon: "📦" },
-  delivered:  { label: "تم التسليم",    color: "#10b981", icon: "✓"  },
-  cancelled:  { label: "ملغى",          color: "#ef4444", icon: "✕"  },
-  duplicate:  { label: "مكرر",          color: "#9ca3af", icon: "📋" },
-  fake:       { label: "مشبوه",         color: "#dc2626", icon: "⚠️" },
+  pending:          { label: "قيد الانتظار",  color: "#eab308", icon: "●"  },
+  confirmed:        { label: "مؤكد",          color: "#22c55e", icon: "✓"  },
+  processing:       { label: "قيد التجهيز",   color: "#3b82f6", icon: "◐"  },
+  shipped:          { label: "تم الشحن",      color: "#8b5cf6", icon: "📦" },
+  at_delivery:      { label: "قيد التوصيل",   color: "#f97316", icon: "🚚" },
+  delivered:        { label: "تم التسليم",    color: "#10b981", icon: "✓"  },
+  completed:        { label: "مكتمل",         color: "#059669", icon: "✓"  },
+  failed:           { label: "فشل",           color: "#dc2626", icon: "✕"  },
+  cancelled:        { label: "ملغى",          color: "#ef4444", icon: "✕"  },
+  returned:         { label: "مرتجع",         color: "#f97316", icon: "↩️" },
+  duplicate:        { label: "مكرر",          color: "#9ca3af", icon: "📋" },
+  fake:             { label: "مشبوه",         color: "#dc2626", icon: "⚠️" },
+  no_answer_1:      { label: "لا رد 1",       color: "#6b7280", icon: "📞" },
+  no_answer_2:      { label: "لا رد 2",       color: "#6b7280", icon: "📞" },
+  no_answer_3:      { label: "لا رد 3",       color: "#6b7280", icon: "📞" },
+  waiting_callback: { label: "بانتظار الاتصال", color: "#a855f7", icon: "⏳" },
+  postponed:        { label: "مؤجل",          color: "#f59e0b", icon: "📅" },
+  line_closed:      { label: "الخط مغلق",     color: "#6b7280", icon: "🔇" },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -101,13 +112,23 @@ function exportCSV(rows: ChatOrder[]) {
 
 // ─── Status update options ─────────────────────────────────────────────────────
 const STATUS_OPTIONS = [
-  { value: "pending",    label: "قيد الانتظار",  icon: <Clock className="w-3 h-3" />,        color: "#eab308" },
-  { value: "confirmed",  label: "مؤكد",           icon: <CheckCircle className="w-3 h-3" />,   color: "#22c55e" },
-  { value: "processing", label: "قيد التجهيز",    icon: <Package className="w-3 h-3" />,       color: "#3b82f6" },
-  { value: "shipped",    label: "تم الشحن",       icon: <Truck className="w-3 h-3" />,         color: "#8b5cf6" },
-  { value: "delivered",  label: "تم التسليم",     icon: <CheckCircle className="w-3 h-3" />,   color: "#10b981" },
-  { value: "cancelled",  label: "ملغى",           icon: <XCircle className="w-3 h-3" />,       color: "#ef4444" },
-  { value: "fake",       label: "مشبوه",          icon: <AlertTriangle className="w-3 h-3" />, color: "#dc2626" },
+  { value: "pending",          label: "قيد الانتظار",    icon: <Clock className="w-3 h-3" />,          color: "#eab308" },
+  { value: "confirmed",        label: "مؤكد",            icon: <CheckCircle className="w-3 h-3" />,     color: "#22c55e" },
+  { value: "processing",       label: "قيد التجهيز",     icon: <Package className="w-3 h-3" />,         color: "#3b82f6" },
+  { value: "shipped",          label: "تم الشحن",        icon: <Truck className="w-3 h-3" />,           color: "#8b5cf6" },
+  { value: "at_delivery",      label: "قيد التوصيل",     icon: <Truck className="w-3 h-3" />,           color: "#f97316" },
+  { value: "delivered",        label: "تم التسليم",      icon: <CheckCircle className="w-3 h-3" />,     color: "#10b981" },
+  { value: "completed",        label: "مكتمل",           icon: <CheckCircle className="w-3 h-3" />,     color: "#059669" },
+  { value: "failed",           label: "فشل",             icon: <XCircle className="w-3 h-3" />,         color: "#dc2626" },
+  { value: "returned",         label: "مرتجع",           icon: <Undo2 className="w-3 h-3" />,          color: "#f97316" },
+  { value: "cancelled",        label: "ملغى",            icon: <XCircle className="w-3 h-3" />,         color: "#ef4444" },
+  { value: "fake",             label: "مشبوه",           icon: <AlertTriangle className="w-3 h-3" />,   color: "#dc2626" },
+  { value: "no_answer_1",      label: "لا رد 1",         icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
+  { value: "no_answer_2",      label: "لا رد 2",         icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
+  { value: "no_answer_3",      label: "لا رد 3",         icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
+  { value: "postponed",        label: "مؤجل",            icon: <Calendar className="w-3 h-3" />,        color: "#f59e0b" },
+  { value: "waiting_callback", label: "بانتظار الاتصال", icon: <Phone className="w-3 h-3" />,           color: "#a855f7" },
+  { value: "line_closed",      label: "الخط مغلق",       icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
