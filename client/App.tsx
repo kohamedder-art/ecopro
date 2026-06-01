@@ -9,6 +9,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { getCurrentUser, removeAuthToken, syncAuthState, startAutoRefresh } from "@/lib/auth";
 import Layout from "@/components/layout/Layout";
 import React, { Suspense, lazy } from "react";
+import { isSubdomainStore } from "@/lib/resolvedStore";
 
 // Lazy load ALL pages — keep main bundle minimal
 // ── Landing ──
@@ -78,20 +79,6 @@ const MyStoreIndex = lazy(() => import("./pages/my-store/Index"));
 const MyStoreTemplateEditor = lazy(() => import("./pages/my-store/TemplateEditor"));
 const MyStoreStorefront = lazy(() => import("./pages/my-store/StorefrontPreview"));
 const GoldTemplateEditor = lazy(() => import("./pages/GoldTemplateEditor"));
-
-// Subdomain-aware routing: when the app is loaded via a store subdomain
-// (e.g. matjari.sahla4eco.com), window.__STORE_SLUG is injected by the server.
-// We use a different route tree so URLs are clean: /, /:productSlug, /checkout/:productSlug, etc.
-import { isSubdomainStore } from "./lib/resolvedStore";
-
-function RootRoute() {
-  // On a store subdomain, render the storefront at the root.
-  // On the main platform domain, render the landing page.
-  if (isSubdomainStore()) {
-    return <Storefront />;
-  }
-  return <Index />;
-}
 
 function SubdomainProductRoute() {
   // Reads :productSlug from the URL and renders the storefront with that product pre-selected.
