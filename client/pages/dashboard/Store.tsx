@@ -600,7 +600,7 @@ export default function Store() {
               const res = await fetch(`/api/client/store/products/${product.id}/share-link`);
               if (res.ok) {
                 const data = await res.json();
-                const link = `${window.location.origin}/store/${data.store_slug}/${data.slug}`;
+                const link = data.shareLink || `${window.location.origin}/store/${data.store_slug}/${data.slug}`;
                 setShareLink(link);
                 setSelectedProduct(product);
                 setShowShareModal(true);

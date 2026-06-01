@@ -1814,14 +1814,15 @@ export const getProductShareLink: RequestHandler = async (req, res) => {
       await pool.query(`UPDATE client_store_products SET slug = $1 WHERE id = $2`, [slug, id]);
     }
 
-    // Fetch store slug to build human-friendly URL
+    // Fetch store slug + subdomain to build human-friendly URL
     const settingsRes = await pool.query(
-      `SELECT store_slug FROM client_store_settings WHERE client_id = $1`,
+      `SELECT store_slug, subdomain FROM client_store_settings WHERE client_id = $1`,
       [clientId]
     );
     const storeSlug = settingsRes.rows[0]?.store_slug || clientId;
-    const baseUrl = getPublicBaseUrl(req);
-    const shareLink = `${baseUrl}/store/${storeSlug}/${slug}`;
+    const subdomain = settingsRes.rows[0]?.subdomain || null;
+    const { getStoreFullUrl } = await import('../utils/store-url');
+    const shareLink = getStoreFullUrl(subdomain, storeSlug, `/${slug}`);
 
     res.json({ shareLink, slug, store_slug: storeSlug });
   } catch (error) {

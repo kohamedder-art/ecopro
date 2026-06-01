@@ -1663,7 +1663,7 @@ export default function GoldTemplateEditor() {
           <span className="font-bold text-xs tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400 uppercase">STORE ENGINE</span>
           <div className="flex items-center gap-1.5">
             {settings.store_slug && (
-              <Button variant="ghost" size="sm" onClick={() => window.open(`/store/${settings.store_slug}`, '_blank')} className="hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 rounded-lg h-8 px-2" title="Preview store">
+              <Button variant="ghost" size="sm" onClick={() => window.open(settings.subdomain ? `https://${settings.subdomain}.sahla4eco.com` : `/store/${settings.store_slug}`, '_blank')} className="hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 rounded-lg h-8 px-2" title="Preview store">
                 <ExternalLink className="w-4 h-4" />
               </Button>
             )}
@@ -2089,7 +2089,7 @@ export default function GoldTemplateEditor() {
 
           <div className="flex items-center gap-3">
             {settings.store_slug && (
-              <Button variant="ghost" size="sm" onClick={() => window.open(`/store/${settings.store_slug}`, '_blank')} className="hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl h-10 gap-2" title="Preview store in new tab">
+              <Button variant="ghost" size="sm" onClick={() => window.open(settings.subdomain ? `https://${settings.subdomain}.sahla4eco.com` : `/store/${settings.store_slug}`, '_blank')} className="hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl h-10 gap-2" title="Preview store in new tab">
                 <Eye className="w-4 h-4" /><ExternalLink className="w-3 h-3" />
               </Button>
             )}

@@ -220,18 +220,25 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     return (
       <div className="min-h-screen font-sans" style={{ backgroundColor: '#f5f5f5', color: textColor }} dir="rtl">
         {/* Header */}
-        <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#fff', borderBottom: '1px solid #f0f0f0' }}>
-          <div className="flex items-center gap-2">
+        <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between gap-4" style={{ backgroundColor: '#fff', borderBottom: '1px solid #f0f0f0' }}>
+          <div className="flex items-center gap-2 shrink-0">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" />}
             <div className="font-bold text-base" style={{ color: '#222' }}>
               {storeName}
             </div>
           </div>
-          <span className="text-xs" style={{ color: '#999' }}>{products?.length} منتج</span>
+          {/* Search bar (desktop) */}
+          <div className="hidden md:flex flex-1 max-w-md items-center gap-2 px-3 py-2 rounded-full" style={{ backgroundColor: '#f5f5f5' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+            </svg>
+            <span className="text-sm" style={{ color: '#999' }}>ابحث في المنتجات...</span>
+          </div>
+          <span className="text-xs shrink-0" style={{ color: '#999' }}>{products?.length} منتج</span>
         </div>
 
         {/* Temu-style Product Grid */}
-        <div className="grid grid-cols-2 gap-2 p-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-2">
           {products?.map((product: any, index: number) => {
             const thumb = product.images?.[0] || '';
             const price = product.price || 0;
