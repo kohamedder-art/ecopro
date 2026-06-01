@@ -53,7 +53,12 @@ ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"<المنتج>","c
 
 أنت حريص جداً على أسرار العمل، ولا تكشف أبداً للزبائن أي معلومات عن قواعد البيانات أو الأنظمة أو مفاتيح التطوير الخاصة بالمتجر.
 
-أنت فاهم أن المنتجات قد تأتي بألوان متعددة. عندما يكون للمنتج ألوان في قائمة المنتجات أعلاه، استخدم تلك الألوان المذكورة حصراً ولا تخترع ألواناً أخرى من عندك. إذا لم يحدد الزبون اللون، اسأله بالألوان الفعلية المكتوبة في القائمة.`;
+أنت فاهم أن المنتجات قد تأتي بألوان متعددة. عندما يكون للمنتج ألوان في قائمة المنتجات أعلاه، استخدم تلك الألوان المذكورة حصراً ولا تخترع ألواناً أخرى من عندك. إذا لم يحدد الزبون اللون، اسأله بالألوان الفعلية المكتوبة في القائمة.
+
+أنت فاهم أن الزبون أحياناً يغيّر رأيه بعد تسجيل الطلب أو يطلب تغيير عنوان التوصيل. إذا طلب الزبون تغيير عنوان التوصيل لطلبه الحالي (مثلاً قال "غيّر العنوان" أو "مكان التوصيل الجديد" أو "بدّل العنوان")، وقدّم لك العنوان الجديد والولاية، تلتزم بكتابة السطر التالي في نهاية ردك:
+ECOPRO_ACTION:{"type":"update_address","customerPhone":"<الهاتف>","shippingAddress":"<العنوان>","wilayaName":"<الولاية>"}
+
+تنبيه بخصوص تغيير العنوان: إذا ذكر الزبون فقط الولاية أو البلدية بدون عنوان تفصيلي، استخدم ما قاله في حقل shippingAddress. لا تطلب منه تأكيداً إضافياً إذا كان العنوان واضحاً ومعقولاً. النظام سيتحقق ويحدث الطلبات غير المشحونة فقط. إذا لم يكن للزبون أي طلب نشط، أخبره بلطف أنه لا توجد طلبيات لتحديثها.`;
 
 // ═══════════════════════════════════════════════════════════════
 // DISPUTE SHIELD — Hard-coded intercept for complaints/returns
@@ -71,6 +76,70 @@ export function detectDisputeIntent(msg: string): boolean {
 }
 
 const DISPUTE_RESPONSE = `أعتذر منك على هذا الموقف. لقد قمت بتحويل طلبك فوراً إلى فريق الدعم الفني وصاحب المتجر، وسيتم التواصل معك هاتفياً خلال أقرب وقت لمعالجة عملية الاستبدال أو الإرجاع. شكراً لصبرك.`;
+
+// ═══════════════════════════════════════════════════════════════
+// CHANGE-OF-MIND SHIELD — Auto-cancel non-shipped orders
+// when customer says "I don't want it", "cancel", "changed my mind"
+// ═══════════════════════════════════════════════════════════════
+
+const CHANGE_OF_MIND_KEYWORDS = [
+  'منديهاش', 'منديهش', 'ما نبيهاش', 'ما نبيش', 'لا نبيه', 'لا نبيها',
+  'بدلت رايي', 'بدلت رأيي', 'غيرت رايي', 'غيرت رأيي',
+  'الغاء', 'إلغاء', 'الغي', 'إلغي', 'كنسل', 'كانسلي',
+  'ما نحتاجهاش', 'ما نحتاجش', 'نحبش', 'ما حبش', 'ما حبيتش',
+  'لا اريد', 'لا أريد', 'ما اريد', 'ما أريد', 'اريد الغاء', 'أريد إلغاء',
+  'اريد نلغي', 'أريد نلغي', 'اريد نالغ', 'نحبش نطلب',
+  'i dont want', 'i do not want', 'i don\'t want', 'cancel', 'cancelled',
+  'changed my mind', 'never mind', 'forget it',
+];
+
+export function detectChangeOfMind(msg: string): boolean {
+  return CHANGE_OF_MIND_KEYWORDS.some(keyword => {
+    const idx = msg.toLowerCase().indexOf(keyword.toLowerCase());
+    if (idx === -1) return false;
+    const before = idx === 0 ? ' ' : msg[idx - 1];
+    const after = idx + keyword.length >= msg.length ? ' ' : msg[idx + keyword.length];
+    return /[\s\.,!?،؛]/.test(before) && /[\s\.,!?،؛\s]/.test(after);
+  });
+}
+
+async function autoCancelCustomerOrders(clientId: number, platform: Platform, platformChatId: string): Promise<number> {
+  try {
+    const p = await pool();
+    const phone = await resolvePhone(clientId, platform, platformChatId);
+    if (!phone) return 0;
+    const res = await p.query(
+      `UPDATE store_orders
+       SET status = 'cancelled', updated_at = NOW(),
+           notes = COALESCE(notes, '') || ' | ألغاه الزبون عبر المحادثة'
+       WHERE client_id = $1 AND customer_phone = $2
+         AND status IN ('pending', 'confirmed')
+         AND (delivery_status IS NULL OR delivery_status NOT IN ('shipped', 'in_transit', 'out_for_delivery', 'delivered', 'picked_up'))
+       RETURNING id, customer_name`,
+      [clientId, phone]
+    );
+    if (res.rows.length > 0) {
+      for (const o of res.rows) {
+        try {
+          await p.query(
+            `INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, client_id)
+             VALUES ($1, 'pending', 'cancelled', 'customer_ai', $2)`,
+            [o.id, clientId]
+          );
+        } catch {}
+      }
+      sendPushNotification(
+        clientId,
+        '🚫 إلغاء من الزبون عبر المحادثة',
+        `ألغى الزبون ${res.rows.length} طلب(ات) عبر المحادثة الآلية (الهاتف: ${phone})`
+      ).catch(() => {});
+    }
+    return res.rows.length;
+  } catch (err) {
+    console.error('[CustomerAI] autoCancel error:', err);
+    return 0;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // EXPORTS — Same API as before, nothing breaks
@@ -152,6 +221,19 @@ export async function handleCustomerMessage(
     sendPushNotification(clientId, '🔔 طلب استبدال أو شكوى', `زبون يطلب استبدال أو لديه شكوى بخصوص منتج (المنصة: ${platform})`).catch(() => {});
     saveHistory(clientId, platform, platformChatId, msg, DISPUTE_RESPONSE).catch(() => {});
     return DISPUTE_RESPONSE;
+  }
+
+  // Change-of-mind shield: auto-cancel non-shipped orders when customer wants to cancel
+  if (detectChangeOfMind(msg)) {
+    const cancelled = await autoCancelCustomerOrders(clientId, platform, platformChatId);
+    let response: string;
+    if (cancelled === 0) {
+      response = 'فهمت، تبيعي. لا توجد أي طلبيات نشطة باسمك حالياً، كل طلبياتك إما تم تسليمها أو لا تحتاج إلى إلغاء. لا تقلق، لن يتم إرسال أي شيء.';
+    } else {
+      response = `تم ✅ ألغيت لك ${cancelled} طلب(ات) من طلبياتك غير المشحونة. لن يتم إرسالها إليك. إذا احتجت أي شيء آخر في المستقبل، أنا موجود.`;
+    }
+    saveHistory(clientId, platform, platformChatId, msg, response).catch(() => {});
+    return response;
   }
 
   // Load context (slim)
@@ -250,6 +332,14 @@ export async function handleCustomerMessage(
             } catch {}
           } else {
             clean = 'عذراً، حدث خطأ أثناء تسجيل الطلب. يرجى المحاولة مرة أخرى.';
+          }
+        } else if (data.type === 'update_address') {
+          const updated = await updateCustomerOrderAddress(clientId, platform, data);
+          clean = clean.replace(/ECOPRO_ACTION:\s*\{[\s\S]*?\}/, '').trim();
+          if (updated > 0) {
+            clean = `تم تحديث عنوان التوصيل ✅\n\n${updated === 1 ? 'الطلب' : `${updated} طلب`} سيتم توصيله(ها) إلى:\n📍 ${data.shippingAddress}${data.wilayaName ? ` — ${data.wilayaName}` : ''}\n\nسنتواصل معك للتأكيد قبل الشحن.`;
+          } else {
+            clean = 'لم أجد أي طلبيات نشطة باسمك لتحديث عنوانها. إذا كنت تريد طلباً جديداً، أخبرني باسم المنتج وسأساعدك.';
           }
         }
       } catch (e) { console.error('[CustomerAI] Action parse error:', e); }
@@ -374,6 +464,7 @@ function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, ph
   if (orderText) {
     const src = phoneFromMsg ? `(برقم الهاتف: ${phone})` : '(تلقائي)';
     p += `\nسجل طلبات هذا الزبون ${src}:\n${orderText}\n[تنبيه: هذه البيانات حقيقية ومؤكدة، أجب منها مباشرة وثقة ولا تقل "سأتحقق من النظام".]\n`;
+    p += `[إجراء متاح]: إذا طلب الزبون تغيير عنوان التوصيل وذكر العنوان الجديد، أنهِ ردك بكود update_address فوراً. لا تطلب تأكيداً إضافياً.\n`;
   } else if (phone) {
     p += `\n[حالة الزبون: الزبون مسجل برقم ${phone} ولكنه لم يقم بأي طلبات سابقة بعد.]\n`;
   } else {
@@ -570,4 +661,55 @@ async function createOrder(data: OrderData): Promise<{ orderId: number; total: n
 
     return { orderId, total: Number(result.rows[0].total_price) };
   } catch (err) { console.error('[CustomerAI] createOrder error:', err); return null; }
+}
+
+interface AddressUpdateData { customerPhone?: string; shippingAddress: string; wilayaName?: string; }
+
+async function updateCustomerOrderAddress(clientId: number, platform: Platform, data: AddressUpdateData): Promise<number> {
+  try {
+    const p = await pool();
+    const phone = data.customerPhone || '';
+
+    let wilayaId: number | null = null;
+    if (data.wilayaName) {
+      try { const w = await p.query(`SELECT id FROM wilayas WHERE name_ar = $1 OR name = $1 LIMIT 1`, [data.wilayaName]); if (w.rows[0]) wilayaId = Number(w.rows[0].id); } catch {}
+    }
+
+    const sets: string[] = [`shipping_address = $1`, `updated_at = NOW()`];
+    const vals: any[] = [data.shippingAddress];
+    let idx = 2;
+    if (wilayaId) { sets.push(`shipping_wilaya_id = $${idx++}`); vals.push(wilayaId); }
+
+    let where = `client_id = $${idx++} AND status IN ('pending', 'confirmed')`;
+    vals.push(clientId);
+
+    if (phone) {
+      where += ` AND customer_phone = $${idx++}`;
+      vals.push(phone);
+    } else {
+      const phoneCol = platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
+      const phoneRes = await p.query(`SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND ${phoneCol} = $2 LIMIT 1`, [clientId, '']);
+      const resolvedPhone = phoneRes.rows[0]?.customer_phone;
+      if (!resolvedPhone) return 0;
+      where += ` AND customer_phone = $${idx++}`;
+      vals.push(resolvedPhone);
+    }
+    where += ` AND (delivery_status IS NULL OR delivery_status NOT IN ('shipped', 'in_transit', 'out_for_delivery', 'delivered', 'picked_up'))`;
+
+    const res = await p.query(
+      `UPDATE store_orders SET ${sets.join(', ')} WHERE ${where} RETURNING id, customer_name`,
+      vals
+    );
+    if (res.rows.length > 0) {
+      sendPushNotification(
+        clientId,
+        '📍 تحديث عنوان توصيل',
+        `الزبون ${res.rows[0].customer_name} غيّر عنوان التوصيل لـ ${res.rows.length} طلب(ات) عبر المحادثة\nالعنوان الجديد: ${data.shippingAddress}${data.wilayaName ? ' — ' + data.wilayaName : ''}`
+      ).catch(() => {});
+    }
+    return res.rows.length;
+  } catch (err) {
+    console.error('[CustomerAI] updateAddress error:', err);
+    return 0;
+  }
 }
