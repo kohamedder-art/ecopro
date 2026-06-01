@@ -41,7 +41,7 @@ export const subdomainResolver: RequestHandler = async (req, res, next) => {
   try {
     const pool = await ensureConnection();
     const result = await pool.query(
-      `SELECT store_slug, store_name, template FROM client_store_settings WHERE subdomain = $1 AND is_public = true LIMIT 1`,
+      `SELECT store_slug, store_name, template FROM client_store_settings WHERE subdomain = $1 LIMIT 1`,
       [subdomain]
     );
 
@@ -62,6 +62,10 @@ export const subdomainResolver: RequestHandler = async (req, res, next) => {
 
     setCached(subdomain, storeSlug);
     (req as any).storeSlug = storeSlug;
+    // Redirect root path to the store page so the SPA renders the storefront for subdomain requests
+    if (req.path === '/') {
+      return res.redirect(302, `/store/${encodeURIComponent(storeSlug)}`);
+    }
     next();
   } catch (err) {
     console.error('[subdomain] resolve error:', (err as any)?.message);
