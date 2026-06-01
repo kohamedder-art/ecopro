@@ -2,12 +2,13 @@ import { PropsWithChildren, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
+import { isSubdomainStore } from "@/lib/resolvedStore";
 
 const FloatingChatBubble = lazy(() => import("@/components/chat/FloatingChatBubble"));
 
 export default function Layout({ children }: PropsWithChildren) {
   const location = useLocation();
-  const isStorefrontPage = location.pathname.startsWith('/store/');
+  const isStorefrontPage = location.pathname.startsWith('/store/') || isSubdomainStore();
   const isDashboardPage = location.pathname.startsWith('/dashboard');
   const isTemplateEditor = location.pathname === '/template-editor';
   const isStaffPage = location.pathname.startsWith('/staff/');
