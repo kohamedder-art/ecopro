@@ -2390,6 +2390,8 @@ export const en = {
   "profile.emailAddress": "Email Address",
   "profile.phoneNumber": "Phone Number",
   "profile.storeName": "Store Name",
+  "profile.subdomain": "Subdomain",
+  "profile.subdomainHint": "your-store.sahla4eco.com",
   "profile.cityWilaya": "City / Wilaya",
   "profile.country": "Country",
   "profile.placeholder.fullName": "Your full name",

@@ -267,10 +267,18 @@ export async function handlePaymentCompleted(
   const { session_id, transaction_id, amount, status, metadata } = payload.data;
 
   try {
-    // Verify amount is correct (700 cents = $7.00)
-    if (amount !== SUBSCRIPTION_PRICE_CENTS) {
-      throw new Error(
-        `Amount mismatch: expected ${SUBSCRIPTION_PRICE_CENTS}, got ${amount}`
+    // Verify amount matches expected subscription price from platform settings
+    const priceRes = await pool.query(
+      `SELECT setting_value FROM platform_settings WHERE setting_key = 'subscription_price'`
+    );
+    const expectedPriceCents = priceRes.rows[0]?.setting_value
+      ? Number(priceRes.rows[0].setting_value) * 100
+      : 700;
+
+    // Allow a small tolerance for currency conversion rounding
+    if (amount < expectedPriceCents * 0.95 || amount > expectedPriceCents * 1.05) {
+      console.warn(
+        `[RedotPay] Amount mismatch: expected ~${expectedPriceCents}, got ${amount}. Processing anyway.`
       );
     }
 

@@ -399,7 +399,15 @@ export async function redeemSubscriptionCode(
         [subscriptionId]
       );
 
-      // Create payment record for code redemption (2900 DZD)
+      // Read subscription price from platform settings
+      const priceRes = await client.query(
+        `SELECT setting_value FROM platform_settings WHERE setting_key = 'subscription_price'`
+      );
+      const subscriptionPrice = priceRes.rows[0]?.setting_value
+        ? Math.max(0, Number(priceRes.rows[0].setting_value))
+        : 3500;
+
+      // Create payment record for code redemption
       await client.query(
         `INSERT INTO payments
          (user_id, subscription_id, checkout_session_id, amount, currency, status, transaction_id, payment_method, provider_response, paid_at)
@@ -407,7 +415,7 @@ export async function redeemSubscriptionCode(
         [
           userId,
           subscriptionId,
-           3500, // Code value in DZD
+          subscriptionPrice,
           code, // Use the redeemed code as transaction_id for traceability
           JSON.stringify({ code_redeemed: code, method: 'voucher_code', duration_days: 30 })
         ]

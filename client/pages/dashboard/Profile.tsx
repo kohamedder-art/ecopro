@@ -55,7 +55,7 @@ export default function Profile() {
   const [profile, setProfile] = React.useState<ProfileResponse | null>(null);
   const [access, setAccess] = React.useState<{ status: string; hasAccess: boolean; daysLeft?: number } | null>(null);
 
-  const [form, setForm] = React.useState({ name: '', email: '', phone: '', business_name: '', country: '', city: '' });
+  const [form, setForm] = React.useState({ name: '', email: '', phone: '', business_name: '', country: '', city: '', subdomain: '' });
 
   const [voucherCode, setVoucherCode] = useState('');
   const [voucherLoading, setVoucherLoading] = useState(false);
@@ -173,11 +173,16 @@ export default function Profile() {
   const load = async () => {
     try {
       setLoading(true);
-      const [pRes, aRes] = await Promise.all([fetch('/api/users/me'), fetch('/api/billing/check-access')]);
+      const [pRes, aRes, ssRes] = await Promise.all([fetch('/api/users/me'), fetch('/api/billing/check-access'), fetch('/api/client/store/settings')]);
       if (pRes.ok) {
         const p = (await pRes.json()) as ProfileResponse;
+        let subdomain = '';
+        if (ssRes.ok) {
+          const ss = await ssRes.json();
+          subdomain = ss.subdomain || '';
+        }
         setProfile(p);
-        setForm({ name: p.name || '', email: p.email || '', phone: p.phone || '', business_name: p.business_name || '', country: p.country || '', city: p.city || '' });
+        setForm({ name: p.name || '', email: p.email || '', phone: p.phone || '', business_name: p.business_name || '', country: p.country || '', city: p.city || '', subdomain });
       }
       if (aRes.ok) setAccess(await aRes.json());
     } catch {
@@ -190,7 +195,11 @@ export default function Profile() {
   const onSave = async () => {
     try {
       setSaving(true);
-      const res = await fetch('/api/users/me', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      const { subdomain, ...profileForm } = form;
+      const [res] = await Promise.all([
+        fetch('/api/users/me', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(profileForm) }),
+        fetch('/api/client/store/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subdomain }) }),
+      ]);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to update profile');
       if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
@@ -312,6 +321,15 @@ export default function Profile() {
                 </div>
               </Field>
             </div>
+
+            <Field label={t('profile.subdomain')}>
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
+                <input type="text" value={form.subdomain} onChange={e => setForm({ ...form, subdomain: e.target.value })}
+                  className={`${inputCls} pl-8`} placeholder="mtjr-ibdaa" />
+              </div>
+              <p className="text-[11px] text-muted-foreground/60 mt-1">{form.subdomain ? `${form.subdomain}.sahla4eco.com` : t('profile.subdomainHint')}</p>
+            </Field>
 
             {/* City + Country side by side */}
             <div className="grid grid-cols-2 gap-3">

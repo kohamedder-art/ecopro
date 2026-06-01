@@ -3,12 +3,35 @@ import https from 'https';
 import { sendTelegramMessage, replaceTemplateVariables } from './bot-messaging';
 import { parseSimpleCallback } from '../routes/telegram';
 import { ensureConnection } from './database';
+import { handleCustomerMessage, resolveClientFromTelegramChatId } from '../services/customer-ai';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
 let pollerInterval: NodeJS.Timeout | null = null;
 let lastUpdateId = -1; // -1 = not initialized yet
 let isPolling = false;
+// Cache webhook status per bot token to avoid checking every poll cycle
+const webhookActiveCache = new Map<string, boolean>();
+
+function clearExpiredWebhookCache(): void {
+  // Clear periodically so changes are picked up
+  if (webhookActiveCache.size > 100) webhookActiveCache.clear();
+}
+
+async function isWebhookActiveForBot(botToken: string): Promise<boolean> {
+  const cached = webhookActiveCache.get(botToken);
+  if (cached !== undefined) return cached;
+  try {
+    const resp = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
+    const data: any = await resp.json().catch(() => null);
+    const active = !!(data?.ok && data?.result?.url);
+    webhookActiveCache.set(botToken, active);
+    setTimeout(() => webhookActiveCache.delete(botToken), 60000); // re-check after 1 min
+    return active;
+  } catch {
+    return false;
+  }
+}
 
 interface TelegramUpdate {
   update_id: number;
@@ -298,35 +321,57 @@ async function processTelegramUpdate(pool: Pool, update: TelegramUpdate, botToke
             }
           }
         } else {
-          // Plain /start with no token — look up by previous chat_id connection
-          const connRes = await pool.query(
-            `SELECT DISTINCT client_id, customer_phone FROM customer_messaging_ids
-             WHERE telegram_chat_id = $1 LIMIT 1`,
-            [String(chatId)]
-          );
-          if (connRes.rows.length) {
-            const { client_id: connClientId, customer_phone: connPhone } = connRes.rows[0];
-            const ordersRes = await pool.query(
-              `SELECT id, total_price, status FROM store_orders
-               WHERE client_id = $1 AND customer_phone = $2
-                 AND status IN ('pending', 'confirmed')
-                 AND created_at > NOW() - INTERVAL '7 days'
-               ORDER BY created_at DESC LIMIT 5`,
-              [connClientId, connPhone]
+            // Plain /start with no token — look up by previous chat_id connection
+            const connRes = await pool.query(
+              `SELECT DISTINCT client_id, customer_phone FROM customer_messaging_ids
+               WHERE telegram_chat_id = $1 LIMIT 1`,
+              [String(chatId)]
             );
-            if (ordersRes.rows.length) {
-              const ordersMsg = `📦 طلباتك الحالية:\n\n${ordersRes.rows.map(o =>
-                `• الطلب #${o.id} - ${o.total_price} دج (${o.status === 'pending' ? '⏳ قيد الانتظار' : '✅ مؤكد'})`
-              ).join('\n')}\n\nسنرسل لك تحديثات قريباً! 🚚`;
-              await sendTelegramMessage(botToken, String(chatId), ordersMsg);
+            if (connRes.rows.length) {
+              const { client_id: connClientId, customer_phone: connPhone } = connRes.rows[0];
+              const ordersRes = await pool.query(
+                `SELECT id, total_price, status FROM store_orders
+                 WHERE client_id = $1 AND customer_phone = $2
+                   AND status IN ('pending', 'confirmed')
+                   AND created_at > NOW() - INTERVAL '7 days'
+                 ORDER BY created_at DESC LIMIT 5`,
+                [connClientId, connPhone]
+              );
+              if (ordersRes.rows.length) {
+                const ordersMsg = `📦 طلباتك الحالية:\n\n${ordersRes.rows.map(o =>
+                  `• الطلب #${o.id} - ${o.total_price} دج (${o.status === 'pending' ? '⏳ قيد الانتظار' : '✅ مؤكد'})`
+                ).join('\n')}\n\nسنرسل لك تحديثات قريباً! 🚚`;
+                await sendTelegramMessage(botToken, String(chatId), ordersMsg);
+              } else {
+                await sendTelegramMessage(botToken, String(chatId), 'مرحباً! ✅\n\nلا توجد طلبات نشطة حالياً. يمكنك الطلب من المتجر وسنرسل لك التأكيد هنا.');
+              }
             } else {
-              await sendTelegramMessage(botToken, String(chatId), 'مرحباً! ✅\n\nلا توجد طلبات نشطة حالياً. يمكنك الطلب من المتجر وسنرسل لك التأكيد هنا.');
+              await sendTelegramMessage(botToken, String(chatId), 'مرحباً! ✅\n\nلربط طلباتك، يرجى العودة إلى صفحة الدفع في المتجر والضغط على زر ربط تيليجرام.');
             }
-          } else {
-            await sendTelegramMessage(botToken, String(chatId), 'مرحباً! ✅\n\nلربط طلباتك، يرجى العودة إلى صفحة الدفع في المتجر والضغط على زر ربط تيليجرام.');
+          }
+        } else {
+          // Regular text message — AI auto-reply (fallback when webhook is unavailable)
+          // Only handle AI in poller if the bot has NO active webhook (avoids duplicates)
+          const trimmedText = text.trim();
+          if (trimmedText && botToken) {
+            const webhookActive = await isWebhookActiveForBot(botToken);
+            if (webhookActive) {
+              // Webhook is configured — it already handled this message, skip AI
+              return;
+            }
+            const clientIdFromChatMap = await resolveClientFromTelegramChatId(String(chatId));
+            if (clientIdFromChatMap) {
+              try {
+                const aiResponse = await handleCustomerMessage(clientIdFromChatMap, 'telegram', String(chatId), trimmedText);
+                if (aiResponse) {
+                  await sendTelegramMessage(botToken, String(chatId), aiResponse);
+                }
+              } catch (err) {
+                console.error('[TelegramPoller] AI auto-reply error:', err);
+              }
+            }
           }
         }
-      }
     }
   } catch (err) {
     console.error('[TelegramPoller] Error processing update:', (err as any).message);
@@ -341,6 +386,7 @@ async function pollTelegramUpdates(): Promise<void> {
   isPolling = true;
 
   try {
+    clearExpiredWebhookCache();
     const pool = await ensureConnection();
 
     // On first run, initialize lastUpdateId from DB so restarts don't reprocess old updates

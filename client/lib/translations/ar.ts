@@ -2985,6 +2985,8 @@ export const ar = {
   "profile.emailAddress": "البريد الإلكتروني",
   "profile.phoneNumber": "رقم الهاتف",
   "profile.storeName": "اسم المتجر",
+  "profile.subdomain": "الرابط الفرعي",
+  "profile.subdomainHint": "your-store.sahla4eco.com",
   "profile.cityWilaya": "المدينة / الولاية",
   "profile.country": "البلد",
   "profile.placeholder.fullName": "اسمك الكامل",

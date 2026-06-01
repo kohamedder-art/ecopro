@@ -896,6 +896,8 @@ export const fr = {
   "admin.profile.email": "Email",
   "admin.profile.phone": "Numéro de téléphone",
   "admin.profile.businessName": "Nom de l'entreprise / Boutique",
+  "profile.subdomain": "Nom de domaine personnalisé",
+  "profile.subdomainHint": "votre-boutique.sahla4eco.com",
   "admin.profile.country": "Pays",
   "admin.profile.city": "Ville",
   "admin.profile.updateProfile": "Mettre à jour le profil",

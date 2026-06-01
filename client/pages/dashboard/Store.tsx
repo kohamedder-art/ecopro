@@ -175,6 +175,9 @@ export default function Store() {
   };
 
   const getStorefrontFullUrl = (settings: any) => {
+    if (settings?.subdomain) {
+      return `https://${settings.subdomain}.sahla4eco.com`;
+    }
     const p = getStorefrontPath(settings);
     if (!p) return '';
     return `${window.location.origin}${p}`;
@@ -600,7 +603,7 @@ export default function Store() {
               const res = await fetch(`/api/client/store/products/${product.id}/share-link`);
               if (res.ok) {
                 const data = await res.json();
-                const link = data.shareLink || `${window.location.origin}/store/${data.store_slug}/${data.slug}`;
+                const link = data.shareLink || getStorefrontFullUrl(storeSettings) + '/' + encodeURIComponent(data.slug || product.slug);
                 setShareLink(link);
                 setSelectedProduct(product);
                 setShowShareModal(true);
@@ -1275,7 +1278,7 @@ export default function Store() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  const url = getStorefrontPath(storeSettings);
+                  const url = getStorefrontFullUrl(storeSettings);
                   if (url) window.open(url, '_blank');
                 }}
                 disabled={!getStorefrontPath(storeSettings)}
@@ -1397,7 +1400,7 @@ export default function Store() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    const url = getStorefrontPath(storeSettings);
+                    const url = getStorefrontFullUrl(storeSettings);
                     if (url) {
                       window.open(url, '_blank');
                     }

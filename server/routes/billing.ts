@@ -425,6 +425,7 @@ export const updatePlatformSettings: RequestHandler = async (req, res) => {
       'default_trial_days', 'max_products_free_tier', 'max_products_pro_tier',
       'commission_rate', 'referral_bonus', 'minimum_withdrawal',
       'whatsapp_webhook_url', 'whatsapp_api_version',
+      'subscription_price', 'trial_days',
     ]);
 
     for (const [key, value] of Object.entries(settings)) {
