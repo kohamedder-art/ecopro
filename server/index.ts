@@ -1868,7 +1868,8 @@ ${urls}
             // Inject store slug for subdomain-based SPA access so client can read it without an API call
             if (resolvedSlug) {
               const slugJson = JSON.stringify(resolvedSlug);
-              withMeta = withMeta.replace('</head>', `<script>window.__STORE_SLUG=${slugJson}</script></head>`);
+              const nonceAttr = nonce ? ` nonce="${nonce}"` : '';
+              withMeta = withMeta.replace('</head>', `<script${nonceAttr}>window.__STORE_SLUG=${slugJson}</script></head>`);
             }
 
             const injected = nonce
