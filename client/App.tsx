@@ -79,6 +79,37 @@ const MyStoreTemplateEditor = lazy(() => import("./pages/my-store/TemplateEditor
 const MyStoreStorefront = lazy(() => import("./pages/my-store/StorefrontPreview"));
 const GoldTemplateEditor = lazy(() => import("./pages/GoldTemplateEditor"));
 
+// Subdomain-aware routing: when the app is loaded via a store subdomain
+// (e.g. matjari.sahla4eco.com), window.__STORE_SLUG is injected by the server.
+// We use a different route tree so URLs are clean: /, /:productSlug, /checkout/:productSlug, etc.
+import { isSubdomainStore } from "./lib/resolvedStore";
+
+function RootRoute() {
+  // On a store subdomain, render the storefront at the root.
+  // On the main platform domain, render the landing page.
+  if (isSubdomainStore()) {
+    return <Storefront />;
+  }
+  return <Index />;
+}
+
+function SubdomainProductRoute() {
+  // Reads :productSlug from the URL and renders the storefront with that product pre-selected.
+  return <Storefront />;
+}
+
+function SubdomainRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Storefront />} />
+      <Route path="/checkout/:productSlug" element={<ProductCheckout />} />
+      <Route path="/order/:orderId/confirm" element={<OrderConfirmation />} />
+      <Route path="/:productSlug" element={<SubdomainProductRoute />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
 // ── Staff ──
 const StaffLogin = lazy(() => import("./pages/staff/StaffLogin"));
 const StaffDashboard = lazy(() => import("./pages/staff/StaffDashboard"));
@@ -449,6 +480,7 @@ const App = () => (
                 <CartProvider>
                 <OAuthHandler />
                 <Suspense fallback={<PageLoader />}>
+                {isSubdomainStore() ? <SubdomainRoutes /> : (
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/product/:id" element={<ProductCheckout />} />
@@ -593,6 +625,7 @@ const App = () => (
                   {/* <Route path="/buyer-info" element={<BuyerInfo />} /> */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                )}
                 </Suspense>
               </CartProvider>
             </Layout>

@@ -25,6 +25,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 
 const FALLBACK_PRODUCTS = [
   {
@@ -87,12 +88,12 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const handleSelectProduct = (product: any) => {
     setSelectedProduct(product);
     setIsCheckoutOpen(true);
-    if (product?.slug && navigate) navigate(`/store/${storeSlug}/${product.slug}`);
+    if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug));
   };
 
   const handleCloseCheckout = () => {
     setIsCheckoutOpen(false);
-    if (navigate) navigate(`/store/${storeSlug}`);
+    if (navigate) navigate(buildStoreUrl(storeSlug, '/'));
   };
   const [orderStatus, setOrderStatus] = useState('idle');
   const [timeLeft, setTimeLeft] = useState(() => {

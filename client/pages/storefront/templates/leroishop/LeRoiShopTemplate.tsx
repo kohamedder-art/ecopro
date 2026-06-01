@@ -7,6 +7,7 @@ import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════
@@ -292,14 +293,14 @@ export default function LeRoiShopTemplate({
     setQuantity(1);
     setOrderSuccess(false);
     setSelectedWilayaId(null);
-    if (product?.slug && navigate) navigate(`/store/${storeSlug}/${product.slug}`);
+    if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug));
   };
 
   const goToCatalog = () => {
     setView('catalog');
     setSelectedProduct(null);
     setOrderSuccess(false);
-    if (navigate) navigate(`/store/${storeSlug}`);
+    if (navigate) navigate(buildStoreUrl(storeSlug, '/'));
   };
 
   const scrollToForm = () => {

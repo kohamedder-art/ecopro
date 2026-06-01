@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Check, AlertTriangle, Cpu, HardDrive, Monito
 import { safeJsonParse } from '@/utils/safeJson';
 import { useTranslation } from '@/lib/i18n';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 
 // Types
 interface ProductMeta {
@@ -332,7 +333,7 @@ export default function BuildPage() {
     localStorage.setItem('cart', JSON.stringify(cart));
     
     alert(t('buildPage.alert.addedToCart'));
-    navigate(`/store/${storeSlug}`);
+    navigate(buildStoreUrl(storeSlug, '/'));
   };
 
   const currentStepData = steps[currentStep];
@@ -353,7 +354,7 @@ export default function BuildPage() {
       <header className="sticky top-0 z-40 bg-gray-900/80 backdrop-blur-md border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <button 
-            onClick={() => navigate(`/store/${storeSlug}`)}
+            onClick={() => navigate(buildStoreUrl(storeSlug, '/'))}
             className="flex items-center gap-2 text-gray-400 hover:text-white transition"
           >
             <ChevronLeft className="w-5 h-5" />

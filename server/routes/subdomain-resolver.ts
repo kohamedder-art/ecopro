@@ -62,9 +62,12 @@ export const subdomainResolver: RequestHandler = async (req, res, next) => {
 
     setCached(subdomain, storeSlug);
     (req as any).storeSlug = storeSlug;
-    // Redirect root path to the store page so the SPA renders the storefront for subdomain requests
-    if (req.path === '/') {
-      return res.redirect(302, `/store/${encodeURIComponent(storeSlug)}`);
+    // Strip the /store/:storeSlug prefix from the URL so the SPA sees clean subdomain paths.
+    // Example: matjari.sahla4eco.com/store/mtjr-ibdaa/product-slug → /product-slug
+    const storePathPrefix = `/store/${encodeURIComponent(storeSlug)}`;
+    if (req.path === storePathPrefix || req.path.startsWith(storePathPrefix + '/')) {
+      const stripped = req.path.slice(storePathPrefix.length) || '/';
+      req.url = stripped + (req.url?.includes('?') ? req.url.slice(req.path.length) : '');
     }
     next();
   } catch (err) {

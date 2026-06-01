@@ -12,7 +12,7 @@ import StorefrontChatBubble from '@/components/storefront/StorefrontChatBubble';
 import { setWindowTemplateSettings } from '@/lib/templateWindow';
 import { formatMoney } from '@/utils/money';
 import { STOREFRONT_SETTINGS_KEY, STOREFRONT_TEMPLATE_KEY } from '@/lib/storefrontStorage';
-import { getResolvedStoreSlug } from '@/lib/resolvedStore';
+import { getResolvedStoreSlug, buildStoreUrl, isSubdomainStore } from '@/lib/resolvedStore';
 
 interface StoreProduct {
   id: number;

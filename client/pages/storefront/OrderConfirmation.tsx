@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, XCircle, Edit2 } from "lucide-react";
 import { useTranslation } from '@/lib/i18n';
-import { getResolvedStoreSlug } from '@/lib/resolvedStore';
+import { getResolvedStoreSlug, buildStoreUrl } from '@/lib/resolvedStore';
 
 export default function OrderConfirmation() {
   const { storeSlug: urlSlug, orderId } = useParams<{ storeSlug: string; orderId: string }>();
@@ -72,7 +72,7 @@ export default function OrderConfirmation() {
 
       const data = await res.json();
       alert(t('orderConfirmation.alert.confirmed'));
-      navigate(`/store/${storeSlug}`);
+      navigate(buildStoreUrl(storeSlug, '/'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('orderConfirmation.error.failedConfirm'));
     } finally {
@@ -97,7 +97,7 @@ export default function OrderConfirmation() {
       if (!res.ok) throw new Error(t('orderConfirmation.error.failedDecline'));
 
       alert(t('orderConfirmation.alert.declined'));
-      navigate(`/store/${storeSlug}`);
+      navigate(buildStoreUrl(storeSlug, '/'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('orderConfirmation.error.failedDecline'));
     } finally {
@@ -146,7 +146,7 @@ export default function OrderConfirmation() {
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">{t('orderConfirmation.errorTitle')}</h1>
           <p className="text-sm md:text-base text-gray-600 mb-4">{error || t('orderConfirmation.errorDescDefault')}</p>
-          <Button onClick={() => navigate(storeSlug ? `/store/${storeSlug}` : "/")} className="w-full">
+          <Button onClick={() => navigate(storeSlug ? buildStoreUrl(storeSlug, '/') : "/")} className="w-full">
             {t('common.backToHome')}
           </Button>
         </div>

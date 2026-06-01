@@ -25,7 +25,7 @@ import PixelScripts, { trackAllPixels, PixelEvents } from '@/components/storefro
 import { useToast } from '@/components/ui/use-toast';
 import { useTranslation } from '@/lib/i18n';
 import { readStorefrontSettings, readStorefrontTemplate } from '@/lib/storefrontStorage';
-import { getResolvedStoreSlug } from '@/lib/resolvedStore';
+import { getResolvedStoreSlug, buildStoreUrl } from '@/lib/resolvedStore';
 
 interface Product {
   id: number;
@@ -104,7 +104,7 @@ export default function ProductCheckout() {
     getResolvedStoreSlug() ||
     (localStorage.getItem('currentStoreSlug') || '').trim();
 
-  const storefrontHomePath = resolvedStoreSlug ? `/store/${encodeURIComponent(resolvedStoreSlug)}` : '/';
+  const storefrontHomePath = resolvedStoreSlug ? buildStoreUrl(resolvedStoreSlug, '/') : '/';
   
   // States
   const [quantity, setQuantity] = useState(1);

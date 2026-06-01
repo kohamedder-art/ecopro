@@ -8,6 +8,7 @@ import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/sto
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#000000';
@@ -57,14 +58,14 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   // Navigate to a product
   const goToProduct = useCallback((product: any) => {
     if (product?.slug && navigate) {
-      navigate(`/store/${storeSlug}/${product.slug}`);
+      navigate(buildStoreUrl(storeSlug, product.slug));
     }
   }, [storeSlug, navigate]);
 
   // Go to full store page
   const goToStore = useCallback(() => {
     if (navigate) {
-      navigate(`/store/${storeSlug}`);
+      navigate(buildStoreUrl(storeSlug, '/'));
     }
   }, [storeSlug, navigate]);
 

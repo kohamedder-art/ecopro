@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '@/lib/i18n';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 
 export default function MyStoreIndex() {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ export default function MyStoreIndex() {
             <div className="mt-4 flex items-center justify-center gap-3">
               <button
                 className="px-4 py-2 rounded bg-primary text-white font-bold"
-                onClick={() => navigate(`/store/${storeSlug}`)}
+                onClick={() => navigate(buildStoreUrl(storeSlug, '/'))}
               >
                 {t('store.viewStorefront')}
               </button>
