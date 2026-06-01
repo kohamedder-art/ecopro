@@ -181,8 +181,8 @@ export default function Storefront() {
         const slug = String(storeSlug);
         const encodedSlug = encodeURIComponent(slug);
         const [settingsRes, productsRes] = await Promise.all([
-          fetchWithTimeout(`/api/storefront/${encodedSlug}/settings`, 25000, undefined, 1),
-          fetchWithTimeout(`/api/storefront/${encodedSlug}/products`, 35000, undefined, 1),
+          fetchWithTimeout(`/api/storefront/${encodedSlug}/settings`, 25000, { cache: 'no-store' }, 1),
+          fetchWithTimeout(`/api/storefront/${encodedSlug}/products`, 35000, { cache: 'no-store' }, 1),
         ]);
 
         if (!settingsRes.ok) {
@@ -230,7 +230,7 @@ export default function Storefront() {
           // Re-fetch products with canonical slug if parallel fetch failed or slug changed
           const refetchRes = await fetchWithTimeout(
             `/api/storefront/${encodeURIComponent(canonical)}/products`,
-            35000, undefined, 1
+            35000, { cache: 'no-store' }, 1
           );
           if (refetchRes.ok) productsData = await refetchRes.json();
           else throw new Error(t('storefront.notAvailable'));
