@@ -2,6 +2,7 @@ import axios from 'axios';
 import { ensureConnection } from '../utils/database';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+const NTFY_BASE = 'https://ntfy.sh';
 
 interface PushMessage {
   to: string;
@@ -31,15 +32,17 @@ export async function sendPushNotification(clientId: number, title: string, body
       priority: 'high',
     }));
 
+    console.log(`[push] sending to ${devices.rows.length} device(s) for client ${clientId}`);
     const response = await axios.post(EXPO_PUSH_URL, messages, {
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
     });
 
     const tickets = response.data?.data;
+    console.log(`[push] Expo response status: ${response.status}, tickets:`, JSON.stringify(tickets));
     if (tickets) {
       const errors = tickets.filter((t: any) => t.status === 'error');
       if (errors.length > 0) {
-        console.error('[push] Expo push errors:', errors);
+        console.error('[push] Expo push errors:', JSON.stringify(errors));
         const invalidTokens: string[] = [];
         for (const ticket of errors) {
           if (ticket.details?.error === 'DeviceNotRegistered' || ticket.details?.error === 'InvalidCredentials') {
@@ -52,7 +55,11 @@ export async function sendPushNotification(clientId: number, title: string, body
             [invalidTokens.filter(Boolean)]
           ).catch((e: any) => console.error('[push] cleanup error:', e));
         }
+      } else {
+        console.log('[push] all tickets ok');
       }
+    } else {
+      console.warn('[push] no tickets in response, full response:', JSON.stringify(response.data));
     }
   } catch (error) {
     console.error('[push] send error:', error);
@@ -74,12 +81,30 @@ export async function insertInAppNotification(
   }
 }
 
+export async function sendNtfyNotification(clientId: number, title: string, body: string) {
+  try {
+    const topic = `sahla4eco-${clientId}`;
+    await axios.post(`${NTFY_BASE}/${topic}`, body, {
+      headers: {
+        'Title': title,
+        'Priority': 'high',
+        'Tags': 'bell',
+      },
+      timeout: 5000,
+    });
+    console.log(`[ntfy] sent to topic ${topic}`);
+  } catch (error) {
+    console.error(`[ntfy] send error for client ${clientId}:`, error);
+  }
+}
+
 export async function notifyOrderCreated(clientId: number, orderId: number, customerName: string) {
   const title = 'طلب جديد';
   const body = `تم استلام طلب جديد من ${customerName}`;
   await Promise.all([
     insertInAppNotification(clientId, 'new_order', title, body, orderId),
     sendPushNotification(clientId, title, body, { type: 'new_order', order_id: orderId }),
+    sendNtfyNotification(clientId, title, body),
   ]);
 }
 
@@ -98,5 +123,6 @@ export async function notifyOrderStatusChanged(clientId: number, orderId: number
   await Promise.all([
     insertInAppNotification(clientId, 'status_update', title, body, orderId),
     sendPushNotification(clientId, title, body, { type: 'status_update', order_id: orderId }),
+    sendNtfyNotification(clientId, title, body),
   ]);
 }

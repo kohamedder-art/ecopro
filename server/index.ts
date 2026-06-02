@@ -752,6 +752,9 @@ ${urls}
   app.post("/api/auth/qr-request", authenticate, requireClient, authRoutes.qrRequest);
   app.post("/api/auth/qr-login", apiLimiter, authRoutes.qrLogin);
 
+  // Google (Gmail) Auth (mobile app)
+  app.post("/api/auth/google", apiLimiter, authRoutes.googleAuth);
+
   // OAuth Social Login routes (public)
   app.use('/api/oauth', oauthRouter);
 

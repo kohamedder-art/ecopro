@@ -1198,3 +1198,153 @@ export const qrLogin: RequestHandler = async (req, res) => {
     return jsonError(res, 500, 'QR login failed');
   }
 };
+
+/* ── Google (Gmail) Auth (mobile app) ── */
+
+/**
+ * POST /api/auth/google
+ * Body: { idToken: string }
+ *
+ * Verifies the Google ID token via Google's tokeninfo endpoint, then
+ * either logs in the user (if a client with that email exists) or creates
+ * a new client account (auto-register via Google). Returns the same
+ * response shape as the regular /api/auth/login endpoint so the mobile
+ * app can use the same code path.
+ *
+ * Required env var: GOOGLE_OAUTH_CLIENT_ID (the Web Client ID from Google
+ * Cloud Console — expo-auth-session redirects to it).
+ */
+export const googleAuth: RequestHandler = async (req, res) => {
+  try {
+    const { idToken } = req.body as { idToken?: string };
+    if (!idToken) return jsonError(res, 400, 'idToken is required');
+
+    const expectedClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+    if (!expectedClientId) {
+      console.error('[google-auth] GOOGLE_OAUTH_CLIENT_ID env var is not set');
+      return jsonError(res, 500, 'Google login is not configured on this server');
+    }
+
+    // Verify the ID token with Google's tokeninfo endpoint.
+    const verifyRes = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+    );
+    if (!verifyRes.ok) {
+      console.error('[google-auth] Google tokeninfo returned', verifyRes.status);
+      return jsonError(res, 401, 'Invalid Google ID token');
+    }
+    const payload: any = await verifyRes.json();
+
+    if (payload.aud !== expectedClientId) {
+      console.error('[google-auth] audience mismatch. expected:', expectedClientId, 'got:', payload.aud);
+      return jsonError(res, 401, 'Google ID token was not issued for this app');
+    }
+    if (payload.email_verified !== 'true' && payload.email_verified !== true) {
+      return jsonError(res, 401, 'Google email is not verified');
+    }
+
+    const email = String(payload.email || '').trim().toLowerCase();
+    const name = String(payload.name || email.split('@')[0] || 'مستخدم');
+    if (!email) return jsonError(res, 400, 'Google account has no email');
+
+    const pool = await ensureConnection();
+    let user = await findUserByEmail(email);
+
+    if (!user) {
+      // Auto-register a new client account with a random unguessable
+      // password. The user can set a real password later from the web.
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+      const hashedPassword = await hashPassword(randomPassword);
+
+      try {
+        user = await createUser({
+          name,
+          email,
+          password: hashedPassword,
+          phone: null,
+          business_name: null,
+        });
+      } catch (e: any) {
+        console.error('[google-auth] createUser error:', e?.message || e);
+        return jsonError(res, 500, 'Failed to create account from Google sign-in');
+      }
+
+      // Provision default rows for the new client (trial subscription, bot settings, …).
+      try {
+        const u: any = user;
+        if (u?.id) {
+          await createTrialSubscription(String(u.id));
+          await ensureBotSettingsRow(String(u.id));
+          await ensureSystemOrderStatuses(String(u.id));
+        }
+      } catch (e) {
+        console.warn('[google-auth] provisioning warning:', e);
+      }
+
+      // Log auto-register event
+      try {
+        const ip = getClientIp(req as any);
+        await logSecurityEvent({
+          event_type: 'auth_register_google',
+          severity: 'info',
+          request_id: (req as any).requestId || null,
+          method: req.method,
+          path: req.path,
+          status_code: 200,
+          ip,
+          user_agent: req.headers['user-agent'] || null,
+          metadata: { email, provider: 'google' },
+        });
+      } catch {}
+    } else {
+      // Blocked accounts cannot log in.
+      if ((user as any).is_blocked) {
+        return res.status(403).json({
+          error: `Account blocked: ${(user as any).blocked_reason || 'Contact support'}`,
+          blocked: true,
+          blocked_reason: (user as any).blocked_reason,
+        });
+      }
+    }
+
+    const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'fallback-secret';
+    const clientId = String((user as any).id);
+    const token = jwt.sign(
+      { id: clientId, role: 'client', user_type: 'client', clientId },
+      secret,
+      { expiresIn: '30d' }
+    );
+
+    const userRes = await pool.query(
+      `SELECT c.id, c.name, c.email, c.phone, c.business_name,
+              css.store_slug, css.store_name
+       FROM clients c
+       LEFT JOIN client_store_settings css ON css.client_id = c.id
+       WHERE c.id = $1`,
+      [clientId]
+    );
+
+    try {
+      const ip = getClientIp(req as any);
+      await logSecurityEvent({
+        event_type: 'auth_login_google',
+        severity: 'info',
+        request_id: (req as any).requestId || null,
+        method: req.method,
+        path: req.path,
+        status_code: 200,
+        ip,
+        user_agent: req.headers['user-agent'] || null,
+        user_id: clientId,
+        user_type: 'client',
+        role: 'client',
+        metadata: { email, provider: 'google' },
+      });
+    } catch {}
+
+    res.json({ token, refresh_token: null, user: userRes.rows[0] || user });
+  } catch (error) {
+    console.error('[google-auth] error:', error);
+    return jsonError(res, 500, 'Google login failed');
+  }
+};
