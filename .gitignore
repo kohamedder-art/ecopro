@@ -132,3 +132,4 @@ deep_test_screenshots/
 full_test_screenshots/
 full_journey_screenshots/
 systematic_test_screenshots/
+server/firebase-service-account.json
