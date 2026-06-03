@@ -30,6 +30,17 @@ type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 const searchCache = new Map<string, { result: string; timestamp: number }>();
 const SEARCH_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+interface ConversationFacts {
+  customer_name: string | null;
+  customer_phone: string | null;
+  preferred_wilaya: string | null;
+  preferred_commune: string | null;
+  interests: string[];
+  purchased_products: string[];
+  preferences: Record<string, any>;
+  summary: string;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SYSTEM PROMPT — Short, focused, human, no lists, no emojis
 // ═══════════════════════════════════════════════════════════════
@@ -240,8 +251,12 @@ export async function handleCustomerMessage(
   const ctx = await loadSlimContext(clientId);
   if (!ctx) return null;
 
-  // History (sliding window, last 8 turns)
+  // History (last 3 turns)
   const history = await getHistory(clientId, platform, platformChatId);
+
+  // Load conversation facts (long-term memory)
+  const facts = await loadFacts(clientId, platform, platformChatId);
+  const factsSummary = buildFactsSummary(facts);
 
   // Repetition check
   if (history.length >= 2) {
@@ -303,7 +318,7 @@ export async function handleCustomerMessage(
   }
 
   // Build slim user prompt
-  const prompt = buildUserPrompt(ctx, search, orderText, phone, phoneFromMsg, msg, history);
+  const prompt = buildUserPrompt(ctx, search, orderText, phone, phoneFromMsg, msg, history, factsSummary);
 
   // Rate limit
   const rlKey = `${clientId}:${platform}:${platformChatId}`;
@@ -342,11 +357,15 @@ export async function handleCustomerMessage(
             clean = 'لم أجد أي طلبيات نشطة باسمك لتحديث عنوانها. إذا كنت تريد طلباً جديداً، أخبرني باسم المنتج وسأساعدك.';
           }
         }
+        // Save extracted facts from the action
+        saveFacts(clientId, platform, platformChatId, extractFactsFromAction(data)).catch(() => {});
       } catch (e) { console.error('[CustomerAI] Action parse error:', e); }
     }
 
     // Save conversation (non-blocking)
     saveHistory(clientId, platform, platformChatId, msg, clean).catch(() => {});
+    // Update running summary
+    updateFactsSummary(clientId, platform, platformChatId, facts, msg, clean).catch(() => {});
     return clean;
   } catch (err) {
     console.error(`[CustomerAI] Error for client ${clientId}:`, err);
@@ -437,11 +456,12 @@ function extractLastProductFromHistory(history: GeminiContent[]): string | null 
 }
 
 // Database Leak and Amnesia Fix: Wrapped technical system queries in natural conversational status tags
-function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, phone: string | null, phoneFromMsg: boolean, msg: string, history: GeminiContent[] = []): string {
+function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, phone: string | null, phoneFromMsg: boolean, msg: string, history: GeminiContent[] = [], factsSummary: string = ''): string {
   const previousAiResponses = history.filter(h => h.role === 'model').length;
   const isFirstMessage = previousAiResponses === 0;
 
   let p = `معلومات المتجر الحالي:\nاسم المتجر: ${ctx.storeName}\n`;
+  if (factsSummary) p += `\n${factsSummary}\n`;
   if (ctx.storeDescription) p += `حول المتجر: ${ctx.storeDescription}\n`;
   if (ctx.aiInstructions) p += `توجيهات إضافية خاصة بصاحب المتجر: ${ctx.aiInstructions}\n`;
 
@@ -482,7 +502,7 @@ async function getHistory(clientId: number, platform: Platform, chatId: string):
   try {
     const p = await pool();
     const res = await p.query(
-      `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 ORDER BY created_at DESC LIMIT 8`,
+      `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 ORDER BY created_at DESC LIMIT 3`,
       [clientId, platform, chatId]
     );
     return res.rows.reverse().map((r: any) => ({ role: r.role === 'customer' ? 'user' as const : 'model' as const, parts: [{ text: r.message }] }));
@@ -496,6 +516,104 @@ async function saveHistory(clientId: number, platform: Platform, chatId: string,
     [clientId, platform, chatId, msg, response]
   );
   await p.query(`DELETE FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 AND created_at < NOW() - INTERVAL '7 days'`, [clientId, platform, chatId]).catch(() => {});
+}
+
+async function loadFacts(clientId: number, platform: Platform, chatId: string): Promise<ConversationFacts | null> {
+  try {
+    const p = await pool();
+    const res = await p.query(
+      `SELECT customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary
+       FROM customer_conversation_facts WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 LIMIT 1`,
+      [clientId, platform, chatId]
+    );
+    if (res.rows.length === 0) return null;
+    return {
+      customer_name: res.rows[0].customer_name,
+      customer_phone: res.rows[0].customer_phone,
+      preferred_wilaya: res.rows[0].preferred_wilaya,
+      preferred_commune: res.rows[0].preferred_commune,
+      interests: res.rows[0].interests || [],
+      purchased_products: res.rows[0].purchased_products || [],
+      preferences: res.rows[0].preferences || {},
+      summary: res.rows[0].summary || '',
+    };
+  } catch { return null; }
+}
+
+async function saveFacts(clientId: number, platform: Platform, chatId: string, facts: Partial<ConversationFacts>, newSummary?: string): Promise<void> {
+  try {
+    const existing = await loadFacts(clientId, platform, chatId);
+    const merged: ConversationFacts = {
+      customer_name: facts.customer_name ?? existing?.customer_name ?? null,
+      customer_phone: facts.customer_phone ?? existing?.customer_phone ?? null,
+      preferred_wilaya: facts.preferred_wilaya ?? existing?.preferred_wilaya ?? null,
+      preferred_commune: facts.preferred_commune ?? existing?.preferred_commune ?? null,
+      interests: [...new Set([...(existing?.interests || []), ...(facts.interests || [])])],
+      purchased_products: [...new Set([...(existing?.purchased_products || []), ...(facts.purchased_products || [])])],
+      preferences: { ...(existing?.preferences || {}), ...(facts.preferences || {}) },
+      summary: newSummary ?? existing?.summary ?? '',
+    };
+    const p = await pool();
+    await p.query(
+      `INSERT INTO customer_conversation_facts (client_id, platform, platform_chat_id, customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+       ON CONFLICT (client_id, platform, platform_chat_id)
+       DO UPDATE SET customer_name = $4, customer_phone = $5, preferred_wilaya = $6, preferred_commune = $7, interests = $8, purchased_products = $9, preferences = $10, summary = $11, updated_at = NOW()`,
+      [clientId, platform, chatId, merged.customer_name, merged.customer_phone, merged.preferred_wilaya, merged.preferred_commune, merged.interests, merged.purchased_products, merged.preferences, merged.summary]
+    );
+  } catch {}
+}
+
+function extractFactsFromAction(data: any): Partial<ConversationFacts> {
+  const facts: Partial<ConversationFacts> = {};
+  if (data.type === 'create_customer_order') {
+    if (data.customerName) facts.customer_name = String(data.customerName).trim();
+    if (data.customerPhone) facts.customer_phone = String(data.customerPhone).trim();
+    if (data.wilayaName) facts.preferred_wilaya = String(data.wilayaName).trim();
+    if (data.productTitle) facts.interests = [String(data.productTitle).trim()];
+    if (data.productTitle) facts.purchased_products = [String(data.productTitle).trim()];
+    if (data.shippingAddress) {
+      facts.preferences = { last_address: String(data.shippingAddress).trim() };
+    }
+  }
+  if (data.type === 'update_address') {
+    if (data.shippingAddress) facts.preferences = { ...facts.preferences, last_address: String(data.shippingAddress).trim() };
+    if (data.wilayaName) facts.preferred_wilaya = String(data.wilayaName).trim();
+  }
+  return facts;
+}
+
+function buildFactsSummary(facts: ConversationFacts | null): string {
+  if (!facts) return '';
+  const parts: string[] = [];
+  if (facts.customer_name) parts.push(`اسم الزبون: ${facts.customer_name}`);
+  if (facts.customer_phone) parts.push(`هاتف: ${facts.customer_phone}`);
+  if (facts.preferred_wilaya) parts.push(`الولاية المفضلة: ${facts.preferred_wilaya}`);
+  if (facts.interests.length > 0) parts.push(`المنتجات التي أبدى اهتماماً بها: ${facts.interests.join('، ')}`);
+  if (facts.purchased_products.length > 0) parts.push(`المنتجات التي اشتراها: ${facts.purchased_products.join('، ')}`);
+  if (facts.preferences?.last_address) parts.push(`آخر عنوان شحن: ${facts.preferences.last_address}`);
+  if (facts.summary) parts.push(`\nملخص المحادثة السابقة:\n${facts.summary}`);
+  return parts.length > 0 ? `\n[معلومات عن الزبون من تاريخ المحادثة]\n${parts.join('\n')}\n[/معلومات الزبون]\n` : '';
+}
+
+async function updateFactsSummary(clientId: number, platform: Platform, chatId: string, existingFacts: ConversationFacts | null, lastMsg: string, lastResponse: string): Promise<void> {
+  try {
+    const prevSummary = existingFacts?.summary || '';
+    const lines: string[] = [];
+    if (prevSummary) lines.push(prevSummary);
+    lines.push(`- الزبون: "${lastMsg.slice(0, 100)}"`);
+    const respBrief = lastResponse.replace(/ECOPRO_ACTION.*/, '').slice(0, 100);
+    if (respBrief) lines.push(`- الرد: "${respBrief}"`);
+    const combined = lines.join('\n');
+    const MAX_SUMMARY_LENGTH = 1000;
+    const summary = combined.length > MAX_SUMMARY_LENGTH ? combined.slice(-MAX_SUMMARY_LENGTH) : combined;
+    const p = await pool();
+    await p.query(
+      `UPDATE customer_conversation_facts SET summary = $1, updated_at = NOW()
+       WHERE client_id = $2 AND platform = $3 AND platform_chat_id = $4`,
+      [summary, clientId, platform, chatId]
+    );
+  } catch {}
 }
 
 async function isOverDailyBudget(clientId: number): Promise<boolean> {
