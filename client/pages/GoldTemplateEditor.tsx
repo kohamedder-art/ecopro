@@ -1808,7 +1808,7 @@ export default function GoldTemplateEditor() {
                       <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-3 h-3 text-indigo-500"/> حقول نموذج الطلب</h4>
                       <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3">
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">الاسم، الهاتف، والولاية مطلوبين دائمًا.</p>
-                        {([['order_field_address', 'العنوان'], ['order_field_commune', 'البلدية'], ['order_field_notes', 'ملاحظات']] as const).map(([field, label]) => (
+                        {([['order_field_address', 'العنوان'], ['order_field_notes', 'ملاحظات']] as const).map(([field, label]) => (
                           <label key={field} className="flex items-center justify-between cursor-pointer py-1">
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
                             <button onClick={() => handleSettingChange(field, !(settings as any)[field])} className={`w-10 h-6 rounded-full transition-colors relative ${(settings as any)[field] ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
@@ -2270,15 +2270,7 @@ export default function GoldTemplateEditor() {
                               <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${settings.order_field_address ? 'translate-x-5' : 'translate-x-1'}`} />
                             </button>
                           </label>
-                          <label className="flex items-center justify-between cursor-pointer group">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">البلدية</span>
-                            <button
-                              onClick={() => handleSettingChange('order_field_commune', !settings.order_field_commune)}
-                              className={`w-10 h-6 rounded-full transition-colors relative ${settings.order_field_commune ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-                            >
-                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${settings.order_field_commune ? 'translate-x-5' : 'translate-x-1'}`} />
-                            </button>
-                          </label>
+
                           <label className="flex items-center justify-between cursor-pointer group">
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">ملاحظات</span>
                             <button
