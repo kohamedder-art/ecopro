@@ -120,6 +120,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     return classifiedLanding.length > 0 ? classifiedLanding : productImages;
   })();
 
+  const displayPrice = (n: number) => Math.round(n);
   const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
   const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : productPrice * quantity;
   const totalCost = productTotal + deliveryFee;
@@ -202,9 +203,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           <div className="rounded-xl p-4 text-sm space-y-2 text-right mb-4" style={{ backgroundColor: surfaceMuted }}>
             <div className="flex justify-between"><span style={{ color: textMuted }}>المنتج</span><span className="font-bold" style={{ color: textColor }}>{mainProduct.title}</span></div>
             <div className="flex justify-between"><span style={{ color: textMuted }}>الكمية</span><span className="font-bold" style={{ color: textColor }}>{quantity}</span></div>
-            <div className="flex justify-between"><span style={{ color: textMuted }}>التوصيل</span><span className="font-bold" style={{ color: textColor }}>{deliveryFee} {currency}</span></div>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>التوصيل</span><span className="font-bold" style={{ color: textColor }}>{displayPrice(deliveryFee)} {currency}</span></div>
             <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
-            <div className="flex justify-between"><span className="font-black" style={{ color: textColor }}>المجموع</span><span className="font-black text-lg" style={{ color: textColor }}>{totalCost} {currency}</span></div>
+            <div className="flex justify-between"><span className="font-black" style={{ color: textColor }}>المجموع</span><span className="font-black text-lg" style={{ color: textColor }}>{displayPrice(totalCost)} {currency}</span></div>
           </div>
           <button onClick={() => setOrderSuccess(false)} className="px-6 py-2 rounded-lg text-white font-bold" style={{ backgroundColor: accentColor }}>
             تسوق مرة أخرى
@@ -308,20 +309,20 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   </div>
                   {/* Price */}
                   <div className="flex items-baseline gap-1">
-                    <span className="text-sm font-black" style={{ color: '#222' }}>
-                      {price.toLocaleString()}
+                    <span className="text-sm font-black" style={{ color: textColor }}>
+                      {displayPrice(price).toLocaleString()}
                     </span>
-                    <span className="text-[10px] font-medium" style={{ color: '#222' }}>{currency}</span>
+                    <span className="text-[10px] font-medium" style={{ color: textColor }}>{currency}</span>
                   </div>
                   {/* Original price + sales */}
                   <div className="flex items-center gap-1 mt-0.5">
                     {product.original_price && product.original_price > price && (
-                      <span className="text-[10px] line-through" style={{ color: '#999' }}>
-                        {product.original_price.toLocaleString()}
+                      <span className="text-[10px] line-through" style={{ color: textMuted }}>
+                        {displayPrice(product.original_price).toLocaleString()}
                       </span>
                     )}
                     {salesLabel && (
-                      <span className="text-[9px]" style={{ color: '#999' }}>{salesLabel} sold</span>
+                      <span className="text-[9px]" style={{ color: textMuted }}>{salesLabel} sold</span>
                     )}
                   </div>
                 </div>
@@ -357,7 +358,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             <div className="text-left flex flex-col">
               <span className="text-xs font-bold" style={{ color: textMuted }}>السعر</span>
               <span className="font-black text-lg leading-none" dir="ltr">
-                {productPrice} {currency}
+                {displayPrice(productPrice)} {currency}
               </span>
             </div>
             <button
@@ -505,7 +506,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       {wilayas.map((w) => (
                         <option key={w.id} value={w.id}>
                           {w.labelAR}
-                          {w.homePrice ? ` (${w.homePrice} ${currency})` : ''}
+                          {w.homePrice ? ` (${displayPrice(w.homePrice)} ${currency})` : ''}
                         </option>
                       ))}
                     </select>
@@ -625,17 +626,17 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               <div className="mt-6 border rounded-xl p-4" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
                 <div className="flex justify-between text-sm mb-2" style={{ color: textColor }}>
                   <span>سعر المنتج ({quantity})</span>
-                  <span className="font-bold" dir="ltr">{productPrice * quantity} {currency}</span>
+                  <span className="font-bold" dir="ltr">{displayPrice(productPrice * quantity)} {currency}</span>
                 </div>
                 <div className="flex justify-between text-sm mb-3" style={{ color: textColor }}>
                   <span>سعر التوصيل</span>
-                  <span className="font-bold" dir="ltr">{deliveryFee} {currency}</span>
+                  <span className="font-bold" dir="ltr">{displayPrice(deliveryFee)} {currency}</span>
                 </div>
                 <div className="h-px w-full mb-3" style={{ backgroundColor: borderColor }} />
                 <div className="flex justify-between items-center">
                   <span className="font-black text-lg" style={{ color: textColor }}>المجموع:</span>
                   <span className="font-black text-xl" dir="ltr" style={{ color: textColor }}>
-                    {totalCost} {currency}
+                    {displayPrice(totalCost)} {currency}
                   </span>
                 </div>
               </div>
