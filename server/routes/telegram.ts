@@ -623,16 +623,17 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
       // AI auto-reply: respond to customer messages intelligently
       const trimmedText = String(text || '').trim();
       if (trimmedText && botToken && chatId) {
-        // Resolve client_id: prefer chat_id mapping (accurate for shared bots),
-        // fall back to webhook secret only if no chat mapping exists
-        const clientIdFromChatMap = await resolveClientFromTelegramChatId(chatId);
-        const clientIdFromSecret = !clientIdFromChatMap ? await resolveClientFromTelegramSecret(secret) : null;
-        const clientId = clientIdFromChatMap || clientIdFromSecret;
+        // Resolve client_id from webhook secret FIRST (uniquely identifies the store).
+        // The chat_id mapping is unreliable because a shared bot means the same chatId
+        // can map to multiple different client_ids (one per store the customer uses).
+        const clientIdFromSecret = await resolveClientFromTelegramSecret(secret);
+        const clientIdFromChatMap = clientIdFromSecret ? null : await resolveClientFromTelegramChatId(chatId);
+        const clientId = clientIdFromSecret || clientIdFromChatMap;
 
         // If resolved ONLY via secret (no customer mapping exists for this chatId),
         // this is almost certainly the store owner messaging their own bot.
         // Save their chatId so isSenderStoreOwner() correctly silences the AI for them.
-        if (!clientIdFromChatMap && clientIdFromSecret) {
+        if (clientIdFromSecret && !clientIdFromChatMap) {
           try {
             await pool.query(
               `UPDATE bot_settings SET owner_telegram_chat_id = $1 WHERE client_id = $2 AND (owner_telegram_chat_id IS NULL OR owner_telegram_chat_id = '')`,
@@ -644,7 +645,7 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
           }
         }
         
-        console.log(`[TelegramWebhook] AI resolve: chatId=${chatId} → clientId=${clientId} (via ${clientIdFromChatMap ? 'chatMap' : 'secret'})`);
+        console.log(`[TelegramWebhook] AI resolve: chatId=${chatId} → clientId=${clientId} (via ${clientIdFromSecret ? 'secret' : 'chatMap'})`);
         
         if (clientId) {
           try {
