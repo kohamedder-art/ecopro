@@ -131,8 +131,8 @@ export async function createTrialSubscription(userId: number): Promise<void> {
     
     if (existing.rows.length === 0) {
       await pool.query(
-        `INSERT INTO subscriptions (user_id, status, trial_started_at, trial_ends_at)
-         VALUES ($1, 'trial', NOW(), NOW() + ($2::text || ' days')::interval)`,
+        `INSERT INTO subscriptions (user_id, status, trial_started_at, trial_ends_at, current_period_start)
+         VALUES ($1, 'trial', NOW(), NOW() + ($2::text || ' days')::interval, NOW())`,
         [userId, trialDays]
       );
       if (!isProduction) {

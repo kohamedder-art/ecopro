@@ -38,8 +38,10 @@ async function getBillingPeriodStart(clientId: number): Promise<Date> {
     return new Date(result.rows[0].current_period_start);
   }
 
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1);
+  // No subscription row or missing period_start — fall back to 30 days ago
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  return thirtyDaysAgo;
 }
 
 async function getBillingPeriodEnd(clientId: number): Promise<Date | null> {
