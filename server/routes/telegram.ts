@@ -630,21 +630,6 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
         const clientIdFromChatMap = clientIdFromSecret ? null : await resolveClientFromTelegramChatId(chatId);
         const clientId = clientIdFromSecret || clientIdFromChatMap;
 
-        // If resolved ONLY via secret (no customer mapping exists for this chatId),
-        // this is almost certainly the store owner messaging their own bot.
-        // Save their chatId so isSenderStoreOwner() correctly silences the AI for them.
-        if (clientIdFromSecret && !clientIdFromChatMap) {
-          try {
-            await pool.query(
-              `UPDATE bot_settings SET owner_telegram_chat_id = $1 WHERE client_id = $2 AND (owner_telegram_chat_id IS NULL OR owner_telegram_chat_id = '')`,
-              [chatId, clientIdFromSecret]
-            );
-            console.log(`[TelegramWebhook] Auto-saved owner chat_id=${chatId} for client=${clientIdFromSecret}`);
-          } catch (e) {
-            console.warn('[TelegramWebhook] Failed to save owner_telegram_chat_id:', e);
-          }
-        }
-        
         console.log(`[TelegramWebhook] AI resolve: chatId=${chatId} → clientId=${clientId} (via ${clientIdFromSecret ? 'secret' : 'chatMap'})`);
         
         if (clientId) {
@@ -656,6 +641,21 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
             } else {
               // AI disabled or returned null — send fallback
               await sendTelegramMessage(botToken, chatId, 'مرحباً! 👋\n\nسنرد عليك في أقرب وقت.');
+            }
+
+            // If resolved ONLY via secret (no customer mapping exists for this chatId),
+            // this is almost certainly the store owner messaging their own bot.
+            // Save their chatId so future messages correctly silence the AI for them.
+            if (clientIdFromSecret && !clientIdFromChatMap) {
+              try {
+                await pool.query(
+                  `UPDATE bot_settings SET owner_telegram_chat_id = $1 WHERE client_id = $2 AND (owner_telegram_chat_id IS NULL OR owner_telegram_chat_id = '')`,
+                  [chatId, clientIdFromSecret]
+                );
+                console.log(`[TelegramWebhook] Auto-saved owner chat_id=${chatId} for client=${clientIdFromSecret}`);
+              } catch (e) {
+                console.warn('[TelegramWebhook] Failed to save owner_telegram_chat_id:', e);
+              }
             }
           } catch (err) {
             console.error('[TelegramWebhook] AI auto-reply error:', err);
