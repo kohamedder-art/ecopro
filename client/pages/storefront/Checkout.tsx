@@ -455,8 +455,10 @@ export default function Checkout() {
         }
       }
       
-      // Fallback to localStorage
-      const cachedProduct = localStorage.getItem(`product_${productId}`);
+      // Fallback to localStorage (try store-scoped key first, then unscoped for backward compat)
+      const storeSlug = settings?.store_slug;
+      const cacheKey = storeSlug ? `product_${storeSlug}_${productId}` : `product_${productId}`;
+      const cachedProduct = localStorage.getItem(cacheKey) || localStorage.getItem(`product_${productId}`);
       if (cachedProduct) {
         const parsed = JSON.parse(cachedProduct);
         // Only use cache if it includes stock_quantity; otherwise it can allow out-of-stock checkout.

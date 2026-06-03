@@ -104,6 +104,10 @@ export default function ProductCheckout() {
     getResolvedStoreSlug() ||
     (localStorage.getItem('currentStoreSlug') || '').trim();
 
+  const cacheKey = storeSlug
+    ? `product_${storeSlug}_${productIdentifier}`
+    : `product_${productIdentifier}`;
+
   const storefrontHomePath = resolvedStoreSlug ? buildStoreUrl(resolvedStoreSlug, '/') : '/';
   
   // States
@@ -223,7 +227,7 @@ export default function ProductCheckout() {
         );
         if (res.ok) {
           const data = await res.json();
-          localStorage.setItem(`product_${productIdentifier}`, JSON.stringify(data));
+          localStorage.setItem(cacheKey, JSON.stringify(data));
           return data;
         }
       }
@@ -240,7 +244,7 @@ export default function ProductCheckout() {
         }
       }
       
-      const cachedProduct = localStorage.getItem(`product_${productIdentifier}`);
+      const cachedProduct = localStorage.getItem(cacheKey) || localStorage.getItem(`product_${productIdentifier}`);
       if (cachedProduct) {
         const parsed = JSON.parse(cachedProduct);
         if (
@@ -255,7 +259,7 @@ export default function ProductCheckout() {
       let response = await fetch(`/api/product-info/${productIdentifier}`);
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem(`product_${productIdentifier}`, JSON.stringify(data));
+        localStorage.setItem(cacheKey, JSON.stringify(data));
         return data;
       }
       
@@ -839,6 +843,7 @@ export default function ProductCheckout() {
 
       const orderData: any = {
         product_id: product.id,
+        ...(storeSlug ? { store_slug: storeSlug } : {}),
         ...(hasVariants && selectedVariantId ? { variant_id: selectedVariantId } : {}),
         quantity: quantity,
         total_price: (effectiveUnitPrice * quantity) + (deliveryPrice || 0),

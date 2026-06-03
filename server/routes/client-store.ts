@@ -1324,6 +1324,47 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       columnUpdates.template = normalizedRequested;
     }
 
+    // Validate store_name doesn't conflict with another store's slug or name
+    if (columnUpdates.store_name) {
+      const normalizedName = columnUpdates.store_name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-zA-Z0-9]/g, '');
+      const conflict = await pool.query(
+        `SELECT client_id, store_name, store_slug FROM client_store_settings
+         WHERE client_id != $1
+           AND (LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = $2
+             OR store_slug = $2)
+         LIMIT 1`,
+        [clientId, normalizedName]
+      );
+      if (conflict.rows.length > 0) {
+        return res.status(409).json({
+          error: 'هذا الاسم مستخدم بالفعل في متجر آخر، يرجى اختيار اسم آخر',
+          detail: `"${columnUpdates.store_name}" يتعارض مع المتجر "${conflict.rows[0].store_name}"`,
+        });
+      }
+    }
+
+    // Validate store_slug doesn't conflict with another store's normalized name
+    if (columnUpdates.store_slug) {
+      const normalizedSlug = String(columnUpdates.store_slug).trim().toLowerCase();
+      const conflict = await pool.query(
+        `SELECT client_id, store_name, store_slug FROM client_store_settings
+         WHERE client_id != $1
+           AND (store_slug = $2
+             OR LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = $2)
+         LIMIT 1`,
+        [clientId, normalizedSlug]
+      );
+      if (conflict.rows.length > 0) {
+        return res.status(409).json({
+          error: 'هذا الرابط مستخدم بالفعل في متجر آخر، يرجى اختيار رابط آخر',
+          detail: `"${columnUpdates.store_slug}" يستخدم من قبل المتجر "${conflict.rows[0].store_name}"`,
+        });
+      }
+    }
+
     // Apply computed + direct column updates
     Object.entries(columnUpdates).forEach(([key, value]) => {
       // Always add the field to update, even if null
