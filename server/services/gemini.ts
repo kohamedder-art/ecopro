@@ -18,6 +18,7 @@ const DEEPINFRA_API_BASE = 'https://api.deepinfra.com/v1/openai';
 const OWNER_AI_MODEL = 'Qwen/Qwen2.5-72B-Instruct'; // Better instruction following than Llama 70B
 const CUSTOMER_AI_MODEL = 'Qwen/Qwen2.5-14B-Instruct'; // Customer chat ($0.12/1M input, $0.24/1M output)
 const AI_FALLBACK_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Fallback if primary fails
+const VISION_MODEL = 'meta-llama/Llama-3.2-90B-Vision-Instruct'; // Multimodal — can actually see images
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 3000, 6000]; // ms
 
@@ -317,7 +318,7 @@ function stripThinkTags(text: string): string {
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
 // Keep GeminiContent as exported alias for backward compatibility with callers
@@ -354,12 +355,20 @@ async function callAI(
     ...convertHistory(conversationHistory),
   ];
 
-  // If images provided, prepend a note (Llama text-only — describe the image context)
-  let userContent = userMessage;
-  if (images && images.length > 0) {
-    userContent = `[${images.length} image(s) attached — please analyze based on the text description]\n\n${userMessage}`;
+  // If images provided, use multimodal content format for vision models
+  const isVisionRequest = images && images.length > 0;
+  if (isVisionRequest) {
+    const visionContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+      { type: 'text', text: userMessage },
+      ...images!.map(img => ({
+        type: 'image_url',
+        image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+      })),
+    ];
+    messages.push({ role: 'user', content: visionContent });
+  } else {
+    messages.push({ role: 'user', content: userMessage });
   }
-  messages.push({ role: 'user', content: userContent });
 
   const buildBody = (model: string) => {
     const isCustomer = model !== OWNER_AI_MODEL;
@@ -375,8 +384,9 @@ async function callAI(
 
   // Retry with backoff, fallback to smaller model on final attempt
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const selectedModel = model || OWNER_AI_MODEL;
-    const useModel = attempt === MAX_RETRIES ? AI_FALLBACK_MODEL : selectedModel;
+    // Use vision model when images are attached, otherwise use the requested or default model
+    const selectedModel = isVisionRequest ? VISION_MODEL : (model || OWNER_AI_MODEL);
+    const useModel = attempt === MAX_RETRIES ? (isVisionRequest ? VISION_MODEL : AI_FALLBACK_MODEL) : selectedModel;
     const url = `${DEEPINFRA_API_BASE}/chat/completions`;
 
     let response: Response;
@@ -414,10 +424,13 @@ async function callAI(
       // DeepInfra pricing (May 2026):
       //   Qwen2.5-72B-Instruct: $0.36/1M input, $0.40/1M output
       //   Qwen3-14B:            $0.12/1M input, $0.24/1M output
+      //   Llama-3.2-90B-Vision: $0.15/1M input, $0.60/1M output
       //   Fallback (7B):        $0.03/1M flat
       let costUsd = 0;
       if (useModel === OWNER_AI_MODEL) {
         costUsd = (tokensInput * 0.36 + tokensOutput * 0.40) / 1_000_000;
+      } else if (useModel === VISION_MODEL) {
+        costUsd = (tokensInput * 0.15 + tokensOutput * 0.60) / 1_000_000;
       } else if (useModel === AI_FALLBACK_MODEL) {
         costUsd = totalTokens * 0.03 / 1_000_000;
       } else {
