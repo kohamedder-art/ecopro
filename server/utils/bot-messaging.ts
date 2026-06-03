@@ -734,7 +734,32 @@ export async function sendOrderConfirmationMessages(
         );
         console.log(`[Bot] Telegram scheduled for ${customerPhone} at ${sendAt}`);
       } else {
-        console.log(`[Bot] Telegram enabled but customer ${customerPhone} hasn't connected - skipping Telegram messages`);
+        // Fallback: if the phone matches the store owner's support phone, notify the owner
+        const ownerRes = await pool.query(
+          `SELECT owner_telegram_chat_id, support_phone FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+          [clientId]
+        );
+        if (ownerRes.rows.length && ownerRes.rows[0].owner_telegram_chat_id) {
+          const supportPhone = String(ownerRes.rows[0].support_phone || '').replace(/\D/g, '');
+          if (supportPhone && supportPhone === customerPhone) {
+            const telegramMessage = replaceTemplateVariables(
+              settings.template_order_confirmation || defaultWhatsAppTemplate(),
+              templateVariables
+            );
+            const delayMinutes = settings.telegram_delay_minutes || 5;
+            const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+            await pool.query(
+              `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+               VALUES ($1, $2, $3, 'telegram', $4, $5, $6)`,
+              [orderId, clientId, customerPhone, telegramMessage, confirmationLink, sendAt]
+            );
+            console.log(`[Bot] Telegram scheduled for owner ${customerPhone} at ${sendAt}`);
+          } else {
+            console.log(`[Bot] Telegram enabled but customer ${customerPhone} hasn't connected - skipping Telegram messages`);
+          }
+        } else {
+          console.log(`[Bot] Telegram enabled but customer ${customerPhone} hasn't connected - skipping Telegram messages`);
+        }
       }
     }
 

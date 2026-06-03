@@ -1112,6 +1112,19 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
          LIMIT 1`,
         [clientId, normalizedPhone]
       );
+      // Fallback: if the phone matches the store owner's support phone, notify the owner
+      if (preConnectRes.rows.length === 0) {
+        const ownerRes = await pool.query(
+          `SELECT owner_telegram_chat_id, support_phone FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+          [clientId]
+        );
+        if (ownerRes.rows.length && ownerRes.rows[0].owner_telegram_chat_id) {
+          const supportPhone = String(ownerRes.rows[0].support_phone || '').replace(/\D/g, '');
+          if (supportPhone && supportPhone === normalizedPhone) {
+            preConnectRes.rows = [{ telegram_chat_id: ownerRes.rows[0].owner_telegram_chat_id }];
+          }
+        }
+      }
       if (!isProduction) {
         console.log('[createPublicStoreOrder] Pre-connect found:', preConnectRes.rows.length > 0);
       }
