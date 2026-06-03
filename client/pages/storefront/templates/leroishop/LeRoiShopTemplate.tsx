@@ -4,12 +4,13 @@ import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeli
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { buildStoreUrl } from '@/lib/resolvedStore';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════
    LeRoi Shop — Multi-product catalog + product detail + order form
@@ -121,6 +122,9 @@ export default function LeRoiShopTemplate({
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   useEffect(() => { if (wilayas.length > 0) { const stillValid = wilayas.some(w => w.id === selectedWilayaId); if (!selectedWilayaId || !stillValid) setSelectedWilayaId(wilayas[0].id); } }, [wilayas]);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
+  const [communeId, setCommuneId] = useState('');
+  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+  useEffect(() => { setCommuneId(''); }, [selectedWilayaId]);
   const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   // Offers state (populated after activeProduct is known)
@@ -339,7 +343,7 @@ export default function LeRoiShopTemplate({
           customer_name: name,
           customer_phone: phone,
           customer_notes: fd.get('notes') as string,
-          customer_address: [selectedWilaya?.labelAR || '', fd.get('commune'), fd.get('address')].filter(Boolean).join(' - '),
+          customer_address: [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(communeId)?.name || fd.get('commune'), fd.get('address')].filter(Boolean).join(' - '),
           shipping_wilaya_id: selectedWilayaId,
           product_name: activeProduct.title || activeProduct.name || '',
         }),
@@ -755,7 +759,13 @@ export default function LeRoiShopTemplate({
                           {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                         </select>
                         {showCommune && (
-                          <input name="commune" type="text" placeholder="البلدية" className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />)}
+                          <div className="relative">
+                            <select name="commune" required disabled={!selectedWilayaId} value={communeId} onChange={(e) => setCommuneId(e.target.value)} className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none appearance-none transition-colors disabled:opacity-50" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>
+                              <option value="">{selectedWilayaId ? 'البلدية' : 'اختر الولاية أولاً'}</option>
+                              {communes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                            <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
+                          </div>)}
                       </div>
                       <div className="flex gap-3">
                         {showHomeDelivery && (

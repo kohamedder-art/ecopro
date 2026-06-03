@@ -505,6 +505,7 @@ const MAX_PROMPT_LENGTHS: Record<AIUserRole, number> = {
 const MAX_PROMPT_REPEAT_RATIO = 0.7; // if >70% of chars are the same, reject
 
 function validatePrompt(prompt: string, role: AIUserRole): string | null {
+  if (!prompt) return null;
   const maxLen = MAX_PROMPT_LENGTHS[role] || 2000;
   if (prompt.length > maxLen) {
     return `[تم تقليص الرسالة: تجاوزت الحد الأقصى (${maxLen} حرف)]`;

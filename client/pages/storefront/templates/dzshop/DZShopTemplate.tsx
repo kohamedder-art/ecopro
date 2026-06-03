@@ -4,10 +4,11 @@ import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeli
 import { useImageClassifier } from '@/hooks/useImageClassifier';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
-import { CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
 export default function DZShopTemplate({ settings, products, canManage, storeSlug, onProductView }: TemplateProps) {
@@ -53,6 +54,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
     const [customerAddress, setCustomerAddress] = useState('');
     const [customerCommune, setCustomerCommune] = useState('');
+    const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+    useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
     const [customerNotes, setCustomerNotes] = useState('');
     const [quantity, setQuantity] = useState(1);
 
@@ -97,7 +100,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 customer_name: fd.get('name'),
                 customer_phone: fd.get('phone'),
                 customer_address: (fd.get('address') as string) || selectedWilaya?.labelAR || '',
-                customer_commune: fd.get('commune') || '',
+                customer_commune: getAlgeriaCommuneById(customerCommune)?.name || fd.get('commune') || '',
                 customer_notes: fd.get('notes') || '',
                 product_name: product.title || product.name || '',
             };
@@ -603,7 +606,13 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 {showCommune && (
                                     <div className="col-span-2">
                                         <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>البلدية</label>
-                                        <input name="commune" type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                                        <div className="relative">
+                                            <select name="commune" required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm appearance-none transition-colors disabled:opacity-50" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
+                                                <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                                                {communes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                            <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
+                                        </div>
                                     </div>
                                 )}
                                 {showNotes && (

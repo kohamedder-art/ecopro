@@ -245,10 +245,11 @@ function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: s
   p += `الطلبات: ${ctx.totalOrders} (${ctx.pendingOrders} معلقة)\n`;
   p += `الدخل: ${ctx.totalRevenue.toLocaleString('ar-DZ')} دج\n`;
   p += `المنتجات: ${ctx.totalProducts} نشط`;
-  if (ctx.lowStockProducts.length) p += `\nمخزون منخفض: ${ctx.lowStockProducts.join('، ')}`;
-  if (ctx.topProducts.length) p += `\nالأكثر مبيعاً: ${ctx.topProducts.join('، ')}`;
+  if (ctx.lowStockProducts?.length) p += `\nمخزون منخفض: ${ctx.lowStockProducts.join('، ')}`;
+  if (ctx.topProducts?.length) p += `\nالأكثر مبيعاً: ${ctx.topProducts.join('، ')}`;
 
-  p += `\n\nسؤال المستخدم: ${question}`;
+  p += `\n\nسؤال المستخدم: ${question || ''}`;
+  return p;
 }
 
 async function searchStoreData(clientId: number, dataType: string, query: string): Promise<any[]> {

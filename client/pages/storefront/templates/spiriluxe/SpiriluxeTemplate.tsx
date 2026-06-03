@@ -4,9 +4,10 @@ import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeli
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
-import { Truck, Shield, Trash2, Plus, Home, Building2 } from 'lucide-react';
+import { Truck, Shield, Trash2, Plus, Home, Building2, ChevronDown } from 'lucide-react';
 import { uploadImage } from '@/lib/api';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
@@ -45,6 +46,8 @@ export default function SpiriluxeTemplate({
   const [showBanner, setShowBanner] = useState(settings?.show_promotional_banner !== false);
   const [quantity, setQuantity] = useState(1);
   const [customerCommune, setCustomerCommune] = useState('');
+  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+  useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
   const [customerNotes, setCustomerNotes] = useState('');
 
   // ── Product Images State ──
@@ -146,7 +149,7 @@ export default function SpiriluxeTemplate({
         delivery_type: selectedDeliveryType,
         customer_name: fd.get('name'),
         customer_phone: fd.get('phone'),
-        customer_address: [selectedWilaya?.labelAR || '', fd.get('commune') || customerCommune, fd.get('address')].filter(Boolean).join(' - '),
+        customer_address: [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(customerCommune)?.name || fd.get('commune') || customerCommune, fd.get('address')].filter(Boolean).join(' - '),
         customer_notes: customerNotes || fd.get('notes') || '',
         shipping_wilaya_id: selectedWilayaId,
         product_name: mainProduct.title || mainProduct.name || '',
@@ -514,17 +517,23 @@ export default function SpiriluxeTemplate({
                   {showCommune && (
                     <div>
                       <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>البلدية</label>
-                      <input 
-                        name="commune" 
-                        type="text" 
-                        value={customerCommune}
-                        onChange={e => setCustomerCommune(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl transition-all"
-                        style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
-                        onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                        onBlur={e => e.currentTarget.style.borderColor = borderColor}
-                        placeholder="أدخل بلديتك"
-                      />
+                      <div className="relative">
+                        <select 
+                          name="commune"
+                          required 
+                          disabled={!selectedWilayaId}
+                          value={customerCommune}
+                          onChange={e => setCustomerCommune(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl transition-all appearance-none disabled:opacity-50"
+                          style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                          onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                          onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                        >
+                          <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                          {communes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textColor, opacity: 0.5 }} />
+                      </div>
                     </div>
                   )}
                 </div>
