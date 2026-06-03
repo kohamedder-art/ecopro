@@ -269,7 +269,59 @@ export async function ensureSystemOrderStatuses(clientId: number): Promise<void>
        WHERE NOT EXISTS (
          SELECT 1 FROM order_statuses WHERE client_id = $1::int AND key = $3::text
        )`,
-      values
+       values
+     );
+   }
+ }
+
+const SAMPLE_PRODUCTS = [
+  {
+    title: 'ساعة رجالية فاخرة',
+    description: 'ساعة رجالية أنيقة بتصميم كلاسيكي، علبة ستانلس ستيل، مقاومة للماء، متوفرة بعدة ألوان.',
+    price: 4500,
+    images: ['https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=800&q=85'],
+    category: 'اكسسوارات',
+  },
+  {
+    title: 'عطر فرنسي أصلي',
+    description: 'عطر فرنسي فاخر برائحة خشبية منعشة، يدوم طويلاً، مناسب للاستخدام اليومي والمناسبات.',
+    price: 3200,
+    images: ['https://images.unsplash.com/photo-1541643600914-78b084683601?w=800&q=85'],
+    category: 'عطور',
+  },
+  {
+    title: 'حقيبة يد نسائية',
+    description: 'حقيبة يد جلدية عصرية، واسعة بتصميم أنيق، مناسبة للعمل والخروجات. متوفرة بالأسود والبني.',
+    price: 2800,
+    images: ['https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=800&q=85'],
+    category: 'اكسسوارات',
+  },
+  {
+    title: 'طقم رياضي رجالي',
+    description: 'طقم رياضي قطني مريح، مناسب للجيم والجري، متوفر بعدة مقاسات وألوان. جودة عالية وخياطة متقنة.',
+    price: 3800,
+    images: ['https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800&q=85'],
+    category: 'ملابس',
+  },
+];
+
+export async function ensureSampleProducts(clientId: number): Promise<void> {
+  try {
+    const pool = await ensureConnection();
+    const existing = await pool.query(
+      `SELECT COUNT(*) as cnt FROM client_store_products WHERE client_id = $1`,
+      [clientId]
     );
+    if (Number(existing.rows[0]?.cnt || 0) > 0) return;
+    for (const p of SAMPLE_PRODUCTS) {
+      await pool.query(
+        `INSERT INTO client_store_products (client_id, title, description, price, images, category, stock_quantity, status, is_featured)
+         VALUES ($1, $2, $3, $4, $5, $6, 15, 'active', true)`,
+        [clientId, p.title, p.description, p.price, p.images, p.category]
+      );
+    }
+    console.log(`[Provisioning] Created ${SAMPLE_PRODUCTS.length} sample products for client ${clientId}`);
+  } catch (err) {
+    console.error('[Provisioning] ensureSampleProducts failed (non-fatal):', err);
   }
-}
+ }

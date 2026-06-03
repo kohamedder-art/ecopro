@@ -392,9 +392,30 @@ export default function Store() {
             try {
               setCreatingSampleProducts(true);
               const samples = [
-                { title: t('store.sampleProduct1') || 'منتج تجريبي 1', price: 1200 },
-                { title: t('store.sampleProduct2') || 'منتج تجريبي 2', price: 2500 },
-                { title: t('store.sampleProduct3') || 'منتج تجريبي 3', price: 3900 },
+                {
+                  title: 'ساعة رجالية فاخرة',
+                  description: 'ساعة رجالية أنيقة بتصميم كلاسيكي، علبة ستانلس ستيل، مقاومة للماء، متوفرة بعدة ألوان.',
+                  price: 4500,
+                  images: ['https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=800&q=85'],
+                },
+                {
+                  title: 'عطر فرنسي أصلي',
+                  description: 'عطر فرنسي فاخر برائحة خشبية منعشة، يدوم طويلاً، مناسب للاستخدام اليومي والمناسبات.',
+                  price: 3200,
+                  images: ['https://images.unsplash.com/photo-1541643600914-78b084683601?w=800&q=85'],
+                },
+                {
+                  title: 'حقيبة يد نسائية',
+                  description: 'حقيبة يد جلدية عصرية، واسعة بتصميم أنيق، مناسبة للعمل والخروجات. متوفرة بالأسود والبني.',
+                  price: 2800,
+                  images: ['https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=800&q=85'],
+                },
+                {
+                  title: 'طقم رياضي رجالي',
+                  description: 'طقم رياضي قطني مريح، مناسب للجيم والجري، متوفر بعدة مقاسات وألوان. جودة عالية وخياطة متقنة.',
+                  price: 3800,
+                  images: ['https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800&q=85'],
+                },
               ];
 
               for (const s of samples) {
@@ -403,11 +424,12 @@ export default function Store() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     title: s.title,
-                    description: t('store.sampleProductDesc') || 'هذا منتج تجريبي لمساعدتك على فهم شكل المتجر.',
+                    description: s.description,
                     price: s.price,
-                    stock_quantity: 10,
-                    status: 'draft',
-                    is_featured: false,
+                    images: s.images,
+                    stock_quantity: 15,
+                    status: 'active',
+                    is_featured: true,
                   }),
                 });
                 if (!res.ok) {
@@ -419,8 +441,8 @@ export default function Store() {
               await reloadProducts();
               markOnboardingStepComplete('product_created');
               toast({
-                title: t('store.sampleProductsCreatedTitle') || 'Sample products created',
-                description: t('store.sampleProductsCreatedDesc') || 'We added 3 draft products. Edit them or delete them anytime.',
+                title: t('store.sampleProductsCreatedTitle') || 'تمت إضافة منتجات تجريبية',
+                description: t('store.sampleProductsCreatedDesc') || 'أضفنا 4 منتجات تجريبية حقيقية. يمكنك تعديلها أو حذفها في أي وقت.',
               });
             } catch (e) {
               console.error('Failed to create sample products', e);

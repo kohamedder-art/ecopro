@@ -23,7 +23,7 @@ import { encryptData, decryptData, hashData } from '../utils/encryption';
 import { buildOtpAuthUrl, generateTotpSecretBase32, verifyTotp } from '../utils/totp';
 import { clearAuthCookies, getCookieOptions, cookieNames } from '../utils/auth-cookies';
 import { createTrialSubscription } from './billing';
-import { ensureBotSettingsRow, ensureSystemOrderStatuses } from '../utils/client-provisioning';
+import { ensureBotSettingsRow, ensureSystemOrderStatuses, ensureSampleProducts } from '../utils/client-provisioning';
 
 // JWT authentication middleware
 export const requireAuth: RequestHandler = (req, res, next) => {
@@ -265,10 +265,11 @@ export const register: RequestHandler = async (req, res) => {
       // Create 30-day trial subscription for new store owners
       await createTrialSubscription(Number(user.id));
 
-      // Provision defaults so bots + statuses work immediately for new users.
+      // Provision defaults so bots + statuses + sample products work immediately for new users.
       try {
         await ensureBotSettingsRow(Number(user.id), { enabled: true });
         await ensureSystemOrderStatuses(Number(user.id));
+        await ensureSampleProducts(Number(user.id));
       } catch (e) {
         console.warn('[REGISTER] Provisioning defaults failed (non-fatal):', (e as any)?.message || e);
       }
