@@ -307,14 +307,20 @@ export const getStorefrontDeliveryPrices: RequestHandler = async (req, res) => {
 
     const pool = await ensureConnection();
 
-    // Get client ID from store slug
-    const storeResult = await pool.query(
-      `SELECT client_id
-       FROM client_store_settings
-       WHERE store_slug = $1
-          OR LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)`,
+    // Get client ID from store slug — exact match first, name fallback
+    let storeResult = await pool.query(
+      `SELECT client_id FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
       [storeSlug]
     );
+
+    if (storeResult.rows.length === 0) {
+      storeResult = await pool.query(
+        `SELECT client_id FROM client_store_settings
+         WHERE LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)
+         LIMIT 1`,
+        [storeSlug]
+      );
+    }
 
     if (storeResult.rows.length === 0) {
       return res.status(404).json({ error: 'Store not found' });
