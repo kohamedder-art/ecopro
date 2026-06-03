@@ -688,6 +688,16 @@ export default function ChatOrders() {
                         <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
                           <div className="flex flex-col items-end gap-0.5">
                             <span className="text-sm font-bold max-w-[140px] truncate block" title={o.customer_name}>{o.customer_name || "—"}</span>
+                            {o.duplicate_info?.level === 'same_name_diff_phone' && (
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium" title={`${o.duplicate_info.name_order_count} طلبات بنفس الاسم بأرقام مختلفة`}>
+                                ⚠ تكرار بالاسم
+                              </span>
+                            )}
+                            {o.duplicate_info?.level === 'same_phone' && o.duplicate_info?.diff_names?.length > 0 && (
+                              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium" title={`نفس الرقم بأسماء مختلفة: ${o.duplicate_info.diff_names.join('، ')}`}>
+                                ℹ أسماء مختلفة
+                              </span>
+                            )}
                             {o.customer_phone && (
                               <button
                                 onClick={() => copy(o.customer_phone, `ph-${o.id}`)}
@@ -955,6 +965,12 @@ export default function ChatOrders() {
                     <div className="px-3 pb-3 flex items-center justify-between gap-2 border-t border-border/30 pt-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold truncate max-w-[120px]" title={o.customer_name}>{o.customer_name || "—"}</span>
+                        {o.duplicate_info?.level === 'same_name_diff_phone' && (
+                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium">⚠</span>
+                        )}
+                        {o.duplicate_info?.level === 'same_phone' && o.duplicate_info?.diff_names?.length > 0 && (
+                          <span className="text-[9px] text-violet-600 dark:text-violet-400 font-medium">ℹ</span>
+                        )}
                         {o.customer_phone && (
                           <button
                             onClick={() => copy(o.customer_phone, `ph-${o.id}`)}
