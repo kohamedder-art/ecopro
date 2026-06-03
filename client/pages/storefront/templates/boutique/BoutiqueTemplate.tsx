@@ -5,7 +5,7 @@ import {
   Home, Building2, ChevronDown
 } from 'lucide-react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
@@ -223,7 +223,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, heroProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = baseDeliveryFee;
+  const deliveryFee = resolveDeliveryFee(orderProduct, selectedOffer, baseDeliveryFee);
 
   // Collection = rest of products (excluding the hero)
   const collectionProducts = useMemo(() => {

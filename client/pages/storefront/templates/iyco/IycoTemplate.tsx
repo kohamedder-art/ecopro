@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
@@ -125,7 +125,7 @@ export default function IycoTemplate({
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = baseDeliveryFee;
+  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
 
   // ── Cart System ──
   const [cart, setCart] = useState<{ id: number; title: string; price: number; image: string; qty: number; variant_id?: number; variant_name?: string }[]>([]);
