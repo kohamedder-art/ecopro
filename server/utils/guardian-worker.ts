@@ -135,15 +135,15 @@ async function scanClient(
 
     // 7. Delivery price gaps (wilayas with recent orders but no delivery price)
     pool.query(
-      `SELECT COUNT(DISTINCT so.wilaya_id) as count
+      `SELECT COUNT(DISTINCT so.shipping_wilaya_id) as count
        FROM store_orders so
        WHERE so.client_id = $1
          AND so.deleted_at IS NULL
          AND so.created_at > NOW() - INTERVAL '7 days'
-         AND so.wilaya_id IS NOT NULL
+         AND so.shipping_wilaya_id IS NOT NULL
          AND NOT EXISTS (
            SELECT 1 FROM delivery_prices dp
-           WHERE dp.client_id = $1 AND dp.wilaya_id = so.wilaya_id AND dp.is_active = true
+           WHERE dp.client_id = $1 AND dp.wilaya_id = so.shipping_wilaya_id AND dp.is_active = true
          )`,
       [clientId]
     ).catch(() => ({ rows: [{ count: 0 }] })),
