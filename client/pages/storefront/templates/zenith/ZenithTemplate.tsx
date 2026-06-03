@@ -8,6 +8,7 @@ import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/sto
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate }: TemplateProps) {
@@ -36,6 +37,10 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
+  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+
+  // Clear commune when wilaya changes
+  useEffect(() => { setCommuneId(''); }, [selectedWilayaId]);
 
   // Main product — supports initialProductSlug for direct URL access
   const [currentSlug, setCurrentSlug] = useState<string | null>(initialProductSlug || null);
@@ -92,7 +97,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
-  const [commune, setCommune] = useState('');
+  const [communeId, setCommuneId] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
   // Safe fallbacks after mainProduct declaration
@@ -143,7 +148,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
     try {
       setIsSubmitting(true);
-      const address = `${selectedWilaya?.labelAR || ''} - ${commune}${customerAddress ? ` - ${customerAddress}` : ''}`;
+      const address = `${selectedWilaya?.labelAR || ''} - ${getAlgeriaCommuneById(communeId)?.name || ''}${customerAddress ? ` - ${customerAddress}` : ''}`;
 
       const res = await fetch('/api/orders/create', {
         method: 'POST',
@@ -518,17 +523,26 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                 {showCommune && (
                   <div>
                     <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>البلدية</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="أدخل بلديتك"
-                      className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all"
-                      style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
-                      value={commune}
-                      onChange={(e) => setCommune(e.target.value)}
-                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
-                    />
+                    <div className="relative">
+                      <select
+                        required
+                        disabled={!selectedWilayaId}
+                        className="w-full border rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 outline-none transition-all disabled:opacity-50"
+                        style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
+                        value={communeId}
+                        onChange={(e) => setCommuneId(e.target.value)}
+                        onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                        onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                      >
+                        <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                        {communes.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={18} className="absolute left-3 top-3.5 pointer-events-none" style={{ color: textMuted }} />
+                    </div>
                   </div>
                 )}
               </div>
