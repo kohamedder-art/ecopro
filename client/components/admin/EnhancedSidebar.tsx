@@ -60,8 +60,10 @@ const CATEGORY_COLORS: { [key: string]: string } = {
   settings: '#6b7280',  // Gray
 };
 
-const buildMenuItems = (storeSlug: string | null): MenuItem[] => {
-  const storefrontPath = storeSlug ? `/store/${encodeURIComponent(storeSlug)}` : "/my-store";
+const buildMenuItems = (storeSlug: string | null, subdomain: string | null): MenuItem[] => {
+  const storefrontPath = subdomain
+    ? `https://${subdomain}.sahla4eco.com`
+    : storeSlug ? `/store/${encodeURIComponent(storeSlug)}` : "/my-store";
 
   return [
     { titleKey: "sidebar.home", path: "/dashboard", icon: <Home className="w-[18px] h-[18px]" />, permission: "view_dashboard" },
@@ -169,9 +171,10 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
     }
   };
 
-  const { storeSlug } = useStoreSettings({ enabled: true });
+  const { storeSlug, storeSettings } = useStoreSettings({ enabled: true });
+  const subdomain = (storeSettings as any)?.subdomain || null;
 
-  const menuItems = useMemo(() => buildMenuItems(storeSlug), [storeSlug]);
+  const menuItems = useMemo(() => buildMenuItems(storeSlug, subdomain), [storeSlug, subdomain]);
   
   // Save theme state to localStorage whenever it changes
   useEffect(() => {
