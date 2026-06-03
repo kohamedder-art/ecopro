@@ -2,15 +2,17 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ShoppingCart, Plus, Minus, X, Truck, ShieldCheck, Star,
   Phone, Trash2, CheckCircle2, ArrowRight, ShoppingBag,
-  Home, Building2
+  Home, Building2, ChevronDown
 } from 'lucide-react';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { isValidAlgerianPhone } from '@/lib/utils';
 
 interface CartItem {
   id: number;
@@ -149,7 +151,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [commune, setCommune] = useState('');
+  const [communeId, setCommuneId] = useState('');
+  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+  useEffect(() => { setCommuneId(''); }, [selectedWilayaId]);
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
@@ -290,10 +294,14 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       setOrderError('الرجاء تعبئة جميع الحقول المطلوبة');
       return;
     }
+    if (!isValidAlgerianPhone(customerPhone)) {
+      setOrderError('رقم الهاتف غير صحيح — يجب أن يبدأ بـ 05، 06 أو 07 ويكون 10 أرقام');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
-      const address = [selectedWilaya?.labelAR || '', commune, customerAddress].filter(Boolean).join(' - ');
+      const address = [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(communeId)?.name || '', customerAddress].filter(Boolean).join(' - ');
       const isOfferItem = selectedOffer && orderProduct.id === heroProduct?.id;
       const itemPrice = orderVariant?.price ?? orderProduct.price;
 
@@ -596,12 +604,13 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                                 required
                                 dir="ltr"
                                 placeholder="05 55 55 55 55"
+                                maxLength={10}
                                 className="w-full border rounded-xl px-4 pl-10 py-3 text-sm text-right outline-none focus:ring-2"
                                 style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
                                 onFocus={e => e.currentTarget.style.borderColor = accentColor}
                                 onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
                                 value={customerPhone}
-                                onChange={(e) => setCustomerPhone(e.target.value)}
+                                onChange={(e) => setCustomerPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
                               />
                               <Phone size={16} className="absolute left-4 top-3.5" style={{ color: surfaceTextMuted }} />
                             </div>
@@ -626,16 +635,24 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                                 </option>
                               ))}
                             </select>
-                            {showCommune && <input
-                              type="text"
-                              placeholder="البلدية"
-                              className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
+                          {showCommune && <div className="relative">
+                            <select
+                              required
+                              disabled={!selectedWilayaId}
+                              className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 appearance-none disabled:opacity-50"
                               style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }}
                               onFocus={e => e.currentTarget.style.borderColor = accentColor}
                               onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
-                              value={commune}
-                              onChange={(e) => setCommune(e.target.value)}
-                            />}
+                              value={communeId}
+                              onChange={(e) => setCommuneId(e.target.value)}
+                            >
+                              <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                              {communes.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                            <ChevronDown size={18} className="absolute left-3 top-3.5 pointer-events-none" style={{ color: surfaceTextColor, opacity: 0.5 }} />
+                          </div>}
                           </div>
 
                           {showAddress && <input type="text" placeholder="العنوان" className="w-full border rounded-xl px-4 py-3 text-sm outline-none" style={{ backgroundColor: inputBg, color: surfaceTextColor, borderColor: surfaceBorderColor }} value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />}

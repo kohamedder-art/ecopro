@@ -3,13 +3,14 @@ import { TemplateProps, StoreProduct } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useImageClassifier } from '@/hooks/useImageClassifier';
 import { useOrderFields } from '@/hooks/useOrderFields';
+import { isValidAlgerianPhone } from '@/lib/utils';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
-export default function DZShopTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
+export default function DZShopTemplate({ settings, products, canManage, storeSlug, onProductView }: TemplateProps) {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [orderSuccess, setOrderSuccess] = React.useState(false);
     const [lastOrderId, setLastOrderId] = React.useState<number | string | null>(null);
@@ -58,6 +59,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     // Get product first (needed for variant/offer hooks)
     const product = (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
 
+    // Fire product view tracking when product changes
+    useEffect(() => { if (product && onProductView) onProductView(product); }, [product?.id, onProductView]);
+
     // Variant and Offer support
     const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
     const { offers, loading: offersLoading } = useProductOffers(storeSlug, product?.id);
@@ -73,9 +77,14 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const handleDefaultOrder = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!product) return;
+        const fd = new FormData(e.currentTarget);
+        const phone = (fd.get('phone') as string || '').replace(/[^0-9]/g, '');
+        if (!isValidAlgerianPhone(phone)) {
+            setOrderError('رقم الهاتف غير صحيح — يجب أن يبدأ بـ 05، 06 أو 07 ويكون 10 أرقام');
+            return;
+        }
         setIsSubmitting(true);
         try {
-            const fd = new FormData(e.currentTarget);
             const payload = {
                 store_slug: storeSlug || settings?.store_name || 'dzshop',
                 product_id: product.id,
@@ -576,7 +585,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>رقم الهاتف</label>
-                                    <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full px-4 py-2.5 rounded-xl outline-none text-sm text-right transition-colors" dir="ltr" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                                    <input required name="phone" type="tel" maxLength={10} placeholder="رقم الهاتف" className="w-full px-4 py-2.5 rounded-xl outline-none text-sm text-right transition-colors" dir="ltr" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
                                 </div>
                                 <div className="col-span-2">
                                     <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>الولاية</label>

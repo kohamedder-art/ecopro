@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { ChevronDown, Phone, ShoppingCart, ShieldCheck } from 'lucide-react';
 import { TemplateProps } from '../types';
-import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
+import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import { useImageClassifier } from '@/hooks/useImageClassifier';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
@@ -9,9 +9,10 @@ import VariantSelector, { SelectedVariant } from '@/components/storefront/Varian
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
+import { isValidAlgerianPhone } from '@/lib/utils';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
-export default function ZenithTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate }: TemplateProps) {
+export default function ZenithTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate, onProductView }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#000000';
   const bgColor = settings?.template_bg_color || '#f3f4f6';
   const isDark = useMemo(() => {
@@ -60,6 +61,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     return products?.[0] || null;
   }, [currentSlug, products, settings?.dzp_main_product_id]);
 
+  // Fire product view tracking when mainProduct changes
+  useEffect(() => { if (mainProduct && onProductView) onProductView(mainProduct); }, [mainProduct?.id, onProductView]);
+
   // Navigate to a product
   const goToProduct = useCallback((product: any) => {
     if (product?.slug && navigate) {
@@ -92,13 +96,14 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const baseDeliveryFee = selectedWilaya
     ? (selectedDeliveryType === 'desk' ? (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0) : (selectedWilaya.homePrice ?? 0))
     : 0;
-  const deliveryFee = baseDeliveryFee;
+  const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [communeId, setCommuneId] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   // Safe fallbacks after mainProduct declaration
   const safeProduct = mainProduct || { id: 0, title: 'منتج مميز', price: 3900, original_price: 6500, images: [], variants: [] };
@@ -143,6 +148,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId || !mainProduct?.id) {
       setOrderError('الرجاء تعبئة جميع الحقول المطلوبة');
+      return;
+    }
+    if (!isValidAlgerianPhone(customerPhone)) {
+      setPhoneError('رقم الهاتف غير صحيح — يجب أن يبدأ بـ 05، 06 أو 07 ويكون 10 أرقام');
+      setOrderError('الرجاء تأكد من رقم الهاتف');
       return;
     }
 
@@ -225,23 +235,23 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   if (showStoreGrid) {
     return (
-      <div className="min-h-screen font-sans" style={{ backgroundColor: '#f5f5f5', color: textColor }} dir="rtl">
+      <div className="min-h-screen font-sans" style={{ backgroundColor: surfaceMuted, color: textColor }} dir="rtl">
         {/* Header */}
-        <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between gap-4" style={{ backgroundColor: '#fff', borderBottom: '1px solid #f0f0f0' }}>
+        <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between gap-4" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
           <div className="flex items-center gap-2 shrink-0">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" />}
-            <div className="font-bold text-base" style={{ color: '#222' }}>
+            <div className="font-bold text-base" style={{ color: textColor }}>
               {storeName}
             </div>
           </div>
           {/* Search bar (desktop) */}
-          <div className="hidden md:flex flex-1 max-w-md items-center gap-2 px-3 py-2 rounded-full" style={{ backgroundColor: '#f5f5f5' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="hidden md:flex flex-1 max-w-md items-center gap-2 px-3 py-2 rounded-full" style={{ backgroundColor: surfaceMuted }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
             </svg>
-            <span className="text-sm" style={{ color: '#999' }}>ابحث في المنتجات...</span>
+            <span className="text-sm" style={{ color: textMuted }}>ابحث في المنتجات...</span>
           </div>
-          <span className="text-xs shrink-0" style={{ color: '#999' }}>{products?.length} منتج</span>
+          <span className="text-xs shrink-0" style={{ color: textMuted }}>{products?.length} منتج</span>
         </div>
 
         {/* Temu-style Product Grid */}
@@ -261,7 +271,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                 key={product.id}
                 onClick={() => goToProduct(product)}
                 className="w-full text-right overflow-hidden"
-                style={{ backgroundColor: '#fff' }}
+                style={{ backgroundColor: cardBg }}
               >
                 {/* Image / Video */}
                 <div className="relative w-full" style={{ paddingBottom: '100%' }}>
@@ -277,13 +287,13 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       loading="lazy"
                     />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ backgroundColor: '#f5f5f5' }}>
+                    <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ backgroundColor: surfaceMuted }}>
                       📦
                     </div>
                   )}
                   {/* Discount badge */}
                   {discount > 0 && (
-                    <div className="absolute top-0 left-0 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: '#ff4d4f' }}>
+                    <div className="absolute top-0 left-0 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: accentColor }}>
                       {discount}% OFF
                     </div>
                   )}
@@ -298,18 +308,18 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
                 {/* Info */}
                 <div className="p-2">
-                  <h3 className="text-xs font-medium leading-tight mb-1 line-clamp-2" style={{ color: '#222', minHeight: '2.5em' }}>
+                  <h3 className="text-xs font-medium leading-tight mb-1 line-clamp-2" style={{ color: textColor, minHeight: '2.5em' }}>
                     {product.title || product.name || 'منتج'}
                   </h3>
                   {/* Stars */}
                   <div className="flex items-center gap-0.5 mb-1">
                     {[1,2,3,4,5].map(i => (
-                      <svg key={i} width="10" height="10" viewBox="0 0 24 24" fill={i <= 4 ? '#ffad33' : '#e0e0e0'}>
+                      <svg key={i} width="10" height="10" viewBox="0 0 24 24" fill={i <= 4 ? accentColor : borderColor}>
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                       </svg>
                     ))}
                     {salesLabel && (
-                      <span className="text-[9px] mr-0.5" style={{ color: '#999' }}>({salesLabel})</span>
+                      <span className="text-[9px] mr-0.5" style={{ color: textMuted }}>({salesLabel})</span>
                     )}
                   </div>
                   {/* Price */}
@@ -480,15 +490,29 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       required
                       dir="ltr"
                       placeholder="05 55 55 55 55"
+                      maxLength={10}
                       className="w-full border rounded-lg px-4 pl-10 py-3 text-right text-sm focus:ring-2 outline-none transition-all"
-                      style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
+                      style={{
+                        backgroundColor: surfaceMuted,
+                        borderColor: phoneError ? '#ef4444' : borderColor,
+                        color: textColor,
+                      }}
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                        setCustomerPhone(val);
+                        if (val.length === 10) {
+                          setPhoneError(isValidAlgerianPhone(val) ? '' : 'رقم الهاتف غير صحيح');
+                        } else {
+                          setPhoneError('');
+                        }
+                      }}
                       onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                      onBlur={e => e.currentTarget.style.borderColor = phoneError ? '#ef4444' : borderColor}
                     />
                     <Phone size={18} className="absolute left-3 top-3.5" style={{ color: textMuted }} />
                   </div>
+                  {phoneError && <p className="text-xs text-red-500 mt-1 font-bold">{phoneError}</p>}
                 </div>
               </div>
 

@@ -4,6 +4,8 @@ import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { isValidAlgerianPhone } from '@/lib/utils';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import {
   ShoppingBag,
   Star,
@@ -19,7 +21,8 @@ import {
   X,
   Check,
   Home,
-  Building2
+  Building2,
+  ChevronDown
 } from 'lucide-react';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -158,6 +161,8 @@ export default function PrimoTemplate({
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerCommune, setCustomerCommune] = useState('');
+  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+  useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
   const [customerNotes, setCustomerNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -219,9 +224,13 @@ export default function PrimoTemplate({
       setOrderError('يرجى ملء جميع الحقول');
       return;
     }
+    if (!isValidAlgerianPhone(customerPhone)) {
+      setOrderError('رقم الهاتف غير صحيح — يجب أن يبدأ بـ 05، 06 أو 07 ويكون 10 أرقام');
+      return;
+    }
     setIsSubmitting(true);
     try {
-      const address = [selectedWilaya?.labelAR || '', customerCommune, customerAddress].filter(Boolean).join(' - ');
+      const address = [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(customerCommune)?.name || customerCommune, customerAddress].filter(Boolean).join(' - ');
       const isOfferItem = selectedOffer && mainProduct.id === mainProduct.id;
       const itemPrice = selectedVariant?.price ?? mainProduct.price;
       const res = await fetch('/api/orders/create', {
@@ -593,7 +602,7 @@ export default function PrimoTemplate({
                   </div>
                   <div className="relative">
                     <Phone className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
-                    <input type="tel" placeholder="رقم الهاتف" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                    <input type="tel" placeholder="رقم الهاتف" maxLength={10} value={customerPhone} onChange={e => setCustomerPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
                   </div>
                 </div>
 
@@ -607,7 +616,11 @@ export default function PrimoTemplate({
                   </div>
                   {showCommune && (
                     <div className="relative">
-                      <input type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                      <select required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold appearance-none disabled:opacity-50" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
+                        <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                        {communes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextMuted }} />
                     </div>
                   )}
                 </div>

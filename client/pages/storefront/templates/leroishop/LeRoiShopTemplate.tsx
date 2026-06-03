@@ -3,6 +3,7 @@ import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import { isValidAlgerianPhone } from '@/lib/utils';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
@@ -315,6 +316,10 @@ export default function LeRoiShopTemplate({
     const phone = fd.get('phone') as string;
     if (!name || !phone || !selectedWilayaId || !activeProduct) {
       setOrderError('الرجاء تعبئة جميع الحقول المطلوبة');
+      return;
+    }
+    if (!isValidAlgerianPhone(phone)) {
+      setOrderError('رقم الهاتف غير صحيح — يجب أن يبدأ بـ 05، 06 أو 07 ويكون 10 أرقام');
       return;
     }
     try {
@@ -742,7 +747,7 @@ export default function LeRoiShopTemplate({
                       {/* 3 ── Customer fields ─────────── */}
                       <div className="grid grid-cols-2 gap-4">
                         <input required name="name" type="text" placeholder="الإسم واللقب" className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
-                        <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none transition-colors text-right" dir="ltr" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
+                        <input required name="phone" type="tel" maxLength={10} placeholder="رقم الهاتف" className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none transition-colors text-right" dir="ltr" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       </div>
                       <div className={`grid gap-4 ${showCommune ? 'grid-cols-2' : 'grid-cols-1'}`}>
                         <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none appearance-none transition-colors" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>

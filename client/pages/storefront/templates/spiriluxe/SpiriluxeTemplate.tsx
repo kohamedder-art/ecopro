@@ -3,6 +3,7 @@ import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import { isValidAlgerianPhone } from '@/lib/utils';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Truck, Shield, Trash2, Plus, Home, Building2 } from 'lucide-react';
@@ -125,10 +126,15 @@ export default function SpiriluxeTemplate({
     e.preventDefault();
     if (!mainProduct) return;
     
+    const fd = new FormData(e.currentTarget);
+    const phone = (fd.get('phone') as string || '').replace(/[^0-9]/g, '');
+    if (!isValidAlgerianPhone(phone)) {
+      setOrderError('رقم الهاتف غير صحيح — يجب أن يبدأ بـ 05، 06 أو 07 ويكون 10 أرقام');
+      return;
+    }
     setIsSubmitting(true);
     setOrderError(null);
     try {
-      const fd = new FormData(e.currentTarget);
       const payload = {
         store_slug: storeSlug || settings?.store_name || 'spiriluxe',
         product_id: mainProduct.id,
@@ -335,6 +341,13 @@ export default function SpiriluxeTemplate({
   // ─── Render ───
   return (
     <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, color: textColor }}>
+      {/* Store Header */}
+      <div className="sticky top-0 z-50 px-4 py-3" style={{ backgroundColor: bgColor, borderBottom: `1px solid ${borderColor}` }}>
+        <div className="max-w-md mx-auto flex items-center gap-2">
+          {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" />}
+          <span className="font-bold text-base">{settings?.store_name || 'المتجر'}</span>
+        </div>
+      </div>
       <div className="max-w-md mx-auto">
 
         {/* Video Embed (above images) */}
@@ -470,6 +483,7 @@ export default function SpiriluxeTemplate({
                       name="phone" 
                       type="tel" 
                       required 
+                      maxLength={10}
                       className="w-full px-4 py-3 rounded-xl transition-all"
                       style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
                       onFocus={e => e.currentTarget.style.borderColor = accentColor}

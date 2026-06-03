@@ -3,6 +3,8 @@ import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import { isValidAlgerianPhone } from '@/lib/utils';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import {
   Search,
   User,
@@ -174,6 +176,8 @@ export default function IycoTemplate({
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerCommune, setCustomerCommune] = useState('');
+  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+  useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
   const [customerNotes, setCustomerNotes] = useState('');
   const [quantity, setQuantity] = useState(1);
   const effectiveSubtotal = selectedOffer ? selectedOffer.bundle_price * quantity : subtotal;
@@ -268,6 +272,10 @@ export default function IycoTemplate({
       setOrderError('يرجى ملء جميع الحقول');
       return;
     }
+    if (!isValidAlgerianPhone(customerPhone)) {
+      setOrderError('رقم الهاتف غير صحيح — يجب أن يبدأ بـ 05، 06 أو 07 ويكون 10 أرقام');
+      return;
+    }
 
     if (!mainProduct) {
       setOrderError('يرجى إضافة منتج واحد على الأقل');
@@ -299,7 +307,7 @@ export default function IycoTemplate({
             delivery_type: selectedDeliveryType,
             customer_name: customerName,
             customer_phone: customerPhone,
-            customer_address: [selectedWilaya?.labelAR || '', customerAddress, customerCommune].filter(Boolean).join(' - '),
+            customer_address: [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(customerCommune)?.name || customerCommune, customerAddress].filter(Boolean).join(' - '),
             customer_notes: customerNotes,
             shipping_wilaya_id: selectedWilayaId,
             product_name: item.name || item.title || mainProduct?.title || mainProduct?.name || '',
@@ -609,10 +617,11 @@ export default function IycoTemplate({
                         required
                         type="tel"
                         placeholder="أدخل رقم الهاتف..."
+                        maxLength={10}
                         className="w-full pl-4 pr-11 py-3 text-base md:text-sm rounded-xl outline-none transition-all text-right"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerPhone ? accentColor : borderColor}` }}
                         value={customerPhone}
-                        onChange={e => setCustomerPhone(e.target.value)}
+                        onChange={e => setCustomerPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
                       />
                       <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-xl" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
                         <Phone size={16} />
@@ -640,7 +649,11 @@ export default function IycoTemplate({
                       </div>
                     </div>
                     {showCommune && <div className="relative">
-                      <input type="text" placeholder="البلدية" className="w-full pl-4 pr-4 py-3 text-base md:text-sm rounded-xl outline-none" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} />
+                      <select required disabled={!selectedWilayaId} className="w-full pl-4 pr-10 py-3 text-base md:text-sm rounded-xl outline-none appearance-none disabled:opacity-50" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)}>
+                        <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                        {communes.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                      </select>
+                      <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextColor, opacity: 0.5 }} />
                     </div>}
                   </div>
 

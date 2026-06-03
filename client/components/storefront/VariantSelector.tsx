@@ -131,13 +131,30 @@ export default function VariantSelector({
     return undefined;
   };
 
-  // Which sizes are available for the selected color?
+  // Which sizes are still in stock for the selected color?
   const availableSizes = useMemo(() => {
-    if (!hasColors || !selectedColor) return new Set(sizes);
+    if (!hasColors || !selectedColor) {
+      // No color selected — only show sizes with at least one in-stock variant
+      return new Set(
+        variants.filter(v => v.stock_quantity == null || v.stock_quantity > 0).map(v => v.size).filter(Boolean) as string[]
+      );
+    }
     return new Set(
-      variants.filter(v => v.color === selectedColor).map(v => v.size).filter(Boolean) as string[]
+      variants.filter(v => v.color === selectedColor && (v.stock_quantity == null || v.stock_quantity > 0)).map(v => v.size).filter(Boolean) as string[]
     );
   }, [variants, selectedColor, hasColors, sizes]);
+
+  // Check if a specific variant is out of stock
+  const isVariantOutOfStock = (variant: ProductVariant | undefined): boolean => {
+    return variant?.stock_quantity != null && variant.stock_quantity <= 0;
+  };
+
+  // Check if a color is completely out of stock
+  const isColorOutOfStock = (colorName: string): boolean => {
+    const colorVariants = variants.filter(v => v.color === colorName);
+    if (colorVariants.length === 0) return false;
+    return colorVariants.every(v => v.stock_quantity != null && v.stock_quantity <= 0);
+  };
 
   const handleColorClick = (colorName: string) => {
     if (selectedColor === colorName) {
@@ -166,7 +183,7 @@ export default function VariantSelector({
       return;
     }
     const match = findVariant(selectedColor, size);
-    if (match) {
+    if (match && !isVariantOutOfStock(match)) {
       onSelect({
         id: match.id,
         color: match.color,
@@ -176,8 +193,8 @@ export default function VariantSelector({
         images: match.images,
       });
     } else if (hasColors && !selectedColor) {
-      // No color selected yet — pick the first variant with this size
-      const fallback = variants.find(v => v.size === size);
+      // No color selected yet — pick the first in-stock variant with this size
+      const fallback = variants.find(v => v.size === size && (v.stock_quantity == null || v.stock_quantity > 0));
       if (fallback) {
         onSelect({
           id: fallback.id,
@@ -205,7 +222,7 @@ export default function VariantSelector({
               // Find variant with this color to get its image
               const colorVariant = variants.find(v => v.color === c.name);
               const variantImage = colorVariant?.images?.[0];
-              const isPopular = (colorVariant?.stock_quantity || 0) < 10; // Low stock = popular
+              const outOfStock = isColorOutOfStock(c.name);
               
               return (
                 <button
@@ -247,10 +264,9 @@ export default function VariantSelector({
                       </div>
                     )}
                     
-                    {/* Fire icon badge for popular/low stock items like Temu */}
-                    {isPopular && !isActive && (
-                      <div className="absolute bottom-1 left-1">
-                        <span className="text-orange-500 text-xs">🔥</span>
+                    {outOfStock && (
+                      <div className="absolute inset-0 bg-white/60 dark:bg-black/60 flex items-center justify-center">
+                        <span className="text-[9px] font-black text-red-600 bg-white/80 px-1 py-0.5 rounded">نفد</span>
                       </div>
                     )}
                   </div>
@@ -265,6 +281,9 @@ export default function VariantSelector({
                   >
                     {c.name}
                   </span>
+                  {outOfStock && (
+                    <span className="text-[9px] font-bold text-red-500">نفد</span>
+                  )}
                 </button>
               );
             })}
@@ -282,6 +301,7 @@ export default function VariantSelector({
             {colors.map(c => {
               const isActive = !!(selectedColor && c.name && selectedColor.trim().toLowerCase() === c.name.trim().toLowerCase());
               const hex = c.hex;
+              const outOfStock = isColorOutOfStock(c.name);
               return (
                 <div key={c.name} className="flex flex-col items-center gap-0.5">
                   <button
@@ -299,10 +319,11 @@ export default function VariantSelector({
                           : `linear-gradient(135deg, #f87171 25%, #facc15 25%, #facc15 50%, #34d399 50%, #34d399 75%, #60a5fa 75%)`
                         : undefined,
                       border: isActive ? `3px solid ${accentColor}` : '2px solid rgba(0,0,0,0.15)',
-                      opacity: selectedColor && !isActive ? 0.35 : 1,
+                      opacity: outOfStock ? 0.3 : (selectedColor && !isActive ? 0.35 : 1),
                       transform: isActive ? 'scale(1.1)' : 'scale(1)',
-                      cursor: 'pointer',
+                      cursor: outOfStock ? 'not-allowed' : 'pointer',
                       boxShadow: isActive ? `0 0 0 2px white, 0 0 0 4px ${accentColor}40` : '0 1px 3px rgba(0,0,0,0.1)',
+                      textDecoration: outOfStock ? 'line-through' : 'none',
                     }}
                   >
                     {!hex && !c.name.includes(',') && (
@@ -311,6 +332,7 @@ export default function VariantSelector({
                       </span>
                     )}
                   </button>
+                  {outOfStock && <span className="text-[8px] text-red-500 font-bold">نفد</span>}
                 </div>
               );
             })}

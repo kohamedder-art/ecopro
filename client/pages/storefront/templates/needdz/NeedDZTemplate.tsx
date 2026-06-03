@@ -16,15 +16,18 @@ import {
   Eye,
   EyeOff,
   Home,
-  Building2
+  Building2,
+  ChevronDown
 } from 'lucide-react';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
+import { isValidAlgerianPhone } from '@/lib/utils';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
 const FALLBACK_PRODUCTS = [
@@ -58,7 +61,7 @@ const FALLBACK_PRODUCTS = [
   }
 ];
 
-export default function NeedDZTemplate({ settings, products, canManage, storeSlug, navigate, initialProductSlug }: TemplateProps) {
+export default function NeedDZTemplate({ settings, products, canManage, storeSlug, navigate, initialProductSlug, onProductView }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#059669';
   const isDark = useMemo(() => {
     const hex = (settings?.template_bg_color || '#ffffff').replace('#', '');
@@ -83,6 +86,9 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
       if (match) { setSelectedProduct(match); setIsCheckoutOpen(true); }
     }
   }, [initialProductSlug, products]);
+
+  // Fire product view tracking when a product is selected
+  useEffect(() => { if (selectedProduct && onProductView) onProductView(selectedProduct); }, [selectedProduct?.id, onProductView]);
 
   // Update URL when product is selected
   const handleSelectProduct = (product: any) => {
@@ -111,6 +117,8 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerCommune, setCustomerCommune] = useState('');
+  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+  useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
   const [customerNotes, setCustomerNotes] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [lastOrderId, setLastOrderId] = useState<number | string | null>(null);
@@ -189,9 +197,15 @@ const parseVideoEmbed = (videoUrl: string) => {
   const handleOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedProduct) return;
+    const fd = new FormData(e.currentTarget);
+    const phone = (fd.get('phone') as string || '').replace(/[^0-9]/g, '');
+    if (!isValidAlgerianPhone(phone)) {
+      setOrderError('رقم الهاتف غير صحيح — يجب أن يبدأ بـ 05، 06 أو 07 ويكون 10 أرقام');
+      setOrderStatus('error');
+      return;
+    }
     setOrderStatus('loading');
     try {
-      const fd = new FormData(e.currentTarget);
       const payload = {
         store_slug: storeSlug || settings?.store_name || "needdz",
         product_id: selectedProduct.id,
@@ -203,7 +217,7 @@ const parseVideoEmbed = (videoUrl: string) => {
         delivery_type: selectedDeliveryType,
         customer_name: fd.get('name'),
         customer_phone: fd.get('phone'),
-        customer_address: [selectedWilaya?.labelAR, customerCommune || fd.get('commune'), customerAddress].filter(Boolean).join(' - '),
+        customer_address: [selectedWilaya?.labelAR, getAlgeriaCommuneById(customerCommune)?.name || customerCommune, customerAddress].filter(Boolean).join(' - '),
         customer_notes: customerNotes,
         product_name: selectedProduct.title || selectedProduct.name || '',
       };
@@ -583,7 +597,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                           <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>رقم الهاتف</label>
                           <div className="relative">
                             <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: textMuted }} />
-                            <input required name="phone" type="tel" placeholder="05 / 06 / 07 XX XX XX XX" className="w-full pl-12 pr-5 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                            <input required name="phone" type="tel" maxLength={10} placeholder="05 / 06 / 07 XX XX XX XX" className="w-full pl-12 pr-5 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
                           </div>
                         </div>
                       </div>
@@ -599,7 +613,13 @@ const parseVideoEmbed = (videoUrl: string) => {
                         {showCommune && (
                           <div className="space-y-1.5">
                             <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>البلدية</label>
-                            <input name="commune" type="text" placeholder="المدينة" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                            <div className="relative">
+                              <select name="commune" required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm appearance-none disabled:opacity-50" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
+                                <option value="">{selectedWilayaId ? 'اختر...' : 'اختر الولاية أولاً'}</option>
+                                {communes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                              </select>
+                              <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
+                            </div>
                           </div>
                         )}
                       </div>
