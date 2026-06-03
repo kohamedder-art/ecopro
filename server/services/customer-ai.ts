@@ -300,6 +300,10 @@ export async function handleCustomerMessage(
   // Cache the last search result per chat
   if (search) {
     searchCache.set(`${clientId}:${platform}:${platformChatId}`, { result: search, timestamp: Date.now() });
+    // Track product interest from the customer's query
+    if (msg.length > 3 && msg.length < 100) {
+      saveFacts(clientId, platform, platformChatId, { interests: [msg.trim()] }).catch(() => {});
+    }
   }
 
   // Context Amnesia Fix: If search is empty but it's a follow-up turn, keep previous context alive
@@ -360,6 +364,21 @@ export async function handleCustomerMessage(
         // Save extracted facts from the action
         saveFacts(clientId, platform, platformChatId, extractFactsFromAction(data)).catch(() => {});
       } catch (e) { console.error('[CustomerAI] Action parse error:', e); }
+    }
+
+    // Extract and save facts from the message itself (name, phone, wilaya, interaction count)
+    const msgFacts = extractFactsFromMessage(msg, facts);
+    const hasActionFacts = actionMatch !== null;
+    if (!hasActionFacts) {
+      saveFacts(clientId, platform, platformChatId, msgFacts).catch(() => {});
+    } else {
+      // Merge msg facts into existing + action facts
+      saveFacts(clientId, platform, platformChatId, {
+        customer_name: msgFacts.customer_name,
+        customer_phone: msgFacts.customer_phone,
+        preferred_wilaya: msgFacts.preferred_wilaya,
+        preferences: msgFacts.preferences,
+      }).catch(() => {});
     }
 
     // Save conversation (non-blocking)
@@ -564,6 +583,47 @@ async function saveFacts(clientId: number, platform: Platform, chatId: string, f
   } catch {}
 }
 
+const WILAYA_NAMES = new Set([
+  'ادرار', 'الشلف', 'الأغواط', 'أم البواقي', 'باتنة', 'بجاية', 'بسكرة', 'بشار',
+  'البليدة', 'البويرة', 'تمنراست', 'تبسة', 'تلمسان', 'تيارت', 'تيزي وزو', 'الجزائر',
+  'الجلفة', 'جيجل', 'سعيدة', 'سكيكدة', 'سيدي بلعباس', 'عنابة', 'قالمة', 'قسنطينة',
+  'المدية', 'مستغانم', 'المسيلة', 'معسكر', 'ورقلة', 'وهران', 'البيض', 'بومرداس',
+  'الطارف', 'تندوف', 'تيسمسيلت', 'الوادي', 'خنشلة', 'سوق أهراس', 'تيبازة',
+  'ميلة', 'عين الدفلى', 'النعامة', 'عين تموشنت', 'غرداية', 'غليزان',
+  'بني عباس', 'تميمون', 'برج باجي مختار', 'أولاد جلال', 'المنيعة',
+  'عين صالح', 'عين قزام', 'توقرت', 'جانت', 'المغير', 'الزاوية',
+]);
+
+function extractFactsFromMessage(msg: string, existing?: ConversationFacts | null): Partial<ConversationFacts> {
+  const facts: Partial<ConversationFacts> = {};
+  // Extract name: "اسمي X", "أنا X", "X درويش" patterns
+  const namePatterns = [
+    /اسمي\s+(\S+(?:\s+\S+){0,2})/i,
+    /أنا\s+(\S+(?:\s+\S+){0,2})/i,
+    /^(\S+(?:\s+\S+){0,2})\s*(?:درويش|محمد|علي|أحمد|عبد)/i,
+  ];
+  for (const pat of namePatterns) {
+    const m = msg.match(pat);
+    if (m && m[1].length > 2) {
+      facts.customer_name = m[1].trim();
+      break;
+    }
+  }
+  // Extract phone
+  const phone = extractPhone(msg);
+  if (phone) facts.customer_phone = phone;
+  // Extract wilaya from message
+  for (const w of WILAYA_NAMES) {
+    if (msg.includes(w)) {
+      facts.preferred_wilaya = w;
+      break;
+    }
+  }
+  // Track interaction count
+  facts.preferences = { interaction_count: (existing?.preferences?.interaction_count || 0) + 1 };
+  return facts;
+}
+
 function extractFactsFromAction(data: any): Partial<ConversationFacts> {
   const facts: Partial<ConversationFacts> = {};
   if (data.type === 'create_customer_order') {
@@ -586,27 +646,48 @@ function extractFactsFromAction(data: any): Partial<ConversationFacts> {
 function buildFactsSummary(facts: ConversationFacts | null): string {
   if (!facts) return '';
   const parts: string[] = [];
-  if (facts.customer_name) parts.push(`اسم الزبون: ${facts.customer_name}`);
-  if (facts.customer_phone) parts.push(`هاتف: ${facts.customer_phone}`);
-  if (facts.preferred_wilaya) parts.push(`الولاية المفضلة: ${facts.preferred_wilaya}`);
-  if (facts.interests.length > 0) parts.push(`المنتجات التي أبدى اهتماماً بها: ${facts.interests.join('، ')}`);
-  if (facts.purchased_products.length > 0) parts.push(`المنتجات التي اشتراها: ${facts.purchased_products.join('، ')}`);
+  if (facts.customer_name) parts.push(`الاسم: ${facts.customer_name}`);
+  if (facts.customer_phone) parts.push(`الهاتف: ${facts.customer_phone}`);
+  if (facts.preferred_wilaya) parts.push(`الولاية: ${facts.preferred_wilaya}`);
+  if (facts.interests.length > 0) parts.push(`المنتجات التي أبدى اهتماماً بها: ${[...new Set(facts.interests)].join('، ')}`);
+  if (facts.purchased_products.length > 0) parts.push(`المنتجات التي اشتراها: ${[...new Set(facts.purchased_products)].join('، ')}`);
   if (facts.preferences?.last_address) parts.push(`آخر عنوان شحن: ${facts.preferences.last_address}`);
-  if (facts.summary) parts.push(`\nملخص المحادثة السابقة:\n${facts.summary}`);
-  return parts.length > 0 ? `\n[معلومات عن الزبون من تاريخ المحادثة]\n${parts.join('\n')}\n[/معلومات الزبون]\n` : '';
+  const count = facts.preferences?.interaction_count || 0;
+  if (count > 1) parts.push(`عدد المرات التي تواصل فيها مع المتجر: ${count}`);
+  if (facts.summary) parts.push(`\nخلاصة تاريخ المحادثة:\n${facts.summary}`);
+  return parts.length > 0 ? `\n[سجل الزبون]\n${parts.join('\n')}\n[/سجل الزبون]\n` : '';
 }
 
 async function updateFactsSummary(clientId: number, platform: Platform, chatId: string, existingFacts: ConversationFacts | null, lastMsg: string, lastResponse: string): Promise<void> {
   try {
+    const count = existingFacts?.preferences?.interaction_count || 0;
+    // Use AI to write a proper summary every 5 interactions
+    if (count > 0 && count % 5 === 0) {
+      try {
+        const history = await getHistory(clientId, platform, chatId);
+        const turnText = history.map(h => `${h.role === 'user' ? 'زبون' : 'بائع'}: ${h.parts[0]?.text || ''}`).join('\n');
+        const summaryPrompt = `لخص المحادثة التالية بين بائع وزبون في 3-4 جمل بالعربية. ركز على: اسم الزبون، رقم هاتفه، المنتجات التي أبدى اهتمام بها أو اشتراها، ولايته المفضلة، وأي معلومات مهمة أخرى:\n\n${turnText}`;
+        const { generateText } = await import('./gemini');
+        const aiSummary = await generateText('customer', summaryPrompt, { storeId: clientId, storeName: '', clientId, userType: 'customer', platformChatId }, [], 0.3, 'gemini-1.5-flash');
+        if (aiSummary && aiSummary.length > 10) {
+          const p = await pool();
+          await p.query(
+            `UPDATE customer_conversation_facts SET summary = $1, updated_at = NOW()
+             WHERE client_id = $2 AND platform = $3 AND platform_chat_id = $4`,
+            [aiSummary.slice(0, 800), clientId, platform, chatId]
+          );
+          return;
+        }
+      } catch {}
+    }
+    // Default: append last exchange as raw text (max 800 chars total)
     const prevSummary = existingFacts?.summary || '';
-    const lines: string[] = [];
-    if (prevSummary) lines.push(prevSummary);
-    lines.push(`- الزبون: "${lastMsg.slice(0, 100)}"`);
-    const respBrief = lastResponse.replace(/ECOPRO_ACTION.*/, '').slice(0, 100);
-    if (respBrief) lines.push(`- الرد: "${respBrief}"`);
-    const combined = lines.join('\n');
-    const MAX_SUMMARY_LENGTH = 1000;
-    const summary = combined.length > MAX_SUMMARY_LENGTH ? combined.slice(-MAX_SUMMARY_LENGTH) : combined;
+    const respBrief = lastResponse.replace(/ECOPRO_ACTION.*/, '').slice(0, 80).trim();
+    const line = respBrief
+      ? `الزبون: "${lastMsg.slice(0, 80)}" ← "${respBrief}"`
+      : `الزبون: "${lastMsg.slice(0, 80)}"`;
+    const combined = prevSummary ? `${prevSummary}\n${line}` : line;
+    const summary = combined.length > 800 ? combined.slice(-800) : combined;
     const p = await pool();
     await p.query(
       `UPDATE customer_conversation_facts SET summary = $1, updated_at = NOW()
