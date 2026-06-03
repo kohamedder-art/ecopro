@@ -254,20 +254,7 @@ export async function handleCustomerMessage(
   // History (last 3 turns)
   const history = await getHistory(clientId, platform, platformChatId);
 
-  // Load conversation facts (long-term memory)
-  const facts = await loadFacts(clientId, platform, platformChatId);
-  const factsSummary = buildFactsSummary(facts);
-
-  // Repetition check
-  if (history.length >= 2) {
-    const recent = history.filter(h => h.role === 'user').slice(-5).map(h => h.parts[0]?.text || '');
-    if (recent.filter(m => m === msg.trim()).length >= 3) return 'لقد أرسلت هذه الرسالة مسبقاً. هل هناك شيء جديد؟';
-  }
-
-  // Depth limit
-  if (history.filter(h => h.role === 'model').length >= 30) return 'تم الوصول للحد الأقصى. يرجى بدء محادثة جديدة.';
-
-  // Customer identity + orders
+  // Customer identity + orders (resolve phone BEFORE loading facts for cross-chat inheritance)
   let phone = await resolvePhone(clientId, platform, platformChatId);
   let orderText = phone ? await loadOrders(clientId, phone) : '';
   let phoneFromMsg = false;
@@ -278,6 +265,23 @@ export async function handleCustomerMessage(
       if (lookup) { orderText = lookup; phone = extracted; phoneFromMsg = true; }
     }
   }
+
+  // Load conversation facts (long-term memory) — phone enables cross-chat inheritance
+  const facts = await loadFacts(clientId, platform, platformChatId, phone);
+  // If phone changed since last save, propagate it
+  if (phone && (!facts?.customer_phone || facts.customer_phone !== phone)) {
+    saveFacts(clientId, platform, platformChatId, { customer_phone: phone }).catch(() => {});
+  }
+  const factsSummary = buildFactsSummary(facts);
+
+  // Repetition check
+  if (history.length >= 2) {
+    const recent = history.filter(h => h.role === 'user').slice(-5).map(h => h.parts[0]?.text || '');
+    if (recent.filter(m => m === msg.trim()).length >= 3) return 'لقد أرسلت هذه الرسالة مسبقاً. هل هناك شيء جديد؟';
+  }
+
+  // Depth limit
+  if (history.filter(h => h.role === 'model').length >= 30) return 'تم الوصول للحد الأقصى. يرجى بدء محادثة جديدة.';
 
   // Search products matching the question
   // Checkout keyword guard: skip search if user is placing an order, not browsing
@@ -537,25 +541,51 @@ async function saveHistory(clientId: number, platform: Platform, chatId: string,
   await p.query(`DELETE FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 AND created_at < NOW() - INTERVAL '7 days'`, [clientId, platform, chatId]).catch(() => {});
 }
 
-async function loadFacts(clientId: number, platform: Platform, chatId: string): Promise<ConversationFacts | null> {
+async function loadFacts(clientId: number, platform: Platform, chatId: string, phone?: string | null): Promise<ConversationFacts | null> {
   try {
     const p = await pool();
+    // Tier 1: exact chat match (highest priority)
     const res = await p.query(
       `SELECT customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary
        FROM customer_conversation_facts WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 LIMIT 1`,
       [clientId, platform, chatId]
     );
-    if (res.rows.length === 0) return null;
-    return {
-      customer_name: res.rows[0].customer_name,
-      customer_phone: res.rows[0].customer_phone,
-      preferred_wilaya: res.rows[0].preferred_wilaya,
-      preferred_commune: res.rows[0].preferred_commune,
-      interests: res.rows[0].interests || [],
-      purchased_products: res.rows[0].purchased_products || [],
-      preferences: res.rows[0].preferences || {},
-      summary: res.rows[0].summary || '',
-    };
+    if (res.rows.length > 0) {
+      return {
+        customer_name: res.rows[0].customer_name,
+        customer_phone: res.rows[0].customer_phone,
+        preferred_wilaya: res.rows[0].preferred_wilaya,
+        preferred_commune: res.rows[0].preferred_commune,
+        interests: res.rows[0].interests || [],
+        purchased_products: res.rows[0].purchased_products || [],
+        preferences: res.rows[0].preferences || {},
+        summary: res.rows[0].summary || '',
+      };
+    }
+    // Tier 2: same phone from any chat/platform (reliable identifier)
+    if (phone) {
+      const phoneRes = await p.query(
+        `SELECT customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary
+         FROM customer_conversation_facts WHERE client_id = $1 AND customer_phone = $2
+         ORDER BY updated_at DESC LIMIT 1`,
+        [clientId, phone]
+      );
+      if (phoneRes.rows.length > 0) {
+        const r = phoneRes.rows[0];
+        // Inherit stable fields only, NOT chat-specific summary
+        return {
+          customer_name: r.customer_name,
+          customer_phone: r.customer_phone,
+          preferred_wilaya: r.preferred_wilaya,
+          preferred_commune: r.preferred_commune,
+          interests: r.interests || [],
+          purchased_products: r.purchased_products || [],
+          preferences: r.preferences || {},
+          summary: '', // don't inherit other chat's summary
+        };
+      }
+    }
+    return null;
   } catch { return null; }
 }
 
