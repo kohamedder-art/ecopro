@@ -88,6 +88,7 @@ export function BigCarGauge({
 }: BigCarGaugeProps) {
   const status = statusOverride ?? getStatus(mainValue, goodThreshold, warnThreshold, trend);
   const colors = statusColors[status];
+  const isRtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
   
   // SVG dimensions
   const size = 200;
@@ -96,9 +97,9 @@ export function BigCarGauge({
   const radius = 80;
   const strokeWidth = 12;
   
-  // Arc angles (from -135 to 135 degrees = 270 degree sweep)
-  const startAngle = -135;
-  const endAngle = 135;
+  // Arc angles: RTL mirrors the gauge (0 at bottom-right, 100 at bottom-left)
+  const startAngle = isRtl ? 135 : -135;
+  const endAngle = isRtl ? -135 : 135;
   const angleRange = endAngle - startAngle;
   
   // Calculate needle angle

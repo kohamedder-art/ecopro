@@ -31,6 +31,11 @@ const renderApiGet = async (path: string): Promise<any | null> => {
   } catch (e) { console.error(`Render API fetch error ${path}:`, e); return null; }
 };
 
+// ─── Render API cache (metrics don't change faster than every 30s) ─────────
+const RENDER_METRICS_TTL_MS = 30_000;
+let cachedRenderDb: { data: Awaited<ReturnType<typeof getRenderDbMetrics>>; ts: number } | null = null;
+let cachedRenderService: { data: Awaited<ReturnType<typeof getRenderServiceMetrics>>; ts: number } | null = null;
+
 // Comprehensive Render DB metrics — fetches ALL available Postgres endpoints
 const getRenderDbMetrics = async (): Promise<{
   connectionsActive: number | null; connectionsMax: number | null;
@@ -44,6 +49,11 @@ const getRenderDbMetrics = async (): Promise<{
 } | null> => {
   const dbId = process.env.RENDER_DATABASE_ID;
   if (!process.env.RENDER_API_KEY || !dbId) return null;
+
+  // Return cached result if fresh (avoids rate-limiting: Render API caps ~5 req/min)
+  if (cachedRenderDb && Date.now() - cachedRenderDb.ts < RENDER_METRICS_TTL_MS) {
+    return cachedRenderDb.data;
+  }
 
   const now2 = new Date().toISOString();
   const from2 = new Date(Date.now() - 300_000).toISOString();
@@ -69,7 +79,7 @@ const getRenderDbMetrics = async (): Promise<{
   const memoryPct = dbMemBytes != null && dbMemLimitBytes ? (dbMemBytes / dbMemLimitBytes) * 100 : null;
   const cpuPercentage = dbCpuRaw != null && dbCpuLimitVal ? (dbCpuRaw / dbCpuLimitVal) * 100 : dbCpuRaw;
 
-  return {
+  const dbResult = {
     connectionsActive: info?.connectionLimit ?? null,
     connectionsMax: info?.connectionLimit ?? null,
     cpuPercentage: cpuPercentage ?? null,
@@ -89,6 +99,9 @@ const getRenderDbMetrics = async (): Promise<{
     replicationLag: null,
     latestBackupAt: info?.latestBackupAt ?? null,
   };
+
+  cachedRenderDb = { data: dbResult, ts: Date.now() };
+  return dbResult;
 };
 
 // Render web service metrics
