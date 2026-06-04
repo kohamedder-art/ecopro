@@ -530,7 +530,7 @@ export class ZRExpressOfficialService implements CourierService {
   private mapStatus(zrStatus: string): string {
     let statusLower = (zrStatus || '').toLowerCase().trim();
     
-    // Normalize: replace spaces with underscores for French multi-word statuses
+    // Normalize: replace spaces with underscores for multi-word statuses
     statusLower = statusLower.replace(/\s+/g, '_');
     
     const statusMap: Record<string, string> = {
@@ -567,6 +567,20 @@ export class ZRExpressOfficialService implements CourierService {
       'returned': 'returned',
       'cancelled': 'cancelled',
       'failed': 'failed',
+      // Arabic status names (from ZR Express dashboard)
+      'تم_استلام_الطلب': 'pending',
+      'الطلب_قيد_المعالجة': 'pending',
+      'مكالمة_تأكيد': 'pending',
+      'تم_تأكيد_الطلب': 'pending',
+      'جاهز_للشحن': 'pending',
+      'مؤكد_في_المكتب': 'pending',
+      'توزيع_داخل_الولاية': 'in_transit',
+      'إلى_الولاية': 'in_transit',
+      'قيد_التوصيل': 'out_for_delivery',
+      'خارج_للتوصيل_مرة_أخرى': 'out_for_delivery',
+      'تم_التوصيل': 'delivered',
+      'تم_التحصيل': 'delivered',
+      'تم_الاسترداد': 'returned',
     };
 
     return statusMap[statusLower] || statusMap[zrStatus] || 'unknown';
