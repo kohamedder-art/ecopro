@@ -544,7 +544,7 @@ export async function sendDeliveryStatusNotification(params: {
     // Check bot settings
     const settingsRes = await pool.query(
       `SELECT enabled, delivery_notifications_enabled, delivery_status_template,
-              whatsapp_enabled, telegram_enabled, viber_enabled, messenger_enabled
+              messenger_enabled, telegram_bot_token, fb_page_id
        FROM bot_settings WHERE client_id = $1`,
       [clientId]
     );
@@ -567,10 +567,8 @@ export async function sendDeliveryStatusNotification(params: {
     });
 
     const channels: Array<'whatsapp' | 'telegram' | 'viber' | 'messenger'> = [];
-    if (bs.whatsapp_enabled) channels.push('whatsapp');
-    if (bs.telegram_enabled) channels.push('telegram');
-    if (bs.viber_enabled) channels.push('viber');
-    if (bs.messenger_enabled) channels.push('messenger');
+    channels.push('telegram');
+    if (bs.messenger_enabled && bs.fb_page_id) channels.push('messenger');
 
     if (channels.length === 0) return;
 
