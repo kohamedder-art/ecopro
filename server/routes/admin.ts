@@ -55,13 +55,13 @@ const getRenderDbMetrics = async (): Promise<{
     renderApiGet(`/metrics/cpu-limit?resource=${dbId}`),
     renderApiGet(`/metrics/memory-limit?resource=${dbId}`),
   ]);
-  const dbCpuValues = cpuSeries?.data?.[0]?.values ?? cpuSeries?.data ?? [];
-  const dbMemValues = memSeries?.data?.[0]?.values ?? memSeries?.data ?? [];
-  const dbCpuPoint = Array.isArray(dbCpuValues) && dbCpuValues.length > 0 ? dbCpuValues[dbCpuValues.length - 1] : null;
-  const dbMemPoint = Array.isArray(dbMemValues) && dbMemValues.length > 0 ? dbMemValues[dbMemValues.length - 1] : null;
+  const dbCpuValues = Array.isArray(cpuSeries) ? cpuSeries[0]?.values ?? [] : [];
+  const dbMemValues = Array.isArray(memSeries) ? memSeries[0]?.values ?? [] : [];
+  const dbCpuPoint = dbCpuValues.length > 0 ? dbCpuValues[dbCpuValues.length - 1] : null;
+  const dbMemPoint = dbMemValues.length > 0 ? dbMemValues[dbMemValues.length - 1] : null;
 
-  const dbCpuLimitVal = cpuLimit?.data?.[0]?.values?.[0]?.value ?? null;
-  const dbMemLimitBytes = memLimit?.data?.[0]?.values?.[0]?.value ?? null;
+  const dbCpuLimitVal = Array.isArray(cpuLimit) ? cpuLimit[0]?.values?.[0]?.value ?? null : null;
+  const dbMemLimitBytes = Array.isArray(memLimit) ? memLimit[0]?.values?.[0]?.value ?? null : null;
 
   const dbCpuRaw = dbCpuPoint?.value ?? null;
   const dbMemBytes = dbMemPoint?.value ?? null;
@@ -115,13 +115,13 @@ const getRenderServiceMetrics = async (): Promise<{
     renderApiGet(`/services/${serviceId}/deploys?limit=1`),
   ]);
 
-  const cpuValues = cpuSeries?.data?.[0]?.values ?? cpuSeries?.data ?? [];
-  const memValues = memSeries?.data?.[0]?.values ?? memSeries?.data ?? [];
-  const cpuPoint = Array.isArray(cpuValues) && cpuValues.length > 0 ? cpuValues[cpuValues.length - 1] : null;
-  const memPoint = Array.isArray(memValues) && memValues.length > 0 ? memValues[memValues.length - 1] : null;
+  const cpuValues = Array.isArray(cpuSeries) ? cpuSeries[0]?.values ?? [] : [];
+  const memValues = Array.isArray(memSeries) ? memSeries[0]?.values ?? [] : [];
+  const cpuPoint = cpuValues.length > 0 ? cpuValues[cpuValues.length - 1] : null;
+  const memPoint = memValues.length > 0 ? memValues[memValues.length - 1] : null;
 
-  const cpuLimitVal = cpuLimit?.data?.[0]?.values?.[0]?.value ?? null;
-  const memLimitBytes = memLimit?.data?.[0]?.values?.[0]?.value ?? null;
+  const cpuLimitVal = Array.isArray(cpuLimit) ? cpuLimit[0]?.values?.[0]?.value ?? null : null;
+  const memLimitBytes = Array.isArray(memLimit) ? memLimit[0]?.values?.[0]?.value ?? null : null;
 
   const cpuRaw = cpuPoint?.value ?? null;
   const memBytes = memPoint?.value ?? null;
