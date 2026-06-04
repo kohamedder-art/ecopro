@@ -4,6 +4,7 @@ import { initializeDatabase, runPendingMigrations, ensureConnection } from "./ut
 import { processPendingMessages, cleanupOldOrders } from "./utils/bot-messaging";
 import { cleanupExpiredCodes } from "./utils/code-utils";
 import { initWebSocket } from "./utils/websocket";
+import { startTrackingPollWorker } from "./utils/tracking-poll-worker";
 
 const PORT = Number(process.env.PORT || 8080);
 
@@ -65,6 +66,9 @@ async function startServer() {
           cleanupExpiredCodes().catch(err => console.error("Code cleanup error:", err));
         }, 10 * 60 * 1000);
         console.log("📋 Subscription code cleanup started (runs every 10 minutes)");
+
+        startTrackingPollWorker({ intervalMs: 10 * 60 * 1000 });
+        console.log("📦 Tracking poll worker started (runs every 10 minutes)");
       }
     } catch (error) {
       console.error("❌ Database initialization failed:", error);

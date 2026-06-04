@@ -139,7 +139,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: true },
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
       docsUrl: "https://ecotrack.dz",
       apiRating: 4,
     },
@@ -156,7 +156,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: true },
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
       docsUrl: "https://beta.maystro-delivery.com",
       apiRating: 3,
     },
@@ -191,7 +191,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: true },
+      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
       apiRating: 2,
     },
     // ⭐ TIER 2: Zimou Express
@@ -223,7 +223,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: true },
+      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
       docsUrl: "https://anderson-ecommerce.ecotrack.dz",
       apiRating: 4,
     },
@@ -243,7 +243,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: true },
+      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
       docsUrl: "https://dhd-dz.com",
       apiRating: 3,
     },
@@ -259,7 +259,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: true },
+      features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
       docsUrl: "https://ecom-dz.net",
       apiRating: 3,
     },
@@ -289,7 +289,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: true,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: true },
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
       apiRating: 3,
     },
     {
@@ -319,7 +319,7 @@ export default function DeliveryCompanies() {
       ],
       enabled: false,
       hasApi: true,
-      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: true },
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
       docsUrl: "https://api.mdm.express",
       apiRating: 3,
     },
@@ -920,6 +920,19 @@ export default function DeliveryCompanies() {
                     {t('delivery.webhookUrlCopy')}
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {/* Polling Note (no webhooks) */}
+            {selectedCompany && !selectedCompany.features.webhooks && selectedCompany.features.tracking && (
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-300/60 dark:border-blue-700/50 rounded-xl p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-blue-600 dark:text-amber-400 flex-shrink-0" />
+                  <span className="text-sm font-bold text-blue-800 dark:text-blue-200">تتبع تلقائي</span>
+                </div>
+                <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
+                  هذه الشركة لا تدعم Webhooks — التتبع يتم تلقائياً عبر Polling كل 10 دقائق.
+                </p>
               </div>
             )}
             

@@ -4,6 +4,7 @@ import { startScheduledMessageWorker, stopScheduledMessageWorker } from "./utils
 import { startBotMessageWorker, stopBotMessageWorker } from "./utils/bot-messaging";
 import { startTelegramUpdatePoller, stopTelegramUpdatePoller } from "./utils/telegram-poller";
 import { startGuardianWorker, stopGuardianWorker } from "./utils/guardian-worker";
+import { startTrackingPollWorker, stopTrackingPollWorker } from "./utils/tracking-poll-worker";
 import { initWebSocket } from "./utils/websocket";
 
 async function startServer() {
@@ -31,6 +32,8 @@ async function startServer() {
       startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
       // Start the Guardian AI alert worker
       startGuardianWorker();
+      // Start tracking poll worker for non-webhook couriers
+      startTrackingPollWorker({ intervalMs: 10 * 60 * 1000 });
     });
 
     // Graceful shutdown
@@ -40,6 +43,7 @@ async function startServer() {
       stopBotMessageWorker();
       stopTelegramUpdatePoller();
       stopGuardianWorker();
+      stopTrackingPollWorker();
       process.exit(0);
     });
 
@@ -49,6 +53,7 @@ async function startServer() {
       stopBotMessageWorker();
       stopTelegramUpdatePoller();
       stopGuardianWorker();
+      stopTrackingPollWorker();
       process.exit(0);
     });
   } catch (error) {

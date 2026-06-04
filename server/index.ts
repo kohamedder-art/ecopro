@@ -68,6 +68,7 @@ import { startScheduledMessageWorker } from "./utils/scheduled-messages";
 import { startBotMessageWorker } from "./utils/bot-messaging";
 import { startTelegramUpdatePoller } from "./utils/telegram-poller";
 import { startGuardianWorker, stopGuardianWorker } from "./utils/guardian-worker";
+import { startTrackingPollWorker, stopTrackingPollWorker } from "./utils/tracking-poll-worker";
 import oauthRouter from "./routes/oauth";
 import messengerRouter from "./routes/messenger";
 import facebookOAuthRouter from "./routes/facebook-oauth";
@@ -153,6 +154,7 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
           startBotMessageWorker({ intervalMs: 30 * 1000 });
           startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
           startGuardianWorker();
+          startTrackingPollWorker({ intervalMs: 10 * 60 * 1000 });
           return;
         }
         await runPendingMigrations();
@@ -165,6 +167,7 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
         startBotMessageWorker({ intervalMs: 30 * 1000 });
         startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
         startGuardianWorker();
+        startTrackingPollWorker({ intervalMs: 10 * 60 * 1000 });
       })
       .catch((err) => {
         console.error('Failed to initialize database:', err);
