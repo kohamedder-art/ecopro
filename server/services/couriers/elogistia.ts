@@ -2,6 +2,7 @@
 // API: https://api.elogistia.com
 // Auth: apiKey as query parameter
 
+import crypto from 'crypto';
 import { CourierService } from '../courier-service';
 import { CourierShipmentResponse, CourierStatusResponse, ShipmentInput } from '../../types/delivery';
 
@@ -114,8 +115,14 @@ export class ElogistiaService implements CourierService {
     }
   }
 
-  verifyWebhook(_payload: any, _signature: string, _secret: string): boolean {
-    return true;
+  verifyWebhook(payload: any, signature: string, secret: string): boolean {
+    try {
+      const hmac = crypto.createHmac('sha256', secret);
+      const digest = hmac.update(JSON.stringify(payload)).digest('hex');
+      return digest === signature;
+    } catch {
+      return false;
+    }
   }
 
   parseWebhookPayload(payload: any) {

@@ -614,12 +614,30 @@ export class DeliveryService {
 
       const { id: orderId, client_id: clientId, customer_phone: customerPhone, customer_name: customerName } = orderResult.rows[0];
 
+      // Verify webhook signature if signature is provided
+      let webhookVerified = false;
+      if (signature) {
+        try {
+          const integrationResult = await pool.query(
+            `SELECT webhook_secret_encrypted FROM delivery_integrations
+             WHERE client_id = $1 AND delivery_company_id = $2 AND is_enabled = true
+             LIMIT 1`,
+            [clientId, companyId]
+          );
+          if (integrationResult.rows.length > 0 && integrationResult.rows[0].webhook_secret_encrypted) {
+            const webhookSecret = decryptData(integrationResult.rows[0].webhook_secret_encrypted);
+            webhookVerified = service.verifyWebhook(payload, signature, webhookSecret);
+          }
+        } catch (verifyErr) {
+          console.warn(`[Webhook] Signature verification error for order ${orderId}:`, verifyErr);
+        }
+      }
+
       // Save event
-      const eventInsert = await pool.query(
+      await pool.query(
         `INSERT INTO delivery_events
-         (order_id, client_id, delivery_company_id, tracking_number, event_type, event_status, description, location, webhook_payload, webhook_verified, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, NOW())
-         RETURNING id`,
+         (order_id, client_id, delivery_company_id, tracking_number, event_type, event_status, description, location, courier_timestamp, webhook_payload, webhook_verified, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, NOW())`,
         [
           orderId,
           clientId,
@@ -629,8 +647,9 @@ export class DeliveryService {
           'completed',
           event.description,
           event.location,
+          event.timestamp || null,
           JSON.stringify(payload),
-          signature ? true : false,
+          webhookVerified,
         ]
       );
 

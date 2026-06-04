@@ -2,6 +2,7 @@
 // DHD runs on the Ecotrack platform: https://app.dhd-dz.com
 // Auth: api_token + user_guid sent in request body (Ecotrack public API pattern)
 
+import crypto from 'crypto';
 import { CourierService } from '../courier-service';
 import { CourierShipmentResponse, CourierStatusResponse, ShipmentInput } from '../../types/delivery';
 
@@ -146,8 +147,14 @@ export class DhdService implements CourierService {
     }
   }
 
-  verifyWebhook(_payload: any, _signature: string, _secret: string): boolean {
-    return true;
+  verifyWebhook(payload: any, signature: string, secret: string): boolean {
+    try {
+      const hmac = crypto.createHmac('sha256', secret);
+      const digest = hmac.update(JSON.stringify(payload)).digest('hex');
+      return digest === signature;
+    } catch {
+      return false;
+    }
   }
 
   parseWebhookPayload(payload: any) {
