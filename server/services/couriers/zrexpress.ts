@@ -358,17 +358,26 @@ export class ZRExpressOfficialService implements CourierService {
         };
       }
 
-      // Try trackingNumber first, fall back to parcel UUID
-      const trackingNumber = json.trackingNumber || json.tracking_number || json.id;
-
-      if (!trackingNumber) {
-        console.error('[ZRExpress] No tracking number in response:', json);
+      const parcelId = json.id;
+      if (!parcelId) {
+        console.error('[ZRExpress] No parcel ID in create response:', json);
         return {
           success: false,
           tracking_number: '',
-          error: 'No tracking number returned',
+          error: 'No parcel ID returned',
         };
       }
+
+      // The create endpoint only returns { id }. Fetch the full parcel to get the real tracking number.
+      console.log(`[ZRExpress] Created parcel ${parcelId}, fetching tracking number...`);
+      const getResp = await fetch(`${this.apiUrl}/parcels/${parcelId}`, {
+        headers: {
+          'X-Api-Key': apiKey,
+          'X-Tenant': tenantId,
+        },
+      });
+      const { json: parcelJson } = await this.readApiResponse(getResp);
+      const trackingNumber = parcelJson?.trackingNumber || parcelJson?.tracking_number || parcelId;
 
       return {
         success: true,
