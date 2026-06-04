@@ -3,33 +3,32 @@ import { useTranslation } from "@/lib/i18n";
 
 // ─── Delivery step definitions ─────────────────────────────────────────────
 const TRACKING_STEPS = [
-  { key: "pending",        labelAr: "تم التأكيد",    color: "#2b8a3e", icon: "S5",  bg: "#ebfbee" },
-  { key: "confirmed",      labelAr: "قيد التجهيز",    color: "#1c7ed6", icon: "G4", bg: "#e7f5ff" },
-  { key: "processing",     labelAr: "تم الشحن",      color: "#7048e8", icon: "S5",  bg: "#f3f0ff" },
-  { key: "shipped",        labelAr: "في الطريق",      color: "#d9480f", icon: "T2", bg: "#fff4e6" },
-  { key: "warehouse",      labelAr: "وصل المستودع",  color: "#9c36b5", icon: "W3",  bg: "#f8f0fc" },
-  { key: "out_delivery",   labelAr: "خرج للتسليم",    color: "#c2255c", icon: "H1", bg: "#fff0f6" },
-  { key: "delivered",      labelAr: "تم التسليم",     color: "#2b8a3e", icon: "D2", bg: "#ebfbee" },
+  { key: "confirmed",      labelAr: "تم تأكيد الطلب",     color: "#2b8a3e", icon: "S5",  bg: "#ebfbee" },
+  { key: "picked_up",      labelAr: "استُلم الطرد",       color: "#1c7ed6", icon: "G4", bg: "#e7f5ff" },
+  { key: "in_transit",     labelAr: "في الطريق إليك",     color: "#d9480f", icon: "T2", bg: "#fff4e6" },
+  { key: "at_hub",         labelAr: "وصل المستودع",        color: "#9c36b5", icon: "W3",  bg: "#f8f0fc" },
+  { key: "out_for_delivery", labelAr: "خرج للتوصيل",       color: "#c2255c", icon: "H1", bg: "#fff0f6" },
+  { key: "delivered",      labelAr: "تم التسليم ✅",       color: "#2b8a3e", icon: "D2", bg: "#ebfbee" },
 ];
 
 // Map status → step (covers both internal order status AND courier DeliveryStatus enum)
 const STATUS_TO_STEP: Record<string, number> = {
   // ── internal order status ──
   pending:              0,
-  confirmed:            1,
-  processing:           2,
-  shipped:              3,
-  in_transit:           3,
-  at_warehouse:         4,
-  out_for_delivery:     5,
-  out_delivery:         5,
-  delivered:            6,
-  completed:            6,
+  confirmed:            0,
+  processing:           0,
+  shipped:              1,
+  in_transit:           2,
+  at_warehouse:         3,
+  out_for_delivery:     4,
+  out_delivery:         4,
+  delivered:            5,
+  completed:            5,
   // ── courier DeliveryStatus enum (from webhooks) ──
-  assigned:             1,
-  picked_up:            2,   // courier collected the parcel = تم الشحن
-  ready_for_pickup:     4,   // at warehouse, awaiting pickup = وصل المستودع
-  at_hub:               3,   // at sorting hub = في الطريق
+  assigned:             0,
+  picked_up:            1,
+  ready_for_pickup:     3,
+  at_hub:               3,
   // in_transit, out_for_delivery, delivered, failed, returned already above
   cancelled:           -1,
   returned:            -1,
@@ -85,11 +84,15 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
   const statusNote: Record<string, string> = {
     delivered:        `تم التسليم${updatedAt ? " • " + new Date(updatedAt).toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" }) : ""}`,
     completed:        `تم التسليم${updatedAt ? " • " + new Date(updatedAt).toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" }) : ""}`,
-    out_delivery:     "خرج للتسليم • المندوب في الطريق",
-    out_for_delivery: "خرج للتسليم • المندوب في الطريق",
-    at_warehouse:     "وصل المستودع • جاهز للشحن",
+    out_for_delivery: "خرج للتوصيل • المندوب في الطريق",
+    out_delivery:     "خرج للتوصيل • المندوب في الطريق",
+    at_hub:           "وصل المستودع • قيد الفرز",
+    at_warehouse:     "وصل المستودع • قيد الفرز",
+    ready_for_pickup: "جاهز للاستلام من المستودع",
     shipped:          "الشحنة في الطريق",
     in_transit:       "الشحنة في الطريق",
+    picked_up:        "تم استلام الطرد من البائع",
+    assigned:         "تم تعيينه لشركة التوصيل",
     failed:           "فشل التوصيل • العميل غير متاح",
     cancelled:        "تم إلغاء الطلب",
     returned:         "تم إرجاع الطلب",
@@ -151,7 +154,7 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
         >
           {isCancelled ? (
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="10" fill="#fee2e2" stroke="#fca5a5" strokeWidth="1"/><path d="M7 7L15 15M15 7L7 15" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/></svg>
-          ) : currentStep >= 6 ? (
+          ) : currentStep >= 5 ? (
             // House/delivered icon
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="10" fill="#d1fae5" stroke="#6ee7b7" strokeWidth="1"/><path d="M5 11L11 5L17 11" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><rect x="8" y="12" width="6" height="5" rx="0.8" fill="#059669"/><rect x="9.5" y="13.5" width="3" height="3.5" rx="0.5" fill="#d1fae5"/></svg>
           ) : (
