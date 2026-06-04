@@ -358,24 +358,21 @@ export class ZRExpressOfficialService implements CourierService {
         };
       }
 
-      // Response contains parcel ID - we need to get the tracking number separately
-      // The ID returned is the parcel UUID
-      const parcelId = json.id;
+      // Try trackingNumber first, fall back to parcel UUID
+      const trackingNumber = json.trackingNumber || json.tracking_number || json.id;
 
-      if (!parcelId) {
-        console.error('[ZRExpress] No parcel ID in response:', json);
+      if (!trackingNumber) {
+        console.error('[ZRExpress] No tracking number in response:', json);
         return {
           success: false,
           tracking_number: '',
-          error: 'No parcel ID returned',
+          error: 'No tracking number returned',
         };
       }
 
-      // For ZR Express, the parcel ID is used as tracking reference initially
-      // The actual tracking number is generated when the parcel state is updated
       return {
         success: true,
-        tracking_number: parcelId, // Use parcel ID as tracking until state update provides trackingNumber
+        tracking_number: trackingNumber,
         reference_id: shipment.reference_id,
       };
     } catch (error: any) {

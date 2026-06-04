@@ -600,12 +600,30 @@ export class DeliveryService {
       // Parse webhook
       const event = service.parseWebhookPayload(payload);
       const trackingNumber = event.tracking_number;
+      const data = payload.data || payload;
 
-      // Find order by tracking number
-      const orderResult = await pool.query(
-        'SELECT id, client_id, customer_phone, customer_name FROM store_orders WHERE tracking_number = $1',
+      // Find order by tracking number first
+      let orderResult = await pool.query(
+        'SELECT id, client_id, customer_phone, customer_name, tracking_number FROM store_orders WHERE tracking_number = $1',
         [trackingNumber]
       );
+
+      // If not found, try by parcel UUID (ZR Express generates a different real tracking number later)
+      if (orderResult.rows.length === 0 && data?.id) {
+        console.log(`[Webhook] Tracking "${trackingNumber}" not found, trying parcel UUID: ${data.id}`);
+        orderResult = await pool.query(
+          'SELECT id, client_id, customer_phone, customer_name, tracking_number FROM store_orders WHERE tracking_number = $1',
+          [data.id]
+        );
+        // Update tracking number to the real one if found by UUID
+        if (orderResult.rows.length > 0 && trackingNumber && trackingNumber !== data.id) {
+          await pool.query(
+            'UPDATE store_orders SET tracking_number = $1, updated_at = NOW() WHERE id = $2',
+            [trackingNumber, orderResult.rows[0].id]
+          );
+          console.log(`[Webhook] Updated tracking for order ${orderResult.rows[0].id}: ${data.id} → ${trackingNumber}`);
+        }
+      }
 
       if (orderResult.rows.length === 0) {
         console.warn(`[Webhook] No order found for tracking: ${trackingNumber}`);
