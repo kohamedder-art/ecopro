@@ -351,7 +351,7 @@ export default function OrderTracking() {
         delivery_type:    o.delivery_type,
         note:             o.note,
       }));
-      setOrders(list.filter(o => o.tracking_number));
+      setOrders(list.filter(o => o.tracking_number || o.delivery_status));
     } catch (e: any) {
       setError(e.message);
     } finally {

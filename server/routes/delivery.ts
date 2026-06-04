@@ -2,6 +2,7 @@
 import { Router, RequestHandler } from 'express';
 import { pool } from '../utils/database';
 import { DeliveryService } from '../services/delivery';
+import { sendDeliveryStatusNotification } from '../utils/bot-messaging';
 import {
   AssignDeliverySchema,
   GenerateLabelSchema,
@@ -164,6 +165,30 @@ export const assignDeliveryToOrder: RequestHandler = async (req, res) => {
        WHERE id = $1 AND client_id = $2 AND COALESCE(status, '') NOT IN ('delivered','completed','cancelled','failed','returned','refunded')`,
       [orderId, clientId]
     );
+
+    // Notify customer about delivery assignment (fire-and-forget)
+    try {
+      const orderRes = await pool.query(
+        `SELECT customer_phone, customer_name FROM store_orders WHERE id = $1 AND client_id = $2`,
+        [orderId, clientId]
+      );
+      if (orderRes.rows.length) {
+        const phone = String(orderRes.rows[0].customer_phone || '').replace(/\D/g, '');
+        if (phone) {
+          sendDeliveryStatusNotification({
+            orderId,
+            clientId,
+            customerPhone: phone,
+            customerName: String(orderRes.rows[0].customer_name || ''),
+            trackingNumber: '',
+            eventType: 'assigned',
+            description: 'تم تعيين طلبك لشركة التوصيل',
+          }).catch(() => {});
+        }
+      }
+    } catch {
+      // non-blocking
+    }
 
     res.json({ success: true });
   } catch (error: any) {

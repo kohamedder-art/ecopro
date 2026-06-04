@@ -356,6 +356,24 @@ export class DeliveryService {
         requestId
       );
 
+      // Notify customer about delivery assignment (fire-and-forget)
+      try {
+        const customerPhone = String(order.customer_phone || '').replace(/\D/g, '');
+        if (customerPhone) {
+          sendDeliveryStatusNotification({
+            orderId,
+            clientId,
+            customerPhone,
+            customerName: String(order.customer_name || ''),
+            trackingNumber,
+            eventType: 'uploaded',
+            description: `تم تسليم الطلب إلى ${order.company_name || 'شركة التوصيل'}`,
+          }).catch(() => {});
+        }
+      } catch {
+        // non-blocking
+      }
+
       return {
         success: true,
         tracking_number: trackingNumber,

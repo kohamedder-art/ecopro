@@ -1230,7 +1230,7 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
       const settings = settingsRes.rows[0];
       if (settings?.enabled && settings?.updates_enabled) {
         const orderRow = result.rows[0];
-        const shouldNotify = ['processing', 'shipped', 'delivered', 'cancelled'].includes(String(status));
+        const shouldNotify = ['processing', 'shipped', 'delivered', 'cancelled', 'at_delivery'].includes(String(status));
         if (shouldNotify) {
           const msg = replaceTemplateVariables(
             String(settings.template_shipping || 'Order #{orderId} status updated: {status}'),
