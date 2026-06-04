@@ -594,21 +594,15 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>رقم الهاتف</label>
                                     <input required name="phone" type="tel" maxLength={10} placeholder="رقم الهاتف" className="w-full px-4 py-2.5 rounded-xl outline-none text-sm text-right transition-colors" dir="ltr" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
                                 </div>
-                                <div className="col-span-2">
+                                <div className={showCommune ? "" : "col-span-2"}>
                                     <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>الولاية</label>
                                     <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm appearance-none transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
                                         <option value="">اختر الولاية</option>
                                         {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                                     </select>
                                 </div>
-                                {showAddress && (
-                                    <div className="col-span-2">
-                                        <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>العنوان</label>
-                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
-                                    </div>
-                                )}
                                 {showCommune && (
-                                    <div className="col-span-2">
+                                    <div>
                                         <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>البلدية</label>
                                         <div className="relative">
                                             <select name="commune" required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm appearance-none transition-colors disabled:opacity-50" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
@@ -617,6 +611,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                             </select>
                                             <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
                                         </div>
+                                    </div>
+                                )}
+                                {showAddress && (
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>العنوان</label>
+                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
                                     </div>
                                 )}
                                 {showNotes && (
