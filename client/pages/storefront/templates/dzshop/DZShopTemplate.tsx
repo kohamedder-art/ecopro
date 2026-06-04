@@ -263,16 +263,17 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     // Image Gallery State — transform-based (like LeRoiShop)
     const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-    // Auto-snap index for single vs multi-image (0 for single, 1 for infinite-loop with clones)
-    useEffect(() => {
-      setActiveImageIndex(allMedia.length > 1 ? 1 : 0);
-    }, [allMedia.length]);
     const allMedia = useMemo(() => {
         const items: ({ type: 'video'; embed: typeof videoEmbed } | { type: 'image'; src: string })[] = [];
         if (videoEmbed) items.push({ type: 'video', embed: videoEmbed });
         galleryImages.forEach((src: string) => items.push({ type: 'image', src }));
         return items;
     }, [videoEmbed, galleryImages]);
+
+    // Auto-snap index for single vs multi-image (0 for single, 1 for infinite-loop with clones)
+    useEffect(() => {
+      setActiveImageIndex(allMedia.length > 1 ? 1 : 0);
+    }, [allMedia.length]);
 
     const loopedMedia = useMemo(() => {
         const len = allMedia.length;

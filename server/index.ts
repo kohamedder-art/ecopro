@@ -277,6 +277,7 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
               (req) => `'nonce-${(req as any).cspNonce}'`,
               'https://connect.facebook.net',
               'https://unpkg.com',
+              'https://analytics.tiktok.com',
             ],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'", 'https:'],

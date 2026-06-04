@@ -156,12 +156,7 @@ export default function LeRoiShopTemplate({
   // Offers system — must come after activeProduct
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, activeProduct?.id);
 
-  // Reset offer when active product changes
-useEffect(() => {
-    setSelectedOffer(null);
-    setActiveImageIndex(allMedia.length > 1 ? 1 : 0);
-}, [activeProduct?.id]);
-
+  // Build unified media array: video (if exists) + images, all swipable
   const videoUrl = (activeProduct as any)?.metadata?.video_url || '';
   const videoEmbed = useMemo(() => {
     if (!videoUrl) return null;
@@ -170,8 +165,6 @@ useEffect(() => {
     if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
     return { type: 'iframe' as const, url: videoUrl };
   }, [videoUrl]);
-
-  // Build unified media array: video (if exists) + images, all swipable
   const enabledVideo = Boolean(videoEmbed);
   const allMedia = useMemo(() => {
     const items: ({ type: 'video'; embed: typeof videoEmbed } | { type: 'image'; src: string })[] = [];
@@ -179,6 +172,12 @@ useEffect(() => {
     (activeProduct?.images?.filter(Boolean) || []).forEach((src: string) => items.push({ type: 'image', src }));
     return items;
   }, [videoEmbed, activeProduct?.images]);
+
+  // Reset offer and gallery index when active product changes
+  useEffect(() => {
+    setSelectedOffer(null);
+    setActiveImageIndex(allMedia.length > 1 ? 1 : 0);
+  }, [activeProduct?.id]);
 
   const loopedMedia = useMemo(() => {
     const len = allMedia.length;
