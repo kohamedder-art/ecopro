@@ -94,7 +94,7 @@ export default function LeRoiShopTemplate({
     if (!initialProductSlug) { setView('catalog'); setSelectedProduct(null); return; }
     if (products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProduct(p); setView('product'); } }
   }, [initialProductSlug, products]);
-  const [activeImageIndex, setActiveImageIndex] = useState(1);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -157,10 +157,10 @@ export default function LeRoiShopTemplate({
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, activeProduct?.id);
 
   // Reset offer when active product changes
-  useEffect(() => {
+useEffect(() => {
     setSelectedOffer(null);
-    setActiveImageIndex(1);
-  }, [activeProduct?.id]);
+    setActiveImageIndex(allMedia.length > 1 ? 1 : 0);
+}, [activeProduct?.id]);
 
   const videoUrl = (activeProduct as any)?.metadata?.video_url || '';
   const videoEmbed = useMemo(() => {
