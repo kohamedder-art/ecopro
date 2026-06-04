@@ -68,7 +68,7 @@ async function fetchPollableOrders(): Promise<PollableOrder[]> {
  */
 async function getCredentials(clientId: number, companyName: string): Promise<{ apiKey: string; secondary?: string } | null> {
   const result = await pool.query(`
-    SELECT api_key_encrypted, api_secret_encrypted, account_number, merchant_id
+    SELECT di.api_key_encrypted, di.api_secret_encrypted, di.account_number, di.merchant_id
     FROM delivery_integrations di
     JOIN delivery_companies dc ON dc.id = di.delivery_company_id
     WHERE di.client_id = $1 AND dc.name = $2 AND di.is_enabled = true

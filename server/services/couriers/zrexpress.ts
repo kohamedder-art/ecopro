@@ -55,29 +55,43 @@ export class ZRExpressOfficialService implements CourierService {
       return territoriesCache;
     }
 
-    try {
-      const response = await fetch(`${this.apiUrl}/territories/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Api-Key': apiKey,
-          'X-Tenant': tenantId,
-        },
-        body: JSON.stringify({
-          pageNumber: 1,
-          pageSize: 5000,
-          orderBy: ['code asc'],
-        }),
-      });
+    let allItems: ZRExpressTerritory[] = [];
+    let page = 1;
+    const pageSize = 1000;
 
-      const { json } = await this.readApiResponse(response);
-      if (json?.items) {
-        territoriesCache = json.items;
-        territoriesCacheTime = now;
-        return json.items;
+    try {
+      while (true) {
+        const response = await fetch(`${this.apiUrl}/territories/search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Api-Key': apiKey,
+            'X-Tenant': tenantId,
+          },
+          body: JSON.stringify({
+            pageNumber: page,
+            pageSize,
+            orderBy: ['code asc'],
+          }),
+        });
+
+        const { json, text } = await this.readApiResponse(response);
+        if (!json?.items || json.items.length === 0) break;
+
+        allItems = allItems.concat(json.items);
+
+        // Stop if we got fewer items than page size (last page)
+        if (json.items.length < pageSize) break;
+        page++;
       }
-      return [];
+
+      console.log(`[ZRExpress] Fetched ${allItems.length} territories (${page} pages)`);
+      if (allItems.length > 0) {
+        territoriesCache = allItems;
+        territoriesCacheTime = now;
+      }
+      return allItems;
     } catch (error) {
       console.error('[ZRExpress] Failed to fetch territories:', error);
       return [];
@@ -157,12 +171,16 @@ export class ZRExpressOfficialService implements CourierService {
     const territories = await this.fetchTerritories(apiKey, tenantId);
     const wilayas = territories.filter(t => t.level === 'wilaya');
 
+    console.log(`[ZRExpress] Matching wilaya "${wilayaName}" against ${wilayas.length} wilayas`);
+
     // 1) Try exact lowercase match
     let wilaya = wilayas.find(t => t.name.toLowerCase() === wilayaName.toLowerCase());
+    if (wilaya) console.log(`[ZRExpress] Wilaya matched via exact: ${wilaya.name} (code=${wilaya.code})`);
 
     // 2) Try normalized fuzzy match
     if (!wilaya) {
       wilaya = wilayas.find(t => this.namesMatch(t.name, wilayaName));
+      if (wilaya) console.log(`[ZRExpress] Wilaya matched via namesMatch: ${wilaya.name} (code=${wilaya.code})`);
     }
 
     // 3) Fallback: match by wilaya code (most reliable)
@@ -175,31 +193,38 @@ export class ZRExpressOfficialService implements CourierService {
           )?.[1];
       if (code) {
         wilaya = wilayas.find(t => t.code === code);
+        if (wilaya) console.log(`[ZRExpress] Wilaya matched via code fallback: ${wilaya.name} (code=${wilaya.code})`);
       }
     }
 
     if (!wilaya) {
-      console.warn(`[ZRExpress] Wilaya not found: "${wilayaName}" — available: ${wilayas.map(w => `${w.code}:${w.name}`).slice(0, 10).join(', ')}...`);
+      console.warn(`[ZRExpress] Wilaya not found: "${wilayaName}" — available: ${wilayas.map(w => `${w.code}:${w.name}`).slice(0, 15).join(', ')}...`);
       return { cityTerritoryId: null, districtTerritoryId: null };
     }
 
     // Find commune under this wilaya
     const communes = territories.filter(t => t.level === 'commune' && t.parentId === wilaya!.id);
+    console.log(`[ZRExpress] Matching commune "${communeName}" among ${communes.length} communes under ${wilaya.name}`);
 
     let commune = communes.find(t => t.name.toLowerCase() === communeName.toLowerCase());
+    if (commune) console.log(`[ZRExpress] Commune matched via exact: ${commune.name}`);
     if (!commune) {
       commune = communes.find(t => this.namesMatch(t.name, communeName));
+      if (commune) console.log(`[ZRExpress] Commune matched via namesMatch: ${commune.name}`);
     }
 
     if (!commune && communes.length > 0) {
-      // Last resort: pick the first commune (capital of the wilaya) rather than failing entirely
-      console.warn(`[ZRExpress] Commune "${communeName}" not found under ${wilaya.name}. Falling back to first commune: ${communes[0].name}`);
+      console.warn(`[ZRExpress] Commune "${communeName}" not found under ${wilaya.name}. Falling back to first: ${communes[0].name}`);
       commune = communes[0];
+    }
+
+    if (!commune) {
+      console.warn(`[ZRExpress] No commune found or available for "${communeName}" under ${wilaya.name}. Using wilaya territory ID as fallback for district.`);
     }
 
     return {
       cityTerritoryId: wilaya.id,
-      districtTerritoryId: commune?.id || null,
+      districtTerritoryId: commune?.id || wilaya.id,
     };
   }
 
@@ -489,33 +514,46 @@ export class ZRExpressOfficialService implements CourierService {
     // - parcel.isReturn.updated
     
     const data = payload.data || payload;
+    const eventType = payload.eventType || payload.type || 'parcel.state.updated';
+    const stateName = data.state?.name || data.newStateName || eventType;
     
     return {
       tracking_number: data.trackingNumber || data.tracking_number,
-      event_type: payload.type || 'parcel.state.updated',
-      status: this.mapStatus(data.state?.name || data.newStateName || 'unknown'),
-      timestamp: payload.timestamp || data.updatedAt,
+      event_type: eventType,
+      status: this.mapStatus(stateName),
+      timestamp: payload.occurredAt || payload.timestamp || data.updatedAt,
       location: data.wilaya || data.location,
-      description: data.state?.name || data.newStateName || payload.type,
+      description: stateName,
     };
   }
 
   private mapStatus(zrStatus: string): string {
-    const statusLower = (zrStatus || '').toLowerCase();
+    let statusLower = (zrStatus || '').toLowerCase().trim();
+    
+    // Normalize: replace spaces with underscores for French multi-word statuses
+    statusLower = statusLower.replace(/\s+/g, '_');
     
     const statusMap: Record<string, string> = {
       // French status names
       'nouveau': 'pending',
       'en_attente': 'pending',
       'pret_a_expedier': 'pending',
+      'pret_à_expédier': 'pending',
       'ramasse': 'picked_up',
+      'ramassé': 'picked_up',
       'en_transit': 'in_transit',
       'au_hub': 'in_transit',
       'en_livraison': 'out_for_delivery',
       'livre': 'delivered',
+      'livré': 'delivered',
       'retourne': 'returned',
+      'retourné': 'returned',
+      'retour_au_hub': 'returned',
+      'returned_to_hub': 'returned',
       'annule': 'cancelled',
+      'annulé': 'cancelled',
       'echec': 'failed',
+      'échec': 'failed',
       // English status names
       'new': 'pending',
       'pending': 'pending',
@@ -531,6 +569,6 @@ export class ZRExpressOfficialService implements CourierService {
       'failed': 'failed',
     };
 
-    return statusMap[statusLower] || statusMap[zrStatus] || 'pending';
+    return statusMap[statusLower] || statusMap[zrStatus] || 'unknown';
   }
 }

@@ -654,12 +654,12 @@ export class DeliveryService {
       );
 
       // Update order delivery status
-      if (event.event_type && !['fake', 'duplicate'].includes(event.event_type)) {
+      if (event.status && !['fake', 'duplicate'].includes(event.status)) {
         await pool.query(
           `UPDATE store_orders
            SET delivery_status = $1, updated_at = NOW()
            WHERE id = $2`,
-          [event.event_type, orderId]
+          [event.status, orderId]
         );
       }
 
@@ -671,7 +671,7 @@ export class DeliveryService {
           customerPhone,
           customerName: customerName || '',
           trackingNumber,
-          eventType: event.event_type,
+          eventType: event.status,
           description: event.description,
           location: event.location,
         }).catch(err => console.error('[Webhook] Bot notification failed:', err?.message || err));
@@ -682,13 +682,13 @@ export class DeliveryService {
         await pool.query(
           `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
            VALUES ($1, $2, $3, 'telegram', $4, NOW())`,
-          [orderId, clientId, customerPhone || '', `🚚 تحديث حالة التوصيل للطلب #${orderId}\n\nالحدث: ${event.event_type}\n${event.description || ''}\n${event.location ? `الموقع: ${event.location}` : ''}\nرقم التتبع: ${trackingNumber}`]
+          [orderId, clientId, customerPhone || '', `🚚 تحديث حالة التوصيل للطلب #${orderId}\n\nالحالة: ${event.status}\n${event.description || ''}\n${event.location ? `الموقع: ${event.location}` : ''}\nرقم التتبع: ${trackingNumber}`]
         );
       } catch (ownerNotifyErr) {
         console.error('[Webhook] Store owner notification failed:', ownerNotifyErr);
       }
 
-      console.log(`[Webhook] Event processed for order ${orderId}: ${event.event_type}`);
+      console.log(`[Webhook] Event processed for order ${orderId}: ${event.event_type} → ${event.status}`);
       return { success: true };
     } catch (error: any) {
       console.error(`[DeliveryService] handleWebhook failed:`, error);
