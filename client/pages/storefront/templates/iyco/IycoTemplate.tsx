@@ -229,11 +229,22 @@ export default function IycoTemplate({
     return { type: 'iframe' as const, url: videoUrl };
   }, [videoUrl]);
 
-  const scrollToIndex = (idx: number) => {
+  const totalSlides = (videoEmbed ? 1 : 0) + mainImages.length;
+  const activeSlide = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage);
+
+  const goToSlide = (slideIdx: number) => {
+    const idx = (slideIdx + totalSlides) % totalSlides;
     if (!carouselRef.current) return;
     const child = carouselRef.current.children[idx] as HTMLElement | undefined;
     if (child) {
       carouselRef.current.scrollTo({ left: child.offsetLeft, behavior: 'smooth' });
+    }
+    if (videoEmbed && idx === 0) {
+      setShowVideo(true);
+      setSelectedMainImage(0);
+    } else {
+      setShowVideo(false);
+      setSelectedMainImage(videoEmbed ? idx - 1 : idx);
     }
   };
 
@@ -494,10 +505,10 @@ export default function IycoTemplate({
                 </div>
                 {mainImages.length > 1 && (
                   <>
-                    <button onClick={e => { e.stopPropagation(); const idx = showVideo ? mainImages.length : (videoEmbed ? selectedMainImage : selectedMainImage - 1 + mainImages.length); scrollToIndex(idx === 0 && videoEmbed ? 0 : (videoEmbed ? idx + 1 : idx)); if (idx === 0 && videoEmbed) { setShowVideo(true); setSelectedMainImage(0); } else { setShowVideo(false); setSelectedMainImage(videoEmbed ? (idx > 0 ? idx - 1 : 0) : idx); } }}
+                    <button onClick={e => { e.stopPropagation(); goToSlide(activeSlide - 1); }}
                       className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
                       style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
-                    <button onClick={e => { e.stopPropagation(); const idx = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const next = (idx + 1) % (mainImages.length + (videoEmbed ? 1 : 0)); scrollToIndex(next); if (next === 0 && videoEmbed) { setShowVideo(true); setSelectedMainImage(0); } else { setShowVideo(false); setSelectedMainImage(videoEmbed ? next - 1 : next); } }}
+                    <button onClick={e => { e.stopPropagation(); goToSlide(activeSlide + 1); }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
                       style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
                   </>
@@ -506,12 +517,12 @@ export default function IycoTemplate({
               {(videoEmbed || mainImages.length > 1) && (
                 <div className="flex gap-2 overflow-x-auto justify-center" style={{ scrollbarWidth: 'none' }}>
                   {videoEmbed && (
-                    <div onClick={() => { setShowVideo(true); setSelectedMainImage(0); scrollToIndex(0); }} className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border-2 flex items-center justify-center transition-all cursor-pointer" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}>
+                    <div onClick={() => goToSlide(0)} className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border-2 flex items-center justify-center transition-all cursor-pointer" style={{ borderColor: showVideo ? accentColor : 'transparent', backgroundColor: '#000' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
                     </div>
                   )}
                   {mainImages.map((img, idx) => (
-                    <button key={idx} onClick={() => { setShowVideo(false); setSelectedMainImage(idx); scrollToIndex(videoEmbed ? idx + 1 : idx); }} className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border-2 transition-all cursor-pointer" style={{ borderColor: !showVideo && selectedMainImage === idx ? accentColor : 'transparent', opacity: !showVideo && selectedMainImage === idx ? 1 : 0.6 }}>
+                    <button key={idx} onClick={() => goToSlide(videoEmbed ? idx + 1 : idx)} className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border-2 transition-all cursor-pointer" style={{ borderColor: !showVideo && selectedMainImage === idx ? accentColor : 'transparent', opacity: !showVideo && selectedMainImage === idx ? 1 : 0.6 }}>
                       <img src={img} className="w-full h-full object-cover" alt="thumb" loading="lazy" />
                     </button>
                   ))}
