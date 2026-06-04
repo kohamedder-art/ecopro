@@ -643,20 +643,12 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
               await sendTelegramMessage(botToken, chatId, 'مرحباً! 👋\n\nسنرد عليك في أقرب وقت.');
             }
 
-            // If resolved ONLY via secret (no customer mapping exists for this chatId),
-            // this is almost certainly the store owner messaging their own bot.
-            // Save their chatId so future messages correctly silence the AI for them.
-            if (clientIdFromSecret && !clientIdFromChatMap) {
-              try {
-                await pool.query(
-                  `UPDATE bot_settings SET owner_telegram_chat_id = $1 WHERE client_id = $2 AND (owner_telegram_chat_id IS NULL OR owner_telegram_chat_id = '')`,
-                  [chatId, clientIdFromSecret]
-                );
-                console.log(`[TelegramWebhook] Auto-saved owner chat_id=${chatId} for client=${clientIdFromSecret}`);
-              } catch (e) {
-                console.warn('[TelegramWebhook] Failed to save owner_telegram_chat_id:', e);
-              }
-            }
+            // NOTE: Owner chat_id auto-save was removed. The previous heuristic
+            // (no customer mapping = store owner) incorrectly saved FIRST-TIME
+            // CUSTOMERS as the store owner, causing isSenderStoreOwner() to
+            // silence the AI on all subsequent customer messages.
+            // Store owners must now configure owner_telegram_chat_id manually
+            // in bot settings.
           } catch (err) {
             console.error('[TelegramWebhook] AI auto-reply error:', err);
             await sendTelegramMessage(botToken, chatId, 'مرحباً! 👋\n\nسنرد عليك في أقرب وقت.');
