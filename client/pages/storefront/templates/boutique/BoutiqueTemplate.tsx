@@ -13,6 +13,7 @@ import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 
 interface CartItem {
   id: number;
@@ -132,7 +133,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   );
 }
 
-export default function BoutiqueTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView, initialProductSlug }: TemplateProps) {
+export default function BoutiqueTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView, initialProductSlug, navigate }: TemplateProps) {
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
@@ -429,7 +430,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                   </span>
                 )}
                 <button
-                  onClick={() => { setDetailProduct(heroProduct); onProductView?.(heroProduct); }}
+                  onClick={() => { setDetailProduct(heroProduct); onProductView?.(heroProduct); if (heroProduct?.slug && navigate) navigate(buildStoreUrl(storeSlug, heroProduct.slug)); }}
                   className="font-bold px-6 py-2 rounded-full text-sm hover:opacity-90 transition-colors active:scale-95"
                   style={{ backgroundColor: surfaceColor, color: surfaceTextColor }}
                 >
@@ -466,7 +467,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {collectionProducts.map(product => (
-                <div key={product.id} className="group cursor-pointer rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor }} onClick={() => { setDetailProduct(product); onProductView?.(product); }}>
+                <div key={product.id} className="group cursor-pointer rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor }} onClick={() => { setDetailProduct(product); onProductView?.(product); if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug)); }}>
                   <div className="relative aspect-[4/5] overflow-hidden">
                     {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                       ? <video src={(product as any).metadata.video_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
@@ -485,7 +486,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                       </div>
                     )}
                     <button
-                      onClick={(e) => { e.stopPropagation(); setDetailProduct(product); onProductView?.(product); }}
+                      onClick={(e) => { e.stopPropagation(); setDetailProduct(product); onProductView?.(product); if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug)); }}
                       className="absolute bottom-2 left-2 right-2 backdrop-blur text-xs font-bold py-2 rounded-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all"
                       style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: surfaceTextColor }}
                     >
@@ -747,9 +748,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       {/* Product Detail Modal */}
       {detailProduct && (
         <div className="fixed inset-0 z-[90] flex items-end md:items-center md:justify-center md:p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetailProduct(null)} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} />
           <div className="boutique-modal-card relative z-10 w-full md:max-w-4xl md:mx-auto md:rounded-[32px] overflow-hidden flex flex-col md:flex-row" dir="ltr" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, height: '100dvh', maxHeight: '100dvh' }}>
-            <button onClick={() => setDetailProduct(null)} className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }}><X size={18} /></button>
+            <button onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }}><X size={18} /></button>
             <div className="w-full md:w-[55%] md:shrink-0 md:h-full">
               <BoutiqueImageGallery product={detailProduct} surfaceMuted={surfaceMuted} accentColor={accentColor} surfaceTextMuted={surfaceTextMuted} surfaceBorderColor={surfaceBorderColor} onZoom={(src) => { const imgs = detailProduct?.images?.filter(Boolean) || []; const idx = imgs.indexOf(src); setZoomState({ images: imgs.length ? imgs : [src], idx: idx >= 0 ? idx : 0 }); }} />
             </div>
@@ -827,7 +828,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             <p className="text-[10px]" style={{ color: surfaceTextMuted }}>الدفع عند الاستلام</p>
           </div>
           <button
-            onClick={() => { setDetailProduct(heroProduct); onProductView?.(heroProduct); }}
+            onClick={() => { setDetailProduct(heroProduct); onProductView?.(heroProduct); if (heroProduct?.slug && navigate) navigate(buildStoreUrl(storeSlug, heroProduct.slug)); }}
             className="text-white font-bold px-8 py-3 rounded-xl text-base shadow-lg active:scale-95 transition-transform"
             style={{ backgroundColor: accentColor }}
           >

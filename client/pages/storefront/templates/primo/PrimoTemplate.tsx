@@ -5,6 +5,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import {
   ShoppingBag,
@@ -35,6 +36,7 @@ export default function PrimoTemplate({
   primaryColor: propPrimaryColor,
   onProductView,
   initialProductSlug,
+  navigate,
 }: TemplateProps) {
   // ── Settings Wiring ──
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#f39c12';
@@ -113,13 +115,14 @@ export default function PrimoTemplate({
     return mainProduct ? products.filter(p => p.id !== mainProduct.id) : products;
   }, [products, mainProduct]);
 
-  const openProduct = (product: any) => {
-    setActiveMainProduct(product);
-    setViewMode('product');
-    setSelectedMainImage(0);
-    onProductView?.(product);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+const openProduct = (product: any) => {
+  setActiveMainProduct(product);
+  setViewMode('product');
+  setSelectedMainImage(0);
+  onProductView?.(product);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug));
+};
 
   const mainImages = mainProduct?.images?.length ? mainProduct.images : ['/placeholder.png'];
 
@@ -689,7 +692,7 @@ export default function PrimoTemplate({
               <h3 className="text-2xl font-black mb-8" style={{ color: textColor }}>{otherProducts.length} منتجات أخرى</h3>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {otherProducts.map(product => {
-                  const swapProduct = () => { setActiveMainProduct(product); setSelectedMainImage(0); setViewMode('product'); onProductView?.(product); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+                  const swapProduct = () => { setActiveMainProduct(product); setSelectedMainImage(0); setViewMode('product'); onProductView?.(product); window.scrollTo({ top: 0, behavior: 'smooth' }); if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug)); };
                   return (
                   <div key={product.id} className="rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
                     <div className="overflow-hidden cursor-pointer" style={{ aspectRatio: '4 / 5' }} onClick={swapProduct}>

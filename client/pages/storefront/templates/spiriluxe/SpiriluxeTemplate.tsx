@@ -4,6 +4,7 @@ import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeli
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -18,7 +19,8 @@ export default function SpiriluxeTemplate({
   storeSlug, 
   primaryColor: propPrimaryColor, 
   onProductView, 
-  initialProductSlug 
+  initialProductSlug,
+  navigate,
 }: TemplateProps) {
   // ── Settings & State ──
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#8b5cf6';

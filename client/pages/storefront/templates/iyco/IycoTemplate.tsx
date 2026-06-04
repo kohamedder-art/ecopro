@@ -4,6 +4,7 @@ import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeli
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
 import {
   Search,
@@ -39,6 +40,7 @@ export default function IycoTemplate({
   bannerUrl,
   onProductView,
   initialProductSlug,
+  navigate,
 }: TemplateProps) {
   // ── Settings Wiring (correct priority) ──
   // propPrimaryColor is computed by the editor from raw settings (survives template preview override)
@@ -805,7 +807,7 @@ export default function IycoTemplate({
                 <button
                   key={prod.id}
                   className="group block text-right"
-                  onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (prod?.slug && navigate) navigate(buildStoreUrl(storeSlug, prod.slug)); }}
                 >
                   <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3" style={{ backgroundColor: surfaceMuted }}>
                     {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
