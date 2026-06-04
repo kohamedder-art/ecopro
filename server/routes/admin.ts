@@ -45,8 +45,8 @@ const getRenderDbMetrics = async (): Promise<{
   const dbId = process.env.RENDER_DATABASE_ID;
   if (!process.env.RENDER_API_KEY || !dbId) return null;
 
-  const now2 = Math.floor(Date.now() / 1000);
-  const from2 = now2 - 300;
+  const now2 = new Date().toISOString();
+  const from2 = new Date(Date.now() - 300_000).toISOString();
 
   const [info, cpuSeries, memSeries, cpuLimit, memLimit] = await Promise.all([
     renderApiGet(`/postgres/${dbId}`),
@@ -103,8 +103,8 @@ const getRenderServiceMetrics = async (): Promise<{
   const serviceId = process.env.RENDER_SERVICE_ID;
   if (!process.env.RENDER_API_KEY || !serviceId) return null;
 
-  const now = Math.floor(Date.now() / 1000);
-  const from = now - 300;
+  const now = new Date().toISOString();
+  const from = new Date(Date.now() - 300_000).toISOString();
 
   const [info, cpuSeries, memSeries, cpuLimit, memLimit, deploys] = await Promise.all([
     renderApiGet(`/services/${serviceId}`),

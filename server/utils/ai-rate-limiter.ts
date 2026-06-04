@@ -138,7 +138,7 @@ export function getRateLimitMessage(
   const timeStr = formatTimeRemaining(resetTime, locale);
   
   if (locale === 'ar') {
-    return `⏱️ وصلت للحد الأقصى خويا (${RATE_LIMITS[role].maxRequests} رسائل/دقيقة). استنى شوية ${timeStr}.`;
+    return `⏱️ عذراً، وصلت للحد الأقصى (${RATE_LIMITS[role].maxRequests} رسائل/دقيقة). يرجى الانتظار ${timeStr}.`;
   }
   
   if (locale === 'fr') {
