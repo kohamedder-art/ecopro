@@ -55,6 +55,49 @@ if (typeof window !== 'undefined' && !window.fbq) {
   n.queue = [];
 }
 
+// Module-level TikTok Pixel stub — created immediately so ttq.track() calls
+// fired before the async config loads are properly deferred (not silently dropped).
+// Mirrors the Facebook stub pattern above.
+if (typeof window !== 'undefined' && !(window as any).ttq) {
+  (window as any).TiktokAnalyticsObject = 'ttq';
+  const ttq: any = (window as any).ttq = [];
+  ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie"];
+  ttq.setAndDefer = function(t: any, e: string) {
+    t[e] = function() {
+      t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+    };
+  };
+  for (let i = 0; i < ttq.methods.length; i++) {
+    ttq.setAndDefer(ttq, ttq.methods[i]);
+  }
+  ttq.instance = function(t: string) {
+    const e = ttq._i[t] || [];
+    for (let n = 0; n < ttq.methods.length; n++) {
+      ttq.setAndDefer(e, ttq.methods[n]);
+    }
+    return e;
+  };
+  ttq.load = function(e: string, n?: any) {
+    const i = "https://analytics.tiktok.com/i18n/pixel/events.js";
+    ttq._i = ttq._i || {};
+    ttq._i[e] = [];
+    ttq._i[e]._u = i;
+    ttq._t = ttq._t || {};
+    ttq._t[e] = +new Date();
+    ttq._o = ttq._o || {};
+    ttq._o[e] = n || {};
+    if (!document.getElementById('tiktok-pixel-script')) {
+      const o = document.createElement("script");
+      o.id = 'tiktok-pixel-script';
+      o.type = "text/javascript";
+      o.async = true;
+      o.src = i + "?sdkid=" + e + "&lib=ttq";
+      const a = document.getElementsByTagName("script")[0];
+      a?.parentNode?.insertBefore(o, a);
+    }
+  };
+}
+
 const CANONICAL_SESSION_KEY = 'ecopro_session_id';
 const CANONICAL_VISITOR_KEY = 'ecopro_visitor_id';
 const LEGACY_SESSION_KEYS = [CANONICAL_SESSION_KEY, 'pixel_session_id'];
@@ -247,8 +290,11 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
   }, [config?.facebook_pixel_id, config?.is_facebook_enabled]);
 
   // Inject TikTok Pixel (supports multiple comma-separated IDs)
+  // The ttq stub is already created at module level, so ttq.track() calls
+  // fired before this effect runs are properly deferred until load() is called.
   useEffect(() => {
     if (!config?.tiktok_pixel_id || !config.is_tiktok_enabled) return;
+    if (typeof window === 'undefined' || !window.ttq) return;
 
     const ids = String(config.tiktok_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return;
@@ -256,57 +302,7 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     // Deduplicate IDs
     const uniqueIds = [...new Set(ids)];
 
-    // If ttq exists, load/instantiate each id
-    if (window.ttq) {
-      uniqueIds.forEach(id => {
-        try { window.ttq.load(id); } catch (e) { /* ignore */ }
-      });
-      try { window.ttq.page(); } catch (e) { /* ignore */ }
-      return;
-    }
-
-    // Prevent duplicate script loading
-    if (document.getElementById('tiktok-pixel-script')) {
-      return;
-    }
-
-    // Initialize TikTok Pixel without inline script (CSP-safe)
-    window.TiktokAnalyticsObject = 'ttq';
-    const ttq = window.ttq = window.ttq || [] as any;
-    ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie"];
-    ttq.setAndDefer = function(t: any, e: string) {
-      t[e] = function() {
-        t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
-      };
-    };
-    for (let i = 0; i < ttq.methods.length; i++) {
-      ttq.setAndDefer(ttq, ttq.methods[i]);
-    }
-    ttq.instance = function(t: string) {
-      const e = ttq._i[t] || [];
-      for (let n = 0; n < ttq.methods.length; n++) {
-        ttq.setAndDefer(e, ttq.methods[n]);
-      }
-      return e;
-    };
-    ttq.load = function(e: string, n?: any) {
-      const i = "https://analytics.tiktok.com/i18n/pixel/events.js";
-      ttq._i = ttq._i || {};
-      ttq._i[e] = [];
-      ttq._i[e]._u = i;
-      ttq._t = ttq._t || {};
-      ttq._t[e] = +new Date();
-      ttq._o = ttq._o || {};
-      ttq._o[e] = n || {};
-      const o = document.createElement("script");
-      o.id = 'tiktok-pixel-script';
-      o.type = "text/javascript";
-      o.async = true;
-      o.src = i + "?sdkid=" + e + "&lib=ttq";
-      const a = document.getElementsByTagName("script")[0];
-      a?.parentNode?.insertBefore(o, a);
-    };
-
+    // Load/instantiate each id, then fire a page event
     uniqueIds.forEach(id => {
       try { window.ttq.load(id); } catch (e) { /* ignore */ }
     });
@@ -346,8 +342,10 @@ export function trackFacebookEvent(eventName: string, params?: Record<string, an
 }
 
 export function trackTikTokEvent(eventName: string, params?: Record<string, any>) {
-  if (typeof window !== 'undefined' && window.ttq) {
-    window.ttq.track(eventName, params);
+  if (typeof window !== 'undefined' && window.ttq && typeof window.ttq.track === 'function') {
+    try {
+      window.ttq.track(eventName, params);
+    } catch (e) { /* ignore */ }
   }
 }
 
