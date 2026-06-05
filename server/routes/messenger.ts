@@ -765,11 +765,11 @@ async function handleReferral(pageId: string, senderId: string, referral: any) {
     );
 
     // Get store name + customer name
-    const storeRes = await pool.query(
+    const storeRes2 = await pool.query(
       `SELECT store_name FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
       [client_id]
     );
-    const storeName = storeRes.rows[0]?.store_name || 'Store';
+    const storeName = storeRes2.rows[0]?.store_name || 'Store';
 
     const nameRes = await pool.query(
       `SELECT customer_name FROM store_orders WHERE client_id = $1 AND customer_phone = $2 ORDER BY created_at DESC LIMIT 1`,
