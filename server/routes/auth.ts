@@ -513,7 +513,11 @@ export const login: RequestHandler = async (req, res) => {
  */
 export const refresh: RequestHandler = async (req, res) => {
   try {
-    const rt = (req as any).cookies?.[REFRESH_COOKIE] as string | undefined;
+    // Accept refresh token from cookie, Authorization header, or x-refresh-token header (for mobile app)
+    const rt = (req as any).cookies?.[REFRESH_COOKIE] as string | undefined
+      || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : undefined)
+      || req.headers['x-refresh-token'] as string | undefined
+      || req.body?.refresh_token as string | undefined;
     if (!rt) return jsonError(res, 401, 'No refresh token');
 
     const decoded = verifyToken(rt) as any;
@@ -551,7 +555,8 @@ export const refresh: RequestHandler = async (req, res) => {
     });
 
     setAuthCookies(res as any, token, refreshToken);
-    return res.json({ ok: true });
+    // Return tokens for mobile app (cookies are used by web)
+    return res.json({ ok: true, token, refresh_token: refreshToken });
   } catch {
     return jsonError(res, 401, 'Invalid refresh token');
   }
@@ -1220,7 +1225,7 @@ export const googleAuth: RequestHandler = async (req, res) => {
     const { idToken } = req.body as { idToken?: string };
     if (!idToken) return jsonError(res, 400, 'idToken is required');
 
-    const expectedClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+    const expectedClientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
     if (!expectedClientId) {
       console.error('[google-auth] GOOGLE_OAUTH_CLIENT_ID env var is not set');
       return jsonError(res, 500, 'Google login is not configured on this server');
