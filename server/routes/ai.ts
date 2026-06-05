@@ -3020,7 +3020,7 @@ ${message}`;
  */
 router.post('/catch-up-unanswered', authenticate, async (req: Request, res: Response) => {
   try {
-    const clientId = (req as any).userId || Number(req.query.clientId);
+    const clientId = (req as any).user?.id || Number(req.query.clientId);
     if (!clientId) return res.status(400).json({ error: 'clientId required' });
 
     const dryRun = req.body?.dryRun === true;
