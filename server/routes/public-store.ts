@@ -1650,9 +1650,12 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     const whatsappPhone = String(bot.support_phone || bot.whatsapp_display_phone || '').replace(/[^0-9]/g, '');
     const effectiveWaPhone = whatsappPhone;
     if (effectiveWaPhone) {
+      // Pre-fill a branded greeting so the customer sees the store name in the first message
+      const storeName = String(bot.company_name || 'المتجر').trim();
+      const greeting = `السلام عليكم، أتواصل معكم من متجر ${storeName}`;
       channels.push({
         platform: 'whatsapp',
-        url: `https://wa.me/${effectiveWaPhone}`,
+        url: `https://wa.me/${effectiveWaPhone}?text=${encodeURIComponent(greeting)}`,
         label: 'WhatsApp',
       });
     }

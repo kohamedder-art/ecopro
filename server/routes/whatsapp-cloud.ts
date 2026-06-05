@@ -165,7 +165,22 @@ async function handleWhatsAppMessage(phoneNumberId: string, from: string, text: 
       return;
     }
 
-    // Priority 2: check subscriber mapping
+    // Priority 2: platform phone number — customer_messaging_ids (customers with orders)
+    // Checked BEFORE subscribers so a customer who ordered from a store gets routed there,
+    // not to a different store they casually messaged earlier.
+    if (!clientId && phoneNumberId === getWaPhoneNumberId()) {
+      const custRes = await pool.query(
+        `SELECT client_id FROM customer_messaging_ids
+         WHERE customer_phone LIKE $1
+         ORDER BY updated_at DESC LIMIT 1`,
+        [`%${from.slice(-9)}`]
+      );
+      if (custRes.rows.length) {
+        clientId = Number(custRes.rows[0].client_id);
+      }
+    }
+
+    // Priority 3: subscriber mapping (last casual interaction)
     if (!clientId) {
       const subRes = await pool.query(
         `SELECT client_id FROM whatsapp_subscribers
@@ -176,20 +191,6 @@ async function handleWhatsAppMessage(phoneNumberId: string, from: string, text: 
       );
       if (subRes.rows.length) {
         clientId = Number(subRes.rows[0].client_id);
-      }
-    }
-
-    // Priority 3: platform phone number — find the most recent store that interacted with this customer
-    if (!clientId && phoneNumberId === getWaPhoneNumberId()) {
-      // Try customer_messaging_ids
-      const custRes = await pool.query(
-        `SELECT client_id FROM customer_messaging_ids
-         WHERE customer_phone LIKE $1
-         ORDER BY updated_at DESC LIMIT 1`,
-        [`%${from.slice(-9)}`]
-      );
-      if (custRes.rows.length) {
-        clientId = Number(custRes.rows[0].client_id);
       }
     }
 

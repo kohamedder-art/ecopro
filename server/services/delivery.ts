@@ -673,9 +673,14 @@ export class DeliveryService {
 
       // Update order delivery status
       if (event.status && !['fake', 'duplicate'].includes(event.status)) {
+        const terminalStatuses = ['failed', 'returned'];
+        let statusUpdate = '';
+        if (terminalStatuses.includes(event.status)) {
+          statusUpdate = `, status = 'delivery_failed'`;
+        }
         await pool.query(
           `UPDATE store_orders
-           SET delivery_status = $1, updated_at = NOW()
+           SET delivery_status = $1, updated_at = NOW()${statusUpdate}
            WHERE id = $2`,
           [event.status, orderId]
         );

@@ -14,6 +14,7 @@ interface PixelScriptsProps {
 
 // Module-level guards to prevent duplicate initialization across multiple instances
 let facebookPixelInitialized = false;
+let tiktokPixelInitialized = false;
 let pageViewFiredByInit = false;
 let currentStoreCurrency = 'DZD';
 
@@ -92,8 +93,9 @@ if (typeof window !== 'undefined' && !(window as any).ttq) {
       o.type = "text/javascript";
       o.async = true;
       o.src = i + "?sdkid=" + e + "&lib=ttq";
-      const a = document.getElementsByTagName("script")[0];
-      a?.parentNode?.insertBefore(o, a);
+      o.onload = () => console.log('[Pixel] TikTok SDK loaded');
+      o.onerror = () => console.error('[Pixel] TikTok SDK failed to load');
+      document.head.appendChild(o);
     }
   };
 }
@@ -296,11 +298,16 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     if (!config?.tiktok_pixel_id || !config.is_tiktok_enabled) return;
     if (typeof window === 'undefined' || !window.ttq) return;
 
+    // Module-level guard: only the first instance initializes
+    if (tiktokPixelInitialized) return;
+
     const ids = String(config.tiktok_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return;
 
     // Deduplicate IDs
     const uniqueIds = [...new Set(ids)];
+
+    tiktokPixelInitialized = true;
 
     // Load/instantiate each id, then fire a page event
     uniqueIds.forEach(id => {

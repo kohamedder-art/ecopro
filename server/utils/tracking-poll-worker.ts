@@ -117,9 +117,14 @@ async function pollOrderStatus(order: PollableOrder): Promise<void> {
 
     console.log(`[TrackingPoll] Order ${order.order_id}: ${order.delivery_status} → ${newStatus}`);
 
-    // Update delivery_status
+    // Update delivery_status (and main status for terminal failures)
+    const terminalStatuses = ['failed', 'returned'];
+    let statusUpdate = '';
+    if (terminalStatuses.includes(newStatus)) {
+      statusUpdate = `, status = 'delivery_failed'`;
+    }
     await pool.query(
-      `UPDATE store_orders SET delivery_status = $1, updated_at = NOW() WHERE id = $2`,
+      `UPDATE store_orders SET delivery_status = $1, updated_at = NOW()${statusUpdate} WHERE id = $2`,
       [newStatus, order.order_id]
     );
 
