@@ -266,14 +266,17 @@ router.get('/download', async (_req, res) => {
       `SELECT download_url, version, created_at FROM app_downloads
        WHERE platform = 'android' ORDER BY created_at DESC LIMIT 1`
     );
-    if (result.rows.length === 0) {
-      return res.json({ download_url: null });
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
+      return res.json({ download_url: row.download_url, version: row.version, updated_at: row.created_at });
     }
-    const row = result.rows[0];
-    res.json({ download_url: row.download_url, version: row.version, updated_at: row.created_at });
-  } catch {
-    res.json({ download_url: null });
+  } catch { /* fall through to env var */ }
+
+  const envUrl = String(process.env.MOBILE_APP_DOWNLOAD_URL || '').trim();
+  if (envUrl) {
+    return res.json({ download_url: envUrl, version: 'latest', updated_at: null });
   }
+  res.json({ download_url: null });
 });
 
 // Admin: update app download URL
