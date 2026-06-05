@@ -23,6 +23,10 @@ function getPlatformInstagramPageId() { return String(process.env.PLATFORM_INSTA
 function getPlatformInstagramAccessToken() { return String(process.env.PLATFORM_INSTAGRAM_ACCESS_TOKEN || '').trim(); }
 function getPlatformInstagramAvailable() { return !!getPlatformInstagramPageId() && !!getPlatformInstagramAccessToken(); }
 
+function getPlatformFbPageId() { return String(process.env.PLATFORM_FB_PAGE_ID || '').trim(); }
+function getPlatformFbPageAccessToken() { return String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim(); }
+function getPlatformMessengerAvailable() { return !!getPlatformFbPageId() && !!getPlatformFbPageAccessToken(); }
+
 // Keep frozen constants for backward compatibility within this file
 const PLATFORM_TELEGRAM_BOT_TOKEN = getPlatformTelegramBotToken();
 const PLATFORM_TELEGRAM_BOT_USERNAME = getPlatformTelegramBotUsername();
@@ -146,7 +150,7 @@ export const getBotSettings: RequestHandler = async (req, res) => {
           fbPageAccessToken: '',
           fbPageAccessTokenConfigured: false,
           messengerDelayMinutes: 5,
-          platformMessengerAvailable: false,
+          platformMessengerAvailable: getPlatformMessengerAvailable(),
           platformTelegramAvailable: PLATFORM_TELEGRAM_AVAILABLE,
           usePlatformMessenger: false,
           messengerUsingPlatform: false,
@@ -188,7 +192,8 @@ export const getBotSettings: RequestHandler = async (req, res) => {
     const storedFbPageId = String(settings.fb_page_id || '').trim();
     const storedFbPageAccessToken = String(settings.fb_page_access_token || '').trim();
     const messengerTokenConfigured = !!storedFbPageAccessToken;
-    const messengerUsingPlatform = false;
+    const platformMessengerAvailable = getPlatformMessengerAvailable();
+    const messengerUsingPlatform = platformMessengerAvailable && storedFbPageId === getPlatformFbPageId();
 
     const whatsappTokenConfigured = !!String(settings.whatsapp_token || '').trim();
     const whatsappPhoneIdStored = String(settings.whatsapp_phone_id || '').trim();
@@ -244,12 +249,12 @@ export const getBotSettings: RequestHandler = async (req, res) => {
       messengerDelayMinutes: settings.messenger_delay_minutes || 5,
       delivery_notifications_enabled: settings.delivery_notifications_enabled !== false,
       delivery_status_template: settings.delivery_status_template || null,
-      platformMessengerAvailable: false,
+      platformMessengerAvailable,
       platformTelegramAvailable: getPlatformTelegramAvailable(),
       usePlatformTelegram: telegramUsingPlatform,
       platformWhatsappAvailable: getPlatformWhatsappAvailable(),
-      usePlatformMessenger: false,
-      messengerUsingPlatform: false,
+      usePlatformMessenger: messengerUsingPlatform,
+      messengerUsingPlatform,
       telegramUsingPlatform,
       usePlatformWhatsapp: whatsappUsingPlatform,
       whatsappUsingPlatform,
@@ -420,11 +425,15 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
       && String(existingSecrets.telegram_bot_token || '').trim() === getPlatformTelegramBotToken();
     const existingWhatsappIsPlatform = getPlatformWhatsappAvailable()
       && String(existingSecrets.whatsapp_phone_id || '').trim() === getPlatformWhatsappPhoneNumberId();
+    const existingMessengerIsPlatform = getPlatformMessengerAvailable()
+      && String(existingSecrets.fb_page_id || '').trim() === getPlatformFbPageId();
 
     const wantsPlatformTelegram = usePlatformTelegram === true
       || (usePlatformTelegram == null && existingTelegramIsPlatform);
     const wantsPlatformWhatsapp = usePlatformWhatsapp === true
       || (usePlatformWhatsapp == null && existingWhatsappIsPlatform);
+    const wantsPlatformMessenger = usePlatformMessenger === true
+      || (usePlatformMessenger == null && existingMessengerIsPlatform);
 
     // ── WhatsApp ──
     let finalWhatsappPhoneId: string | null = existingSecrets.whatsapp_phone_id ?? null;
@@ -478,7 +487,13 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     let finalFbPageId: string | null = existingSecrets.fb_page_id ?? null;
     let finalFbPageAccessToken: string | null = existingSecrets.fb_page_access_token ?? null;
 
-    if (fbPageIdSent) {
+    if (wantsPlatformMessenger) {
+      if (!getPlatformMessengerAvailable()) {
+        return res.status(400).json({ error: 'Platform Messenger is not configured on the server.' });
+      }
+      finalFbPageId = getPlatformFbPageId();
+      finalFbPageAccessToken = getPlatformFbPageAccessToken();
+    } else if (fbPageIdSent) {
       finalFbPageId = normalizedFbPageId || null;
       finalFbPageAccessToken = normalizedFbPageAccessToken || null;
     }

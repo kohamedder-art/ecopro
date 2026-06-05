@@ -56,7 +56,7 @@ const ICONS: Record<Platform, () => JSX.Element> = {
 };
 
 const PLATFORM_DEFS: PlatformDef[] = [
-  { value: 'facebook',       label: 'Facebook',  desc: 'Coming Soon',      bgColor: '#1877F2' },
+  { value: 'facebook',       label: 'Facebook',  desc: 'Messenger Bot',    bgColor: '#1877F2' },
   { value: 'instagram',      label: 'Instagram', desc: 'Coming Soon',      bgColor: '#E4405F' },
   { value: 'telegram',       label: 'Telegram',  desc: 'Chat Bot',       bgColor: '#08c'    },
   { value: 'whatsapp_cloud', label: 'WhatsApp',  desc: 'Cloud API',      bgColor: '#25D366' },
@@ -183,7 +183,7 @@ export default function Integrations() {
   }
 
   function isConnected(platform: Platform) {
-    if (platform === 'facebook') return false;
+    if (platform === 'facebook') return !!(settings.fbPageAccessTokenConfigured || settings.usePlatformMessenger || settings.messengerUsingPlatform);
     if (platform === 'instagram') return false;
     if (platform === 'telegram') return !!(settings.telegramTokenConfigured || settings.telegramUsingPlatform);
     if (platform === 'whatsapp_cloud') return !!settings.whatsappTokenConfigured;
@@ -195,7 +195,7 @@ export default function Integrations() {
   const connected = isConnected(activePlatform);
   const usingPlatform = isUsingPlatform(activePlatform);
   const ping = pingState[activePlatform];
-  const comingSoon = activePlatform === 'facebook' || activePlatform === 'instagram' || activePlatform === 'viber';
+  const comingSoon = activePlatform === 'instagram' || activePlatform === 'viber';
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -223,7 +223,7 @@ export default function Integrations() {
         {PLATFORM_DEFS.map(p => {
           const c = isConnected(p.value);
           const active = activePlatform === p.value;
-          const soon = p.value === 'facebook' || p.value === 'instagram' || p.value === 'viber';
+          const soon = p.value === 'instagram' || p.value === 'viber';
           const color = soon ? '#94a3b8' : p.bgColor;
           return (
             <button key={p.value} onClick={() => setActivePlatform(p.value)}
@@ -323,8 +323,8 @@ export default function Integrations() {
             </div>
           )}
 
-          {/* ── FACEBOOK / INSTAGRAM / VIBER — Coming Soon ── */}
-          {(activePlatform === 'facebook' || activePlatform === 'instagram' || activePlatform === 'viber') && !connected && (
+          {/* ── INSTAGRAM / VIBER — Coming Soon ── */}
+          {(activePlatform === 'instagram' || activePlatform === 'viber') && !connected && (
             <div className="flex flex-col items-center gap-4 py-10">
               <Clock className="w-12 h-12 text-slate-300" />
               <p className="text-sm font-bold text-slate-400">{isRTL ? 'قريباً...' : 'Coming Soon...'}</p>
@@ -333,6 +333,39 @@ export default function Integrations() {
                   ? 'هذه المنصة ستكون متاحة قريباً. اشترك في النشرة البريدية ليصلك الإشعار.'
                   : 'This platform will be available soon. Stay tuned for updates.'}
               </p>
+            </div>
+          )}
+
+          {/* ── FACEBOOK ── */}
+          {activePlatform === 'facebook' && (!connected || usingPlatform) && (
+            <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{isRTL ? 'بيانات Facebook' : 'Facebook Credentials'}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">{isRTL ? 'معرف الصفحة' : 'Page ID'}</Label>
+                  <Input className="h-10 rounded-lg" value={settings.fbPageId || ''} onChange={e => updateSetting('fbPageId', e.target.value)} placeholder="123456789" />
+                  {settings.fbPageAccessTokenConfigured && !settings.fbPageId?.trim() && <p className="text-[10px] text-slate-400">{isRTL ? 'المعرف محفوظ' : 'Saved ID hidden'}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">{isRTL ? 'رمز الوصول' : 'Access Token'}</Label>
+                  <Input className="h-10 rounded-lg" type="password" value={settings.fbPageAccessToken || ''} onChange={e => updateSetting('fbPageAccessToken', e.target.value)} placeholder="EAAB..." />
+                  {settings.fbPageAccessTokenConfigured && !settings.fbPageAccessToken?.trim() && <p className="text-[10px] text-slate-400">{isRTL ? 'الرمز محفوظ' : 'Saved token hidden'}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={() => {
+                  if (!settings.fbPageId?.trim() || !settings.fbPageAccessToken?.trim()) { toast({ title: isRTL ? 'أدخل جميع البيانات' : 'Fill all fields', variant: 'destructive' }); return; }
+                  saveSettings({ provider: 'facebook', fbPageId: settings.fbPageId, fbPageAccessToken: settings.fbPageAccessToken, messengerEnabled: true, usePlatformMessenger: false }, 'facebook');
+                }} disabled={saving === 'facebook'} className="h-9 px-5 rounded-lg font-bold bg-[#1877F2] hover:bg-[#166ada] text-white">
+                  {saving === 'facebook' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'حفظ' : 'Save'}
+                </Button>
+                {settings.platformMessengerAvailable && (
+                  <button onClick={() => handleUsePlatformBot('facebook')} disabled={saving === 'facebook'}
+                    className="h-9 px-4 rounded-lg text-xs font-semibold border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 hover:bg-indigo-100">
+                    {isRTL ? 'استخدام بوت المنصة' : 'Use Platform Bot'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

@@ -97,10 +97,12 @@ export function BigCarGauge({
   const radius = 80;
   const strokeWidth = 12;
   
-  // Arc angles: RTL mirrors the gauge (0 at bottom-right, 100 at bottom-left)
-  const startAngle = isRtl ? 135 : -135;
-  const endAngle = isRtl ? -135 : 135;
-  const angleRange = endAngle - startAngle;
+  // Arc angles: 270° gauge opening at the bottom (car speedometer style)
+  // LTR: 0 at bottom-left (135°), 100 at bottom-right (45°), sweeps clockwise through top
+  // RTL: mirrored — 0 at bottom-right (45°), 100 at bottom-left (135°)
+  const startAngle = isRtl ? 45 : 135;
+  const endAngle = isRtl ? 135 : 45;
+  const angleRange = 270;
   
   // Calculate needle angle
   const normalizedValue = mainValue !== null ? Math.min(100, Math.max(0, mainValue)) : 0;
@@ -164,7 +166,7 @@ export function BigCarGauge({
         
         {/* Main Gauge */}
         <div className="flex justify-center">
-          <svg width={size} height={size - 30} viewBox={`0 0 ${size} ${size - 30}`}>
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
             <defs>
               {/* Gradient for the arc */}
               <linearGradient id={`arcGrad-${title}`} x1="0%" y1="0%" x2="100%" y2="0%">
