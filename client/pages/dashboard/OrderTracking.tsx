@@ -253,6 +253,7 @@ function CopyCheck() { return <svg width="9" height="9" viewBox="0 0 9 9" fill="
 // ─── Order row ─────────────────────────────────────────────────────────────
 function OrderRow({ order, events, t, locale }: { order: TrackingOrder; events?: TrackingEvent[]; t: (key: string) => string; locale: string }) {
   const [copied, setCopied] = useState<'none' | 'order' | 'tracking'>('none');
+  const isRTL = locale === "ar";
   const price = order.unit_price != null
     ? (order.unit_price * (order.quantity || 1))
     : (order.total_price ?? 0);
