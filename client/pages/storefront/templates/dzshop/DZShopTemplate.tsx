@@ -802,28 +802,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 </button>
             </div>
 
-            {/* Admin Panel (Floating) - Only visible to store owner */}
-            {canManage && (
-            <div className="fixed bottom-24 left-6 z-[100] group hidden md:block">
-                <div className="shadow-2xl rounded-2xl p-4 scale-0 group-hover:scale-100 origin-bottom-left transition-all duration-300 w-64 mb-4" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}>
-                    <h4 className="font-bold pb-2 mb-3" style={{ color: textColor, borderBottom: `1px solid ${borderColor}` }}>لوحة التحكم السريعة</h4>
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs">اللون الأساسي</span>
-                            <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-6 w-10 border-none bg-transparent cursor-pointer" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs">عملة المتجر</span>
-                            <input type="text" defaultValue="دج" className="w-12 text-center text-xs bg-gray-50 border rounded p-1" />
-                        </div>
-                        <button className="w-full py-2 bg-gray-900 text-white text-xs rounded-lg font-bold hover:bg-gray-800">حفظ التغييرات</button>
-                    </div>
-                </div>
-                <button className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:rotate-12 transition-transform shadow-gray-900/30">
-                    <i className="ph ph-gear text-2xl"></i>
-                </button>
-            </div>
-            )}
         </div>
     );
 }
