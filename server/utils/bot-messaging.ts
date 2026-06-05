@@ -587,6 +587,26 @@ export async function sendDeliveryStatusNotification(params: {
       );
     }
 
+    // Ensure order_telegram_chats has an entry so the bot worker can find the chat_id
+    // Falls back to customer_messaging_ids for customers who ordered via storefront.
+    // All clients share the same platform Telegram bot, so match phone across any client.
+    try {
+      await pool.query(
+        `INSERT INTO order_telegram_chats (order_id, client_id, telegram_chat_id)
+         SELECT $1, $2, cmi.telegram_chat_id
+         FROM customer_messaging_ids cmi
+         WHERE cmi.customer_phone = $3
+           AND cmi.telegram_chat_id IS NOT NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM order_telegram_chats otc
+             WHERE otc.order_id = $1 AND otc.client_id = $2
+           )
+         LIMIT 1
+         ON CONFLICT DO NOTHING`,
+        [orderId, clientId, customerPhone]
+      );
+    } catch { /* non-blocking */ }
+
     console.log(`[DeliveryBot] Queued ${channels.length} notification(s) for order ${orderId} event=${eventType}`);
   } catch (err: any) {
     console.error('[DeliveryBot] sendDeliveryStatusNotification failed:', err?.message || err);
@@ -858,7 +878,7 @@ export async function sendOrderConfirmationMessages(
     // WhatsApp Cloud: schedule order confirmation messages (same pattern as Telegram/Messenger).
     // WhatsApp doesn't need pre-connect — the phone number IS the identifier.
     // We check whatsapp_enabled OR whatsapp_cloud_enabled in bot_settings.
-    const effectiveWaToken = getWaAccessToken();
+    const effectiveWaToken = String(settings.whatsapp_token || '').trim() || getWaAccessToken();
     const effectiveWaPhoneId = String(settings.whatsapp_phone_id || '').trim() || getWaPhoneNumberId();
     if ((settings.whatsapp_enabled || settings.whatsapp_cloud_enabled) && effectiveWaToken && effectiveWaPhoneId) {
       const defaultInstant = `✅ تم استلام الطلب!\n\nطلب #${orderId}\nالمنتج: {productName}\nالمجموع: {totalPrice} دج\n\nسنطلب منك التأكيد قريباً.`;
@@ -1059,11 +1079,11 @@ export async function processPendingMessages(): Promise<void> {
         } else if (message.message_type === 'whatsapp_cloud') {
           // WhatsApp Cloud API handling — phone number IS the recipient
           const settingsResult = await client.query(
-            `SELECT whatsapp_phone_id FROM bot_settings WHERE client_id = $1`,
+            `SELECT whatsapp_phone_id, whatsapp_token FROM bot_settings WHERE client_id = $1`,
             [message.client_id]
           );
           const phoneNumberId = String(settingsResult.rows[0]?.whatsapp_phone_id || '').trim() || getWaPhoneNumberId();
-          const accessToken = getWaAccessToken();
+          const accessToken = String(settingsResult.rows[0]?.whatsapp_token || '').trim() || getWaAccessToken();
 
           if (!accessToken || !phoneNumberId) {
             await client.query(

@@ -1251,6 +1251,23 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
                VALUES ($1,$2,$3,'telegram',$4,NULL,NOW())`,
               [orderRow.id, req.user.id, orderRow.customer_phone || '', msg]
             );
+            // Ensure order_telegram_chats has an entry so the bot worker can find chat_id
+            try {
+              await pool.query(
+                `INSERT INTO order_telegram_chats (order_id, client_id, telegram_chat_id)
+                 SELECT $1, $2, cmi.telegram_chat_id
+                 FROM customer_messaging_ids cmi
+                 WHERE cmi.customer_phone = $3
+                   AND cmi.telegram_chat_id IS NOT NULL
+                   AND NOT EXISTS (
+                     SELECT 1 FROM order_telegram_chats otc
+                     WHERE otc.order_id = $1 AND otc.client_id = $2
+                   )
+                 LIMIT 1
+                 ON CONFLICT DO NOTHING`,
+                [orderRow.id, req.user.id, orderRow.customer_phone || '']
+              );
+            } catch { /* non-blocking */ }
           }
           // Send via Messenger
           if (settings.messenger_enabled && settings.fb_page_id) {
