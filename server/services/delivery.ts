@@ -327,12 +327,12 @@ export class DeliveryService {
 
       await pool.query(
         `UPDATE store_orders
-         SET tracking_number = $1,
-             delivery_status = $2,
-             status = CASE
-               WHEN COALESCE(status, '') IN ('delivered','completed','cancelled','failed','returned','refunded') THEN status
-               ELSE 'at_delivery'
-             END,
+          SET tracking_number = $1,
+              delivery_status = $2,
+              status = CASE
+                WHEN COALESCE(status, '') IN ('delivered','completed','cancelled','failed','returned','refunded') THEN status
+                ELSE 'in_delivery'
+              END,
              shipping_label_url = COALESCE($3, shipping_label_url),
              courier_response = $4::jsonb,
              updated_at = NOW()

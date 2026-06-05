@@ -154,7 +154,7 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
           startBotMessageWorker({ intervalMs: 30 * 1000 });
           startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
           startGuardianWorker();
-          startTrackingPollWorker({ intervalMs: 10 * 60 * 1000 });
+          startTrackingPollWorker({ intervalMs: 3 * 60 * 1000 });
           return;
         }
         await runPendingMigrations();
@@ -167,7 +167,7 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
         startBotMessageWorker({ intervalMs: 30 * 1000 });
         startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
         startGuardianWorker();
-        startTrackingPollWorker({ intervalMs: 10 * 60 * 1000 });
+        startTrackingPollWorker({ intervalMs: 3 * 60 * 1000 });
       })
       .catch((err) => {
         console.error('Failed to initialize database:', err);

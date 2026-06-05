@@ -1170,7 +1170,7 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
     // Built-in valid statuses
     const builtInStatuses = [
       'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded',
-      'completed', 'failed', 'at_delivery', 'no_answer_1', 'no_answer_2', 'no_answer_3',
+      'completed', 'failed', 'in_delivery', 'at_delivery', 'no_answer_1', 'no_answer_2', 'no_answer_3',
       'waiting_callback', 'postponed', 'line_closed', 'fake', 'duplicate', 'returned'
     ];
     
@@ -1230,7 +1230,7 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
       const settings = settingsRes.rows[0];
       if (settings?.enabled && settings?.updates_enabled) {
         const orderRow = result.rows[0];
-        const shouldNotify = ['processing', 'shipped', 'delivered', 'cancelled', 'at_delivery'].includes(String(status));
+        const shouldNotify = ['processing', 'shipped', 'delivered', 'cancelled', 'in_delivery', 'at_delivery'].includes(String(status));
         if (shouldNotify) {
           const msg = replaceTemplateVariables(
             String(settings.template_shipping || 'Order #{orderId} status updated: {status}'),
@@ -1684,6 +1684,7 @@ export const getOrderStatuses: RequestHandler = async (req, res) => {
       'confirmed',
       'completed',
       'cancelled',
+      'in_delivery',
       'at_delivery',
       // bot-used
       'declined',
@@ -1835,7 +1836,7 @@ export const deleteOrderStatus: RequestHandler = async (req, res) => {
     }
 
     // The 4 core statuses are permanently locked; all others (including restored presets) can be removed
-    const CORE_LOCKED = ['pending', 'confirmed', 'at_delivery', 'completed'];
+    const CORE_LOCKED = ['pending', 'confirmed', 'in_delivery', 'at_delivery', 'completed'];
 
     const checkResult = await pool.query(
       'SELECT is_system, key FROM order_statuses WHERE id = $1 AND client_id = $2',
@@ -1849,7 +1850,7 @@ export const deleteOrderStatus: RequestHandler = async (req, res) => {
 
     const { is_system, key } = checkResult.rows[0];
     if (is_system && CORE_LOCKED.includes(key)) {
-      res.status(400).json({ error: "Core statuses (pending, confirmed, at_delivery, completed) cannot be removed." });
+      res.status(400).json({ error: "Core statuses (pending, confirmed, in_delivery, at_delivery, completed) cannot be removed." });
       return;
     }
 

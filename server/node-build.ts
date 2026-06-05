@@ -33,7 +33,7 @@ async function startServer() {
       // Start the Guardian AI alert worker
       startGuardianWorker();
       // Start tracking poll worker for non-webhook couriers
-      startTrackingPollWorker({ intervalMs: 10 * 60 * 1000 });
+      startTrackingPollWorker({ intervalMs: 3 * 60 * 1000 });
     });
 
     // Graceful shutdown

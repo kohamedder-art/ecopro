@@ -67,8 +67,8 @@ async function startServer() {
         }, 10 * 60 * 1000);
         console.log("📋 Subscription code cleanup started (runs every 10 minutes)");
 
-        startTrackingPollWorker({ intervalMs: 10 * 60 * 1000 });
-        console.log("📦 Tracking poll worker started (runs every 10 minutes)");
+        startTrackingPollWorker({ intervalMs: 3 * 60 * 1000 });
+        console.log("📦 Tracking poll worker started (runs every 3 minutes)");
       }
     } catch (error) {
       console.error("❌ Database initialization failed:", error);

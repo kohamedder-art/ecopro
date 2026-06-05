@@ -159,9 +159,9 @@ export const assignDeliveryToOrder: RequestHandler = async (req, res) => {
       return;
     }
 
-    // Mark as at_delivery
+    // Mark as in_delivery (handed off to courier, awaiting pickup)
     await pool.query(
-      `UPDATE store_orders SET status = 'at_delivery', updated_at = NOW()
+      `UPDATE store_orders SET status = 'in_delivery', updated_at = NOW()
        WHERE id = $1 AND client_id = $2 AND COALESCE(status, '') NOT IN ('delivered','completed','cancelled','failed','returned','refunded')`,
       [orderId, clientId]
     );
@@ -529,9 +529,9 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
           }
 
           if (apiSuccess) {
-            // Only mark as at_delivery if API upload succeeded
+            // Only mark as in_delivery if API upload succeeded
             await pool.query(
-              `UPDATE store_orders SET status = 'at_delivery', updated_at = NOW()
+              `UPDATE store_orders SET status = 'in_delivery', updated_at = NOW()
                WHERE id = $1 AND client_id = $2 AND COALESCE(status, '') NOT IN ('delivered','completed','cancelled','failed','returned','refunded')`,
               [orderId, clientId]
             );
@@ -546,9 +546,9 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
             results.push({ orderId, success: false, error: apiError });
           }
         } else {
-          // Manual/non-API couriers: assignment only — mark as at_delivery
+          // Manual/non-API couriers: assignment only — mark as in_delivery
           await pool.query(
-            `UPDATE store_orders SET status = 'at_delivery', updated_at = NOW()
+            `UPDATE store_orders SET status = 'in_delivery', updated_at = NOW()
              WHERE id = $1 AND client_id = $2 AND COALESCE(status, '') NOT IN ('delivered','completed','cancelled','failed','returned','refunded')`,
             [orderId, clientId]
           );
@@ -598,6 +598,50 @@ deliveryRouter.post('/orders/bulk-assign', bulkAssignDelivery);
 deliveryRouter.post('/orders/:id/assign', assignDeliveryToOrder);
 deliveryRouter.post('/orders/:id/generate-label', generateShippingLabel);
 deliveryRouter.get('/orders/:id/tracking', getOrderTracking);
+
+/**
+ * GET /api/delivery/orders/tracking-events?ids=1,2,3
+ * Batch fetch delivery events for multiple orders (used by the public tracking bar
+ * to show real per-step timestamps from the courier, not the order's updated_at).
+ */
+export const getOrderTrackingEventsBatch: RequestHandler = async (req, res) => {
+  try {
+    const clientId = req.user?.id;
+    if (!clientId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    const idsRaw = String((req.query as any)?.ids || '').trim();
+    if (!idsRaw) { res.json({ events: {} }); return; }
+    const ids = idsRaw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n) && n > 0).slice(0, 200);
+    if (ids.length === 0) { res.json({ events: {} }); return; }
+
+    const result = await pool.query(
+      `SELECT order_id, event_type, event_status, description, location, courier_timestamp, created_at
+       FROM delivery_events
+       WHERE order_id = ANY($1::int[]) AND client_id = $2
+       ORDER BY order_id, created_at ASC`,
+      [ids, clientId]
+    );
+
+    // Group by order_id, prefer courier_timestamp when available, else created_at
+    const byOrder: Record<string, Array<{ event_type: string; event_status: string; description: string|null; location: string|null; timestamp: string }>> = {};
+    for (const row of result.rows) {
+      const oid = String(row.order_id);
+      if (!byOrder[oid]) byOrder[oid] = [];
+      byOrder[oid].push({
+        event_type: row.event_type,
+        event_status: row.event_status,
+        description: row.description,
+        location: row.location,
+        timestamp: (row.courier_timestamp || row.created_at)?.toISOString?.() || new Date().toISOString(),
+      });
+    }
+    res.json({ events: byOrder });
+  } catch (err: any) {
+    console.error('[Delivery] getOrderTrackingEventsBatch error:', err);
+    res.status(500).json({ error: 'Failed to fetch tracking events' });
+  }
+};
+
+deliveryRouter.get('/orders/tracking-events-batch', getOrderTrackingEventsBatch);
 deliveryRouter.get('/orders/:id/label', downloadShippingLabel);
 deliveryRouter.post('/webhooks/:company', handleDeliveryWebhook);
 

@@ -1233,7 +1233,7 @@ router.post('/order-action', authAiLimiter, async (req: Request, res: Response) 
     }
     const allowedStatuses = [
       'pending', 'confirmed', 'processing', 'shipped', 'delivered',
-      'cancelled', 'refunded', 'completed', 'failed', 'at_delivery',
+      'cancelled', 'refunded', 'completed', 'failed', 'in_delivery', 'at_delivery',
       'no_answer_1', 'no_answer_2', 'no_answer_3', 'waiting_callback',
       'postponed', 'line_closed', 'fake', 'duplicate', 'returned',
     ];

@@ -872,6 +872,7 @@ export const getStaffOrderStatuses: RequestHandler = async (req, res) => {
       'confirmed',
       'completed',
       'cancelled',
+      'in_delivery',
       'at_delivery',
       // bot-used
       'declined',
@@ -968,6 +969,7 @@ export const updateStaffOrderStatus: RequestHandler = async (req, res) => {
       'followup',
       'fake',
       'duplicate',
+      'in_delivery',
       'at_delivery',
     ];
 

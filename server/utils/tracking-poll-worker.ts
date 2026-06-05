@@ -1,33 +1,24 @@
 /**
  * Tracking Poll Worker
  * Background worker that polls courier APIs for delivery status updates.
- * Used for couriers that DON'T support webhooks (Anderson, Ecotrack, DHD, Noest, Maystro, MDM, Ecom, Elogistia).
+ * Used for couriers that DON'T support webhooks (Noest, Maystro, MDM, Ecom, Elogistia, DHD, Mylerz, etc.).
  *
- * Runs every 10 minutes, queries active shipments, and updates delivery_status.
+ * Runs every 3 minutes, queries active shipments, and updates delivery_status.
+ * The list of pollable couriers is derived from delivery_companies.features.supports_webhooks = false
+ * (single source of truth — see delivery_companies table).
  */
 
 import { pool } from './database';
 import { decryptData } from './encryption';
 import { getCourierService } from '../services/courier-service';
+// Importing DeliveryService triggers the courier service registry side effects
+// (registerCourierService calls in delivery.ts populate the lookup map).
+// Without this, getCourierService('ZR Express') returns null.
+import '../services/delivery';
 import { sendDeliveryStatusNotification } from './bot-messaging';
 
-const POLL_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+const POLL_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
 let pollWorkerInterval: NodeJS.Timeout | null = null;
-
-// Couriers that support webhooks (no polling needed)
-const WEBHOOK_COURIERS = new Set([
-  'yalidine',
-  'yalidine express',
-  'guepex',
-  'zr express',
-  'zr-express',
-  'zrexpress',
-  'zr express official',
-  'zimou',
-  'zimou express',
-  'zimou-express',
-  'dolivroo',
-]);
 
 interface PollableOrder {
   order_id: number;
@@ -83,7 +74,8 @@ async function getCredentials(clientId: number, companyName: string): Promise<{ 
     // Secondary credential: account_number (Noest GUID), merchant_id (Maystro Store ID), or api_secret
     const secondary = row.account_number || row.merchant_id || (row.api_secret_encrypted ? decryptData(row.api_secret_encrypted) : undefined);
     return { apiKey, secondary };
-  } catch {
+  } catch (err: any) {
+    console.error(`[TrackingPoll] Failed to decrypt credentials for order (client=${clientId}, company=${companyName}):`, err?.message || err);
     return null;
   }
 }
