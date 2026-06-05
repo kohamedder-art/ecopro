@@ -1584,12 +1584,12 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
 
     const clientId = storeRes.rows[0].client_id;
 
-    // Fetch bot settings for connected platforms
+    // Fetch bot settings — match exactly what the dashboard GET /api/bot-settings returns
     const botRes = await pool.query(
       `SELECT enabled, provider, whatsapp_phone_id, whatsapp_token, whatsapp_display_phone,
               telegram_bot_token, telegram_bot_username,
               viber_auth_token, viber_sender_name, support_phone,
-              messenger_enabled, fb_page_id
+              messenger_enabled, fb_page_id, fb_page_access_token
        FROM bot_settings WHERE client_id = $1 LIMIT 1`,
       [clientId]
     );
@@ -1607,21 +1607,34 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
 
     const channels: { platform: string; url: string; label: string }[] = [];
 
-    // Facebook Messenger
-    const fbPageId = String(bot.fb_page_id || '').trim();
+    // --- Compute platform availability (same as server/routes/bot.ts GET handler) ---
     const platformFbPageId = String(process.env.PLATFORM_FB_PAGE_ID || '').trim();
-    const effectivePageId = fbPageId || platformFbPageId;
-    // Show icon if: messenger_enabled is true OR using platform bot (page IDs match)
-    const isPlatformMessenger = platformFbPageId && fbPageId === platformFbPageId;
-    if ((bot.messenger_enabled || isPlatformMessenger) && effectivePageId) {
-      channels.push({
-        platform: 'facebook',
-        url: `https://m.me/${effectivePageId}`,
-        label: 'Messenger',
-      });
+    const platformFbPageAccessToken = String(process.env.PLATFORM_FB_PAGE_ACCESS_TOKEN || '').trim();
+    const platformMessengerAvailable = !!(platformFbPageId && platformFbPageAccessToken);
+
+    const platformWhatsappPhoneId = String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim();
+    const platformWhatsappAccessToken = String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
+    const platformWhatsappAvailable = !!(platformWhatsappPhoneId && platformWhatsappAccessToken);
+
+    const platformTelegramBotToken = String(process.env.PLATFORM_TELEGRAM_BOT_TOKEN || '').trim();
+    const platformTelegramAvailable = !!platformTelegramBotToken;
+
+    // --- Facebook Messenger (matches dashboard isConnected('facebook')) ---
+    const storedFbPageId = String(bot.fb_page_id || '').trim();
+    const storedFbAccessToken = String(bot.fb_page_access_token || '').trim();
+    const messengerUsingPlatform = platformMessengerAvailable && storedFbPageId === platformFbPageId;
+    const messengerTokenConfigured = !!storedFbAccessToken;
+    // Dashboard: isConnected = fbPageAccessTokenConfigured || usePlatformMessenger || messengerUsingPlatform
+    const messengerConnected = messengerTokenConfigured || messengerUsingPlatform;
+
+    if (messengerConnected) {
+      const pageId = storedFbPageId || platformFbPageId;
+      if (pageId) {
+        channels.push({ platform: 'facebook', url: `https://m.me/${pageId}`, label: 'Messenger' });
+      }
     }
 
-    // Instagram - own account via facebook_tokens, or platform fallback
+    // --- Instagram - own account via facebook_tokens, or platform fallback ---
     let instagramAdded = false;
     try {
       const igRes = await pool.query(
@@ -1636,7 +1649,6 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
         instagramAdded = true;
       }
     } catch { /* facebook_tokens may not exist */ }
-    // Platform Instagram fallback
     if (!instagramAdded) {
       const platformIgUsername = String(process.env.PLATFORM_INSTAGRAM_USERNAME || '').trim();
       if (platformIgUsername) {
@@ -1648,42 +1660,38 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
       }
     }
 
-    // WhatsApp - support_phone or whatsapp_display_phone (actual number stored when credentials saved)
-    const whatsappPhone = String(bot.support_phone || bot.whatsapp_display_phone || '').replace(/[^0-9]/g, '');
-    let effectiveWaPhone = whatsappPhone;
+    // --- WhatsApp (matches dashboard isConnected('whatsapp_cloud')) ---
+    const storedWhatsappPhoneId = String(bot.whatsapp_phone_id || '').trim();
+    const storedWhatsappToken = String(bot.whatsapp_token || '').trim();
+    const whatsappUsingPlatform = platformWhatsappAvailable && storedWhatsappPhoneId === platformWhatsappPhoneId;
+    const whatsappTokenConfigured = !!storedWhatsappToken || whatsappUsingPlatform;
+    // Dashboard: isConnected = whatsappTokenConfigured || usePlatformWhatsapp
+    const whatsappConnected = whatsappTokenConfigured;
 
-    // Fallback: if display phone is missing, try fetching from Graph API on the fly
-    // Works for both platform bot (provider=whatsapp_cloud, token from env) and manual credentials
-    if (!effectiveWaPhone && bot.whatsapp_phone_id) {
-      const waToken = bot.whatsapp_token || String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
+    // Need phone number for wa.me link — fetch via Graph API if missing
+    let effectiveWaPhone = String(bot.whatsapp_display_phone || '').replace(/[^0-9]/g, '');
+    if (whatsappConnected && !effectiveWaPhone && storedWhatsappPhoneId) {
+      const waToken = storedWhatsappToken || platformWhatsappAccessToken;
       if (waToken) {
         try {
-          const waRes = await fetch(`https://graph.facebook.com/v25.0/${bot.whatsapp_phone_id}?fields=display_phone_number`, {
+          const waRes = await fetch(`https://graph.facebook.com/v25.0/${storedWhatsappPhoneId}?fields=display_phone_number`, {
             headers: { 'Authorization': `Bearer ${waToken}` }
           });
           if (waRes.ok) {
             const waData = await waRes.json();
             effectiveWaPhone = String(waData.display_phone_number || '').replace(/[^0-9]/g, '') || '';
-            // Persist for next time
             if (effectiveWaPhone) {
               await pool.query(
                 `UPDATE bot_settings SET whatsapp_display_phone = $1 WHERE client_id = $2`,
                 [effectiveWaPhone, clientId]
               );
             }
-          } else {
-            console.warn(`[ContactChannels] WhatsApp Graph API returned ${waRes.status} for client ${clientId}`);
           }
-        } catch (e: any) {
-          console.warn(`[ContactChannels] WhatsApp Graph API error for client ${clientId}:`, e?.message || e);
-        }
-      } else {
-        console.warn(`[ContactChannels] No WhatsApp token available for client ${clientId} (phone_id=${bot.whatsapp_phone_id})`);
+        } catch { /* graph API transient failure */ }
       }
     }
 
-    if (effectiveWaPhone) {
-      // Pre-fill a branded greeting so the customer sees the store name in the first message
+    if (whatsappConnected && effectiveWaPhone) {
       const storeName = String(bot.company_name || 'المتجر').trim();
       const greeting = `السلام عليكم، أتواصل معكم من متجر ${storeName}`;
       channels.push({
@@ -1693,11 +1701,16 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
       });
     }
 
-    // Telegram - stored username or platform bot username
-    const telegramUsername = String(bot.telegram_bot_username || '').trim().replace(/^@/, '');
+    // --- Telegram (matches dashboard isConnected('telegram')) ---
+    const storedTelegramUsername = String(bot.telegram_bot_username || '').trim().replace(/^@/, '');
     const platformTelegramUsername = String(process.env.PLATFORM_TELEGRAM_BOT_USERNAME || '').trim().replace(/^@/, '');
-    const effectiveTelegramUsername = telegramUsername || platformTelegramUsername;
-    if (effectiveTelegramUsername) {
+    const telegramUsingPlatform = platformTelegramAvailable && storedTelegramUsername !== '';
+    const telegramTokenConfigured = !!String(bot.telegram_bot_token || '').trim() || telegramUsingPlatform;
+    const effectiveTelegramUsername = storedTelegramUsername || platformTelegramUsername;
+    // Dashboard: isConnected = telegramTokenConfigured || telegramUsingPlatform
+    const telegramConnected = telegramTokenConfigured;
+
+    if (telegramConnected && effectiveTelegramUsername) {
       channels.push({
         platform: 'telegram',
         url: `https://t.me/${effectiveTelegramUsername}`,
@@ -1705,7 +1718,7 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
       });
     }
 
-    // Viber - own token/sender, or platform fallback (only when platform token is set)
+    // --- Viber ---
     const viberSender = String(bot.viber_sender_name || '').trim();
     const platformViberToken = String(process.env.PLATFORM_VIBER_AUTH_TOKEN || '').trim();
     const platformViberSender = String(process.env.PLATFORM_VIBER_SENDER_NAME || '').trim();
@@ -1720,8 +1733,7 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
       });
     }
 
-    // Phone - support_phone as direct call
-    // Read from store template settings (phone_call_enabled + contact_phone)
+    // --- Phone (from template/global settings) ---
     try {
       const storeSettingsRes = await pool.query(
         `SELECT template_settings, global_settings FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
