@@ -1209,21 +1209,19 @@ export const qrLogin: RequestHandler = async (req, res) => {
 
 /**
  * POST /api/auth/google
- * Body: { idToken: string }
+ * Body: { id_token?: string, code?: string }
  *
- * Verifies the Google ID token via Google's tokeninfo endpoint, then
- * either logs in the user (if a client with that email exists) or creates
- * a new client account (auto-register via Google). Returns the same
- * response shape as the regular /api/auth/login endpoint so the mobile
- * app can use the same code path.
+ * Accepts either:
+ *   - id_token: a Google ID token (from implicit flow)
+ *   - code: an authorization code (from auth code flow) — exchanged server-side
  *
- * Required env var: GOOGLE_OAUTH_CLIENT_ID (the Web Client ID from Google
- * Cloud Console — expo-auth-session redirects to it).
+ * Verifies the Google identity, then either logs in the user (if a client
+ * with that email exists) or creates a new client account (auto-register).
  */
 export const googleAuth: RequestHandler = async (req, res) => {
   try {
-    const { idToken } = req.body as { idToken?: string };
-    if (!idToken) return jsonError(res, 400, 'idToken is required');
+    const { id_token, code, idToken: legacyIdToken } = req.body as { id_token?: string; code?: string; idToken?: string };
+    const rawIdToken = id_token || legacyIdToken;
 
     const expectedClientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
     if (!expectedClientId) {
@@ -1231,15 +1229,66 @@ export const googleAuth: RequestHandler = async (req, res) => {
       return jsonError(res, 500, 'Google login is not configured on this server');
     }
 
-    // Verify the ID token with Google's tokeninfo endpoint.
-    const verifyRes = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
-    );
-    if (!verifyRes.ok) {
-      console.error('[google-auth] Google tokeninfo returned', verifyRes.status);
-      return jsonError(res, 401, 'Invalid Google ID token');
+    let payload: any = null;
+
+    if (rawIdToken) {
+      // ── Verify the ID token directly via Google's tokeninfo endpoint ──
+      const verifyRes = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(rawIdToken)}`
+      );
+      if (!verifyRes.ok) {
+        console.error('[google-auth] Google tokeninfo returned', verifyRes.status);
+        return jsonError(res, 401, 'Invalid Google ID token');
+      }
+      payload = await verifyRes.json();
+    } else if (code) {
+      // ── Exchange authorization code for tokens server-side ──
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      if (!clientSecret) {
+        console.error('[google-auth] GOOGLE_CLIENT_SECRET env var is not set');
+        return jsonError(res, 500, 'Google login is not configured (missing client secret)');
+      }
+
+      const redirectUri = 'https://auth.expo.dev/@sahla4eco-organization/ssahla4eco';
+
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: expectedClientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }).toString(),
+      });
+
+      if (!tokenRes.ok) {
+        const errBody = await tokenRes.text();
+        console.error('[google-auth] code exchange failed:', tokenRes.status, errBody);
+        return jsonError(res, 401, 'Failed to exchange Google authorization code');
+      }
+
+      const tokenData: any = await tokenRes.json();
+      const exchangedIdToken = tokenData.id_token;
+
+      if (!exchangedIdToken) {
+        console.error('[google-auth] no id_token in code exchange response');
+        return jsonError(res, 401, 'Google code exchange did not return an ID token');
+      }
+
+      // Verify the exchanged ID token
+      const verifyRes = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(exchangedIdToken)}`
+      );
+      if (!verifyRes.ok) {
+        console.error('[google-auth] tokeninfo failed after code exchange');
+        return jsonError(res, 401, 'Invalid Google ID token from code exchange');
+      }
+      payload = await verifyRes.json();
+    } else {
+      return jsonError(res, 400, 'id_token or code is required');
     }
-    const payload: any = await verifyRes.json();
 
     if (payload.aud !== expectedClientId) {
       console.error('[google-auth] audience mismatch. expected:', expectedClientId, 'got:', payload.aud);

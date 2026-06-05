@@ -362,7 +362,7 @@ export default function ChatOrders() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="pt-4" dir="rtl" onClick={() => setStatusDropdown(null)}>
+    <div className="pt-4 max-w-[1400px] mx-auto" dir="rtl" onClick={() => setStatusDropdown(null)}>
 
       {/* ── Toast ── */}
       {toast && (
@@ -537,11 +537,11 @@ export default function ChatOrders() {
             <>
               {/* Desktop skeleton */}
               <div className="hidden lg:block">
-                <table className="w-full text-sm font-semibold">
+                <table className="w-full text-sm font-semibold" style={{ tableLayout: 'fixed' }}>
                   <thead>
                     <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
                       {["الصورة", "رقم الطلب", "المنصة", "المنتج", "العميل", "المبلغ", "الحالة", "الوقت", ""].map(h => (
-                        <th key={h} className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{h}</th>
+                        <th key={h} className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -609,18 +609,29 @@ export default function ChatOrders() {
           {!loading && filtered.length > 0 && (
             <>
             {/* Desktop Table */}
-            <table className="hidden lg:table w-full text-sm font-semibold">
+            <table className="hidden lg:table w-full text-sm font-semibold" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col className="w-[60px]" />
+                <col className="w-[110px]" />
+                <col className="w-[100px]" />
+                <col className="w-[180px]" />
+                <col className="w-[160px]" />
+                <col className="w-[100px]" />
+                <col className="w-[110px]" />
+                <col className="w-[90px]" />
+                <col className="w-[30px]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">الصورة</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">رقم الطلب</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">المنصة</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">المنتج</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">العميل</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">المبلغ</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">الحالة</th>
-                  <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">الوقت</th>
-                  <th className="w-6" />
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">الصورة</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">رقم الطلب</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">المنصة</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">المنتج</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">العميل</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">المبلغ</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">الحالة</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">الوقت</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -637,7 +648,7 @@ export default function ChatOrders() {
                         className={`group border-b border-border/30 transition-all duration-150 cursor-pointer hover:bg-primary/5 ${open ? "bg-violet-500/5" : ""}`}
                       >
                         {/* Image */}
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                        <td className="whitespace-nowrap px-2 py-2.5 text-center">
                           {img ? (
                             <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-border/40 ml-auto shadow-sm group-hover:border-violet-500/30 transition-all">
                               <img src={img} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
@@ -650,7 +661,7 @@ export default function ChatOrders() {
                         </td>
 
                         {/* Order # */}
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+                        <td className="whitespace-nowrap px-2 py-2.5 text-center" onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => copy(`ORD-${String(o.id).padStart(3,"0")}`, `id-${o.id}`)}
                             className="inline-flex items-center gap-1.5 group/copy hover:text-violet-600 transition-colors font-mono text-xs font-bold bg-muted/50 hover:bg-violet-500/10 px-2 py-1 rounded-md"
@@ -661,7 +672,7 @@ export default function ChatOrders() {
                         </td>
 
                         {/* Platform */}
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                        <td className="whitespace-nowrap px-2 py-2.5 text-center">
                           <span
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
                             style={{ color: pm.color, background: pm.bg }}
@@ -672,7 +683,7 @@ export default function ChatOrders() {
                         </td>
 
                         {/* Product */}
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                        <td className="whitespace-nowrap px-2 py-2.5 text-center">
                           <span className="text-sm font-semibold max-w-[160px] truncate block" title={o.product_title}>
                             {o.product_title || "—"}
                           </span>
@@ -687,8 +698,8 @@ export default function ChatOrders() {
                         </td>
 
                         {/* Customer */}
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
-                          <div className="flex flex-col items-end gap-0.5">
+                        <td className="whitespace-nowrap px-2 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                          <div className="flex flex-col items-center gap-0.5">
                             <span className="text-sm font-bold max-w-[140px] truncate block" title={o.customer_name}>{o.customer_name || "—"}</span>
                             {o.duplicate_info?.level === 'same_name_diff_phone' && (
                               <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium" title={`${o.duplicate_info.name_order_count} طلبات بنفس الاسم بأرقام مختلفة`}>
@@ -714,13 +725,13 @@ export default function ChatOrders() {
                         </td>
 
                         {/* Amount */}
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                        <td className="whitespace-nowrap px-2 py-2.5 text-center">
                           <span className="text-sm font-black tabular-nums">{fmtPrice(Number(o.total_price))}</span>
                           <span className="text-xs text-muted-foreground mr-0.5">دج</span>
                         </td>
 
                         {/* Status — interactive dropdown */}
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+                        <td className="whitespace-nowrap px-2 py-2.5 text-center" onClick={e => e.stopPropagation()}>
                           <div className="relative inline-block">
                             <button
                               onClick={() => setStatusDropdown(statusDropdown === o.id ? null : o.id)}
@@ -735,7 +746,7 @@ export default function ChatOrders() {
                               <ChevronDown className="w-2.5 h-2.5 opacity-60" />
                             </button>
                             {statusDropdown === o.id && (
-                              <div className="absolute top-full mt-1 right-0 z-30 bg-card border border-border rounded-xl shadow-xl py-1 min-w-[140px]">
+                              <div className="absolute top-full mt-1 left-0 z-30 bg-card border border-border rounded-xl shadow-xl py-1 min-w-[140px]">
                                 {STATUS_OPTIONS.map(opt => (
                                   <button
                                     key={opt.value}
@@ -754,7 +765,7 @@ export default function ChatOrders() {
                         </td>
 
                         {/* Time */}
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                        <td className="whitespace-nowrap px-2 py-2.5 text-center">
                           <span className="text-xs text-muted-foreground">{timeAgo(o.created_at)}</span>
                         </td>
 
@@ -992,7 +1003,7 @@ export default function ChatOrders() {
                           {sm.icon} {sm.label}
                         </button>
                         {statusDropdown === o.id && (
-                          <div className="absolute top-full mt-1 right-0 z-30 bg-card border border-border rounded-xl shadow-xl py-1 min-w-[140px]">
+                          <div className="absolute top-full mt-1 left-0 z-30 bg-card border border-border rounded-xl shadow-xl py-1 min-w-[140px]">
                             {STATUS_OPTIONS.map(opt => (
                               <button
                                 key={opt.value}
