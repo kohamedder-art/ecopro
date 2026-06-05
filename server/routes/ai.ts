@@ -48,6 +48,10 @@ import {
 } from '../utils/alert-service';
 import { getOmniOverview } from '../services/omni-intelligence';
 import { getQuotaSummary } from '../services/ai-quota';
+import { handleCustomerMessage } from '../services/customer-ai';
+import { sendTelegramMessage } from '../utils/bot-messaging';
+import { sendWhatsAppTextMessage } from './whatsapp-cloud';
+import { sendMessengerMessageDirect } from '../utils/bot-messaging';
 
 const router = Router();
 const isProduction = process.env.NODE_ENV === 'production';
@@ -3001,6 +3005,146 @@ ${message}`;
     );
 
     res.json({ answer: response });
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+/**
+ * POST /api/ai/catch-up-unanswered
+ * Finds all conversations where the customer sent a message but the AI never responded,
+ * then processes each through handleCustomerMessage() to generate and send a response.
+ *
+ * Query params: clientId (optional, defaults to authenticated client)
+ * Body: { dryRun?: boolean } — if true, only returns what would be processed without sending
+ */
+router.post('/catch-up-unanswered', authenticate, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).userId || Number(req.query.clientId);
+    if (!clientId) return res.status(400).json({ error: 'clientId required' });
+
+    const dryRun = req.body?.dryRun === true;
+
+    // Find conversations where the latest message is from the customer (unanswered)
+    const unanswered = await pool.query(
+      `WITH latest_messages AS (
+        SELECT
+          client_id,
+          platform,
+          platform_chat_id,
+          role,
+          message,
+          created_at,
+          ROW_NUMBER() OVER (
+            PARTITION BY client_id, platform, platform_chat_id
+            ORDER BY created_at DESC
+          ) as rn
+        FROM customer_conversations
+        WHERE client_id = $1
+      )
+      SELECT platform, platform_chat_id, message, created_at
+      FROM latest_messages
+      WHERE rn = 1 AND role = 'customer'
+      ORDER BY created_at DESC`,
+      [clientId]
+    );
+
+    if (unanswered.rows.length === 0) {
+      return res.json({ processed: 0, message: 'No unanswered conversations found.' });
+    }
+
+    if (dryRun) {
+      return res.json({
+        processed: 0,
+        found: unanswered.rows.length,
+        conversations: unanswered.rows.map((r: any) => ({
+          platform: r.platform,
+          platformChatId: r.platform_chat_id,
+          lastMessage: r.message?.substring(0, 100),
+          lastMessageAt: r.created_at,
+        })),
+      });
+    }
+
+    const results: { platform: string; chatId: string; success: boolean; response?: string; error?: string }[] = [];
+
+    for (const row of unanswered.rows) {
+      const { platform, platform_chat_id, message } = row;
+      try {
+        // Generate AI response (this also saves history)
+        const response = await handleCustomerMessage(clientId, platform, platform_chat_id, message);
+
+        if (!response) {
+          results.push({ platform, chatId: platform_chat_id, success: false, error: 'AI returned null (disabled or owner)' });
+          continue;
+        }
+
+        // Send response via the appropriate platform
+        let sendOk = false;
+        try {
+          if (platform === 'telegram') {
+            const settings = await pool.query(
+              `SELECT telegram_bot_token FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+              [clientId]
+            );
+            const token = settings.rows[0]?.telegram_bot_token;
+            if (token) {
+              const r = await sendTelegramMessage(token, platform_chat_id, response);
+              sendOk = r.success;
+            }
+          } else if (platform === 'whatsapp') {
+            const settings = await pool.query(
+              `SELECT whatsapp_token, whatsapp_phone_id FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+              [clientId]
+            );
+            const token = settings.rows[0]?.whatsapp_token;
+            const phoneId = settings.rows[0]?.whatsapp_phone_id;
+            if (token && phoneId) {
+              const r = await sendWhatsAppTextMessage(token, phoneId, platform_chat_id, response);
+              sendOk = r.success;
+            }
+          } else if (platform === 'messenger') {
+            const settings = await pool.query(
+              `SELECT fb_page_access_token FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+              [clientId]
+            );
+            const token = settings.rows[0]?.fb_page_access_token;
+            if (token) {
+              const r = await sendMessengerMessageDirect(token, platform_chat_id, response);
+              sendOk = r.success;
+            }
+          } else if (platform === 'instagram') {
+            // Instagram uses the same Messenger API
+            const settings = await pool.query(
+              `SELECT fb_page_access_token FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+              [clientId]
+            );
+            const token = settings.rows[0]?.fb_page_access_token;
+            if (token) {
+              const r = await sendMessengerMessageDirect(token, platform_chat_id, response);
+              sendOk = r.success;
+            }
+          }
+        } catch (sendErr: any) {
+          results.push({ platform, chatId: platform_chat_id, success: false, response, error: `Send failed: ${sendErr.message}` });
+          continue;
+        }
+
+        results.push({ platform, chatId: platform_chat_id, success: sendOk, response: sendOk ? response.substring(0, 100) : undefined, error: sendOk ? undefined : 'Send function returned false' });
+      } catch (err: any) {
+        results.push({ platform, chatId: platform_chat_id, success: false, error: err.message });
+      }
+    }
+
+    const succeeded = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+
+    res.json({
+      processed: results.length,
+      succeeded,
+      failed,
+      results,
+    });
   } catch (err) {
     return serverError(res, err);
   }
