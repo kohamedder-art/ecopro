@@ -3,12 +3,12 @@ import { useTranslation } from "@/lib/i18n";
 
 // ─── Delivery step definitions ─────────────────────────────────────────────
 const TRACKING_STEPS = [
-  { key: "confirmed",      labelAr: "تم تأكيد الطلب",     color: "#2b8a3e", icon: "S5",  bg: "#ebfbee" },
-  { key: "picked_up",      labelAr: "استُلم الطرد",       color: "#1c7ed6", icon: "G4", bg: "#e7f5ff" },
-  { key: "in_transit",     labelAr: "في الطريق إليك",     color: "#d9480f", icon: "T2", bg: "#fff4e6" },
-  { key: "at_hub",         labelAr: "وصل المستودع",        color: "#9c36b5", icon: "W3",  bg: "#f8f0fc" },
-  { key: "out_for_delivery", labelAr: "خرج للتوصيل",       color: "#c2255c", icon: "H1", bg: "#fff0f6" },
-  { key: "delivered",      labelAr: "تم التسليم ✅",       color: "#2b8a3e", icon: "D2", bg: "#ebfbee" },
+  { key: "confirmed",      labelKey: "tracking.stepConfirmed",    color: "#2b8a3e", icon: "S5",  bg: "#ebfbee" },
+  { key: "picked_up",      labelKey: "tracking.stepPickedUp",    color: "#1c7ed6", icon: "G4", bg: "#e7f5ff" },
+  { key: "in_transit",     labelKey: "tracking.stepInTransit",   color: "#d9480f", icon: "T2", bg: "#fff4e6" },
+  { key: "at_hub",         labelKey: "tracking.stepAtHub",       color: "#9c36b5", icon: "W3",  bg: "#f8f0fc" },
+  { key: "out_for_delivery", labelKey: "tracking.stepOutForDelivery", color: "#c2255c", icon: "H1", bg: "#fff0f6" },
+  { key: "delivered",      labelKey: "tracking.stepDelivered",   color: "#2b8a3e", icon: "D2", bg: "#ebfbee" },
 ];
 
 // Map status → step (covers both internal order status AND courier DeliveryStatus enum)
@@ -83,38 +83,40 @@ function StepIcon({ type, done, active, color }: { type: string; done: boolean; 
 }
 
 // ─── Step bar component ────────────────────────────────────────────────────
-function TrackingBar({ status, updatedAt, stepTimestamps }: { status: string; updatedAt?: string; stepTimestamps?: Record<number, string> }) {
+function TrackingBar({ status, updatedAt, stepTimestamps, t, locale }: { status: string; updatedAt?: string; stepTimestamps?: Record<number, string>; t: (key: string) => string; locale: string }) {
   const rawStep     = STATUS_TO_STEP[status] ?? 0;
   const isBad       = rawStep === -1;
   const currentStep = isBad ? 0 : rawStep;
   const isCancelled = ["cancelled", "returned", "fake", "duplicate", "failed"].includes(status);
   const pct         = (currentStep / (TRACKING_STEPS.length - 1)) * 100;
+  const isRTL       = locale === "ar";
+  const dateLocale  = isRTL ? "ar-DZ" : "en-US";
 
   const statusNote: Record<string, string> = {
-    delivered:        `تم التسليم${updatedAt ? " • " + new Date(updatedAt).toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" }) : ""}`,
-    completed:        `تم التسليم${updatedAt ? " • " + new Date(updatedAt).toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" }) : ""}`,
-    out_for_delivery: "خرج للتوصيل • المندوب في الطريق",
-    out_delivery:     "خرج للتوصيل • المندوب في الطريق",
-    at_hub:           "وصل المستودع • قيد الفرز",
-    at_warehouse:     "وصل المستودع • قيد الفرز",
-    ready_for_pickup: "جاهز للاستلام من المستودع",
-    shipped:          "الشحنة في الطريق",
-    in_delivery:      "تم التسليم لشركة التوصيل",
-    in_transit:       "الشحنة في الطريق",
-    picked_up:        "تم استلام الطرد من البائع",
-    assigned:         "تم تعيينه لشركة التوصيل",
-    failed:           "فشل التوصيل • العميل غير متاح",
-    cancelled:        "تم إلغاء الطلب",
-    returned:         "تم إرجاع الطلب",
-    fake:             "طلب مشبوه",
-    duplicate:        "طلب مكرر",
+    delivered:        `${t("tracking.noteDelivered")}${updatedAt ? " • " + new Date(updatedAt).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) : ""}`,
+    completed:        `${t("tracking.noteCompleted")}${updatedAt ? " • " + new Date(updatedAt).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) : ""}`,
+    out_for_delivery: t("tracking.noteOutForDelivery"),
+    out_delivery:     t("tracking.noteOutForDelivery"),
+    at_hub:           t("tracking.noteAtHub"),
+    at_warehouse:     t("tracking.noteAtHub"),
+    ready_for_pickup: t("tracking.noteReadyForPickup"),
+    shipped:          t("tracking.noteShipped"),
+    in_delivery:      t("tracking.noteInDelivery"),
+    in_transit:       t("tracking.noteInTransit"),
+    picked_up:        t("tracking.notePickedUp"),
+    assigned:         t("tracking.noteAssigned"),
+    failed:           t("tracking.noteFailed"),
+    cancelled:        t("tracking.noteCancelled"),
+    returned:         t("tracking.noteReturned"),
+    fake:             t("tracking.noteFake"),
+    duplicate:        t("tracking.noteDuplicate"),
   };
 
   // Helper to format a real per-step timestamp (from delivery_events)
   const fmtStepTime = (iso?: string) => {
     if (!iso) return null;
     try {
-      return new Date(iso).toLocaleString("ar-DZ", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      return new Date(iso).toLocaleString(dateLocale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     } catch { return null; }
   };
 
@@ -146,7 +148,7 @@ function TrackingBar({ status, updatedAt, stepTimestamps }: { status: string; up
                 className="text-[10px] leading-tight text-center font-semibold max-w-[55px]"
                 style={{ color: done || active ? step.color : "#c0c0c0" }}
               >
-                {step.labelAr}
+                {t(step.labelKey)}
               </span>
               {(done || active) && tsText && (
                 <span
@@ -166,20 +168,21 @@ function TrackingBar({ status, updatedAt, stepTimestamps }: { status: string; up
       <div className="relative h-[22px] mx-[2px]">
         {/* Track */}
         <div className="absolute top-[9px] bottom-[9px] left-0 right-0 rounded-full bg-slate-200 dark:bg-slate-700" />
-        {/* Fill — grows from right (RTL: delivery starts right, ends left) */}
+        {/* Fill — grows from start side (RTL: right, LTR: left) */}
         <div
-          className="absolute top-[9px] bottom-[9px] right-0 rounded-full transition-all duration-700"
+          className="absolute top-[9px] bottom-[9px] rounded-full transition-all duration-700"
           style={{
+            [isRTL ? "right" : "left"]: 0,
             width: `${pct}%`,
             background: isCancelled
               ? "linear-gradient(90deg,#e03131,#fc8181)"
               : "linear-gradient(90deg,#059669,#3b82f6,#f97316)",
           }}
         />
-        {/* Moving truck — positioned from right, moves toward left as pct grows */}
+        {/* Moving truck — positioned from start side */}
         <div
           className="absolute top-0 transition-all duration-700"
-          style={{ right: `clamp(0px, calc(${pct}% - 11px), calc(100% - 22px))` }}
+          style={{ [isRTL ? "right" : "left"]: `clamp(0px, calc(${pct}% - 11px), calc(100% - 22px))` }}
         >
           {isCancelled ? (
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="10" fill="#fee2e2" stroke="#fca5a5" strokeWidth="1"/><path d="M7 7L15 15M15 7L7 15" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/></svg>
@@ -248,7 +251,7 @@ function CopyIcon() { return <svg width="9" height="9" viewBox="0 0 9 9" fill="n
 function CopyCheck() { return <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><rect x="2.5" y="0.5" width="6" height="6" rx="1" stroke="#2b8a3e" strokeWidth="1"/><path d="M0.5 3V8H5.5" stroke="#2b8a3e" strokeWidth="1"/><path d="M3 5.5L4.5 7L7 4" stroke="#2b8a3e" strokeWidth="1.2" strokeLinecap="round"/></svg>; }
 
 // ─── Order row ─────────────────────────────────────────────────────────────
-function OrderRow({ order, events }: { order: TrackingOrder; events?: TrackingEvent[] }) {
+function OrderRow({ order, events, t, locale }: { order: TrackingOrder; events?: TrackingEvent[]; t: (key: string) => string; locale: string }) {
   const [copied, setCopied] = useState<'none' | 'order' | 'tracking'>('none');
   const price = order.unit_price != null
     ? (order.unit_price * (order.quantity || 1))
@@ -294,9 +297,9 @@ function OrderRow({ order, events }: { order: TrackingOrder; events?: TrackingEv
 
   return (
     <div
-      dir="rtl"
+      dir={isRTL ? "rtl" : "ltr"}
       className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm overflow-hidden transition-shadow hover:shadow-md"
-      style={{ borderRightWidth: '4px', borderRightColor: stepColor }}
+      style={{ borderRightWidth: isRTL ? '4px' : undefined, borderRightColor: isRTL ? stepColor : undefined, borderLeftWidth: isRTL ? undefined : '4px', borderLeftColor: isRTL ? undefined : stepColor }}
     >
       <div className="flex flex-col sm:flex-row">
         {/* Left: Product image + info */}
@@ -322,9 +325,9 @@ function OrderRow({ order, events }: { order: TrackingOrder; events?: TrackingEv
             </button>
             <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{order.customer_name}</p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5"><PhoneIcon /> {order.customer_phone}</p>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5"><CalIcon /> {new Date(order.created_at).toLocaleDateString("ar-DZ")}</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5"><CalIcon /> {new Date(order.created_at).toLocaleDateString(locale === "ar" ? "ar-DZ" : "en-US")}</p>
             <p className="text-sm font-black mt-1" style={{ color: isCancelled ? "#e03131" : "#059669" }}>
-              {Math.round(price).toLocaleString("ar-DZ")} دج
+              {Math.round(price).toLocaleString(locale === "ar" ? "ar-DZ" : "en-US")} {locale === "ar" ? "دج" : "DA"}
             </p>
             {hasCourier && (
               <button
@@ -349,16 +352,16 @@ function OrderRow({ order, events }: { order: TrackingOrder; events?: TrackingEv
             {hasCourier ? (
               <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">
                 <svg width="9" height="9" viewBox="0 0 11 11" fill="none"><rect x="3.5" y="2.5" width="5" height="4" rx="0.5" fill="currentColor" opacity="0.8"/><path d="M1 4.5L2 3H3.5V7H1V4.5Z" fill="currentColor" opacity="0.6"/><circle cx="2" cy="7.5" r="1" fill="currentColor"/><circle cx="6.5" cy="7.5" r="1" fill="currentColor"/></svg>
-                {order.delivery_company || "شركة التوصيل"}
+                {order.delivery_company || t("tracking.deliveryCompany")}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
                 <svg width="9" height="9" viewBox="0 0 11 11" fill="none"><rect x="1" y="0.5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1"/><path d="M1 4H10" stroke="currentColor" strokeWidth="1"/></svg>
-                توصيل داخلي
+                {t("tracking.internalDelivery")}
               </span>
             )}
           </div>
-          <TrackingBar status={effectiveStatus} updatedAt={order.updated_at} stepTimestamps={stepTimestamps} />
+          <TrackingBar status={effectiveStatus} updatedAt={order.updated_at} stepTimestamps={stepTimestamps} t={t} locale={locale} />
         </div>
       </div>
     </div>
@@ -367,7 +370,8 @@ function OrderRow({ order, events }: { order: TrackingOrder; events?: TrackingEv
 
 // ─── Main Page ─────────────────────────────────────────────────────────────
 export default function OrderTracking() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isRTL = locale === "ar";
   const [orders, setOrders]         = useState<TrackingOrder[]>([]);
   const [events, setEvents]         = useState<Record<number, TrackingEvent[]>>({});
   const [loading, setLoading]       = useState(true);
@@ -446,18 +450,18 @@ export default function OrderTracking() {
 
   // Status tabs — built from actual statuses present
   const STATUS_TABS = [
-    { key: "all",              label: "الكل" },
-    { key: "pending",          label: "تم التأكيد" },
-    { key: "confirmed",        label: "قيد التجهيز" },
-    { key: "processing",       label: "تم الشحن" },
-    { key: "shipped",          label: "في الطريق" },
-    { key: "in_transit",       label: "في الطريق" },
-    { key: "out_for_delivery", label: "خرج للتسليم" },
-    { key: "delivered",        label: "تم التسليم" },
-    { key: "completed",        label: "مكتمل" },
-    { key: "cancelled",        label: "ملغي" },
-    { key: "returned",         label: "مرتجع" },
-    { key: "failed",           label: "فشل" },
+    { key: "all",              labelKey: "tracking.all" },
+    { key: "pending",          labelKey: "tracking.confirmed" },
+    { key: "confirmed",        labelKey: "tracking.preparing" },
+    { key: "processing",       labelKey: "tracking.shipped" },
+    { key: "shipped",          labelKey: "tracking.inRoute" },
+    { key: "in_transit",       labelKey: "tracking.inRoute" },
+    { key: "out_for_delivery", labelKey: "tracking.outForDelivery" },
+    { key: "delivered",        labelKey: "tracking.delivered" },
+    { key: "completed",        labelKey: "tracking.completed" },
+    { key: "cancelled",        labelKey: "tracking.cancelled" },
+    { key: "returned",         labelKey: "tracking.returned" },
+    { key: "failed",           labelKey: "tracking.failed" },
   ];
 
   const TAB_ACTIVE_COLOR: Record<string, string> = {
@@ -500,7 +504,7 @@ export default function OrderTracking() {
   const failed     = orders.filter(o => ["failed","cancelled","returned","fake","duplicate"].includes(o.status)).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950" dir="rtl">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950" dir={isRTL ? "rtl" : "ltr"}>
       <div className="max-w-screen-xl mx-auto px-3 sm:px-5 lg:px-6 py-4 space-y-3">
 
         {/* ── Header ── */}
@@ -510,9 +514,9 @@ export default function OrderTracking() {
               <span className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/30 shrink-0">
                 <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="1" y="4" width="10" height="10" rx="1.5" stroke="#fff" strokeWidth="1.5"/><path d="M11 8H15L17 10.5V15H11V8Z" stroke="#fff" strokeWidth="1.5"/><circle cx="5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/><circle cx="13.5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/></svg>
               </span>
-              تتبع الطلبات
+              {t("tracking.title")}
             </h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 mr-9">تابع حالة كل طلب في الوقت الحقيقي</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 mr-9">{t("tracking.subtitle")}</p>
           </div>
           <button
             onClick={load}
@@ -522,7 +526,7 @@ export default function OrderTracking() {
             <svg className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} viewBox="0 0 14 14" fill="none">
               <path d="M12 7A5 5 0 117 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
-            تحديث
+            {t("tracking.refresh")}
           </button>
         </div>
 
@@ -535,7 +539,7 @@ export default function OrderTracking() {
               </div>
               <div>
                 <p className="text-xl font-black text-orange-600 dark:text-orange-400 leading-none">{inTransit}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">في الطريق</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">{t("tracking.inTransit")}</p>
               </div>
             </div>
           </div>
@@ -546,7 +550,7 @@ export default function OrderTracking() {
               </div>
               <div>
                 <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{delivered}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">تم التسليم</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">{t("tracking.delivered")}</p>
               </div>
             </div>
           </div>
@@ -557,7 +561,7 @@ export default function OrderTracking() {
               </div>
               <div>
                 <p className="text-xl font-black text-red-600 dark:text-red-400 leading-none">{failed}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">مشاكل</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">{t("tracking.issues")}</p>
               </div>
             </div>
           </div>
@@ -568,7 +572,7 @@ export default function OrderTracking() {
           {/* Search */}
           <div className="p-2.5 border-b border-slate-100 dark:border-slate-700">
             <div className="relative">
-              <svg className="absolute inset-y-0 right-2.5 w-3.5 h-3.5 my-auto text-slate-400 pointer-events-none" viewBox="0 0 16 16" fill="none">
+              <svg className={`absolute inset-y-0 ${isRTL ? "right-2.5" : "left-2.5"} w-3.5 h-3.5 my-auto text-slate-400 pointer-events-none`} viewBox="0 0 16 16" fill="none">
                 <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
@@ -576,8 +580,8 @@ export default function OrderTracking() {
                 type="text"
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
-                placeholder="ابحث برقم الطلب أو اسم العميل..."
-                className="w-full pr-8 pl-3 py-2 text-xs outline-none bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400/20 transition-all placeholder:text-slate-400"
+                placeholder={t("tracking.searchPlaceholder")}
+                className={`w-full ${isRTL ? "pr-8 pl-3" : "pl-8 pr-3"} py-2 text-xs outline-none bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400/20 transition-all placeholder:text-slate-400`}
               />
             </div>
           </div>
@@ -601,7 +605,7 @@ export default function OrderTracking() {
                       : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                   }`}
                 >
-                  {tab.label}
+                  {t(tab.labelKey)}
                   {tabCounts[tab.key] > 0 && (
                     <span className={`inline-flex items-center justify-center min-w-[16px] h-4 rounded-full px-1 text-[9px] font-bold ${
                       active ? `bg-${c}-100 dark:bg-${c}-500/20 text-${c}-700 dark:text-${c}-300` : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
@@ -624,7 +628,7 @@ export default function OrderTracking() {
                 <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">جاري تحميل الطلبات...</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{t("tracking.loading")}</p>
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl p-5 flex items-start gap-3">
@@ -632,7 +636,7 @@ export default function OrderTracking() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="#dc2626" strokeWidth="1.5"/><path d="M8 5V9M8 11V11.5" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-red-700 dark:text-red-400">فشل تحميل الطلبات</p>
+              <p className="text-sm font-bold text-red-700 dark:text-red-400">{t("tracking.loadFailed")}</p>
               <p className="text-xs mt-1 text-red-600/70 dark:text-red-400/70">{error}</p>
             </div>
           </div>
@@ -647,32 +651,32 @@ export default function OrderTracking() {
               </svg>
             </div>
             <div>
-              <p className="text-slate-700 dark:text-slate-300 font-bold">لا توجد طلبات</p>
-              <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">{search ? "لم نجد نتائج لبحثك" : "لا توجد طلبات بهذا الفلتر"}</p>
+              <p className="text-slate-700 dark:text-slate-300 font-bold">{t("tracking.noOrders")}</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">{search ? t("tracking.noResults") : t("tracking.noFilterResults")}</p>
             </div>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between">
               <p className="text-xs text-slate-400 dark:text-slate-500">
-                عرض <span className="font-bold text-slate-600 dark:text-slate-300">{paginated.length}</span> من <span className="font-bold text-slate-600 dark:text-slate-300">{filtered.length}</span> طلب
+                {t("tracking.showing")} <span className="font-bold text-slate-600 dark:text-slate-300">{paginated.length}</span> {t("tracking.of")} <span className="font-bold text-slate-600 dark:text-slate-300">{filtered.length}</span> {t("tracking.orders")}
               </p>
             </div>
             <div className="space-y-3">
-              {paginated.map(order => <OrderRow key={order.id} order={order} events={events[order.id]} />)}
+              {paginated.map(order => <OrderRow key={order.id} order={order} events={events[order.id]} t={t} locale={locale} />)}
             </div>
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 pt-2 pb-4">
                 <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
                   className="px-4 py-2 text-sm font-bold disabled:opacity-30 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                  ← السابق
+                  {t("tracking.prev")}
                 </button>
                 <span className="text-sm font-bold text-slate-500 dark:text-slate-400 px-3">
                   {page} / {totalPages}
                 </span>
                 <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
                   className="px-4 py-2 text-sm font-bold disabled:opacity-30 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                  التالي →
+                  {t("tracking.next")}
                 </button>
               </div>
             )}

@@ -10,6 +10,8 @@ import { OrderFulfillment } from "@/components/delivery/OrderFulfillment";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getAlgeriaCommunesByWilayaId, getAlgeriaWilayas } from "@/lib/algeriaGeo";
 
+import { useTranslation } from "@/lib/i18n";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ChatOrder {
   id: number;
@@ -45,26 +47,26 @@ const PLATFORM_META: Record<string, { label: string; emoji: string; color: strin
 };
 
 // ─── Status config (mirrors Orders page built-ins) ────────────────────────────
-const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
-  pending:          { label: "قيد الانتظار",  color: "#eab308", icon: "●"  },
-  confirmed:        { label: "مؤكد",          color: "#22c55e", icon: "✓"  },
-  processing:       { label: "قيد التجهيز",   color: "#3b82f6", icon: "◐"  },
-  shipped:          { label: "تم الشحن",      color: "#8b5cf6", icon: "📦" },
-  at_delivery:      { label: "قيد التوصيل",   color: "#f97316", icon: "🚚" },
-  in_delivery:      { label: "قيد التوصيل",   color: "#f97316", icon: "🚚" },
-  delivered:        { label: "تم التسليم",    color: "#10b981", icon: "✓"  },
-  completed:        { label: "مكتمل",         color: "#059669", icon: "✓"  },
-  failed:           { label: "فشل",           color: "#dc2626", icon: "✕"  },
-  cancelled:        { label: "ملغى",          color: "#ef4444", icon: "✕"  },
-  returned:         { label: "مرتجع",         color: "#f97316", icon: "↩️" },
-  duplicate:        { label: "مكرر",          color: "#9ca3af", icon: "📋" },
-  fake:             { label: "مشبوه",         color: "#dc2626", icon: "⚠️" },
-  no_answer_1:      { label: "لا رد 1",       color: "#6b7280", icon: "📞" },
-  no_answer_2:      { label: "لا رد 2",       color: "#6b7280", icon: "📞" },
-  no_answer_3:      { label: "لا رد 3",       color: "#6b7280", icon: "📞" },
-  waiting_callback: { label: "بانتظار الاتصال", color: "#a855f7", icon: "⏳" },
-  postponed:        { label: "مؤجل",          color: "#f59e0b", icon: "📅" },
-  line_closed:      { label: "الخط مغلق",     color: "#6b7280", icon: "🔇" },
+const STATUS_META: Record<string, { labelKey: string; color: string; icon: string }> = {
+  pending:          { labelKey: "orders.status.pending",  color: "#eab308", icon: "●"  },
+  confirmed:        { labelKey: "orders.status.confirmed", color: "#22c55e", icon: "✓"  },
+  processing:       { labelKey: "orders.status.processing", color: "#3b82f6", icon: "◐"  },
+  shipped:          { labelKey: "orders.status.shipped", color: "#8b5cf6", icon: "📦" },
+  at_delivery:      { labelKey: "orders.status.at_delivery", color: "#f97316", icon: "🚚" },
+  in_delivery:      { labelKey: "orders.status.at_delivery", color: "#f97316", icon: "🚚" },
+  delivered:        { labelKey: "orders.status.delivered", color: "#10b981", icon: "✓"  },
+  completed:        { labelKey: "orders.status.completed", color: "#059669", icon: "✓"  },
+  failed:           { labelKey: "orders.status.failed",   color: "#dc2626", icon: "✕"  },
+  cancelled:        { labelKey: "orders.status.cancelled", color: "#ef4444", icon: "✕"  },
+  returned:         { labelKey: "orders.status.returned", color: "#f97316", icon: "↩️" },
+  duplicate:        { labelKey: "orders.status.duplicate", color: "#9ca3af", icon: "📋" },
+  fake:             { labelKey: "orders.status.fake",     color: "#dc2626", icon: "⚠️" },
+  no_answer_1:      { labelKey: "orders.status.no_answer_1", color: "#6b7280", icon: "📞" },
+  no_answer_2:      { labelKey: "orders.status.no_answer_2", color: "#6b7280", icon: "📞" },
+  no_answer_3:      { labelKey: "orders.status.no_answer_3", color: "#6b7280", icon: "📞" },
+  waiting_callback: { labelKey: "orders.status.waiting_callback", color: "#a855f7", icon: "⏳" },
+  postponed:        { labelKey: "orders.status.postponed", color: "#f59e0b", icon: "📅" },
+  line_closed:      { labelKey: "orders.status.line_closed", color: "#6b7280", icon: "🔇" },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -74,20 +76,28 @@ function parseUTCDate(s: string) {
   return new Date(s.replace(" ", "T") + "Z");
 }
 
-function timeAgo(iso: string) {
+function timeAgo(iso: string, locale = "ar") {
   const mins = Math.floor((Date.now() - parseUTCDate(iso).getTime()) / 60000);
-  if (mins < 1)   return "الآن";
-  if (mins < 60)  return `منذ ${mins} دقيقة`;
-  if (mins < 1440) return `منذ ${Math.floor(mins / 60)} ساعة`;
-  return `منذ ${Math.floor(mins / 1440)} يوم`;
+  if (locale === "ar") {
+    if (mins < 1)   return "الآن";
+    if (mins < 60)  return `منذ ${mins} دقيقة`;
+    if (mins < 1440) return `منذ ${Math.floor(mins / 60)} ساعة`;
+    return `منذ ${Math.floor(mins / 1440)} يوم`;
+  }
+  if (mins < 1)   return "Just now";
+  if (mins < 60)  return `${mins}m ago`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
+  return `${Math.floor(mins / 1440)}d ago`;
 }
 
-function fmtPrice(n: number) {
-  return Math.round(n).toLocaleString("ar-DZ");
+function fmtPrice(n: number, locale = "ar") {
+  return Math.round(n).toLocaleString(locale === "ar" ? "ar-DZ" : "en-US");
 }
 
-function exportCSV(rows: ChatOrder[]) {
-  const headers = ["رقم الطلب", "المنصة", "العميل", "الهاتف", "المنتج", "الكمية", "المبلغ", "الحالة", "التاريخ"];
+function exportCSV(rows: ChatOrder[], locale = "ar") {
+  const headers = locale === "ar"
+    ? ["رقم الطلب", "المنصة", "العميل", "الهاتف", "المنتج", "الكمية", "المبلغ", "الحالة", "التاريخ"]
+    : ["Order #", "Platform", "Customer", "Phone", "Product", "Quantity", "Amount", "Status", "Date"];
   const lines = [
     headers.join(","),
     ...rows.map(o => [
@@ -99,7 +109,7 @@ function exportCSV(rows: ChatOrder[]) {
       o.quantity,
       Math.round(Number(o.total_price)),
       o.status,
-      parseUTCDate(o.created_at).toLocaleDateString("ar-DZ"),
+      parseUTCDate(o.created_at).toLocaleDateString(locale === "ar" ? "ar-DZ" : "en-US"),
     ].join(",")),
   ];
   const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
@@ -113,28 +123,30 @@ function exportCSV(rows: ChatOrder[]) {
 
 // ─── Status update options ─────────────────────────────────────────────────────
 const STATUS_OPTIONS = [
-  { value: "pending",          label: "قيد الانتظار",    icon: <Clock className="w-3 h-3" />,          color: "#eab308" },
-  { value: "confirmed",        label: "مؤكد",            icon: <CheckCircle className="w-3 h-3" />,     color: "#22c55e" },
-  { value: "processing",       label: "قيد التجهيز",     icon: <Package className="w-3 h-3" />,         color: "#3b82f6" },
-  { value: "shipped",          label: "تم الشحن",        icon: <Truck className="w-3 h-3" />,           color: "#8b5cf6" },
-  { value: "at_delivery",      label: "قيد التوصيل",     icon: <Truck className="w-3 h-3" />,           color: "#f97316" },
-  { value: "in_delivery",      label: "قيد التوصيل",     icon: <Truck className="w-3 h-3" />,           color: "#f97316" },
-  { value: "delivered",        label: "تم التسليم",      icon: <CheckCircle className="w-3 h-3" />,     color: "#10b981" },
-  { value: "completed",        label: "مكتمل",           icon: <CheckCircle className="w-3 h-3" />,     color: "#059669" },
-  { value: "failed",           label: "فشل",             icon: <XCircle className="w-3 h-3" />,         color: "#dc2626" },
-  { value: "returned",         label: "مرتجع",           icon: <Undo2 className="w-3 h-3" />,          color: "#f97316" },
-  { value: "cancelled",        label: "ملغى",            icon: <XCircle className="w-3 h-3" />,         color: "#ef4444" },
-  { value: "fake",             label: "مشبوه",           icon: <AlertTriangle className="w-3 h-3" />,   color: "#dc2626" },
-  { value: "no_answer_1",      label: "لا رد 1",         icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
-  { value: "no_answer_2",      label: "لا رد 2",         icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
-  { value: "no_answer_3",      label: "لا رد 3",         icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
-  { value: "postponed",        label: "مؤجل",            icon: <Calendar className="w-3 h-3" />,        color: "#f59e0b" },
-  { value: "waiting_callback", label: "بانتظار الاتصال", icon: <Phone className="w-3 h-3" />,           color: "#a855f7" },
-  { value: "line_closed",      label: "الخط مغلق",       icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
+  { value: "pending",          labelKey: "orders.status.pending",    icon: <Clock className="w-3 h-3" />,          color: "#eab308" },
+  { value: "confirmed",        labelKey: "orders.status.confirmed",  icon: <CheckCircle className="w-3 h-3" />,     color: "#22c55e" },
+  { value: "processing",       labelKey: "orders.status.processing", icon: <Package className="w-3 h-3" />,         color: "#3b82f6" },
+  { value: "shipped",          labelKey: "orders.status.shipped",    icon: <Truck className="w-3 h-3" />,           color: "#8b5cf6" },
+  { value: "at_delivery",      labelKey: "orders.status.at_delivery", icon: <Truck className="w-3 h-3" />,           color: "#f97316" },
+  { value: "in_delivery",      labelKey: "orders.status.at_delivery", icon: <Truck className="w-3 h-3" />,           color: "#f97316" },
+  { value: "delivered",        labelKey: "orders.status.delivered",  icon: <CheckCircle className="w-3 h-3" />,     color: "#10b981" },
+  { value: "completed",        labelKey: "orders.status.completed",  icon: <CheckCircle className="w-3 h-3" />,     color: "#059669" },
+  { value: "failed",           labelKey: "orders.status.failed",     icon: <XCircle className="w-3 h-3" />,         color: "#dc2626" },
+  { value: "returned",         labelKey: "orders.status.returned",   icon: <Undo2 className="w-3 h-3" />,          color: "#f97316" },
+  { value: "cancelled",        labelKey: "orders.status.cancelled",  icon: <XCircle className="w-3 h-3" />,         color: "#ef4444" },
+  { value: "fake",             labelKey: "orders.status.fake",       icon: <AlertTriangle className="w-3 h-3" />,   color: "#dc2626" },
+  { value: "no_answer_1",      labelKey: "orders.status.no_answer_1", icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
+  { value: "no_answer_2",      labelKey: "orders.status.no_answer_2", icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
+  { value: "no_answer_3",      labelKey: "orders.status.no_answer_3", icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
+  { value: "postponed",        labelKey: "orders.status.postponed",  icon: <Calendar className="w-3 h-3" />,        color: "#f59e0b" },
+  { value: "waiting_callback", labelKey: "orders.status.waiting_callback", icon: <Phone className="w-3 h-3" />,           color: "#a855f7" },
+  { value: "line_closed",      labelKey: "orders.status.line_closed", icon: <PhoneOff className="w-3 h-3" />,        color: "#6b7280" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ChatOrders() {
+  const { t, locale } = useTranslation();
+  const isRTL = locale === "ar";
   const [orders,         setOrders]         = useState<ChatOrder[]>([]);
   const [total,          setTotal]           = useState(0);
   const [loading,        setLoading]         = useState(true);
@@ -245,9 +257,9 @@ export default function ChatOrders() {
       });
       if (!res.ok) throw new Error();
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-      showToast("✓ تم تحديث الحالة");
+      showToast(isRTL ? "✓ تم تحديث الحالة" : "✓ Status updated");
     } catch {
-      showToast("فشل تحديث الحالة", false);
+      showToast(isRTL ? "فشل تحديث الحالة" : "Failed to update status", false);
     } finally {
       setActionLoading(null);
     }
@@ -266,11 +278,11 @@ export default function ChatOrders() {
         body: JSON.stringify({ type: "bot_send_message", orderId, intent, channel }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل");
-      showToast(`✓ تم إرسال الرسالة${data.preview ? `: "${data.preview.slice(0, 60)}..."` : ""}`);
+      if (!res.ok) throw new Error(data.error || (isRTL ? "فشل" : "Failed"));
+      showToast(`${isRTL ? "✓ تم إرسال الرسالة" : "✓ Message sent"}${data.preview ? `: "${data.preview.slice(0, 60)}..."` : ""}`);
       setMsgInput(prev => ({ ...prev, [orderId]: "" }));
     } catch (e: any) {
-      showToast(e.message || "فشل إرسال الرسالة", false);
+      showToast(e.message || (isRTL ? "فشل إرسال الرسالة" : "Failed to send"), false);
     } finally {
       setMsgSending(null);
     }
@@ -328,9 +340,9 @@ export default function ChatOrders() {
       } : o));
       setShowEditModal(false);
       setEditingOrder(null);
-      showToast("✓ تم حفظ التعديلات");
+      showToast(isRTL ? "✓ تم حفظ التعديلات" : "✓ Changes saved");
     } catch {
-      showToast("فشل حفظ التعديلات", false);
+      showToast(isRTL ? "فشل حفظ التعديلات" : "Failed to save", false);
     } finally {
       setSavingEdit(false);
     }
@@ -362,7 +374,7 @@ export default function ChatOrders() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="pt-4 max-w-[1400px] mx-auto" dir="rtl" onClick={() => setStatusDropdown(null)}>
+    <div className="pt-4 max-w-[1400px] mx-auto" dir={isRTL ? "rtl" : "ltr"} onClick={() => setStatusDropdown(null)}>
 
       {/* ── Toast ── */}
       {toast && (
@@ -382,8 +394,8 @@ export default function ChatOrders() {
             <Bot className="h-4 w-4 text-violet-600 animate-bounce" />
           </div>
           <div>
-            <span className="text-sm font-bold text-violet-700 dark:text-violet-400 block">🤖 {newCount} طلب جديد من الدردشة!</span>
-            <span className="text-xs text-violet-600/70">انقر للتحديث</span>
+            <span className="text-sm font-bold text-violet-700 dark:text-violet-400 block">🤖 {isRTL ? `${newCount} طلب جديد من الدردشة!` : `${newCount} new chat orders!`}</span>
+            <span className="text-xs text-violet-600/70">{isRTL ? "انقر للتحديث" : "Click to refresh"}</span>
           </div>
           <span className="ml-auto text-xs font-bold bg-violet-500 text-white px-2.5 py-1 rounded-full animate-pulse">{newCount}</span>
         </div>
@@ -397,7 +409,7 @@ export default function ChatOrders() {
           </div>
           <div>
             <div className="text-xl font-black tabular-nums leading-none">{total}</div>
-            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">طلبيات الرسائل</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{isRTL ? "طلبيات الرسائل" : "Chat Orders"}</div>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-emerald-500/50 transition-all shadow-sm">
@@ -406,14 +418,14 @@ export default function ChatOrders() {
           </div>
           <div>
             <div className="text-xl font-black tabular-nums leading-none text-emerald-500">{confirmedCount}</div>
-            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">مؤكد</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{isRTL ? "مؤكد" : "Confirmed"}</div>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-amber-500/50 transition-all shadow-sm">
           <div className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center shrink-0 shadow text-sm leading-none">💰</div>
           <div>
-            <div className="text-xl font-black tabular-nums leading-none text-amber-500">{fmtPrice(revenue)}</div>
-            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">الإيرادات · دج</div>
+            <div className="text-xl font-black tabular-nums leading-none text-amber-500">{fmtPrice(revenue, locale)}</div>
+            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{isRTL ? "الإيرادات · دج" : "Revenue · DA"}</div>
           </div>
         </div>
       </div>
@@ -426,7 +438,7 @@ export default function ChatOrders() {
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base md:text-lg font-black bg-gradient-to-r from-violet-500 to-indigo-500 bg-clip-text text-transparent flex items-center gap-2">
               <span className="inline-block w-1 h-5 rounded-full bg-gradient-to-b from-violet-500 to-indigo-500"></span>
-              طلبيات الرسائل
+              {isRTL ? "طلبيات الرسائل" : "Chat Orders"}
             </h3>
             <div className="flex items-center gap-1.5 flex-wrap justify-end">
               <button
@@ -435,14 +447,14 @@ export default function ChatOrders() {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all h-8 shadow-sm disabled:opacity-50"
               >
                 {isRefreshing
-                  ? <><span className="w-3 h-3 border-2 border-violet-400/40 border-t-violet-500 rounded-full animate-spin" /> جارٍ التحديث</>
-                  : <><RefreshCw className="h-3.5 w-3.5" /> تحديث</>}
+                  ? <><span className="w-3 h-3 border-2 border-violet-400/40 border-t-violet-500 rounded-full animate-spin" /> {isRTL ? "جارٍ التحديث" : "Refreshing..."}</>
+                  : <><RefreshCw className="h-3.5 w-3.5" /> {isRTL ? "تحديث" : "Refresh"}</>}
               </button>
               <button
                 onClick={() => exportCSV(filtered)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all h-8 shadow-sm"
               >
-                <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">تصدير CSV</span>
+                <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{isRTL ? "تصدير CSV" : "Export CSV"}</span>
               </button>
             </div>
           </div>
@@ -454,7 +466,7 @@ export default function ChatOrders() {
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="بحث برقم الطلب، الاسم، الهاتف، المنتج..."
+                placeholder={t("chatOrders.searchPlaceholder")}
                 className="w-full h-9 pr-9 pl-3 rounded-lg border border-border/60 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 focus:bg-background transition-all"
               />
               {search && (
@@ -470,7 +482,7 @@ export default function ChatOrders() {
                   onClick={() => setDateRange(r)}
                   className={`px-2.5 h-7 rounded-md text-xs font-bold transition-all flex-1 sm:flex-none ${dateRange === r ? "bg-violet-500 text-white shadow-sm shadow-violet-500/30" : "text-muted-foreground hover:text-foreground hover:bg-background"}`}
                 >
-                  {r === "all" ? "الكل" : r === "today" ? "اليوم" : r === "week" ? "7 أيام" : "30 يوم"}
+                  {r === "all" ? t("chatOrders.all") : r === "today" ? t("chatOrders.day") : r === "week" ? t("chatOrders.week") : t("chatOrders.month")}
                 </button>
               ))}
             </div>
@@ -488,7 +500,7 @@ export default function ChatOrders() {
                 : "bg-background text-muted-foreground border-border hover:border-violet-400/40 hover:text-foreground"
             }`}
           >
-            🤖 الكل ({orders.length})
+            🤖 {isRTL ? "الكل" : "All"} ({orders.length})
           </button>
           {Object.entries(PLATFORM_META).map(([key, meta]) => {
             const cnt = orders.filter(o => o.source_platform === key).length;
@@ -510,7 +522,7 @@ export default function ChatOrders() {
             onClick={() => setStatusFilter("all")}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${statusFilter === "all" ? "bg-foreground text-background border-foreground" : "bg-background text-muted-foreground border-border hover:text-foreground"}`}
           >
-            كل الحالات
+            {t("chatOrders.filterAll")}
           </button>
           {Object.entries(STATUS_META).map(([key, s]) => {
             const cnt   = orders.filter(o => o.status === key).length;
@@ -525,7 +537,7 @@ export default function ChatOrders() {
                   : { color: s.color, borderColor: `${s.color}40`, backgroundColor: `${s.color}15` }}
                 className="px-3 py-1.5 rounded-full text-xs font-bold transition-all border"
               >
-                {s.icon} {s.label} ({cnt})
+                {s.icon} {t(s.labelKey)} ({cnt})
               </button>
             );
           })}
@@ -540,7 +552,7 @@ export default function ChatOrders() {
                 <table className="w-full text-sm font-semibold" style={{ tableLayout: 'fixed' }}>
                   <thead>
                     <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
-                      {["الصورة", "رقم الطلب", "المنصة", "المنتج", "العميل", "المبلغ", "الحالة", "الوقت", ""].map(h => (
+                      {[t("chatOrders.image"), t("chatOrders.orderNumber"), t("chatOrders.platform"), t("chatOrders.product"), t("chatOrders.customer"), t("chatOrders.amount"), t("chatOrders.status"), t("chatOrders.time"), ""].map(h => (
                         <th key={h} className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
@@ -590,9 +602,9 @@ export default function ChatOrders() {
                 <Bot className="w-8 h-8 text-violet-400" />
               </div>
               <div>
-                <p className="font-bold text-base">لا توجد طلبيات دردشة بعد</p>
+                <p className="font-bold text-base">{isRTL ? "لا توجد طلبيات دردشة بعد" : "No chat orders yet"}</p>
                 <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                  عندما يطلب العملاء عبر الذكاء الاصطناعي في Telegram أو WhatsApp أو Messenger، ستظهر طلباتهم هنا تلقائياً
+                  {isRTL ? "عندما يطلب العملاء عبر الذكاء الاصطناعي في Telegram أو WhatsApp أو Messenger، ستظهر طلباتهم هنا تلقائياً" : "When customers order through AI on Telegram, WhatsApp, or Messenger, their orders appear here automatically"}
                 </p>
               </div>
             </div>
@@ -601,8 +613,8 @@ export default function ChatOrders() {
           {!loading && orders.length > 0 && filtered.length === 0 && (
             <div className="p-8 text-center">
               <div className="text-2xl mb-2">🔍</div>
-              <p className="text-sm font-semibold text-muted-foreground">لا توجد نتائج</p>
-              <p className="text-xs text-muted-foreground mt-1">جرّب تغيير الفلتر أو كلمة البحث</p>
+              <p className="text-sm font-semibold text-muted-foreground">{isRTL ? "لا توجد نتائج" : "No results found"}</p>
+              <p className="text-xs text-muted-foreground mt-1">{isRTL ? "جرّب تغيير الفلتر أو كلمة البحث" : "Try changing the filter or search term"}</p>
             </div>
           )}
 
@@ -623,14 +635,14 @@ export default function ChatOrders() {
               </colgroup>
               <thead>
                 <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
-                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">الصورة</th>
-                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">رقم الطلب</th>
-                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">المنصة</th>
-                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">المنتج</th>
-                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">العميل</th>
-                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">المبلغ</th>
-                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">الحالة</th>
-                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">الوقت</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{t("chatOrders.image")}</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{t("chatOrders.orderNumber")}</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{t("chatOrders.platform")}</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{t("chatOrders.product")}</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{t("chatOrders.customer")}</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{t("chatOrders.amount")}</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{t("chatOrders.status")}</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider">{t("chatOrders.time")}</th>
                   <th />
                 </tr>
               </thead>
@@ -702,13 +714,13 @@ export default function ChatOrders() {
                           <div className="flex flex-col items-center gap-0.5">
                             <span className="text-sm font-bold max-w-[140px] truncate block" title={o.customer_name}>{o.customer_name || "—"}</span>
                             {o.duplicate_info?.level === 'same_name_diff_phone' && (
-                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium" title={`${o.duplicate_info.name_order_count} طلبات بنفس الاسم بأرقام مختلفة`}>
-                                ⚠ تكرار بالاسم
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium" title={isRTL ? `${o.duplicate_info.name_order_count} طلبات بنفس الاسم بأرقام مختلفة` : `${o.duplicate_info.name_order_count} orders with same name, different phones`}>
+                                ⚠ {isRTL ? "تكرار بالاسم" : "Duplicate name"}
                               </span>
                             )}
                             {o.duplicate_info?.level === 'same_phone' && o.duplicate_info?.diff_names?.length > 0 && (
-                              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium" title={`نفس الرقم بأسماء مختلفة: ${o.duplicate_info.diff_names.join('، ')}`}>
-                                ℹ أسماء مختلفة
+                              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium" title={isRTL ? `نفس الرقم بأسماء مختلفة: ${o.duplicate_info.diff_names.join('، ')}` : `Same number, different names: ${o.duplicate_info.diff_names.join(', ')}`}>
+                                ℹ {isRTL ? "أسماء مختلفة" : "Different names"}
                               </span>
                             )}
                             {o.customer_phone && (
@@ -726,8 +738,8 @@ export default function ChatOrders() {
 
                         {/* Amount */}
                         <td className="whitespace-nowrap px-2 py-2.5 text-center">
-                          <span className="text-sm font-black tabular-nums">{fmtPrice(Number(o.total_price))}</span>
-                          <span className="text-xs text-muted-foreground mr-0.5">دج</span>
+                          <span className="text-sm font-black tabular-nums">{fmtPrice(Number(o.total_price), locale)}</span>
+                          <span className="text-xs text-muted-foreground mr-0.5">{isRTL ? "دج" : "DA"}</span>
                         </td>
 
                         {/* Status — interactive dropdown */}
@@ -742,7 +754,7 @@ export default function ChatOrders() {
                               {actionLoading === o.id
                                 ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                                 : <span>{sm.icon}</span>}
-                              {sm.label}
+                               {t(sm.labelKey)}
                               <ChevronDown className="w-2.5 h-2.5 opacity-60" />
                             </button>
                             {statusDropdown === o.id && (
@@ -755,7 +767,7 @@ export default function ChatOrders() {
                                     style={{ color: opt.color }}
                                   >
                                     {opt.icon}
-                                    {opt.label}
+                                    {t(opt.labelKey)}
                                     {o.status === opt.value && <Check className="w-3 h-3 mr-auto" />}
                                   </button>
                                 ))}
@@ -766,7 +778,7 @@ export default function ChatOrders() {
 
                         {/* Time */}
                         <td className="whitespace-nowrap px-2 py-2.5 text-center">
-                          <span className="text-xs text-muted-foreground">{timeAgo(o.created_at)}</span>
+                          <span className="text-xs text-muted-foreground">{timeAgo(o.created_at, locale)}</span>
                         </td>
 
                         {/* Expand toggle */}
@@ -785,34 +797,34 @@ export default function ChatOrders() {
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div className="flex flex-col gap-1">
                                   <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                                    <MapPin className="w-3 h-3" /> عنوان التوصيل
+                                    <MapPin className="w-3 h-3" /> {isRTL ? "عنوان التوصيل" : "Delivery Address"}
                                   </span>
                                   <span className="font-semibold text-foreground truncate block" title={o.shipping_address}>{o.shipping_address || "—"}</span>
-                                  <span className="text-xs text-muted-foreground">{o.delivery_type === "desk" ? "🏪 توصيل للمكتب" : "🏠 توصيل للمنزل"}</span>
+                                  <span className="text-xs text-muted-foreground">{o.delivery_type === "desk" ? (isRTL ? "🏪 توصيل للمكتب" : "🏪 Office delivery") : (isRTL ? "🏠 توصيل للمنزل" : "🏠 Home delivery")}</span>
                                 </div>
 
                                 <div className="flex flex-col gap-1">
                                   <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                                    <Phone className="w-3 h-3" /> التواصل
+                                    <Phone className="w-3 h-3" /> {isRTL ? "التواصل" : "Contact"}
                                   </span>
                                   <span className="font-semibold text-foreground" dir="ltr">{o.customer_phone || "—"}</span>
                                   <span className="text-xs capitalize" style={{ color: pm.color }}>{pm.emoji} {pm.label}</span>
                                 </div>
 
                                 <div className="flex flex-col gap-1">
-                                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">تفاصيل المبلغ</span>
-                                  <span className="text-xs text-muted-foreground">{fmtPrice(Number(o.unit_price))} دج × <strong className="text-foreground">{o.quantity}</strong></span>
-                                  <span className="text-xs text-muted-foreground">رسوم التوصيل: <strong className="text-foreground">{fmtPrice(Number(o.delivery_fee))} دج</strong></span>
-                                  <span className="text-xs font-black text-amber-600">الإجمالي: {fmtPrice(Number(o.total_price))} دج</span>
+                                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t("chatOrders.priceDetails")}</span>
+                                  <span className="text-xs text-muted-foreground">{fmtPrice(Number(o.unit_price), locale)} {isRTL ? "دج" : "DA"} × <strong className="text-foreground">{o.quantity}</strong></span>
+                                  <span className="text-xs text-muted-foreground">{isRTL ? "رسوم التوصيل" : "Delivery fee"}: <strong className="text-foreground">{fmtPrice(Number(o.delivery_fee), locale)} {isRTL ? "دج" : "DA"}</strong></span>
+                                  <span className="text-xs font-black text-amber-600">{isRTL ? "الإجمالي" : "Total"}: {fmtPrice(Number(o.total_price), locale)} {isRTL ? "دج" : "DA"}</span>
                                 </div>
 
                                 <div className="flex flex-col gap-1">
-                                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">التاريخ</span>
+                                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t("chatOrders.date")}</span>
                                   <span className="text-xs text-foreground">
-                                    {parseUTCDate(o.created_at).toLocaleDateString("ar-DZ", { day: "2-digit", month: "long", year: "numeric" })}
+                                    {parseUTCDate(o.created_at).toLocaleDateString(locale === "ar" ? "ar-DZ" : "en-US", { day: "2-digit", month: "long", year: "numeric" })}
                                   </span>
                                   <span className="text-xs text-muted-foreground">
-                                    {parseUTCDate(o.created_at).toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" })}
+                                    {parseUTCDate(o.created_at).toLocaleTimeString(locale === "ar" ? "ar-DZ" : "en-US", { hour: "2-digit", minute: "2-digit" })}
                                   </span>
                                   {o.tracking_number && (
                                     <button onClick={() => copy(o.tracking_number!, `trk-${o.id}`)} className="text-xs font-mono text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded w-fit flex items-center gap-1 transition-colors">
@@ -825,7 +837,7 @@ export default function ChatOrders() {
 
                               {/* ── Status shortcuts row ── */}
                               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/30">
-                                <span className="text-[11px] font-bold text-muted-foreground">تغيير الحالة:</span>
+                                <span className="text-[11px] font-bold text-muted-foreground">{isRTL ? "تغيير الحالة:" : "Change status:"}</span>
                                 {STATUS_OPTIONS.filter(s => s.value !== o.status).slice(0, 5).map(opt => (
                                   <button
                                     key={opt.value}
@@ -847,7 +859,7 @@ export default function ChatOrders() {
                                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold shadow-sm shadow-blue-500/30 transition-all active:scale-95"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" />
-                                  تعديل الطلب
+                                  {isRTL ? "تعديل الطلب" : "Edit Order"}
                                 </button>
 
                                 {/* Upload to delivery — orange/amber, logistics action */}
@@ -856,7 +868,7 @@ export default function ChatOrders() {
                                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-sm shadow-orange-500/30 transition-all active:scale-95"
                                 >
                                   <Truck className="w-3.5 h-3.5" />
-                                  رفع للتوصيل
+                                  {isRTL ? "رفع للتوصيل" : "Send for Delivery"}
                                 </button>
 
                                 {/* Tracking — slate, navigation action */}
@@ -865,7 +877,7 @@ export default function ChatOrders() {
                                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold shadow-sm shadow-slate-700/30 transition-all active:scale-95"
                                 >
                                   <Package className="w-3.5 h-3.5" />
-                                  تتبع الشحن
+                                  {isRTL ? "تتبع الشحن" : "Track Shipment"}
                                 </a>
                               </div>
 
@@ -876,7 +888,7 @@ export default function ChatOrders() {
                                   value={msgInput[o.id] || ""}
                                   onChange={e => setMsgInput(prev => ({ ...prev, [o.id]: e.target.value }))}
                                   onKeyDown={e => { if (e.key === "Enter") sendMessage(o.id, msgInput[o.id] || "", o.source_platform); }}
-                                  placeholder={`أرسل رسالة للزبون عبر ${pm.label}...`}
+                                  placeholder={`${isRTL ? "أرسل رسالة للزبون عبر" : "Send message to customer via"} ${pm.label}...`}
                                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
                                   dir="rtl"
                                 />
@@ -966,7 +978,7 @@ export default function ChatOrders() {
                         )}
                         <div className="flex items-center justify-between mt-1">
                           <span className="text-xs text-muted-foreground">×{o.quantity}</span>
-                          <span className="text-sm font-black text-emerald-600">{fmtPrice(Number(o.total_price))} دج</span>
+                          <span className="text-sm font-black text-emerald-600">{fmtPrice(Number(o.total_price), locale)} {isRTL ? "دج" : "DA"}</span>
                         </div>
                       </div>
 
@@ -1000,7 +1012,7 @@ export default function ChatOrders() {
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold"
                           style={{ color: sm.color, background: `${sm.color}18`, border: `1px solid ${sm.color}30` }}
                         >
-                          {sm.icon} {sm.label}
+                          {sm.icon} {t(sm.labelKey)}
                         </button>
                         {statusDropdown === o.id && (
                           <div className="absolute top-full mt-1 left-0 z-30 bg-card border border-border rounded-xl shadow-xl py-1 min-w-[140px]">
@@ -1016,7 +1028,7 @@ export default function ChatOrders() {
                             ))}
                           </div>
                         )}
-                        <span className="text-[10px] text-muted-foreground">{timeAgo(o.created_at)}</span>
+                        <span className="text-[10px] text-muted-foreground">{timeAgo(o.created_at, locale)}</span>
                       </div>
                     </div>
 
@@ -1026,30 +1038,30 @@ export default function ChatOrders() {
                         {/* Info Grid */}
                         <div className="grid grid-cols-2 gap-3 text-xs">
                           <div>
-                            <span className="text-[10px] text-muted-foreground">العنوان</span>
+                            <span className="text-[10px] text-muted-foreground">{isRTL ? "العنوان" : "Address"}</span>
                             <p className="font-semibold truncate">{o.shipping_address || "—"}</p>
                           </div>
                           <div>
-                            <span className="text-[10px] text-muted-foreground">الهاتف</span>
+                            <span className="text-[10px] text-muted-foreground">{isRTL ? "الهاتف" : "Phone"}</span>
                             <p className="font-semibold" dir="ltr">{o.customer_phone || "—"}</p>
                           </div>
                           <div>
-                            <span className="text-[10px] text-muted-foreground">السعر</span>
-                            <p className="font-semibold">{fmtPrice(Number(o.unit_price))} دج × {o.quantity}</p>
+                            <span className="text-[10px] text-muted-foreground">{isRTL ? "السعر" : "Price"}</span>
+                            <p className="font-semibold">{fmtPrice(Number(o.unit_price), locale)} {isRTL ? "دج" : "DA"} × {o.quantity}</p>
                           </div>
                           <div>
-                            <span className="text-[10px] text-muted-foreground">التاريخ</span>
-                            <p className="font-semibold">{parseUTCDate(o.created_at).toLocaleDateString("ar-DZ")}</p>
+                            <span className="text-[10px] text-muted-foreground">{t("chatOrders.date")}</span>
+                            <p className="font-semibold">{parseUTCDate(o.created_at).toLocaleDateString(locale === "ar" ? "ar-DZ" : "en-US")}</p>
                           </div>
                           {o.variant_name && (
                             <div className="col-span-2">
-                              <span className="text-[10px] text-muted-foreground">الخيار</span>
+                              <span className="text-[10px] text-muted-foreground">{isRTL ? "الخيار" : "Option"}</span>
                               <p className="font-semibold">{o.variant_name}</p>
                             </div>
                           )}
                           {(o.variant_color || o.variant_size) && (
                             <div className="col-span-2">
-                              <span className="text-[10px] text-muted-foreground">التفاصيل</span>
+                              <span className="text-[10px] text-muted-foreground">{isRTL ? "التفاصيل" : "Details"}</span>
                               <p className="font-semibold">
                                 {o.variant_color && <span className="inline-block w-3 h-3 rounded-full mr-1 align-middle" style={{ backgroundColor: o.variant_color }}></span>}
                                 {o.variant_color}{o.variant_size ? ` / ${o.variant_size}` : ''}
@@ -1060,7 +1072,7 @@ export default function ChatOrders() {
 
                         {/* Status Change */}
                         <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/30">
-                          <span className="text-[10px] text-muted-foreground">تغيير:</span>
+                          <span className="text-[10px] text-muted-foreground">{isRTL ? "تغيير:" : "Change:"}</span>
                           {STATUS_OPTIONS.filter(s => s.value !== o.status).slice(0, 4).map(opt => (
                             <button
                               key={opt.value}
@@ -1077,10 +1089,10 @@ export default function ChatOrders() {
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2 pt-1">
                           <button onClick={() => openEdit(o)} className="flex-1 h-9 rounded-lg bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-1">
-                            <Edit3 className="w-3 h-3" /> تعديل
+                            <Edit3 className="w-3 h-3" /> {isRTL ? "تعديل" : "Edit"}
                           </button>
                           <button onClick={() => setDeliveryOrder(o)} className="flex-1 h-9 rounded-lg bg-orange-500 text-white text-xs font-bold flex items-center justify-center gap-1">
-                            <Truck className="w-3 h-3" /> توصيل
+                            <Truck className="w-3 h-3" /> {isRTL ? "توصيل" : "Delivery"}
                           </button>
                         </div>
 
@@ -1090,7 +1102,7 @@ export default function ChatOrders() {
                             value={msgInput[o.id] || ""}
                             onChange={e => setMsgInput(prev => ({ ...prev, [o.id]: e.target.value }))}
                             onKeyDown={e => { if (e.key === "Enter") sendMessage(o.id, msgInput[o.id] || "", o.source_platform); }}
-                            placeholder={`رسالة ${pm.label}...`}
+                            placeholder={`${isRTL ? "رسالة" : "Message"} ${pm.label}...`}
                             className="flex-1 bg-transparent text-xs placeholder:text-muted-foreground/50 focus:outline-none text-right"
                           />
                           <button
@@ -1115,7 +1127,7 @@ export default function ChatOrders() {
         {!loading && filtered.length > 0 && (
           <div className="px-3 py-2 border-t border-border/40 bg-muted/10 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
-              عرض <strong>{filtered.length}</strong> من <strong>{total}</strong> طلب
+              {isRTL ? "عرض" : "Showing"} <strong>{filtered.length}</strong> {isRTL ? "من" : "of"} <strong>{total}</strong> {isRTL ? "طلب" : "orders"}
             </span>
             <div className="flex items-center gap-2">
               {hasMore && (
@@ -1129,12 +1141,12 @@ export default function ChatOrders() {
                   ) : (
                     <ChevronDown className="w-3 h-3" />
                   )}
-                  تحميل المزيد
+                  {isRTL ? "تحميل المزيد" : "Load more"}
                 </button>
               )}
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Bot className="w-3 h-3 text-violet-500" />
-                مصدر: الذكاء الاصطناعي
+                {isRTL ? "مصدر: الذكاء الاصطناعي" : "Source: AI"}
               </span>
             </div>
           </div>
@@ -1147,7 +1159,7 @@ export default function ChatOrders() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit3 className="w-4 h-4 text-blue-500" />
-              تعديل الطلب {editingOrder ? `ORD-${String(editingOrder.id).padStart(3,"0")}` : ""}
+              {isRTL ? "تعديل الطلب" : "Edit Order"} {editingOrder ? `ORD-${String(editingOrder.id).padStart(3,"0")}` : ""}
             </DialogTitle>
           </DialogHeader>
           {editingOrder && (
@@ -1169,67 +1181,67 @@ export default function ChatOrders() {
                     </p>
                   )}
                 </div>
-                <span className="text-sm font-black">{fmtPrice(Number(editingOrder.unit_price))} دج</span>
+                <span className="text-sm font-black">{fmtPrice(Number(editingOrder.unit_price), locale)} {isRTL ? "دج" : "DA"}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground">اسم الزبون</label>
+                  <label className="text-xs font-bold text-muted-foreground">{isRTL ? "اسم الزبون" : "Customer name"}</label>
                   <input
                     value={editForm.customer_name}
                     onChange={e => setEditForm(p => ({ ...p, customer_name: e.target.value }))}
                     className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                    placeholder="اسم الزبون"
+                    placeholder={isRTL ? "اسم الزبون" : "Customer name"}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground">رقم الهاتف</label>
+                  <label className="text-xs font-bold text-muted-foreground">{isRTL ? "رقم الهاتف" : "Phone number"}</label>
                   <input
                     value={editForm.customer_phone}
                     onChange={e => setEditForm(p => ({ ...p, customer_phone: e.target.value }))}
                     className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                    placeholder="رقم الهاتف"
+                    placeholder={isRTL ? "رقم الهاتف" : "Phone number"}
                     dir="ltr"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground">الولاية</label>
+                  <label className="text-xs font-bold text-muted-foreground">{isRTL ? "الولاية" : "Wilaya"}</label>
                   <select
                     value={editForm.shipping_wilaya_id}
                     onChange={e => setEditForm(p => ({ ...p, shipping_wilaya_id: e.target.value, shipping_commune_id: "" }))}
                     className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   >
-                    <option value="">اختر الولاية</option>
+                    <option value="">{isRTL ? "اختر الولاية" : "Select wilaya"}</option>
                     {getAlgeriaWilayas().map(w => (
                       <option key={w.id} value={String(w.id)}>{String(w.code).padStart(2, '0')} - {w.name}</option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground">البلدية</label>
+                  <label className="text-xs font-bold text-muted-foreground">{isRTL ? "البلدية" : "Commune"}</label>
                   <select
                     value={editForm.shipping_commune_id}
                     onChange={e => setEditForm(p => ({ ...p, shipping_commune_id: e.target.value }))}
                     className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-50"
                     disabled={!editForm.shipping_wilaya_id}
                   >
-                    <option value="">اختر البلدية</option>
+                    <option value="">{isRTL ? "اختر البلدية" : "Select commune"}</option>
                     {getAlgeriaCommunesByWilayaId(editForm.shipping_wilaya_id).map(c => (
                       <option key={c.id} value={String(c.id)}>{c.name}</option>
                     ))}
                   </select>
                 </div>
                 <div className="col-span-2 space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground">العنوان التفصيلي</label>
+                  <label className="text-xs font-bold text-muted-foreground">{isRTL ? "العنوان التفصيلي" : "Detailed address"}</label>
                   <input
                     value={editForm.shipping_address}
                     onChange={e => setEditForm(p => ({ ...p, shipping_address: e.target.value }))}
                     className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                    placeholder="الحي، الشارع، رقم البناية..."
+                    placeholder={isRTL ? "الحي، الشارع، رقم البناية..." : "Neighborhood, street, building number..."}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground">الكمية</label>
+                  <label className="text-xs font-bold text-muted-foreground">{isRTL ? "الكمية" : "Quantity"}</label>
                   <div className="flex h-9">
                     <button
                       onClick={() => setEditForm(p => ({ ...p, quantity: Math.max(1, p.quantity - 1) }))}
@@ -1251,19 +1263,19 @@ export default function ChatOrders() {
                   </div>
                   {editingOrder && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      المجموع: <strong className="text-foreground">{fmtPrice(Number(editingOrder.unit_price) * editForm.quantity + Number(editingOrder.delivery_fee || 0))} دج</strong>
+                      {isRTL ? "المجموع:" : "Total:"} <strong className="text-foreground">{fmtPrice(Number(editingOrder.unit_price) * editForm.quantity + Number(editingOrder.delivery_fee || 0), locale)} {isRTL ? "دج" : "DA"}</strong>
                     </p>
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground">نوع التوصيل</label>
+                  <label className="text-xs font-bold text-muted-foreground">{isRTL ? "نوع التوصيل" : "Delivery type"}</label>
                   <select
                     value={editForm.delivery_type}
                     onChange={e => setEditForm(p => ({ ...p, delivery_type: e.target.value }))}
                     className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   >
-                    <option value="home">🏠 توصيل للمنزل</option>
-                    <option value="desk">🏪 توصيل للمكتب</option>
+                    <option value="home">{isRTL ? "🏠 توصيل للمنزل" : "🏠 Home delivery"}</option>
+                    <option value="desk">{isRTL ? "🏪 توصيل للمكتب" : "🏪 Office delivery"}</option>
                   </select>
                 </div>
               </div>
@@ -1275,13 +1287,13 @@ export default function ChatOrders() {
                   className="flex-1 h-10 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                 >
                   {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  حفظ التعديلات
+                  {isRTL ? "حفظ التعديلات" : "Save changes"}
                 </button>
                 <button
                   onClick={() => { setShowEditModal(false); setEditingOrder(null); }}
                   className="h-10 px-4 rounded-xl border border-border text-sm font-bold hover:bg-muted transition-all"
                 >
-                  إلغاء
+                  {isRTL ? "إلغاء" : "Cancel"}
                 </button>
               </div>
             </div>
@@ -1295,7 +1307,7 @@ export default function ChatOrders() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-violet-500" />
-              رفع للتوصيل — {deliveryOrder ? `ORD-${String(deliveryOrder.id).padStart(3,"0")}` : ""}
+              {isRTL ? "رفع للتوصيل" : "Send for Delivery"} — {deliveryOrder ? `ORD-${String(deliveryOrder.id).padStart(3,"0")}` : ""}
             </DialogTitle>
           </DialogHeader>
           {deliveryOrder && (
@@ -1310,7 +1322,7 @@ export default function ChatOrders() {
                 tracking_number: deliveryOrder.tracking_number,
                 delivery_status: deliveryOrder.delivery_status,
               }}
-              onDeliveryAssigned={() => { setDeliveryOrder(null); load(); showToast("✓ تم رفع الطلب للتوصيل"); }}
+              onDeliveryAssigned={() => { setDeliveryOrder(null); load(); showToast(isRTL ? "✓ تم رفع الطلب للتوصيل" : "✓ Order sent for delivery"); }}
             />
           )}
         </DialogContent>
@@ -1322,14 +1334,14 @@ export default function ChatOrders() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" />
-              {confirmStatus?.status === "cancelled" ? "تأكيد إلغاء الطلب" : "تأكيد الطلب المشبوه"}
+              {confirmStatus?.status === "cancelled" ? (isRTL ? "تأكيد إلغاء الطلب" : "Confirm order cancellation") : (isRTL ? "تأكيد الطلب المشبوه" : "Confirm suspicious order")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <p className="text-sm text-muted-foreground">
               {confirmStatus?.status === "cancelled"
-                ? "هل أنت متأكد من إلغاء هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء."
-                : "هل أنت متأكد من وضع هذا الطلب كمشبوه؟ لا يمكن التراجع عن هذا الإجراء."}
+                ? (isRTL ? "هل أنت متأكد من إلغاء هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to cancel this order? This action cannot be undone.")
+                : (isRTL ? "هل أنت متأكد من وضع هذا الطلب كمشبوه؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to mark this order as suspicious? This action cannot be undone.")}
             </p>
             <div className="flex gap-2">
               <button
@@ -1337,13 +1349,13 @@ export default function ChatOrders() {
                 className="flex-1 h-10 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all"
               >
                 <CheckCircle className="w-4 h-4" />
-                {confirmStatus?.status === "cancelled" ? "تأكيد الإلغاء" : "تأكيد كمشبوه"}
+                {confirmStatus?.status === "cancelled" ? (isRTL ? "تأكيد الإلغاء" : "Confirm cancellation") : (isRTL ? "تأكيد كمشبوه" : "Mark as suspicious")}
               </button>
               <button
                 onClick={() => setConfirmStatus(null)}
                 className="h-10 px-4 rounded-xl border border-border text-sm font-bold hover:bg-muted transition-all"
               >
-                رجوع
+                {isRTL ? "رجوع" : "Back"}
               </button>
             </div>
           </div>

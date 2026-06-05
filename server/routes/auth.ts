@@ -1249,7 +1249,7 @@ export const googleAuth: RequestHandler = async (req, res) => {
         return jsonError(res, 500, 'Google login is not configured (missing client secret)');
       }
 
-      const redirectUri = 'https://auth.expo.dev/@sahla4eco-organization/ssahla4eco';
+      const redirectUri = 'https://auth.expo.io/@sahla4eco-organization/ssahla4eco';
 
       const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
