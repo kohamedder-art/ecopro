@@ -258,8 +258,12 @@ router.patch('/orders/:id/status', updateOrderStatus);
 router.get('/notifications', getNotifications);
 router.patch('/notifications/read-all', markNotificationsRead);
 
+// In-memory cache for Expo API result
+let expoBuildCache: { url: string; version: string; expiresAt: number } | null = null;
+
 // Public: get latest app download URL
 router.get('/download', async (_req, res) => {
+  // 1) Check database (manually set by admin)
   try {
     const pool = await ensureConnection();
     const result = await pool.query(
@@ -270,12 +274,47 @@ router.get('/download', async (_req, res) => {
       const row = result.rows[0];
       return res.json({ download_url: row.download_url, version: row.version, updated_at: row.created_at });
     }
-  } catch { /* fall through to env var */ }
+  } catch { /* fall through */ }
 
-  const envUrl = String(process.env.MOBILE_APP_DOWNLOAD_URL || '').trim();
-  if (envUrl) {
-    return res.json({ download_url: envUrl, version: 'latest', updated_at: null });
+  // 2) Check EXPO_TOKEN + EXPO_APP_ID — auto-fetch latest build URL
+  const expoToken = String(process.env.EXPO_TOKEN || '').trim();
+  const expoAppId = String(process.env.EXPO_APP_ID || '').trim();
+  if (expoToken && expoAppId) {
+    // Check cache
+    if (expoBuildCache && Date.now() < expoBuildCache.expiresAt) {
+      return res.json({ download_url: expoBuildCache.url, version: expoBuildCache.version, updated_at: null });
+    }
+    try {
+      const gqlRes = await fetch('https://api.expo.dev/graphql', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${expoToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: `query ViewBuildsOnApp($appId: String!, $offset: Int!, $limit: Int!, $filter: BuildFilter) {
+            app { byId(appId: $appId) { id builds(offset: $offset, limit: $limit, filter: $filter) {
+              id artifacts { buildUrl } appVersion appBuildVersion
+            } } }
+          }`,
+          variables: { appId: expoAppId, offset: 0, limit: 1, filter: { platform: 'ANDROID', status: 'FINISHED' } },
+        }),
+      });
+      if (gqlRes.ok) {
+        const gqlData = await gqlRes.json();
+        const build = gqlData?.data?.app?.byId?.builds?.[0];
+        if (build?.artifacts?.buildUrl) {
+          expoBuildCache = {
+            url: build.artifacts.buildUrl,
+            version: build.appBuildVersion || 'latest',
+            expiresAt: Date.now() + 3_600_000, // 1 hour
+          };
+          return res.json({ download_url: build.artifacts.buildUrl, version: build.appBuildVersion || 'latest', updated_at: null });
+        }
+      }
+    } catch { /* fall through */ }
   }
+
   res.json({ download_url: null });
 });
 
