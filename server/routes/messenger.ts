@@ -629,6 +629,55 @@ async function handleReferral(pageId: string, senderId: string, referral: any) {
   try {
     const pool = await ensureConnection();
 
+    // Check if ref is a store slug (from chat bubble link: ?ref={store_slug})
+    const storeRes = await pool.query(
+      `SELECT client_id, store_name FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
+      [refToken]
+    );
+
+    if (storeRes.rows.length > 0) {
+      const client_id = Number(storeRes.rows[0].client_id);
+      const storeName = String(storeRes.rows[0].store_name || refToken);
+
+      // Link this PSID to this store
+      const placeholderPhone = `_fb_${senderId}`;
+      await pool.query(
+        `INSERT INTO customer_messaging_ids (client_id, customer_phone, messenger_psid, created_at, updated_at)
+         VALUES ($1, $2, $3, NOW(), NOW())
+         ON CONFLICT (client_id, customer_phone)
+         DO UPDATE SET messenger_psid = EXCLUDED.messenger_psid, updated_at = NOW()`,
+        [client_id, placeholderPhone, senderId]
+      );
+
+      // Save store info in conversation facts
+      try {
+        await pool.query(
+          `INSERT INTO customer_conversation_facts (client_id, platform, platform_chat_id, preferences, updated_at)
+           VALUES ($1, 'messenger', $2, $3, NOW())
+           ON CONFLICT (client_id, platform, platform_chat_id)
+           DO UPDATE SET preferences = customer_conversation_facts.preferences || $3, updated_at = NOW()`,
+          [client_id, senderId, JSON.stringify({ store_slug: refToken, store_name: storeName })]
+        );
+      } catch {}
+
+      // Get page access token for greeting
+      const botRes = await pool.query(
+        `SELECT fb_page_access_token, messenger_enabled FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+        [client_id]
+      );
+      const pageAccessToken = botRes.rows[0]?.fb_page_access_token
+        ? String(botRes.rows[0].fb_page_access_token).trim()
+        : getPlatformFbPageAccessToken();
+
+      if (pageAccessToken) {
+        const greeting = `مرحباً بك في ${storeName}! 👋\n\nكيف يمكننا مساعدتك؟`;
+        await sendMessengerMessage(pageAccessToken, senderId, greeting);
+      }
+
+      console.log(`[Messenger] Store slug referral: ${refToken} → client ${client_id}`);
+      return;
+    }
+
     // Look up the preconnect token
     const preconnectRes = await pool.query(
       `SELECT client_id, customer_phone, page_id FROM messenger_preconnect_tokens
@@ -1371,6 +1420,17 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
         [senderId, pageId]
       );
       client_id = subRes.rows[0]?.client_id ? Number(subRes.rows[0].client_id) : null;
+      if (!client_id) {
+        // Fallback: check customer_messaging_ids (set by chat bubble store slug referral)
+        const msgRes = await pool.query(
+          `SELECT client_id FROM customer_messaging_ids
+           WHERE messenger_psid = $1
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+          [senderId]
+        );
+        client_id = msgRes.rows[0]?.client_id ? Number(msgRes.rows[0].client_id) : null;
+      }
       if (!client_id) {
         // Fallback: if there is exactly one recent pending token for this page,
         // auto-link so the store can receive confirmations.

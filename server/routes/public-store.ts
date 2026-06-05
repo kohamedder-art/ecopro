@@ -1572,9 +1572,9 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
   try {
     const pool = await ensureConnection();
 
-    // Look up client_id from store slug
+    // Look up client_id and store name from store slug
     const storeRes = await pool.query(
-      `SELECT client_id FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
+      `SELECT client_id, store_name FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
       [storeSlug]
     );
 
@@ -1583,6 +1583,7 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     }
 
     const clientId = storeRes.rows[0].client_id;
+    const storeName = String(storeRes.rows[0].store_name || '').trim() || storeSlug;
 
     // Fetch bot settings — match exactly what the dashboard GET /api/bot-settings returns
     const botRes = await pool.query(
@@ -1630,7 +1631,8 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     if (messengerConnected) {
       const pageId = storedFbPageId || platformFbPageId;
       if (pageId) {
-        channels.push({ platform: 'facebook', url: `https://m.me/${pageId}`, label: 'Messenger' });
+        const refParam = encodeURIComponent(storeSlug);
+        channels.push({ platform: 'facebook', url: `https://m.me/${pageId}?ref=${refParam}`, label: 'Messenger' });
       }
     }
 
@@ -1713,7 +1715,7 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     if (telegramConnected && effectiveTelegramUsername) {
       channels.push({
         platform: 'telegram',
-        url: `https://t.me/${effectiveTelegramUsername}`,
+        url: `https://t.me/${effectiveTelegramUsername}?start=store_${storeSlug}`,
         label: 'Telegram',
       });
     }

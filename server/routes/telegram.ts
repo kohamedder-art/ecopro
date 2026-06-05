@@ -758,6 +758,57 @@ export const telegramWebhook: RequestHandler = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Handle ?start=store_{slug} — customer clicking the chat bubble from a store page.
+    // This links the chat to the correct store so conversations stay separate.
+    if (startToken && startToken.startsWith('store_')) {
+      const slug = startToken.slice(6); // remove "store_" prefix
+      const storeRes = await pool.query(
+        `SELECT client_id, store_name FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
+        [slug]
+      );
+      if (storeRes.rows.length === 0) {
+        if (botToken) await sendTelegramMessage(botToken, chatId, 'المتجر غير موجود. يرجى المحاولة مرة أخرى.');
+        return res.status(200).json({ ok: true });
+      }
+
+      const resolvedClientId = Number(storeRes.rows[0].client_id);
+      const storeName = String(storeRes.rows[0].store_name || slug);
+
+      // Ensure bot_settings exists
+      try {
+        const { ensureBotSettingsRow } = await import('../utils/client-provisioning');
+        await ensureBotSettingsRow(resolvedClientId);
+      } catch {}
+
+      // Link this chat to this store's client_id
+      // Use a placeholder phone since we don't have it yet from the chat bubble click
+      const placeholderPhone = `_tg_${chatId}`;
+      await pool.query(
+        `INSERT INTO customer_messaging_ids (client_id, customer_phone, telegram_chat_id, created_at, updated_at)
+         VALUES ($1, $2, $3, NOW(), NOW())
+         ON CONFLICT (client_id, customer_phone)
+         DO UPDATE SET telegram_chat_id = EXCLUDED.telegram_chat_id, updated_at = NOW()`,
+        [resolvedClientId, placeholderPhone, chatId]
+      );
+
+      // Also store a store_slug association so the AI knows which store this chat is from
+      try {
+        await pool.query(
+          `INSERT INTO customer_conversation_facts (client_id, platform, platform_chat_id, preferences, updated_at)
+           VALUES ($1, 'telegram', $2, $3, NOW())
+           ON CONFLICT (client_id, platform, platform_chat_id)
+           DO UPDATE SET preferences = customer_conversation_facts.preferences || $3, updated_at = NOW()`,
+          [resolvedClientId, chatId, JSON.stringify({ store_slug: slug, store_name: storeName })]
+        );
+      } catch {}
+
+      // Send store-specific greeting
+      const greeting = `مرحباً بك في ${storeName}! 👋\n\nكيف يمكننا مساعدتك؟`;
+      if (botToken) await sendTelegramMessage(botToken, chatId, greeting);
+
+      return res.status(200).json({ ok: true });
+    }
+
     // First try: Check if this is a preconnect token (customer connecting BEFORE placing order)
     const preconnectRes = await pool.query(
       `SELECT client_id, customer_phone
