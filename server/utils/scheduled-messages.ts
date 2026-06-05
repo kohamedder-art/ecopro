@@ -20,13 +20,21 @@ export async function processScheduledMessages(): Promise<void> {
   try {
     const pool = await ensureConnection();
     
+    // Reset any messages stuck in 'processing' from a previous crash (older than 5 minutes)
+    await pool.query(
+      `UPDATE scheduled_messages SET status = 'pending', updated_at = NOW()
+       WHERE status = 'processing' AND updated_at < NOW() - INTERVAL '5 minutes'`
+    );
+
     // Get all pending messages that are past their scheduled time
+    // Skip messages older than 24 hours (stale from a previous session / crash)
     const result = await pool.query(
       `SELECT sm.*, COALESCE(bs.telegram_bot_token, $1) AS telegram_bot_token
        FROM scheduled_messages sm
        JOIN bot_settings bs ON sm.client_id = bs.client_id AND bs.enabled = true
        WHERE sm.status = 'pending'
          AND sm.scheduled_at <= NOW()
+         AND sm.scheduled_at > NOW() - INTERVAL '24 hours'
          AND (bs.telegram_bot_token IS NOT NULL OR $1 <> '')
        ORDER BY sm.scheduled_at ASC
        LIMIT 50`,
@@ -36,6 +44,13 @@ export async function processScheduledMessages(): Promise<void> {
     if (result.rows.length === 0) {
       return;
     }
+
+    // Claim all fetched messages so they aren't re-processed if the server restarts mid-batch
+    const msgIds = result.rows.map((m: any) => m.id);
+    await pool.query(
+      `UPDATE scheduled_messages SET status = 'processing', updated_at = NOW() WHERE id = ANY($1)`,
+      [msgIds]
+    );
     
     console.log(`[ScheduledMessages] Processing ${result.rows.length} pending messages`);
     
