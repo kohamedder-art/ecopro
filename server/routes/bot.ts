@@ -454,10 +454,11 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
 
     // Fetch real phone number from Graph API for wa.me links
     let finalWhatsappDisplayPhone: string | null = null;
-    if (finalWhatsappPhoneId && finalWhatsappToken) {
+    const waTokenForDisplay = finalWhatsappToken || (wantsPlatformWhatsapp ? getPlatformWhatsappAccessToken() : null);
+    if (finalWhatsappPhoneId && waTokenForDisplay) {
       try {
         const waRes = await fetch(`https://graph.facebook.com/v25.0/${finalWhatsappPhoneId}?fields=display_phone_number`, {
-          headers: { 'Authorization': `Bearer ${finalWhatsappToken}` }
+          headers: { 'Authorization': `Bearer ${waTokenForDisplay}` }
         });
         if (waRes.ok) {
           const waData = await waRes.json();

@@ -877,10 +877,10 @@ export async function sendOrderConfirmationMessages(
 
     // WhatsApp Cloud: schedule order confirmation messages (same pattern as Telegram/Messenger).
     // WhatsApp doesn't need pre-connect — the phone number IS the identifier.
-    // We check whatsapp_enabled OR whatsapp_cloud_enabled in bot_settings.
+    // We check provider (like Messenger does) OR whatsapp_enabled / whatsapp_cloud_enabled.
     const effectiveWaToken = String(settings.whatsapp_token || '').trim() || getWaAccessToken();
     const effectiveWaPhoneId = String(settings.whatsapp_phone_id || '').trim() || getWaPhoneNumberId();
-    if ((settings.whatsapp_enabled || settings.whatsapp_cloud_enabled) && effectiveWaToken && effectiveWaPhoneId) {
+    if ((provider === 'whatsapp_cloud' || provider === 'whatsapp' || settings.whatsapp_enabled || settings.whatsapp_cloud_enabled) && effectiveWaToken && effectiveWaPhoneId) {
       const defaultInstant = `✅ تم استلام الطلب!\n\nطلب #${orderId}\nالمنتج: {productName}\nالمجموع: {totalPrice} دج\n\nسنطلب منك التأكيد قريباً.`;
       const defaultConfirmation = `مرحباً {customerName}!\n\nهل تؤكد طلبك من {storeName}؟\n\n📦 {productName}\n💰 {totalPrice} دج\n\nاستخدم الأزرار أدناه:`;
 

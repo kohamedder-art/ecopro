@@ -164,10 +164,14 @@ export default function Integrations() {
         }
       }
       // Fallback to settings-based disconnect
-      const payload: Record<string, any> = { provider: platform };
+      const payload: Record<string, any> = { provider: platform, enabled: false };
       if (platform === 'facebook' || platform === 'instagram') {
         payload.proxyEnabled = false;
         payload.proxyPageId = null;
+        payload.fbPageId = '';
+        payload.fbPageAccessToken = '';
+        payload.messengerEnabled = false;
+        payload.usePlatformMessenger = false;
       } else if (platform === 'telegram') { payload.telegramBotToken = ''; payload.telegramBotUsername = ''; payload.usePlatformTelegram = false; }
       else if (platform === 'whatsapp_cloud') { payload.whatsappToken = ''; payload.whatsappPhoneId = ''; payload.usePlatformWhatsapp = false; }
       else if (platform === 'viber') { payload.viberAuthToken = ''; payload.usePlatformViber = false; }
