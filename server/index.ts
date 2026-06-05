@@ -504,6 +504,11 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
     // login (ecopro_at, ecopro_csrf, etc.), which would trigger the CSRF check and fail.
     if (p.startsWith('/api/mobile/')) return next();
 
+    // If the request carries a Bearer token (Authorization: Bearer <jwt>), it's likely
+    // the mobile app — not vulnerable to CSRF since cookies aren't the auth mechanism.
+    const authHeader = req.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) return next();
+
     const hasAuthCookie = Boolean(
       req.cookies?.[ACCESS_COOKIE] ||
         req.cookies?.[REFRESH_COOKIE] ||
