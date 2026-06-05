@@ -645,7 +645,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                       <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
                         <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>−</button>
                         <span className="font-black text-lg">{quantity}</span>
-                        <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>+</button>
+                        <button type="button" onClick={() => setQuantity(Math.min(selectedProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>+</button>
                       </div>
                     </div>
 
