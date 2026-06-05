@@ -1236,9 +1236,12 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
             String(settings.template_shipping || 'Order #{orderId} status updated: {status}'),
             {
               orderId: orderRow.id,
+              order_id: String(orderRow.id),
               status: String(status),
               trackingNumber: orderRow.tracking_number || '',
+              tracking_number: orderRow.tracking_number || '',
               customerName: orderRow.customer_name || '',
+              customer_name: orderRow.customer_name || '',
             }
           );
           // Send via Telegram

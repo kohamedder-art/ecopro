@@ -441,6 +441,7 @@ export default function AdminBotSettings() {
                       <Package className="w-3 h-3 text-emerald-500" /> {t('bot.instantOrder')}
                     </Label>
                     <p className="text-[10px] text-slate-500">{t('bot.instantOrderDesc')}</p>
+                    <p className="text-[10px] text-muted-foreground/70">المتغيرات المتاحة: {'{orderId}'}, {'{productName}'}, {'{totalPrice}'}, {'{customerName}'}, {'{customerPhone}'}, {'{address}'}, {'{quantity}'}, {'{storeName}'}</p>
                     <Textarea value={settings.templateInstantOrder || ''} onChange={(e) => updateSetting('templateInstantOrder', e.target.value)}
                       rows={8} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono" />
                   </div>
@@ -459,6 +460,7 @@ export default function AdminBotSettings() {
                       <Check className="w-3 h-3 text-green-500" /> {t('bot.orderConfirmation')}
                     </Label>
                     <p className="text-[10px] text-slate-500">{t('bot.orderConfirmationDesc')}</p>
+                    <p className="text-[10px] text-muted-foreground/70">المتغيرات المتاحة: {'{orderId}'}, {'{productName}'}, {'{totalPrice}'}, {'{customerName}'}, {'{address}'}, {'{companyName}'}</p>
                     <Textarea value={settings.templateOrderConfirmation} onChange={(e) => updateSetting('templateOrderConfirmation', e.target.value)}
                       rows={4} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
                   </div>
@@ -469,6 +471,7 @@ export default function AdminBotSettings() {
                     </Label>
                     <Textarea value={settings.templatePayment} onChange={(e) => updateSetting('templatePayment', e.target.value)}
                       rows={3} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
+                    <p className="text-[10px] text-muted-foreground/70">المتغيرات المتاحة: {'{orderId}'}, {'{totalPrice}'}, {'{customerName}'}</p>
                   </div>
 
                   <div className="space-y-1.5">
@@ -477,6 +480,7 @@ export default function AdminBotSettings() {
                     </Label>
                     <Textarea value={settings.templateShipping} onChange={(e) => updateSetting('templateShipping', e.target.value)}
                       rows={3} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
+                    <p className="text-[10px] text-muted-foreground/70">المتغيرات المتاحة: {'{orderId}'}, {'{trackingNumber}'}, {'{customerName}'}, {'{status}'}</p>
                   </div>
                 </div>
               )}

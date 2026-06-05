@@ -558,12 +558,17 @@ export async function sendDeliveryStatusNotification(params: {
 
     const message = replaceTemplateVariables(template, {
       customer_name: customerName || 'العميل',
+      customerName: customerName || 'العميل',
       order_id: String(orderId),
+      orderId: String(orderId),
       event_label: eventLabel,
+      eventLabel: eventLabel,
       description: description || '',
       location_line: locationLine,
       tracking_number: trackingNumber,
+      trackingNumber: trackingNumber,
       event_type: eventType,
+      eventType: eventType,
     });
 
     const channels: Array<'whatsapp' | 'telegram' | 'viber' | 'messenger'> = [];
