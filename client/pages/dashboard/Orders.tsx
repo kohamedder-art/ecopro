@@ -502,6 +502,7 @@ export default function OrdersAdmin() {
       cancelled: { color: '#ef4444', icon: '✕' },
       failed: { color: '#ef4444', icon: '✕' },
       at_delivery: { color: '#8b5cf6', icon: '🚚' },
+      in_delivery: { color: '#8b5cf6', icon: '🚚' },
       no_answer_1: { color: '#f59e0b', icon: '📞' },
       no_answer_2: { color: '#f59e0b', icon: '📞' },
       no_answer_3: { color: '#f59e0b', icon: '📞' },
@@ -2183,7 +2184,7 @@ export default function OrdersAdmin() {
             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
               {(() => {
                 const groups = [
-                  { label: 'Core',            keys: ['pending','confirmed','at_delivery','fake','duplicate'] },
+                  { label: 'Core',            keys: ['pending','confirmed','in_delivery','at_delivery','fake','duplicate'] },
                   { label: 'Success',         keys: ['completed','delivered'] },
                   { label: 'Failure',         keys: ['delivery_failed','returned','declined','didnt_pickup'] },
                   { label: 'Archived',        keys: ['failed','cancelled'] },
@@ -2223,7 +2224,7 @@ export default function OrdersAdmin() {
                   } catch {}
                 };
 
-                const CORE_LOCKED_KEYS = new Set(['pending','confirmed','at_delivery','completed','fake','duplicate']);
+                const CORE_LOCKED_KEYS = new Set(['pending','confirmed','in_delivery','at_delivery','completed','fake','duplicate']);
                 const StatusRow = ({ status, onDelete }: { status: any; onDelete?: () => void }) => (
                   <div className="flex items-center justify-between p-2 rounded-xl border border-border/50 bg-background">
                     <div className="flex items-center gap-2">
@@ -2247,7 +2248,7 @@ export default function OrdersAdmin() {
                     {groups.map(g => {
                       const items = g.keys.map(k => systemByKey[k]).filter(Boolean);
                       if (!items.length) return null;
-                      const CORE_LOCKED = new Set(['pending','confirmed','at_delivery','completed','fake','duplicate']);
+                      const CORE_LOCKED = new Set(['pending','confirmed','in_delivery','at_delivery','completed','fake','duplicate']);
                       return (
                         <div key={g.label} className="space-y-1.5">
                           <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">{g.label}</p>

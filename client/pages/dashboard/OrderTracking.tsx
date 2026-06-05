@@ -18,6 +18,7 @@ const STATUS_TO_STEP: Record<string, number> = {
   confirmed:            0,
   processing:           0,
   shipped:              1,
+  in_delivery:          1,   // handed off to courier, awaiting pickup
   in_transit:           2,
   at_warehouse:         3,
   out_for_delivery:     4,
@@ -60,6 +61,14 @@ interface TrackingOrder {
   note?: string;
 }
 
+interface TrackingEvent {
+  event_type: string;
+  event_status: string;
+  description: string | null;
+  location: string | null;
+  timestamp: string;
+}
+
 // ─── Custom step icon (SVG instead of emoji) ────────────────────────────────
 function StepIcon({ type, done, active, color }: { type: string; done: boolean; active: boolean; color: string }) {
   const s = "13";
@@ -74,7 +83,7 @@ function StepIcon({ type, done, active, color }: { type: string; done: boolean; 
 }
 
 // ─── Step bar component ────────────────────────────────────────────────────
-function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string }) {
+function TrackingBar({ status, updatedAt, stepTimestamps }: { status: string; updatedAt?: string; stepTimestamps?: Record<number, string> }) {
   const rawStep     = STATUS_TO_STEP[status] ?? 0;
   const isBad       = rawStep === -1;
   const currentStep = isBad ? 0 : rawStep;
@@ -90,6 +99,7 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
     at_warehouse:     "وصل المستودع • قيد الفرز",
     ready_for_pickup: "جاهز للاستلام من المستودع",
     shipped:          "الشحنة في الطريق",
+    in_delivery:      "تم التسليم لشركة التوصيل",
     in_transit:       "الشحنة في الطريق",
     picked_up:        "تم استلام الطرد من البائع",
     assigned:         "تم تعيينه لشركة التوصيل",
@@ -100,11 +110,21 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
     duplicate:        "طلب مكرر",
   };
 
+  // Helper to format a real per-step timestamp (from delivery_events)
+  const fmtStepTime = (iso?: string) => {
+    if (!iso) return null;
+    try {
+      return new Date(iso).toLocaleString("ar-DZ", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    } catch { return null; }
+  };
+
   return (
     <div className="flex-1 min-w-0 space-y-[7px] overflow-hidden">
       {/* Step nodes */}
       <div className="flex items-end justify-between gap-[2px]">
         {TRACKING_STEPS.map((step, i) => {
+          const stepTs = stepTimestamps?.[i];
+          const tsText = fmtStepTime(stepTs);
           const done   = !isBad && i < currentStep;
           const active = !isBad && i === currentStep;
           const dim = done || active ? step.color : "#d1d5db";
@@ -128,6 +148,15 @@ function TrackingBar({ status, updatedAt }: { status: string; updatedAt?: string
               >
                 {step.labelAr}
               </span>
+              {(done || active) && tsText && (
+                <span
+                  className="text-[8.5px] leading-none font-semibold tabular-nums"
+                  style={{ color: step.color, opacity: 0.75 }}
+                  title={stepTs}
+                >
+                  {tsText}
+                </span>
+              )}
             </div>
           );
         })}
@@ -219,7 +248,7 @@ function CopyIcon() { return <svg width="9" height="9" viewBox="0 0 9 9" fill="n
 function CopyCheck() { return <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><rect x="2.5" y="0.5" width="6" height="6" rx="1" stroke="#2b8a3e" strokeWidth="1"/><path d="M0.5 3V8H5.5" stroke="#2b8a3e" strokeWidth="1"/><path d="M3 5.5L4.5 7L7 4" stroke="#2b8a3e" strokeWidth="1.2" strokeLinecap="round"/></svg>; }
 
 // ─── Order row ─────────────────────────────────────────────────────────────
-function OrderRow({ order }: { order: TrackingOrder }) {
+function OrderRow({ order, events }: { order: TrackingOrder; events?: TrackingEvent[] }) {
   const [copied, setCopied] = useState<'none' | 'order' | 'tracking'>('none');
   const price = order.unit_price != null
     ? (order.unit_price * (order.quantity || 1))
@@ -228,6 +257,28 @@ function OrderRow({ order }: { order: TrackingOrder }) {
   const effectiveStatus = (order.tracking_number && order.delivery_status)
     ? order.delivery_status
     : order.status;
+
+  // Map delivery_events to per-step timestamps for the tracking bar.
+  // Steps: 0=confirmed, 1=picked_up, 2=in_transit, 3=at_hub, 4=out_for_delivery, 5=delivered
+  const stepTimestamps: Record<number, string> = {};
+  if (events) {
+    // Step 0: order placement (or 'assigned'/'uploaded' from courier) — use earliest event
+    const assignedEv = events.find(e => e.event_type === 'assigned' || e.event_type === 'uploaded' || e.event_type === 'label_generated');
+    if (assignedEv) stepTimestamps[0] = assignedEv.timestamp;
+    else if (order.created_at) stepTimestamps[0] = order.created_at;
+    const pickupEv = events.find(e => e.event_type === 'pickup' || e.event_type === 'picked_up');
+    if (pickupEv) stepTimestamps[1] = pickupEv.timestamp;
+    const transitEv = events.find(e => e.event_type === 'in_transit');
+    if (transitEv) stepTimestamps[2] = transitEv.timestamp;
+    const hubEv = events.find(e => e.event_type === 'at_hub' || e.event_type === 'at_warehouse' || e.event_type === 'ready_for_pickup');
+    if (hubEv) stepTimestamps[3] = hubEv.timestamp;
+    const ofdEv = events.find(e => e.event_type === 'out_for_delivery' || e.event_type === 'out_delivery');
+    if (ofdEv) stepTimestamps[4] = ofdEv.timestamp;
+    const delivEv = events.find(e => e.event_type === 'delivered');
+    if (delivEv) stepTimestamps[5] = delivEv.timestamp;
+  } else if (order.created_at) {
+    stepTimestamps[0] = order.created_at;
+  }
 
   const stepIdx   = STATUS_TO_STEP[effectiveStatus] ?? 0;
   const isBad     = stepIdx === -1;
@@ -307,7 +358,7 @@ function OrderRow({ order }: { order: TrackingOrder }) {
               </span>
             )}
           </div>
-          <TrackingBar status={effectiveStatus} updatedAt={order.updated_at} />
+          <TrackingBar status={effectiveStatus} updatedAt={order.updated_at} stepTimestamps={stepTimestamps} />
         </div>
       </div>
     </div>
@@ -318,6 +369,7 @@ function OrderRow({ order }: { order: TrackingOrder }) {
 export default function OrderTracking() {
   const { t } = useTranslation();
   const [orders, setOrders]         = useState<TrackingOrder[]>([]);
+  const [events, setEvents]         = useState<Record<number, TrackingEvent[]>>({});
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
   const [search, setSearch]         = useState("");
@@ -354,7 +406,35 @@ export default function OrderTracking() {
         delivery_type:    o.delivery_type,
         note:             o.note,
       }));
-      setOrders(list.filter(o => o.tracking_number));
+      const tracked = list.filter(o => o.tracking_number);
+      setOrders(tracked);
+
+      // Fetch real per-step delivery events from the courier (not the order's updated_at lie)
+      if (tracked.length > 0) {
+        try {
+          const ids = tracked.map(o => o.id).join(',');
+          const evRes = await fetch(`/api/delivery/orders/tracking-events-batch?ids=${ids}`, { credentials: "include" });
+          if (evRes.ok) {
+            const evData = await evRes.json();
+            // API returns { events: { "1": [...], "2": [...] } } keyed by order_id as string
+            const parsed: Record<number, TrackingEvent[]> = {};
+            const raw = evData.events || {};
+            for (const [oid, evts] of Object.entries(raw)) {
+              parsed[Number(oid)] = (evts as any[]).map(e => ({
+                event_type: e.event_type,
+                event_status: e.event_status,
+                description: e.description ?? null,
+                location: e.location ?? null,
+                timestamp: e.timestamp,
+              }));
+            }
+            setEvents(parsed);
+          }
+        } catch (evErr) {
+          // Non-blocking — fall back to order.updated_at
+          console.warn('[OrderTracking] Failed to load events:', evErr);
+        }
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -579,7 +659,7 @@ export default function OrderTracking() {
               </p>
             </div>
             <div className="space-y-3">
-              {paginated.map(order => <OrderRow key={order.id} order={order} />)}
+              {paginated.map(order => <OrderRow key={order.id} order={order} events={events[order.id]} />)}
             </div>
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 pt-2 pb-4">
