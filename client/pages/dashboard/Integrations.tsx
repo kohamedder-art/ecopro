@@ -148,6 +148,7 @@ export default function Integrations() {
     const payload: Record<string, any> = { provider: platform };
     if (platform === 'telegram') payload.usePlatformTelegram = true;
     else if (platform === 'facebook') { payload.usePlatformMessenger = true; payload.messengerEnabled = true; }
+    else if (platform === 'whatsapp_cloud') { payload.usePlatformWhatsapp = true; }
     saveSettings(payload, platform);
   }
 
@@ -179,6 +180,7 @@ export default function Integrations() {
   function isUsingPlatform(platform: Platform) {
     if (platform === 'facebook') return !!(settings.usePlatformMessenger || settings.messengerUsingPlatform);
     if (platform === 'telegram') return !!(settings.usePlatformTelegram || settings.telegramUsingPlatform);
+    if (platform === 'whatsapp_cloud') return !!settings.usePlatformWhatsapp;
     return false;
   }
 
@@ -186,7 +188,7 @@ export default function Integrations() {
     if (platform === 'facebook') return !!(settings.fbPageAccessTokenConfigured || settings.usePlatformMessenger || settings.messengerUsingPlatform);
     if (platform === 'instagram') return false;
     if (platform === 'telegram') return !!(settings.telegramTokenConfigured || settings.telegramUsingPlatform);
-    if (platform === 'whatsapp_cloud') return !!settings.whatsappTokenConfigured;
+    if (platform === 'whatsapp_cloud') return !!(settings.whatsappTokenConfigured || settings.usePlatformWhatsapp);
     if (platform === 'viber') return !!settings.viberAuthToken;
     return false;
   }
@@ -337,35 +339,16 @@ export default function Integrations() {
           )}
 
           {/* ── FACEBOOK ── */}
-          {activePlatform === 'facebook' && (!connected || usingPlatform) && (
-            <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{isRTL ? 'بيانات Facebook' : 'Facebook Credentials'}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">{isRTL ? 'معرف الصفحة' : 'Page ID'}</Label>
-                  <Input className="h-10 rounded-lg" value={settings.fbPageId || ''} onChange={e => updateSetting('fbPageId', e.target.value)} placeholder="123456789" />
-                  {settings.fbPageAccessTokenConfigured && !settings.fbPageId?.trim() && <p className="text-[10px] text-slate-400">{isRTL ? 'المعرف محفوظ' : 'Saved ID hidden'}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">{isRTL ? 'رمز الوصول' : 'Access Token'}</Label>
-                  <Input className="h-10 rounded-lg" type="password" value={settings.fbPageAccessToken || ''} onChange={e => updateSetting('fbPageAccessToken', e.target.value)} placeholder="EAAB..." />
-                  {settings.fbPageAccessTokenConfigured && !settings.fbPageAccessToken?.trim() && <p className="text-[10px] text-slate-400">{isRTL ? 'الرمز محفوظ' : 'Saved token hidden'}</p>}
-                </div>
+          {activePlatform === 'facebook' && !connected && settings.platformMessengerAvailable && (
+            <div className="flex items-center justify-between p-5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/50">
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{isRTL ? 'بوت المنصة' : 'Platform Bot'}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{isRTL ? 'استخدم بوت Facebook المشترك للمنصة' : 'Use the shared platform Facebook bot'}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <Button onClick={() => {
-                  if (!settings.fbPageId?.trim() || !settings.fbPageAccessToken?.trim()) { toast({ title: isRTL ? 'أدخل جميع البيانات' : 'Fill all fields', variant: 'destructive' }); return; }
-                  saveSettings({ provider: 'facebook', fbPageId: settings.fbPageId, fbPageAccessToken: settings.fbPageAccessToken, messengerEnabled: true, usePlatformMessenger: false }, 'facebook');
-                }} disabled={saving === 'facebook'} className="h-9 px-5 rounded-lg font-bold bg-[#1877F2] hover:bg-[#166ada] text-white">
-                  {saving === 'facebook' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'حفظ' : 'Save'}
-                </Button>
-                {settings.platformMessengerAvailable && (
-                  <button onClick={() => handleUsePlatformBot('facebook')} disabled={saving === 'facebook'}
-                    className="h-9 px-4 rounded-lg text-xs font-semibold border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 hover:bg-indigo-100">
-                    {isRTL ? 'استخدام بوت المنصة' : 'Use Platform Bot'}
-                  </button>
-                )}
-              </div>
+              <button onClick={() => handleUsePlatformBot('facebook')} disabled={saving === 'facebook'}
+                className="h-9 px-5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50">
+                {saving === 'facebook' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'ربط البوت' : 'Connect Bot'}
+              </button>
             </div>
           )}
 
@@ -402,31 +385,16 @@ export default function Integrations() {
           )}
 
           {/* ── WHATSAPP ── */}
-          {activePlatform === 'whatsapp_cloud' && !connected && (
-            <div className="space-y-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{isRTL ? 'بيانات WhatsApp' : 'WhatsApp Credentials'}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">{isRTL ? 'معرف الهاتف' : 'Phone Number ID'}</Label>
-                  <Input className="h-10 rounded-lg" value={settings.whatsappPhoneId || ''} onChange={e => updateSetting('whatsappPhoneId', e.target.value)} placeholder="123456789" />
-                  {settings.whatsappTokenConfigured && !settings.whatsappPhoneId?.trim() && <p className="text-[10px] text-slate-400">{isRTL ? 'المعرف محفوظ' : 'Saved ID hidden'}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">{isRTL ? 'رمز الوصول' : 'Access Token'}</Label>
-                  <Input className="h-10 rounded-lg" type="password" value={settings.whatsappToken || ''} onChange={e => updateSetting('whatsappToken', e.target.value)} placeholder="EAAB..." />
-                  {settings.whatsappTokenConfigured && !settings.whatsappToken?.trim() && <p className="text-[10px] text-slate-400">{isRTL ? 'الرمز محفوظ' : 'Saved token hidden'}</p>}
-                </div>
+          {activePlatform === 'whatsapp_cloud' && !connected && settings.platformWhatsappAvailable && (
+            <div className="flex items-center justify-between p-5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50">
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{isRTL ? 'بوت المنصة' : 'Platform Bot'}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{isRTL ? 'استخدم بوت WhatsApp المشترك للمنصة' : 'Use the shared platform WhatsApp bot'}</p>
               </div>
-              <Button onClick={() => {
-                if (!settings.whatsappPhoneId?.trim() || !settings.whatsappToken?.trim()) { toast({ title: isRTL ? 'أدخل جميع البيانات' : 'Fill all fields', variant: 'destructive' }); return; }
-                saveSettings({ provider: 'whatsapp_cloud', whatsappPhoneId: settings.whatsappPhoneId, whatsappToken: settings.whatsappToken, usePlatformWhatsapp: false }, 'whatsapp_cloud');
-              }} disabled={saving === 'whatsapp_cloud'}
-                className="w-full h-11 rounded-xl font-bold text-white bg-[#25D366] hover:bg-[#1fad52] gap-2">
-                {saving === 'whatsapp_cloud' ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                  <svg width="18" height="18" viewBox="0 0 448 512" fill="white"><path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3 18.6-68-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>
-                )}
-                {isRTL ? 'حفظ وإعداد WhatsApp' : 'Save & Connect WhatsApp'}
-              </Button>
+              <button onClick={() => handleUsePlatformBot('whatsapp_cloud')} disabled={saving === 'whatsapp_cloud'}
+                className="h-9 px-5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">
+                {saving === 'whatsapp_cloud' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'ربط البوت' : 'Connect Bot'}
+              </button>
             </div>
           )}
 
