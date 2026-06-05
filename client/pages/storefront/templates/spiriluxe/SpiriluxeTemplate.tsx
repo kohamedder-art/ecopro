@@ -48,8 +48,6 @@ export default function SpiriluxeTemplate({
   const [showBanner, setShowBanner] = useState(settings?.show_promotional_banner !== false);
   const [quantity, setQuantity] = useState(1);
   const [customerCommune, setCustomerCommune] = useState('');
-  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
-  useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
   const [customerNotes, setCustomerNotes] = useState('');
 
   // ── Product Images State ──
@@ -65,6 +63,8 @@ export default function SpiriluxeTemplate({
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
+  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+  useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
   
   useEffect(() => { 
     if (wilayas.length > 0) { 

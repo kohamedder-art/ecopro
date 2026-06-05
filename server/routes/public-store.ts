@@ -1648,7 +1648,31 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
 
     // WhatsApp - support_phone or whatsapp_display_phone (actual number stored when credentials saved)
     const whatsappPhone = String(bot.support_phone || bot.whatsapp_display_phone || '').replace(/[^0-9]/g, '');
-    const effectiveWaPhone = whatsappPhone;
+    let effectiveWaPhone = whatsappPhone;
+
+    // Fallback: if display phone is missing, try fetching from Graph API on the fly
+    if (!effectiveWaPhone && bot.whatsapp_phone_id) {
+      const waToken = bot.whatsapp_token || (bot.provider === 'whatsapp_cloud' ? String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim() : null);
+      if (waToken) {
+        try {
+          const waRes = await fetch(`https://graph.facebook.com/v25.0/${bot.whatsapp_phone_id}?fields=display_phone_number`, {
+            headers: { 'Authorization': `Bearer ${waToken}` }
+          });
+          if (waRes.ok) {
+            const waData = await waRes.json();
+            effectiveWaPhone = String(waData.display_phone_number || '').replace(/[^0-9]/g, '') || '';
+            // Persist for next time
+            if (effectiveWaPhone) {
+              await pool.query(
+                `UPDATE bot_settings SET whatsapp_display_phone = $1 WHERE client_id = $2`,
+                [effectiveWaPhone, clientId]
+              );
+            }
+          }
+        } catch { /* ignore */ }
+      }
+    }
+
     if (effectiveWaPhone) {
       // Pre-fill a branded greeting so the customer sees the store name in the first message
       const storeName = String(bot.company_name || 'المتجر').trim();
