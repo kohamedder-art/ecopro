@@ -1611,7 +1611,9 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     const fbPageId = String(bot.fb_page_id || '').trim();
     const platformFbPageId = String(process.env.PLATFORM_FB_PAGE_ID || '').trim();
     const effectivePageId = fbPageId || platformFbPageId;
-    if (bot.messenger_enabled && effectivePageId) {
+    // Show icon if: messenger_enabled is true OR using platform bot (page IDs match)
+    const isPlatformMessenger = platformFbPageId && fbPageId === platformFbPageId;
+    if ((bot.messenger_enabled || isPlatformMessenger) && effectivePageId) {
       channels.push({
         platform: 'facebook',
         url: `https://m.me/${effectivePageId}`,
@@ -1651,8 +1653,9 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     let effectiveWaPhone = whatsappPhone;
 
     // Fallback: if display phone is missing, try fetching from Graph API on the fly
+    // Works for both platform bot (provider=whatsapp_cloud, token from env) and manual credentials
     if (!effectiveWaPhone && bot.whatsapp_phone_id) {
-      const waToken = bot.whatsapp_token || (bot.provider === 'whatsapp_cloud' ? String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim() : null);
+      const waToken = bot.whatsapp_token || String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
       if (waToken) {
         try {
           const waRes = await fetch(`https://graph.facebook.com/v25.0/${bot.whatsapp_phone_id}?fields=display_phone_number`, {
@@ -1668,8 +1671,14 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
                 [effectiveWaPhone, clientId]
               );
             }
+          } else {
+            console.warn(`[ContactChannels] WhatsApp Graph API returned ${waRes.status} for client ${clientId}`);
           }
-        } catch { /* ignore */ }
+        } catch (e: any) {
+          console.warn(`[ContactChannels] WhatsApp Graph API error for client ${clientId}:`, e?.message || e);
+        }
+      } else {
+        console.warn(`[ContactChannels] No WhatsApp token available for client ${clientId} (phone_id=${bot.whatsapp_phone_id})`);
       }
     }
 
