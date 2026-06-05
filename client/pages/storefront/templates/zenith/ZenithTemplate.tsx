@@ -8,7 +8,7 @@ import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/sto
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
-import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import { isValidAlgerianPhone } from '@/lib/utils';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
@@ -158,7 +158,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
     try {
       setIsSubmitting(true);
-      const address = `${selectedWilaya?.labelAR || ''} - ${getAlgeriaCommuneById(communeId)?.name || ''}${customerAddress ? ` - ${customerAddress}` : ''}`;
+      const address = `${selectedWilaya?.labelAR || ''} - ${communeDisplayName(getAlgeriaCommuneById(communeId)!) || ''}${customerAddress ? ` - ${customerAddress}` : ''}`;
 
       const res = await fetch('/api/orders/create', {
         method: 'POST',
@@ -561,7 +561,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                         <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
                         {communes.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {c.name}
+                            {communeDisplayName(c)}
                           </option>
                         ))}
                       </select>

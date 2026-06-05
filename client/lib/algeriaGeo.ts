@@ -77,3 +77,8 @@ export function formatWilayaLabel(w: AlgeriaWilaya): string {
   const code = String(w.code).padStart(2, '0');
   return `${code} - ${w.name}`;
 }
+
+/** Returns the Arabic name if available, otherwise falls back to Latin name */
+export function communeDisplayName(c: AlgeriaCommune): string {
+  return c.arabic_name || c.name;
+}

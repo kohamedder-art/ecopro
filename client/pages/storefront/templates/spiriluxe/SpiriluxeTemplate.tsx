@@ -5,7 +5,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
 import { buildStoreUrl } from '@/lib/resolvedStore';
-import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Truck, Shield, Trash2, Plus, Home, Building2, ChevronDown } from 'lucide-react';
@@ -151,7 +151,7 @@ export default function SpiriluxeTemplate({
         delivery_type: selectedDeliveryType,
         customer_name: fd.get('name'),
         customer_phone: fd.get('phone'),
-        customer_address: [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(customerCommune)?.name || fd.get('commune') || customerCommune, fd.get('address')].filter(Boolean).join(' - '),
+        customer_address: [selectedWilaya?.labelAR || '', communeDisplayName(getAlgeriaCommuneById(customerCommune)!) || fd.get('commune') || customerCommune, fd.get('address')].filter(Boolean).join(' - '),
         customer_notes: customerNotes || fd.get('notes') || '',
         shipping_wilaya_id: selectedWilayaId,
         product_name: mainProduct.title || mainProduct.name || '',
@@ -532,7 +532,7 @@ export default function SpiriluxeTemplate({
                           onBlur={e => e.currentTarget.style.borderColor = borderColor}
                         >
                           <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
-                          {communes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                         </select>
                         <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textColor, opacity: 0.5 }} />
                       </div>

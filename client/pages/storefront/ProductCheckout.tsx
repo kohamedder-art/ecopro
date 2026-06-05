@@ -13,6 +13,7 @@ import {
   getAlgeriaCommunesByWilayaId,
   getAlgeriaWilayaById,
   getAlgeriaWilayas,
+  communeDisplayName,
 } from '@/lib/algeriaGeo';
 import {
   Select,
@@ -1562,7 +1563,7 @@ export default function ProductCheckout() {
                     disabled={!formData.wilayaId}
                     onValueChange={(nextId) => {
                       const c = getAlgeriaCommuneById(nextId);
-                      setFormData((f) => ({ ...f, communeId: nextId, city: c?.name || '' }));
+                      setFormData((f) => ({ ...f, communeId: nextId, city: communeDisplayName(c!) || '' }));
                     }}
                   >
                     <SelectTrigger className="px-3 py-2 rounded-lg border-2 border-slate-300 bg-white text-slate-900 text-sm disabled:opacity-60 h-auto focus:ring-2 focus:ring-[var(--accentRing)] focus:border-[var(--accentBorder)]">
@@ -1571,7 +1572,7 @@ export default function ProductCheckout() {
                     <SelectContent>
                       {dzCommunes.map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>
-                          {c.name}
+                          {communeDisplayName(c)}
                         </SelectItem>
                       ))}
                     </SelectContent>

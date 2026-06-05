@@ -6,7 +6,7 @@ import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/sto
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { isValidAlgerianPhone } from '@/lib/utils';
 import { buildStoreUrl } from '@/lib/resolvedStore';
-import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import {
   ShoppingBag,
   Star,
@@ -233,7 +233,7 @@ const openProduct = (product: any) => {
     }
     setIsSubmitting(true);
     try {
-      const address = [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(customerCommune)?.name || customerCommune, customerAddress].filter(Boolean).join(' - ');
+      const address = [selectedWilaya?.labelAR || '', communeDisplayName(getAlgeriaCommuneById(customerCommune)!) || customerCommune, customerAddress].filter(Boolean).join(' - ');
       const isOfferItem = selectedOffer && mainProduct.id === mainProduct.id;
       const itemPrice = selectedVariant?.price ?? mainProduct.price;
       const res = await fetch('/api/orders/create', {
@@ -621,7 +621,7 @@ const openProduct = (product: any) => {
                     <div className="relative">
                       <select required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold appearance-none disabled:opacity-50" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
                         <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
-                        {communes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                       </select>
                       <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextMuted }} />
                     </div>

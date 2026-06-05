@@ -7,7 +7,7 @@ import {
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
-import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -302,7 +302,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
     try {
       setIsSubmitting(true);
-      const address = [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(communeId)?.name || '', customerAddress].filter(Boolean).join(' - ');
+      const address = [selectedWilaya?.labelAR || '', communeDisplayName(getAlgeriaCommuneById(communeId)!) || '', customerAddress].filter(Boolean).join(' - ');
       const isOfferItem = selectedOffer && orderProduct.id === heroProduct?.id;
       const itemPrice = orderVariant?.price ?? orderProduct.price;
 
@@ -649,7 +649,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             >
                               <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
                               {communes.map((c) => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                                <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>
                               ))}
                             </select>
                             <ChevronDown size={18} className="absolute left-3 top-3.5 pointer-events-none" style={{ color: surfaceTextColor, opacity: 0.5 }} />

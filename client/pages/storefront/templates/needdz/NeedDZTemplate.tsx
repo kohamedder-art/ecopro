@@ -23,7 +23,7 @@ import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScript
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
-import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
@@ -217,7 +217,7 @@ const parseVideoEmbed = (videoUrl: string) => {
         delivery_type: selectedDeliveryType,
         customer_name: fd.get('name'),
         customer_phone: fd.get('phone'),
-        customer_address: [selectedWilaya?.labelAR, getAlgeriaCommuneById(customerCommune)?.name || customerCommune, customerAddress].filter(Boolean).join(' - '),
+        customer_address: [selectedWilaya?.labelAR, communeDisplayName(getAlgeriaCommuneById(customerCommune)!) || customerCommune, customerAddress].filter(Boolean).join(' - '),
         customer_notes: customerNotes,
         product_name: selectedProduct.title || selectedProduct.name || '',
       };
@@ -616,7 +616,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                             <div className="relative">
                               <select name="commune" required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm appearance-none disabled:opacity-50" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
                                 <option value="">{selectedWilayaId ? 'اختر...' : 'اختر الولاية أولاً'}</option>
-                                {communes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                               </select>
                               <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
                             </div>

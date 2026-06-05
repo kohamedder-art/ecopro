@@ -8,6 +8,7 @@ import {
   getAlgeriaCommunesByWilayaId,
   getAlgeriaWilayaById,
   getAlgeriaWilayas,
+  communeDisplayName,
 } from '@/lib/algeriaGeo';
 import {
   Select,
@@ -862,7 +863,7 @@ export default function Checkout() {
                       disabled={!formData.wilayaId}
                       onValueChange={(nextId) => {
                         const c = getAlgeriaCommuneById(nextId);
-                        setFormData({ ...formData, communeId: nextId, city: c?.name || '' });
+                        setFormData({ ...formData, communeId: nextId, city: c ? communeDisplayName(c) : '' });
                       }}
                     >
                       <SelectTrigger
@@ -874,7 +875,7 @@ export default function Checkout() {
                       <SelectContent>
                         {dzCommunes.map((c) => (
                           <SelectItem key={c.id} value={String(c.id)}>
-                            {c.name}
+                            {communeDisplayName(c)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1140,8 +1141,8 @@ export default function Checkout() {
                         for (const item of cart) {
                           const addressParts =
                             deliveryType === 'home'
-                              ? [formData.address, selectedCommune?.name || formData.city, selectedWilaya?.name ? selectedWilaya.name : '']
-                              : [selectedCommune?.name || formData.city, selectedWilaya?.name ? selectedWilaya.name : ''];
+                              ? [formData.address, selectedCommune ? communeDisplayName(selectedCommune) || formData.city : formData.city, selectedWilaya?.name ? selectedWilaya.name : '']
+                              : [selectedCommune ? communeDisplayName(selectedCommune) || formData.city : formData.city, selectedWilaya?.name ? selectedWilaya.name : ''];
 
                           const orderData = {
                             product_id: item.id,

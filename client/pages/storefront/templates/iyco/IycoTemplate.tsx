@@ -5,7 +5,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
 import { buildStoreUrl } from '@/lib/resolvedStore';
-import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import {
   Search,
   User,
@@ -320,7 +320,7 @@ export default function IycoTemplate({
             delivery_type: selectedDeliveryType,
             customer_name: customerName,
             customer_phone: customerPhone,
-            customer_address: [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(customerCommune)?.name || customerCommune, customerAddress].filter(Boolean).join(' - '),
+            customer_address: [selectedWilaya?.labelAR || '', communeDisplayName(getAlgeriaCommuneById(customerCommune)!) || customerCommune, customerAddress].filter(Boolean).join(' - '),
             customer_notes: customerNotes,
             shipping_wilaya_id: selectedWilayaId,
             product_name: item.name || item.title || mainProduct?.title || mainProduct?.name || '',
@@ -664,7 +664,7 @@ export default function IycoTemplate({
                     {showCommune && <div className="relative">
                       <select required disabled={!selectedWilayaId} className="w-full pl-4 pr-10 py-3 text-base md:text-sm rounded-xl outline-none appearance-none disabled:opacity-50" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${borderColor}` }} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)}>
                         <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
-                        {communes.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                        {communes.map((c) => (<option key={c.id} value={c.id}>{communeDisplayName(c)}</option>))}
                       </select>
                       <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextColor, opacity: 0.5 }} />
                     </div>}

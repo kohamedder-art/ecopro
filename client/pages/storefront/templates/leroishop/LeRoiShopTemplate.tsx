@@ -4,7 +4,7 @@ import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeli
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
-import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById } from '@/lib/algeriaGeo';
+import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
@@ -342,7 +342,7 @@ export default function LeRoiShopTemplate({
           customer_name: name,
           customer_phone: phone,
           customer_notes: fd.get('notes') as string,
-          customer_address: [selectedWilaya?.labelAR || '', getAlgeriaCommuneById(communeId)?.name || fd.get('commune'), fd.get('address')].filter(Boolean).join(' - '),
+          customer_address: [selectedWilaya?.labelAR || '', communeDisplayName(getAlgeriaCommuneById(communeId)!) || fd.get('commune'), fd.get('address')].filter(Boolean).join(' - '),
           shipping_wilaya_id: selectedWilayaId,
           product_name: activeProduct.title || activeProduct.name || '',
         }),
@@ -761,7 +761,7 @@ export default function LeRoiShopTemplate({
                           <div className="relative">
                             <select name="commune" required disabled={!selectedWilayaId} value={communeId} onChange={(e) => setCommuneId(e.target.value)} className="w-full px-4 py-3.5 rounded-xl text-base md:text-sm outline-none appearance-none transition-colors disabled:opacity-50" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: inputBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>
                               <option value="">{selectedWilayaId ? 'البلدية' : 'اختر الولاية أولاً'}</option>
-                              {communes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                              {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                             </select>
                             <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
                           </div>)}
