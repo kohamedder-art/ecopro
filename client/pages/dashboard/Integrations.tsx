@@ -343,16 +343,23 @@ export default function Integrations() {
           )}
 
           {/* ── FACEBOOK ── */}
-          {activePlatform === 'facebook' && !connected && settings.platformMessengerAvailable && (
-            <div className="flex items-center justify-between p-5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/50">
-              <div>
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{isRTL ? 'بوت المنصة' : 'Platform Bot'}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{isRTL ? 'استخدم بوت Facebook المشترك للمنصة' : 'Use the shared platform Facebook bot'}</p>
+          {activePlatform === 'facebook' && !connected && (
+            <div className="space-y-3 p-5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/50">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{isRTL ? 'بوت المنصة' : 'Platform Bot'}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{isRTL ? 'استخدم بوت Facebook المشترك للمنصة' : 'Use the shared platform Facebook bot'}</p>
+                </div>
+                <button onClick={() => handleUsePlatformBot('facebook')} disabled={saving === 'facebook'}
+                  className="h-9 px-5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50">
+                  {saving === 'facebook' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'ربط البوت' : 'Connect Bot'}
+                </button>
               </div>
-              <button onClick={() => handleUsePlatformBot('facebook')} disabled={saving === 'facebook'}
-                className="h-9 px-5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50">
-                {saving === 'facebook' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'ربط البوت' : 'Connect Bot'}
-              </button>
+              {!settings.platformMessengerAvailable && (
+                <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                  {isRTL ? '⚠️ البوت غير مهيأ على الخادم. اتصل بالدعم.' : '⚠️ Platform bot not configured on server. Contact support.'}
+                </p>
+              )}
             </div>
           )}
 
@@ -389,16 +396,23 @@ export default function Integrations() {
           )}
 
           {/* ── WHATSAPP ── */}
-          {activePlatform === 'whatsapp_cloud' && !connected && settings.platformWhatsappAvailable && (
-            <div className="flex items-center justify-between p-5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50">
-              <div>
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{isRTL ? 'بوت المنصة' : 'Platform Bot'}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{isRTL ? 'استخدم بوت WhatsApp المشترك للمنصة' : 'Use the shared platform WhatsApp bot'}</p>
+          {activePlatform === 'whatsapp_cloud' && !connected && (
+            <div className="space-y-3 p-5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{isRTL ? 'بوت المنصة' : 'Platform Bot'}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{isRTL ? 'استخدم بوت WhatsApp المشترك للمنصة' : 'Use the shared platform WhatsApp bot'}</p>
+                </div>
+                <button onClick={() => handleUsePlatformBot('whatsapp_cloud')} disabled={saving === 'whatsapp_cloud'}
+                  className="h-9 px-5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">
+                  {saving === 'whatsapp_cloud' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'ربط البوت' : 'Connect Bot'}
+                </button>
               </div>
-              <button onClick={() => handleUsePlatformBot('whatsapp_cloud')} disabled={saving === 'whatsapp_cloud'}
-                className="h-9 px-5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">
-                {saving === 'whatsapp_cloud' ? <Loader2 className="h-4 w-4 animate-spin" /> : isRTL ? 'ربط البوت' : 'Connect Bot'}
-              </button>
+              {!settings.platformWhatsappAvailable && (
+                <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                  {isRTL ? '⚠️ البوت غير مهيأ على الخادم. اتصل بالدعم.' : '⚠️ Platform bot not configured on server. Contact support.'}
+                </p>
+              )}
             </div>
           )}
 

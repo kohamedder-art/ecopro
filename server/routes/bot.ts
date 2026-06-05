@@ -308,13 +308,22 @@ export const testBotConnection: RequestHandler = async (req, res) => {
     }
 
     if (platform === 'facebook') {
-      const effectiveToken = String(s.fb_page_access_token || '').trim();
+      // If the store is on the platform bot, use the platform env var token.
+      // Otherwise use the per-store token. Either way, we need SOMETHING to test.
+      const platformToken = getPlatformFbPageAccessToken();
+      const storeToken = String(s.fb_page_access_token || '').trim();
+      const platformPageId = getPlatformFbPageId();
+      const storePageId = String(s.fb_page_id || '').trim();
+      const usingPlatform = !!platformToken && !storeToken;
+      const effectiveToken = storeToken || platformToken;
+      const effectivePageId = storePageId || platformPageId;
       if (!effectiveToken) return res.json({ success: false, error: 'No Facebook token configured' });
+      if (!effectivePageId) return res.json({ success: false, error: 'No Facebook page ID configured' });
       try {
         // /me with a Page Access Token returns the page info — no special permissions required
-        const r = await fetch(`https://graph.facebook.com/v20.0/me?fields=id,name&access_token=${effectiveToken}`);
+        const r = await fetch(`https://graph.facebook.com/v20.0/${encodeURIComponent(effectivePageId)}?fields=id,name&access_token=${effectiveToken}`);
         const d = await r.json() as any;
-        if (d.id) return res.json({ success: true, pageName: d.name, pageId: d.id });
+        if (d.id) return res.json({ success: true, pageName: d.name, pageId: d.id, usingPlatform });
         // Distinguish token expiry vs missing permissions
         const code = d.error?.code;
         const msg = d.error?.message || 'Facebook API error';
