@@ -46,9 +46,6 @@ export async function assessOrderRisk(
       return { rows: [] };
     }
   };
-  const flags: string[] = [];
-  let score = 0;
-
   const normalizedPhone = customerPhone.replace(/\D/g, '').slice(-10);
 
   // ── 1. Phone history ──
