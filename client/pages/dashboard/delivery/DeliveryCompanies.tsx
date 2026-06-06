@@ -780,65 +780,92 @@ export default function DeliveryCompanies() {
 
       {/* Configuration Dialog */}
       <Dialog open={showConfigDialog} onOpenChange={(open) => { setShowConfigDialog(open); if (!open) { setTestResult(null); setSaveError(null); setSaveSuccess(null); } }}>
-        <DialogContent className="max-w-md border-border/50 shadow-2xl sm:max-w-lg p-0 gap-0 overflow-hidden" dir="rtl">
-          {/* ── Dialog Header with gradient ── */}
-          <div className="relative bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 px-6 py-5 dark:from-slate-900 dark:to-black">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMS41IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PC9zdmc+')] opacity-50" />
-            <div className="relative flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/15 flex-shrink-0">
-                {selectedCompany?.logo.startsWith('/') ? (
-                  <DeliveryCompanyLogo name={selectedCompany?.name} alt={selectedCompany?.name} className="w-full h-full object-contain p-1.5 rounded-lg" />
-                ) : (
-                  <Truck className="w-7 h-7 text-white" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <DialogTitle className="text-lg font-extrabold text-white flex items-center gap-2 flex-wrap">
-                  {selectedCompany?.name}
-                  {selectedCompany?.id === 'dolivroo' && (
-                    <Badge className="bg-purple-500/30 text-purple-100 border border-purple-400/30 text-[10px] font-bold px-1.5 py-0">{t('delivery.aggregator')}</Badge>
+        <DialogContent className="max-w-lg border-0 shadow-2xl sm:max-w-xl p-0 gap-0 overflow-hidden rounded-2xl" dir="rtl">
+          {/* ── Hero Header ── */}
+          <div className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.15),transparent_50%)]" />
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMSIgZmlsbD0icmdiYSwyNTUsMjU1LDU1KSIvPjwvc3ZnPg==')] opacity-40" />
+            <div className="relative px-7 pt-6 pb-5">
+              <div className="flex items-start gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-2xl flex-shrink-0">
+                  {selectedCompany?.logo.startsWith('/') ? (
+                    <DeliveryCompanyLogo name={selectedCompany?.name} alt={selectedCompany?.name} className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <Truck className="w-8 h-8 text-white/80" />
                   )}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-slate-300 mt-1 leading-relaxed">
-                  {selectedCompany?.description}
-                </DialogDescription>
-                {selectedCompany && (
-                  <div className="flex items-center gap-0.5 mt-2">
-                    {[1,2,3,4,5].map(s => (
-                      <Star key={s} className={`w-3.5 h-3.5 ${ s <= selectedCompany.apiRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-600 text-slate-600'}`} />
-                    ))}
-                    <span className="text-xs text-slate-400 mr-1">{t('delivery.apiQuality')}</span>
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DialogTitle className="text-xl font-black text-white tracking-tight">
+                      {selectedCompany?.name}
+                    </DialogTitle>
+                    {selectedCompany?.id === 'dolivroo' && (
+                      <span className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 text-[10px] font-black px-2 py-0.5 rounded-full backdrop-blur-sm">{t('delivery.aggregator')}</span>
+                    )}
                   </div>
-                )}
+                  <DialogDescription className="text-sm text-slate-400 leading-relaxed line-clamp-2">
+                    {selectedCompany?.description}
+                  </DialogDescription>
+                  <div className="flex items-center gap-1.5 mt-2.5">
+                    <div className="flex items-center gap-0.5 bg-amber-500/15 border border-amber-400/20 rounded-full px-2 py-0.5">
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} className={`w-3 h-3 ${ s <= (selectedCompany?.apiRating || 0) ? 'fill-amber-400 text-amber-400' : 'fill-slate-600 text-slate-600'}`} />
+                      ))}
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-500">{t('delivery.apiQuality')}</span>
+                  </div>
+                </div>
               </div>
             </div>
+            {/* Bottom edge decoration */}
+            <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           </div>
 
-          <div className="space-y-4 px-6 py-5 max-h-[60vh] overflow-y-auto">
-            {/* Coming soon message */}
+          <div className="space-y-5 px-7 py-6 max-h-[58vh] overflow-y-auto bg-white dark:bg-gray-950">
+            {/* Coming soon */}
             {selectedCompany && !canConnectSelectedCompany && (
-              <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-5 text-center border border-gray-200 dark:border-gray-700/50">
-                <p className="text-sm font-bold mb-1 text-gray-900 dark:text-white">{t('delivery.comingSoon')}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{t('delivery.comingSoonDesc')}</p>
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-8 text-center border border-gray-100 dark:border-gray-800">
+                <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
+                  <WifiOff className="w-7 h-7 text-gray-400" />
+                </div>
+                <p className="text-base font-black text-gray-900 dark:text-white mb-1">{t('delivery.comingSoon')}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('delivery.comingSoonDesc')}</p>
               </div>
             )}
 
-            {/* ── Step indicator ── */}
+            {/* ── Step Progress ── */}
             {canConnectSelectedCompany && (
-              <div className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${testResult?.success ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-primary/10 text-primary'}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${testResult?.success ? 'bg-emerald-500' : 'bg-primary'}`}>1</span>
-                  إدخال البيانات
+              <div className="flex items-center gap-0">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${
+                    testResult?.success
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
+                  }`}>
+                    {testResult?.success ? <CheckCircle2 className="w-4 h-4" /> : '1'}
+                  </div>
+                  <span className={`text-xs font-bold ${testResult?.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
+                    إدخال البيانات
+                  </span>
                 </div>
-                <div className={`flex-1 h-0.5 rounded-full transition-colors ${testResult?.success ? 'bg-emerald-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${testResult?.success ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${testResult?.success ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-gray-600'}`}>2</span>
-                  {testResult?.success ? 'تم التحقق ✓' : 'التحقق والتفعيل'}
+                <div className={`flex-1 h-0.5 mx-3 rounded-full transition-all duration-500 ${testResult?.success ? 'bg-emerald-400' : 'bg-gray-200 dark:bg-gray-800'}`} />
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${
+                    testResult?.success
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600'
+                  }`}>
+                    {testResult?.success ? <CheckCircle2 className="w-4 h-4" /> : '2'}
+                  </div>
+                  <span className={`text-xs font-bold ${testResult?.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-600'}`}>
+                    {testResult?.success ? 'تم التحقق' : 'التفعيل'}
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* Credential Fields */}
+            {/* ── Credential Fields ── */}
             {canConnectSelectedCompany && selectedCompany?.apiFields.map((field) => {
               const isPrimaryField = isPrimaryCredentialField(selectedCompany, field.field);
               const isSavedHidden =
@@ -865,146 +892,151 @@ export default function DeliveryCompanies() {
               const label = arabicLabels[field.field] || field.label;
 
               return (
-                <div key={field.field} className="space-y-1.5">
-                  <Label htmlFor={`dlg-${field.field}`} className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                    {label}
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id={`dlg-${field.field}`}
-                      type={field.type || "text"}
-                      placeholder={placeholder}
-                      value={currentValue}
-                      onChange={(e) => { setCredentials({ ...credentials, [field.field]: e.target.value }); setTestResult(null); }}
-                      className="border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-primary/20 text-sm h-10 bg-gray-50 dark:bg-gray-800/50"
-                      dir="ltr"
-                    />
+                <div key={field.field} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`dlg-${field.field}`} className="text-sm font-black text-gray-900 dark:text-white">
+                      {label}
+                    </Label>
                     {isSavedHidden && !currentValue && (
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{t('delivery.savedHidden')}</p>
+                      <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">محفوظ</span>
                     )}
                   </div>
+                  <Input
+                    id={`dlg-${field.field}`}
+                    type={field.type || "text"}
+                    placeholder={placeholder}
+                    value={currentValue}
+                    onChange={(e) => { setCredentials({ ...credentials, [field.field]: e.target.value }); setTestResult(null); }}
+                    className="h-11 rounded-xl border-2 border-gray-200 dark:border-gray-800 focus:border-indigo-500 focus:ring-0 text-sm bg-gray-50 dark:bg-gray-900 placeholder:text-gray-400 dark:placeholder:text-gray-600 transition-colors"
+                    dir="ltr"
+                  />
                 </div>
               );
             })}
 
-            {/* ── Test Result Banner ── */}
+            {/* ── Test Result ── */}
             {testResult && (
-              <div className={`rounded-xl p-3 flex items-start gap-2.5 text-xs font-bold ${
+              <div className={`rounded-2xl p-4 flex items-start gap-3 text-sm font-bold transition-all ${
                 testResult.success
-                  ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/20 border-2 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-red-50 dark:bg-red-950/20 border-2 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300'
               }`}>
-                {testResult.success ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />}
-                <span>{testResult.message}</span>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                  testResult.success ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
+                }`}>
+                  {testResult.success ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                </div>
+                <span className="leading-relaxed">{testResult.message}</span>
               </div>
             )}
-            
-            {/* Webhook URL */}
+
+            {/* ── Webhook Section ── */}
             {selectedCompany?.features.webhooks && (
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-700/40 rounded-xl p-3.5 space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <Wifi className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                  <span className="text-xs font-bold text-amber-800 dark:text-amber-200">{t('delivery.webhookUrl')}</span>
+              <div className="rounded-2xl border-2 border-dashed border-amber-300/60 dark:border-amber-700/40 bg-gradient-to-br from-amber-50/80 to-orange-50/50 dark:from-amber-950/10 dark:to-orange-950/10 p-4 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                    <Wifi className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-amber-900 dark:text-amber-100">{t('delivery.webhookUrl')}</p>
+                    <p className="text-[11px] text-amber-600/80 dark:text-amber-400/60">{t('delivery.webhookUrlDesc', { company: selectedCompany.name })}</p>
+                  </div>
                 </div>
-                <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
-                  {t('delivery.webhookUrlDesc', { company: selectedCompany.name })}
-                </p>
                 <div className="flex gap-2">
-                  <code className="flex-1 text-[11px] bg-white/80 dark:bg-amber-950/50 px-2.5 py-2 rounded-lg border border-amber-200/60 dark:border-amber-700/40 text-amber-900 dark:text-amber-100 truncate direction-ltr text-left font-mono">
+                  <code className="flex-1 text-[11px] bg-white dark:bg-gray-900 px-3 py-2.5 rounded-xl border border-amber-200/60 dark:border-amber-800/30 text-amber-900 dark:text-amber-100 truncate direction-ltr text-left font-mono shadow-sm">
                     https://sahla4eco.com/api/delivery/webhooks/{encodeURIComponent(selectedCompany.name)}
                   </code>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 h-8 text-[11px] font-bold border-amber-200 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
+                  <button
                     onClick={() => navigator.clipboard.writeText(`https://sahla4eco.com/api/delivery/webhooks/${encodeURIComponent(selectedCompany.name)}`)}
+                    className="shrink-0 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black shadow-md shadow-amber-500/20 transition-colors"
                   >
                     {t('delivery.webhookUrlCopy')}
-                  </Button>
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Polling Note (no webhooks) */}
+            {/* ── Polling Note ── */}
             {selectedCompany && !selectedCompany.features.webhooks && selectedCompany.features.tracking && (
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-700/40 rounded-xl p-3.5 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                  <span className="text-xs font-bold text-blue-700 dark:text-blue-300">تتبع تلقائي</span>
+              <div className="rounded-2xl border-2 border-blue-200/60 dark:border-blue-800/30 bg-blue-50/80 dark:bg-blue-950/10 p-4 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
-                <p className="text-[11px] text-blue-600 dark:text-blue-400 leading-relaxed">
-                  التتبع يتم تلقائياً عبر Polling كل 3 دقائق.
-                </p>
+                <div>
+                  <p className="text-sm font-black text-blue-900 dark:text-blue-100">تتبع تلقائي</p>
+                  <p className="text-[11px] text-blue-600/70 dark:text-blue-400/50 mt-0.5">ال追踪 يتم عبر Polling كل 3 دقائق.</p>
+                </div>
               </div>
             )}
-            
-            {/* Documentation Link */}
+
+            {/* ── Docs Link ── */}
             {selectedCompany?.docsUrl && (
               <button
                 onClick={() => window.open(selectedCompany.docsUrl, '_blank')}
-                className="w-full flex items-center justify-between gap-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl p-3.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="w-full flex items-center gap-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-2xl p-4 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/10 transition-all group"
               >
-                <div className="flex gap-2.5 items-center">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Key className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                    {t('delivery.getCredentials')}
-                  </span>
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-800/40 transition-colors">
+                  <Key className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                <div className="flex-1 text-right">
+                  <p className="text-sm font-black text-gray-900 dark:text-white">{t('delivery.getCredentials')}</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-500 mt-0.5">{t('delivery.docs')}</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-indigo-500 transition-colors" />
               </button>
             )}
           </div>
 
-          {/* ── Dialog Footer ── */}
-          <div className="border-t border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/30 px-6 py-4 flex flex-row-reverse gap-3 items-center">
-            <div className="flex-1 min-w-0">
-              {saveError && (
-                <p className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5 truncate">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{saveError}
-                </p>
-              )}
-              {saveSuccess && (
-                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 truncate">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{saveSuccess}
-                </p>
-              )}
-            </div>
-            {selectedCompany?.enabled && (
+          {/* ── Footer ── */}
+          <div className="border-t-2 border-gray-100 dark:border-gray-900 bg-gray-50/80 dark:bg-gray-900/50 px-7 py-4">
+            <div className="flex items-center gap-3 flex-row-reverse">
               <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  if (selectedCompany) {
-                    handleDisable(selectedCompany.id);
-                    setShowConfigDialog(false);
-                  }
-                }}
-                className="h-9 text-xs font-bold"
+                size="default"
+                onClick={handleSaveCredentials}
+                disabled={saving || testing || !canConnectSelectedCompany}
+                className="h-11 px-6 text-sm font-black rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all disabled:opacity-50"
               >
-                <X className="w-3.5 h-3.5 ml-1.5" />
-                {t('delivery.disconnect')}
+                {(saving || testing) && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                {!saving && !testing && <CheckCircle2 className="w-4 h-4 ml-2" />}
+                {testing ? 'جاري التحقق...' : saving ? 'جاري الحفظ...' : canConnectSelectedCompany ? t('delivery.connectActivate') : t('delivery.comingSoon')}
               </Button>
-            )}
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowConfigDialog(false)}
-              className="h-9 text-xs font-bold border-gray-200 dark:border-gray-700"
-            >
-              {t('cancel')}
-            </Button>
-            <Button 
-              size="sm"
-              onClick={handleSaveCredentials}
-              disabled={saving || testing || !canConnectSelectedCompany}
-              className="h-9 text-xs font-bold bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 dark:from-slate-700 dark:to-slate-600 text-white shadow-sm"
-            >
-              {(saving || testing) && <Loader2 className="w-3.5 h-3.5 ml-1.5 animate-spin" />}
-              {!saving && !testing && <CheckCircle2 className="w-3.5 h-3.5 ml-1.5" />}
-              {testing ? 'جاري التحقق...' : saving ? 'جاري الحفظ...' : canConnectSelectedCompany ? t('delivery.connectActivate') : t('delivery.comingSoon')}
-            </Button>
+              <Button
+                variant="outline"
+                size="default"
+                onClick={() => setShowConfigDialog(false)}
+                className="h-11 px-5 text-sm font-bold rounded-xl border-2 border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                {t('cancel')}
+              </Button>
+              {selectedCompany?.enabled && (
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={() => {
+                    if (selectedCompany) {
+                      handleDisable(selectedCompany.id);
+                      setShowConfigDialog(false);
+                    }
+                  }}
+                  className="h-11 px-5 text-sm font-bold rounded-xl border-2 border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-300 dark:hover:border-red-800"
+                >
+                  <X className="w-4 h-4 ml-1.5" />
+                  {t('delivery.disconnect')}
+                </Button>
+              )}
+              <div className="flex-1">
+                {saveError && (
+                  <p className="text-xs font-bold text-red-500 flex items-center gap-1.5 truncate">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{saveError}
+                  </p>
+                )}
+                {saveSuccess && (
+                  <p className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 truncate">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{saveSuccess}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
