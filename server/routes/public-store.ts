@@ -1060,7 +1060,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
         customerIp: getClientIpXs(req),
         browserFingerprint: (req.body?.browser_fingerprint || '').trim().slice(0, 255) || undefined,
         formFillTimeMs: req.body?.form_fill_time_ms != null ? Number(req.body.form_fill_time_ms) : undefined,
-      });
+      }, client);
       fraudScore = risk.score;
       fraudLevel = risk.level;
       fraudFlags = risk.flags;

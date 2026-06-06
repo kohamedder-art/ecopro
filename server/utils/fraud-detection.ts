@@ -32,16 +32,18 @@ export async function assessOrderRisk(
   clientId: number,
   customerPhone: string,
   address?: string,
-  extraSignals?: FraudSignals
+  extraSignals?: FraudSignals,
+  dbClient?: any
 ): Promise<RiskAssessment> {
   const pool = await ensureConnection();
+  const q = dbClient ? (sql: string, params: any[]) => dbClient.query(sql, params) : (sql: string, params: any[]) => pool.query(sql, params);
   const flags: string[] = [];
   let score = 0;
 
   const normalizedPhone = customerPhone.replace(/\D/g, '').slice(-10);
 
   // ── 1. Phone history ──
-  const historyRes = await pool.query(`
+  const historyRes = await q(`
     SELECT status, COUNT(*) as count
     FROM store_orders
     WHERE client_id = $1
@@ -91,7 +93,7 @@ export async function assessOrderRisk(
   else if (history.noAnswerOrders >= 2) { score += 10; flags.push(`📵 ${history.noAnswerOrders} طلبات بدون رد`); }
 
   // ── 2. Phone velocity (24h) ──
-  const velocityRes = await pool.query(`
+  const velocityRes = await q(`
     SELECT COUNT(*) as cnt FROM store_orders
     WHERE client_id = $1
       AND REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '+', '') LIKE '%' || $2
@@ -110,23 +112,18 @@ export async function assessOrderRisk(
   }
 
   // ── 4. Blacklist ──
-  const blacklistRes = await pool.query(`
+  const blacklistRes = await q(`
     SELECT 1 FROM customer_blacklist WHERE client_id = $1 AND phone LIKE '%' || $2 LIMIT 1
   `, [clientId, normalizedPhone]);
   if (blacklistRes.rows.length > 0) { score += 60; flags.push('🚫 الرقم في القائمة السوداء'); }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // NEW SIGNALS
-  // ═══════════════════════════════════════════════════════════════════
-
+  // ── 5. IP-based signals ──
   const ip = extraSignals?.customerIp?.trim();
   const fp = extraSignals?.browserFingerprint?.trim();
   const fillTime = extraSignals?.formFillTimeMs;
 
-  // ── 5. IP-based signals ──
   if (ip) {
-    // 5a. IP velocity: same IP, multiple orders in 1h
-    const ipVelocityRes = await pool.query(`
+    const ipVelocityRes = await q(`
       SELECT COUNT(*) as cnt FROM store_orders
       WHERE client_id = $1 AND customer_ip = $2
         AND created_at > NOW() - INTERVAL '1 hour'
@@ -140,8 +137,7 @@ export async function assessOrderRisk(
       flags.push(`🌐 ${ipOrders} طلب من نفس الـ IP`);
     }
 
-    // 5b. IP-phone mismatch: same IP used with different phones recently
-    const ipMismatchRes = await pool.query(`
+    const ipMismatchRes = await q(`
       SELECT COUNT(DISTINCT customer_phone) as phones FROM store_orders
       WHERE client_id = $1 AND customer_ip = $2
         AND customer_phone IS NOT NULL AND customer_phone != ''
@@ -153,8 +149,7 @@ export async function assessOrderRisk(
       flags.push(`👥 ${distinctPhones} أرقام مختلفة من نفس الـ IP`);
     }
 
-    // 5c. Check ip_intelligence for VPN/proxy/datacenter
-    const ipIntelRes = await pool.query(`
+    const ipIntelRes = await q(`
       SELECT is_vpn, is_proxy, is_tor, is_datacenter, fraud_score
       FROM ip_intelligence WHERE ip = $1
     `, [ip]);
@@ -177,8 +172,7 @@ export async function assessOrderRisk(
 
   // ── 6. Browser fingerprint signals ──
   if (fp) {
-    // 6a. Fingerprint-phone mismatch: same fingerprint, different phones
-    const fpPhonesRes = await pool.query(`
+    const fpPhonesRes = await q(`
       SELECT COUNT(DISTINCT customer_phone) as phones FROM store_orders
       WHERE client_id = $1 AND browser_fingerprint = $2
         AND customer_phone IS NOT NULL AND customer_phone != ''
@@ -190,8 +184,7 @@ export async function assessOrderRisk(
       flags.push(`🖥️ بصمة متصفح مشتركة مع ${fpPhones} أرقام مختلفة`);
     }
 
-    // 6b. Fingerprint velocity: same fingerprint, multiple orders
-    const fpVelocityRes = await pool.query(`
+    const fpVelocityRes = await q(`
       SELECT COUNT(*) as cnt FROM store_orders
       WHERE client_id = $1 AND browser_fingerprint = $2
         AND created_at > NOW() - INTERVAL '1 hour'
@@ -205,8 +198,7 @@ export async function assessOrderRisk(
       flags.push(`🖥️ ${fpOrders} طلب من نفس البصمة`);
     }
 
-    // 6c. Cross-store: same fingerprint used at different stores
-    const fpCrossStoreRes = await pool.query(`
+    const fpCrossStoreRes = await q(`
       SELECT COUNT(DISTINCT client_id) as stores FROM store_orders
       WHERE browser_fingerprint = $1
         AND client_id != $2
@@ -220,7 +212,7 @@ export async function assessOrderRisk(
   }
 
   // ── 7. Form fill time ──
-    if (fillTime != null && fillTime >= 0) {
+  if (fillTime != null && fillTime >= 0) {
     if (fillTime < 2000) {
       score += 30;
       flags.push(`⚡ طلب فوري خلال ${fillTime}ms (احتمال بوت)`);
@@ -231,7 +223,7 @@ export async function assessOrderRisk(
   }
 
   // ── 8. Cross-store phone velocity ──
-  const crossStoreRes = await pool.query(`
+  const crossStoreRes = await q(`
     SELECT COUNT(DISTINCT client_id) as stores FROM store_orders
     WHERE REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '+', '') LIKE '%' || $1
       AND client_id != $2
