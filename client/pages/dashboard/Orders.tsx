@@ -1312,66 +1312,73 @@ export default function OrdersAdmin() {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right">
-                      {(() => {
-                        const statusInfo = getStatusDisplay(o.status);
-                        const hasFraud = o.fraud_score > 0 && o.fraud_flags?.length > 0;
-                        return (
-                          <span className="inline-flex items-center gap-1">
-                            <span 
-                              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border whitespace-nowrap"
-                              style={{ 
-                                backgroundColor: `${statusInfo.color}25`,
-                                borderColor: `${statusInfo.color}60`,
-                                color: statusInfo.color,
-                              }}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusInfo.color }} />
-                              {statusInfo.icon} {statusInfo.name}
-                            </span>
-                            {hasFraud && (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500/15 text-red-500 border border-red-500/30 hover:bg-red-500/25 transition-colors">
-                                    <Info className="h-2.5 w-2.5" />
-                                  </button>
-                                </PopoverTrigger>
-                                <PopoverContent side="left" className="w-72 p-3 text-xs">
-                                  <div className="font-bold text-sm mb-1.5 flex items-center gap-2">
-                                    <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
-                                    تحليل الاحتيال
-                                  </div>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-muted-foreground">النقاط:</span>
-                                    <span className={`font-bold ${o.fraud_score >= 70 ? 'text-red-500' : o.fraud_score >= 50 ? 'text-orange-500' : o.fraud_score >= 25 ? 'text-amber-500' : 'text-green-500'}`}>
-                                      {o.fraud_score}/100
-                                    </span>
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                      o.fraud_level === 'critical' ? 'bg-red-500/15 text-red-500' :
-                                      o.fraud_level === 'high' ? 'bg-orange-500/15 text-orange-500' :
-                                      o.fraud_level === 'medium' ? 'bg-amber-500/15 text-amber-500' :
-                                      'bg-green-500/15 text-green-500'
-                                    }`}>
-                                      {o.fraud_level === 'critical' ? 'حرج' :
-                                       o.fraud_level === 'high' ? 'عالي' :
-                                       o.fraud_level === 'medium' ? 'متوسط' : 'منخفض'}
-                                    </span>
-                                  </div>
-                                  {o.fraud_flags?.length > 0 && (
-                                    <ul className="space-y-1">
-                                      {o.fraud_flags.map((flag: string, i: number) => (
-                                        <li key={i} className="flex items-start gap-1.5 text-muted-foreground leading-tight">
-                                          <span className="mt-0.5 shrink-0">•</span>
-                                          <span>{flag}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  )}
-                                </PopoverContent>
-                              </Popover>
-                            )}
-                          </span>
-                        );
-                      })()}
+                        {(() => {
+                          const statusInfo = getStatusDisplay(o.status);
+                          const hasFraud = o.fraud_score > 0 && o.fraud_flags?.length > 0;
+                          return (
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="inline-flex items-center gap-1">
+                                <span 
+                                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border whitespace-nowrap"
+                                  style={{ 
+                                    backgroundColor: `${statusInfo.color}25`,
+                                    borderColor: `${statusInfo.color}60`,
+                                    color: statusInfo.color,
+                                  }}
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusInfo.color }} />
+                                  {statusInfo.icon} {statusInfo.name}
+                                </span>
+                                {hasFraud && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500/15 text-red-500 border border-red-500/30 hover:bg-red-500/25 transition-colors" title="تفاصيل الاحتيال">
+                                        <Info className="h-3 w-3" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent side="left" className="w-72 p-3 text-xs">
+                                      <div className="font-bold text-sm mb-1.5 flex items-center gap-2">
+                                        <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
+                                        تحليل الاحتيال
+                                      </div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-muted-foreground">النقاط:</span>
+                                        <span className={`font-bold ${o.fraud_score >= 70 ? 'text-red-500' : o.fraud_score >= 50 ? 'text-orange-500' : o.fraud_score >= 25 ? 'text-amber-500' : 'text-green-500'}`}>
+                                          {o.fraud_score}/100
+                                        </span>
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                          o.fraud_level === 'critical' ? 'bg-red-500/15 text-red-500' :
+                                          o.fraud_level === 'high' ? 'bg-orange-500/15 text-orange-500' :
+                                          o.fraud_level === 'medium' ? 'bg-amber-500/15 text-amber-500' :
+                                          'bg-green-500/15 text-green-500'
+                                        }`}>
+                                          {o.fraud_level === 'critical' ? 'حرج' :
+                                           o.fraud_level === 'high' ? 'عالي' :
+                                           o.fraud_level === 'medium' ? 'متوسط' : 'منخفض'}
+                                        </span>
+                                      </div>
+                                      {o.fraud_flags?.length > 0 && (
+                                        <ul className="space-y-1">
+                                          {o.fraud_flags.map((flag: string, i: number) => (
+                                            <li key={i} className="flex items-start gap-1.5 text-muted-foreground leading-tight">
+                                              <span className="mt-0.5 shrink-0">•</span>
+                                              <span>{flag}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
+                              </span>
+                              {hasFraud && (
+                                <span className="text-[10px] text-muted-foreground leading-tight max-w-[200px] truncate" title={(o.fraud_flags || []).join(' | ')}>
+                                  ⚠️ {(o.fraud_flags || []).slice(0, 2).join(' • ')}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right text-foreground/50 text-xs font-medium" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
                     <td className="px-3 py-2.5 text-right">
@@ -1577,8 +1584,8 @@ export default function OrdersAdmin() {
                     </div>
                   </div>
                   <div className="h-px bg-border/50 mx-3" />
-                  <div className="flex items-center justify-between px-3 py-2 gap-2">
-                    <span className="inline-flex items-center gap-1">
+                  <div className="flex flex-col items-start px-3 py-2 gap-1">
+                    <div className="flex items-center gap-1">
                       <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
                             style={{ backgroundColor: `${s.color}25`, borderColor: `${s.color}60`, color: s.color }}>
                         {s.icon} {s.name}
@@ -1586,8 +1593,8 @@ export default function OrdersAdmin() {
                       {o.fraud_score > 0 && o.fraud_flags?.length > 0 && (
                         <Popover>
                           <PopoverTrigger asChild>
-                            <button className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-red-500/15 text-red-500 border border-red-500/30 hover:bg-red-500/25 transition-colors">
-                              <Info className="h-2 w-2" />
+                            <button className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500/15 text-red-500 border border-red-500/30 hover:bg-red-500/25 transition-colors">
+                              <Info className="h-2.5 w-2.5" />
                             </button>
                           </PopoverTrigger>
                           <PopoverContent side="top" className="w-72 p-3 text-xs">
@@ -1624,7 +1631,12 @@ export default function OrdersAdmin() {
                           </PopoverContent>
                         </Popover>
                       )}
-                    </span>
+                    </div>
+                    {o.fraud_score > 0 && o.fraud_flags?.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[220px]" title={(o.fraud_flags || []).join(' | ')}>
+                        ⚠️ {(o.fraud_flags || []).slice(0, 2).join(' • ')}
+                      </span>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground/50 mr-1">{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</span>
                       {o.phone && (
