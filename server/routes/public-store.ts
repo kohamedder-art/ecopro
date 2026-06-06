@@ -1707,6 +1707,8 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     // Need phone number for wa.me link — support_phone, whatsapp_display_phone, or Graph API
     const supportPhone = String(bot.support_phone || '').replace(/[^0-9]/g, '');
     let effectiveWaPhone = supportPhone || String(bot.whatsapp_display_phone || '').replace(/[^0-9]/g, '');
+
+    // If no phone yet, try Graph API with platform token
     if (whatsappConnected && !effectiveWaPhone && storedWhatsappPhoneId) {
       const waToken = storedWhatsappToken || platformWhatsappAccessToken;
       if (waToken) {
@@ -1726,6 +1728,30 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
           }
         } catch { /* graph API transient failure */ }
       }
+    }
+
+    // Fallback: if whatsapp_phone_id itself looks like a phone number (all digits, 8+ chars), use it directly
+    if (whatsappConnected && !effectiveWaPhone && storedWhatsappPhoneId && /^\d{8,}$/.test(storedWhatsappPhoneId)) {
+      effectiveWaPhone = storedWhatsappPhoneId;
+    }
+
+    // Fallback: check store settings contact_phone
+    if (whatsappConnected && !effectiveWaPhone) {
+      try {
+        const storeSettingsFallback = await pool.query(
+          `SELECT template_settings, global_settings FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
+          [clientId]
+        );
+        if (storeSettingsFallback.rows.length) {
+          const ts = storeSettingsFallback.rows[0].template_settings || {};
+          const gs = storeSettingsFallback.rows[0].global_settings || {};
+          const merged = { ...gs, ...ts };
+          const fallbackPhone = String(merged.contact_phone || '').replace(/[^0-9]/g, '');
+          if (fallbackPhone && fallbackPhone.length >= 8) {
+            effectiveWaPhone = fallbackPhone;
+          }
+        }
+      } catch { /* ignore */ }
     }
 
     if (whatsappConnected && effectiveWaPhone) {
