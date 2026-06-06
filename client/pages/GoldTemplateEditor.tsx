@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createRoot } from 'react-dom/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -124,6 +124,11 @@ export default function GoldTemplateEditor() {
     return match ? decodeURIComponent(match[1]) : '';
   };
   const [settings, setSettings] = useState<StoreSettings>({});
+
+  // Ref to always have the latest settings for handleSave (avoids stale closure
+  // when postMessage from iframe hasn't been processed yet at click time)
+  const settingsRef = useRef<StoreSettings>(settings);
+  settingsRef.current = settings;
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [activeTab, setActiveTab] = useState<'preview' | 'settings'>('preview');
 
@@ -569,8 +574,11 @@ export default function GoldTemplateEditor() {
     setSuccess(null);
 
     try {
+      // Use ref to get the absolute latest settings (postMessage from iframe may not be flushed yet)
+      const currentSettings = { ...settingsRef.current };
+
       // Strip / upload any base64 images before sending
-      const cleanedSettings = await sanitizeSettingsImages(settings);
+      const cleanedSettings = await sanitizeSettingsImages(currentSettings);
 
       // "Publish Changes" means the store should go live
       cleanedSettings.is_public = true;

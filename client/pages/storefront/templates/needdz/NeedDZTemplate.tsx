@@ -260,7 +260,7 @@ const parseVideoEmbed = (videoUrl: string) => {
         {(showCountdown || canManage) && (
         <div className="text-white px-4 py-2 text-[11px] font-bold flex justify-between items-center sticky top-0 z-50 relative overflow-visible" style={{ backgroundColor: accentColor }} data-edit-path="countdown-header">
           {canManage && (
-              <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+              <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
                   <button
                       onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'needdz_show_countdown', value: !showCountdown }, '*')}
                       className="flex items-center gap-1 font-bold"
@@ -310,7 +310,7 @@ const parseVideoEmbed = (videoUrl: string) => {
           {(showTrustBanner || canManage) && (
           <div className="relative overflow-visible" data-edit-path="trust-banner">
             {canManage && (
-                <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+                <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
                     <button
                         onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'needdz_show_trust', value: !showTrustBanner }, '*')}
                         className="flex items-center gap-1 font-bold"
@@ -468,7 +468,7 @@ const parseVideoEmbed = (videoUrl: string) => {
           {(showSocialProof || canManage) && (
           <section className="px-6 py-10 bg-slate-900 text-white rounded-t-[40px] mt-10 relative overflow-visible" data-edit-path="social-proof">
             {canManage && (
-                <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+                <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
                     <button
                         onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'needdz_show_social', value: !showSocialProof }, '*')}
                         className="flex items-center gap-1 font-bold"

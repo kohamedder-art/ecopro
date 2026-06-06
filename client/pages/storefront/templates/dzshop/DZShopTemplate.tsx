@@ -342,7 +342,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             {(showBanner || canManage) && (
             <div className="text-white text-center py-2 text-sm font-bold relative overflow-visible" style={{ backgroundColor: 'var(--dz-primary)' }} data-edit-path="top-notice">
                 {canManage && (
-                    <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-50">
+                    <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
                         <button
                             onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'dzshop_show_banner', value: !showBanner }, '*')}
                             className="flex items-center gap-1 font-bold"
@@ -460,7 +460,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     {(showTrustBadges || canManage) && (
                     <div className="hidden md:grid grid-cols-3 gap-4 py-6 border-t border-gray-100 relative overflow-visible" data-edit-path="trust-badges">
                         {canManage && (
-                            <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+                            <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
                                 <button
                                     onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'dzshop_show_trust', value: !showTrustBadges }, '*')}
                                     className="flex items-center gap-1 font-bold"
