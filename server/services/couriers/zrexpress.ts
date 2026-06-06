@@ -591,4 +591,19 @@ export class ZRExpressOfficialService implements CourierService {
 
     return statusMap[statusLower] || statusMap[zrStatus] || 'unknown';
   }
+
+  async testCredentials(apiKey: string, tenantId?: string): Promise<import('../courier-service').CourierTestResult> {
+    if (!tenantId) {
+      return { success: false, message: 'ZR Express requires Tenant ID (second field)' };
+    }
+    try {
+      const territories = await this.fetchTerritories(apiKey, tenantId);
+      if (territories.length === 0) {
+        return { success: false, message: 'Invalid API Key or Tenant ID — no territories returned' };
+      }
+      return { success: true, message: `ZR Express connected — ${territories.length} territories available` };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to ZR Express API' };
+    }
+  }
 }

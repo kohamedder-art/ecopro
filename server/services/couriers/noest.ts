@@ -296,4 +296,30 @@ export class NoestService implements CourierService {
       description: payload?.description,
     };
   }
+
+  async testCredentials(apiKey: string, guid?: string): Promise<import('../courier-service').CourierTestResult> {
+    if (!guid) {
+      return { success: false, message: 'Noest requires GUID (second field)' };
+    }
+    try {
+      const response = await this.postJson('/api/public/get/trackings/info', {
+        api_token: apiKey,
+        user_guid: guid,
+        trackings: ['TEST'],
+      });
+      const { json } = await this.readApiResponse(response);
+      const data = json ?? {};
+      // Noest returns error messages for invalid tokens
+      if (data?.message && /invalid|unauthorized|token|expired/i.test(String(data.message))) {
+        return { success: false, message: `Noest: ${data.message}` };
+      }
+      if (!response.ok && response.status >= 400 && response.status < 500) {
+        return { success: false, message: data?.message || data?.error || `Noest API error ${response.status}` };
+      }
+      // 200 with any response = credentials are valid
+      return { success: true, message: 'Noest credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Noest API' };
+    }
+  }
 }

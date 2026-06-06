@@ -1,10 +1,9 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Truck, Key, CheckCircle2, X, ExternalLink, Zap, Wifi, WifiOff, Settings2, Star } from "lucide-react";
+import { Truck, Key, CheckCircle2, X, ExternalLink, Zap, Wifi, WifiOff, Settings2, Star, Loader2, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "@/lib/i18n";
 import { DELIVERY_LOGO_FALLBACK_SRC, getDeliveryCompanyLogoSrc } from "@/lib/deliveryLogos";
@@ -55,6 +54,8 @@ export default function DeliveryCompanies() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [companyIdByName, setCompanyIdByName] = useState<Record<string, number>>({});
   const [integrationMetaByCompanyId, setIntegrationMetaByCompanyId] = useState<
     Record<number, { is_enabled: boolean; has_api_key: boolean; has_api_secret: boolean; updated_at?: string; configured_at?: string }>
@@ -451,10 +452,52 @@ export default function DeliveryCompanies() {
   const handleCardClick = (company: DeliveryCompany) => {
     setSelectedCompany(company);
     setCredentials({});
+    setTestResult(null);
     if (!isComingSoon(company)) {
-      setShowConfigDialog(true); // Allow opening config dialog for allowed companies
+      setShowConfigDialog(true);
     } else {
       setShowConfigDialog(false);
+    }
+  };
+
+  const handleTestCredentials = async () => {
+    if (!selectedCompany) return;
+    setTesting(true);
+    setTestResult(null);
+    setSaveError(null);
+    setSaveSuccess(null);
+    try {
+      const { apiKey, apiSecret } = (() => {
+        const id = selectedCompany.id;
+        if (id === 'yalidine') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiId || '').trim() || undefined };
+        if (id === 'guepex') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
+        if (id === 'zr-express') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.apiId || '').trim() || undefined };
+        if (id === 'ecotrack') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiUrl || '').trim() || undefined };
+        if (id === 'maystro') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.storeId || '').trim() || undefined };
+        if (id === 'dolivroo') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.connectionLabel || '').trim() || undefined };
+        if (id === 'noest') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
+        if (id === 'zimou-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: undefined };
+        if (id === 'anderson') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.accountId || '').trim() || undefined };
+        if (id === 'dhd') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
+        if (id === 'ecom-delivery') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.apiToken || '').trim() || undefined };
+        if (id === 'mdm-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.storeId || '').trim() || undefined };
+        return { apiKey: (credentials.apiToken || credentials.apiKey || '').trim(), apiSecret: undefined };
+      })();
+      if (!apiKey) {
+        setTestResult({ success: false, message: 'Please enter your API credentials first' });
+        return;
+      }
+      const res = await fetch('/api/delivery/integrations/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delivery_company_name: selectedCompany.name, api_key: apiKey, api_secret: apiSecret }),
+      });
+      const data = await res.json();
+      setTestResult({ success: Boolean(data.success), message: data.message || (data.success ? 'Connection successful' : 'Connection failed') });
+    } catch (e: any) {
+      setTestResult({ success: false, message: e?.message || 'Failed to test connection' });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -473,95 +516,25 @@ export default function DeliveryCompanies() {
 
       const existing = integrationMetaByCompanyId[dbId];
 
-      // Map UI credentials → backend schema
-      // - api_key: primary token
-      // - api_secret: secondary credential (e.g., GUID / API ID / Account ID / Store ID / Secret Key)
       const { apiKey, apiSecret, merchantId } = (() => {
         const id = selectedCompany.id;
-        if (id === 'yalidine') {
-          return {
-            apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: (credentials.apiId || '').trim() || undefined,
-          };
-        }
-        if (id === 'guepex') {
-          return {
-            apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: (credentials.apiKey || '').trim() || undefined,
-          };
-        }
-        if (id === 'zr-express') {
-          return {
-            apiKey: (credentials.apiKey || '').trim(),
-            apiSecret: (credentials.apiId || '').trim() || undefined,
-          };
-        }
-        if (id === 'ecotrack') {
-          return {
-            apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: undefined,
-            merchantId: (credentials.apiUrl || '').trim() || undefined,
-          };
-        }
-        if (id === 'maystro') {
-          return {
-            apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: (credentials.storeId || '').trim() || undefined,
-          };
-        }
-        if (id === 'dolivroo') {
-          return {
-            apiKey: (credentials.apiKey || '').trim(),
-            apiSecret: (credentials.connectionLabel || '').trim() || undefined,
-          };
-        }
-        if (id === 'noest') {
-          return {
-            apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: (credentials.apiKey || '').trim() || undefined,
-          };
-        }
-        if (id === 'zimou-express') {
-          return {
-            apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: undefined,
-          };
-        }
-        if (id === 'anderson') {
-          return {
-            apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: (credentials.accountId || '').trim() || undefined,
-          };
-        }
-        if (id === 'dhd') {
-          return {
-            apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: (credentials.apiKey || '').trim() || undefined,
-          };
-        }
-
-        if (id === 'ecom-delivery') {
-          return {
-            apiKey: (credentials.apiKey || '').trim(),
-            apiSecret: (credentials.apiToken || '').trim() || undefined,
-            merchantId: undefined,
-          };
-        }
-        if (id === 'mdm-express') {
-          return {
-            apiKey: (credentials.apiToken || '').trim(),
-            apiSecret: (credentials.productId || '').trim() || undefined,
-            merchantId: (credentials.storeId || '').trim() || undefined,
-          };
-        }
-        // Generic fallback
+        if (id === 'yalidine') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiId || '').trim() || undefined };
+        if (id === 'guepex') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
+        if (id === 'zr-express') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.apiId || '').trim() || undefined };
+        if (id === 'ecotrack') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: undefined, merchantId: (credentials.apiUrl || '').trim() || undefined };
+        if (id === 'maystro') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.storeId || '').trim() || undefined };
+        if (id === 'dolivroo') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.connectionLabel || '').trim() || undefined };
+        if (id === 'noest') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
+        if (id === 'zimou-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: undefined };
+        if (id === 'anderson') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.accountId || '').trim() || undefined };
+        if (id === 'dhd') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
+        if (id === 'ecom-delivery') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.apiToken || '').trim() || undefined };
+        if (id === 'mdm-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.productId || '').trim() || undefined, merchantId: (credentials.storeId || '').trim() || undefined };
         const primary = (credentials.apiToken || credentials.apiKey || '').trim();
-        const secondary =
-          (credentials.apiId || credentials.accountId || credentials.storeId || credentials.secretKey || '').trim() || undefined;
+        const secondary = (credentials.apiId || credentials.accountId || credentials.storeId || credentials.secretKey || '').trim() || undefined;
         return { apiKey: primary, apiSecret: secondary, merchantId: undefined };
       })();
 
-      // If already configured, don't force re-entry. Secrets are intentionally not shown.
       if (!apiKey) {
         if (existing?.is_enabled && existing?.has_api_key) {
           setSaveSuccess('Already connected (credentials are saved and hidden).');
@@ -571,25 +544,33 @@ export default function DeliveryCompanies() {
         throw new Error('API Token is required');
       }
 
-      // Noest and DHD require GUID/user_guid.
       const isNoest = selectedCompany.id === 'noest' || selectedCompany.name.trim().toLowerCase() === 'noest';
       const isDhd = selectedCompany.id === 'dhd' || selectedCompany.name.trim().toLowerCase().includes('dhd');
       const isMdm = selectedCompany.id === 'mdm-express' || selectedCompany.name.trim().toLowerCase().includes('mdm');
       if ((isNoest || isDhd) && !apiSecret) {
-        if (existing?.is_enabled && existing?.has_api_secret) {
-          // Allow keeping the saved GUID if user isn't changing it.
-        } else {
-          throw new Error('GUID is required');
-        }
+        if (!(existing?.is_enabled && existing?.has_api_secret)) throw new Error('GUID is required');
       }
       if (isMdm && !apiSecret) {
-        if (existing?.is_enabled && existing?.has_api_secret) {
-          // Allow keeping saved Product Tracking ID if user is not updating it.
-        } else {
-          throw new Error('MDM Product Tracking ID is required');
-        }
+        if (!(existing?.is_enabled && existing?.has_api_secret)) throw new Error('MDM Product Tracking ID is required');
       }
 
+      // ── Step 1: Test credentials against the courier API ──
+      if (!testResult?.success || testResult?.message?.includes('Already connected')) {
+        setSaving(true);
+        const testRes = await fetch('/api/delivery/integrations/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ delivery_company_name: selectedCompany.name, api_key: apiKey, api_secret: apiSecret }),
+        });
+        const testBody = await testRes.json().catch(() => ({}));
+        if (!testBody.success) {
+          setTestResult({ success: false, message: testBody.message || 'Credentials are invalid' });
+          throw new Error(testBody.message || 'Invalid credentials — please check your API key and try again');
+        }
+        setTestResult({ success: true, message: testBody.message || 'Connection successful' });
+      }
+
+      // ── Step 2: Save valid credentials ──
       const res = await fetch('/api/delivery/integrations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -804,17 +785,13 @@ export default function DeliveryCompanies() {
       </div>
 
       {/* Configuration Dialog */}
-      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+      <Dialog open={showConfigDialog} onOpenChange={(open) => { setShowConfigDialog(open); if (!open) { setTestResult(null); setSaveError(null); setSaveSuccess(null); } }}>
         <DialogContent className="max-w-md border-border/50 shadow-xl sm:max-w-lg" dir="rtl">
           <DialogHeader className="space-y-3 pb-4 border-b border-border/50">
             <div className="flex items-start gap-3">
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center flex-shrink-0 border border-primary/20">
                 {selectedCompany?.logo.startsWith('/') ? (
-                  <DeliveryCompanyLogo
-                    name={selectedCompany?.name}
-                    alt={selectedCompany?.name}
-                    className="w-full h-full object-contain p-2 rounded-lg"
-                  />
+                  <DeliveryCompanyLogo name={selectedCompany?.name} alt={selectedCompany?.name} className="w-full h-full object-contain p-2 rounded-lg" />
                 ) : (
                   <Truck className="w-7 h-7 text-primary" />
                 )}
@@ -823,9 +800,7 @@ export default function DeliveryCompanies() {
                 <DialogTitle className="text-lg font-bold flex items-center gap-2 flex-wrap text-foreground">
                   {selectedCompany?.name}
                   {selectedCompany?.id === 'dolivroo' && (
-                    <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 text-xs">
-                      {t('delivery.aggregator')}
-                    </Badge>
+                    <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 text-xs">{t('delivery.aggregator')}</Badge>
                   )}
                 </DialogTitle>
                 <DialogDescription className="text-sm mt-1.5 leading-relaxed text-foreground/80">
@@ -841,12 +816,27 @@ export default function DeliveryCompanies() {
             </div>
           </DialogHeader>
 
-          <div className="space-y-5 py-5 max-h-[65vh] overflow-y-auto">
+          <div className="space-y-4 py-4 max-h-[65vh] overflow-y-auto">
             {/* Coming soon message */}
             {selectedCompany && !canConnectSelectedCompany && (
               <div className="bg-muted/50 rounded-xl p-5 text-center">
                 <p className="text-base font-bold mb-1">{t('delivery.comingSoon')}</p>
                 <p className="text-sm text-foreground/80">{t('delivery.comingSoonDesc')}</p>
+              </div>
+            )}
+
+            {/* ── Step indicator ── */}
+            {canConnectSelectedCompany && (
+              <div className="flex items-center gap-2 text-xs">
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold ${testResult?.success ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-primary/10 text-primary'}`}>
+                  <span className="w-4 h-4 rounded-full bg-current text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                  إدخال البيانات
+                </div>
+                <div className={`flex-1 h-px ${testResult?.success ? 'bg-emerald-400' : 'bg-border'}`} />
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold ${testResult?.success ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
+                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${testResult?.success ? 'bg-current text-white' : 'bg-current text-white'}`}>2</span>
+                  {testResult?.success ? 'تم التحقق ✓' : 'التحقق والتفعيل'}
+                </div>
               </div>
             )}
 
@@ -877,25 +867,39 @@ export default function DeliveryCompanies() {
               const label = arabicLabels[field.field] || field.label;
 
               return (
-                <div key={field.field} className="space-y-2">
+                <div key={field.field} className="space-y-1.5">
                   <Label htmlFor={field.field} className="text-sm font-semibold text-foreground">
                     {label}
                   </Label>
-                  <Input
-                    id={field.field}
-                    type={field.type || "text"}
-                    placeholder={placeholder}
-                    value={currentValue}
-                    onChange={(e) => setCredentials({ ...credentials, [field.field]: e.target.value })}
-                    className="border-border focus:border-primary focus:ring-primary/20 text-sm"
-                    dir="ltr"
-                  />
-                  {isSavedHidden && !currentValue && (
-                    <p className="text-xs text-muted-foreground">{t('delivery.savedHidden')}</p>
-                  )}
+                  <div className="relative">
+                    <Input
+                      id={field.field}
+                      type={field.type || "text"}
+                      placeholder={placeholder}
+                      value={currentValue}
+                      onChange={(e) => { setCredentials({ ...credentials, [field.field]: e.target.value }); setTestResult(null); }}
+                      className="border-border focus:border-primary focus:ring-primary/20 text-sm"
+                      dir="ltr"
+                    />
+                    {isSavedHidden && !currentValue && (
+                      <p className="text-xs text-muted-foreground mt-1">{t('delivery.savedHidden')}</p>
+                    )}
+                  </div>
                 </div>
               );
             })}
+
+            {/* ── Test Result Banner ── */}
+            {testResult && (
+              <div className={`rounded-xl p-3 flex items-start gap-2.5 text-sm font-medium ${
+                testResult.success
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300/60 dark:border-emerald-700/50 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-red-50 dark:bg-red-950/30 border border-red-300/60 dark:border-red-700/50 text-red-800 dark:text-red-200'
+              }`}>
+                {testResult.success ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />}
+                <span>{testResult.message}</span>
+              </div>
+            )}
             
             {/* Webhook URL */}
             {selectedCompany?.features.webhooks && (
@@ -931,7 +935,7 @@ export default function DeliveryCompanies() {
                   <span className="text-sm font-bold text-blue-800 dark:text-blue-200">تتبع تلقائي</span>
                 </div>
                 <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
-                  هذه الشركة لا تدعم Webhooks — التتبع يتم تلقائياً عبر Polling كل 10 دقائق.
+                  هذه الشركة لا تدعم Webhooks — التتبع يتم تلقائياً عبر Polling كل 3 دقائق.
                 </p>
               </div>
             )}
@@ -963,10 +967,14 @@ export default function DeliveryCompanies() {
           <DialogFooter className="gap-3 border-t border-border/50 pt-5 flex-row-reverse">
             <div className="flex-1">
               {saveError && (
-                <p className="text-sm font-medium text-destructive">{saveError}</p>
+                <p className="text-sm font-medium text-destructive flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />{saveError}
+                </p>
               )}
               {saveSuccess && (
-                <p className="text-sm font-medium text-primary">{saveSuccess}</p>
+                <p className="text-sm font-medium text-primary flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />{saveSuccess}
+                </p>
               )}
             </div>
             {selectedCompany?.enabled && (
@@ -996,11 +1004,12 @@ export default function DeliveryCompanies() {
             <Button 
               size="default"
               onClick={handleSaveCredentials}
-              disabled={saving || !canConnectSelectedCompany}
+              disabled={saving || testing || !canConnectSelectedCompany}
               className="bg-gradient-to-r from-primary to-accent hover:shadow-lg text-sm"
             >
-              <CheckCircle2 className="w-4 h-4 ml-2" />
-              {canConnectSelectedCompany ? t('delivery.connectActivate') : t('delivery.comingSoon')}
+              {(saving || testing) && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              {!saving && !testing && <CheckCircle2 className="w-4 h-4 ml-2" />}
+              {testing ? 'جاري التحقق...' : saving ? 'جاري الحفظ...' : canConnectSelectedCompany ? t('delivery.connectActivate') : t('delivery.comingSoon')}
             </Button>
           </DialogFooter>
         </DialogContent>

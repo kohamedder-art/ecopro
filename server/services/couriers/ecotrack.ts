@@ -209,4 +209,25 @@ export class EcotrackService implements CourierService {
     };
     return map[status] || 'pending';
   }
+
+  async testCredentials(apiKey: string, accountId?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const baseUrl = this.getBaseUrl(accountId);
+      const response = await fetch(`${baseUrl}/get/tracking/info?tracking=TEST`, {
+        method: 'GET',
+        headers: this.headers(apiKey),
+      });
+      // 401/403 = invalid token; 200 (even with "not found") = valid credentials
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, message: 'Invalid Ecotrack API token — access denied' };
+      }
+      if (!response.ok) {
+        const data = await this.readJson(response);
+        return { success: false, message: data?.message || `Ecotrack API error ${response.status}` };
+      }
+      return { success: true, message: 'Ecotrack credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Ecotrack API' };
+    }
+  }
 }

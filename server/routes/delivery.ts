@@ -9,6 +9,7 @@ import {
   ConfigureIntegrationSchema,
 } from '../types/delivery';
 import { encryptData } from '../utils/encryption';
+import { getCourierService } from '../services/courier-service';
 
 export const deliveryRouter = Router();
 
@@ -101,6 +102,33 @@ export const configureDeliveryIntegration: RequestHandler = async (req, res) => 
   } catch (error: any) {
     console.error('[Delivery] configureDeliveryIntegration error:', error);
     res.status(500).json({ error: 'Failed to configure integration' });
+  }
+};
+
+/**
+ * POST /api/delivery/integrations/test
+ * Test delivery company credentials before saving.
+ * Body: { delivery_company_name: string, api_key: string, api_secret?: string }
+ */
+export const testDeliveryCredentials: RequestHandler = async (req, res) => {
+  try {
+    const { delivery_company_name, api_key, api_secret } = req.body || {};
+    if (!delivery_company_name || !api_key) {
+      res.status(400).json({ error: 'delivery_company_name and api_key are required' });
+      return;
+    }
+
+    const service = getCourierService(delivery_company_name);
+    if (!service) {
+      res.status(400).json({ error: `No API integration available for "${delivery_company_name}"` });
+      return;
+    }
+
+    const result = await service.testCredentials(api_key, api_secret);
+    res.json(result);
+  } catch (error: any) {
+    console.error('[Delivery] testDeliveryCredentials error:', error);
+    res.status(500).json({ success: false, message: error?.message || 'Failed to test credentials' });
   }
 };
 
@@ -579,6 +607,7 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
 deliveryRouter.get('/companies', getDeliveryCompanies);
 deliveryRouter.get('/integrations', listDeliveryIntegrations);
 deliveryRouter.post('/integrations', configureDeliveryIntegration);
+deliveryRouter.post('/integrations/test', testDeliveryCredentials);
 deliveryRouter.delete('/integrations/:companyId', async (req, res) => {
   try {
     const clientId = (req as any).user?.id;

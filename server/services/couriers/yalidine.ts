@@ -338,4 +338,24 @@ export class YalidineService implements CourierService {
     
     return statusMap[status] || 'pending';
   }
+
+  async testCredentials(apiKey: string, apiId?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const response = await fetch(`${this.apiUrl}/wilayas/`, {
+        method: 'GET',
+        headers: { 'X-API-ID': apiId || apiKey, 'X-API-TOKEN': apiKey },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        return { success: false, message: data?.message || data?.error || `Yalidine API error ${response.status}` };
+      }
+      const data = await response.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        return { success: false, message: 'Unexpected response from Yalidine API' };
+      }
+      return { success: true, message: `Yalidine connected — ${data.length} wilayas available` };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Yalidine API' };
+    }
+  }
 }

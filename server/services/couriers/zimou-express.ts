@@ -236,4 +236,24 @@ export class ZimouExpressService implements CourierService {
 
     return statusMap[zimouStatus.toLowerCase()] || zimouStatus;
   }
+
+  async testCredentials(apiKey: string, _apiSecret?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const response = await fetch(`${this.apiUrl}/packages/status?packages[]=TEST`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      });
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, message: 'Invalid Zimou Express API token — access denied' };
+      }
+      if (!response.ok) {
+        const text = await response.text();
+        let data: any; try { data = JSON.parse(text); } catch { data = {}; }
+        return { success: false, message: data?.message || data?.error || `Zimou API error ${response.status}` };
+      }
+      return { success: true, message: 'Zimou Express credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Zimou Express API' };
+    }
+  }
 }

@@ -222,4 +222,23 @@ export class AndersonService implements CourierService {
     };
     return map[status] || 'pending';
   }
+
+  async testCredentials(apiKey: string, _accountId?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const response = await fetch(`${BASE_URL}${ENDPOINTS.trackingInfo}?tracking=TEST`, {
+        method: 'GET',
+        headers: this.headers(apiKey),
+      });
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, message: 'Invalid Anderson API token — access denied' };
+      }
+      if (!response.ok) {
+        const data = await this.readJson(response);
+        return { success: false, message: data?.message || `Anderson API error ${response.status}` };
+      }
+      return { success: true, message: 'Anderson credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Anderson API' };
+    }
+  }
 }

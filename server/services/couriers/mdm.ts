@@ -213,4 +213,23 @@ export class MdmService implements CourierService {
     };
     return map[status?.toLowerCase()] || 'pending';
   }
+
+  async testCredentials(apiKey: string, _storeId?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const response = await fetch(`${API_BASE}/api/v2/orders/TEST`, {
+        method: 'GET',
+        headers: { 'x-api-key': apiKey },
+      });
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, message: 'Invalid MDM API key — access denied' };
+      }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        return { success: false, message: data?.message || `MDM API error ${response.status}` };
+      }
+      return { success: true, message: 'MDM Express credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to MDM Express API' };
+    }
+  }
 }

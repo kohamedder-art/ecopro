@@ -150,4 +150,20 @@ export class ElogistiaService implements CourierService {
     };
     return map[status] || 'pending';
   }
+
+  async testCredentials(apiKey: string, _accountId?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const response = await fetch(`${BASE_URL}/getTracking/?apiKey=${encodeURIComponent(apiKey)}&tracking=TEST`);
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, message: 'Invalid Elogistia API key — access denied' };
+      }
+      if (!response.ok) {
+        const data = await this.readJson(response);
+        return { success: false, message: data?.message || `Elogistia API error ${response.status}` };
+      }
+      return { success: true, message: 'Elogistia credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Elogistia API' };
+    }
+  }
 }

@@ -151,4 +151,23 @@ export class EcomDeliveryService implements CourierService {
     };
     return map[status] || 'pending';
   }
+
+  async testCredentials(apiKey: string, token?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const response = await fetch(`${BASE_URL}/Api_v1/Colis/TEST`, {
+        method: 'GET',
+        headers: { 'Key': apiKey, 'Token': token || '' },
+      });
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, message: 'Invalid Ecom Delivery credentials — access denied' };
+      }
+      if (!response.ok) {
+        const data = await this.readJson(response);
+        return { success: false, message: data?.message || `Ecom Delivery API error ${response.status}` };
+      }
+      return { success: true, message: 'Ecom Delivery credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Ecom Delivery API' };
+    }
+  }
 }

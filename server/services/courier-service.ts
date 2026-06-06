@@ -3,6 +3,13 @@
 
 import { CourierShipmentResponse, CourierStatusResponse, ShipmentInput } from '../types/delivery';
 
+export interface CourierTestResult {
+  success: boolean;
+  message: string;
+  /** Optional account/company name returned by the API */
+  accountName?: string;
+}
+
 export interface CourierService {
   /**
    * Create a shipment with the courier
@@ -50,6 +57,14 @@ export interface CourierService {
     location?: string;
     description?: string;
   };
+
+  /**
+   * Test whether the provided credentials are valid by making a lightweight API call.
+   * @param apiKey Primary credential (API token / key)
+   * @param secondaryCredential Optional secondary credential (GUID, API ID, store ID, etc.)
+   * @returns Success/failure with a human-readable message
+   */
+  testCredentials(apiKey: string, secondaryCredential?: string): Promise<CourierTestResult>;
 }
 
 // Service Registry

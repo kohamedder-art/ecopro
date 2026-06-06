@@ -203,4 +203,21 @@ export class DhdService implements CourierService {
     };
     return map[status] || 'pending';
   }
+
+  async testCredentials(apiKey: string, guid?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const url = `${BASE_URL}/api/public/get/tracking/info?tracking=TEST&api_token=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, message: 'Invalid DHD API token — access denied' };
+      }
+      if (!response.ok) {
+        const data = await this.readJson(response);
+        return { success: false, message: data?.message || `DHD API error ${response.status}` };
+      }
+      return { success: true, message: 'DHD credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to DHD API' };
+    }
+  }
 }

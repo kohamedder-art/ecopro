@@ -497,4 +497,25 @@ export class DolivrooService implements CourierService {
 
     return statusMap[normalized] || normalized;
   }
+
+  async testCredentials(apiKey: string, connectionLabel?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const normalizedLabel = String(connectionLabel || '').trim() || undefined;
+      const response = await fetch(`${this.apiUrl}/parcels/TEST?company_code=auto`, {
+        method: 'GET',
+        headers: this.buildHeaders(apiKey, normalizedLabel, false),
+      });
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, message: 'Invalid Dolivroo API token — access denied' };
+      }
+      if (!response.ok) {
+        const { json } = await this.readApiResponse(response);
+        const data = json ?? {};
+        return { success: false, message: data?.message || data?.error || `Dolivroo API error ${response.status}` };
+      }
+      return { success: true, message: 'Dolivroo credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Dolivroo API' };
+    }
+  }
 }

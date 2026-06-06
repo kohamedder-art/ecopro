@@ -190,4 +190,23 @@ export class MaystroService implements CourierService {
     };
     return statusMap[status] || 'pending';
   }
+
+  async testCredentials(apiKey: string, storeId?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const response = await fetch(`${this.apiUrl}/orders/TEST`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'X-Store-ID': storeId || '' },
+      });
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, message: 'Invalid Maystro API token — access denied' };
+      }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        return { success: false, message: data?.message || `Maystro API error ${response.status}` };
+      }
+      return { success: true, message: 'Maystro credentials verified successfully' };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Maystro API' };
+    }
+  }
 }

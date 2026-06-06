@@ -164,4 +164,24 @@ export class GuepexService implements CourierService {
     };
     return statusMap[status] || 'pending';
   }
+
+  async testCredentials(apiKey: string, apiToken?: string): Promise<import('../courier-service').CourierTestResult> {
+    try {
+      const response = await fetch(`${this.apiUrl}/wilayas/`, {
+        method: 'GET',
+        headers: { 'X-API-KEY': apiKey, 'X-API-TOKEN': apiToken || apiKey },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        return { success: false, message: data?.message || data?.error || `Guepex API error ${response.status}` };
+      }
+      const data = await response.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        return { success: false, message: 'Unexpected response from Guepex API' };
+      }
+      return { success: true, message: `Guepex connected — ${data.length} wilayas available` };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'Failed to connect to Guepex API' };
+    }
+  }
 }
