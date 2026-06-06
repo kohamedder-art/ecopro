@@ -786,11 +786,20 @@ export default function GoldTemplateEditor() {
 
   const effectiveProducts = products.length > 0 ? products : SAMPLE_PRODUCTS;
 
+  // Debounced settings for iframe rendering — avoids re-rendering entire template 60x/sec during color picker drag
+  const [debouncedSettings, setDebouncedSettings] = useState<StoreSettings>(settings);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => setDebouncedSettings(settings), 150);
+    return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
+  }, [settings]);
+
   const templateProps = useMemo(
     () => ({
-      storeSlug: settings.store_slug || 'preview',
+      storeSlug: debouncedSettings.store_slug || 'preview',
       settings: {
-        ...settings,
+        ...debouncedSettings,
         ...(isPreviewingDifferentTemplate ? getTemplateDefaults() : null),
         template: activeTemplateId,
       },
@@ -806,15 +815,15 @@ export default function GoldTemplateEditor() {
       viewMode: 'grid' as const,
       setViewMode: () => {},
       formatPrice,
-      primaryColor: settings.template_accent_color || settings.primary_color || '#1E90FF',
-      secondaryColor: settings.secondary_color || '#6B7280',
-      bannerUrl: settings.banner_url || null,
+      primaryColor: debouncedSettings.template_accent_color || debouncedSettings.primary_color || '#1E90FF',
+      secondaryColor: debouncedSettings.secondary_color || '#6B7280',
+      bannerUrl: debouncedSettings.banner_url || null,
       navigate: (to: string | number) => { if (typeof to === 'string') navigate(to); },
       canManage: true,
       forcedBreakpoint: previewDevice,
       onSelect: handleSelectEditPath,
     }),
-    [settings, effectiveProducts, formatPrice, navigate, previewDevice, activeTemplateId, isPreviewingDifferentTemplate, handleSelectEditPath]
+    [debouncedSettings, effectiveProducts, formatPrice, navigate, previewDevice, activeTemplateId, isPreviewingDifferentTemplate, handleSelectEditPath]
   );
 
   const selectedTemplateId = useMemo(() => normalizeTemplateId(String(activeTemplateId)), [activeTemplateId]);

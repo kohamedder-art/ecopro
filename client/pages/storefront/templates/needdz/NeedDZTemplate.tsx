@@ -103,6 +103,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     setIsCheckoutOpen(false);
     if (navigate) navigate(buildStoreUrl(storeSlug, '/'));
   };
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [orderStatus, setOrderStatus] = useState('idle');
   const [timeLeft, setTimeLeft] = useState(() => {
     const target = Date.now() + 45 * 60 * 1000;
@@ -230,7 +231,18 @@ const parseVideoEmbed = (videoUrl: string) => {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (!res.ok) throw new Error('Order error');
+      if (!res.ok) {
+        let errMsg: string;
+        if (data.fields) {
+          const list = Object.values(data.fields).map((m: any) => `• ${m}`).join('\n');
+          errMsg = (data.error || 'يرجى تصحيح البيانات') + '\n' + list;
+        } else {
+          errMsg = data.error || 'حدث خطأ أثناء إرسال الطلب';
+        }
+        setOrderStatus('idle');
+        setOrderError(errMsg);
+        return;
+      }
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
       setSubmittedPhone(String(fd.get('phone') || ''));
@@ -247,7 +259,7 @@ const parseVideoEmbed = (videoUrl: string) => {
     } catch(err) {
       console.error(err);
       setOrderStatus('idle');
-      setOrderError("Une erreur s'est produite lors de la commande.");
+      if (!orderError) setOrderError('حدث خطأ في الاتصال. حاول مرة أخرى.');
     }
   };
 
@@ -689,6 +701,12 @@ const parseVideoEmbed = (videoUrl: string) => {
                           <span className="font-black text-lg">المجموع</span>
                           <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
                         </div>
+                      </div>
+                    )}
+
+                    {orderError && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#dc2626' }}>
+                        {orderError}
                       </div>
                     )}
 

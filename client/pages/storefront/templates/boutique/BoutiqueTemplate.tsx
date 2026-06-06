@@ -384,7 +384,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
     <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
 
       {/* HEADER */}
-      <header className="sticky top-0 z-40 text-white px-4 py-3 shadow-md" style={{ backgroundColor: themeColor }}>
+      <header className="sticky top-0 z-40 text-white px-4 py-3 shadow-md" style={{ backgroundColor: headerColor }}>
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" />}

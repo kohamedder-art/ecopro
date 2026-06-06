@@ -110,7 +110,18 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            if (!res.ok) throw new Error('Order error');
+            if (!res.ok) {
+              let errMsg: string;
+              if (data.fields) {
+                const list = Object.values(data.fields).map((m: any) => `• ${m}`).join('\n');
+                errMsg = (data.error || 'يرجى تصحيح البيانات') + '\n' + list;
+              } else {
+                errMsg = data.error || 'حدث خطأ أثناء إرسال الطلب';
+              }
+              setOrderError(errMsg);
+              setIsSubmitting(false);
+              return;
+            }
             setLastOrderId(data.order?.id || null);
             setLastTelegramUrl(data.telegramStartUrl || null);
             setCustomerPhone(fd.get('phone') as string);
@@ -143,7 +154,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
       const b = parseInt(hex.substring(4, 6), 16);
       return (r * 299 + g * 587 + b * 114) / 1000 < 128;
     }, [bgColor]);
-    const textColor = isDark ? '#f1f5f9' : '#1f2937';
+    const textColor = settings?.primary_color || (isDark ? '#f1f5f9' : '#1f2937');
     const textMuted = isDark ? '#94a3b8' : '#6b7280';
     const borderColor = isDark ? '#334155' : '#e5e7eb';
     const cardBg = isDark ? '#1e293b' : '#ffffff';
@@ -683,6 +694,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         {Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} دج + {deliveryFee === 0 ? 'مجاني' : `${deliveryFee} دج`}
                                     </span>
                                 </div>
+                            )}
+
+                            {orderError && (
+                              <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#dc2626' }}>
+                                {orderError}
+                              </div>
                             )}
 
                             <button className="w-full text-white font-black py-4 rounded-2xl text-lg shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3" style={{ backgroundColor: accentColor }}>
