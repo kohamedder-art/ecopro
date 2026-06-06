@@ -525,8 +525,14 @@ export default function ChatOrders() {
             {t("chatOrders.filterAll")}
           </button>
           {Object.entries(STATUS_META).map(([key, s]) => {
-            const cnt   = orders.filter(o => o.status === key).length;
-            const active = statusFilter === key;
+            // Merge at_delivery + in_delivery into one pill
+            const countKey = (key === "at_delivery" || key === "in_delivery") ? "__in_delivery__" : key;
+            if (countKey !== key && statusFilter !== key) return null; // skip duplicate
+            const cnt   = orders.filter(o => {
+              if (countKey === "__in_delivery__") return o.status === "at_delivery" || o.status === "in_delivery";
+              return o.status === key;
+            }).length;
+            const active = statusFilter === key || (countKey === "__in_delivery__" && (statusFilter === "at_delivery" || statusFilter === "in_delivery"));
             if (!cnt && !active) return null;
             return (
               <button
@@ -846,7 +852,7 @@ export default function ChatOrders() {
                                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
                                     style={{ color: opt.color, borderColor: `${opt.color}40`, background: `${opt.color}10` }}
                                   >
-                                    {opt.icon} {opt.label}
+                            {opt.icon} {t(opt.labelKey)}
                                   </button>
                                 ))}
                               </div>
@@ -1023,7 +1029,7 @@ export default function ChatOrders() {
                                 className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold hover:bg-muted transition-colors text-right"
                                 style={{ color: opt.color }}
                               >
-                                {opt.icon} {opt.label}
+                                {opt.icon} {t(opt.labelKey)}
                               </button>
                             ))}
                           </div>
@@ -1081,7 +1087,7 @@ export default function ChatOrders() {
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border"
                               style={{ color: opt.color, borderColor: `${opt.color}40`, background: `${opt.color}10` }}
                             >
-                              {opt.icon} {opt.label}
+                              {opt.icon} {t(opt.labelKey)}
                             </button>
                           ))}
                         </div>
