@@ -249,8 +249,11 @@ export default function OrdersAdmin() {
     const isFake = order.status === 'fake';
     const isDuplicateStatus = order.status === 'duplicate';
     const isDuplicatePhone = order.phone && duplicatePhones.has(order.phone);
+    const storedFraudLevel = order.fraud_level;
     if (isFake) return { level: 'high', label: t('orders.riskHigh'), reason: t('orders.status.fake') };
     if (isDuplicateStatus) return { level: 'high', label: t('orders.riskHigh'), reason: t('orders.status.duplicate') };
+    if (storedFraudLevel === 'critical' || storedFraudLevel === 'high') return { level: 'high', label: t('orders.riskHigh'), reason: t('orders.riskHigh') };
+    if (storedFraudLevel === 'medium') return { level: 'medium', label: t('orders.riskMedium'), reason: `${order.fraud_score}pts: ${(order.fraud_flags || []).join(', ')}` };
     if (isDuplicatePhone) return { level: 'medium', label: t('orders.riskMedium'), reason: t('orders.duplicatePhone') };
     return { level: 'safe', label: t('orders.riskSafe'), reason: '' };
   };

@@ -244,7 +244,44 @@ export async function assessOrderRisk(
     flags.push(`🏪 هذا الرقم طلب في متجر آخر`);
   }
 
-  // ── 9. Positive signals ──
+  // ── 9. Global client velocity — catches multi-identity attacks ──
+  const globalRes = await q(`
+    SELECT COUNT(*) as cnt FROM store_orders
+    WHERE client_id = $1 AND created_at > NOW() - INTERVAL '1 hour'
+  `, [clientId]);
+  const globalOrders = parseInt(globalRes.rows[0]?.cnt || '0');
+  if (globalOrders >= 20) {
+    score += 30;
+    flags.push(`🚨 ${globalOrders} طلب في المتجر آخر ساعة (نشاط غير طبيعي)`);
+  } else if (globalOrders >= 10) {
+    score += 15;
+    flags.push(`📊 ${globalOrders} طلب في المتجر آخر ساعة`);
+  } else if (globalOrders >= 5) {
+    score += 5;
+    flags.push(`📊 ${globalOrders} طلب في المتجر آخر ساعة`);
+  }
+
+  // ── 10. Sequential phone detection (e.g., 0555000001, 0555000002) ──
+  const phoneSuffix = normalizedPhone.slice(-4);
+  if (/^\d{4}$/.test(phoneSuffix)) {
+    const seqRes = await q(`
+      SELECT COUNT(*) as cnt FROM store_orders
+      WHERE client_id = $1
+        AND RIGHT(REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '+', ''), 4)::int
+          BETWEEN $2::int - 2 AND $2::int + 2
+        AND created_at > NOW() - INTERVAL '24 hours'
+    `, [clientId, phoneSuffix]);
+    const seqCount = parseInt(seqRes.rows[0]?.cnt || '0') - 1; // exclude self
+    if (seqCount >= 3) {
+      score += 25;
+      flags.push(`🔢 رقم هاتف متسلسل مع ${seqCount} أرقام أخرى`);
+    } else if (seqCount >= 1) {
+      score += 10;
+      flags.push(`🔢 رقم هاتف قريب من ${seqCount} أرقام أخرى`);
+    }
+  }
+
+  // ── 11. Positive signals ──
   if (history.completedOrders > 0) {
     const successRate = history.completedOrders / history.totalOrders;
     if (successRate > 0.7) { score -= 20; flags.push(`✅ عميل موثوق: ${history.completedOrders} طلبات ناجحة`); }
