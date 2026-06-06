@@ -1704,8 +1704,9 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     // Dashboard: isConnected = whatsappTokenConfigured || usePlatformWhatsapp
     const whatsappConnected = whatsappTokenConfigured;
 
-    // Need phone number for wa.me link — fetch via Graph API if missing
-    let effectiveWaPhone = String(bot.whatsapp_display_phone || '').replace(/[^0-9]/g, '');
+    // Need phone number for wa.me link — support_phone, whatsapp_display_phone, or Graph API
+    const supportPhone = String(bot.support_phone || '').replace(/[^0-9]/g, '');
+    let effectiveWaPhone = supportPhone || String(bot.whatsapp_display_phone || '').replace(/[^0-9]/g, '');
     if (whatsappConnected && !effectiveWaPhone && storedWhatsappPhoneId) {
       const waToken = storedWhatsappToken || platformWhatsappAccessToken;
       if (waToken) {
