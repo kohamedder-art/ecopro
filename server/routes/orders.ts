@@ -999,42 +999,19 @@ export const getClientOrders: RequestHandler = async (req, res) => {
     );
 
     // Build duplicate detection maps from the fetched orders
-    const phoneMap = new Map<string, { count: number; names: Set<string> }>();
-    const nameMap = new Map<string, { count: number; phones: Set<string> }>();
+    const phoneCounts = new Map<string, number>();
     for (const row of result.rows) {
       const phone = String(row.customer_phone || '').trim();
-      const name = String(row.customer_name || '').trim().toLowerCase();
-      if (phone) {
-        if (!phoneMap.has(phone)) phoneMap.set(phone, { count: 0, names: new Set() });
-        const entry = phoneMap.get(phone)!;
-        entry.count++;
-        if (name) entry.names.add(name);
-      }
-      if (name) {
-        if (!nameMap.has(name)) nameMap.set(name, { count: 0, phones: new Set() });
-        const entry = nameMap.get(name)!;
-        entry.count++;
-        if (phone) entry.phones.add(phone);
-      }
+      if (phone) phoneCounts.set(phone, (phoneCounts.get(phone) || 0) + 1);
     }
-    // Enrich each order with duplicate info
+    // Enrich each order with duplicate info (phone-based only)
     const enriched = result.rows.map((row: any) => {
       const phone = String(row.customer_phone || '').trim();
-      const name = String(row.customer_name || '').trim().toLowerCase();
       const dupInfo: any = { level: 'none' as string };
-      const phoneEntry = phone ? phoneMap.get(phone) : undefined;
-      const nameEntry = name ? nameMap.get(name) : undefined;
-      // Same phone → definitely same customer
-      if (phoneEntry && phoneEntry.count > 1) {
+      const phoneCount = phone ? phoneCounts.get(phone) : 0;
+      if (phoneCount && phoneCount > 1) {
         dupInfo.level = 'same_phone';
-        dupInfo.phone_order_count = phoneEntry.count;
-        if (phoneEntry.names.size > 1) dupInfo.diff_names = Array.from(phoneEntry.names).filter(n => n !== name);
-      }
-      // Same name, different phones → potential duplicate (low confidence)
-      if (nameEntry && nameEntry.count > 1 && nameEntry.phones.size > 1) {
-        dupInfo.level = dupInfo.level === 'same_phone' ? 'same_phone' : 'same_name_diff_phone';
-        dupInfo.name_order_count = nameEntry.count;
-        dupInfo.diff_phones = Array.from(nameEntry.phones).filter(p => p !== phone);
+        dupInfo.phone_order_count = phoneCount;
       }
       row.duplicate_info = dupInfo;
       return row;

@@ -715,14 +715,9 @@ export default function ChatOrders() {
                         <td className="whitespace-nowrap px-2 py-2.5 text-center" onClick={e => e.stopPropagation()}>
                           <div className="flex flex-col items-center gap-0.5">
                             <span className="text-sm font-bold max-w-[140px] truncate block" title={o.customer_name}>{o.customer_name || "—"}</span>
-                            {o.duplicate_info?.level === 'same_name_diff_phone' && (
-                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium" title={isRTL ? `${o.duplicate_info.name_order_count} طلبات بنفس الاسم بأرقام مختلفة` : `${o.duplicate_info.name_order_count} orders with same name, different phones`}>
-                                ⚠ {isRTL ? "تكرار بالاسم" : "Duplicate name"}
-                              </span>
-                            )}
-                            {o.duplicate_info?.level === 'same_phone' && o.duplicate_info?.diff_names?.length > 0 && (
-                              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium" title={isRTL ? `نفس الرقم بأسماء مختلفة: ${o.duplicate_info.diff_names.join('، ')}` : `Same number, different names: ${o.duplicate_info.diff_names.join(', ')}`}>
-                                ℹ {isRTL ? "أسماء مختلفة" : "Different names"}
+                            {o.duplicate_info?.level === 'same_phone' && (
+                              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium">
+                                ℹ {isRTL ? `${o.duplicate_info.phone_order_count} طلبات بنفس الرقم` : `${o.duplicate_info.phone_order_count} orders, same phone`}
                               </span>
                             )}
                             {o.customer_phone && (
@@ -992,10 +987,7 @@ export default function ChatOrders() {
                     <div className="px-3 pb-3 flex items-center justify-between gap-2 border-t border-border/30 pt-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold truncate max-w-[120px]" title={o.customer_name}>{o.customer_name || "—"}</span>
-                        {o.duplicate_info?.level === 'same_name_diff_phone' && (
-                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium">⚠</span>
-                        )}
-                        {o.duplicate_info?.level === 'same_phone' && o.duplicate_info?.diff_names?.length > 0 && (
+                        {o.duplicate_info?.level === 'same_phone' && (
                           <span className="text-[9px] text-violet-600 dark:text-violet-400 font-medium">ℹ</span>
                         )}
                         {o.customer_phone && (

@@ -1074,7 +1074,11 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
           [clientId, flag.slice(0, 255), risk.score]
         ).catch(() => {});
       }
-    } catch {}
+    } catch (e: any) {
+      console.error('[FRAUD] Risk assessment error:', e?.message || e?.stack || e);
+      // If this happens mid-transaction we still log the full error
+      console.error('[FRAUD] Risk assessment full error:', JSON.stringify({ message: e?.message, stack: e?.stack?.split('\n').slice(0,3).join(' | ') }));
+    }
 
     // 3. Duplicate phone detection (only if not already flagged as fake)
     if (initialStatus === 'pending') {
