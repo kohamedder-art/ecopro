@@ -4,6 +4,7 @@ import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeli
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
@@ -155,6 +156,7 @@ export default function SpiriluxeTemplate({
         customer_notes: customerNotes || fd.get('notes') || '',
         shipping_wilaya_id: selectedWilayaId,
         product_name: mainProduct.title || mainProduct.name || '',
+        ...getFraudData(),
       };
       
       const res = await fetch('/api/orders/create', {

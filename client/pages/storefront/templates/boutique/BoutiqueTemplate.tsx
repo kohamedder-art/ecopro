@@ -13,6 +13,7 @@ import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
 interface CartItem {
@@ -325,6 +326,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           customer_notes: customerNotes,
           shipping_wilaya_id: selectedWilayaId,
           product_name: orderProduct.title || orderProduct.name || '',
+          ...getFraudData(),
         }),
       });
 

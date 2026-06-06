@@ -738,6 +738,13 @@ export const getStorefrontProductById: RequestHandler = async (req, res) => {
 };
 
 // Create order via public storefront using storeSlug
+function getClientIpXs(req: any): string | null {
+  const xff = req.headers?.['x-forwarded-for'];
+  if (typeof xff === 'string') return xff.split(',')[0].trim();
+  if (Array.isArray(xff)) return xff[0].trim();
+  return req.socket?.remoteAddress || null;
+}
+
 export const createPublicStoreOrder: RequestHandler = async (req, res) => {
   const { storeSlug } = req.params as any;
   let pool: any;
@@ -1022,6 +1029,9 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     addCol('shipping_wilaya_id', shipping_wilaya_id || null);
     addCol('shipping_commune_id', shipping_commune_id || null);
     addCol('shipping_hai', shipping_hai || null);
+    addCol('customer_ip', getClientIpXs(req));
+    addCol('browser_fingerprint', (req.body?.browser_fingerprint || '').trim().slice(0, 255) || null);
+    addCol('form_fill_time_ms', req.body?.form_fill_time_ms != null ? Number(req.body.form_fill_time_ms) : null);
 
     // --- Fraud & duplicate detection ---
     let initialStatus = 'pending';
@@ -1043,7 +1053,11 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
 
     // 2. Risk assessment — auto-flag high/critical risk as fake
     try {
-      const risk = await assessOrderRisk(Number(clientId), normalizedPhone, customer_address || undefined);
+      const risk = await assessOrderRisk(Number(clientId), normalizedPhone, customer_address || undefined, {
+        customerIp: getClientIpXs(req),
+        browserFingerprint: (req.body?.browser_fingerprint || '').trim().slice(0, 255) || undefined,
+        formFillTimeMs: req.body?.form_fill_time_ms != null ? Number(req.body.form_fill_time_ms) : undefined,
+      });
       if (risk.level === 'critical' || risk.level === 'high') {
         initialStatus = 'fake';
       }

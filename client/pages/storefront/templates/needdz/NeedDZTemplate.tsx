@@ -28,6 +28,7 @@ import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/sto
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
 const FALLBACK_PRODUCTS = [
@@ -224,6 +225,7 @@ const parseVideoEmbed = (videoUrl: string) => {
         customer_address: [selectedWilaya?.labelAR, communeDisplayName(getAlgeriaCommuneById(customerCommune)!) || customerCommune, customerAddress].filter(Boolean).join(' - '),
         customer_notes: customerNotes,
         product_name: selectedProduct.title || selectedProduct.name || '',
+        ...getFraudData(),
       };
       const res = await fetch('/api/orders/create', {
         method: 'POST',

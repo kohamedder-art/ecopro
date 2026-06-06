@@ -1,16 +1,9 @@
-/**
- * Fraud Detection / Fake Order Risk Scoring System
- * 
- * Analyzes customer phone history and order patterns to calculate
- * a risk score (0-100) for potential fake orders.
- */
-
 import { ensureConnection } from './database';
 
 export interface RiskAssessment {
-  score: number;           // 0-100 (higher = more risky)
+  score: number;
   level: 'low' | 'medium' | 'high' | 'critical';
-  flags: string[];         // Reasons for the score
+  flags: string[];
   phoneHistory: {
     totalOrders: number;
     cancelledOrders: number;
@@ -22,28 +15,36 @@ export interface RiskAssessment {
   recommendation: string;
 }
 
-/**
- * Calculate risk score for a new order based on phone number history
- */
+export interface FraudSignals {
+  customerIp?: string;
+  browserFingerprint?: string;
+  formFillTimeMs?: number;
+}
+
+const ALGERIAN_PREFIXES = ['05', '06', '07'];
+
+function isValidAlgerianPhone(phone: string): boolean {
+  const clean = phone.replace(/\D/g, '');
+  return ALGERIAN_PREFIXES.some(p => clean.startsWith(p)) && clean.length === 10;
+}
+
 export async function assessOrderRisk(
   clientId: number,
   customerPhone: string,
-  address?: string
+  address?: string,
+  extraSignals?: FraudSignals
 ): Promise<RiskAssessment> {
   const pool = await ensureConnection();
   const flags: string[] = [];
   let score = 0;
 
-  // Normalize phone number
   const normalizedPhone = customerPhone.replace(/\D/g, '').slice(-10);
-  
-  // 1. Check phone history for this client
+
+  // ── 1. Phone history ──
   const historyRes = await pool.query(`
-    SELECT 
-      status,
-      COUNT(*) as count
+    SELECT status, COUNT(*) as count
     FROM store_orders
-    WHERE client_id = $1 
+    WHERE client_id = $1
       AND REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '+', '') LIKE '%' || $2
     GROUP BY status
   `, [clientId, normalizedPhone]);
@@ -55,151 +56,211 @@ export async function assessOrderRisk(
     noAnswerOrders: 0,
     completedOrders: 0,
     returnedOrders: 0,
-    confirmedOrders: 0,
-    deliveredOrders: 0,
   };
 
   for (const row of historyRes.rows) {
     const count = parseInt(row.count);
     history.totalOrders += count;
-    
     switch (row.status) {
-      case 'cancelled':
-        history.cancelledOrders = count;
-        break;
-      case 'fake':
-        history.fakeOrders = count;
-        break;
-      case 'no_answer_1':
-      case 'no_answer_2':
-      case 'no_answer_3':
-        history.noAnswerOrders += count;
-        break;
-      case 'completed':
-      case 'delivered':
-        history.completedOrders += count;
-        history.deliveredOrders += count;
-        break;
-      case 'returned':
-        history.returnedOrders = count;
-        break;
-      case 'confirmed':
-        history.confirmedOrders = count;
-        break;
+      case 'cancelled': history.cancelledOrders += count; break;
+      case 'fake': history.fakeOrders += count; break;
+      case 'no_answer_1': case 'no_answer_2': case 'no_answer_3': history.noAnswerOrders += count; break;
+      case 'completed': case 'delivered': history.completedOrders += count; break;
+      case 'returned': history.returnedOrders += count; break;
     }
   }
 
-  // 2. Calculate risk based on history
-  
-  // Previous fake orders - CRITICAL
   if (history.fakeOrders > 0) {
-    score += 50 + (history.fakeOrders * 10); // 50+ for any fake, +10 per additional
-    flags.push(`⚠️ ${history.fakeOrders} طلب/طلبات وهمية سابقة من هذا الرقم`);
+    score += 50 + (history.fakeOrders - 1) * 10;
+    flags.push(`⚠️ ${history.fakeOrders} طلب/طلبات وهمية سابقة`);
   }
 
-  // High return rate
   if (history.returnedOrders > 0 && history.totalOrders > 0) {
-    const returnRate = history.returnedOrders / history.totalOrders;
-    if (returnRate > 0.5) {
-      score += 30;
-      flags.push(`🔄 معدل إرجاع مرتفع: ${Math.round(returnRate * 100)}%`);
-    } else if (returnRate > 0.3) {
-      score += 15;
-      flags.push(`🔄 معدل إرجاع متوسط: ${Math.round(returnRate * 100)}%`);
-    }
+    const rate = history.returnedOrders / history.totalOrders;
+    if (rate > 0.5) { score += 30; flags.push(`🔄 معدل إرجاع مرتفع ${Math.round(rate * 100)}%`); }
+    else if (rate > 0.3) { score += 15; flags.push(`🔄 معدل إرجاع ${Math.round(rate * 100)}%`); }
   }
 
-  // High cancel rate
   if (history.cancelledOrders > 0 && history.totalOrders > 0) {
-    const cancelRate = history.cancelledOrders / history.totalOrders;
-    if (cancelRate > 0.5) {
-      score += 25;
-      flags.push(`❌ معدل إلغاء مرتفع: ${Math.round(cancelRate * 100)}%`);
-    } else if (cancelRate > 0.3) {
-      score += 10;
-      flags.push(`❌ معدل إلغاء متوسط: ${Math.round(cancelRate * 100)}%`);
-    }
+    const rate = history.cancelledOrders / history.totalOrders;
+    if (rate > 0.5) { score += 25; flags.push(`❌ معدل إلغاء مرتفع ${Math.round(rate * 100)}%`); }
+    else if (rate > 0.3) { score += 10; flags.push(`❌ معدل إلغاء ${Math.round(rate * 100)}%`); }
   }
 
-  // No answer pattern
-  if (history.noAnswerOrders >= 3) {
-    score += 20;
-    flags.push(`📵 ${history.noAnswerOrders} طلبات بدون رد على المكالمات`);
-  } else if (history.noAnswerOrders >= 2) {
-    score += 10;
-    flags.push(`📵 ${history.noAnswerOrders} طلبات بدون رد`);
-  }
+  if (history.noAnswerOrders >= 3) { score += 20; flags.push(`📵 ${history.noAnswerOrders} طلبات بدون رد`); }
+  else if (history.noAnswerOrders >= 2) { score += 10; flags.push(`📵 ${history.noAnswerOrders} طلبات بدون رد`); }
 
-  // 3. Check for velocity (multiple orders in short time)
+  // ── 2. Phone velocity (24h) ──
   const velocityRes = await pool.query(`
-    SELECT COUNT(*) as recent_orders
-    FROM store_orders
-    WHERE client_id = $1 
+    SELECT COUNT(*) as cnt FROM store_orders
+    WHERE client_id = $1
       AND REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '+', '') LIKE '%' || $2
       AND created_at > NOW() - INTERVAL '24 hours'
   `, [clientId, normalizedPhone]);
+  const recentOrders = parseInt(velocityRes.rows[0]?.cnt || '0');
+  if (recentOrders >= 5) { score += 25; flags.push(`🚨 ${recentOrders} طلبات في آخر 24 ساعة`); }
+  else if (recentOrders >= 3) { score += 10; flags.push(`⚡ ${recentOrders} طلبات في آخر 24 ساعة`); }
 
-  const recentOrders = parseInt(velocityRes.rows[0]?.recent_orders || '0');
-  if (recentOrders >= 5) {
-    score += 25;
-    flags.push(`🚨 ${recentOrders} طلبات في آخر 24 ساعة - مشبوه`);
-  } else if (recentOrders >= 3) {
-    score += 10;
-    flags.push(`⚡ ${recentOrders} طلبات في آخر 24 ساعة`);
-  }
-
-  // 4. Check address quality
+  // ── 3. Address quality ──
   if (address) {
-    const trimmedAddress = address.trim();
-    if (trimmedAddress.length < 10) {
-      score += 15;
-      flags.push('📍 عنوان قصير جداً أو غير مكتمل');
-    } else if (trimmedAddress.length < 20) {
-      score += 5;
-      flags.push('📍 عنوان قصير');
-    }
-    
-    // Check for suspicious addresses (just dots, numbers, etc)
-    if (/^[\d\s\.\-]+$/.test(trimmedAddress)) {
-      score += 20;
-      flags.push('📍 عنوان مشبوه (أرقام فقط)');
-    }
+    const a = address.trim();
+    if (a.length < 10) { score += 15; flags.push('📍 عنوان قصير جداً'); }
+    else if (a.length < 20) { score += 5; flags.push('📍 عنوان قصير'); }
+    if (/^[\d\s.\-]+$/.test(a)) { score += 20; flags.push('📍 عنوان أرقام فقط'); }
   }
 
-  // 5. Check if phone is in global blacklist for this client
+  // ── 4. Blacklist ──
   const blacklistRes = await pool.query(`
-    SELECT 1 FROM customer_blacklist 
-    WHERE client_id = $1 AND phone LIKE '%' || $2
-    LIMIT 1
+    SELECT 1 FROM customer_blacklist WHERE client_id = $1 AND phone LIKE '%' || $2 LIMIT 1
   `, [clientId, normalizedPhone]);
+  if (blacklistRes.rows.length > 0) { score += 60; flags.push('🚫 الرقم في القائمة السوداء'); }
 
-  if (blacklistRes.rows.length > 0) {
-    score += 60;
-    flags.push('🚫 الرقم في القائمة السوداء');
+  // ═══════════════════════════════════════════════════════════════════
+  // NEW SIGNALS
+  // ═══════════════════════════════════════════════════════════════════
+
+  const ip = extraSignals?.customerIp?.trim();
+  const fp = extraSignals?.browserFingerprint?.trim();
+  const fillTime = extraSignals?.formFillTimeMs;
+
+  // ── 5. IP-based signals ──
+  if (ip) {
+    // 5a. IP velocity: same IP, multiple orders in 1h
+    const ipVelocityRes = await pool.query(`
+      SELECT COUNT(*) as cnt FROM store_orders
+      WHERE client_id = $1 AND customer_ip = $2
+        AND created_at > NOW() - INTERVAL '1 hour'
+    `, [clientId, ip]);
+    const ipOrders = parseInt(ipVelocityRes.rows[0]?.cnt || '0');
+    if (ipOrders >= 5) {
+      score += 25;
+      flags.push(`🌐 ${ipOrders} طلب من نفس العنوان IP في آخر ساعة`);
+    } else if (ipOrders >= 3) {
+      score += 10;
+      flags.push(`🌐 ${ipOrders} طلب من نفس الـ IP`);
+    }
+
+    // 5b. IP-phone mismatch: same IP used with different phones recently
+    const ipMismatchRes = await pool.query(`
+      SELECT COUNT(DISTINCT customer_phone) as phones FROM store_orders
+      WHERE client_id = $1 AND customer_ip = $2
+        AND customer_phone IS NOT NULL AND customer_phone != ''
+        AND created_at > NOW() - INTERVAL '24 hours'
+    `, [clientId, ip]);
+    const distinctPhones = parseInt(ipMismatchRes.rows[0]?.phones || '0');
+    if (distinctPhones >= 3) {
+      score += 20;
+      flags.push(`👥 ${distinctPhones} أرقام مختلفة من نفس الـ IP`);
+    }
+
+    // 5c. Check ip_intelligence for VPN/proxy/datacenter
+    const ipIntelRes = await pool.query(`
+      SELECT is_vpn, is_proxy, is_tor, is_datacenter, fraud_score
+      FROM ip_intelligence WHERE ip = $1
+    `, [ip]);
+    if (ipIntelRes.rows.length > 0) {
+      const intel = ipIntelRes.rows[0];
+      if (intel.is_vpn || intel.is_proxy || intel.is_tor) {
+        score += 25;
+        flags.push('🛡️ اتصال عبر VPN أو بروكسي');
+      }
+      if (intel.is_datacenter) {
+        score += 15;
+        flags.push('🏢 عنوان IP لمركز بيانات (غير معتاد)');
+      }
+      if (parseInt(intel.fraud_score || '0') >= 70) {
+        score += 20;
+        flags.push(`⚠️ نقاط احتيال IP: ${intel.fraud_score}`);
+      }
+    }
   }
 
-  // 6. Positive signals (reduce score)
+  // ── 6. Browser fingerprint signals ──
+  if (fp) {
+    // 6a. Fingerprint-phone mismatch: same fingerprint, different phones
+    const fpPhonesRes = await pool.query(`
+      SELECT COUNT(DISTINCT customer_phone) as phones FROM store_orders
+      WHERE client_id = $1 AND browser_fingerprint = $2
+        AND customer_phone IS NOT NULL AND customer_phone != ''
+        AND created_at > NOW() - INTERVAL '24 hours'
+    `, [clientId, fp]);
+    const fpPhones = parseInt(fpPhonesRes.rows[0]?.phones || '0');
+    if (fpPhones >= 3) {
+      score += 20;
+      flags.push(`🖥️ بصمة متصفح مشتركة مع ${fpPhones} أرقام مختلفة`);
+    }
+
+    // 6b. Fingerprint velocity: same fingerprint, multiple orders
+    const fpVelocityRes = await pool.query(`
+      SELECT COUNT(*) as cnt FROM store_orders
+      WHERE client_id = $1 AND browser_fingerprint = $2
+        AND created_at > NOW() - INTERVAL '1 hour'
+    `, [clientId, fp]);
+    const fpOrders = parseInt(fpVelocityRes.rows[0]?.cnt || '0');
+    if (fpOrders >= 5) {
+      score += 25;
+      flags.push(`🖥️ ${fpOrders} طلب من نفس البصمة في آخر ساعة`);
+    } else if (fpOrders >= 3) {
+      score += 10;
+      flags.push(`🖥️ ${fpOrders} طلب من نفس البصمة`);
+    }
+
+    // 6c. Cross-store: same fingerprint used at different stores
+    const fpCrossStoreRes = await pool.query(`
+      SELECT COUNT(DISTINCT client_id) as stores FROM store_orders
+      WHERE browser_fingerprint = $1
+        AND client_id != $2
+        AND created_at > NOW() - INTERVAL '24 hours'
+    `, [fp, clientId]);
+    const fpStores = parseInt(fpCrossStoreRes.rows[0]?.stores || '0');
+    if (fpStores >= 1) {
+      score += 15;
+      flags.push(`🏪 نفس البصمة استعملت في ${fpStores} متجر آخر`);
+    }
+  }
+
+  // ── 7. Form fill time ──
+  if (fillTime != null && fillTime >= 0) {
+    if (fillTime < 2000) {
+      score += 30;
+      flags.push(`⚡ طلب فوري خلال ${fillTime}ms (احتمال بوت)`);
+    } else if (fillTime < 5000) {
+      score += 15;
+      flags.push(`⚡ طلب سريع خلال ${(fillTime / 1000).toFixed(1)}ث`);
+    }
+  }
+
+  // ── 8. Cross-store phone velocity ──
+  const crossStoreRes = await pool.query(`
+    SELECT COUNT(DISTINCT client_id) as stores FROM store_orders
+    WHERE REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '+', '') LIKE '%' || $1
+      AND client_id != $2
+      AND created_at > NOW() - INTERVAL '24 hours'
+  `, [normalizedPhone, clientId]);
+  const crossStores = parseInt(crossStoreRes.rows[0]?.stores || '0');
+  if (crossStores >= 2) {
+    score += 20;
+    flags.push(`🏪 هذا الرقم طلب في ${crossStores} متاجر أخرى مؤخراً`);
+  } else if (crossStores === 1) {
+    score += 5;
+    flags.push(`🏪 هذا الرقم طلب في متجر آخر`);
+  }
+
+  // ── 9. Positive signals ──
   if (history.completedOrders > 0) {
     const successRate = history.completedOrders / history.totalOrders;
-    if (successRate > 0.7) {
-      score -= 20;
-      flags.push(`✅ عميل موثوق: ${history.completedOrders} طلبات ناجحة`);
-    } else if (history.completedOrders >= 2) {
-      score -= 10;
-      flags.push(`✅ ${history.completedOrders} طلبات ناجحة سابقة`);
-    }
+    if (successRate > 0.7) { score -= 20; flags.push(`✅ عميل موثوق: ${history.completedOrders} طلبات ناجحة`); }
+    else if (history.completedOrders >= 2) { score -= 10; flags.push(`✅ ${history.completedOrders} طلبات ناجحة سابقة`); }
   }
 
-  // Ensure score is within bounds
   score = Math.max(0, Math.min(100, score));
 
-  // Determine risk level
   let level: RiskAssessment['level'];
   let recommendation: string;
 
   if (score >= 70) {
     level = 'critical';
-    recommendation = '🚨 خطر عالي جداً - يُنصح برفض الطلب أو طلب دفع مسبق';
+    recommendation = '🚨 خطر عالي جداً - يُنصح برفض الطلب';
   } else if (score >= 50) {
     level = 'high';
     recommendation = '⚠️ خطر عالي - تحقق من العميل قبل التأكيد';
@@ -208,91 +269,85 @@ export async function assessOrderRisk(
     recommendation = '⚡ خطر متوسط - تأكد من صحة المعلومات';
   } else {
     level = 'low';
-    recommendation = '✅ خطر منخفض - يمكن المتابعة بشكل طبيعي';
+    recommendation = '✅ خطر منخفض - يمكن المتابعة';
   }
 
-  // New customer with no history
   if (history.totalOrders === 0) {
     flags.push('🆕 عميل جديد - لا يوجد سجل سابق');
   }
 
-  return {
-    score,
-    level,
-    flags,
-    phoneHistory: history,
-    recommendation
-  };
+  return { score, level, flags, phoneHistory: history, recommendation };
 }
 
-/**
- * Get all high-risk orders for a client
- */
+export async function logFraudSignal(
+  clientId: number,
+  orderId: number | undefined,
+  signalType: string,
+  signalValue: string,
+  riskScore: number,
+  details?: Record<string, any>
+): Promise<void> {
+  try {
+    const pool = await ensureConnection();
+    await pool.query(
+      `INSERT INTO fraud_signals(client_id, order_id, signal_type, signal_value, risk_score, details, created_at)
+       VALUES($1,$2,$3,$4,$5,$6,NOW())`,
+      [clientId, orderId || null, signalType, signalValue, riskScore, details ? JSON.stringify(details) : null]
+    );
+  } catch {
+    // non-critical
+  }
+}
+
 export async function getHighRiskOrders(clientId: number, limit = 50): Promise<any[]> {
   const pool = await ensureConnection();
-  
-  // Find orders from phones with bad history
   const result = await pool.query(`
     WITH phone_stats AS (
-      SELECT 
-        customer_phone,
+      SELECT customer_phone,
         COUNT(*) FILTER (WHERE status = 'fake') as fake_count,
         COUNT(*) FILTER (WHERE status IN ('cancelled', 'returned')) as bad_count,
         COUNT(*) FILTER (WHERE status IN ('completed', 'delivered')) as good_count,
         COUNT(*) as total_count
-      FROM store_orders
-      WHERE client_id = $1
+      FROM store_orders WHERE client_id = $1
       GROUP BY customer_phone
-      HAVING COUNT(*) FILTER (WHERE status = 'fake') > 0 
+      HAVING COUNT(*) FILTER (WHERE status = 'fake') > 0
          OR COUNT(*) FILTER (WHERE status IN ('cancelled', 'returned')) > COUNT(*) FILTER (WHERE status IN ('completed', 'delivered'))
     )
-    SELECT o.*, 
-           ps.fake_count,
-           ps.bad_count,
-           ps.good_count,
-           ps.total_count
+    SELECT o.*, ps.fake_count, ps.bad_count, ps.good_count, ps.total_count
     FROM store_orders o
     JOIN phone_stats ps ON o.customer_phone = ps.customer_phone
-    WHERE o.client_id = $1
-      AND o.status = 'pending'
+    WHERE o.client_id = $1 AND o.status = 'pending'
     ORDER BY ps.fake_count DESC, ps.bad_count DESC
     LIMIT $2
   `, [clientId, limit]);
-
   return result.rows;
 }
 
-/**
- * Auto-flag suspicious orders (can be called periodically)
- */
 export async function flagSuspiciousOrders(clientId: number): Promise<number> {
   const pool = await ensureConnection();
-  
-  // Get pending orders
   const pendingRes = await pool.query(`
-    SELECT id, customer_phone, address
+    SELECT id, customer_phone, customer_address, customer_ip, browser_fingerprint
     FROM store_orders
     WHERE client_id = $1 AND status = 'pending'
-    ORDER BY created_at DESC
-    LIMIT 100
+    ORDER BY created_at DESC LIMIT 100
   `, [clientId]);
 
   let flaggedCount = 0;
-
   for (const order of pendingRes.rows) {
-    const risk = await assessOrderRisk(clientId, order.customer_phone, order.address);
-    
+    const risk = await assessOrderRisk(
+      clientId,
+      order.customer_phone,
+      order.customer_address,
+      { customerIp: order.customer_ip, browserFingerprint: order.browser_fingerprint }
+    );
     if (risk.level === 'critical' || risk.level === 'high') {
-      // Add a note to the order
       await pool.query(`
-        UPDATE store_orders 
+        UPDATE store_orders
         SET notes = COALESCE(notes, '') || E'\n\n🚨 تحذير تلقائي: ' || $1
         WHERE id = $2
       `, [risk.recommendation + '\n' + risk.flags.join('\n'), order.id]);
-      
       flaggedCount++;
     }
   }
-
   return flaggedCount;
 }

@@ -25,6 +25,13 @@ async function getStoreOrdersColumns(): Promise<Set<string>> {
   return new Set<string>(res.rows.map((r: any) => String(r.column_name)));
 }
 
+function getClientIp(req: any): string | null {
+  const xff = req.headers?.['x-forwarded-for'];
+  if (typeof xff === 'string') return xff.split(',')[0].trim();
+  if (Array.isArray(xff)) return xff[0].trim();
+  return req.socket?.remoteAddress || null;
+}
+
 export const ordersRouter = Router();
 
 const createOrderBodySchema = z
@@ -70,6 +77,13 @@ const createOrderBodySchema = z
       z.number().finite().positive()
     ).optional(),
     customer_commune: z.string().trim().max(200).optional().nullable(),
+
+    // Fraud detection signals
+    browser_fingerprint: z.string().trim().max(255).optional().nullable(),
+    form_fill_time_ms: z.preprocess(
+      (v) => (v === '' || v === null || v === undefined ? undefined : typeof v === 'string' ? Number(v) : v),
+      z.number().int().nonnegative()
+    ).optional().nullable(),
   });
 
 async function resolveDeliveryFee(params: {
@@ -135,6 +149,8 @@ export const createOrder: RequestHandler = async (req, res) => {
       offer_id,
       customer_notes,
       customer_commune,
+      browser_fingerprint,
+      form_fill_time_ms,
     } = parsed.data;
 
     // Merge customer_commune into shipping_address if both exist
@@ -352,6 +368,9 @@ export const createOrder: RequestHandler = async (req, res) => {
     addCol('shipping_wilaya_id', shipping_wilaya_id || null);
     addCol('shipping_commune_id', shipping_commune_id || null);
     addCol('shipping_hai', shipping_hai || null);
+    addCol('customer_ip', getClientIp(req));
+    addCol('browser_fingerprint', browser_fingerprint || null);
+    addCol('form_fill_time_ms', form_fill_time_ms != null ? Number(form_fill_time_ms) : null);
 
     // --- Fraud & duplicate detection ---
     let initialStatus = 'pending';
@@ -373,7 +392,11 @@ export const createOrder: RequestHandler = async (req, res) => {
 
     // 2. Risk assessment — auto-flag high/critical risk as fake
     try {
-      const risk = await assessOrderRisk(Number(resolvedClientId), normalizedPhone, customer_address || undefined);
+      const risk = await assessOrderRisk(Number(resolvedClientId), normalizedPhone, customer_address || undefined, {
+        customerIp: getClientIp(req),
+        browserFingerprint: browser_fingerprint || undefined,
+        formFillTimeMs: form_fill_time_ms != null ? Number(form_fill_time_ms) : undefined,
+      });
       if (risk.level === 'critical') {
         initialStatus = 'fake';
       } else if (risk.level === 'high') {

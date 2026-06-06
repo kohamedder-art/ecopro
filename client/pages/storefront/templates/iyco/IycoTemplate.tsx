@@ -4,6 +4,7 @@ import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeli
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import {
@@ -324,6 +325,7 @@ export default function IycoTemplate({
             customer_notes: customerNotes,
             shipping_wilaya_id: selectedWilayaId,
             product_name: item.name || item.title || mainProduct?.title || mainProduct?.name || '',
+            ...getFraudData(),
           }),
         });
         if (!res.ok) {

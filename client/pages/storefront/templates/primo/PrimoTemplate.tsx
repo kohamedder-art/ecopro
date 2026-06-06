@@ -5,6 +5,7 @@ import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import {
@@ -255,6 +256,7 @@ const openProduct = (product: any) => {
           customer_notes: customerNotes,
           shipping_wilaya_id: selectedWilayaId,
           product_name: mainProduct.title || mainProduct.name || '',
+          ...getFraudData(),
         }),
       });
       const data = await res.json();

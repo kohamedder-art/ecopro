@@ -10,6 +10,7 @@ import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate, onProductView }: TemplateProps) {
@@ -178,6 +179,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           customer_address: address,
           customer_notes: customerNotes,
           product_name: mainProduct.title || mainProduct.name || '',
+          ...getFraudData(),
         }),
       });
 

@@ -4,6 +4,7 @@ import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeli
 import { useImageClassifier } from '@/hooks/useImageClassifier';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import { isValidAlgerianPhone } from '@/lib/utils';
+import { getFraudData } from '@/lib/fingerprint';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -103,6 +104,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 customer_commune: communeDisplayName(getAlgeriaCommuneById(customerCommune)!) || fd.get('commune') || '',
                 customer_notes: fd.get('notes') || '',
                 product_name: product.title || product.name || '',
+                ...getFraudData(),
             };
             const res = await fetch('/api/orders/create', {
                 method: 'POST',
