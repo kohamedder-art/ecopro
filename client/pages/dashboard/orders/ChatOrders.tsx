@@ -52,8 +52,8 @@ const STATUS_META: Record<string, { labelKey: string; color: string; icon: strin
   confirmed:        { labelKey: "orders.status.confirmed", color: "#22c55e", icon: "✓"  },
   processing:       { labelKey: "orders.status.processing", color: "#3b82f6", icon: "◐"  },
   shipped:          { labelKey: "orders.status.shipped", color: "#8b5cf6", icon: "📦" },
-  at_delivery:      { labelKey: "orders.status.at_delivery", color: "#f97316", icon: "🚚" },
-  in_delivery:      { labelKey: "orders.status.at_delivery", color: "#f97316", icon: "🚚" },
+  at_delivery:      { labelKey: "orders.status.in_delivery", color: "#f97316", icon: "🚚" },
+  in_delivery:      { labelKey: "orders.status.in_delivery", color: "#f97316", icon: "🚚" },
   delivered:        { labelKey: "orders.status.delivered", color: "#10b981", icon: "✓"  },
   completed:        { labelKey: "orders.status.completed", color: "#059669", icon: "✓"  },
   failed:           { labelKey: "orders.status.failed",   color: "#dc2626", icon: "✕"  },
@@ -127,8 +127,7 @@ const STATUS_OPTIONS = [
   { value: "confirmed",        labelKey: "orders.status.confirmed",  icon: <CheckCircle className="w-3 h-3" />,     color: "#22c55e" },
   { value: "processing",       labelKey: "orders.status.processing", icon: <Package className="w-3 h-3" />,         color: "#3b82f6" },
   { value: "shipped",          labelKey: "orders.status.shipped",    icon: <Truck className="w-3 h-3" />,           color: "#8b5cf6" },
-  { value: "at_delivery",      labelKey: "orders.status.at_delivery", icon: <Truck className="w-3 h-3" />,           color: "#f97316" },
-  { value: "in_delivery",      labelKey: "orders.status.at_delivery", icon: <Truck className="w-3 h-3" />,           color: "#f97316" },
+  { value: "in_delivery",      labelKey: "orders.status.in_delivery", icon: <Truck className="w-3 h-3" />,           color: "#f97316" },
   { value: "delivered",        labelKey: "orders.status.delivered",  icon: <CheckCircle className="w-3 h-3" />,     color: "#10b981" },
   { value: "completed",        labelKey: "orders.status.completed",  icon: <CheckCircle className="w-3 h-3" />,     color: "#059669" },
   { value: "failed",           labelKey: "orders.status.failed",     icon: <XCircle className="w-3 h-3" />,         color: "#dc2626" },
@@ -358,7 +357,7 @@ export default function ChatOrders() {
       (o.product_title || "").toLowerCase().includes(q)
     )) return false;
 
-    if (statusFilter !== "all" && o.status !== statusFilter) return false;
+    if (statusFilter !== "all" && o.status !== statusFilter && !(statusFilter === "in_delivery" && o.status === "at_delivery")) return false;
 
     if (dateRange !== "all") {
       const cutoff = dateRange === "today" ? Date.now() - 86400000
@@ -525,14 +524,11 @@ export default function ChatOrders() {
             {t("chatOrders.filterAll")}
           </button>
           {Object.entries(STATUS_META).map(([key, s]) => {
-            // Merge at_delivery + in_delivery into one pill
-            const countKey = (key === "at_delivery" || key === "in_delivery") ? "__in_delivery__" : key;
-            if (countKey !== key && statusFilter !== key) return null; // skip duplicate
-            const cnt   = orders.filter(o => {
-              if (countKey === "__in_delivery__") return o.status === "at_delivery" || o.status === "in_delivery";
-              return o.status === key;
-            }).length;
-            const active = statusFilter === key || (countKey === "__in_delivery__" && (statusFilter === "at_delivery" || statusFilter === "in_delivery"));
+            // Skip at_delivery in filter pills — merged into in_delivery
+            if (key === "at_delivery") return null;
+            // in_delivery counts both in_delivery and at_delivery orders
+            const cnt   = orders.filter(o => o.status === key || (key === "in_delivery" && o.status === "at_delivery")).length;
+            const active = statusFilter === key;
             if (!cnt && !active) return null;
             return (
               <button

@@ -385,6 +385,7 @@ export const en = {
   "orders.status.cancelled": "Cancelled",
   "orders.status.declined": "Declined",
   "orders.status.at_delivery": "At Delivery Company",
+  "orders.status.in_delivery": "At Delivery Company",
   "orders.status.no_answer_1": "No Answer (1st)",
   "orders.status.no_answer_2": "No Answer (2nd)",
   "orders.status.no_answer_3": "No Answer (3rd)",

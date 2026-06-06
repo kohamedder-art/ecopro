@@ -439,6 +439,7 @@ export const ar = {
   "orders.status.cancelled": "ملغية من قبل العميل",
   "orders.status.declined": "مرفوض",
   "orders.status.at_delivery": "عند شركة التوصيل",
+  "orders.status.in_delivery": "عند شركة التوصيل",
   "orders.status.no_answer_1": "لم يرد (1)",
   "orders.status.no_answer_2": "لم يرد (2)",
   "orders.status.no_answer_3": "لم يرد (3)",

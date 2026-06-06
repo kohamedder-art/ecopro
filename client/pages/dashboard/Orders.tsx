@@ -209,7 +209,7 @@ export default function OrdersAdmin() {
     if (filterTab === 'archived') {
       result = result.filter(o => o.status === 'failed' || o.status === 'cancelled' || o.status === 'fake' || o.status === 'duplicate');
     } else if (filterTab !== 'all') {
-      result = result.filter(o => o.status === filterTab);
+      result = result.filter(o => o.status === filterTab || (filterTab === 'in_delivery' && o.status === 'at_delivery'));
     }
 
     // Date range filter
@@ -295,7 +295,15 @@ export default function OrdersAdmin() {
       const res = await fetch('/api/client/order-statuses');
       if (res.ok) {
         const data = await res.json();
-        setCustomStatuses(data);
+        // Merge at_delivery into in_delivery (both mean the same thing)
+        const merged = data.filter((s: any) => s.key !== 'at_delivery');
+        const inDel = merged.find((s: any) => s.key === 'in_delivery');
+        if (inDel) {
+          inDel.name = t('orders.status.in_delivery') || inDel.name;
+          inDel.icon = '🚚';
+          inDel.color = '#f97316';
+        }
+        setCustomStatuses(merged);
       }
     } catch (error) {
       console.error('Failed to load statuses:', error);
@@ -479,6 +487,8 @@ export default function OrdersAdmin() {
 
   // Get status display info - uses key to find status, shows translated name
   const getStatusDisplay = (statusKey: string) => {
+    // Normalize at_delivery → in_delivery
+    if (statusKey === 'at_delivery') statusKey = 'in_delivery';
     // First try to find in custom statuses by key
     const status = customStatuses.find(s => s.key === statusKey);
     if (status) {
@@ -501,8 +511,8 @@ export default function OrdersAdmin() {
       delivered: { color: '#10b981', icon: '✓' },
       cancelled: { color: '#ef4444', icon: '✕' },
       failed: { color: '#ef4444', icon: '✕' },
-      at_delivery: { color: '#8b5cf6', icon: '🚚' },
-      in_delivery: { color: '#8b5cf6', icon: '🚚' },
+      at_delivery: { color: '#f97316', icon: '🚚' },
+      in_delivery: { color: '#f97316', icon: '🚚' },
       no_answer_1: { color: '#f59e0b', icon: '📞' },
       no_answer_2: { color: '#f59e0b', icon: '📞' },
       no_answer_3: { color: '#f59e0b', icon: '📞' },
@@ -1030,7 +1040,7 @@ export default function OrdersAdmin() {
             {t('orders.status.all')} ({orders.length})
           </button>
           {customStatuses.map(status => {
-            const statusCount = orders.filter(o => o.status === status.key).length;
+            const statusCount = orders.filter(o => o.status === status.key || (status.key === 'in_delivery' && o.status === 'at_delivery')).length;
             const translatedName = t(`orders.status.${status.key}`) || status.name;
             return (
               <button

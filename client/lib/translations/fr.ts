@@ -360,6 +360,7 @@ export const fr = {
   "orders.status.completed": "Terminée",
   "orders.status.cancelled": "Annulée",
   "orders.status.at_delivery": "Chez le livreur",
+  "orders.status.in_delivery": "Chez le livreur",
   "orders.status.no_answer_1": "Pas de réponse (1er)",
   "orders.status.no_answer_2": "Pas de réponse (2ème)",
   "orders.status.no_answer_3": "Pas de réponse (3ème)",
