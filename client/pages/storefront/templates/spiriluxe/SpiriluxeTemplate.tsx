@@ -164,7 +164,18 @@ export default function SpiriluxeTemplate({
       });
       
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'حدث خطأ أثناء تقديم الطلب.');
+      if (!res.ok) {
+        let errMsg: string;
+        if (data.fields) {
+          const list = Object.values(data.fields).map((m: any) => `• ${m}`).join('\n');
+          errMsg = (data.error || 'يرجى تصحيح البيانات') + '\n' + list;
+        } else {
+          errMsg = data.error || 'حدث خطأ أثناء تقديم الطلب.';
+        }
+        setOrderError(errMsg);
+        setIsSubmitting(false);
+        return;
+      }
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
       setLastCustomerPhone(String(fd.get('phone') || ''));
@@ -180,7 +191,7 @@ export default function SpiriluxeTemplate({
       });
     } catch (error: any) {
       console.error('Order error:', error);
-      setOrderError(error?.message || 'حدث خطأ أثناء تقديم الطلب. يرجى المحاولة مجدداً.');
+      if (!orderError) setOrderError('حدث خطأ في الاتصال. حاول مرة أخرى.');
     } finally {
       setIsSubmitting(false);
     }
@@ -441,9 +452,9 @@ export default function SpiriluxeTemplate({
             ) : (
               <form onSubmit={handleOrder} className="space-y-5">
                 {orderError && (
-                  <div className="text-sm font-semibold rounded-xl px-4 py-3" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
-                    {orderError}
-                  </div>
+                  <div className="text-sm font-semibold rounded-xl px-4 py-3 whitespace-pre-line text-start" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
+                      {orderError}
+                    </div>
                 )}
                 {mainProduct?.variants && mainProduct.variants.length > 0 && (
                   <VariantSelector

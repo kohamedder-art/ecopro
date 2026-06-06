@@ -260,7 +260,18 @@ const openProduct = (product: any) => {
       const data = await res.json();
       setLastOrderId(data.order?.id || null);
       setLastTelegramUrl(data.telegramStartUrl || null);
-      if (!res.ok) throw new Error(data.error || 'Order failed');
+      if (!res.ok) {
+        let errMsg: string;
+        if (data.fields) {
+          const list = Object.values(data.fields).map((m: any) => `• ${m}`).join('\n');
+          errMsg = (data.error || 'يرجى تصحيح البيانات') + '\n' + list;
+        } else {
+          errMsg = data.error || 'حدث خطأ أثناء إرسال الطلب';
+        }
+        setOrderError(errMsg);
+        setIsSubmitting(false);
+        return;
+      }
       setOrderSuccess(true);
       trackAllPixels(PixelEvents.PURCHASE, {
         content_name: mainProduct?.title || mainProduct?.name || '',
@@ -272,7 +283,7 @@ const openProduct = (product: any) => {
         order_id: data?.order?.id || null,
       });
     } catch {
-      setOrderError('حدث خطأ أثناء إرسال الطلب');
+      if (!orderError) setOrderError('حدث خطأ في الاتصال. حاول مرة أخرى.');
     } finally {
       setIsSubmitting(false);
     }
@@ -585,7 +596,7 @@ const openProduct = (product: any) => {
                 <h3 className="text-sm font-black text-center pb-2" style={{ color: surfaceTextColor, borderBottom: `1px solid ${surfaceBorderColor}` }}>إستمارة الطلب</h3>
 
                 {orderError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center">
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start">
                     {orderError}
                   </div>
                 )}

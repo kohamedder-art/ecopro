@@ -813,9 +813,47 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       shipping_hai,
     } = data;
 
+    // ── Field-level validation with Arabic messages ──
+    const fieldErrors: Record<string, string> = {};
+
+    const trimmedName = String(customer_name || '').trim();
+    if (!trimmedName || /^\d+$/.test(trimmedName)) {
+      fieldErrors.customer_name = 'الاسم مطلوب ويجب ألا يكون أرقاماً فقط';
+    }
+
     const normalizedPhone = String(customer_phone).replace(/\s/g, '');
-    if (!/^\+?[0-9]{7,}$/.test(normalizedPhone)) {
-      res.status(400).json({ error: 'Invalid phone number' });
+    if (!normalizedPhone) {
+      fieldErrors.customer_phone = 'رقم الهاتف مطلوب';
+    } else if (!/^(05|06|07)\d{8}$/.test(normalizedPhone)) {
+      fieldErrors.customer_phone = 'رقم الهاتف يجب أن يبدأ بـ 05 أو 06 أو 07 ويتكون من 10 أرقام';
+    }
+
+    if (quantity < 1) {
+      fieldErrors.quantity = 'الكمية يجب أن تكون 1 على الأقل';
+    }
+
+    if (delivery_type === 'home') {
+      const addr = String(customer_address || '').trim();
+      if (!addr) {
+        fieldErrors.customer_address = 'العنوان مطلوب عند اختيار التوصيل إلى المنزل';
+      }
+      if (!shipping_wilaya_id) {
+        fieldErrors.shipping_wilaya_id = 'الولاية مطلوبة عند اختيار التوصيل إلى المنزل';
+      }
+      if (!shipping_commune_id) {
+        fieldErrors.shipping_commune_id = 'البلدية مطلوبة عند اختيار التوصيل إلى المنزل';
+      }
+    }
+
+    if (customer_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(customer_email))) {
+      fieldErrors.customer_email = 'البريد الإلكتروني غير صحيح';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      res.status(400).json({
+        error: 'يرجى تصحيح البيانات التالية',
+        fields: fieldErrors,
+      });
       return;
     }
 

@@ -363,8 +363,16 @@ export default function LeRoiShopTemplate({
           num_items: quantity,
           order_id: data?.order?.id || null,
         });
+      } else {
+        let errMsg: string;
+        if (data.fields) {
+          const list = Object.values(data.fields).map((m: any) => `• ${m}`).join('\n');
+          errMsg = (data.error || 'يرجى تصحيح البيانات') + '\n' + list;
+        } else {
+          errMsg = data.error || 'حدث خطأ أثناء إرسال الطلب';
+        }
+        setOrderError(errMsg);
       }
-      else setOrderError(data.error || 'حدث خطأ أثناء إرسال الطلب');
     } catch {
       setOrderError('حدث خطأ أثناء إرسال الطلب');
     } finally {
@@ -816,6 +824,13 @@ export default function LeRoiShopTemplate({
                             <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(grandTotal ?? 0).toLocaleString()} {currency}</span>
                             <span className="font-bold">المجموع</span>
                           </div>
+                        </div>
+                      )}
+
+                      {/* ── Error banner ────────────────────────── */}
+                      {orderError && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start mb-3" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#dc2626' }}>
+                          {orderError}
                         </div>
                       )}
 

@@ -330,7 +330,14 @@ export default function IycoTemplate({
           const data = await res.json();
           setLastOrderId(data.order?.id || null);
           setLastTelegramUrl(data.telegramStartUrl || null);
-          setOrderError(data.error || 'خطأ في الطلب');
+          let errMsg: string;
+          if (data.fields) {
+            const list = Object.values(data.fields).map((m: any) => `• ${m}`).join('\n');
+            errMsg = (data.error || 'يرجى تصحيح البيانات') + '\n' + list;
+          } else {
+            errMsg = data.error || 'خطأ في الطلب';
+          }
+          setOrderError(errMsg);
           return;
         }
         const data = await res.json();
@@ -730,7 +737,7 @@ export default function IycoTemplate({
                   </div>
 
               {orderError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center mb-2">
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start mb-2">
                   {orderError}
                 </div>
               )}
