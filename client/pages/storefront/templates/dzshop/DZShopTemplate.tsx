@@ -216,6 +216,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     }, [primaryColor]);
 
     const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
+        e.currentTarget.setAttribute('data-setting-key', key);
         const text = e.currentTarget.textContent || '';
         window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key, value: text }, '*');
     };

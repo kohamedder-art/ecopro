@@ -574,8 +574,21 @@ export default function GoldTemplateEditor() {
     setSuccess(null);
 
     try {
-      // Use ref to get the absolute latest settings (postMessage from iframe may not be flushed yet)
       const currentSettings = { ...settingsRef.current };
+
+      // Read any unsaved contentEditable text directly from the iframe DOM.
+      // postMessage from iframe blur is async, so state may not reflect edits yet.
+      try {
+        const iframeDoc = previewIframeRef.current?.contentDocument;
+        if (iframeDoc) {
+          iframeDoc.querySelectorAll('[data-setting-key]').forEach((el) => {
+            const key = el.getAttribute('data-setting-key');
+            if (key && el.textContent) {
+              currentSettings[key] = el.textContent;
+            }
+          });
+        }
+      } catch {}
 
       // Strip / upload any base64 images before sending
       const cleanedSettings = await sanitizeSettingsImages(currentSettings);

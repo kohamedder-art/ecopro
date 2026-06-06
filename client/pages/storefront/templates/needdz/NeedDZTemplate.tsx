@@ -174,8 +174,9 @@ const parseVideoEmbed = (videoUrl: string) => {
 };
 
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
-    if (canManage) { window.parent.postMessage({ type: "TEMPLATE_UPDATE_SETTING", key, value: e.currentTarget.textContent || "" }, "*"); //
-      
+    if (canManage) {
+      e.currentTarget.setAttribute('data-setting-key', key);
+      window.parent.postMessage({ type: "TEMPLATE_UPDATE_SETTING", key, value: e.currentTarget.textContent || "" }, "*");
     }
   };
 

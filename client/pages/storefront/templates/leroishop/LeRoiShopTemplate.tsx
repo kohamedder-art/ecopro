@@ -255,6 +255,7 @@ export default function LeRoiShopTemplate({
 
   /* ── Handlers ─────────────────────────────────────────── */
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
+    e.currentTarget.setAttribute('data-setting-key', key);
     const text = e.currentTarget.textContent || '';
     window.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key, value: text }, '*');
   };

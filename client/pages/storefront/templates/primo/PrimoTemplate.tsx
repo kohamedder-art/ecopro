@@ -199,6 +199,7 @@ const openProduct = (product: any) => {
     }
   };
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
+    e.currentTarget.setAttribute('data-setting-key', key);
     const text = e.currentTarget.textContent || '';
     if (typeof window !== 'undefined' && window.parent !== window) {
       window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key, value: text }, '*');
