@@ -1726,7 +1726,8 @@ export default function GoldTemplateEditor() {
                     <div className="space-y-3">
                       <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Zap className="w-3 h-3 text-indigo-500"/> {t('editor.coreColors')}</h4>
                       <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
-                        {/* Primary */}
+                        {/* Primary — only shown if template uses it independently */}
+                        {activeTemplateId !== 'zenith' && activeTemplateId !== 'spiriluxe' && (
                         <div className="flex items-center gap-3">
                           <input type="color" value={settings.primary_color || '#2563eb'} onChange={(e) => handleSettingChange('primary_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent shrink-0" />
                           <div className="flex-1">
@@ -1738,6 +1739,7 @@ export default function GoldTemplateEditor() {
                             </div>
                           </div>
                         </div>
+                        )}
                         {/* Accent */}
                         <div className="flex items-center gap-3">
                           <input type="color" value={settings.template_accent_color || '#f97316'} onChange={(e) => handleSettingChange('template_accent_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent shrink-0" />
@@ -1762,7 +1764,8 @@ export default function GoldTemplateEditor() {
                             </div>
                           </div>
                         </div>
-                        {/* Header */}
+                        {/* Header — only shown if template uses it */}
+                        {activeTemplateId !== 'zenith' && activeTemplateId !== 'spiriluxe' && (
                         <div className="flex items-center gap-3">
                           <input type="color" value={settings.iyco_header_color || '#ffffff'} onChange={(e) => handleSettingChange('iyco_header_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent shrink-0" />
                           <div className="flex-1">
@@ -1774,6 +1777,7 @@ export default function GoldTemplateEditor() {
                             </div>
                           </div>
                         </div>
+                        )}
                       </div>
                     </div>
 
@@ -2148,16 +2152,18 @@ export default function GoldTemplateEditor() {
                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('editor.globalStylesDesc')}</p>
                  </div>
                  
-                 {/* Brand Colors */}
-                 <div className="space-y-4">
-                    <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Zap className="w-3 h-3 text-indigo-500"/> {t('editor.coreColors')}</h4>
-                    <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-5">
-                       <div className="flex flex-col gap-3">
-                         <div className="flex items-center justify-between">
-                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('editor.primaryColor')}</span>
-                           <span className="text-xs font-mono text-slate-500">{settings.primary_color || '#2563eb'}</span>
-                         </div>
-                         <div className="flex gap-2">
+                  {/* Brand Colors */}
+                  <div className="space-y-4">
+                     <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Zap className="w-3 h-3 text-indigo-500"/> {t('editor.coreColors')}</h4>
+                     <div className="bg-slate-100 dark:bg-[#131825] p-5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-5">
+                        {/* Primary — only shown if template uses it independently */}
+                        {activeTemplateId !== 'zenith' && activeTemplateId !== 'spiriluxe' && (
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('editor.primaryColor')}</span>
+                            <span className="text-xs font-mono text-slate-500">{settings.primary_color || '#2563eb'}</span>
+                          </div>
+                          <div className="flex gap-2">
                             <input type="color" value={settings.primary_color || '#2563eb'} onChange={(e) => handleSettingChange('primary_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
                             <div className="flex-1 flex gap-1">
                                {/* Quick swatches */}
@@ -2165,54 +2171,57 @@ export default function GoldTemplateEditor() {
                                   <button key={color} onClick={() => handleSettingChange('primary_color', color)} className="flex-1 rounded-lg border border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
                                ))}
                             </div>
-                         </div>
-                       </div>
-                       {/* Accent / CTA button color */}
-                       <div className="flex flex-col gap-3">
-                         <div className="flex items-center justify-between">
-                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">لون الزر / Accent</span>
-                           <span className="text-xs font-mono text-slate-500">{settings.template_accent_color || '#f97316'}</span>
-                         </div>
-                         <div className="flex gap-2">
+                          </div>
+                        </div>
+                        )}
+                        {/* Accent / CTA button color */}
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">لون الزر / Accent</span>
+                            <span className="text-xs font-mono text-slate-500">{settings.template_accent_color || '#f97316'}</span>
+                          </div>
+                          <div className="flex gap-2">
                             <input type="color" value={settings.template_accent_color || '#f97316'} onChange={(e) => handleSettingChange('template_accent_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
                             <div className="flex-1 flex gap-1">
                                {['#f97316', '#ef4444', '#22c55e', '#a855f7', '#06b6d4', '#fbbf24'].map(color => (
                                   <button key={color} onClick={() => handleSettingChange('template_accent_color', color)} className="flex-1 rounded-lg border border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
                                ))}
                             </div>
-                         </div>
-                       </div>
-                       {/* Background color */}
-                       <div className="flex flex-col gap-3">
-                         <div className="flex items-center justify-between">
-                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">لون الخلفية / Background</span>
-                           <span className="text-xs font-mono text-slate-500">{settings.template_bg_color || '#ffffff'}</span>
-                         </div>
-                         <div className="flex gap-2">
+                          </div>
+                        </div>
+                        {/* Background color */}
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">لون الخلفية / Background</span>
+                            <span className="text-xs font-mono text-slate-500">{settings.template_bg_color || '#ffffff'}</span>
+                          </div>
+                          <div className="flex gap-2">
                             <input type="color" value={settings.template_bg_color || '#ffffff'} onChange={(e) => handleSettingChange('template_bg_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
                             <div className="flex-1 flex gap-1">
                                {['#ffffff', '#f8fafc', '#f9f8f6', '#0a0a0a', '#080808', '#0f172a'].map(color => (
                                   <button key={color} onClick={() => handleSettingChange('template_bg_color', color)} className="flex-1 rounded-lg border border-slate-300 dark:border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
                                ))}
                             </div>
-                         </div>
-                       </div>
+                          </div>
+                        </div>
 
-                       {/* Header / Surface color (for templates that support it) */}
-                       <div className="flex flex-col gap-3">
-                         <div className="flex items-center justify-between">
-                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">لون الهيدر / Header</span>
-                           <span className="text-xs font-mono text-slate-500">{settings.iyco_header_color || '#ffffff'}</span>
-                         </div>
-                         <div className="flex gap-2">
+                        {/* Header / Surface color (for templates that support it) */}
+                        {activeTemplateId !== 'zenith' && activeTemplateId !== 'spiriluxe' && (
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">لون الهيدر / Header</span>
+                            <span className="text-xs font-mono text-slate-500">{settings.iyco_header_color || '#ffffff'}</span>
+                          </div>
+                          <div className="flex gap-2">
                             <input type="color" value={settings.iyco_header_color || '#ffffff'} onChange={(e) => handleSettingChange('iyco_header_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
                             <div className="flex-1 flex gap-1">
                                {['#ffffff', '#f8fafc', '#1e293b', '#0f172a', '#0a0a0a', '#111827'].map(color => (
                                   <button key={color} onClick={() => handleSettingChange('iyco_header_color', color)} className="flex-1 rounded-lg border border-slate-300 dark:border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
                                ))}
                             </div>
-                         </div>
-                       </div>
+                          </div>
+                        </div>
+                        )}
                     </div>
                  </div>
 

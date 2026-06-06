@@ -63,14 +63,16 @@ const FALLBACK_PRODUCTS = [
 
 export default function NeedDZTemplate({ settings, products, canManage, storeSlug, navigate, initialProductSlug, onProductView }: TemplateProps) {
   const accentColor = settings?.template_accent_color || settings?.primary_color || '#059669';
+  const headerColor = settings?.iyco_header_color || '#ffffff';
+  const bgColor = settings?.template_bg_color || '#ffffff';
   const isDark = useMemo(() => {
-    const hex = (settings?.template_bg_color || '#ffffff').replace('#', '');
+    const hex = bgColor.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
     return (r * 299 + g * 587 + b * 114) / 1000 < 128;
-  }, [settings?.template_bg_color]);
-  const textColor = isDark ? '#f1f5f9' : '#1f2937';
+  }, [bgColor]);
+  const textColor = settings?.primary_color || (isDark ? '#f1f5f9' : '#1f2937');
   const textMuted = isDark ? '#94a3b8' : '#6b7280';
   const borderColor = isDark ? '#334155' : '#e5e7eb';
   const cardBg = isDark ? '#1e293b' : '#ffffff';
@@ -289,7 +291,7 @@ const parseVideoEmbed = (videoUrl: string) => {
         )}
 
         {/* Main Branding */}
-        <header className="px-6 py-5 flex justify-between items-center border-b" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
+        <header className="px-6 py-5 flex justify-between items-center border-b" style={{ backgroundColor: headerColor, borderColor: borderColor }}>
           <div className="flex items-center gap-2">
             {settings?.store_logo ? (
               <img src={settings.store_logo} alt={settings?.store_name || "متجري"} className="w-9 h-9 rounded-full object-cover border-2 shadow-sm" style={{ borderColor: accentColor + '4d' }} />
