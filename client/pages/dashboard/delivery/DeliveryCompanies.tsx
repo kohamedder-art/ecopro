@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Truck, Key, CheckCircle2, X, ExternalLink, Zap, Wifi, WifiOff, Settings2, Star, Loader2, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -626,19 +626,6 @@ export default function DeliveryCompanies() {
     ));
   };
 
-  // Render star rating
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <span key={star} className={star <= rating ? "text-yellow-500" : "text-gray-300"}>
-            ★
-          </span>
-        ))}
-      </div>
-    );
-  };
-
   const selectedCompanyDbId = selectedCompany
     ? companyIdByName[toCompanyLookupKey(String(selectedCompany.name || ''))]
     : undefined;
@@ -655,22 +642,22 @@ export default function DeliveryCompanies() {
     <div className="space-y-6">
 
       {/* ── Header ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 px-6 py-5 shadow-xl shadow-purple-500/20">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMS41IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDgpIi8+PC9zdmc+')] opacity-60" />
-        <div className="relative flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20 shadow-lg">
-              <Truck className="w-6 h-6 text-white" />
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 px-5 py-4 shadow-xl shadow-slate-900/20 dark:from-slate-900 dark:via-slate-800 dark:to-black">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMS41IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PC9zdmc+')] opacity-50" />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/15">
+              <Truck className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold text-white tracking-tight">{t('delivery.title')}</h1>
-              <p className="text-sm text-purple-100 mt-0.5">{t('delivery.subtitle')}</p>
+              <h1 className="text-lg font-extrabold text-white tracking-tight">{t('delivery.title')}</h1>
+              <p className="text-xs text-slate-300 mt-0.5">{t('delivery.subtitle')}</p>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2.5 flex-shrink-0">
-            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3.5 py-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-sm font-bold text-white">
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-3 py-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-bold text-white">
                 {sortedCompanies.filter(c => { const id = companyIdByName[toCompanyLookupKey(c.name)]; return c.enabled || Boolean(id && integrationMetaByCompanyId[id]?.is_enabled); }).length} {t('delivery.connected')}
               </span>
             </div>
@@ -679,16 +666,14 @@ export default function DeliveryCompanies() {
       </div>
 
       {/* ── Tip banner ── */}
-      <div className="flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200/70 dark:border-amber-700/40 rounded-xl px-4 py-3">
-        <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
-          <Zap className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-        </div>
-        <p className="text-sm text-amber-800 dark:text-amber-200">
-          <span className="font-extrabold">{t('delivery.recommended')}</span>{' — '}{t('delivery.recommendedDesc')}
+      <div className="flex items-center gap-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-700/30 rounded-xl px-3.5 py-2.5">
+        <Zap className="w-4 h-4 text-amber-500 flex-shrink-0" />
+        <p className="text-xs text-amber-800 dark:text-amber-200">
+          <span className="font-bold">{t('delivery.recommended')}</span>{' — '}{t('delivery.recommendedDesc')}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {sortedCompanies.map((company) => {
           const dbId = companyIdByName[toCompanyLookupKey(String(company.name || ''))];
           const meta = dbId ? integrationMetaByCompanyId[dbId] : undefined;
@@ -699,92 +684,91 @@ export default function DeliveryCompanies() {
             <div
               key={company.id}
               onClick={() => handleCardClick(company)}
-              className={`group relative rounded-2xl overflow-hidden transition-all duration-300 ${
+              className={`group relative rounded-xl overflow-hidden transition-all duration-200 ${
                 comingSoon
-                  ? 'cursor-not-allowed opacity-50 bg-gray-50 dark:bg-gray-900/40 border-2 border-gray-200/60 dark:border-gray-700/40'
+                  ? 'cursor-not-allowed opacity-50 bg-gray-50 dark:bg-gray-900/40 border border-gray-200/60 dark:border-gray-700/40'
                   : isConnected
-                    ? 'cursor-pointer bg-white dark:bg-gray-900 border-2 border-emerald-400 dark:border-emerald-600 shadow-lg shadow-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/20 hover:-translate-y-1'
-                    : 'cursor-pointer bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-violet-400 dark:hover:border-violet-500 hover:shadow-xl hover:shadow-violet-500/10 hover:-translate-y-1'
+                    ? 'cursor-pointer bg-white dark:bg-gray-900 border border-emerald-300 dark:border-emerald-600 shadow-sm shadow-emerald-500/5 hover:shadow-md hover:-translate-y-0.5'
+                    : 'cursor-pointer bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5'
               }`}
             >
               {/* top accent bar */}
-              <div className={`h-1.5 w-full ${
+              <div className={`h-1 w-full ${
                 isConnected
-                  ? 'bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400'
+                  ? 'bg-gradient-to-r from-emerald-400 to-green-500'
                   : comingSoon
-                    ? 'bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600'
-                    : 'bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500'
+                    ? 'bg-gray-200 dark:bg-gray-700'
+                    : 'bg-gradient-to-r from-primary/60 to-accent/60'
               }`} />
 
-              <div className="p-5 space-y-4">
+              <div className="p-3.5 space-y-2.5">
                 {/* Logo + name row */}
-                <div className="flex items-center gap-3.5">
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden border-2 flex-shrink-0 transition-colors ${
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden border flex-shrink-0 transition-colors ${
                     isConnected
                       ? 'border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 group-hover:border-violet-300 dark:group-hover:border-violet-600'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 group-hover:border-primary/30'
                   }`}>
                     {company.logo.startsWith('/') ? (
-                      <DeliveryCompanyLogo name={company.name} alt={company.name} className="w-full h-full object-contain p-1.5" />
+                      <DeliveryCompanyLogo name={company.name} alt={company.name} className="w-full h-full object-contain p-1" />
                     ) : (
-                      <Truck className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                      <Truck className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-extrabold text-gray-900 dark:text-white truncate">{company.name}</h3>
-                      {isConnected && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 animate-pulse" />}
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-bold text-sm text-gray-900 dark:text-white truncate">{company.name}</h3>
+                      {isConnected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 animate-pulse" />}
                     </div>
-                    <div className="flex items-center gap-1 mt-1">
+                    <div className="flex items-center gap-0.5 mt-0.5">
                       {[1,2,3,4,5].map(s => (
-                        <Star key={s} className={`w-3.5 h-3.5 ${ s <= company.apiRating ? 'fill-amber-400 text-amber-400' : 'fill-gray-200 dark:fill-gray-700 text-gray-200 dark:text-gray-700'}`} />
+                        <Star key={s} className={`w-3 h-3 ${ s <= company.apiRating ? 'fill-amber-400 text-amber-400' : 'fill-gray-200 dark:fill-gray-700 text-gray-200 dark:text-gray-700'}`} />
                       ))}
-                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500 mr-1">{company.apiRating}/5</span>
                     </div>
                   </div>
                   {comingSoon && (
-                    <Badge variant="secondary" className="text-xs font-bold px-2 py-0.5">{t('delivery.comingSoon')}</Badge>
+                    <Badge variant="secondary" className="text-[10px] font-semibold px-1.5 py-0">{t('delivery.comingSoon')}</Badge>
                   )}
                 </div>
 
                 {/* Description */}
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">{desc}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">{desc}</p>
 
                 {/* Feature chips */}
-                <div className="flex flex-wrap gap-1.5">
-                  {company.features.createShipment && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/50">{t('delivery.shipments')}</span>}
-                  {company.features.tracking && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border border-violet-200/70 dark:border-violet-800/50">{t('delivery.tracking')}</span>}
-                  {company.features.labels && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 border border-orange-200/70 dark:border-orange-800/50">{t('delivery.labels')}</span>}
-                  {company.features.cod && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/50">{t('delivery.cod')}</span>}
-                  {company.features.webhooks && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/50">{t('delivery.webhooks')}</span>}
+                <div className="flex flex-wrap gap-1">
+                  {company.features.createShipment && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40">{t('delivery.shipments')}</span>}
+                  {company.features.tracking && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/60 dark:border-violet-800/40">{t('delivery.tracking')}</span>}
+                  {company.features.labels && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-800/40">{t('delivery.labels')}</span>}
+                  {company.features.cod && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40">{t('delivery.cod')}</span>}
+                  {company.features.webhooks && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40">{t('delivery.webhooks')}</span>}
                 </div>
 
                 {/* Status footer */}
-                <div className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 font-bold ${
+                <div className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold ${
                   isConnected
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400'
                     : comingSoon
-                      ? 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/60 text-gray-500 dark:text-gray-400'
-                      : 'bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/60 text-violet-700 dark:text-violet-300'
+                      ? 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 text-gray-400 dark:text-gray-500'
+                      : 'bg-primary/5 dark:bg-primary/10 border border-primary/20 text-primary'
                 }`}>
                   {isConnected ? (
                     <>
-                      <Wifi className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-sm">{t('delivery.connected')}</span>
+                      <Wifi className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{t('delivery.connected')}</span>
                       {meta?.updated_at && (
-                        <span className="text-xs font-normal text-emerald-500/70 ms-auto">{new Date(meta.updated_at).toLocaleDateString()}</span>
+                        <span className="text-[10px] font-normal text-emerald-500/60 ms-auto">{new Date(meta.updated_at).toLocaleDateString()}</span>
                       )}
-                      <Settings2 className="w-4 h-4 text-emerald-500/50 ms-auto" />
+                      <Settings2 className="w-3 h-3 text-emerald-500/40 ms-auto" />
                     </>
                   ) : comingSoon ? (
                     <>
-                      <WifiOff className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-sm">{t('delivery.comingSoon')}</span>
+                      <WifiOff className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{t('delivery.comingSoon')}</span>
                     </>
                   ) : (
                     <>
-                      <span className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0" />
-                      <span className="text-sm">{t('delivery.clickToConfigure')}</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/50 flex-shrink-0" />
+                      <span>{t('delivery.clickToConfigure')}</span>
                     </>
                   )}
                 </div>
@@ -796,55 +780,59 @@ export default function DeliveryCompanies() {
 
       {/* Configuration Dialog */}
       <Dialog open={showConfigDialog} onOpenChange={(open) => { setShowConfigDialog(open); if (!open) { setTestResult(null); setSaveError(null); setSaveSuccess(null); } }}>
-        <DialogContent className="max-w-md border-border/50 shadow-xl sm:max-w-lg" dir="rtl">
-          <DialogHeader className="space-y-3 pb-4 border-b border-border/50">
-            <div className="flex items-start gap-3">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center flex-shrink-0 border border-primary/20">
+        <DialogContent className="max-w-md border-border/50 shadow-2xl sm:max-w-lg p-0 gap-0 overflow-hidden" dir="rtl">
+          {/* ── Dialog Header with gradient ── */}
+          <div className="relative bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 px-6 py-5 dark:from-slate-900 dark:to-black">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMS41IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PC9zdmc+')] opacity-50" />
+            <div className="relative flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/15 flex-shrink-0">
                 {selectedCompany?.logo.startsWith('/') ? (
-                  <DeliveryCompanyLogo name={selectedCompany?.name} alt={selectedCompany?.name} className="w-full h-full object-contain p-2 rounded-lg" />
+                  <DeliveryCompanyLogo name={selectedCompany?.name} alt={selectedCompany?.name} className="w-full h-full object-contain p-1.5 rounded-lg" />
                 ) : (
-                  <Truck className="w-7 h-7 text-primary" />
+                  <Truck className="w-7 h-7 text-white" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <DialogTitle className="text-lg font-bold flex items-center gap-2 flex-wrap text-foreground">
+                <DialogTitle className="text-lg font-extrabold text-white flex items-center gap-2 flex-wrap">
                   {selectedCompany?.name}
                   {selectedCompany?.id === 'dolivroo' && (
-                    <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 text-xs">{t('delivery.aggregator')}</Badge>
+                    <Badge className="bg-purple-500/30 text-purple-100 border border-purple-400/30 text-[10px] font-bold px-1.5 py-0">{t('delivery.aggregator')}</Badge>
                   )}
                 </DialogTitle>
-                <DialogDescription className="text-sm mt-1.5 leading-relaxed text-foreground/80">
+                <DialogDescription className="text-sm text-slate-300 mt-1 leading-relaxed">
                   {selectedCompany?.description}
                 </DialogDescription>
                 {selectedCompany && (
-                  <div className="flex items-center gap-1 mt-2">
-                    {renderStars(selectedCompany.apiRating)}
-                    <span className="text-sm text-muted-foreground">{t('delivery.apiQuality')}</span>
+                  <div className="flex items-center gap-0.5 mt-2">
+                    {[1,2,3,4,5].map(s => (
+                      <Star key={s} className={`w-3.5 h-3.5 ${ s <= selectedCompany.apiRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-600 text-slate-600'}`} />
+                    ))}
+                    <span className="text-xs text-slate-400 mr-1">{t('delivery.apiQuality')}</span>
                   </div>
                 )}
               </div>
             </div>
-          </DialogHeader>
+          </div>
 
-          <div className="space-y-4 py-4 max-h-[65vh] overflow-y-auto">
+          <div className="space-y-4 px-6 py-5 max-h-[60vh] overflow-y-auto">
             {/* Coming soon message */}
             {selectedCompany && !canConnectSelectedCompany && (
-              <div className="bg-muted/50 rounded-xl p-5 text-center">
-                <p className="text-base font-bold mb-1">{t('delivery.comingSoon')}</p>
-                <p className="text-sm text-foreground/80">{t('delivery.comingSoonDesc')}</p>
+              <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-5 text-center border border-gray-200 dark:border-gray-700/50">
+                <p className="text-sm font-bold mb-1 text-gray-900 dark:text-white">{t('delivery.comingSoon')}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('delivery.comingSoonDesc')}</p>
               </div>
             )}
 
             {/* ── Step indicator ── */}
             {canConnectSelectedCompany && (
-              <div className="flex items-center gap-2 text-xs">
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold ${testResult?.success ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-primary/10 text-primary'}`}>
-                  <span className="w-4 h-4 rounded-full bg-current text-white flex items-center justify-center text-[10px] font-bold">1</span>
+              <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${testResult?.success ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-primary/10 text-primary'}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${testResult?.success ? 'bg-emerald-500' : 'bg-primary'}`}>1</span>
                   إدخال البيانات
                 </div>
-                <div className={`flex-1 h-px ${testResult?.success ? 'bg-emerald-400' : 'bg-border'}`} />
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold ${testResult?.success ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
-                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${testResult?.success ? 'bg-current text-white' : 'bg-current text-white'}`}>2</span>
+                <div className={`flex-1 h-0.5 rounded-full transition-colors ${testResult?.success ? 'bg-emerald-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${testResult?.success ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${testResult?.success ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-gray-600'}`}>2</span>
                   {testResult?.success ? 'تم التحقق ✓' : 'التحقق والتفعيل'}
                 </div>
               </div>
@@ -878,21 +866,21 @@ export default function DeliveryCompanies() {
 
               return (
                 <div key={field.field} className="space-y-1.5">
-                  <Label htmlFor={field.field} className="text-sm font-semibold text-foreground">
+                  <Label htmlFor={`dlg-${field.field}`} className="text-xs font-bold text-gray-700 dark:text-gray-300">
                     {label}
                   </Label>
                   <div className="relative">
                     <Input
-                      id={field.field}
+                      id={`dlg-${field.field}`}
                       type={field.type || "text"}
                       placeholder={placeholder}
                       value={currentValue}
                       onChange={(e) => { setCredentials({ ...credentials, [field.field]: e.target.value }); setTestResult(null); }}
-                      className="border-border focus:border-primary focus:ring-primary/20 text-sm"
+                      className="border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-primary/20 text-sm h-10 bg-gray-50 dark:bg-gray-800/50"
                       dir="ltr"
                     />
                     {isSavedHidden && !currentValue && (
-                      <p className="text-xs text-muted-foreground mt-1">{t('delivery.savedHidden')}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{t('delivery.savedHidden')}</p>
                     )}
                   </div>
                 </div>
@@ -901,10 +889,10 @@ export default function DeliveryCompanies() {
 
             {/* ── Test Result Banner ── */}
             {testResult && (
-              <div className={`rounded-xl p-3 flex items-start gap-2.5 text-sm font-medium ${
+              <div className={`rounded-xl p-3 flex items-start gap-2.5 text-xs font-bold ${
                 testResult.success
-                  ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300/60 dark:border-emerald-700/50 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-red-50 dark:bg-red-950/30 border border-red-300/60 dark:border-red-700/50 text-red-800 dark:text-red-200'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300'
               }`}>
                 {testResult.success ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />}
                 <span>{testResult.message}</span>
@@ -913,22 +901,22 @@ export default function DeliveryCompanies() {
             
             {/* Webhook URL */}
             {selectedCompany?.features.webhooks && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300/60 dark:border-amber-700/50 rounded-xl p-4 space-y-3">
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-700/40 rounded-xl p-3.5 space-y-2.5">
                 <div className="flex items-center gap-2">
-                  <Wifi className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                  <span className="text-sm font-bold text-amber-800 dark:text-amber-200">{t('delivery.webhookUrl')}</span>
+                  <Wifi className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <span className="text-xs font-bold text-amber-800 dark:text-amber-200">{t('delivery.webhookUrl')}</span>
                 </div>
-                <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed">
+                <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
                   {t('delivery.webhookUrlDesc', { company: selectedCompany.name })}
                 </p>
                 <div className="flex gap-2">
-                  <code className="flex-1 text-sm bg-white/80 dark:bg-amber-950/50 px-3 py-2 rounded-lg border border-amber-300/60 dark:border-amber-700/50 text-amber-900 dark:text-amber-100 truncate direction-ltr text-left font-mono">
+                  <code className="flex-1 text-[11px] bg-white/80 dark:bg-amber-950/50 px-2.5 py-2 rounded-lg border border-amber-200/60 dark:border-amber-700/40 text-amber-900 dark:text-amber-100 truncate direction-ltr text-left font-mono">
                     https://sahla4eco.com/api/delivery/webhooks/{encodeURIComponent(selectedCompany.name)}
                   </code>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="shrink-0 h-9 text-sm border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
+                    className="shrink-0 h-8 text-[11px] font-bold border-amber-200 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
                     onClick={() => navigator.clipboard.writeText(`https://sahla4eco.com/api/delivery/webhooks/${encodeURIComponent(selectedCompany.name)}`)}
                   >
                     {t('delivery.webhookUrlCopy')}
@@ -939,89 +927,85 @@ export default function DeliveryCompanies() {
 
             {/* Polling Note (no webhooks) */}
             {selectedCompany && !selectedCompany.features.webhooks && selectedCompany.features.tracking && (
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-300/60 dark:border-blue-700/50 rounded-xl p-4 space-y-2">
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-700/40 rounded-xl p-3.5 space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-blue-600 dark:text-amber-400 flex-shrink-0" />
-                  <span className="text-sm font-bold text-blue-800 dark:text-blue-200">تتبع تلقائي</span>
+                  <Zap className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                  <span className="text-xs font-bold text-blue-700 dark:text-blue-300">تتبع تلقائي</span>
                 </div>
-                <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
-                  هذه الشركة لا تدعم Webhooks — التتبع يتم تلقائياً عبر Polling كل 3 دقائق.
+                <p className="text-[11px] text-blue-600 dark:text-blue-400 leading-relaxed">
+                  التتبع يتم تلقائياً عبر Polling كل 3 دقائق.
                 </p>
               </div>
             )}
             
             {/* Documentation Link */}
             {selectedCompany?.docsUrl && (
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-300/60 dark:border-blue-700/50 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex gap-2.5 items-start">
-                    <Key className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
-                      {t('delivery.getCredentials')}
-                    </p>
+              <button
+                onClick={() => window.open(selectedCompany.docsUrl, '_blank')}
+                className="w-full flex items-center justify-between gap-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl p-3.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex gap-2.5 items-center">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Key className="w-4 h-4 text-primary" />
                   </div>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    className="text-blue-700 border-blue-300 hover:bg-blue-100 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-900/40 shrink-0"
-                    onClick={() => window.open(selectedCompany.docsUrl, '_blank')}
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
-                    {t('delivery.docs')}
-                  </Button>
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {t('delivery.getCredentials')}
+                  </span>
                 </div>
-              </div>
+                <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+              </button>
             )}
           </div>
 
-          <DialogFooter className="gap-3 border-t border-border/50 pt-5 flex-row-reverse">
-            <div className="flex-1">
+          {/* ── Dialog Footer ── */}
+          <div className="border-t border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/30 px-6 py-4 flex flex-row-reverse gap-3 items-center">
+            <div className="flex-1 min-w-0">
               {saveError && (
-                <p className="text-sm font-medium text-destructive flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5" />{saveError}
+                <p className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5 truncate">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{saveError}
                 </p>
               )}
               {saveSuccess && (
-                <p className="text-sm font-medium text-primary flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" />{saveSuccess}
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 truncate">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{saveSuccess}
                 </p>
               )}
             </div>
             {selectedCompany?.enabled && (
               <Button
                 variant="destructive"
-                size="default"
+                size="sm"
                 onClick={() => {
                   if (selectedCompany) {
                     handleDisable(selectedCompany.id);
                     setShowConfigDialog(false);
                   }
                 }}
-                className="hover:bg-destructive/90 text-sm"
+                className="h-9 text-xs font-bold"
               >
-                <X className="w-4 h-4 ml-2" />
+                <X className="w-3.5 h-3.5 ml-1.5" />
                 {t('delivery.disconnect')}
               </Button>
             )}
             <Button 
               variant="outline" 
-              size="default"
+              size="sm"
               onClick={() => setShowConfigDialog(false)}
-              className="border-border hover:bg-muted text-sm"
+              className="h-9 text-xs font-bold border-gray-200 dark:border-gray-700"
             >
               {t('cancel')}
             </Button>
             <Button 
-              size="default"
+              size="sm"
               onClick={handleSaveCredentials}
               disabled={saving || testing || !canConnectSelectedCompany}
-              className="bg-gradient-to-r from-primary to-accent hover:shadow-lg text-sm"
+              className="h-9 text-xs font-bold bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 dark:from-slate-700 dark:to-slate-600 text-white shadow-sm"
             >
-              {(saving || testing) && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-              {!saving && !testing && <CheckCircle2 className="w-4 h-4 ml-2" />}
+              {(saving || testing) && <Loader2 className="w-3.5 h-3.5 ml-1.5 animate-spin" />}
+              {!saving && !testing && <CheckCircle2 className="w-3.5 h-3.5 ml-1.5" />}
               {testing ? 'جاري التحقق...' : saving ? 'جاري الحفظ...' : canConnectSelectedCompany ? t('delivery.connectActivate') : t('delivery.comingSoon')}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
