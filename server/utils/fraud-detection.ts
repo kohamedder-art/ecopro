@@ -32,11 +32,20 @@ export async function assessOrderRisk(
   clientId: number,
   customerPhone: string,
   address?: string,
-  extraSignals?: FraudSignals,
-  dbClient?: any
+  extraSignals?: FraudSignals
 ): Promise<RiskAssessment> {
   const pool = await ensureConnection();
-  const q = dbClient ? (sql: string, params: any[]) => dbClient.query(sql, params) : (sql: string, params: any[]) => pool.query(sql, params);
+  const flags: string[] = [];
+  let score = 0;
+
+  const q = async (sql: string, params: any[]): Promise<any> => {
+    try {
+      return await pool.query(sql, params);
+    } catch (e: any) {
+      console.error('[FRAUD] Query error:', e?.message?.slice(0, 200));
+      return { rows: [] };
+    }
+  };
   const flags: string[] = [];
   let score = 0;
 

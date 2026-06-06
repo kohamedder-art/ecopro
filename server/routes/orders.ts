@@ -399,7 +399,7 @@ export const createOrder: RequestHandler = async (req, res) => {
         customerIp: getClientIp(req),
         browserFingerprint: browser_fingerprint || undefined,
         formFillTimeMs: form_fill_time_ms != null ? Number(form_fill_time_ms) : undefined,
-      }, client);
+      });
       fraudScore = risk.score;
       fraudLevel = risk.level;
       fraudFlags = risk.flags;
