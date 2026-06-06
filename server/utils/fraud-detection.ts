@@ -136,7 +136,7 @@ export async function assessOrderRisk(
       score += 25;
       flags.push(`🌐 ${ipOrders} طلب من نفس العنوان IP في آخر ساعة`);
     } else if (ipOrders >= 3) {
-      score += 10;
+      score += 15;
       flags.push(`🌐 ${ipOrders} طلب من نفس الـ IP`);
     }
 
@@ -220,12 +220,12 @@ export async function assessOrderRisk(
   }
 
   // ── 7. Form fill time ──
-  if (fillTime != null && fillTime >= 0) {
+    if (fillTime != null && fillTime >= 0) {
     if (fillTime < 2000) {
       score += 30;
       flags.push(`⚡ طلب فوري خلال ${fillTime}ms (احتمال بوت)`);
     } else if (fillTime < 5000) {
-      score += 15;
+      score += 20;
       flags.push(`⚡ طلب سريع خلال ${(fillTime / 1000).toFixed(1)}ث`);
     }
   }
