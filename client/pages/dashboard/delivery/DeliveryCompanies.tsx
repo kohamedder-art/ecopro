@@ -655,21 +655,22 @@ export default function DeliveryCompanies() {
     <div className="space-y-6">
 
       {/* ── Header ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-slate-900/45 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/70 ring-1 ring-black/5 dark:ring-white/10 shadow-lg shadow-slate-200/60 dark:shadow-black/40 px-5 py-4">
-        <div className="relative flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center border border-white/50 dark:border-white/10 shadow-md">
-              <Truck className="w-5 h-5 text-white" />
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 px-6 py-5 shadow-xl shadow-purple-500/20">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMS41IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDgpIi8+PC9zdmc+')] opacity-60" />
+        <div className="relative flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20 shadow-lg">
+              <Truck className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">{t('delivery.title')}</h1>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 max-w-sm">{t('delivery.subtitle')}</p>
+              <h1 className="text-xl font-extrabold text-white tracking-tight">{t('delivery.title')}</h1>
+              <p className="text-sm text-purple-100 mt-0.5">{t('delivery.subtitle')}</p>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/30 rounded-full px-2.5 py-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="hidden sm:flex items-center gap-2.5 flex-shrink-0">
+            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3.5 py-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-sm font-bold text-white">
                 {sortedCompanies.filter(c => { const id = companyIdByName[toCompanyLookupKey(c.name)]; return c.enabled || Boolean(id && integrationMetaByCompanyId[id]?.is_enabled); }).length} {t('delivery.connected')}
               </span>
             </div>
@@ -678,14 +679,16 @@ export default function DeliveryCompanies() {
       </div>
 
       {/* ── Tip banner ── */}
-      <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40 rounded-lg px-3 py-2">
-        <Zap className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-        <p className="text-xs text-amber-800 dark:text-amber-300">
-          <span className="font-semibold">{t('delivery.recommended')}</span>{' — '}{t('delivery.recommendedDesc')}
+      <div className="flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200/70 dark:border-amber-700/40 rounded-xl px-4 py-3">
+        <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
+          <Zap className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+        </div>
+        <p className="text-sm text-amber-800 dark:text-amber-200">
+          <span className="font-extrabold">{t('delivery.recommended')}</span>{' — '}{t('delivery.recommendedDesc')}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {sortedCompanies.map((company) => {
           const dbId = companyIdByName[toCompanyLookupKey(String(company.name || ''))];
           const meta = dbId ? integrationMetaByCompanyId[dbId] : undefined;
@@ -696,85 +699,92 @@ export default function DeliveryCompanies() {
             <div
               key={company.id}
               onClick={() => handleCardClick(company)}
-              className={`relative rounded-xl border-2 overflow-hidden transition-all duration-200 ${
+              className={`group relative rounded-2xl overflow-hidden transition-all duration-300 ${
                 comingSoon
-                  ? 'cursor-not-allowed opacity-55 border-border/40 bg-muted/30'
+                  ? 'cursor-not-allowed opacity-50 bg-gray-50 dark:bg-gray-900/40 border-2 border-gray-200/60 dark:border-gray-700/40'
                   : isConnected
-                    ? 'cursor-pointer border-emerald-400 dark:border-emerald-600 bg-white dark:bg-slate-900 shadow-md shadow-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/15 hover:-translate-y-0.5'
-                    : 'cursor-pointer border-border bg-white dark:bg-slate-900 hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5'
+                    ? 'cursor-pointer bg-white dark:bg-gray-900 border-2 border-emerald-400 dark:border-emerald-600 shadow-lg shadow-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/20 hover:-translate-y-1'
+                    : 'cursor-pointer bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-violet-400 dark:hover:border-violet-500 hover:shadow-xl hover:shadow-violet-500/10 hover:-translate-y-1'
               }`}
             >
-              {/* top accent line */}
-              <div className={`h-0.5 w-full ${
-                isConnected ? 'bg-gradient-to-r from-emerald-400 to-green-500' : comingSoon ? 'bg-border/40' : 'bg-gradient-to-r from-primary/40 to-accent/40'
+              {/* top accent bar */}
+              <div className={`h-1.5 w-full ${
+                isConnected
+                  ? 'bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400'
+                  : comingSoon
+                    ? 'bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600'
+                    : 'bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500'
               }`} />
 
-              <div className="p-3 space-y-2.5">
+              <div className="p-5 space-y-4">
                 {/* Logo + name row */}
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden border flex-shrink-0 ${
-                    isConnected ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40' : 'border-border/60 bg-muted/40'
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden border-2 flex-shrink-0 transition-colors ${
+                    isConnected
+                      ? 'border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 group-hover:border-violet-300 dark:group-hover:border-violet-600'
                   }`}>
                     {company.logo.startsWith('/') ? (
-                      <DeliveryCompanyLogo name={company.name} alt={company.name} className="w-full h-full object-contain p-1" />
+                      <DeliveryCompanyLogo name={company.name} alt={company.name} className="w-full h-full object-contain p-1.5" />
                     ) : (
-                      <Truck className="w-4 h-4 text-muted-foreground" />
+                      <Truck className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="font-bold text-sm truncate">{company.name}</h3>
-                      {isConnected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 animate-pulse" />}
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-extrabold text-gray-900 dark:text-white truncate">{company.name}</h3>
+                      {isConnected && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 animate-pulse" />}
                     </div>
-                    <div className="flex gap-0.5 mt-0.5">
+                    <div className="flex items-center gap-1 mt-1">
                       {[1,2,3,4,5].map(s => (
-                        <Star key={s} className={`w-2 h-2 ${ s <= company.apiRating ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted'}`} />
+                        <Star key={s} className={`w-3.5 h-3.5 ${ s <= company.apiRating ? 'fill-amber-400 text-amber-400' : 'fill-gray-200 dark:fill-gray-700 text-gray-200 dark:text-gray-700'}`} />
                       ))}
+                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500 mr-1">{company.apiRating}/5</span>
                     </div>
                   </div>
                   {comingSoon && (
-                    <Badge variant="secondary" className="text-[10px] flex-shrink-0 px-1.5 py-0">{t('delivery.comingSoon')}</Badge>
+                    <Badge variant="secondary" className="text-xs font-bold px-2 py-0.5">{t('delivery.comingSoon')}</Badge>
                   )}
                 </div>
 
                 {/* Description */}
-                <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{desc}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">{desc}</p>
 
                 {/* Feature chips */}
-                <div className="flex flex-wrap gap-1">
-                  {company.features.createShipment && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40 font-medium">{t('delivery.shipments')}</span>}
-                  {company.features.tracking && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/60 dark:border-violet-800/40 font-medium">{t('delivery.tracking')}</span>}
-                  {company.features.labels && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-800/40 font-medium">{t('delivery.labels')}</span>}
-                  {company.features.cod && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40 font-medium">{t('delivery.cod')}</span>}
-                  {company.features.webhooks && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40 font-medium">{t('delivery.webhooks')}</span>}
+                <div className="flex flex-wrap gap-1.5">
+                  {company.features.createShipment && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/50">{t('delivery.shipments')}</span>}
+                  {company.features.tracking && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border border-violet-200/70 dark:border-violet-800/50">{t('delivery.tracking')}</span>}
+                  {company.features.labels && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 border border-orange-200/70 dark:border-orange-800/50">{t('delivery.labels')}</span>}
+                  {company.features.cod && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/50">{t('delivery.cod')}</span>}
+                  {company.features.webhooks && <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/50">{t('delivery.webhooks')}</span>}
                 </div>
 
                 {/* Status footer */}
-                <div className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 ${
+                <div className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 font-bold ${
                   isConnected
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300'
                     : comingSoon
-                      ? 'bg-muted/40 border border-border/40'
-                      : 'bg-primary/5 dark:bg-primary/10 border border-primary/20'
+                      ? 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/60 text-gray-500 dark:text-gray-400'
+                      : 'bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/60 text-violet-700 dark:text-violet-300'
                 }`}>
                   {isConnected ? (
                     <>
-                      <Wifi className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{t('delivery.connected')}</span>
+                      <Wifi className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm">{t('delivery.connected')}</span>
                       {meta?.updated_at && (
-                        <span className="text-[10px] text-emerald-500/60 ms-auto">{new Date(meta.updated_at).toLocaleDateString()}</span>
+                        <span className="text-xs font-normal text-emerald-500/70 ms-auto">{new Date(meta.updated_at).toLocaleDateString()}</span>
                       )}
-                      <Settings2 className="w-3 h-3 text-emerald-500/60 ms-auto" />
+                      <Settings2 className="w-4 h-4 text-emerald-500/50 ms-auto" />
                     </>
                   ) : comingSoon ? (
                     <>
-                      <WifiOff className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                      <span className="text-[11px] text-muted-foreground">{t('delivery.comingSoon')}</span>
+                      <WifiOff className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm">{t('delivery.comingSoon')}</span>
                     </>
                   ) : (
                     <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/50 flex-shrink-0" />
-                      <span className="text-[11px] font-semibold text-primary">{t('delivery.clickToConfigure')}</span>
+                      <span className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0" />
+                      <span className="text-sm">{t('delivery.clickToConfigure')}</span>
                     </>
                   )}
                 </div>
