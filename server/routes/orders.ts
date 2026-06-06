@@ -391,16 +391,30 @@ export const createOrder: RequestHandler = async (req, res) => {
     } catch {}
 
     // 2. Risk assessment — auto-flag high/critical risk as fake
+    let fraudScore = 0;
+    let fraudLevel = 'low';
+    let fraudFlags: string[] = [];
     try {
       const risk = await assessOrderRisk(Number(resolvedClientId), normalizedPhone, customer_address || undefined, {
         customerIp: getClientIp(req),
         browserFingerprint: browser_fingerprint || undefined,
         formFillTimeMs: form_fill_time_ms != null ? Number(form_fill_time_ms) : undefined,
       });
+      fraudScore = risk.score;
+      fraudLevel = risk.level;
+      fraudFlags = risk.flags;
       if (risk.level === 'critical') {
         initialStatus = 'fake';
       } else if (risk.level === 'high') {
         initialStatus = 'fake';
+      }
+      // Log each signal to fraud_signals table
+      for (const flag of risk.flags) {
+        pool.query(
+          `INSERT INTO fraud_signals(client_id, order_id, signal_type, signal_value, risk_score, created_at)
+           VALUES($1,NULL,'flag',$2,$3,NOW())`,
+          [resolvedClientId, flag.slice(0, 255), risk.score]
+        ).catch(() => {});
       }
     } catch {}
 
@@ -418,6 +432,9 @@ export const createOrder: RequestHandler = async (req, res) => {
       } catch {}
     }
 
+    addCol('fraud_score', fraudScore);
+    addCol('fraud_level', fraudLevel);
+    addCol('fraud_flags', JSON.stringify(fraudFlags));
     addCol('status', initialStatus);
     addCol('payment_status', 'unpaid');
     addCol('created_at', new Date());
@@ -961,7 +978,10 @@ export const getClientOrders: RequestHandler = async (req, res) => {
         COALESCE(cp.images, '{}') as product_images,
         dc.name as delivery_company_name,
         o.order_source,
-        o.source_platform
+        o.source_platform,
+        o.fraud_score,
+        o.fraud_level,
+        o.fraud_flags
       FROM store_orders o
       LEFT JOIN client_store_products cp ON o.product_id = cp.id
       LEFT JOIN delivery_companies dc ON o.delivery_company_id = dc.id

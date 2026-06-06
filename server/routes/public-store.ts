@@ -1052,14 +1052,27 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     } catch {}
 
     // 2. Risk assessment — auto-flag high/critical risk as fake
+    let fraudScore = 0;
+    let fraudLevel = 'low';
+    let fraudFlags: string[] = [];
     try {
       const risk = await assessOrderRisk(Number(clientId), normalizedPhone, customer_address || undefined, {
         customerIp: getClientIpXs(req),
         browserFingerprint: (req.body?.browser_fingerprint || '').trim().slice(0, 255) || undefined,
         formFillTimeMs: req.body?.form_fill_time_ms != null ? Number(req.body.form_fill_time_ms) : undefined,
       });
+      fraudScore = risk.score;
+      fraudLevel = risk.level;
+      fraudFlags = risk.flags;
       if (risk.level === 'critical' || risk.level === 'high') {
         initialStatus = 'fake';
+      }
+      for (const flag of risk.flags) {
+        pool.query(
+          `INSERT INTO fraud_signals(client_id, order_id, signal_type, signal_value, risk_score, created_at)
+           VALUES($1,NULL,'flag',$2,$3,NOW())`,
+          [clientId, flag.slice(0, 255), risk.score]
+        ).catch(() => {});
       }
     } catch {}
 
@@ -1077,6 +1090,9 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       } catch {}
     }
 
+    addCol('fraud_score', fraudScore);
+    addCol('fraud_level', fraudLevel);
+    addCol('fraud_flags', JSON.stringify(fraudFlags));
     addCol('status', initialStatus);
     addCol('payment_status', 'unpaid');
     addCol('created_at', new Date());
