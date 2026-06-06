@@ -1730,11 +1730,6 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
       }
     }
 
-    // Fallback: if whatsapp_phone_id itself looks like a phone number (all digits, 8+ chars), use it directly
-    if (whatsappConnected && !effectiveWaPhone && storedWhatsappPhoneId && /^\d{8,}$/.test(storedWhatsappPhoneId)) {
-      effectiveWaPhone = storedWhatsappPhoneId;
-    }
-
     // Fallback: check store settings contact_phone
     if (whatsappConnected && !effectiveWaPhone) {
       try {
