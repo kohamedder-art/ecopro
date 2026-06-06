@@ -174,10 +174,6 @@ export const createOrder: RequestHandler = async (req, res) => {
       }
     }
 
-    if (customer_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(customer_email))) {
-      fieldErrors.customer_email = 'البريد الإلكتروني غير صحيح';
-    }
-
     if (Object.keys(fieldErrors).length > 0) {
       return res.status(400).json({
         error: 'يرجى تصحيح البيانات التالية',
