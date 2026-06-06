@@ -27,7 +27,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       if (typeof document !== "undefined") {
         document.documentElement.lang = locale;
         document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
-        document.documentElement.className = locale === "ar" ? "rtl" : "ltr";
+        document.documentElement.classList.remove("rtl", "ltr");
+        document.documentElement.classList.add(locale === "ar" ? "rtl" : "ltr");
       }
     } catch {}
   }, [locale]);
