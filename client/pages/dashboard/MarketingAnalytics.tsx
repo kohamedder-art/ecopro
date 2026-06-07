@@ -446,7 +446,7 @@ export default function MarketingAnalytics() {
         <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
             <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
-            <span className="text-sm font-bold text-foreground">المنتجات الأكثر مبيعاً</span>
+            <span className="text-sm font-bold text-foreground">المنتجات والأرباح</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -456,29 +456,45 @@ export default function MarketingAnalytics() {
                   <th className="text-right py-2 px-2 font-bold text-muted-foreground">المنتج</th>
                   <th className="text-right py-2 px-2 font-bold text-muted-foreground">الطلبات</th>
                   <th className="text-right py-2 px-2 font-bold text-muted-foreground">الإيرادات</th>
-                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">تم التوصيل</th>
-                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">نسبة التوصيل</th>
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">التكلفة/طلب</th>
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">الربح/طلب</th>
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">الربح الكلي</th>
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">ROI</th>
                 </tr>
               </thead>
               <tbody>
                 {products.slice(0, 10).map((p: any, i: number) => (
                   <tr key={p.productId} className="border-b border-border/20 hover:bg-muted/30 transition-colors">
                     <td className="py-2 px-2 font-bold text-muted-foreground">{i + 1}</td>
-                    <td className="py-2 px-2 font-bold text-foreground max-w-[200px] truncate">{p.title}</td>
+                    <td className="py-2 px-2 font-bold text-foreground max-w-[160px] truncate">{p.title}</td>
                     <td className="py-2 px-2 font-bold text-foreground tabular-nums">{fmtNum(p.totalOrders)}</td>
                     <td className="py-2 px-2 font-bold text-foreground tabular-nums">{fmtCurr(p.revenue)}</td>
-                    <td className="py-2 px-2 font-bold text-foreground tabular-nums">{fmtNum(p.deliveredOrders)}</td>
+                    <td className="py-2 px-2 font-bold text-muted-foreground tabular-nums">{fmtCurr(p.totalCostPerOrder)}</td>
+                    <td className="py-2 px-2">
+                      <span className={`font-bold tabular-nums ${p.netProfitPerOrder >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                        {fmtCurr(p.netProfitPerOrder)}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2">
+                      <span className={`font-bold tabular-nums ${p.totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                        {fmtCurr(p.totalProfit)}
+                      </span>
+                    </td>
                     <td className="py-2 px-2">
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                        p.deliveryRate >= 75 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : p.deliveryRate >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                        p.roi >= 50 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        : p.roi >= 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                         : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                      }`}>{fmtPct(p.deliveryRate)}</span>
+                      }`}>{fmtPct(p.roi)}</span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          {/* Product cost breakdown legend */}
+          <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+            <span>تكلفة الطلب = شراء + تغليف + مناولة + توصيل + مركز اتصال + أخرى + إعلانات</span>
           </div>
         </div>
       )}

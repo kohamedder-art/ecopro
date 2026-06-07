@@ -37,6 +37,9 @@ const productEconomicsSchema = z.object({
   packagingCost: z.coerce.number().min(0).max(1_000_000_000).default(0),
   handlingCost: z.coerce.number().min(0).max(1_000_000_000).default(0),
   fallbackShippingCost: z.coerce.number().min(0).max(1_000_000_000).default(0),
+  callCenterCost: z.coerce.number().min(0).max(1_000_000_000).default(0),
+  returnCost: z.coerce.number().min(0).max(1_000_000_000).default(0),
+  otherCosts: z.coerce.number().min(0).max(1_000_000_000).default(0),
   notes: z.string().trim().max(1000).optional().nullable(),
 });
 

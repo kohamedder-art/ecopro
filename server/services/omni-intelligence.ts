@@ -584,6 +584,9 @@ export async function getOmniInputs(clientId: number) {
          COALESCE(pe.packaging_cost, 0) AS packaging_cost,
          COALESCE(pe.handling_cost, 0) AS handling_cost,
          COALESCE(pe.fallback_shipping_cost, 0) AS fallback_shipping_cost,
+         COALESCE(pe.call_center_cost, 0) AS call_center_cost,
+         COALESCE(pe.return_cost, 0) AS return_cost,
+         COALESCE(pe.other_costs, 0) AS other_costs,
          pe.notes
        FROM client_store_products p
        LEFT JOIN product_economics pe
@@ -639,18 +642,25 @@ export async function upsertProductEconomics(clientId: number, input: {
   packagingCost: number;
   handlingCost: number;
   fallbackShippingCost: number;
+  callCenterCost?: number;
+  returnCost?: number;
+  otherCosts?: number;
   notes?: string | null;
 }) {
   const db = await ensureConnection();
   const result = await db.query(
     `INSERT INTO product_economics (
-       client_id, product_id, buy_cost, packaging_cost, handling_cost, fallback_shipping_cost, notes, created_at, updated_at
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+       client_id, product_id, buy_cost, packaging_cost, handling_cost, fallback_shipping_cost,
+       call_center_cost, return_cost, other_costs, notes, created_at, updated_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
      ON CONFLICT (client_id, product_id) DO UPDATE SET
        buy_cost = EXCLUDED.buy_cost,
        packaging_cost = EXCLUDED.packaging_cost,
        handling_cost = EXCLUDED.handling_cost,
        fallback_shipping_cost = EXCLUDED.fallback_shipping_cost,
+       call_center_cost = EXCLUDED.call_center_cost,
+       return_cost = EXCLUDED.return_cost,
+       other_costs = EXCLUDED.other_costs,
        notes = EXCLUDED.notes,
        updated_at = NOW()
      RETURNING *`,
@@ -661,6 +671,9 @@ export async function upsertProductEconomics(clientId: number, input: {
       toNumber(input.packagingCost),
       toNumber(input.handlingCost),
       toNumber(input.fallbackShippingCost),
+      toNumber(input.callCenterCost ?? 0),
+      toNumber(input.returnCost ?? 0),
+      toNumber(input.otherCosts ?? 0),
       toOptionalText(input.notes),
     ]
   );
@@ -1821,11 +1834,24 @@ export async function getGenderAnalytics(clientId: number, days: number): Promis
 export interface ProductPerformance {
   productId: number;
   title: string;
+  sellingPrice: number;
   totalOrders: number;
   revenue: number;
   deliveredOrders: number;
   returnedOrders: number;
   deliveryRate: number;
+  buyCost: number;
+  packagingCost: number;
+  handlingCost: number;
+  shippingCost: number;
+  callCenterCost: number;
+  otherCosts: number;
+  returnCost: number;
+  adCostPerOrder: number;
+  totalCostPerOrder: number;
+  netProfitPerOrder: number;
+  totalProfit: number;
+  roi: number;
 }
 
 export async function getProductPerformance(clientId: number, days: number): Promise<ProductPerformance[]> {
@@ -1833,34 +1859,89 @@ export async function getProductPerformance(clientId: number, days: number): Pro
   const db = await ensureConnection();
 
   const result = await db.query(`
+    WITH product_orders AS (
+      SELECT
+        o.product_id,
+        COALESCE(p.title, 'منتج غير معروف') AS title,
+        COALESCE(p.price, 0) AS selling_price,
+        COUNT(*) AS total_orders,
+        COALESCE(SUM(o.total_price), 0) AS revenue,
+        COUNT(*) FILTER (WHERE o.status IN ('delivered','completed')) AS delivered_orders,
+        COUNT(*) FILTER (WHERE o.status IN ('cancelled','declined','returned','refunded')) AS returned_orders
+      FROM store_orders o
+      LEFT JOIN client_store_products p ON p.id = o.product_id
+      WHERE o.client_id = $1
+        AND o.created_at >= NOW() - INTERVAL '${safeDays} days'
+        AND o.deleted_at IS NULL
+        AND o.status NOT IN ('fake')
+      GROUP BY o.product_id, p.title, p.price
+      HAVING COUNT(*) > 0
+    ),
+    total_ad AS (
+      SELECT COALESCE(SUM(spend), 0) AS total_spend
+      FROM creative_spend_entries
+      WHERE client_id = $1
+        AND entry_date >= CURRENT_DATE - INTERVAL '${safeDays} days'
+    )
     SELECT
-      o.product_id,
-      COALESCE(p.title, 'منتج غير معروف') AS title,
-      COUNT(*) AS total_orders,
-      COALESCE(SUM(o.total_price), 0) AS revenue,
-      COUNT(*) FILTER (WHERE o.status IN ('delivered','completed')) AS delivered_orders,
-      COUNT(*) FILTER (WHERE o.status IN ('cancelled','declined','returned','refunded')) AS returned_orders
-    FROM store_orders o
-    LEFT JOIN client_store_products p ON p.id = o.product_id
-    WHERE o.client_id = $1
-      AND o.created_at >= NOW() - INTERVAL '${safeDays} days'
-      AND o.deleted_at IS NULL
-      AND o.status NOT IN ('fake')
-    GROUP BY o.product_id, p.title
-    HAVING COUNT(*) > 0
-    ORDER BY revenue DESC
+      po.*,
+      COALESCE(pe.buy_cost, 0) AS buy_cost,
+      COALESCE(pe.packaging_cost, 0) AS packaging_cost,
+      COALESCE(pe.handling_cost, 0) AS handling_cost,
+      COALESCE(pe.fallback_shipping_cost, 0) AS fallback_shipping_cost,
+      COALESCE(pe.call_center_cost, 0) AS call_center_cost,
+      COALESCE(pe.other_costs, 0) AS other_costs,
+      COALESCE(pe.return_cost, 0) AS return_cost,
+      ta.total_spend
+    FROM product_orders po
+    LEFT JOIN product_economics pe ON pe.client_id = $1 AND pe.product_id = po.product_id
+    CROSS JOIN total_ad ta
+    ORDER BY po.revenue DESC
     LIMIT 20
   `, [clientId]);
 
-  return result.rows.map((r: any) => ({
-    productId: Number(r.product_id),
-    title: String(r.title),
-    totalOrders: Number(r.total_orders),
-    revenue: Number(r.revenue),
-    deliveredOrders: Number(r.delivered_orders),
-    returnedOrders: Number(r.returned_orders),
-    deliveryRate: Number(r.total_orders) > 0
-      ? (Number(r.delivered_orders) / Number(r.total_orders)) * 100
-      : 0,
-  }));
+  return result.rows.map((r: any) => {
+    const totalOrders = Number(r.total_orders);
+    const deliveredOrders = Number(r.delivered_orders);
+    const revenue = Number(r.revenue);
+    const totalSpend = Number(r.total_spend);
+
+    const buyCost = Number(r.buy_cost);
+    const packagingCost = Number(r.packaging_cost);
+    const handlingCost = Number(r.handling_cost);
+    const shippingCost = Number(r.fallback_shipping_cost);
+    const callCenterCost = Number(r.call_center_cost);
+    const otherCosts = Number(r.other_costs);
+    const returnCost = Number(r.return_cost);
+
+    const adCostPerOrder = deliveredOrders > 0 ? totalSpend / deliveredOrders : 0;
+    const totalCostPerOrder = buyCost + packagingCost + handlingCost + shippingCost + callCenterCost + otherCosts + adCostPerOrder;
+    const sellingPrice = Number(r.selling_price);
+    const netProfitPerOrder = sellingPrice - totalCostPerOrder;
+    const totalProfit = netProfitPerOrder * deliveredOrders - returnCost * Number(r.returned_orders);
+    const roi = totalCostPerOrder > 0 ? (netProfitPerOrder / totalCostPerOrder) * 100 : 0;
+
+    return {
+      productId: Number(r.product_id),
+      title: String(r.title),
+      sellingPrice,
+      totalOrders,
+      revenue,
+      deliveredOrders,
+      returnedOrders: Number(r.returned_orders),
+      deliveryRate: totalOrders > 0 ? (deliveredOrders / totalOrders) * 100 : 0,
+      buyCost,
+      packagingCost,
+      handlingCost,
+      shippingCost,
+      callCenterCost,
+      otherCosts,
+      returnCost,
+      adCostPerOrder: Number(adCostPerOrder.toFixed(2)),
+      totalCostPerOrder: Number(totalCostPerOrder.toFixed(2)),
+      netProfitPerOrder: Number(netProfitPerOrder.toFixed(2)),
+      totalProfit: Number(totalProfit.toFixed(2)),
+      roi: Number(roi.toFixed(1)),
+    };
+  });
 }

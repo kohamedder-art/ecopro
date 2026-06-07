@@ -18,7 +18,8 @@ import { MkrFacebook } from '@/components/icons/MarketingIcons';
 interface ProductEcon {
   id: number; title: string; price: number; category: string | null;
   buy_cost: number; packaging_cost: number; handling_cost: number;
-  fallback_shipping_cost: number; notes: string | null;
+  fallback_shipping_cost: number; call_center_cost: number;
+  return_cost: number; other_costs: number; notes: string | null;
 }
 
 interface SpendEntry {
@@ -50,7 +51,7 @@ interface PixelSettings {
 interface ConfigureTabProps {
   inputs?: OmniInputs;
   settings?: PixelSettings;
-  onSaveEconomics: (payload: { productId: number; buyCost: number; packagingCost: number; handlingCost: number; fallbackShippingCost: number; notes?: string }) => void;
+  onSaveEconomics: (payload: { productId: number; buyCost: number; packagingCost: number; handlingCost: number; fallbackShippingCost: number; callCenterCost: number; returnCost: number; otherCosts: number; notes?: string }) => void;
   onSaveSpend: (payload: { entryDate: string; platform: string; productId?: number; campaignName: string; spend: number; impressions?: number; clicks?: number; notes?: string }) => void;
   onDeleteSpend: (id: number) => void;
   onRunBackfill: (days: number) => void;
@@ -90,6 +91,9 @@ export function ConfigureTab({ inputs, settings, onSaveEconomics, onSaveSpend, o
       packagingCost: parseFloat(econDraft.packaging_cost) || 0,
       handlingCost: parseFloat(econDraft.handling_cost) || 0,
       fallbackShippingCost: parseFloat(econDraft.fallback_shipping_cost) || 0,
+      callCenterCost: parseFloat(econDraft.call_center_cost) || 0,
+      returnCost: parseFloat(econDraft.return_cost) || 0,
+      otherCosts: parseFloat(econDraft.other_costs) || 0,
     });
     setEditingProduct(null);
   };
@@ -234,7 +238,7 @@ export function ConfigureTab({ inputs, settings, onSaveEconomics, onSaveSpend, o
                                   ) : (
                                     <Button size="sm" variant="ghost" className="h-8 rounded-lg text-xs" onClick={() => {
                                       setEditingProduct(p.id);
-                                      setEconDraft({ buy_cost: String(p.buy_cost || ''), packaging_cost: String(p.packaging_cost || ''), handling_cost: String(p.handling_cost || ''), fallback_shipping_cost: String(p.fallback_shipping_cost || '') });
+                                      setEconDraft({ buy_cost: String(p.buy_cost || ''), packaging_cost: String(p.packaging_cost || ''), handling_cost: String(p.handling_cost || ''), fallback_shipping_cost: String(p.fallback_shipping_cost || ''), call_center_cost: String(p.call_center_cost || ''), return_cost: String(p.return_cost || ''), other_costs: String(p.other_costs || '') });
                                     }}>{t('edit')}</Button>
                                   )}
                                 </TableCell>
