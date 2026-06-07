@@ -1243,6 +1243,7 @@ export const googleAuth: RequestHandler = async (req, res) => {
       payload = await verifyRes.json();
     } else if (code) {
       // ── Exchange authorization code for tokens server-side ──
+      console.log('[google-auth] Exchanging authorization code...');
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
       if (!clientSecret) {
         console.error('[google-auth] GOOGLE_CLIENT_SECRET env var is not set');
@@ -1250,6 +1251,7 @@ export const googleAuth: RequestHandler = async (req, res) => {
       }
 
       const redirectUri = 'https://auth.expo.io/@sahla4eco-organization/ssahla4eco';
+      console.log('[google-auth] Code exchange params:', { client_id: expectedClientId, redirect_uri: redirectUri, code_length: code.length });
 
       const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -1271,9 +1273,10 @@ export const googleAuth: RequestHandler = async (req, res) => {
 
       const tokenData: any = await tokenRes.json();
       const exchangedIdToken = tokenData.id_token;
+      console.log('[google-auth] Code exchange success, id_token:', exchangedIdToken ? 'present' : 'missing', 'access_token:', tokenData.access_token ? 'present' : 'missing');
 
       if (!exchangedIdToken) {
-        console.error('[google-auth] no id_token in code exchange response');
+        console.error('[google-auth] no id_token in code exchange response. Keys:', Object.keys(tokenData));
         return jsonError(res, 401, 'Google code exchange did not return an ID token');
       }
 
