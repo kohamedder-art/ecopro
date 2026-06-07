@@ -1212,13 +1212,13 @@ export default function OrdersAdmin() {
                     )}
                   </button>
                 </th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.image')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.orderNumber')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.product')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.customer')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.amount')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.status')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.time')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[50px]">{t('orders.image')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[90px]">{t('orders.orderNumber')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[180px]">{t('orders.product')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[140px]">{t('orders.customer')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[80px]">{t('orders.amount')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[200px]">{t('orders.status')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[60px]">{t('orders.time')}</th>
                 <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-8"></th>
               </tr>
             </thead>
@@ -1229,7 +1229,7 @@ export default function OrdersAdmin() {
                     onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
                     className={`group transition-all duration-150 cursor-pointer hover:bg-primary/5 hidden md:table-row ${expandedOrderId === o.id ? 'bg-primary/5' : ''} ${duplicatePhones.has(o.phone) ? 'bg-red-500/5 border-l-[3px] border-l-red-500' : ''}`}
                   >
-                    <td className="whitespace-nowrap px-3 py-3 text-center border-b border-border/60" onClick={(e) => e.stopPropagation()}>
+                    <td className="whitespace-nowrap px-3 py-3 text-center border-b border-border" onClick={(e) => e.stopPropagation()}>
                       <button 
                         onClick={() => toggleOrderSelection(o.raw_id)}
                         className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -1241,7 +1241,7 @@ export default function OrdersAdmin() {
                         )}
                       </button>
                     </td>
-                    <td className="px-3 py-3 text-right border-b border-border/60">
+                    <td className="px-3 py-3 text-right border-b border-border">
                       {o.product_image ? (
                         <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-border/40 ml-auto shadow-sm group-hover:border-primary/30 transition-all duration-200">
                           <img 
@@ -1256,7 +1256,7 @@ export default function OrdersAdmin() {
                         </div>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right border-b border-border/60" onClick={e => e.stopPropagation()}>
+                    <td className="whitespace-nowrap px-3 py-3 text-right border-b border-border" onClick={e => e.stopPropagation()}>
                       {o.aiPriority && (
                         <div className="flex items-center justify-end gap-1 mb-0.5">
                           <Badge variant={o.aiPriority === 'high' ? 'destructive' : 'secondary'} className="text-[10px] h-4 px-1.5">
@@ -1273,8 +1273,8 @@ export default function OrdersAdmin() {
                         {copiedKey === `id-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/copy:opacity-70" />}
                       </button>
                     </td>
-                    <td className="px-3 py-3 text-right border-b border-border/60">
-                      <span className="text-sm font-semibold line-clamp-2 block" title={o.product_title}>
+                    <td className="px-3 py-3 text-right border-b border-border">
+                      <span className="text-sm font-semibold truncate block max-w-[180px]" title={o.product_title}>
                         {o.product_title || t('orders.noProduct')}
                       </span>
                       {(() => {
@@ -1292,7 +1292,7 @@ export default function OrdersAdmin() {
                         );
                       })()}
                     </td>
-                    <td className="px-3 py-3 text-right border-b border-border/60" onClick={e => e.stopPropagation()}>
+                    <td className="px-3 py-3 text-right border-b border-border" onClick={e => e.stopPropagation()}>
                       <div className="flex flex-col items-end gap-0.5">
                         <span className="text-sm font-bold line-clamp-1 block" title={o.customer}>{o.customer}</span>
                         {o.phone && (
@@ -1308,12 +1308,12 @@ export default function OrdersAdmin() {
                         )}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right border-b border-border/60">
+                    <td className="whitespace-nowrap px-3 py-3 text-right border-b border-border">
                       <span className="font-black text-sm tabular-nums text-amber-500 dark:text-amber-400">
                         {Math.round(Number(o.total) || 0).toLocaleString()} <span className="text-muted-foreground/70 font-medium text-xs">DZD</span>
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-right border-b border-border/60">
+                    <td className="px-3 py-3 text-right border-b border-border">
                         {(() => {
                           const statusInfo = getStatusDisplay(o.status);
                           const hasFraud = o.fraud_score > 0 && o.fraud_flags?.length > 0;
@@ -1383,8 +1383,8 @@ export default function OrdersAdmin() {
                           );
                         })()}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right text-foreground/50 text-xs font-medium border-b border-border/60" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
-                    <td className="px-3 py-3 text-right border-b border-border/60">
+                    <td className="whitespace-nowrap px-3 py-3 text-right text-foreground/50 text-xs font-medium border-b border-border" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
+                    <td className="px-3 py-3 text-right border-b border-border">
                       <ChevronRight className={`h-4 w-4 text-muted-foreground/40 ml-auto transition-all duration-200 ${expandedOrderId === o.id ? 'rotate-90 text-primary' : 'group-hover:translate-x-0.5 group-hover:text-muted-foreground'}`} />
                     </td>
                   </tr>
@@ -1392,7 +1392,7 @@ export default function OrdersAdmin() {
                   {/* Mobile card - rendered separately below table */}
 
                   {expandedOrderId === o.id && (
-                    <tr className="bg-gradient-to-r from-primary/5 to-transparent border-b border-border/60">
+                    <tr className="bg-gradient-to-r from-primary/5 to-transparent border-b border-border">
                       <td colSpan={9} className="p-4">
                         <div className="space-y-2">
                           {/* Order Details Grid - Compact */}
