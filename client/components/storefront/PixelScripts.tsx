@@ -481,6 +481,14 @@ export function setCurrentStoreSlug(slug: string) {
   if (slug) localStorage.setItem('currentStoreSlug', slug);
 }
 
+let currentCurrency = 'DZD';
+export function setStoreCurrency(currency: string) {
+  currentCurrency = currency;
+}
+export function getStoreCurrency() {
+  return currentCurrency;
+}
+
 export function trackAllPixels(eventName: string, params?: Record<string, any>) {
   // Track to Facebook and TikTok SDKs (client-side)
   trackFacebookEvent(eventName, params);

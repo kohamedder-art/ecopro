@@ -1641,9 +1641,7 @@ export const en = {
   // Footer
   "footer.copyright": "© {year} Sahla4Eco. All rights reserved",
 
-  // Onboarding Wizard
-  "onboarding.title": "Welcome! Let's set up your store",
-  "onboarding.subtitle": "Complete these steps to start receiving orders",
+  // Onboarding Wizard (step-by-step)
   "onboarding.product.title": "Add your first product",
   "onboarding.product.desc": "Start selling by adding products to your store",
   "onboarding.product.action": "Add Product",

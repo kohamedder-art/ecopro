@@ -2216,9 +2216,7 @@ export const ar = {
   // Footer
   "footer.copyright": "© {year} Sahla4Eco. جميع الحقوق محفوظة",
 
-  // Onboarding Wizard
-  "onboarding.title": "مرحباً! لنجهز متجرك",
-  "onboarding.subtitle": "أكمل هذه الخطوات لبدء استقبال الطلبات",
+  // Onboarding Wizard (step-by-step)
   "onboarding.product.title": "أضف أول منتج",
   "onboarding.product.desc": "ابدأ البيع بإضافة منتجات إلى متجرك",
   "onboarding.product.action": "إضافة منتج",
