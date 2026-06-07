@@ -1274,7 +1274,7 @@ export default function OrdersAdmin() {
                       </button>
                     </td>
                     <td className="px-3 py-3 text-right border-b border-border">
-                      <span className="text-sm font-semibold truncate block" title={o.product_title}>
+                      <span className="text-sm font-semibold break-words" title={o.product_title}>
                         {o.product_title || t('orders.noProduct')}
                       </span>
                       {(() => {
@@ -1294,7 +1294,7 @@ export default function OrdersAdmin() {
                     </td>
                     <td className="px-3 py-3 text-right border-b border-border" onClick={e => e.stopPropagation()}>
                       <div className="flex flex-col items-end gap-0.5">
-                        <span className="text-sm font-bold line-clamp-1 block" title={o.customer}>{o.customer}</span>
+                        <span className="text-sm font-bold break-words" title={o.customer}>{o.customer}</span>
                         {o.phone && (
                           <button
                             onClick={() => copyToClipboard(o.phone, `phone-${o.id}`)}
