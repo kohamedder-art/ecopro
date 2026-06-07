@@ -193,11 +193,6 @@ export default function IycoTemplate({
   const [showCart, setShowCart] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
 
-  // Sync quantity to match selected offer quantity
-  useEffect(() => {
-    if (selectedOffer) setQuantity(selectedOffer.quantity);
-  }, [selectedOffer?.id]);
-
   // ── Scroll-aware Header ──
   const [showHeader, setShowHeader] = useState(true);
   const lastScrollY = useRef(0);
@@ -299,7 +294,7 @@ export default function IycoTemplate({
     const orderCart = [{
       id: mainProduct.id,
       price: ((selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null) ?? mainProduct.price,
-      qty: selectedOffer?.quantity ?? quantity,
+      qty: quantity,
       variant_id: selectedVariant?.id ?? null,
     }];
 
@@ -314,7 +309,7 @@ export default function IycoTemplate({
             store_slug: storeSlug,
             product_id: item.id,
             ...(item.variant_id ? { variant_id: item.variant_id } : {}),
-            quantity: isOfferItem ? selectedOffer.quantity * item.qty : item.qty,
+            quantity: item.qty,
             ...(isOfferItem ? { offer_id: selectedOffer.offer_id } : {}),
             total_price: isOfferItem ? selectedOffer.bundle_price * item.qty : item.price * item.qty,
             delivery_fee: deliveryFee,

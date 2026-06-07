@@ -245,7 +245,7 @@ const openProduct = (product: any) => {
           store_slug: storeSlug,
           product_id: mainProduct.id,
           ...(selectedVariant?.id ? { variant_id: selectedVariant.id } : {}),
-          quantity: isOfferItem ? selectedOffer.quantity : quantity,
+          quantity: quantity,
           ...(isOfferItem ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: isOfferItem ? selectedOffer.bundle_price : itemPrice * quantity,
           delivery_fee: deliveryFee,

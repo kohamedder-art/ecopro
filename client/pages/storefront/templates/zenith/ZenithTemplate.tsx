@@ -169,7 +169,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           store_slug: storeSlug,
           product_id: mainProduct.id,
           ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
-          quantity: selectedOffer?.quantity || quantity,
+          quantity: quantity,
           ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
           total_price: productTotal,
           delivery_fee: deliveryFee,

@@ -145,7 +145,7 @@ export default function SpiriluxeTemplate({
         store_slug: storeSlug || settings?.store_name || 'spiriluxe',
         product_id: mainProduct.id,
         ...(selectedVariant ? { variant_id: selectedVariant.id } : {}),
-        quantity: selectedOffer?.quantity || quantity,
+        quantity: quantity,
         ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
         total_price: selectedOffer ? selectedOffer.bundle_price * quantity : (variantPrice ?? mainProduct.price ?? 0) * quantity,
         delivery_fee: deliveryFee,

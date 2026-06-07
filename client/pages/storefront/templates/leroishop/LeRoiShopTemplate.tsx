@@ -133,7 +133,7 @@ export default function LeRoiShopTemplate({
 
   const handleOfferSelect = (offer: SelectedOffer | null) => {
     setSelectedOffer(offer);
-    if (offer) setQuantity(offer.quantity);
+    if (offer) setQuantity(1);
     else setQuantity(1);
   };
 
