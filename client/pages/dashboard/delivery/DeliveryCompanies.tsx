@@ -822,7 +822,7 @@ export default function DeliveryCompanies() {
             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           </div>
 
-          <div className="space-y-5 px-7 py-6 max-h-[58vh] overflow-y-auto bg-white dark:bg-gray-950">
+          <div className="space-y-5 px-7 py-6 max-h-[58vh] overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-950">
             {/* Coming soon */}
             {selectedCompany && !canConnectSelectedCompany && (
               <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-8 text-center border border-gray-100 dark:border-gray-800">
