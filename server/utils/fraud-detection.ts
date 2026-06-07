@@ -247,21 +247,18 @@ export async function assessOrderRisk(
     flags.push(`🏪 هذا الرقم طلب في متجر آخر`);
   }
 
-  // ── 9. Global client velocity — catches multi-identity attacks ──
-  const globalRes = await q(`
+  // ── 9. Per-IP velocity ──
+  const ipOrdersRes = await q(`
     SELECT COUNT(*) as cnt FROM store_orders
-    WHERE client_id = $1 AND created_at > NOW() - INTERVAL '1 hour'
-  `, [clientId]);
-  const globalOrders = parseInt(globalRes.rows[0]?.cnt || '0');
-  if (globalOrders >= 20) {
+    WHERE client_id = $1 AND customer_ip = $2 AND created_at > NOW() - INTERVAL '1 hour'
+  `, [clientId, ip]);
+  const ipOrders = parseInt(ipOrdersRes.rows[0]?.cnt || '0') + 1; // include current
+  if (ipOrders >= 10) {
     score += 30;
-    flags.push(`🚨 ${globalOrders} طلب في المتجر آخر ساعة (نشاط غير طبيعي)`);
-  } else if (globalOrders >= 10) {
+    flags.push(`🚨 ${ipOrders} طلب من هذا الـ IP آخر ساعة (نشاط غير طبيعي)`);
+  } else if (ipOrders >= 5) {
     score += 15;
-    flags.push(`📊 ${globalOrders} طلب في المتجر آخر ساعة`);
-  } else if (globalOrders >= 5) {
-    score += 5;
-    flags.push(`📊 ${globalOrders} طلب في المتجر آخر ساعة`);
+    flags.push(`📊 ${ipOrders} طلب من هذا الـ IP آخر ساعة`);
   }
 
   // ── 10. Sequential phone detection (e.g., 0555000001, 0555000002) ──
