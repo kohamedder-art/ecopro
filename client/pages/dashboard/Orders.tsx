@@ -1105,7 +1105,6 @@ export default function OrdersAdmin() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed min-w-[700px]">
           {/* Loading State — Skeleton */}
           {isLoading && (
             <div className="p-3">
