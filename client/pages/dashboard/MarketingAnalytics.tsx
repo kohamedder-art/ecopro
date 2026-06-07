@@ -4,40 +4,68 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { apiFetch } from '@/lib/api';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, BarChart, Bar, Legend,
 } from 'recharts';
 
+// ─── Algeria Wilaya Coordinates (lat, lng) ──────────────────
 const WILAYA_COORDS: Record<number, [number, number]> = {
-  1: [28.02, -0.26], 2: [36.16, 1.34], 3: [33.81, 2.86], 4: [35.87, 7.11],
-  5: [35.56, 6.19], 6: [36.75, 5.06], 7: [36.37, 2.83], 8: [36.90, 3.97],
-  9: [36.72, 5.08], 10: [36.83, 6.91], 11: [34.88, -1.31], 12: [34.68, 3.26],
-  13: [32.92, 1.29], 14: [35.40, 4.74], 15: [34.38, 3.67], 16: [36.17, 4.42],
-  17: [35.39, 6.17], 18: [35.69, 5.37], 19: [34.67, 0.45], 20: [35.77, 0.56],
-  21: [36.62, 1.48], 22: [35.17, 1.28], 23: [34.42, 1.66], 24: [32.49, 3.66],
-  25: [35.41, 4.18], 26: [34.88, 5.73], 27: [35.26, 7.32], 28: [33.38, -0.63],
-  29: [36.07, 1.82], 30: [35.69, -0.64], 31: [34.74, -1.70], 32: [36.36, 2.55],
-  33: [35.60, 3.17], 34: [33.50, -0.59], 35: [35.10, -1.31], 36: [36.50, 4.74],
-  37: [36.38, 6.61], 38: [35.90, 6.86], 39: [36.09, 5.34], 40: [35.85, 7.12],
-  41: [36.06, 4.50], 42: [36.00, 1.27], 43: [34.68, 2.10], 44: [32.63, 3.03],
-  45: [35.76, 0.55], 46: [33.23, 0.86], 47: [32.93, 0.58], 48: [32.09, 1.85],
-  49: [33.80, 1.03], 50: [31.75, -2.22], 51: [31.63, -4.09], 52: [28.97, -1.06],
-  53: [32.76, 0.57], 54: [33.07, 0.79], 55: [34.07, -1.31], 56: [32.55, -1.25],
-  57: [33.36, -0.63], 58: [27.40, -1.81],
+  1:[27.87,-0.29],2:[36.17,1.33],3:[33.80,2.88],4:[35.87,7.11],5:[35.55,6.17],
+  6:[36.75,5.08],7:[34.85,5.73],8:[31.62,-2.22],9:[36.47,2.83],10:[36.38,3.90],
+  11:[22.79,5.52],12:[35.40,8.12],13:[34.88,-1.31],14:[35.38,1.32],15:[36.71,4.05],
+  16:[36.75,3.06],17:[34.67,3.25],18:[36.82,5.77],19:[36.19,5.41],20:[34.83,0.15],
+  21:[36.88,6.91],22:[35.19,-0.63],23:[36.90,7.77],24:[36.46,7.43],25:[36.37,6.61],
+  26:[36.27,2.75],27:[35.93,0.09],28:[35.70,4.54],29:[35.40,0.14],30:[31.95,5.33],
+  31:[35.69,-0.63],32:[33.68,1.02],33:[26.50,8.48],34:[36.07,4.76],35:[36.75,3.48],
+  36:[36.77,8.31],37:[27.67,-8.14],38:[35.61,1.81],39:[33.35,6.85],40:[35.44,7.14],
+  41:[36.29,7.95],42:[36.59,2.45],43:[36.45,6.26],44:[36.26,1.97],45:[33.26,-0.31],
+  46:[35.30,-1.14],47:[32.49,3.67],48:[35.73,0.55],49:[33.95,5.93],50:[30.08,2.88],
+  51:[34.42,5.07],52:[19.57,-0.30],53:[30.13,-2.16],54:[29.26,0.24],55:[33.10,6.06],
+  56:[24.55,9.48],57:[27.19,2.46],58:[19.57,5.77],
 };
 
-const fmtNum = (n: number | null | undefined) => n ? Number(n).toLocaleString() : '0';
-const fmtCurr = (n: number | null | undefined) => n ? `${Number(n).toLocaleString()} دج` : '0 دج';
-const fmtPct = (n: number | null | undefined) => n ? `${Number(n).toFixed(1)}%` : '0%';
+// ─── Projection: lat/lng → SVG x/y ─────────────────────────
+const project = (lat: number, lng: number): [number, number] => {
+  const minLng = -8.7, maxLng = 12.0, minLat = 18.9, maxLat = 37.1;
+  return [
+    ((lng - minLng) / (maxLng - minLng)) * 370 + 15,
+    ((maxLat - lat) / (maxLat - minLat)) * 460 + 20,
+  ];
+};
 
-const STATUS_MAP: Record<string, string> = {
-  pending: 'قيد الانتظار', confirmed: 'مؤكد', in_delivery: 'قيد التوصيل',
-  delivered: 'تم التوصيل', cancelled: 'ملغي', declined: 'مرفوض',
+// ─── Helpers ─────────────────────────────────────────────────
+const fmtNum = (n: number | null | undefined) => n != null ? Number(n).toLocaleString('ar-DZ') : '0';
+const fmtCurr = (n: number | null | undefined) => n != null ? `${Number(n).toLocaleString('ar-DZ')} دج` : '0 دج';
+const fmtPct = (n: number | null | undefined) => n != null ? `${Number(n).toFixed(1)}%` : '—';
+const fmtDate = (d: string) => new Date(d).toLocaleDateString('ar', { month: 'short', day: 'numeric' });
+
+const STATUS_AR: Record<string, string> = {
+  pending: 'قيد الانتظار', confirmed: 'مؤكد', processing: 'قيد المعالجة',
+  shipped: 'تم الشحن', in_delivery: 'قيد التوصيل', delivered: 'تم التوصيل',
+  completed: 'مكتمل', cancelled: 'ملغي', declined: 'مرفوض', returned: 'مرجّع', refunded: 'مسترجع', fake: 'مزيف',
 };
 const STATUS_COLORS: Record<string, string> = {
-  pending: '#f59e0b', confirmed: '#22c55e', in_delivery: '#3b82f6',
-  delivered: '#10b981', cancelled: '#ef4444', declined: '#ef4444',
+  pending:'#f59e0b', confirmed:'#22c55e', processing:'#6366f1', shipped:'#3b82f6',
+  in_delivery:'#8b5cf6', delivered:'#10b981', completed:'#10b981',
+  cancelled:'#ef4444', declined:'#ef4444', returned:'#f97316', refunded:'#f97316', fake:'#6b7280',
 };
 
+const TRAFFIC_AR: Record<string, string> = {
+  facebook:'فيسبوك', instagram:'إنستغرام', google:'غوغل', tiktok:'تيك توك',
+  direct:'مباشر', organic:'عضوي', email:'بريد إلكتروني', referral:'إحالة', unknown:'غير معروف',
+};
+
+// ─── Algeria SVG Outline ────────────────────────────────────
+const ALGERIA_OUTLINE = `M 143 26 L 160 22 L 180 20 L 200 18 L 220 16 L 240 15 L 260 16 L 280 18
+  L 300 22 L 310 30 L 318 42 L 324 56 L 330 72 L 338 90 L 345 110 L 352 130
+  L 360 150 L 368 170 L 375 190 L 380 210 L 384 230 L 386 250 L 385 270
+  L 382 290 L 376 310 L 368 328 L 358 344 L 345 358 L 330 370 L 312 380
+  L 292 388 L 270 394 L 248 398 L 225 400 L 200 402 L 175 403 L 150 402
+  L 125 400 L 100 396 L 78 390 L 58 382 L 42 372 L 30 358 L 22 342
+  L 18 324 L 16 304 L 16 284 L 18 264 L 22 244 L 28 224 L 34 204
+  L 40 184 L 46 164 L 52 144 L 58 124 L 64 104 L 72 84 L 82 64
+  L 96 46 L 114 34 L 130 28 Z`;
+
+// ─── Component ──────────────────────────────────────────────
 export default function MarketingAnalytics() {
   const [days, setDays] = useState('30');
 
@@ -49,18 +77,52 @@ export default function MarketingAnalytics() {
     queryKey: ['omni-customers', days],
     queryFn: () => apiFetch<any>(`/api/pixels/omni/customers?days=${days}`),
   });
+  const { data: prodData, isLoading: l3 } = useQuery<any>({
+    queryKey: ['omni-products', days],
+    queryFn: () => apiFetch<any>(`/api/pixels/omni/products?days=${days}`),
+  });
 
   const ov = omni?.overview;
   const wilayas = cust?.wilayaBreakdown || [];
   const ordersByDay = cust?.ordersByDay || [];
   const statuses = omni?.statusBreakdown || [];
+  const sources = omni?.sourceBreakdown || [];
+  const nvr = cust?.newVsReturning || {};
+  const devices = cust?.deviceBreakdown || [];
+  const products = prodData?.products || [];
+  const funnel = omni?.funnel || [];
+
+  const loading = l1 || l2 || l3;
+
+  // ── Derived data ──
+  const deliveryRate = ov ? (ov.deliveredOrders / Math.max(1, ov.totalOrders)) * 100 : null;
+  const returnRate = ov && (ov.deliveredOrders + ov.returnedOrders) > 0
+    ? (ov.returnedOrders / (ov.deliveredOrders + ov.returnedOrders)) * 100 : null;
 
   const chartData = useMemo(() =>
-    ordersByDay.map((d: any) => ({ date: d.date, revenue: Number(d.revenue) || 0 })),
+    ordersByDay.map((d: any) => ({ date: d.date, revenue: Number(d.revenue) || 0, orders: Number(d.orders) || 0 })),
     [ordersByDay]
   );
 
-  const topWilayas = useMemo(() => wilayas.slice(0, 6), [wilayas]);
+  const statusData = useMemo(() =>
+    statuses.filter((s: any) => s.count > 0).map((s: any) => ({
+      name: STATUS_AR[s.status] || s.status, value: s.count, color: STATUS_COLORS[s.status] || '#6b7280',
+    })), [statuses]
+  );
+
+  const sourceData = useMemo(() =>
+    sources.map((s: any) => ({
+      name: TRAFFIC_AR[s.source] || s.source, sessions: s.sessions, purchases: s.purchases,
+    })).filter((s: any) => s.sessions > 0),
+    [sources]
+  );
+
+  const nvrData = useMemo(() => [
+    { name: 'عملاء جدد', value: Number(nvr.newCustomers) || 0, revenue: Number(nvr.newRevenue) || 0, fill: '#6366f1' },
+    { name: 'عملاء عائدون', value: Number(nvr.returningCustomers) || 0, revenue: Number(nvr.returningRevenue) || 0, fill: '#10b981' },
+  ], [nvr]);
+
+  const topWilayas = useMemo(() => wilayas.slice(0, 8), [wilayas]);
   const wilayaMap = useMemo(() => {
     const m = new Map<number, any>();
     for (const w of wilayas) m.set(w.wilayaId, w);
@@ -68,240 +130,378 @@ export default function MarketingAnalytics() {
   }, [wilayas]);
   const maxOrders = topWilayas.length ? Math.max(...topWilayas.map((w: any) => w.orders)) : 1;
 
-  const statusData = useMemo(() =>
-    statuses.filter((s: any) => s.count > 0).map((s: any) => ({
-      name: STATUS_MAP[s.status] || s.status, value: s.count, color: STATUS_COLORS[s.status] || '#6b7280',
-    })), [statuses]
-  );
-
-  const deliveryRate = ov ? ((ov.deliveredOrders / ov.totalOrders) * 100) : null;
-  const returnRate = ov && (ov.deliveredOrders + ov.returnedOrders) > 0
-    ? ((ov.returnedOrders / (ov.deliveredOrders + ov.returnedOrders)) * 100) : null;
-
-  const project = (lat: number, lng: number, w: number, h: number): [number, number] => [
-    ((lng + 9) / 13) * w, ((37.5 - lat) / 12) * h,
-  ];
-
   const [hoveredWilaya, setHoveredWilaya] = useState<any>(null);
 
-  const loading = l1 || l2;
+  // ── Loading / Empty ──
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <span className="h-8 w-8 animate-spin border-[3px] border-primary border-t-transparent rounded-full" />
+          <span className="text-sm text-muted-foreground font-medium">جاري تحميل التحليلات...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!ov) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mb-4">
+          <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+        </div>
+        <p className="text-lg font-bold text-foreground mb-1">لا توجد بيانات بعد</p>
+        <p className="text-sm text-muted-foreground max-w-xs">ستظهر التحليلات بمجرد وصول الطلبات لمتجرك</p>
+      </div>
+    );
+  }
+
+  // ── KPI Cards Data ──
+  const kpis = [
+    {
+      label: 'الإيرادات', value: fmtCurr(ov.realizedRevenue), icon: '💰',
+      gradient: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/20',
+      sub: ov.adSpend > 0 ? `صافي: ${fmtCurr(ov.netProfit)}` : null,
+      subColor: ov.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500',
+    },
+    {
+      label: 'صافي الربح', value: fmtCurr(ov.netProfit), icon: '📈',
+      gradient: ov.netProfit >= 0 ? 'from-emerald-500 to-emerald-600' : 'from-red-500 to-red-600',
+      shadow: ov.netProfit >= 0 ? 'shadow-emerald-500/20' : 'shadow-red-500/20',
+      valueColor: ov.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400',
+      sub: ov.realizedRevenue > 0 ? `هامش: ${fmtPct((ov.netProfit / ov.realizedRevenue) * 100)}` : null,
+    },
+    {
+      label: 'الطلبات', value: fmtNum(ov.totalOrders), icon: '📦',
+      gradient: 'from-violet-500 to-violet-600', shadow: 'shadow-violet-500/20',
+      sub: deliveryRate !== null ? `توصيل: ${fmtPct(deliveryRate)}` : null,
+      subColor: 'text-emerald-600 dark:text-emerald-400',
+    },
+    {
+      label: 'نسبة التوصيل', value: deliveryRate !== null ? fmtPct(deliveryRate) : '—', icon: '🚚',
+      gradient: 'from-amber-500 to-orange-500', shadow: 'shadow-amber-500/20',
+      sub: ov.deliveredOrders > 0 ? `${fmtNum(ov.deliveredOrders)} طلب تم توصيله` : null,
+    },
+    {
+      label: 'متوسط الطلب', value: fmtCurr(cust?.averageOrderValue), icon: '🧾',
+      gradient: 'from-cyan-500 to-cyan-600', shadow: 'shadow-cyan-500/20',
+      sub: cust?.totalCustomers ? `${fmtNum(cust.totalCustomers)} عميل` : null,
+    },
+    {
+      label: 'نسبة الإرجاع', value: returnRate !== null ? fmtPct(returnRate) : '—', icon: '↩️',
+      gradient: returnRate !== null && returnRate > 10 ? 'from-red-500 to-red-600' : 'from-teal-500 to-teal-600',
+      shadow: returnRate !== null && returnRate > 10 ? 'shadow-red-500/20' : 'shadow-teal-500/20',
+      valueColor: returnRate !== null && returnRate > 10 ? 'text-red-500 dark:text-red-400' : undefined,
+      sub: ov.returnedOrders > 0 ? `${fmtNum(ov.returnedOrders)} طلب مرجّع` : null,
+      subColor: 'text-red-500 dark:text-red-400',
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-5 space-y-4" dir="rtl">
+    <div className="min-h-screen bg-background px-3 sm:px-5 lg:px-6 py-4 space-y-3" dir="rtl">
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-slate-900 dark:text-white">لوحة التحليلات</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">ملخص أداء متجرك</p>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/25">
+            <span className="text-white text-lg">📊</span>
+          </div>
+          <div>
+            <h1 className="text-lg sm:text-xl font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              التحليلات
+            </h1>
+            <p className="text-[11px] text-muted-foreground font-medium">نظرة شاملة على أداء متجرك</p>
+          </div>
         </div>
-        <Select value={days} onValueChange={setDays}>
-          <SelectTrigger className="w-[110px] h-9 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">آخر 7 أيام</SelectItem>
-            <SelectItem value="30">آخر 30 يوم</SelectItem>
-            <SelectItem value="90">آخر 90 يوم</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="bg-muted/40 p-1 rounded-lg border border-border/40">
+          {['7','30','90'].map(d => (
+            <button key={d} onClick={() => setDays(d)}
+              className={`px-3 h-7 rounded-md text-xs font-bold transition-all duration-200 ${
+                days === d
+                  ? 'bg-primary text-white shadow-sm shadow-primary/30'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background'
+              }`}>
+              {d === '7' ? '7 أيام' : d === '30' ? '30 يوم' : '90 يوم'}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <span className="h-7 w-7 animate-spin border-[3px] border-blue-500 border-t-transparent rounded-full" />
-        </div>
-      ) : !ov ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <svg className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-          <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">لا توجد بيانات بعد</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">ستظهر التحليلات بمجرد بدء وصول الطلبات</p>
-        </div>
-      ) : (
-        <>
-          {/* ── Row 1: KPI Cards ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/20">
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">الإيرادات</span>
+      {/* ── Row 1: KPI Cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        {kpis.map((k, i) => (
+          <div key={i} className="bg-card rounded-xl border border-border p-3 hover:border-primary/30 transition-all duration-200 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${k.gradient} flex items-center justify-center shadow ${k.shadow}`}>
+                <span className="text-sm">{k.icon}</span>
               </div>
-              <p className="text-xl font-extrabold text-slate-900 dark:text-white">{fmtCurr(ov.realizedRevenue)}</p>
-              {ov.adSpend ? <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">صافي: {fmtCurr(ov.realizedRevenue - ov.adSpend)}</p> : null}
+              <span className="text-[10px] font-semibold text-muted-foreground tracking-wide">{k.label}</span>
             </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm shadow-emerald-500/20">
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                </div>
-                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">صافي الربح</span>
-              </div>
-              <p className={`text-xl font-extrabold ${ov.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>{fmtCurr(ov.netProfit)}</p>
-              {ov.realizedRevenue > 0 ? <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">هامش: {fmtPct((ov.netProfit / ov.realizedRevenue) * 100)}</p> : null}
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 shadow-sm shadow-violet-500/20">
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                </div>
-                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">الطلبات</span>
-              </div>
-              <p className="text-xl font-extrabold text-slate-900 dark:text-white">{fmtNum(ov.totalOrders)}</p>
-              {deliveryRate !== null ? <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">{fmtPct(deliveryRate)} تم التوصيل</p> : null}
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 shadow-sm shadow-rose-500/20">
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" /></svg>
-                </div>
-                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">نسبة الإرجاع</span>
-              </div>
-              <p className="text-xl font-extrabold text-slate-900 dark:text-white">{returnRate !== null ? fmtPct(returnRate) : '—'}</p>
-              {ov.returnedOrders > 0 ? <p className="text-[11px] text-red-500 dark:text-red-400 mt-0.5">{fmtNum(ov.returnedOrders)} طلب مرجّع</p> : null}
-            </div>
+            <p className={`text-lg font-black tabular-nums leading-none ${k.valueColor || 'text-foreground'}`}>{k.value}</p>
+            {k.sub && <p className={`text-[10px] mt-1 font-medium ${k.subColor || 'text-muted-foreground'}`}>{k.sub}</p>}
           </div>
+        ))}
+      </div>
 
-          {/* ── Row 2: Revenue Chart + Delivery Status ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                  <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                </div>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">الإيرادات اليومية</span>
-              </div>
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={chartData} margin={{ left: -16, right: 8, top: 8, bottom: 8 }}>
-                    <defs>
-                      <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.12} />
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }}
-                      tickFormatter={(d: string) => new Date(d).toLocaleDateString('ar', { month: 'short', day: 'numeric' })}
-                      axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} width={50}
-                      tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
-                      axisLine={false} tickLine={false} />
-                    <RechartsTooltip contentStyle={{ fontSize: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--background)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                      formatter={(value: number) => [fmtCurr(value), 'الإيرادات']}
-                      labelFormatter={(d: string) => new Date(d).toLocaleDateString('ar', { weekday: 'short', month: 'short', day: 'numeric' })} />
-                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#rg)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-[220px] text-xs text-slate-400">لا توجد بيانات</div>
-              )}
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/20">
-                  <svg className="w-3.5 h-3.5 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                </div>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">حالة الطلبات</span>
-              </div>
-              {statusData.length > 0 ? (
-                <div className="flex flex-col items-center">
-                  <ResponsiveContainer width="100%" height={130}>
-                    <PieChart>
-                      <Pie data={statusData} cx="50%" cy="50%" innerRadius={32} outerRadius={52} paddingAngle={3} dataKey="value" stroke="none">
-                        {statusData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
-                      </Pie>
-                      <RechartsTooltip contentStyle={{ fontSize: 11, borderRadius: 10 }} formatter={(v: number, n: string) => [fmtNum(v), n]} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-1 w-full">
-                    {statusData.map((s: any) => (
-                      <div key={s.name} className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                        <span className="text-[10px] font-medium text-slate-500 truncate">{s.name}</span>
-                        <span className="text-[10px] font-bold text-slate-900 dark:text-white mr-auto">{fmtNum(s.value)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-[180px] text-xs text-slate-400">لا توجد بيانات</div>
-              )}
-            </div>
+      {/* ── Row 2: Revenue Chart + Order Status ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Revenue Chart */}
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-primary to-accent" />
+            <span className="text-sm font-bold text-foreground">الإيرادات اليومية</span>
           </div>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={chartData} margin={{ left: -16, right: 8, top: 8, bottom: 8 }}>
+                <defs>
+                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  tickFormatter={fmtDate} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={55}
+                  tickFormatter={(v: number) => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)}
+                  axisLine={false} tickLine={false} />
+                <RechartsTooltip
+                  contentStyle={{ fontSize: 12, borderRadius: 12, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  formatter={(value: number) => [fmtCurr(value), 'الإيرادات']}
+                  labelFormatter={(d: string) => new Date(d).toLocaleDateString('ar', { weekday: 'short', month: 'short', day: 'numeric' })} />
+                <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#revGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[220px] text-xs text-muted-foreground">لا توجد بيانات</div>
+          )}
+        </div>
 
-          {/* ── Row 3: Algeria Map ── */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
-                <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              </div>
-              <span className="text-sm font-bold text-slate-900 dark:text-white">خريطة الطلبات حسب الولايات</span>
-            </div>
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Map */}
-              <div className="flex-1 relative">
-                <svg viewBox="0 0 400 500" className="w-full max-w-[400px] mx-auto h-auto">
-                  <path d="M 48 30 L 140 15 L 220 10 L 300 20 L 350 40 L 380 80 L 390 140 L 385 200 L 370 260 L 340 300 L 300 340 L 260 370 L 220 390 L 180 400 L 140 395 L 100 380 L 60 350 L 30 310 L 15 260 L 10 200 L 15 140 L 25 80 Z"
-                    fill="var(--muted)" opacity={0.25} stroke="var(--border)" strokeWidth={1} />
-                  {Object.entries(WILAYA_COORDS).map(([id, [lat, lng]]) => {
-                    const w = wilayaMap.get(Number(id));
-                    const orders = w?.orders || 0;
-                    const intensity = orders > 0 ? Math.min(orders / maxOrders, 1) : 0;
-                    const r = orders > 0 ? 4 + intensity * 8 : 3;
-                    const [cx, cy] = project(lat, lng, 400, 500);
-                    const isHovered = hoveredWilaya?.wilayaId === Number(id);
-                    return (
-                      <g key={id} className="cursor-pointer" onMouseEnter={() => setHoveredWilaya(w)} onMouseLeave={() => setHoveredWilaya(null)}>
-                        {orders > 0 && <circle cx={cx} cy={cy} r={r + 4} fill={`rgba(59, 130, 246, ${0.15 + intensity * 0.2})`} className="transition-all" />}
-                        <circle cx={cx} cy={cy} r={isHovered ? r + 2 : r}
-                          fill={orders > 0 ? `rgba(59, 130, 246, ${0.4 + intensity * 0.6})` : '#94a3b8'}
-                          opacity={orders > 0 ? 1 : 0.3}
-                          stroke={isHovered ? '#3b82f6' : 'transparent'} strokeWidth={isHovered ? 2 : 0} />
-                        {orders > 5 && (
-                          <text x={cx} y={cy - r - 4} textAnchor="middle" className="fill-slate-900 dark:fill-white text-[7px] font-bold pointer-events-none">{orders}</text>
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
-                {/* Tooltip */}
-                {hoveredWilaya && (
-                  <div className="absolute top-2 left-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-lg z-10 min-w-[150px]">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{hoveredWilaya.wilayaName}</p>
-                    <div className="mt-1.5 space-y-1">
-                      <div className="flex justify-between text-xs"><span className="text-slate-500">الطلبات</span><span className="font-bold">{fmtNum(hoveredWilaya.orders)}</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-slate-500">الإيرادات</span><span className="font-bold">{fmtCurr(hoveredWilaya.revenue)}</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-slate-500">العملاء</span><span className="font-bold">{fmtNum(hoveredWilaya.customers)}</span></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              {/* Top wilayas list */}
-              <div className="lg:w-72 space-y-2">
-                {topWilayas.map((w: any, i: number) => (
-                  <div key={w.wilayaId} className="flex items-center gap-2" onMouseEnter={() => setHoveredWilaya(w)} onMouseLeave={() => setHoveredWilaya(null)}>
-                    <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white truncate">{w.wilayaName}</span>
-                        <span className="text-xs font-bold text-slate-900 dark:text-white tabular-nums mr-2">{fmtNum(w.orders)}</span>
-                      </div>
-                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden mt-0.5">
-                        <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all"
-                          style={{ width: `${(w.orders / maxOrders) * 100}%` }} />
-                      </div>
-                    </div>
+        {/* Order Status Donut */}
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-violet-500 to-purple-500" />
+            <span className="text-sm font-bold text-foreground">حالة الطلبات</span>
+          </div>
+          {statusData.length > 0 ? (
+            <div className="flex flex-col items-center">
+              <ResponsiveContainer width="100%" height={140}>
+                <PieChart>
+                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={3} dataKey="value" stroke="none">
+                    {statusData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{ fontSize: 11, borderRadius: 10 }}
+                    formatter={(v: number, n: string) => [fmtNum(v), n]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1 w-full">
+                {statusData.map((s: any) => (
+                  <div key={s.name} className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                    <span className="text-[10px] font-medium text-muted-foreground truncate">{s.name}</span>
+                    <span className="text-[10px] font-bold text-foreground tabular-nums mr-auto">{fmtNum(s.value)}</span>
                   </div>
                 ))}
               </div>
             </div>
+          ) : (
+            <div className="flex items-center justify-center h-[180px] text-xs text-muted-foreground">لا توجد بيانات</div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Row 3: Algeria Map + Top Wilayas ── */}
+      <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-emerald-500 to-teal-500" />
+          <span className="text-sm font-bold text-foreground">التوزيع الجغرافي — الولايات</span>
+        </div>
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Map */}
+          <div className="flex-1 relative">
+            <svg viewBox="0 0 400 480" className="w-full max-w-[400px] mx-auto h-auto">
+              <path d={ALGERIA_OUTLINE} fill="hsl(var(--muted))" opacity={0.3} stroke="hsl(var(--border))" strokeWidth={1} />
+              {Object.entries(WILAYA_COORDS).map(([id, [lat, lng]]) => {
+                const w = wilayaMap.get(Number(id));
+                const orders = w?.orders || 0;
+                const intensity = orders > 0 ? Math.min(orders / maxOrders, 1) : 0;
+                const r = orders > 0 ? 4 + intensity * 8 : 3;
+                const [cx, cy] = project(lat, lng);
+                const isHovered = hoveredWilaya?.wilayaId === Number(id);
+                return (
+                  <g key={id} className="cursor-pointer"
+                    onMouseEnter={() => w && setHoveredWilaya(w)}
+                    onMouseLeave={() => setHoveredWilaya(null)}>
+                    {orders > 0 && (
+                      <circle cx={cx} cy={cy} r={r + 4}
+                        fill={`rgba(59, 130, 246, ${0.1 + intensity * 0.15})`}
+                        className="transition-all" />
+                    )}
+                    <circle cx={cx} cy={cy} r={isHovered ? r + 2 : r}
+                      fill={orders > 0 ? `rgba(59, 130, 246, ${0.4 + intensity * 0.6})` : 'hsl(var(--muted-foreground))'}
+                      opacity={orders > 0 ? 1 : 0.25}
+                      stroke={isHovered ? '#3b82f6' : 'transparent'} strokeWidth={isHovered ? 2 : 0}
+                      className="transition-all" />
+                    {orders > 3 && (
+                      <text x={cx} y={cy - r - 4} textAnchor="middle"
+                        className="fill-foreground text-[7px] font-bold pointer-events-none">{orders}</text>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+            {hoveredWilaya && (
+              <div className="absolute top-2 left-2 bg-card border border-border rounded-xl p-3 shadow-lg z-10 min-w-[150px]">
+                <p className="text-sm font-bold text-foreground">{hoveredWilaya.wilayaName}</p>
+                <div className="mt-1.5 space-y-1">
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">الطلبات</span><span className="font-bold">{fmtNum(hoveredWilaya.orders)}</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">الإيرادات</span><span className="font-bold">{fmtCurr(hoveredWilaya.revenue)}</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">العملاء</span><span className="font-bold">{fmtNum(hoveredWilaya.customers)}</span></div>
+                </div>
+              </div>
+            )}
           </div>
-        </>
+          {/* Top wilayas list */}
+          <div className="lg:w-72 space-y-2">
+            {topWilayas.length > 0 ? topWilayas.map((w: any, i: number) => (
+              <div key={w.wilayaId} className="flex items-center gap-2"
+                onMouseEnter={() => setHoveredWilaya(w)} onMouseLeave={() => setHoveredWilaya(null)}>
+                <span className="w-5 h-5 rounded-lg bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground truncate">{w.wilayaName}</span>
+                    <span className="text-xs font-bold text-foreground tabular-nums mr-2">{fmtNum(w.orders)}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-0.5">
+                    <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all"
+                      style={{ width: `${(w.orders / maxOrders) * 100}%` }} />
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <p className="text-xs text-muted-foreground text-center py-4">لا توجد بيانات جغرافية</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Row 4: New vs Returning + Traffic Sources ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* New vs Returning */}
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500" />
+            <span className="text-sm font-bold text-foreground">العملاء الجدد vs العائدون</span>
+          </div>
+          {nvrData.some(n => n.value > 0) ? (
+            <div className="space-y-3">
+              {nvrData.map((n, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: n.fill }} />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-foreground">{n.name}</span>
+                      <span className="text-xs font-black text-foreground tabular-nums">{fmtNum(n.value)} عميل</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${cust?.totalCustomers ? (n.value / cust.totalCustomers) * 100 : 0}%`, backgroundColor: n.fill }} />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">الإيرادات: {fmtCurr(n.revenue)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-8">لا توجد بيانات</p>
+          )}
+        </div>
+
+        {/* Traffic Sources */}
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-pink-500 to-rose-500" />
+            <span className="text-sm font-bold text-foreground">مصادر الزيارات</span>
+          </div>
+          {sourceData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={sourceData} layout="vertical" margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={60} axisLine={false} tickLine={false} />
+                <RechartsTooltip
+                  contentStyle={{ fontSize: 11, borderRadius: 10, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
+                  formatter={(v: number, n: string) => [fmtNum(v), n === 'sessions' ? 'زيارات' : 'مشتريات']} />
+                <Bar dataKey="sessions" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={14} name="sessions" />
+                <Bar dataKey="purchases" fill="#10b981" radius={[0, 4, 4, 0]} barSize={14} name="purchases" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-8">لا توجد بيانات</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Row 5: Top Products ── */}
+      {products.length > 0 && (
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+            <span className="text-sm font-bold text-foreground">المنتجات الأكثر مبيعاً</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/40">
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">#</th>
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">المنتج</th>
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">الطلبات</th>
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">الإيرادات</th>
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">تم التوصيل</th>
+                  <th className="text-right py-2 px-2 font-bold text-muted-foreground">نسبة التوصيل</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.slice(0, 10).map((p: any, i: number) => (
+                  <tr key={p.productId} className="border-b border-border/20 hover:bg-muted/30 transition-colors">
+                    <td className="py-2 px-2 font-bold text-muted-foreground">{i + 1}</td>
+                    <td className="py-2 px-2 font-bold text-foreground max-w-[200px] truncate">{p.title}</td>
+                    <td className="py-2 px-2 font-bold text-foreground tabular-nums">{fmtNum(p.totalOrders)}</td>
+                    <td className="py-2 px-2 font-bold text-foreground tabular-nums">{fmtCurr(p.revenue)}</td>
+                    <td className="py-2 px-2 font-bold text-foreground tabular-nums">{fmtNum(p.deliveredOrders)}</td>
+                    <td className="py-2 px-2">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        p.deliveryRate >= 75 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        : p.deliveryRate >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      }`}>{fmtPct(p.deliveryRate)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Row 6: Device Breakdown ── */}
+      {devices.length > 0 && (
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-cyan-500 to-blue-500" />
+            <span className="text-sm font-bold text-foreground">الأجهزة</span>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {devices.map((d: any, i: number) => (
+              <div key={i} className="flex items-center gap-2 bg-muted/40 px-3 py-2 rounded-lg border border-border/40">
+                <span className="text-lg">{d.device === 'mobile' ? '📱' : d.device === 'desktop' ? '🖥️' : '📟'}</span>
+                <div>
+                  <p className="text-xs font-bold text-foreground">{d.device === 'mobile' ? 'มือถือ' : d.device === 'desktop' ? 'كمبيوتر' : d.device === 'tablet' ? 'تابلت' : d.device}</p>
+                  <p className="text-[10px] text-muted-foreground">{fmtNum(d.sessions)} جلسة — {fmtPct(d.share)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
