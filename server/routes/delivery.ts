@@ -187,13 +187,6 @@ export const assignDeliveryToOrder: RequestHandler = async (req, res) => {
       return;
     }
 
-    // Mark as in_delivery (handed off to courier, awaiting pickup)
-    await pool.query(
-      `UPDATE store_orders SET status = 'in_delivery', updated_at = NOW()
-       WHERE id = $1 AND client_id = $2 AND COALESCE(status, '') NOT IN ('delivered','completed','cancelled','failed','returned','refunded')`,
-      [orderId, clientId]
-    );
-
     // Notify customer about delivery assignment (fire-and-forget)
     try {
       const orderRes = await pool.query(
