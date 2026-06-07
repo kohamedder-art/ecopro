@@ -12,94 +12,6 @@ interface PixelScriptsProps {
   storeSlug: string;
 }
 
-// Module-level guards to prevent duplicate initialization across multiple instances
-let facebookPixelInitialized = false;
-let tiktokPixelInitialized = false;
-let pageViewFiredByInit = false;
-let currentStoreCurrency = 'DZD';
-
-// Facebook only supports specific ISO 4217 currency codes.
-// Map unsupported currencies to a supported fallback.
-const FB_SUPPORTED_CURRENCIES = new Set([
-  'AED','ARS','AUD','BDT','BOB','BRL','BZD','CAD','CHF','CLP','CNY','COP','CRC','CZK',
-  'DKK','DOP','EGP','EUR','GBP','GTQ','HKD','HNL','HUF','IDR','ILS','INR','ISK','JPY',
-  'KES','KRW','KWD','MXN','MYR','NGN','NIO','NOK','NZD','PEN','PHP','PKR','PLN','PYG',
-  'QAR','RON','SAR','SEK','SGD','THB','TRY','TWD','UAH','USD','UYU','VND','XAF','ZAR'
-]);
-export function fbCurrency(code: string): string {
-  const upper = (code || 'USD').toUpperCase();
-  return FB_SUPPORTED_CURRENCIES.has(upper) ? upper : 'USD';
-}
-
-export function setStoreCurrency(code: string) {
-  currentStoreCurrency = code;
-}
-
-// Deduplication cache for ViewContent events (prevents rapid-fire duplicates)
-const lastViewContentTimestamps = new Map<string, number>();
-
-// Queue for events that fire before fbq('init') — replayed after init
-// (fbq stub queue only works for events fired AFTER the stub is created,
-//  but events BEFORE init are still ignored by the Facebook SDK)
-let pendingEvents: [string, Record<string, any> | undefined][] = [];
-
-// Module-level Facebook Pixel stub — created immediately so events fired
-// before async config loads are properly queued (not silently dropped)
-if (typeof window !== 'undefined' && !window.fbq) {
-  const n = window.fbq = function() {
-    n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-  } as any;
-  if (!window._fbq) window._fbq = n;
-  n.push = n;
-  n.loaded = true;
-  n.version = '2.0';
-  n.queue = [];
-}
-
-// Module-level TikTok Pixel stub — created immediately so ttq.track() calls
-// fired before the async config loads are properly deferred (not silently dropped).
-// Mirrors the Facebook stub pattern above.
-if (typeof window !== 'undefined' && !(window as any).ttq) {
-  (window as any).TiktokAnalyticsObject = 'ttq';
-  const ttq: any = (window as any).ttq = [];
-  ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie"];
-  ttq.setAndDefer = function(t: any, e: string) {
-    t[e] = function() {
-      t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
-    };
-  };
-  for (let i = 0; i < ttq.methods.length; i++) {
-    ttq.setAndDefer(ttq, ttq.methods[i]);
-  }
-  ttq.instance = function(t: string) {
-    const e = ttq._i[t] || [];
-    for (let n = 0; n < ttq.methods.length; n++) {
-      ttq.setAndDefer(e, ttq.methods[n]);
-    }
-    return e;
-  };
-  ttq.load = function(e: string, n?: any) {
-    const i = "https://analytics.tiktok.com/i18n/pixel/events.js";
-    ttq._i = ttq._i || {};
-    ttq._i[e] = [];
-    ttq._i[e]._u = i;
-    ttq._t = ttq._t || {};
-    ttq._t[e] = +new Date();
-    ttq._o = ttq._o || {};
-    ttq._o[e] = n || {};
-    if (!document.getElementById('tiktok-pixel-script')) {
-      const o = document.createElement("script");
-      o.id = 'tiktok-pixel-script';
-      o.type = "text/javascript";
-      o.async = true;
-      o.src = i + "?sdkid=" + e + "&lib=ttq";
-      o.onload = () => console.log('[Pixel] TikTok SDK loaded');
-      o.onerror = () => console.error('[Pixel] TikTok SDK failed to load');
-      document.head.appendChild(o);
-    }
-  };
-}
-
 const CANONICAL_SESSION_KEY = 'ecopro_session_id';
 const CANONICAL_VISITOR_KEY = 'ecopro_visitor_id';
 const LEGACY_SESSION_KEYS = [CANONICAL_SESSION_KEY, 'pixel_session_id'];
@@ -227,13 +139,51 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     }
   }, [location.pathname, storeSlug]);
 
+  // Auto-track Purchase events by intercepting order creation API calls.
+  // This runs globally so ALL templates get tracking without individual changes.
+  useEffect(() => {
+    if (!storeSlug) return;
+
+    const originalFetch = window.fetch;
+    window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
+      const response = await originalFetch.call(window, input, init);
+
+      try {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+        if (url.includes('/api/orders/create') && init?.method?.toUpperCase() === 'POST' && response.ok) {
+          const body = typeof init.body === 'string' ? JSON.parse(init.body) : null;
+          if (body) {
+            // Clone to read response without consuming it
+            const cloned = response.clone();
+            cloned.json().then((data: any) => {
+              const orderId = data?.order?.id || data?.orderId || data?.order_id || '';
+              const value = body.total_price || body.offer_bundle_price || body.unit_price || 0;
+              console.log('[Pixel] Purchase detected:', { orderId, value, product_id: body.product_id });
+              trackAllPixels(PixelEvents.PURCHASE, {
+                content_ids: [body.product_id],
+                content_name: body.product_name || '',
+                value: value,
+                currency: 'DZD',
+                order_id: String(orderId),
+              });
+            }).catch(() => {});
+          }
+        }
+      } catch {
+        // Non-critical: don't break order flow if tracking fails
+      }
+
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [storeSlug]);
+
   // Inject Facebook Pixel (supports multiple comma-separated IDs)
   useEffect(() => {
     if (!config?.facebook_pixel_id || !config.is_facebook_enabled) return;
-
-    // Module-level guard: only the first instance initializes
-    // Also checks DOM to survive HMR (which resets module state)
-    if (facebookPixelInitialized || document.getElementById('facebook-pixel-script')) return;
 
     // Support storing multiple pixel IDs as comma-separated values
     const ids = String(config.facebook_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
@@ -242,21 +192,41 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     // Deduplicate IDs
     const uniqueIds = [...new Set(ids)];
 
-    facebookPixelInitialized = true;
+    // Prevent duplicate script loading
+    if (document.getElementById('facebook-pixel-script')) {
+      // Script already loaded, just re-init pixels
+      if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
+        uniqueIds.forEach(id => {
+          try { window.fbq('init', id); } catch (e) { /* ignore */ }
+        });
+        try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
+      }
+      return;
+    }
 
-    // Queue init events (PageView auto-fired by SDK on init)
+    // Preserve any events already queued by trackFacebookEvent before fbq loaded
+    const existingQueue = (window as any).fbq?.queue || [];
+
+    // Initialize fbq without inline script (CSP-safe)
+    const n = window.fbq = function() {
+      n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+    } as any;
+    if (!window._fbq) window._fbq = n;
+    n.push = n;
+    n.loaded = true;
+    n.version = '2.0';
+    n.queue = [];
+
+    // Re-queue any events fired before fbq was fully initialized
+    existingQueue.forEach((args: any[]) => {
+      try { window.fbq.apply(null, args); } catch (e) { /* ignore */ }
+    });
+
+    // Queue init and PageView events BEFORE loading the script (standard Facebook pattern)
     uniqueIds.forEach(id => {
       try { window.fbq('init', id); } catch (e) { /* ignore */ }
     });
-
-    // Replay events that were queued before pixel was initialized.
-    // These land in fbq's stub queue AFTER init, so the SDK processes
-    // them after the pixel is initialized (not ignored like pre-init events).
-    const replay = pendingEvents;
-    pendingEvents = [];
-    replay.forEach(([name, params]) => {
-      try { window.fbq('track', name, params); } catch (e) { /* ignore */ }
-    });
+    try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
 
     // Load the Facebook SDK via external script
     const script = document.createElement('script');
@@ -292,14 +262,8 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
   }, [config?.facebook_pixel_id, config?.is_facebook_enabled]);
 
   // Inject TikTok Pixel (supports multiple comma-separated IDs)
-  // The ttq stub is already created at module level, so ttq.track() calls
-  // fired before this effect runs are properly deferred until load() is called.
   useEffect(() => {
     if (!config?.tiktok_pixel_id || !config.is_tiktok_enabled) return;
-    if (typeof window === 'undefined' || !window.ttq) return;
-
-    // Module-level guard: only the first instance initializes
-    if (tiktokPixelInitialized) return;
 
     const ids = String(config.tiktok_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return;
@@ -307,9 +271,57 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     // Deduplicate IDs
     const uniqueIds = [...new Set(ids)];
 
-    tiktokPixelInitialized = true;
+    // If ttq exists, load/instantiate each id
+    if (window.ttq) {
+      uniqueIds.forEach(id => {
+        try { window.ttq.load(id); } catch (e) { /* ignore */ }
+      });
+      try { window.ttq.page(); } catch (e) { /* ignore */ }
+      return;
+    }
 
-    // Load/instantiate each id, then fire a page event
+    // Prevent duplicate script loading
+    if (document.getElementById('tiktok-pixel-script')) {
+      return;
+    }
+
+    // Initialize TikTok Pixel without inline script (CSP-safe)
+    window.TiktokAnalyticsObject = 'ttq';
+    const ttq = window.ttq = window.ttq || [] as any;
+    ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie"];
+    ttq.setAndDefer = function(t: any, e: string) {
+      t[e] = function() {
+        t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+      };
+    };
+    for (let i = 0; i < ttq.methods.length; i++) {
+      ttq.setAndDefer(ttq, ttq.methods[i]);
+    }
+    ttq.instance = function(t: string) {
+      const e = ttq._i[t] || [];
+      for (let n = 0; n < ttq.methods.length; n++) {
+        ttq.setAndDefer(e, ttq.methods[n]);
+      }
+      return e;
+    };
+    ttq.load = function(e: string, n?: any) {
+      const i = "https://analytics.tiktok.com/i18n/pixel/events.js";
+      ttq._i = ttq._i || {};
+      ttq._i[e] = [];
+      ttq._i[e]._u = i;
+      ttq._t = ttq._t || {};
+      ttq._t[e] = +new Date();
+      ttq._o = ttq._o || {};
+      ttq._o[e] = n || {};
+      const o = document.createElement("script");
+      o.id = 'tiktok-pixel-script';
+      o.type = "text/javascript";
+      o.async = true;
+      o.src = i + "?sdkid=" + e + "&lib=ttq";
+      const a = document.getElementsByTagName("script")[0];
+      a?.parentNode?.insertBefore(o, a);
+    };
+
     uniqueIds.forEach(id => {
       try { window.ttq.load(id); } catch (e) { /* ignore */ }
     });
@@ -330,29 +342,14 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
  * Helper functions to track events from other components
  */
 export function trackFacebookEvent(eventName: string, params?: Record<string, any>) {
-  const p = params ? { ...params } : {};
-  if (p.value != null) p.value = Number(p.value);
-  // Facebook only accepts specific currencies; map unsupported ones
-  if (p.currency) p.currency = fbCurrency(p.currency);
-
   if (typeof window !== 'undefined' && window.fbq) {
-    if (facebookPixelInitialized) {
-      if (eventName === 'PageView' && !pageViewFiredByInit) {
-        pageViewFiredByInit = true;
-        return;
-      }
-      window.fbq('track', eventName, p);
-    } else if (eventName !== 'PageView') {
-      pendingEvents.push([eventName, p]);
-    }
+    window.fbq('track', eventName, params);
   }
 }
 
 export function trackTikTokEvent(eventName: string, params?: Record<string, any>) {
-  if (typeof window !== 'undefined' && window.ttq && typeof window.ttq.track === 'function') {
-    try {
-      window.ttq.track(eventName, params);
-    } catch (e) { /* ignore */ }
+  if (typeof window !== 'undefined' && window.ttq) {
+    window.ttq.track(eventName, params);
   }
 }
 
@@ -485,37 +482,15 @@ export function setCurrentStoreSlug(slug: string) {
 }
 
 export function trackAllPixels(eventName: string, params?: Record<string, any>) {
-  // Normalize value to number if present
-  const normalizedParams = params ? { ...params } : {};
-  if (normalizedParams.value != null) {
-    const numValue = Number(normalizedParams.value);
-    if (!Number.isNaN(numValue)) {
-      normalizedParams.value = numValue;
-    }
-  }
-
-  // Deduplicate rapid-fire ViewContent events (same product within 2s)
-  if (eventName === 'ViewContent') {
-    const dedupKey = `vc:${normalizedParams.content_ids?.[0]}`;
-    const last = lastViewContentTimestamps.get(dedupKey);
-    const now = Date.now();
-    if (last && now - last < 2000) {
-      // Skip Facebook/TikTok but still track to backend
-      trackToBackend(currentStoreSlug || localStorage.getItem('currentStoreSlug') || '', eventName, normalizedParams);
-      return;
-    }
-    lastViewContentTimestamps.set(dedupKey, now);
-  }
-
   // Track to Facebook and TikTok SDKs (client-side)
-  trackFacebookEvent(eventName, normalizedParams);
-  trackTikTokEvent(eventName, normalizedParams);
+  trackFacebookEvent(eventName, params);
+  trackTikTokEvent(eventName, params);
   
   // Track to our backend for statistics (only ONE event, not duplicated)
   const storeSlug = currentStoreSlug || localStorage.getItem('currentStoreSlug') || '';
   if (storeSlug && eventName !== 'PageView') {
     // PageView is handled separately with deduplication
-    trackToBackend(storeSlug, eventName, normalizedParams);
+    trackToBackend(storeSlug, eventName, params);
   }
 }
 

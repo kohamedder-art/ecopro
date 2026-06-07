@@ -3,16 +3,15 @@ import { TemplateProps, StoreProduct } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useImageClassifier } from '@/hooks/useImageClassifier';
 import { useOrderFields } from '@/hooks/useOrderFields';
-import { isValidAlgerianPhone } from '@/lib/utils';
-import { getFraudData } from '@/lib/fingerprint';
-import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
-import { CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import PixelScripts from '@/components/storefront/PixelScripts';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
-export default function DZShopTemplate({ settings, products, canManage, storeSlug, onProductView }: TemplateProps) {
+export default function DZShopTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [orderSuccess, setOrderSuccess] = React.useState(false);
     const [lastOrderId, setLastOrderId] = React.useState<number | string | null>(null);
@@ -21,50 +20,24 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-
-    // Order form field visibility (before baseDeliveryFee — selectedDeliveryType must be initialized first)
-    const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
-    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
-
     const baseDeliveryFee = selectedWilaya
       ? (selectedDeliveryType === 'desk' ? (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0) : (selectedWilaya.homePrice ?? 0))
       : 0;
-
-    // Scroll-hide header
-    const [headerVisible, setHeaderVisible] = useState(true);
-    const lastScrollY = useRef(0);
-    useEffect(() => {
-      const handleScroll = () => {
-        const currentY = window.scrollY;
-        if (currentY < 60) {
-          setHeaderVisible(true);
-        } else if (currentY > lastScrollY.current) {
-          setHeaderVisible(false);
-        } else {
-          setHeaderVisible(true);
-        }
-        lastScrollY.current = currentY;
-      };
-      window.addEventListener('scroll', handleScroll, { passive: true });
-      return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
     // Section visibility toggles
     const showBanner = settings?.dzshop_show_banner !== false;
     const showTrustBadges = settings?.dzshop_show_trust !== false;
 
+    // Order form field visibility
+    const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
     const [customerAddress, setCustomerAddress] = useState('');
     const [customerCommune, setCustomerCommune] = useState('');
-    const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
-    useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
     const [customerNotes, setCustomerNotes] = useState('');
     const [quantity, setQuantity] = useState(1);
 
     // Get product first (needed for variant/offer hooks)
     const product = (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
-
-    // Fire product view tracking when product changes
-    useEffect(() => { if (product && onProductView) onProductView(product); }, [product?.id, onProductView]);
 
     // Variant and Offer support
     const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -72,7 +45,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
     const [orderError, setOrderError] = useState<string | null>(null);
     const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-    const [lightboxOpen, setLightboxOpen] = useState(false);
 
     const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
     const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
@@ -81,14 +53,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const handleDefaultOrder = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!product) return;
-        const fd = new FormData(e.currentTarget);
-        const phone = (fd.get('phone') as string || '').replace(/[^0-9]/g, '');
-        if (!isValidAlgerianPhone(phone)) {
-            setOrderError('رقم الهاتف غير صحيح — يجب أن يبدأ بـ 05، 06 أو 07 ويكون 10 أرقام');
-            return;
-        }
         setIsSubmitting(true);
         try {
+            const fd = new FormData(e.currentTarget);
             const payload = {
                 store_slug: storeSlug || settings?.store_name || 'dzshop',
                 product_id: product.id,
@@ -101,10 +68,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 customer_name: fd.get('name'),
                 customer_phone: fd.get('phone'),
                 customer_address: (fd.get('address') as string) || selectedWilaya?.labelAR || '',
-                customer_commune: communeDisplayName(getAlgeriaCommuneById(customerCommune)!) || fd.get('commune') || '',
-                customer_notes: fd.get('notes') || '',
-                product_name: product.title || product.name || '',
-                ...getFraudData(),
+                customer_commune: fd.get('commune') || '',
+                customer_notes: fd.get('notes') || ''
             };
             const res = await fetch('/api/orders/create', {
                 method: 'POST',
@@ -112,31 +77,11 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            if (!res.ok) {
-              let errMsg: string;
-              if (data.fields) {
-                const list = Object.values(data.fields).map((m: any) => `• ${m}`).join('\n');
-                errMsg = (data.error || 'يرجى تصحيح البيانات') + '\n' + list;
-              } else {
-                errMsg = data.error || 'حدث خطأ أثناء إرسال الطلب';
-              }
-              setOrderError(errMsg);
-              setIsSubmitting(false);
-              return;
-            }
+            if (!res.ok) throw new Error('Order error');
             setLastOrderId(data.order?.id || null);
             setLastTelegramUrl(data.telegramStartUrl || null);
             setCustomerPhone(fd.get('phone') as string);
             setOrderSuccess(true);
-            trackAllPixels(PixelEvents.PURCHASE, {
-              content_name: product?.title || product?.name || '',
-              content_ids: product?.id ? [product.id] : [],
-              content_type: 'product',
-              value: productTotal,
-              currency: settings?.currency_code || 'DZD',
-              num_items: quantity,
-              order_id: data?.order?.id || null,
-            });
         } catch(err) {
             console.error(err);
             setOrderError('حدث خطأ أثناء تقديم الطلب. حاول مرة أخرى.');
@@ -147,37 +92,17 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
     const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#2563eb');
     const accentColor = settings?.template_accent_color || primaryColor;
-    const headerColor = settings?.iyco_header_color || '#ffffff';
-    const bgColor = settings?.template_bg_color || '#f3f4f6';
-    const isDark = useMemo(() => {
-      const hex = bgColor.replace('#', '');
-      const r = parseInt(hex.substring(0, 2), 16);
-      const g = parseInt(hex.substring(2, 4), 16);
-      const b = parseInt(hex.substring(4, 6), 16);
-      return (r * 299 + g * 587 + b * 114) / 1000 < 128;
-    }, [bgColor]);
-    const textColor = settings?.primary_color || (isDark ? '#f1f5f9' : '#1f2937');
-    const textMuted = isDark ? '#94a3b8' : '#6b7280';
-    const borderColor = isDark ? '#334155' : '#e5e7eb';
-    const cardBg = isDark ? '#1e293b' : '#ffffff';
-    const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
-    const isHeaderDark = useMemo(() => {
-      const hex = headerColor.replace('#', '');
-      const r = parseInt(hex.substring(0, 2), 16);
-      const g = parseInt(hex.substring(2, 4), 16);
-      const b = parseInt(hex.substring(4, 6), 16);
-      return (r * 299 + g * 587 + b * 114) / 1000 < 128;
-    }, [headerColor]);
-    const headerTextColor = isHeaderDark ? '#f1f5f9' : '#1f2937';
     const cssVariables = `
                 :root {
                     --dz-primary: ${primaryColor};
                     --dz-secondary: #f97316;
                     --dz-success: #22c55e;
-                    --dz-bg: ${bgColor};
+                    --dz-bg: #f3f4f6;
                 }
                 .hide-scrollbar::-webkit-scrollbar { display: none; }
                 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .carousel-container { overflow-x: auto; display: flex; scroll-snap-type: x mandatory; }
+                .carousel-container > img { flex: 0 0 100%; scroll-snap-align: center; height: 100%; object-fit: cover; }
                 [contenteditable="true"] { outline: none; transition: all 0.2s; display: inline-block; min-width: 20px; }
                 [contenteditable="true"]:hover { background: rgba(37, 99, 235, 0.05); border-radius: 4px; cursor: text; }
                 [contenteditable="true"]:focus { background: #fff; box-shadow: 0 0 0 2px var(--dz-primary); border-radius: 4px; padding: 0 4px; }
@@ -229,7 +154,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     }, [primaryColor]);
 
     const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
-        e.currentTarget.setAttribute('data-setting-key', key);
         const text = e.currentTarget.textContent || '';
         window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key, value: text }, '*');
     };
@@ -274,89 +198,35 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         }
     };
 
-    // Image Gallery State — transform-based (like LeRoiShop)
-    const [activeImageIndex, setActiveImageIndex] = useState(0);
-
-    const allMedia = useMemo(() => {
-        const items: ({ type: 'video'; embed: typeof videoEmbed } | { type: 'image'; src: string })[] = [];
-        if (videoEmbed) items.push({ type: 'video', embed: videoEmbed });
-        galleryImages.forEach((src: string) => items.push({ type: 'image', src }));
-        return items;
-    }, [videoEmbed, galleryImages]);
-
-    // Auto-snap index for single vs multi-image (0 for single, 1 for infinite-loop with clones)
-    useEffect(() => {
-      setActiveImageIndex(allMedia.length > 1 ? 1 : 0);
-    }, [allMedia.length]);
-
-    const loopedMedia = useMemo(() => {
-        const len = allMedia.length;
-        if (len <= 1) return allMedia;
-        return [allMedia[len - 1], ...allMedia, allMedia[0]];
-    }, [allMedia]);
-
-    // Map looped index → real allMedia index
-    const realMediaIndex = useMemo(() => {
-        const n = allMedia.length;
-        if (n <= 1) return 0;
-        if (activeImageIndex === 0) return n - 1;
-        if (activeImageIndex === loopedMedia.length - 1) return 0;
-        return activeImageIndex - 1;
-    }, [activeImageIndex, allMedia, loopedMedia]);
-
-    const galleryStripRef = useRef<HTMLDivElement>(null);
-    const thumbnailRowRef = useRef<HTMLDivElement>(null);
-    const galleryIdxRef = useRef(1);
+    // Image Gallery State
+const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const carouselRef = useRef<HTMLDivElement>(null);
     const wrapRef = useRef(false);
-    galleryIdxRef.current = activeImageIndex;
 
-    const goTo = (idx: number) => {
-        const clamped = Math.max(0, Math.min(idx, loopedMedia.length - 1));
-        galleryIdxRef.current = clamped;
-        setActiveImageIndex(clamped);
+    const handleThumbClick = (idx: number) => {
+        setSelectedImageIndex(idx);
     };
-
-    // Infinite loop snap-back
+    
+    // Scroll carousel when selectedImageIndex changes
     useEffect(() => {
-        if (allMedia.length <= 1) return;
-        const idx = activeImageIndex;
-        const len = loopedMedia.length;
-        if (idx === len - 1) {
-            const timer = setTimeout(() => {
-                wrapRef.current = true;
-                galleryIdxRef.current = 1;
-                setActiveImageIndex(1);
-            }, 300);
-            return () => { clearTimeout(timer); wrapRef.current = false; };
-        } else if (idx === 0) {
-            const timer = setTimeout(() => {
-                wrapRef.current = true;
-                galleryIdxRef.current = allMedia.length;
-                setActiveImageIndex(allMedia.length);
-            }, 300);
-            return () => { clearTimeout(timer); wrapRef.current = false; };
-        } else {
-            wrapRef.current = false;
-        }
-    }, [activeImageIndex, allMedia.length, loopedMedia.length]);
-
-    // Separate lightbox image index so gallery navigation is unaffected
-    const [lightboxImgIdx, setLightboxImgIdx] = useState(0);
-    useEffect(() => {
-        if (lightboxOpen) {
-            setLightboxImgIdx(Math.max(0, realMediaIndex - (videoEmbed ? 1 : 0)));
-        }
-    }, [lightboxOpen]);
+        if (!carouselRef.current || selectedImageIndex < 0) return;
+        const container = carouselRef.current;
+        const hasVideo = videoEmbed !== null;
+        const scrollIdx = selectedImageIndex + (hasVideo ? 1 : 0);
+        container.children[scrollIdx]?.scrollIntoView({ behavior: wrapRef.current ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
+        wrapRef.current = false;
+    }, [selectedImageIndex, videoEmbed]);
 
     return (
-        <div className="min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: bgColor, color: textColor, marginTop: 'calc(-1 * env(safe-area-inset-top))' }} dir="rtl">
+        <div className="bg-gray-50 text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || undefined }} dir="rtl">
+            <PixelScripts storeSlug={storeSlug} />
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
             {/* Top Bar Notice */}
             {(showBanner || canManage) && (
             <div className="text-white text-center py-2 text-sm font-bold relative overflow-visible" style={{ backgroundColor: 'var(--dz-primary)' }} data-edit-path="top-notice">
                 {canManage && (
-                    <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
+                    <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-50">
                         <button
                             onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'dzshop_show_banner', value: !showBanner }, '*')}
                             className="flex items-center gap-1 font-bold"
@@ -377,7 +247,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             )}
 
             {/* Header */}
-            <header className={`border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} style={{ backgroundColor: headerColor }}>
+            <header className="bg-white border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm">
                 <div className="flex items-center gap-2">
                     {settings?.store_logo ? (
                         <img src={settings.store_logo} alt={settings?.store_name || "متجري"} className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
@@ -386,95 +256,108 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                             {(settings?.store_name || 'م').charAt(0)}
                         </div>
                     )}
-                    <span className="text-lg font-extrabold" style={{ color: headerTextColor }}>{settings?.store_name || "متجري"}</span>
+                    <span className="text-lg font-extrabold" style={{ color: 'var(--dz-primary)' }}>{settings?.store_name || "متجري"}</span>
                 </div>
                 <div className="flex gap-4">
-                    <i className="ph ph-shopping-cart text-2xl" style={{ color: headerTextColor }}></i>
-                    <i className="ph ph-list text-2xl md:hidden" style={{ color: headerTextColor }}></i>
+                    <i className="ph ph-shopping-cart text-2xl text-gray-700"></i>
+                    <i className="ph ph-list text-2xl text-gray-700 md:hidden"></i>
                 </div>
             </header>
 
-            <main className="max-w-5xl mx-auto px-0 pt-0 pb-4 md:px-4 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-8 relative z-10">
+            <main className="max-w-5xl mx-auto px-4 py-6 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
                 
                 {/* Left Column: Product Visuals */}
-                <div className="space-y-0 md:space-y-4">
+                <div className="space-y-4">
                     {/* Main Product Image (Swipeable Carousel) */}
-                    <div className="w-full aspect-[3/4] md:aspect-[4/5] rounded-none md:rounded-2xl overflow-hidden shadow-none md:shadow-sm relative">
-                        {allMedia.length > 0 ? (
-                            <div ref={galleryStripRef}
-                              style={{ position: 'absolute', top: 0, left: 0, bottom: 0, display: 'flex', direction: 'ltr', transform: `translateX(-${(activeImageIndex * 100) / loopedMedia.length}%)`, transition: `transform ${wrapRef.current ? '0s' : '0.3s'} ease`, willChange: 'transform', width: `${loopedMedia.length * 100}%` }}
+                    <div className="aspect-square rounded-2xl overflow-hidden shadow-sm bg-white relative group">
+                        {hasProductImages || videoEmbed ? (
+                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
                               onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
                               onTouchEnd={e => {
                                 const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
                                 if (Math.abs(diff) < 50) return;
-                                diff > 0 ? goTo(galleryIdxRef.current + 1) : goTo(galleryIdxRef.current - 1);
-                              }}>
-                                {loopedMedia.map((item, i) => (
-                                    <div key={i} style={{ width: `${100 / loopedMedia.length}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }} onClick={() => item.type === 'image' && setLightboxOpen(true)}>
-                                        {item.type === 'video' ? (
-                                            item.embed.type === 'youtube' ? (
-                                                <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${item.embed.id}?autoplay=1&mute=1&loop=1&playlist=${item.embed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                                            ) : item.embed.type === 'video' ? (
-                                                <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline />
-                                            ) : (
-                                                <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
-                                            )
+                                const total = galleryImages.length + (videoEmbed ? 1 : 0);
+                                if (total <= 1) return;
+                                const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex);
+                                const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
+                                const wrap = diff > 0 ? n > c : n < c;
+                                if (wrap) wrapRef.current = true;
+                                handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n));
+                              }}
+                            >
+                                {videoEmbed && (
+                                    <div key="video" className="snap-center" style={{ flex: '0 0 100%', height: '100%', scrollSnapAlign: 'center' }}>
+                                        {videoEmbed.type === 'youtube' ? (
+                                            <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                                        ) : videoEmbed.type === 'video' ? (
+                                            <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
                                         ) : (
-                                            <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', cursor: 'pointer' }} loading="lazy" />
+                                            <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
                                         )}
                                     </div>
+                                )}
+                                {galleryImages.map((img, idx) => (
+                                    <img
+                                        key={idx}
+                                        src={img}
+                                        alt={`${product.title} ${idx + 1}`}
+                                        className="snap-center"
+                                        loading="lazy"
+                                        style={{ flex: '0 0 100%', height: '100%', objectFit: 'cover', scrollSnapAlign: 'center' }}
+                                    />
                                 ))}
                             </div>
                         ) : (
                             <>
                                 <div className="dz-image-placeholder w-full h-full" ref={mainImagePlaceholderRef} onClick={handleMainImageClick}>
-                                    <i className="ph ph-image text-4xl" style={{ color: textMuted }}></i>
-                                    <p className="text-xs mt-2 absolute bottom-4" style={{ color: textMuted }}>انقر لتغيير الصورة (أو أضف منتج من لوحة التحكم)</p>
+                                    <i className="ph ph-image text-4xl text-gray-400"></i>
+                                    <p className="text-xs text-gray-400 mt-2 absolute bottom-4">انقر لتغيير الصورة (أو أضف منتج من لوحة التحكم)</p>
                                 </div>
                                 {canManage && <input type="file" ref={mainFileInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} /> }
                             </>
                         )}
-                        {allMedia.length > 1 && (
+                        {galleryImages.length > 1 && (
                             <>
-                                <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current - 1); }}
-                                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
-                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronLeft className="w-5 h-5" /></button>
-                                <button onClick={e => { e.stopPropagation(); goTo(galleryIdxRef.current + 1); }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
-                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronRight className="w-5 h-5" /></button>
+                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const n = (c + 1) % t; handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n)); }}
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
+                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const p = (c - 1 + t) % t; handleThumbClick(p === 0 && videoEmbed ? -1 : (videoEmbed ? p - 1 : p)); }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
                             </>
                         )}
                     </div>
 
                     {/* Thumbnail Scrollable Row */}
-                    <div ref={thumbnailRowRef} className="flex gap-1.5 md:gap-2 overflow-x-auto px-0 pb-2 hide-scrollbar" style={{ direction: 'ltr', justifyContent: 'center' }}>
-                        {allMedia.length > 1 && allMedia.map((item, i) => (
-                            <div key={i} onClick={() => goTo(i + 1)} className="flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden cursor-pointer relative" style={{ backgroundColor: surfaceMuted, border: i === realMediaIndex ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
-                                {item.type === 'video' ? (
-                                    <>
-                                        {item.embed.type === 'youtube' ? (
-                                            <img src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }}>
-                                                <i className="ph ph-video text-white text-xl md:text-2xl"></i>
-                                            </div>
-                                        )}
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                            <i className="ph ph-play-circle text-white text-xl md:text-2xl drop-shadow-lg"></i>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <img src={item.src} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                        {hasProductImages && galleryImages.length > 0 ? (
+                            <>
+                                {videoEmbed && (
+                                    <div key="video" onClick={() => handleThumbClick(-1)} className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-900 overflow-hidden cursor-pointer flex items-center justify-center" style={{ border: selectedImageIndex === -1 ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
+                                        <i className="ph ph-play-circle text-white text-2xl"></i>
+                                    </div>
                                 )}
+                                {galleryImages.map((img, idx) => (
+                                    <div key={idx} onClick={() => handleThumbClick(idx)} className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer" style={{ border: selectedImageIndex === idx ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
+                                        <img src={img} className="w-full h-full object-cover" loading="lazy" />
+                                    </div>
+                                ))}
+                            </>
+                        ) : (
+                            <div className="flex gap-2">
+                                <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-200 border-2 overflow-hidden" style={{ borderColor: 'var(--dz-primary)' }}></div>
+                                <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 overflow-hidden"></div>
+                                <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 overflow-hidden"></div>
+                                <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 overflow-hidden"></div>
                             </div>
-                        ))}
+                        )}
                     </div>
 
                     {/* Trust Badges (Desktop) */}
                     {(showTrustBadges || canManage) && (
                     <div className="hidden md:grid grid-cols-3 gap-4 py-6 border-t border-gray-100 relative overflow-visible" data-edit-path="trust-badges">
                         {canManage && (
-                            <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
+                            <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                                 <button
                                     onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'dzshop_show_trust', value: !showTrustBadges }, '*')}
                                     className="flex items-center gap-1 font-bold"
@@ -506,57 +389,55 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         </>
                         )}
                         {canManage && !showTrustBadges && (
-                            <span className="text-xs" style={{ color: textMuted }}>🛡️ Trust badges hidden</span>
+                            <span className="text-gray-400 text-xs">🛡️ Trust badges hidden</span>
                         )}
                     </div>
                     )}
                 </div>
 
                 {/* Right Column: Product Details & Form */}
-                <div className="flex flex-col px-4 md:px-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                        <h1 className="text-xl md:text-2xl font-extrabold leading-snug flex-1" style={{ color: textColor }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>
-                            {settings?.template_hero_heading || product?.title || "اسم المنتج المميز - جودة عالية وتصميم عصري"}
-                        </h1>
-                        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap">🔥 {product?.stock_quantity && product.stock_quantity < 20 ? `${product.stock_quantity} فقط` : "محدود"}</span>
-                    </div>
+                <div className="flex flex-col">
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2 leading-snug" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>
+                        {settings?.template_hero_heading || product?.title || "اسم المنتج المميز - جودة عالية وتصميم عصري"}
+                    </h1>
                     
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl font-black" style={{ color: 'var(--dz-primary)' }}>
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="text-3xl font-black" style={{ color: 'var(--dz-primary)' }}>
                             {product?.price || "4500"} دج
                         </span>
                         {(product?.original_price || settings?.template_original_price) && (
-                            <>
-                                <span className="text-sm line-through" style={{ color: textMuted }}>
-                                    {product?.original_price || settings?.template_original_price || "6200"} دج
-                                </span>
-                                <span className="bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded">-35%</span>
-                            </>
+                            <span className="text-lg text-gray-400 line-through">
+                                {product?.original_price || settings?.template_original_price || "6200"} دج
+                            </span>
                         )}
-                        <span className="text-[10px] flex items-center gap-0.5 mr-auto" style={{ color: textMuted }}>
-                            <i className="ph ph-truck"></i> توصيل سريع
-                        </span>
+                        <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">-35%</span>
+                    </div>
+
+                    <div className="border p-4 rounded-xl mb-6 bg-blue-50" style={{ borderColor: 'rgba(37, 99, 235, 0.1)' }}>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--dz-primary)' }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_subtitle')}>
+                            {settings?.template_hero_subtitle || "🔥 عرض محدود: اطلب الآن واحصل على توصيل مجاني!"}
+                        </p>
                     </div>
 
                     {/* Checkout Form */}
                     {orderSuccess ? (
-    <div className="dz-checkout-card bg-green-50 rounded-2xl p-4 border-2 border-green-500 text-center relative" style={{ color: textColor }}>
+    <div className="dz-checkout-card bg-green-50 rounded-2xl p-6 border-2 border-green-500 text-center relative">
         <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <i className="ph ph-check text-3xl" style={{ color: accentColor }}></i>
         </div>
         <h3 className="text-xl font-bold mb-2" style={{ color: accentColor }}>تم تسجيل طلبك بنجاح! 🎉</h3>
-        <p className="mb-4" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
+        <p className="text-gray-600 mb-4">سنتصل بك قريباً لتأكيد الطلب</p>
         <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
-        <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: cardBg, color: textColor }}>
+        <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: '#f9fafb' }}>
           <div className="flex justify-between text-sm">
             <span>{product.title} × {quantity}</span>
             <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-xs" style={{ color: textMuted }}>التوصيل</span>
+            <span className="text-gray-500">التوصيل</span>
             <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
           </div>
-          <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
+          <div className="h-px bg-gray-200 my-1" />
           <div className="flex justify-between font-black">
             <span>المجموع</span>
             <span style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
@@ -567,12 +448,14 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         </button>
     </div>
 ) : (
-<div className="dz-checkout-card rounded-2xl p-5 border-2 relative" style={{ borderColor: accentColor, backgroundColor: cardBg }}>
-                        <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
+<div className="dz-checkout-card bg-white rounded-2xl p-6 border-2 relative" style={{ borderColor: accentColor }}>
+                        <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold uppercase" style={{ backgroundColor: accentColor }}>
                             أكمل البيانات للطلب
                         </div>
+                        
+                        <h3 className="text-lg font-bold mb-4 mt-2">معلومات المشتري</h3>
 
-                        <form className="space-y-3 mt-4" onSubmit={handleDefaultOrder}>
+                        <form className="space-y-4 mt-6" onSubmit={handleDefaultOrder}>
                             {/* Variants */}
                             {product?.variants && product.variants.length > 0 && (
                                 <VariantSelector 
@@ -594,156 +477,133 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     selectedOfferId={selectedOffer?.offer_id ?? null} 
                                     onSelect={handleOfferSelect} 
                                     accentColor={accentColor} 
-                                    textColor={textColor}
-                                    borderColor={borderColor}
-                                    bgColor={cardBg}
+                                    textColor="#1e293b" 
+                                    borderColor="#e2e8f0" 
+                                    
                                 />
                             )}
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>الاسم الكامل</label>
-                                    <input required name="name" type="text" placeholder="اسمك" className="w-full px-4 py-2.5 rounded-xl outline-none text-sm transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">الاسم الكامل</label>
+                                    <input required name="name" type="text" placeholder="أدخل اسمك الكامل" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>رقم الهاتف</label>
-                                    <input required name="phone" type="tel" maxLength={10} placeholder="رقم الهاتف" className="w-full px-4 py-2.5 rounded-xl outline-none text-sm text-right transition-colors" dir="ltr" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">رقم الهاتف</label>
+                                    <input required name="phone" type="tel" placeholder="رقم الهاتف المحمول" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 text-right transition-colors" dir="ltr" />
                                 </div>
-                                <div className={showCommune ? "" : "col-span-2"}>
-                                    <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>الولاية</label>
-                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm appearance-none transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">الولاية</label>
+                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 appearance-none transition-colors">
                                         <option value="">اختر الولاية</option>
                                         {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                                     </select>
                                 </div>
+                                {showAddress && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">العنوان</label>
+                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" />
+                                    </div>
+                                )}
                                 {showCommune && (
                                     <div>
-                                        <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>البلدية</label>
-                                        <div className="relative">
-                                            <select name="commune" required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm appearance-none transition-colors disabled:opacity-50" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
-                                                <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
-                                                {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
-                                            </select>
-                                            <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
-                                        </div>
-                                    </div>
-                                )}
-                                {showAddress && (
-                                    <div className="col-span-2">
-                                        <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>العنوان</label>
-                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm transition-colors" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
-                                    </div>
-                                )}
-                                {showNotes && (
-                                    <div className="col-span-2">
-                                        <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>ملاحظات</label>
-                                        <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-2.5 rounded-xl outline-none text-sm transition-colors" rows={2} style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">البلدية</label>
+                                        <input name="commune" type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" />
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-3">
-                                <div className="flex-1">
-                                    <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>الكمية</label>
-                                    <div className="flex items-center justify-between rounded-xl" style={{ border: `1px solid ${borderColor}`, backgroundColor: surfaceMuted }}>
-                                        <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-xl font-bold text-lg flex items-center justify-center" style={{ color: textMuted, backgroundColor: cardBg }}>−</button>
-                                        <span className="font-black text-base" style={{ color: textColor }}>{quantity}</span>
-                                        <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-xl font-bold text-lg flex items-center justify-center" style={{ color: textMuted, backgroundColor: cardBg }}>+</button>
-                                    </div>
+                            {showNotes && (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">ملاحظات</label>
+                                    <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" rows={3} />
                                 </div>
-                                {(showHomeDelivery || showDeskDelivery) && (
-                                <div className="flex-1">
-                                    <label className="block text-sm font-bold mb-1" style={{ color: textMuted }}>نوع التوصيل</label>
-                                    <div className="flex gap-2">
-                                        {showHomeDelivery && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setSelectedDeliveryType('home')}
-                                            className="flex-1 py-2.5 rounded-xl border-2 text-xs font-bold transition-all"
-                                            style={{
-                                                borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor,
-                                                backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg,
-                                                color: selectedDeliveryType === 'home' ? accentColor : textColor,
-                                            }}
-                                        >
-                                            منزل
-                                        </button>
-                                        )}
-                                        {showDeskDelivery && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setSelectedDeliveryType('desk')}
-                                            className="flex-1 py-2.5 rounded-xl border-2 text-xs font-bold transition-all"
-                                            style={{
-                                                borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor,
-                                                backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg,
-                                                color: selectedDeliveryType === 'desk' ? accentColor : textColor,
-                                            }}
-                                        >
-                                            مكتب
-                                        </button>
-                                        )}
-                                    </div>
+                            )}
+
+                            <div className="pt-2">
+                                <label className="block text-sm font-bold text-gray-700 mb-1.5">الكمية</label>
+                                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                        className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
+                                    >-</button>
+                                    <span className="font-black text-lg">{quantity}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))}
+                                        className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
+                                    >+</button>
                                 </div>
-                                )}
                             </div>
+
+                            {(showHomeDelivery || showDeskDelivery) && (
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">نوع التوصيل</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {showHomeDelivery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedDeliveryType('home')}
+                                        className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
+                                        style={{
+                                            borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb',
+                                            backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#fff',
+                                            color: selectedDeliveryType === 'home' ? accentColor : '#374151',
+                                        }}
+                                    >
+                                        <span className="text-sm font-bold">التوصيل للمنزل</span>
+                                    </button>
+                                    )}
+                                    {showDeskDelivery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedDeliveryType('desk')}
+                                        className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
+                                        style={{
+                                            borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb',
+                                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#fff',
+                                            color: selectedDeliveryType === 'desk' ? accentColor : '#374151',
+                                        }}
+                                    >
+                                        <span className="text-sm font-bold">الاستلام من المكتب</span>
+                                    </button>
+                                    )}
+                                </div>
+                            </div>
+                            )}
                             
                             {selectedWilayaId && (
-                                <div className="flex items-center justify-between text-xs pt-1" style={{ borderTop: `1px solid ${borderColor}`, color: textColor }}>
-                                    <span className="font-black" style={{ color: accentColor }}>
-                                        {Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}
-                                    </span>
-                                    <span style={{ color: textMuted }}>
-                                        {Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} دج + {deliveryFee === 0 ? 'مجاني' : `${deliveryFee} دج`}
-                                    </span>
+                                <div className="space-y-1 pt-2 text-sm" style={{ borderTop: '1px solid #e5e7eb' }}>
+                                    <div className="flex justify-between">
+                                        <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                                        <span style={{ color: '#6b7280' }}>سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
+                                        <span style={{ color: '#6b7280' }}>التوصيل</span>
+                                    </div>
+                                    <div className="flex justify-between pt-2" style={{ borderTop: '1px solid #e5e7eb' }}>
+                                        <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                                        <span className="font-bold">المجموع</span>
+                                    </div>
                                 </div>
                             )}
 
-                            {orderError && (
-                              <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#dc2626' }}>
-                                {orderError}
-                              </div>
-                            )}
-
-                            <button className="w-full text-white font-black py-4 rounded-2xl text-lg shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3" style={{ backgroundColor: accentColor }}>
-                                اطلب الآن - الدفع عند الاستلام
-                                <i className="ph ph-lightning"></i>
+                            <button className="w-full text-white font-black py-5 rounded-2xl text-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3" style={{ backgroundColor: accentColor }}>
+                                اضغط هنا للطلب الآن
+                                <i className="ph ph-cursor-click"></i>
                             </button>
                             
-                            <p className="text-center text-xs flex items-center justify-center gap-1" style={{ color: textMuted }}>
-                                <i className="ph ph-shield-check"></i>
-                                الدفع عند الاستلام - معاينة المنتج قبل الدفع
+                            <p className="text-center text-gray-500 text-xs mt-3 flex items-center justify-center gap-1">
+                                <i className="ph ph-lock-key"></i>
+                                الدفع عند الاستلام بعد معاينة المنتج
                             </p>
                         </form>
                     </div>
                 )}
 
-                    {/* Trust Badges (Mobile) */}
-                    {(showTrustBadges || canManage) && (
-                    <div className="flex md:hidden items-center justify-center gap-5 py-3 mt-2">
-                        {showTrustBadges && (
-                        <>
-                            <div className="flex items-center gap-1.5">
-                                <i className="ph ph-truck text-base text-orange-500"></i>
-                                <span className="text-xs font-bold" style={{ color: textMuted }}>{settings?.template_badge_1 || "توصيل سريع"}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <i className="ph ph-hand-coins text-base text-green-500"></i>
-                                <span className="text-xs font-bold" style={{ color: textMuted }}>{settings?.template_badge_2 || "الدفع عند الاستلام"}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <i className="ph ph-shield-check text-base" style={{ color: 'var(--dz-primary)' }}></i>
-                                <span className="text-xs font-bold" style={{ color: textMuted }}>{settings?.template_badge_3 || "ضمان الجودة"}</span>
-                            </div>
-                        </>
-                        )}
-                        {canManage && !showTrustBadges && (
-                            <span className="text-xs" style={{ color: textMuted }}>🛡️ Trust badges hidden</span>
-                        )}
-                    </div>
-                    )}
-
                     {/* Product Description */}
-                    <div className="mt-8 space-y-6 leading-relaxed" style={{ color: textColor }}>
+                    <div className="mt-8 space-y-6 text-gray-700 leading-relaxed">
                         <h3 className="text-xl font-bold border-b-2 inline-block pb-1" style={{ borderColor: 'var(--dz-primary)' }}>وصف المنتج</h3>
                         
                         {product?.description ? (
@@ -766,15 +626,15 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         )}
                         
                         {/* Landing Page Style Image (Bottom image) */}
-                            <div className="rounded-xl overflow-hidden mt-4 relative" style={{ backgroundColor: surfaceMuted }} ref={bottomImagePlaceholderRef} onClick={handleBottomImageClick}>
+                        <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative" ref={bottomImagePlaceholderRef} onClick={handleBottomImageClick}>
                             {settings?.banner_url ? (
-                                <img src={settings.banner_url} alt={settings?.store_name || ''} className="w-full h-full object-cover" loading="eager" />
+                                <img src={settings.banner_url} className="w-full h-full object-cover" />
                             ) : autoBannerImage ? (
-                                <img src={autoBannerImage} alt={settings?.store_name || ''} className="w-full h-full object-cover" loading="eager" />
+                                <img src={autoBannerImage} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="p-10 flex flex-col items-center justify-center pointer-events-none">
-                                    <i className="ph ph-plus-circle text-3xl mb-2" style={{ color: textMuted }}></i>
-                                    <span className="text-sm font-bold" style={{ color: textMuted }}>أضف صورة توضيحية للمميزات</span>
+                                    <i className="ph ph-plus-circle text-3xl mb-2 text-gray-400"></i>
+                                    <span className="text-sm font-bold text-gray-500">أضف صورة توضيحية للمميزات</span>
                                 </div>
                             )}
                         </div>
@@ -783,45 +643,39 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 </div>
             </main>
 
-            {/* Image Lightbox/Preview */}
-            {lightboxOpen && (
-                <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90" onClick={() => setLightboxOpen(false)}>
-                    <button className="absolute top-4 right-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={() => setLightboxOpen(false)}>✕</button>
-                    {galleryImages.length > 1 && (
-                        <>
-                            <button className="absolute left-2 md:left-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); setLightboxImgIdx(i => (i - 1 + galleryImages.length) % galleryImages.length); }}><ChevronLeft className="w-8 h-8" /></button>
-                            <button className="absolute right-2 md:right-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={(e) => { e.stopPropagation(); setLightboxImgIdx(i => (i + 1) % galleryImages.length); }}><ChevronRight className="w-8 h-8" /></button>
-                        </>
-                    )}
-                    <img
-                        src={galleryImages[lightboxImgIdx] || galleryImages[0]}
-                        alt={product?.title || ''}
-                        className="max-w-[95vw] max-h-[85vh] object-contain rounded-lg"
-                        onClick={(e) => e.stopPropagation()}
-                    />
-                    {galleryImages.length > 1 && (
-                        <div className="flex gap-2 mt-4 px-4 overflow-x-auto hide-scrollbar" onClick={(e) => e.stopPropagation()}>
-                            {galleryImages.map((img, idx) => (
-                                <div key={idx} onClick={() => setLightboxImgIdx(idx)} className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden cursor-pointer" style={{ border: lightboxImgIdx === idx ? '2px solid white' : '2px solid transparent' }}>
-                                    <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
             {/* Sticky Mobile Order Bar */}
-            <div className="fixed bottom-0 left-0 right-0 dz-sticky-order-bar p-3 md:hidden z-[100] border-t flex gap-3" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
+            <div className="fixed bottom-0 left-0 right-0 bg-white dz-sticky-order-bar p-3 md:hidden z-[100] border-t flex gap-3">
                 <div className="flex-1 flex flex-col justify-center px-2">
-                    <span className="font-black text-xl" style={{ color: textColor }}>{product?.price || "4500"} دج</span>
-                    <span className="text-[10px]" style={{ color: textMuted }}>الدفع عند الاستلام</span>
+                    <span className="font-black text-xl" style={{ color: 'var(--dz-primary)' }}>{product?.price || "4500"} دج</span>
+                    <span className="text-[10px] text-gray-400">الدفع عند الاستلام</span>
                 </div>
                 <button className="text-white font-bold px-8 py-3 rounded-xl text-lg flex-grow shadow-lg" style={{ backgroundColor: accentColor }} onClick={() => window.scrollTo({top: document.querySelector('.dz-checkout-card')?.getBoundingClientRect().top || 0, behavior: 'smooth'})}>
                     أطلب الآن
                 </button>
             </div>
 
+            {/* Admin Panel (Floating) - Only visible to store owner */}
+            {canManage && (
+            <div className="fixed bottom-24 left-6 z-[100] group hidden md:block">
+                <div className="bg-white shadow-2xl rounded-2xl p-4 border border-gray-100 scale-0 group-hover:scale-100 origin-bottom-left transition-all duration-300 w-64 mb-4">
+                    <h4 className="font-bold text-gray-800 border-b pb-2 mb-3">لوحة التحكم السريعة</h4>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs">اللون الأساسي</span>
+                            <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-6 w-10 border-none bg-transparent cursor-pointer" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs">عملة المتجر</span>
+                            <input type="text" defaultValue="دج" className="w-12 text-center text-xs bg-gray-50 border rounded p-1" />
+                        </div>
+                        <button className="w-full py-2 bg-gray-900 text-white text-xs rounded-lg font-bold hover:bg-gray-800">حفظ التغييرات</button>
+                    </div>
+                </div>
+                <button className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:rotate-12 transition-transform shadow-gray-900/30">
+                    <i className="ph ph-gear text-2xl"></i>
+                </button>
+            </div>
+            )}
         </div>
     );
 }

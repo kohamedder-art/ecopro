@@ -1250,7 +1250,7 @@ export const googleAuth: RequestHandler = async (req, res) => {
         return jsonError(res, 500, 'Google login is not configured (missing client secret)');
       }
 
-      const redirectUri = clientRedirectUri || 'https://auth.expo.io/@sahla4eco-organization/ssahla4eco';
+      const redirectUri = clientRedirectUri || 'https://auth.expo.dev/@sahla4eco-organization/ssahla4eco';
       console.log('[google-auth] Code exchange params:', { client_id: expectedClientId, redirect_uri: redirectUri, code_length: code.length });
 
       const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
