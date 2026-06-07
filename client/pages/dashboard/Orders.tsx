@@ -690,7 +690,11 @@ export default function OrdersAdmin() {
           delivery_company_id: order.delivery_company_id,
           tracking_number: order.tracking_number,
           delivery_status: order.delivery_status,
-          shipping_label_url: order.shipping_label_url
+          shipping_label_url: order.shipping_label_url,
+          // Fraud fields
+          fraud_score: order.fraud_score ?? 0,
+          fraud_level: order.fraud_level ?? null,
+          fraud_flags: Array.isArray(order.fraud_flags) ? order.fraud_flags : (typeof order.fraud_flags === 'string' ? (() => { try { return JSON.parse(order.fraud_flags); } catch { return []; } })() : []),
         };
       });
       setOrders(transformedOrders);
