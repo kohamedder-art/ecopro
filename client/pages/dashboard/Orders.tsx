@@ -1331,52 +1331,12 @@ export default function OrdersAdmin() {
                                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusInfo.color }} />
                                   {statusInfo.icon} {statusInfo.name}
                                 </span>
-                                {hasFraud && (
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <button className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/10 text-red-600 border border-red-500/30 hover:bg-red-500/20 transition-colors text-[11px] font-bold" title="تفاصيل الاحتيال - اضغط للتفاصيل">
-                                        <Info className="h-3 w-3" />
-                                        لماذا؟
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent side="left" className="w-72 p-3 text-xs">
-                                      <div className="font-bold text-sm mb-1.5 flex items-center gap-2">
-                                        <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
-                                        تحليل الاحتيال
-                                      </div>
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-muted-foreground">النقاط:</span>
-                                        <span className={`font-bold ${o.fraud_score >= 70 ? 'text-red-500' : o.fraud_score >= 50 ? 'text-orange-500' : o.fraud_score >= 25 ? 'text-amber-500' : 'text-green-500'}`}>
-                                          {o.fraud_score}/100
-                                        </span>
-                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                          o.fraud_level === 'critical' ? 'bg-red-500/15 text-red-500' :
-                                          o.fraud_level === 'high' ? 'bg-orange-500/15 text-orange-500' :
-                                          o.fraud_level === 'medium' ? 'bg-amber-500/15 text-amber-500' :
-                                          'bg-green-500/15 text-green-500'
-                                        }`}>
-                                          {o.fraud_level === 'critical' ? 'حرج' :
-                                           o.fraud_level === 'high' ? 'عالي' :
-                                           o.fraud_level === 'medium' ? 'متوسط' : 'منخفض'}
-                                        </span>
-                                      </div>
-                                      {o.fraud_flags?.length > 0 && (
-                                        <ul className="space-y-1">
-                                          {o.fraud_flags.map((flag: string, i: number) => (
-                                            <li key={i} className="flex items-start gap-1.5 text-muted-foreground leading-tight">
-                                              <span className="mt-0.5 shrink-0">•</span>
-                                              <span>{flag}</span>
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      )}
-                                    </PopoverContent>
-                                  </Popover>
-                                )}
                               </span>
                               {hasFraud && (
-                                <span className="text-[10px] text-muted-foreground leading-tight max-w-[200px] truncate" title={(o.fraud_flags || []).join(' | ')}>
-                                  ⚠️ {(o.fraud_flags || []).slice(0, 2).join(' • ')}
+                                <span className="text-[10px] text-muted-foreground leading-tight max-w-[200px] flex flex-wrap gap-x-1" title={(o.fraud_flags || []).join(' | ')}>
+                                  {(o.fraud_flags || []).map((flag: string, i: number) => (
+                                    <span key={i} className="truncate">⚠️ {flag}{i < o.fraud_flags.length - 1 ? ' •' : ''}</span>
+                                  ))}
                                 </span>
                               )}
                             </div>
@@ -1588,56 +1548,15 @@ export default function OrdersAdmin() {
                   </div>
                   <div className="h-px bg-border/50 mx-3" />
                   <div className="flex flex-col items-start px-3 py-2 gap-1">
-                    <div className="flex items-center gap-1">
-                      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-                            style={{ backgroundColor: `${s.color}25`, borderColor: `${s.color}60`, color: s.color }}>
-                        {s.icon} {s.name}
-                      </span>
-                      {o.fraud_score > 0 && o.fraud_flags?.length > 0 && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500/15 text-red-500 border border-red-500/30 hover:bg-red-500/25 transition-colors">
-                              <Info className="h-2.5 w-2.5" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent side="top" className="w-72 p-3 text-xs">
-                            <div className="font-bold text-sm mb-1.5 flex items-center gap-2">
-                              <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
-                              تحليل الاحتيال
-                            </div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-muted-foreground">النقاط:</span>
-                              <span className={`font-bold ${o.fraud_score >= 70 ? 'text-red-500' : o.fraud_score >= 50 ? 'text-orange-500' : o.fraud_score >= 25 ? 'text-amber-500' : 'text-green-500'}`}>
-                                {o.fraud_score}/100
-                              </span>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                o.fraud_level === 'critical' ? 'bg-red-500/15 text-red-500' :
-                                o.fraud_level === 'high' ? 'bg-orange-500/15 text-orange-500' :
-                                o.fraud_level === 'medium' ? 'bg-amber-500/15 text-amber-500' :
-                                'bg-green-500/15 text-green-500'
-                              }`}>
-                                {o.fraud_level === 'critical' ? 'حرج' :
-                                 o.fraud_level === 'high' ? 'عالي' :
-                                 o.fraud_level === 'medium' ? 'متوسط' : 'منخفض'}
-                              </span>
-                            </div>
-                            {o.fraud_flags?.length > 0 && (
-                              <ul className="space-y-1">
-                                {o.fraud_flags.map((flag: string, i: number) => (
-                                  <li key={i} className="flex items-start gap-1.5 text-muted-foreground leading-tight">
-                                    <span className="mt-0.5 shrink-0">•</span>
-                                    <span>{flag}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                          style={{ backgroundColor: `${s.color}25`, borderColor: `${s.color}60`, color: s.color }}>
+                      {s.icon} {s.name}
+                    </span>
                     {o.fraud_score > 0 && o.fraud_flags?.length > 0 && (
-                      <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[220px]" title={(o.fraud_flags || []).join(' | ')}>
-                        ⚠️ {(o.fraud_flags || []).slice(0, 2).join(' • ')}
+                      <span className="text-[10px] text-muted-foreground leading-tight flex flex-wrap gap-x-1" title={(o.fraud_flags || []).join(' | ')}>
+                        {o.fraud_flags.map((flag: string, i: number) => (
+                          <span key={i} className="truncate">⚠️ {flag}{i < o.fraud_flags.length - 1 ? ' •' : ''}</span>
+                        ))}
                       </span>
                     )}
                     <div className="flex items-center gap-1.5">
