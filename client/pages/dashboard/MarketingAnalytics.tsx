@@ -4,14 +4,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTranslation } from '@/lib/i18n';
 import { apiFetch } from '@/lib/api';
-import {
-  MkrBrain, MkrMegaphone, MkrRefresh, MkrDashboard,
-} from '@/components/icons/MarketingIcons';
 import { SummaryTab } from '@/components/marketing/SummaryTab';
 import { CreativesTab } from '@/components/marketing/CreativesTab';
 
 type OmniSnapshot = any;
 type CustomerAnalytics = any;
+type DashboardAnalytics = any;
 
 export default function MarketingAnalytics() {
   const { t, locale } = useTranslation();
@@ -29,74 +27,92 @@ export default function MarketingAnalytics() {
     queryFn: () => apiFetch<CustomerAnalytics>(`/api/pixels/omni/customers?days=${selectedDays}`),
   });
 
+  const { data: dashAnalytics, isLoading: dashLoading } = useQuery<DashboardAnalytics>({
+    queryKey: ['dash-analytics', selectedDays],
+    queryFn: () => apiFetch<DashboardAnalytics>(`/api/dashboard/analytics?days=${selectedDays}`),
+  });
+
   const overview = snapshot?.overview;
   const creatives = snapshot?.creativeComparison || [];
 
   const tabs = [
-    { value: 'dashboard', icon: MkrDashboard, labelKey: 'marketing.tab.overview' },
-    { value: 'campaigns', icon: MkrMegaphone, labelKey: 'marketing.tab.creatives' },
+    { value: 'dashboard', labelKey: 'marketing.tab.overview' },
+    { value: 'campaigns', labelKey: 'marketing.tab.creatives' },
   ] as const;
 
+  const isLoading = snapshotLoading || customersLoading || dashLoading;
+
   return (
-    <div className={`space-y-[9px] pb-8 ${isRTL ? 'text-right' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`space-y-3 pb-8 ${isRTL ? 'text-right' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* ── Header ── */}
-      <div className="rounded-xl bg-card border border-border p-[13px] shadow-sm">
+      <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-700/50 p-4 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent shadow-sm shrink-0">
-              <MkrBrain className="w-4 h-4 text-white" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 shadow-md shadow-blue-500/20 shrink-0">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
             </div>
             <div>
-              <h1 className="text-sm font-extrabold text-foreground">{t('marketing.title')}</h1>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{t('marketing.subtitle')}</p>
+              <h1 className="text-base font-extrabold text-slate-900 dark:text-white">لوحة التحليلات</h1>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">تتبع الإيرادات والطلبات وأداء متجرك</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Select value={selectedDays} onValueChange={setSelectedDays}>
-              <SelectTrigger className="w-[100px] h-8 rounded-lg bg-background/80 border-border text-foreground text-[11px] font-bold backdrop-blur-sm">
+              <SelectTrigger className="w-[110px] h-9 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200/60 dark:border-slate-700/50 text-slate-900 dark:text-white text-[11px] font-semibold">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="7">{t('marketing.last7')}</SelectItem>
-                <SelectItem value="14">{t('marketing.last14')}</SelectItem>
-                <SelectItem value="30">{t('marketing.last30')}</SelectItem>
-                <SelectItem value="60">{t('marketing.last60')}</SelectItem>
-                <SelectItem value="90">{t('marketing.last90')}</SelectItem>
+                <SelectItem value="7">آخر 7 أيام</SelectItem>
+                <SelectItem value="14">آخر 14 يوم</SelectItem>
+                <SelectItem value="30">آخر 30 يوم</SelectItem>
+                <SelectItem value="60">آخر 60 يوم</SelectItem>
+                <SelectItem value="90">آخر 90 يوم</SelectItem>
               </SelectContent>
             </Select>
             <button
-              className="flex items-center justify-center w-8 h-8 rounded-lg bg-background/80 border border-border text-muted-foreground hover:text-foreground hover:bg-background transition-all backdrop-blur-sm shadow-sm"
+              className="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
               onClick={() => refetchSnapshot()}
             >
-              <MkrRefresh className="w-[13px] h-[13px]" />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             </button>
           </div>
         </div>
       </div>
 
+      {/* ── Tabs ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full bg-card border border-border rounded-xl p-1 gap-1 flex flex-nowrap overflow-x-auto shadow-sm">
-          {tabs.map(({ value, icon: Icon, labelKey }) => (
+        <TabsList className="w-full bg-white dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-1 gap-1 flex flex-nowrap overflow-x-auto shadow-sm">
+          {tabs.map(({ value, labelKey }) => (
             <TabsTrigger
               key={value}
               value={value}
-              className="text-xs font-bold gap-1.5 px-3 py-2 rounded-lg data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white data-[state=active]:shadow-md flex-1 text-muted-foreground hover:text-foreground transition-all min-w-0"
+              className="text-xs font-bold gap-1.5 px-4 py-2.5 rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:via-indigo-500 data-[state=active]:to-violet-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-blue-500/20 flex-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all min-w-0"
             >
-              <Icon className="h-[13px] w-[13px] shrink-0" /> <span className="truncate">{t(labelKey)}</span>
+              {value === 'dashboard' ? (
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+              ) : (
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+              )}
+              <span className="truncate">{t(labelKey)}</span>
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="dashboard" className="mt-[9px]">
-          {snapshotLoading || customersLoading ? (
-            <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
-          ) : !overview ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center bg-card border border-border rounded-xl p-[13px]">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-900/30 mb-[11px]">
-                <MkrDashboard className="h-7 w-7 text-primary" />
+        <TabsContent value="dashboard" className="mt-3">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="flex flex-col items-center gap-3">
+                <span className="h-8 w-8 animate-spin text-blue-500 block border-[3px] border-blue-500 border-t-transparent rounded-full" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">جاري تحميل البيانات...</span>
               </div>
-              <p className="text-sm font-bold mb-1">{t('marketing.noData')}</p>
-              <p className="text-xs text-muted-foreground max-w-xs">{t('marketing.noDataHint')}</p>
+            </div>
+          ) : !overview ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 mb-4">
+                <svg className="h-8 w-8 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              </div>
+              <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t('marketing.noData')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">{t('marketing.noDataHint')}</p>
             </div>
           ) : (
             <SummaryTab
@@ -107,16 +123,26 @@ export default function MarketingAnalytics() {
                 returnedOrders: overview.returnedOrders,
                 realizedRevenue: overview.realizedRevenue,
                 netProfit: overview.netProfit,
+                adSpend: overview.adSpend,
+                poas: overview.poas,
               }}
               wilayaBreakdown={customerData?.wilayaBreakdown}
               ordersByDay={customerData?.ordersByDay}
+              topProducts={dashAnalytics?.topProducts}
+              statusBreakdown={dashAnalytics?.statusBreakdown}
+              comparisons={dashAnalytics?.comparisons}
             />
           )}
         </TabsContent>
 
-        <TabsContent value="campaigns" className="mt-[9px]">
+        <TabsContent value="campaigns" className="mt-3">
           {snapshotLoading ? (
-            <div className="flex items-center justify-center py-20"><span className="h-6 w-6 animate-spin text-primary block border-2 border-primary border-t-transparent rounded-full" /></div>
+            <div className="flex items-center justify-center py-20">
+              <div className="flex flex-col items-center gap-3">
+                <span className="h-8 w-8 animate-spin text-blue-500 block border-[3px] border-blue-500 border-t-transparent rounded-full" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">جاري تحميل البيانات...</span>
+              </div>
+            </div>
           ) : (
             <CreativesTab creatives={creatives} />
           )}
