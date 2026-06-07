@@ -1104,7 +1104,7 @@ export default function OrdersAdmin() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-hidden">
           {/* Loading State — Skeleton */}
           {isLoading && (
             <div className="p-3">
@@ -1199,7 +1199,7 @@ export default function OrdersAdmin() {
           <table className="w-full text-sm font-semibold md:table hidden border-separate border-spacing-0">
             <thead className="hidden md:table-header-group sticky top-0 z-10">
               <tr className="border-b-2 border-border bg-muted/50 dark:bg-muted/20">
-                <th className="whitespace-nowrap px-3 py-3 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider w-10">
+                <th className="px-3 py-3 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider w-10">
                   <button 
                     onClick={selectAllFiltered}
                     className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -1212,14 +1212,14 @@ export default function OrdersAdmin() {
                     )}
                   </button>
                 </th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[50px]">{t('orders.image')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[90px]">{t('orders.orderNumber')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[180px]">{t('orders.product')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[140px]">{t('orders.customer')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[80px]">{t('orders.amount')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[200px]">{t('orders.status')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-[60px]">{t('orders.time')}</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-8"></th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.image')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.orderNumber')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.product')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.customer')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.amount')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.status')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.time')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-8"></th>
               </tr>
             </thead>
             <tbody>
@@ -1274,7 +1274,7 @@ export default function OrdersAdmin() {
                       </button>
                     </td>
                     <td className="px-3 py-3 text-right border-b border-border">
-                      <span className="text-sm font-semibold truncate block max-w-[180px]" title={o.product_title}>
+                      <span className="text-sm font-semibold truncate block" title={o.product_title}>
                         {o.product_title || t('orders.noProduct')}
                       </span>
                       {(() => {
