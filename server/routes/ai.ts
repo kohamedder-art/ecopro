@@ -137,10 +137,11 @@ ${category ? `Category: ${category}` : ''}
 ${keywords ? `Keywords/features: ${keywords}` : ''}
 ${storeName ? `Store: ${storeName}` : ''}
 
+IMPORTANT: Reply in the SAME LANGUAGE as the product title. If the title is Arabic, reply in Arabic. If French, reply in French. If English, reply in English.
+
 Requirements:
 - 2–4 sentences, marketing-focused
 - Highlight key benefits and appeal to Algerian buyers
-- Use the same language as the product title (Arabic or French or English)
 - Do not add a price
 - Do not include HTML tags`;
 
@@ -162,7 +163,9 @@ router.post('/product/title', authenticate, requireClient, authAiLimiter, async 
     const { currentTitle, category } = req.body;
     if (!currentTitle) return res.status(400).json({ error: 'currentTitle is required' });
 
-    const prompt = `Given the product title "${currentTitle}"${category ? ` in category "${category}"` : ''}, suggest 3 improved, catchy product titles for an Algerian e-commerce store. Return a JSON array of 3 strings only. Example: ["Title 1","Title 2","Title 3"]`;
+    const prompt = `Given the product title "${currentTitle}"${category ? ` in category "${category}"` : ''}, suggest 3 improved, catchy product titles for an Algerian e-commerce store. 
+IMPORTANT: Reply in the SAME LANGUAGE as the input title. If the title is Arabic, reply in Arabic. If French, reply in French. If English, reply in English.
+Return a JSON array of 3 strings only. Example: ["Title 1","Title 2","Title 3"]`;
 
     const suggestions = await generateJSON<string[]>('store_owner', prompt, { storeId: user.id });
     return res.json({ suggestions: Array.isArray(suggestions) ? suggestions.slice(0, 3) : [] });
