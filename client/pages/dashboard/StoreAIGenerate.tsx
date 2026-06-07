@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAI } from '@/hooks/useAI';
+import { useTranslation } from '@/lib/i18n';
 import { Loader2, Sparkles } from 'lucide-react';
 
 export function AIGenerateDescription({
@@ -11,10 +12,11 @@ export function AIGenerateDescription({
   category: string;
   onGenerate: (desc: string) => void;
 }) {
+  const { locale } = useTranslation();
   const { call, loading } = useAI('/api/ai/product/description');
   const handleClick = async () => {
     if (!title.trim()) return;
-    const data = await call({ title, category });
+    const data = await call({ title, category, language: locale });
     if (data?.description) onGenerate(data.description);
   };
   return (
@@ -40,13 +42,14 @@ export function AISuggestTitles({
   category: string;
   onSelect: (title: string) => void;
 }) {
+  const { locale } = useTranslation();
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
   const [open, setOpen] = React.useState(false);
   const { call, loading } = useAI('/api/ai/product/title');
 
   const handleClick = async () => {
     if (!currentTitle.trim()) return;
-    const data = await call({ currentTitle, category });
+    const data = await call({ currentTitle, category, language: locale });
     if (data?.suggestions?.length) {
       setSuggestions(data.suggestions);
       setOpen(true);

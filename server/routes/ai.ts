@@ -121,8 +121,10 @@ router.get('/quota', authenticate, requireClient, async (req: Request, res: Resp
 router.post('/product/description', authenticate, requireClient, authAiLimiter, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { title, category, keywords } = req.body;
+    const { title, category, keywords, language } = req.body;
     if (!title) return res.status(400).json({ error: 'title is required' });
+
+    const langName = language === 'ar' ? 'Arabic' : language === 'fr' ? 'French' : 'English';
 
     // Fetch store context server-side only (owner sees only their own store)
     let storeName = '';
@@ -137,7 +139,7 @@ ${category ? `Category: ${category}` : ''}
 ${keywords ? `Keywords/features: ${keywords}` : ''}
 ${storeName ? `Store: ${storeName}` : ''}
 
-IMPORTANT: Reply in the SAME LANGUAGE as the product title. If the title is Arabic, reply in Arabic. If French, reply in French. If English, reply in English.
+IMPORTANT: Reply ONLY in ${langName}. No other language.
 
 Requirements:
 - 2–4 sentences, marketing-focused
@@ -160,12 +162,13 @@ Requirements:
 router.post('/product/title', authenticate, requireClient, authAiLimiter, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { currentTitle, category } = req.body;
+    const { currentTitle, category, language } = req.body;
     if (!currentTitle) return res.status(400).json({ error: 'currentTitle is required' });
 
+    const langName = language === 'ar' ? 'Arabic' : language === 'fr' ? 'French' : 'English';
+
     const prompt = `Given the product title "${currentTitle}"${category ? ` in category "${category}"` : ''}, suggest 3 improved, catchy product titles for an Algerian e-commerce store. 
-IMPORTANT: Reply in the SAME LANGUAGE as the input title. If the title is Arabic, reply in Arabic. If French, reply in French. If English, reply in English.
-Return a JSON array of 3 strings only. Example: ["Title 1","Title 2","Title 3"]`;
+IMPORTANT: Reply ONLY in ${langName}. No other language. Return a JSON array of 3 strings only. Example: ["Title 1","Title 2","Title 3"]`;
 
     const suggestions = await generateJSON<string[]>('store_owner', prompt, { storeId: user.id });
     return res.json({ suggestions: Array.isArray(suggestions) ? suggestions.slice(0, 3) : [] });
