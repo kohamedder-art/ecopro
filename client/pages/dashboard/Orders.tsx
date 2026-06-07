@@ -1332,8 +1332,9 @@ export default function OrdersAdmin() {
                                 {hasFraud && (
                                   <Popover>
                                     <PopoverTrigger asChild>
-                                      <button className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500/15 text-red-500 border border-red-500/30 hover:bg-red-500/25 transition-colors" title="تفاصيل الاحتيال">
+                                      <button className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/10 text-red-600 border border-red-500/30 hover:bg-red-500/20 transition-colors text-[11px] font-bold" title="تفاصيل الاحتيال - اضغط للتفاصيل">
                                         <Info className="h-3 w-3" />
+                                        لماذا؟
                                       </button>
                                     </PopoverTrigger>
                                     <PopoverContent side="left" className="w-72 p-3 text-xs">
