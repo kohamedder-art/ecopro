@@ -6,16 +6,17 @@ import { useTranslation } from '@/lib/i18n';
 import { apiFetch } from '@/lib/api';
 import { SummaryTab } from '@/components/marketing/SummaryTab';
 import { CreativesTab } from '@/components/marketing/CreativesTab';
+import { AudienceTab } from '@/components/marketing/AudienceTab';
+import { ProductsTab } from '@/components/marketing/ProductsTab';
 
 type OmniSnapshot = any;
 type CustomerAnalytics = any;
-type DashboardAnalytics = any;
 
 export default function MarketingAnalytics() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const [selectedDays, setSelectedDays] = useState('30');
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('overview');
 
   const { data: snapshot, isLoading: snapshotLoading, refetch: refetchSnapshot } = useQuery<OmniSnapshot>({
     queryKey: ['omni-overview', selectedDays],
@@ -27,20 +28,28 @@ export default function MarketingAnalytics() {
     queryFn: () => apiFetch<CustomerAnalytics>(`/api/pixels/omni/customers?days=${selectedDays}`),
   });
 
-  const { data: dashAnalytics, isLoading: dashLoading } = useQuery<DashboardAnalytics>({
-    queryKey: ['dash-analytics', selectedDays],
-    queryFn: () => apiFetch<DashboardAnalytics>(`/api/dashboard/analytics?days=${selectedDays}`),
+  const { data: inputs } = useQuery<any>({
+    queryKey: ['omni-inputs'],
+    queryFn: () => apiFetch<any>('/api/pixels/omni/inputs'),
   });
 
   const overview = snapshot?.overview;
   const creatives = snapshot?.creativeComparison || [];
+  const funnel = snapshot?.funnel || [];
+  const sources = snapshot?.sourceBreakdown || [];
+  const clusters = snapshot?.frictionClusters || [];
+  const recentSessions = snapshot?.recentSessions || [];
+  const genderData = snapshot?.genderAnalytics;
+  const productEconomics = inputs?.productEconomics || [];
 
   const tabs = [
-    { value: 'dashboard', labelKey: 'marketing.tab.overview' },
-    { value: 'campaigns', labelKey: 'marketing.tab.creatives' },
+    { value: 'overview', label: 'نظرة عامة' },
+    { value: 'campaigns', label: 'الحملات' },
+    { value: 'customers', label: 'العملاء' },
+    { value: 'products', label: 'المنتجات' },
   ] as const;
 
-  const isLoading = snapshotLoading || customersLoading || dashLoading;
+  const isLoading = snapshotLoading || customersLoading;
 
   return (
     <div className={`space-y-3 pb-8 ${isRTL ? 'text-right' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
@@ -82,23 +91,19 @@ export default function MarketingAnalytics() {
       {/* ── Tabs ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full bg-white dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-1 gap-1 flex flex-nowrap overflow-x-auto shadow-sm">
-          {tabs.map(({ value, labelKey }) => (
+          {tabs.map(({ value, label }) => (
             <TabsTrigger
               key={value}
               value={value}
               className="text-xs font-bold gap-1.5 px-4 py-2.5 rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:via-indigo-500 data-[state=active]:to-violet-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-blue-500/20 flex-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all min-w-0"
             >
-              {value === 'dashboard' ? (
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-              ) : (
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-              )}
-              <span className="truncate">{t(labelKey)}</span>
+              <span className="truncate">{label}</span>
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="dashboard" className="mt-3">
+        {/* ── Overview Tab ── */}
+        <TabsContent value="overview" className="mt-3">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
               <div className="flex flex-col items-center gap-3">
@@ -128,13 +133,11 @@ export default function MarketingAnalytics() {
               }}
               wilayaBreakdown={customerData?.wilayaBreakdown}
               ordersByDay={customerData?.ordersByDay}
-              topProducts={dashAnalytics?.topProducts}
-              statusBreakdown={dashAnalytics?.statusBreakdown}
-              comparisons={dashAnalytics?.comparisons}
             />
           )}
         </TabsContent>
 
+        {/* ── Campaigns Tab ── */}
         <TabsContent value="campaigns" className="mt-3">
           {snapshotLoading ? (
             <div className="flex items-center justify-center py-20">
@@ -146,6 +149,30 @@ export default function MarketingAnalytics() {
           ) : (
             <CreativesTab creatives={creatives} />
           )}
+        </TabsContent>
+
+        {/* ── Customers Tab ── */}
+        <TabsContent value="customers" className="mt-3">
+          {customersLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="flex flex-col items-center gap-3">
+                <span className="h-8 w-8 animate-spin text-blue-500 block border-[3px] border-blue-500 border-t-transparent rounded-full" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">جاري تحميل البيانات...</span>
+              </div>
+            </div>
+          ) : (
+            <AudienceTab
+              customerData={customerData}
+              genderData={genderData}
+              clusters={clusters}
+              sessions={recentSessions}
+            />
+          )}
+        </TabsContent>
+
+        {/* ── Products Tab ── */}
+        <TabsContent value="products" className="mt-3">
+          <ProductsTab products={productEconomics} />
         </TabsContent>
       </Tabs>
     </div>
