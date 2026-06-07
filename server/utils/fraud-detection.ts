@@ -219,11 +219,14 @@ export async function assessOrderRisk(
 
   // ── 7. Form fill time ──
   if (fillTime != null && fillTime >= 0) {
-    if (fillTime < 2000) {
-      score += 30;
-      flags.push(`⚡ طلب فوري خلال ${fillTime}ms (احتمال بوت)`);
-    } else if (fillTime < 5000) {
-      score += 20;
+    if (fillTime < 1000) {
+      score += 35;
+      flags.push(`⚡ طلب فوري خلال ${fillTime}ms (بوت مؤكد)`);
+    } else if (fillTime < 3000) {
+      score += 25;
+      flags.push(`⚡ طلب سريع جداً خلال ${(fillTime / 1000).toFixed(1)}ث (احتمال بوت)`);
+    } else if (fillTime < 8000) {
+      score += 15;
       flags.push(`⚡ طلب سريع خلال ${(fillTime / 1000).toFixed(1)}ث`);
     }
   }
@@ -273,10 +276,13 @@ export async function assessOrderRisk(
     `, [clientId, phoneSuffix]);
     const seqCount = parseInt(seqRes.rows[0]?.cnt || '0') - 1; // exclude self
     if (seqCount >= 3) {
+      score += 40;
+      flags.push(`🔢 رقم هاتف متسلسل مع ${seqCount} أرقام أخرى (بوت)`);
+    } else if (seqCount >= 2) {
       score += 25;
       flags.push(`🔢 رقم هاتف متسلسل مع ${seqCount} أرقام أخرى`);
     } else if (seqCount >= 1) {
-      score += 10;
+      score += 15;
       flags.push(`🔢 رقم هاتف قريب من ${seqCount} أرقام أخرى`);
     }
   }
