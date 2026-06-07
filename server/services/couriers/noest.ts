@@ -313,6 +313,10 @@ export class NoestService implements CourierService {
       if (data?.message && /invalid|unauthorized|token|expired/i.test(String(data.message))) {
         return { success: false, message: `Noest: ${data.message}` };
       }
+      // "Trackings not found" means API works but no test tracking exists — this is fine
+      if (data?.message && /non trouv|not found|aucun/i.test(String(data.message))) {
+        return { success: true, message: 'Noest credentials verified successfully' };
+      }
       if (!response.ok && response.status >= 400 && response.status < 500) {
         return { success: false, message: data?.message || data?.error || `Noest API error ${response.status}` };
       }
