@@ -966,7 +966,7 @@ export default function OrdersAdmin() {
       </div>
 
       {/* Orders Table */}
-      <div className="rounded-2xl border border-border/40 bg-card shadow-md overflow-hidden">
+      <div className="rounded-2xl border border-border/60 bg-card shadow-md overflow-hidden">
         {/* Toolbar */}
         <div className="p-3 border-b border-border/40 bg-gradient-to-r from-muted/20 to-transparent">
           <div className="flex items-center justify-between gap-2">
@@ -1104,7 +1104,8 @@ export default function OrdersAdmin() {
           </div>
         )}
 
-        <div className="md:overflow-x-auto overflow-x-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed min-w-[700px]">
           {/* Loading State — Skeleton */}
           {isLoading && (
             <div className="p-3">
@@ -1196,10 +1197,10 @@ export default function OrdersAdmin() {
 
           {/* Orders Table */}
           {!isLoading && !error && orders.length > 0 && getFilteredOrders().length > 0 && (
-          <table className="w-full text-sm font-semibold md:table hidden border-collapse">
+          <table className="w-full text-sm font-semibold md:table hidden border-separate border-spacing-0">
             <thead className="hidden md:table-header-group sticky top-0 z-10">
-              <tr className="border-b border-border/50 bg-muted/50 dark:bg-muted/20">
-                <th className="whitespace-nowrap px-3 py-2.5 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider w-10">
+              <tr className="border-b-2 border-border bg-muted/50 dark:bg-muted/20">
+                <th className="whitespace-nowrap px-3 py-3 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider w-10">
                   <button 
                     onClick={selectAllFiltered}
                     className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -1212,14 +1213,14 @@ export default function OrdersAdmin() {
                     )}
                   </button>
                 </th>
-                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.image')}</th>
-                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.orderNumber')}</th>
-                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.product')}</th>
-                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.customer')}</th>
-                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.amount')}</th>
-                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.status')}</th>
-                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.time')}</th>
-                <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-8"></th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.image')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.orderNumber')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.product')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.customer')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.amount')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.status')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.time')}</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-8"></th>
               </tr>
             </thead>
             <tbody>
@@ -1227,9 +1228,9 @@ export default function OrdersAdmin() {
                 <React.Fragment key={o.id}>
                   <tr 
                     onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
-                    className={`group border-b border-border/30 transition-all duration-150 cursor-pointer hover:bg-primary/5 hidden md:table-row ${expandedOrderId === o.id ? 'bg-primary/5' : ''} ${duplicatePhones.has(o.phone) ? 'bg-red-500/5 border-l-[3px] border-l-red-500' : ''}`}
+                    className={`group transition-all duration-150 cursor-pointer hover:bg-primary/5 hidden md:table-row ${expandedOrderId === o.id ? 'bg-primary/5' : ''} ${duplicatePhones.has(o.phone) ? 'bg-red-500/5 border-l-[3px] border-l-red-500' : ''}`}
                   >
-                    <td className="whitespace-nowrap px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td className="whitespace-nowrap px-3 py-3 text-center border-b border-border/60" onClick={(e) => e.stopPropagation()}>
                       <button 
                         onClick={() => toggleOrderSelection(o.raw_id)}
                         className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -1241,7 +1242,7 @@ export default function OrdersAdmin() {
                         )}
                       </button>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                    <td className="px-3 py-3 text-right border-b border-border/60">
                       {o.product_image ? (
                         <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-border/40 ml-auto shadow-sm group-hover:border-primary/30 transition-all duration-200">
                           <img 
@@ -1256,7 +1257,7 @@ export default function OrdersAdmin() {
                         </div>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+                    <td className="whitespace-nowrap px-3 py-3 text-right border-b border-border/60" onClick={e => e.stopPropagation()}>
                       {o.aiPriority && (
                         <div className="flex items-center justify-end gap-1 mb-0.5">
                           <Badge variant={o.aiPriority === 'high' ? 'destructive' : 'secondary'} className="text-[10px] h-4 px-1.5">
@@ -1273,15 +1274,15 @@ export default function OrdersAdmin() {
                         {copiedKey === `id-${o.id}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/copy:opacity-70" />}
                       </button>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-right">
-                      <span className="text-sm font-semibold max-w-[160px] truncate block" title={o.product_title}>
+                    <td className="px-3 py-3 text-right border-b border-border/60">
+                      <span className="text-sm font-semibold line-clamp-2 block" title={o.product_title}>
                         {o.product_title || t('orders.noProduct')}
                       </span>
                       {(() => {
                         const risk = getOrderRisk(o);
                         if (risk.level === 'safe') return null;
                         return (
-                          <div title={risk.reason} className={`inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                          <div title={risk.reason} className={`inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
                             risk.level === 'high' 
                               ? 'bg-red-500/15 text-red-500 border-red-500/30' 
                               : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
@@ -1292,11 +1293,9 @@ export default function OrdersAdmin() {
                         );
                       })()}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+                    <td className="px-3 py-3 text-right border-b border-border/60" onClick={e => e.stopPropagation()}>
                       <div className="flex flex-col items-end gap-0.5">
-                        <div className="flex items-center gap-2 max-w-[140px]">
-                          <span className="text-sm font-bold truncate block" title={o.customer}>{o.customer}</span>
-                        </div>
+                        <span className="text-sm font-bold line-clamp-1 block" title={o.customer}>{o.customer}</span>
                         {o.phone && (
                           <button
                             onClick={() => copyToClipboard(o.phone, `phone-${o.id}`)}
@@ -1310,12 +1309,12 @@ export default function OrdersAdmin() {
                         )}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                    <td className="whitespace-nowrap px-3 py-3 text-right border-b border-border/60">
                       <span className="font-black text-sm tabular-nums text-amber-500 dark:text-amber-400">
                         {Math.round(Number(o.total) || 0).toLocaleString()} <span className="text-muted-foreground/70 font-medium text-xs">DZD</span>
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                    <td className="px-3 py-3 text-right border-b border-border/60">
                         {(() => {
                           const statusInfo = getStatusDisplay(o.status);
                           const hasFraud = o.fraud_score > 0 && o.fraud_flags?.length > 0;
@@ -1385,8 +1384,8 @@ export default function OrdersAdmin() {
                           );
                         })()}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-right text-foreground/50 text-xs font-medium" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="whitespace-nowrap px-3 py-3 text-right text-foreground/50 text-xs font-medium border-b border-border/60" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
+                    <td className="px-3 py-3 text-right border-b border-border/60">
                       <ChevronRight className={`h-4 w-4 text-muted-foreground/40 ml-auto transition-all duration-200 ${expandedOrderId === o.id ? 'rotate-90 text-primary' : 'group-hover:translate-x-0.5 group-hover:text-muted-foreground'}`} />
                     </td>
                   </tr>
@@ -1394,7 +1393,7 @@ export default function OrdersAdmin() {
                   {/* Mobile card - rendered separately below table */}
 
                   {expandedOrderId === o.id && (
-                    <tr className="bg-gradient-to-r from-primary/5 to-transparent border-b border-border/30">
+                    <tr className="bg-gradient-to-r from-primary/5 to-transparent border-b border-border/60">
                       <td colSpan={9} className="p-4">
                         <div className="space-y-2">
                           {/* Order Details Grid - Compact */}
