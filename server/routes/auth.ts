@@ -1220,7 +1220,7 @@ export const qrLogin: RequestHandler = async (req, res) => {
  */
 export const googleAuth: RequestHandler = async (req, res) => {
   try {
-    const { id_token, code, idToken: legacyIdToken } = req.body as { id_token?: string; code?: string; idToken?: string };
+    const { id_token, code, idToken: legacyIdToken, redirect_uri: clientRedirectUri } = req.body as { id_token?: string; code?: string; idToken?: string; redirect_uri?: string };
     const rawIdToken = id_token || legacyIdToken;
 
     const expectedClientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
@@ -1250,7 +1250,7 @@ export const googleAuth: RequestHandler = async (req, res) => {
         return jsonError(res, 500, 'Google login is not configured (missing client secret)');
       }
 
-      const redirectUri = 'https://auth.expo.io/@sahla4eco-organization/ssahla4eco';
+      const redirectUri = clientRedirectUri || 'https://auth.expo.io/@sahla4eco-organization/ssahla4eco';
       console.log('[google-auth] Code exchange params:', { client_id: expectedClientId, redirect_uri: redirectUri, code_length: code.length });
 
       const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
