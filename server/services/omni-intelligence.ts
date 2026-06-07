@@ -1815,3 +1815,52 @@ export async function getGenderAnalytics(clientId: number, days: number): Promis
     byProduct,
   };
 }
+
+// ─── Product Performance ─────────────────────────────────────
+
+export interface ProductPerformance {
+  productId: number;
+  title: string;
+  totalOrders: number;
+  revenue: number;
+  deliveredOrders: number;
+  returnedOrders: number;
+  deliveryRate: number;
+}
+
+export async function getProductPerformance(clientId: number, days: number): Promise<ProductPerformance[]> {
+  const safeDays = Math.min(3650, Math.max(1, Math.round(days || 30)));
+  const db = await ensureConnection();
+
+  const result = await db.query(`
+    SELECT
+      o.product_id,
+      COALESCE(p.title, 'منتج غير معروف') AS title,
+      COUNT(*) AS total_orders,
+      COALESCE(SUM(o.total_price), 0) AS revenue,
+      COUNT(*) FILTER (WHERE o.status IN ('delivered','completed')) AS delivered_orders,
+      COUNT(*) FILTER (WHERE o.status IN ('cancelled','declined','returned','refunded')) AS returned_orders
+    FROM store_orders o
+    LEFT JOIN client_store_products p ON p.id = o.product_id
+    WHERE o.client_id = $1
+      AND o.created_at >= NOW() - INTERVAL '${safeDays} days'
+      AND o.deleted_at IS NULL
+      AND o.status NOT IN ('fake')
+    GROUP BY o.product_id, p.title
+    HAVING COUNT(*) > 0
+    ORDER BY revenue DESC
+    LIMIT 20
+  `, [clientId]);
+
+  return result.rows.map((r: any) => ({
+    productId: Number(r.product_id),
+    title: String(r.title),
+    totalOrders: Number(r.total_orders),
+    revenue: Number(r.revenue),
+    deliveredOrders: Number(r.delivered_orders),
+    returnedOrders: Number(r.returned_orders),
+    deliveryRate: Number(r.total_orders) > 0
+      ? (Number(r.delivered_orders) / Number(r.total_orders)) * 100
+      : 0,
+  }));
+}

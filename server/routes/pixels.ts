@@ -10,6 +10,7 @@ import {
   getOmniOverview,
   getCustomerAnalytics,
   getGenderAnalytics,
+  getProductPerformance,
   upsertAnalyticSessionFromEvent,
   upsertAnalyticSessionSummary,
   upsertCreativeCatalogEntry,
@@ -918,6 +919,22 @@ export const backfillHistoricalSessionsHandler: RequestHandler = async (req, res
   }
 };
 
+export const getProductPerformanceHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const numDays = Math.min(3650, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
+    const products = await getProductPerformance(user.id, numDays);
+    return res.json({ products });
+  } catch (error) {
+    console.error('Get product performance error:', error);
+    return res.status(500).json({ error: 'Failed to fetch product performance' });
+  }
+};
+
 // Get public pixel config by store slug (for frontend script injection - no auth)
 export const getPublicPixelConfig: RequestHandler = async (req, res) => {
   try {
@@ -994,6 +1011,7 @@ router.get('/omni/overview', authenticate, requireClient, getOmniOverviewHandler
 router.get('/omni/customers', authenticate, requireClient, getCustomerAnalyticsHandler);
 router.get('/omni/gender', authenticate, requireClient, getGenderAnalyticsHandler);
 router.get('/omni/inputs', authenticate, requireClient, getOmniInputsHandler);
+router.get('/omni/products', authenticate, requireClient, getProductPerformanceHandler);
 router.put('/omni/product-economics', authenticate, requireClient, saveProductEconomicsHandler);
 router.post('/omni/creative-catalog', authenticate, requireClient, saveCreativeCatalogHandler);
 router.delete('/omni/creative-catalog/:id', authenticate, requireClient, deleteCreativeCatalogHandler);

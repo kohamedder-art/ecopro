@@ -73,7 +73,9 @@ router.get('/google/url', (req, res) => {
     return jsonError(res, 503, 'Google OAuth not configured');
   }
 
-  const state = crypto.randomBytes(16).toString('hex');
+  const client = (req.query.client as string) || 'web';
+  const stateRaw = crypto.randomBytes(16).toString('hex');
+  const state = client === 'mobile' ? `mobile_${stateRaw}` : stateRaw;
   
   // Store state in cookie for verification
   const { isProduction, sameSite, domain } = getCookieOptions();
@@ -238,6 +240,18 @@ router.get('/google/callback', async (req, res) => {
       user_type: user.user_type || 'client',
       token: accessToken,
     }));
+
+    // Mobile: return HTML page that redirects to deep link via JS
+    const isMobile = typeof state === 'string' && state.startsWith('mobile_');
+    if (isMobile) {
+      console.log('[OAUTH] Mobile login detected, returning deep link redirect page');
+      const deepLink = `sahla4eco://auth?token=${encodeURIComponent(accessToken)}&user=${userParam}`;
+      return res.send(`<!DOCTYPE html><html><head><title>Sahla4Eco</title></head><body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#0f172a;color:#fff;flex-direction:column">
+        <h2>Sahla4Eco</h2>
+        <p>جاري تسجيل الدخول...</p>
+        <script>window.location="${deepLink}";</script>
+      </body></html>`);
+    }
     
     console.log('[OAUTH] Redirecting to login with user data');
     res.redirect(`/login?oauth_user=${userParam}`);
