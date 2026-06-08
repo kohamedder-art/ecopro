@@ -378,7 +378,7 @@ async function callAI(
       max_tokens: maxTokens || 1024,
       temperature,
       top_p: 0.95,
-      ...(isCustomer ? { frequency_penalty: 0.1, presence_penalty: 0.1 } : {}),
+      ...(isCustomer ? { frequency_penalty: 0.5, presence_penalty: 0.4 } : {}),
     };
   };
 

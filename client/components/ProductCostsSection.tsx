@@ -17,7 +17,7 @@ interface ProductEcon {
   other_costs: number;
 }
 
-const inputCls = "w-full h-8 bg-background border border-border rounded-lg px-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all text-right";
+const inputCls = "w-full h-9 bg-white dark:bg-zinc-800 border border-border/60 rounded-lg px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-right tabular-nums";
 
 export default function ProductCostsSection() {
   const { toast } = useToast();

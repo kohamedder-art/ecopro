@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
-import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, ShieldCheck, BadgeCheck, Mail, Phone, Building2, MapPin, Globe, CheckCircle2, AlertCircle, Sparkles, Tag, Smartphone, Download, QrCode } from 'lucide-react';
+import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, ShieldCheck, BadgeCheck, Mail, Phone, Building2, MapPin, Globe, CheckCircle2, AlertCircle, Sparkles, Tag } from 'lucide-react';
 
 type SubscriptionRow = {
   tier?: string | null;
@@ -70,7 +70,6 @@ export default function Profile() {
     discount_percent?: number; discount_applied?: boolean;
   } | null>(null);
 
-  const [appDownload, setAppDownload] = useState<{ download_url: string | null; version?: string } | null>(null);
 
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -212,16 +211,7 @@ export default function Profile() {
     }
   };
 
-  useEffect(() => { load(); loadAffiliateInfo(); fetchAppDownload(); }, []);
-
-  const fetchAppDownload = async () => {
-    try {
-      const res = await fetch('/api/mobile/download');
-      if (res.ok) setAppDownload(await res.json());
-    } catch {}
-  };
-
-  const subStatus = access?.status || profile?.subscription?.status || 'unknown';
+  useEffect(() => { load(); loadAffiliateInfo(); }, []);  const subStatus = access?.status || profile?.subscription?.status || 'unknown';
   const trialEnds = profile?.subscription?.trial_ends_at || null;
   const periodEnds = profile?.subscription?.current_period_end || null;
 
@@ -559,83 +549,6 @@ export default function Profile() {
             </div>
           </div>
 
-        </div>
-      </div>
-
-      {/* ── Download Mobile App ── */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-blue-50/50 dark:bg-blue-950/20">
-          <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
-            <Smartphone className="w-4 h-4 text-blue-500" />
-          </div>
-          <span className="text-sm font-bold">تطبيق الهاتف المحمول</span>
-        </div>
-
-        <div className="p-5">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            {/* QR Code */}
-            <div className="shrink-0">
-              <div className="w-40 h-40 bg-white rounded-xl border border-border p-2 flex items-center justify-center">
-                {appDownload?.download_url ? (
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appDownload.download_url)}`}
-                    alt="Download App QR Code"
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-muted-foreground">
-                    <QrCode className="w-10 h-10 mb-2 opacity-30" />
-                    <p className="text-[10px] text-center">التطبيق غير متوفر حالياً</p>
-                  </div>
-                )}
-              </div>
-              <p className="text-[10px] text-muted-foreground text-center mt-2 font-medium">امسح الرمز للتحميل</p>
-            </div>
-
-            {/* Info + Download Button */}
-            <div className="flex-1 space-y-3">
-              <h3 className="text-base font-bold text-foreground">Sahla4Eco Mobile</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                تطبيق الهاتف المحمول لإدارة متجرك في أي مكان. تابع الطلبات، غيّر الحالات، وتواصل مع العملاء مباشرة من هاتفك.
-              </p>
-              <ul className="text-xs text-muted-foreground space-y-1.5">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>إدارة الطلبات والحالات</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>إشعارات فورية عند وصول طلب جديد</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>الوضع الداكن والفاتح</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>تسجيل الدخول بالبريد أو رمز QR</span>
-                </li>
-              </ul>
-              <div className="flex gap-2 pt-1">
-                {appDownload?.download_url ? (
-                  <a
-                    href={appDownload.download_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm shadow-blue-600/20"
-                  >
-                    <Download className="w-4 h-4" />
-                    تحميل التطبيق
-                  </a>
-                ) : (
-                  <span className="h-9 px-5 bg-muted text-muted-foreground rounded-xl text-sm font-semibold flex items-center gap-2 cursor-not-allowed">
-                    <Download className="w-4 h-4" />
-                    التطبيق غير متوفر
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

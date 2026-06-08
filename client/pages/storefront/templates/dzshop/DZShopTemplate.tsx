@@ -8,7 +8,7 @@ import VariantSelector, { SelectedVariant } from '@/components/storefront/Varian
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import PixelScripts from '@/components/storefront/PixelScripts';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Eye, EyeOff } from 'lucide-react';
 
 export default function DZShopTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
@@ -20,17 +20,18 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const { wilayas } = useStoreDeliveryPrices(storeSlug);
     const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
     const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
-    const baseDeliveryFee = selectedWilaya
-      ? (selectedDeliveryType === 'desk' ? (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0) : (selectedWilaya.homePrice ?? 0))
-      : 0;
+
+    // Order form field visibility
+    const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
+    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
 
     // Section visibility toggles
     const showBanner = settings?.dzshop_show_banner !== false;
     const showTrustBadges = settings?.dzshop_show_trust !== false;
 
-    // Order form field visibility
-    const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
-    const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
+    const baseDeliveryFee = selectedWilaya
+      ? (selectedDeliveryType === 'home' ? (selectedWilaya.homePrice ?? 0) : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0))
+      : 0;
     const [customerAddress, setCustomerAddress] = useState('');
     const [customerCommune, setCustomerCommune] = useState('');
     const [customerNotes, setCustomerNotes] = useState('');
@@ -64,7 +65,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 ...(selectedOffer ? { offer_id: selectedOffer.offer_id } : {}),
                 total_price: productTotal,
                 delivery_fee: deliveryFee,
-                delivery_type: 'desk',
+                delivery_type: selectedDeliveryType,
                 customer_name: fd.get('name'),
                 customer_phone: fd.get('phone'),
                 customer_address: (fd.get('address') as string) || selectedWilaya?.labelAR || '',
@@ -101,8 +102,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 }
                 .hide-scrollbar::-webkit-scrollbar { display: none; }
                 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .carousel-container { overflow-x: auto; display: flex; scroll-snap-type: x mandatory; }
-                .carousel-container > img { flex: 0 0 100%; scroll-snap-align: center; height: 100%; object-fit: cover; }
                 [contenteditable="true"] { outline: none; transition: all 0.2s; display: inline-block; min-width: 20px; }
                 [contenteditable="true"]:hover { background: rgba(37, 99, 235, 0.05); border-radius: 4px; cursor: text; }
                 [contenteditable="true"]:focus { background: #fff; box-shadow: 0 0 0 2px var(--dz-primary); border-radius: 4px; padding: 0 4px; }
@@ -110,8 +109,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 .dz-image-placeholder:hover { background: #d1d5db; }
                 .ph { vertical-align: middle; }
             `;
-    const hasProductImages = product?.images && product.images.length > 0;
-
     // Smart image classification: routes square images to gallery, wide/tall to banner
     const { slots: imageSlots, loading: classifyingImages } = useImageClassifier(product?.images, 'dzshop');
     const galleryImages = imageSlots.gallery?.length > 0 ? imageSlots.gallery : (product?.images || []);
@@ -198,24 +195,62 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         }
     };
 
-    // Image Gallery State
-const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-    const carouselRef = useRef<HTMLDivElement>(null);
+    // Image Gallery State — LeRoiShop-style infinite loop
+    const [activeImageIndex, setActiveImageIndex] = useState(1);
     const wrapRef = useRef(false);
+    const galleryIdxRef = useRef(1);
+    galleryIdxRef.current = activeImageIndex;
 
-    const handleThumbClick = (idx: number) => {
-        setSelectedImageIndex(idx);
+    const allMedia = useMemo(() => {
+        const items: ({ type: 'video'; embed: typeof videoEmbed } | { type: 'image'; src: string })[] = [];
+        if (videoEmbed) items.push({ type: 'video', embed: videoEmbed });
+        galleryImages.forEach((src: string) => items.push({ type: 'image', src }));
+        return items;
+    }, [videoEmbed, galleryImages]);
+
+    const loopedMedia = useMemo(() => {
+        const len = allMedia.length;
+        if (len <= 1) return allMedia;
+        return [allMedia[len - 1], ...allMedia, allMedia[0]];
+    }, [allMedia]);
+
+    const realMediaIndex = useMemo(() => {
+        const n = allMedia.length;
+        if (n <= 1) return 0;
+        if (activeImageIndex === 0) return n - 1;
+        if (activeImageIndex === loopedMedia.length - 1) return 0;
+        return activeImageIndex - 1;
+    }, [activeImageIndex, allMedia, loopedMedia]);
+
+    const goToMedia = (idx: number) => {
+        const clamped = Math.max(0, Math.min(idx, loopedMedia.length - 1));
+        galleryIdxRef.current = clamped;
+        setActiveImageIndex(clamped);
     };
-    
-    // Scroll carousel when selectedImageIndex changes
+
+    // Infinite loop: snap to real item after transition when reaching a clone
     useEffect(() => {
-        if (!carouselRef.current || selectedImageIndex < 0) return;
-        const container = carouselRef.current;
-        const hasVideo = videoEmbed !== null;
-        const scrollIdx = selectedImageIndex + (hasVideo ? 1 : 0);
-        container.children[scrollIdx]?.scrollIntoView({ behavior: wrapRef.current ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
-        wrapRef.current = false;
-    }, [selectedImageIndex, videoEmbed]);
+        if (allMedia.length <= 1) return;
+        const idx = activeImageIndex;
+        const len = loopedMedia.length;
+        if (idx === len - 1) {
+            const timer = setTimeout(() => {
+                wrapRef.current = true;
+                galleryIdxRef.current = 1;
+                setActiveImageIndex(1);
+            }, 300);
+            return () => { clearTimeout(timer); wrapRef.current = false; };
+        } else if (idx === 0) {
+            const timer = setTimeout(() => {
+                wrapRef.current = true;
+                galleryIdxRef.current = allMedia.length;
+                setActiveImageIndex(allMedia.length);
+            }, 300);
+            return () => { clearTimeout(timer); wrapRef.current = false; };
+        } else {
+            wrapRef.current = false;
+        }
+    }, [activeImageIndex, allMedia.length, loopedMedia.length]);
 
     return (
         <div className="bg-gray-50 text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || undefined }} dir="rtl">
@@ -268,44 +303,46 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                 
                 {/* Left Column: Product Visuals */}
                 <div className="space-y-4">
-                    {/* Main Product Image (Swipeable Carousel) */}
-                    <div className="aspect-square rounded-2xl overflow-hidden shadow-sm bg-white relative group">
-                        {hasProductImages || videoEmbed ? (
-                            <div className="carousel-container hide-scrollbar h-full" ref={carouselRef} style={{ display: 'flex', overflowX: 'scroll', scrollSnapType: 'x mandatory', touchAction: 'none' }}
-                              onTouchStart={e => { (e.currentTarget as any)._tsx = e.touches[0].clientX; }}
+                    {/* Main Product Image (LeRoiShop-style translateX gallery) */}
+                    <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-sm bg-white relative group">
+                        {allMedia.length > 0 ? (
+                            <div className="h-full relative select-none" style={{ touchAction: 'pan-y' }}
+                              onTouchStart={e => { (e.currentTarget as any)._ts = e.touches[0].clientX; (e.currentTarget as any)._tsy = e.touches[0].clientY; }}
                               onTouchEnd={e => {
-                                const diff = (e.currentTarget as any)._tsx - e.changedTouches[0].clientX;
-                                if (Math.abs(diff) < 50) return;
-                                const total = galleryImages.length + (videoEmbed ? 1 : 0);
-                                if (total <= 1) return;
-                                const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex);
-                                const n = diff > 0 ? (c - 1 + total) % total : (c + 1) % total;
-                                const wrap = diff > 0 ? n > c : n < c;
-                                if (wrap) wrapRef.current = true;
-                                handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n));
-                              }}
-                            >
-                                {videoEmbed && (
-                                    <div key="video" className="snap-center" style={{ flex: '0 0 100%', height: '100%', scrollSnapAlign: 'center' }}>
-                                        {videoEmbed.type === 'youtube' ? (
-                                            <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                                        ) : videoEmbed.type === 'video' ? (
-                                            <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
-                                        ) : (
-                                            <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
-                                        )}
-                                    </div>
+                                const t = e.currentTarget as any;
+                                const dx = t._ts - e.changedTouches[0].clientX;
+                                const dy = t._tsy - e.changedTouches[0].clientY;
+                                if (t._ts == null || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+                                dx > 0 ? goToMedia(galleryIdxRef.current + 1) : goToMedia(galleryIdxRef.current - 1);
+                              }}>
+                                <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, display: 'flex', direction: 'ltr', transform: `translateX(-${(activeImageIndex * 100) / loopedMedia.length}%)`, transition: `transform ${wrapRef.current ? '0s' : '0.3s'} ease`, willChange: 'transform', width: `${loopedMedia.length * 100}%` }}>
+                                    {loopedMedia.map((item, i) => (
+                                        <div key={i} style={{ width: `${100 / loopedMedia.length}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
+                                            {item.type === 'video' ? (
+                                                item.embed.type === 'youtube' ? (
+                                                    <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${item.embed.id}?autoplay=1&mute=1&loop=1&playlist=${item.embed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                                                ) : item.embed.type === 'video' ? (
+                                                    <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline />
+                                                ) : (
+                                                    <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
+                                                )
+                                            ) : (
+                                                <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                {allMedia.length > 1 && (
+                                    <>
+                                        <button onClick={e => { e.stopPropagation(); goToMedia(galleryIdxRef.current - 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronLeft className="w-5 h-5" /></button>
+                                        <button onClick={e => { e.stopPropagation(); goToMedia(galleryIdxRef.current + 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronRight className="w-5 h-5" /></button>
+                                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                                            {allMedia.map((_, i) => (
+                                                <span key={i} className="w-1.5 h-1.5 rounded-full transition-all" style={{ backgroundColor: i === realMediaIndex ? '#fff' : 'rgba(255,255,255,0.4)', transform: i === realMediaIndex ? 'scale(1.4)' : 'scale(1)' }} />
+                                            ))}
+                                        </div>
+                                    </>
                                 )}
-                                {galleryImages.map((img, idx) => (
-                                    <img
-                                        key={idx}
-                                        src={img}
-                                        alt={`${product.title} ${idx + 1}`}
-                                        className="snap-center"
-                                        loading="lazy"
-                                        style={{ flex: '0 0 100%', height: '100%', objectFit: 'cover', scrollSnapAlign: 'center' }}
-                                    />
-                                ))}
                             </div>
                         ) : (
                             <>
@@ -316,33 +353,29 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                                 {canManage && <input type="file" ref={mainFileInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} /> }
                             </>
                         )}
-                        {galleryImages.length > 1 && (
-                            <>
-                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const n = (c + 1) % t; handleThumbClick(n === 0 && videoEmbed ? -1 : (videoEmbed ? n - 1 : n)); }}
-                                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
-                                <button onClick={e => { e.stopPropagation(); const t = galleryImages.length + (videoEmbed?1:0); const c = videoEmbed && selectedImageIndex === -1 ? 0 : (videoEmbed ? selectedImageIndex + 1 : selectedImageIndex); const p = (c - 1 + t) % t; handleThumbClick(p === 0 && videoEmbed ? -1 : (videoEmbed ? p - 1 : p)); }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
-                            </>
-                        )}
                     </div>
 
                     {/* Thumbnail Scrollable Row */}
-                    <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
-                        {hasProductImages && galleryImages.length > 0 ? (
-                            <>
-                                {videoEmbed && (
-                                    <div key="video" onClick={() => handleThumbClick(-1)} className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-900 overflow-hidden cursor-pointer flex items-center justify-center" style={{ border: selectedImageIndex === -1 ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
-                                        <i className="ph ph-play-circle text-white text-2xl"></i>
-                                    </div>
-                                )}
-                                {galleryImages.map((img, idx) => (
-                                    <div key={idx} onClick={() => handleThumbClick(idx)} className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer" style={{ border: selectedImageIndex === idx ? '2px solid var(--dz-primary)' : '2px solid transparent' }}>
-                                        <img src={img} className="w-full h-full object-cover" loading="lazy" />
-                                    </div>
-                                ))}
-                            </>
+                    <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar" style={{ direction: 'ltr' }}>
+                        {allMedia.length > 1 ? (
+                            allMedia.map((item, i) => (
+                                <button key={i} onClick={() => goToMedia(i + 1)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${i === realMediaIndex ? 'var(--dz-primary)' : 'transparent'}`, opacity: i === realMediaIndex ? 1 : 0.6 }}>
+                                    {item.type === 'video' ? (
+                                        <div className="w-full h-full relative">
+                                            {item.embed.type === 'youtube' ? (
+                                                <img src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }} />
+                                            )}
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="white" className="drop-shadow-lg"><polygon points="5,3 19,12 5,21"/></svg>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <img src={item.src} alt="" className="w-full h-full object-contain" loading="lazy" />
+                                    )}
+                                </button>
+                            ))
                         ) : (
                             <div className="flex gap-2">
                                 <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-200 border-2 overflow-hidden" style={{ borderColor: 'var(--dz-primary)' }}></div>
@@ -403,11 +436,11 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
                     
                     <div className="flex items-center gap-3 mb-4">
                         <span className="text-3xl font-black" style={{ color: 'var(--dz-primary)' }}>
-                            {product?.price || "4500"} دج
+                            {Math.round(Number(product?.price || 4500)).toLocaleString()} دج
                         </span>
                         {(product?.original_price || settings?.template_original_price) && (
                             <span className="text-lg text-gray-400 line-through">
-                                {product?.original_price || settings?.template_original_price || "6200"} دج
+                                {Math.round(Number(product?.original_price || settings?.template_original_price || 6200)).toLocaleString()} دج
                             </span>
                         )}
                         <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">-35%</span>
@@ -646,7 +679,7 @@ const [selectedImageIndex, setSelectedImageIndex] = useState(0);
             {/* Sticky Mobile Order Bar */}
             <div className="fixed bottom-0 left-0 right-0 bg-white dz-sticky-order-bar p-3 md:hidden z-[100] border-t flex gap-3">
                 <div className="flex-1 flex flex-col justify-center px-2">
-                    <span className="font-black text-xl" style={{ color: 'var(--dz-primary)' }}>{product?.price || "4500"} دج</span>
+                    <span className="font-black text-xl" style={{ color: 'var(--dz-primary)' }}>{Math.round(Number(product?.price || 4500)).toLocaleString()} دج</span>
                     <span className="text-[10px] text-gray-400">الدفع عند الاستلام</span>
                 </div>
                 <button className="text-white font-bold px-8 py-3 rounded-xl text-lg flex-grow shadow-lg" style={{ backgroundColor: accentColor }} onClick={() => window.scrollTo({top: document.querySelector('.dz-checkout-card')?.getBoundingClientRect().top || 0, behavior: 'smooth'})}>

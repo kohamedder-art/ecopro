@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { apiFetch } from '@/lib/api';
+import ProductCostsSection from '@/components/ProductCostsSection';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, BarChart, Bar, Legend,
@@ -24,11 +25,13 @@ const WILAYA_COORDS: Record<number, [number, number]> = {
 };
 
 // ─── Projection: lat/lng → SVG x/y ─────────────────────────
+// Bounds from Natural Earth GeoJSON: lat [19.06, 37.12], lng [-8.68, 12.00]
+// SVG path uses same bounds with 20px padding on 400×480 viewport
 const project = (lat: number, lng: number): [number, number] => {
-  const minLng = -8.7, maxLng = 12.0, minLat = 18.9, maxLat = 37.1;
+  const minLng = -8.68, maxLng = 12.00, minLat = 19.06, maxLat = 37.12;
   return [
-    ((lng - minLng) / (maxLng - minLng)) * 370 + 15,
-    ((maxLat - lat) / (maxLat - minLat)) * 460 + 20,
+    ((lng - minLng) / (maxLng - minLng)) * 360 + 20,
+    ((maxLat - lat) / (maxLat - minLat)) * 440 + 20,
   ];
 };
 
@@ -54,16 +57,18 @@ const TRAFFIC_AR: Record<string, string> = {
   direct:'مباشر', organic:'عضوي', email:'بريد إلكتروني', referral:'إحالة', unknown:'غير معروف',
 };
 
-// ─── Algeria SVG Outline ────────────────────────────────────
-const ALGERIA_OUTLINE = `M 143 26 L 160 22 L 180 20 L 200 18 L 220 16 L 240 15 L 260 16 L 280 18
-  L 300 22 L 310 30 L 318 42 L 324 56 L 330 72 L 338 90 L 345 110 L 352 130
-  L 360 150 L 368 170 L 375 190 L 380 210 L 384 230 L 386 250 L 385 270
-  L 382 290 L 376 310 L 368 328 L 358 344 L 345 358 L 330 370 L 312 380
-  L 292 388 L 270 394 L 248 398 L 225 400 L 200 402 L 175 403 L 150 402
-  L 125 400 L 100 396 L 78 390 L 58 382 L 42 372 L 30 358 L 22 342
-  L 18 324 L 16 304 L 16 284 L 18 264 L 22 244 L 28 224 L 34 204
-  L 40 184 L 46 164 L 52 144 L 58 124 L 64 104 L 72 84 L 82 64
-  L 96 46 L 114 34 L 130 28 Z`;
+// ─── Algeria SVG Outline (from Natural Earth GeoJSON) ──────
+const ALGERIA_OUTLINE = `M 20 256.9 L 20.3 252.1 L 20.3 250.5 L 20.2 221.6 L 48.3 203.7 L 65.7 200
+  L 79.9 193.4 L 86.6 181.2 L 106.9 171.6 L 107.7 153.5 L 117.7 151.4 L 125.6
+  142.4 L 148.4 138.3 L 151.6 128.8 L 147 123.6 L 141 97.9 L 139.9 83.1 L 133.4
+  67.5 L 150.1 54.2 L 168.9 50 L 179.9 39.9 L 196.7 32.5 L 226.2 28.1 L 255 26.2
+  L 263.7 29.8 L 280.1 20.2 L 298.7 20 L 305.8 25.7 L 317.7 24.2 L 314.2 36.7 L
+  316.9 59.9 L 312.8 80 L 302.1 93.6 L 303.6 111.9 L 317.9 126.5 L 318 132.4 L
+  328.8 142.2 L 336.2 185.9 L 341.8 207.4 L 342.8 218.8 L 339.7 238.6 L 341
+  249.7 L 338.7 263.1 L 340.3 278.4 L 333.4 288.6 L 343.6 306.3 L 344.3 316.8 L
+  350.5 330.3 L 358.6 325.9 L 372.4 337.2 L 380 352.5 L 320.4 398.9 L 270 446.8
+  L 245.4 457.6 L 226.1 460 L 225.9 444.5 L 217.9 440.5 L 207 433.6 L 202.9
+  422.2 L 144.2 369 L 85.5 315.8 L 20 256.9 Z`;
 
 // ─── Component ──────────────────────────────────────────────
 export default function MarketingAnalytics() {
@@ -293,7 +298,17 @@ export default function MarketingAnalytics() {
                   <RechartsTooltip contentStyle={{ fontSize: 11, borderRadius: 10 }}
                     formatter={(v: number, n: string) => [fmtNum(v), n]} />
                 </PieChart>
-              </ResponsiveContainer>
+            </ResponsiveContainer>
+            <div className="flex items-center justify-center gap-4 mt-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-2 rounded-sm bg-indigo-500" />
+                <span className="text-[10px] font-semibold text-muted-foreground">زيارات</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-2 rounded-sm bg-emerald-500" />
+                <span className="text-[10px] font-semibold text-muted-foreground">مشتريات</span>
+              </div>
+            </div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1 w-full">
                 {statusData.map((s: any) => (
                   <div key={s.name} className="flex items-center gap-1.5">
@@ -320,31 +335,31 @@ export default function MarketingAnalytics() {
           {/* Map */}
           <div className="flex-1 relative">
             <svg viewBox="0 0 400 480" className="w-full max-w-[400px] mx-auto h-auto">
-              <path d={ALGERIA_OUTLINE} fill="hsl(var(--muted))" opacity={0.3} stroke="hsl(var(--border))" strokeWidth={1} />
+              <path d={ALGERIA_OUTLINE} fill="hsl(var(--muted))" fillOpacity={0.5} stroke="hsl(var(--border))" strokeWidth={1.5} />
               {Object.entries(WILAYA_COORDS).map(([id, [lat, lng]]) => {
                 const w = wilayaMap.get(Number(id));
                 const orders = w?.orders || 0;
-                const intensity = orders > 0 ? Math.min(orders / maxOrders, 1) : 0;
-                const r = orders > 0 ? 4 + intensity * 8 : 3;
+                if (orders === 0) return null;
+                const intensity = Math.min(orders / maxOrders, 1);
+                const r = 4 + intensity * 8;
                 const [cx, cy] = project(lat, lng);
                 const isHovered = hoveredWilaya?.wilayaId === Number(id);
                 return (
                   <g key={id} className="cursor-pointer"
                     onMouseEnter={() => w && setHoveredWilaya(w)}
                     onMouseLeave={() => setHoveredWilaya(null)}>
-                    {orders > 0 && (
-                      <circle cx={cx} cy={cy} r={r + 4}
-                        fill={`rgba(59, 130, 246, ${0.1 + intensity * 0.15})`}
-                        className="transition-all" />
-                    )}
+                    <circle cx={cx} cy={cy} r={r + 4}
+                      fill="hsl(var(--foreground))"
+                      fillOpacity={0.08 + intensity * 0.12}
+                      className="transition-all" />
                     <circle cx={cx} cy={cy} r={isHovered ? r + 2 : r}
-                      fill={orders > 0 ? `rgba(59, 130, 246, ${0.4 + intensity * 0.6})` : 'hsl(var(--muted-foreground))'}
-                      opacity={orders > 0 ? 1 : 0.25}
-                      stroke={isHovered ? '#3b82f6' : 'transparent'} strokeWidth={isHovered ? 2 : 0}
+                      fill="hsl(var(--foreground))"
+                      fillOpacity={0.5 + intensity * 0.5}
+                      stroke={isHovered ? 'hsl(var(--foreground))' : 'transparent'} strokeWidth={isHovered ? 2 : 0}
                       className="transition-all" />
                     {orders > 3 && (
-                      <text x={cx} y={cy - r - 4} textAnchor="middle"
-                        className="fill-foreground text-[7px] font-bold pointer-events-none">{orders}</text>
+                      <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
+                        fill="hsl(var(--background))" className="text-[7px] font-bold pointer-events-none">{orders}</text>
                     )}
                   </g>
                 );
@@ -423,16 +438,16 @@ export default function MarketingAnalytics() {
             <span className="text-sm font-bold text-foreground">مصادر الزيارات</span>
           </div>
           {sourceData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={sourceData} layout="vertical" margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
+            <ResponsiveContainer width="100%" height={Math.max(200, sourceData.length * 36)}>
+              <BarChart data={sourceData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={60} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 }} width={80} axisLine={false} tickLine={false} textAnchor="end" />
                 <RechartsTooltip
                   contentStyle={{ fontSize: 11, borderRadius: 10, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
                   formatter={(v: number, n: string) => [fmtNum(v), n === 'sessions' ? 'زيارات' : 'مشتريات']} />
-                <Bar dataKey="sessions" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={14} name="sessions" />
-                <Bar dataKey="purchases" fill="#10b981" radius={[0, 4, 4, 0]} barSize={14} name="purchases" />
+                <Bar dataKey="sessions" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={10} name="sessions" />
+                <Bar dataKey="purchases" fill="#10b981" radius={[0, 4, 4, 0]} barSize={10} name="purchases" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -499,6 +514,15 @@ export default function MarketingAnalytics() {
         </div>
       )}
 
+      {/* ── Row: Product Economics Editor ── */}
+      <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+          <span className="text-sm font-bold text-foreground">تكاليف المنتجات</span>
+        </div>
+        <ProductCostsSection />
+      </div>
+
       {/* ── Row 6: Device Breakdown ── */}
       {devices.length > 0 && (
         <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
@@ -511,7 +535,7 @@ export default function MarketingAnalytics() {
               <div key={i} className="flex items-center gap-2 bg-muted/40 px-3 py-2 rounded-lg border border-border/40">
                 <span className="text-lg">{d.device === 'mobile' ? '📱' : d.device === 'desktop' ? '🖥️' : '📟'}</span>
                 <div>
-                  <p className="text-xs font-bold text-foreground">{d.device === 'mobile' ? 'มือถือ' : d.device === 'desktop' ? 'كمبيوتر' : d.device === 'tablet' ? 'تابلت' : d.device}</p>
+                  <p className="text-xs font-bold text-foreground">{d.device === 'mobile' ? 'هاتف' : d.device === 'desktop' ? 'كمبيوتر' : d.device === 'tablet' ? 'تابلت' : d.device}</p>
                   <p className="text-[10px] text-muted-foreground">{fmtNum(d.sessions)} جلسة — {fmtPct(d.share)}</p>
                 </div>
               </div>
