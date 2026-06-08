@@ -90,8 +90,9 @@ export default function ProductCostsSection() {
     }
   };
 
+  const num = (v: any) => Number(v) || 0;
   const totalCost = (p: ProductEcon) =>
-    (p.buy_cost || 0) + (p.packaging_cost || 0) + (p.handling_cost || 0) + (p.fallback_shipping_cost || 0) + (p.call_center_cost || 0) + (p.other_costs || 0);
+    num(p.buy_cost) + num(p.packaging_cost) + num(p.handling_cost) + num(p.fallback_shipping_cost) + num(p.call_center_cost) + num(p.other_costs);
 
   const profitMargin = (p: ProductEcon) => {
     if (!p.price || p.price === 0) return 0;
@@ -171,13 +172,13 @@ export default function ProductCostsSection() {
                   ].map(({ key, val }) => (
                     <td key={key} className="px-3 py-2.5">
                       {isEditing ? (
-                        <input className={inputCls} value={draft[key] || ''} onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))} type="number" />
+                        <input className={inputCls} value={draft[key] || ''} onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))} type="text" inputMode="numeric" dir="ltr" />
                       ) : (
-                        <span className="text-xs">{fmt(val)} دج</span>
+                        <span className="text-xs font-bold text-foreground">{fmt(val)} دج</span>
                       )}
                     </td>
                   ))}
-                  <td className="px-3 py-2.5 text-xs font-semibold text-muted-foreground">{fmt(cost)} دج</td>
+                  <td className="px-3 py-2.5 text-xs font-bold text-foreground">{fmt(cost)} دج</td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1">
                       {margin >= 0 ? (

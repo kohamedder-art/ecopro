@@ -1214,6 +1214,8 @@ export const fr = {
   "sidebar.delivery": "Livraison",
   "sidebar.pixels": "Statistiques Pixel",
   "sidebar.marketing": "Marketing & Analytique",
+  "sidebar.marketingAnalytics": "Analytique",
+  "sidebar.pricingCalculator": "Calculateur de Prix",
   "sidebar.bot": "Bot",
   "sidebar.integrations": "Intégrations",
   "sidebar.staff": "Personnel",

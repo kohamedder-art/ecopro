@@ -1669,6 +1669,8 @@ export const en = {
   "sidebar.deliveryPricing": "Pricing",
   "sidebar.pixels": "Pixel Statistics",
   "sidebar.marketing": "Marketing & Analytics",
+  "sidebar.marketingAnalytics": "Analytics",
+  "sidebar.pricingCalculator": "Pricing Calculator",
   "sidebar.ads": "My Ads",
   "sidebar.bot": "Bot",
   "sidebar.integrations": "Integrations",

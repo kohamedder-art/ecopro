@@ -5,7 +5,7 @@ import {
   Users, Shield, Ban, Puzzle, CreditCard, Settings,
   ChevronDown, ChevronRight, Menu, X, Package, Bot,
     Divide, Palette, User, Lock, Image, Brain, MapPin, MessageSquare,
-  Receipt, Bell
+  Receipt, Bell, DollarSign
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -98,7 +98,11 @@ const buildMenuItems = (storeSlug: string | null, subdomain: string | null): Men
       titleKey: "sidebar.marketing",
       path: "/dashboard/marketing-analytics",
       icon: <BarChart3 className="w-[18px] h-[18px]" />,
-      permission: "view_settings"
+      permission: "view_settings",
+      children: [
+        { titleKey: "sidebar.marketingAnalytics", path: "/dashboard/marketing-analytics", icon: <BarChart3 className="w-3.5 h-3.5" />, permission: "view_settings" },
+        { titleKey: "sidebar.pricingCalculator", path: "/dashboard/marketing/pricing", icon: <DollarSign className="w-3.5 h-3.5" />, permission: "view_settings" },
+      ]
     },
     {
       titleKey: "sidebar.pixels",

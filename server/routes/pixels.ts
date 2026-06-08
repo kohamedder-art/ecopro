@@ -938,6 +938,171 @@ export const getProductPerformanceHandler: RequestHandler = async (req, res) => 
   }
 };
 
+// =====================
+// PRICING CONFIG — daily ad spend
+// =====================
+
+export const getPricingConfigHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const db = await ensureConnection();
+    const result = await db.query(
+      'SELECT daily_ad_spend FROM ai_settings WHERE client_id = $1 LIMIT 1',
+      [user.id]
+    );
+    return res.json({ daily_ad_spend: Number(result.rows[0]?.daily_ad_spend || 0) });
+  } catch (error) {
+    console.error('Get pricing config error:', error);
+    return res.status(500).json({ error: 'Failed to fetch pricing config' });
+  }
+};
+
+export const savePricingConfigHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const { daily_ad_spend } = req.body;
+    if (typeof daily_ad_spend !== 'number' || daily_ad_spend < 0) {
+      return res.status(400).json({ error: 'daily_ad_spend must be a non-negative number' });
+    }
+    const db = await ensureConnection();
+    await db.query(
+      `INSERT INTO ai_settings (client_id, daily_ad_spend, created_at, updated_at)
+       VALUES ($1, $2, NOW(), NOW())
+       ON CONFLICT (client_id) DO UPDATE SET daily_ad_spend = $2, updated_at = NOW()`,
+      [user.id, daily_ad_spend]
+    );
+    return res.json({ daily_ad_spend });
+  } catch (error) {
+    console.error('Save pricing config error:', error);
+    return res.status(500).json({ error: 'Failed to save pricing config' });
+  }
+};
+
+// =====================
+// COD PRICING — full calculation per product
+// =====================
+
+export const getCodPricingHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const db = await ensureConnection();
+    const clientId = user.id;
+
+    const configRes = await db.query(
+      'SELECT daily_ad_spend FROM ai_settings WHERE client_id = $1 LIMIT 1',
+      [clientId]
+    );
+    const dailyAdSpend = Number(configRes.rows[0]?.daily_ad_spend || 0);
+
+    const statsRes = await db.query(
+      `SELECT
+         COUNT(*)::int AS total_orders,
+         COUNT(*) FILTER (WHERE status = 'delivered' OR status = 'completed')::int AS delivered_orders,
+         COUNT(*) FILTER (WHERE status = 'returned' OR status = 'refunded')::int AS returned_orders
+       FROM orders WHERE client_id = $1`,
+      [clientId]
+    );
+    const stats = statsRes.rows[0] || { total_orders: 0, delivered_orders: 0, returned_orders: 0 };
+    const totalOrders = stats.total_orders;
+    const deliveredOrders = stats.delivered_orders;
+    const returnedOrders = stats.returned_orders;
+    const returnRate = totalOrders > 0 ? returnedOrders / totalOrders : 0;
+    const deliveryRate = totalOrders > 0 ? deliveredOrders / totalOrders : 0;
+    const adCostPerOrder = deliveredOrders > 0 ? dailyAdSpend / deliveredOrders : 0;
+
+    const productsRes = await db.query(
+      `SELECT
+         p.id AS product_id,
+         p.title,
+         p.price AS selling_price,
+         COALESCE(pe.buy_cost, 0) AS buy_cost,
+         COALESCE(pe.packaging_cost, 0) AS packaging_cost,
+         COALESCE(pe.handling_cost, 0) AS handling_cost,
+         COALESCE(pe.fallback_shipping_cost, 0) AS shipping_cost,
+         COALESCE(pe.call_center_cost, 0) AS call_center_cost,
+         COALESCE(pe.return_cost, 0) AS return_cost,
+         COALESCE(pe.other_costs, 0) AS other_costs,
+         (SELECT COUNT(*)::int FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            WHERE o.client_id = $1 AND oi.product_id = p.id
+              AND (o.status = 'delivered' OR o.status = 'completed')
+         ) AS delivered_count,
+         (SELECT COUNT(*)::int FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            WHERE o.client_id = $1 AND oi.product_id = p.id
+              AND (o.status = 'returned' OR o.status = 'refunded')
+         ) AS returned_count
+       FROM client_store_products p
+       LEFT JOIN product_economics pe ON pe.client_id = p.client_id AND pe.product_id = p.id
+       WHERE p.client_id = $1 AND COALESCE(p.status, 'active') <> 'archived'
+       ORDER BY p.created_at DESC
+       LIMIT 50`,
+      [clientId]
+    );
+
+    const products = productsRes.rows.map((r: any) => {
+      const sellingPrice = Number(r.selling_price) || 0;
+      const buyCost = Number(r.buy_cost) || 0;
+      const packagingCost = Number(r.packaging_cost) || 0;
+      const handlingCost = Number(r.handling_cost) || 0;
+      const shippingCost = Number(r.shipping_cost) || 0;
+      const callCenterCost = Number(r.call_center_cost) || 0;
+      const returnCost = Number(r.return_cost) || 0;
+      const otherCosts = Number(r.other_costs) || 0;
+      const productDelivered = r.delivered_count || 0;
+      const productReturned = r.returned_count || 0;
+
+      const totalCostPerOrder = buyCost + packagingCost + handlingCost + shippingCost + callCenterCost + otherCosts + adCostPerOrder;
+      const netProfitPerOrder = sellingPrice - totalCostPerOrder;
+      const totalProfit = (netProfitPerOrder * productDelivered) - (returnCost * productReturned);
+      const roi = totalCostPerOrder > 0 ? (netProfitPerOrder / totalCostPerOrder) * 100 : 0;
+
+      return {
+        productId: r.product_id,
+        title: r.title,
+        sellingPrice,
+        buyCost,
+        packagingCost,
+        handlingCost,
+        shippingCost,
+        callCenterCost,
+        returnCost,
+        otherCosts,
+        adCostPerOrder: Number(adCostPerOrder.toFixed(2)),
+        totalCostPerOrder: Number(totalCostPerOrder.toFixed(2)),
+        netProfitPerOrder: Number(netProfitPerOrder.toFixed(2)),
+        deliveredCount: productDelivered,
+        returnedCount: productReturned,
+        totalProfit: Number(totalProfit.toFixed(2)),
+        roi: Number(roi.toFixed(1)),
+      };
+    });
+
+    return res.json({
+      dailyAdSpend,
+      adCostPerOrder: Number(adCostPerOrder.toFixed(2)),
+      totalOrders,
+      deliveredOrders,
+      returnedOrders,
+      returnRate: Number((returnRate * 100).toFixed(1)),
+      deliveryRate: Number((deliveryRate * 100).toFixed(1)),
+      products,
+    });
+  } catch (error) {
+    console.error('Get COD pricing error:', error);
+    return res.status(500).json({ error: 'Failed to calculate COD pricing' });
+  }
+};
+
 // Get public pixel config by store slug (for frontend script injection - no auth)
 export const getPublicPixelConfig: RequestHandler = async (req, res) => {
   try {
@@ -1021,6 +1186,9 @@ router.delete('/omni/creative-catalog/:id', authenticate, requireClient, deleteC
 router.post('/omni/creative-spend', authenticate, requireClient, saveCreativeSpendHandler);
 router.delete('/omni/creative-spend/:id', authenticate, requireClient, deleteCreativeSpendHandler);
 router.post('/omni/import-historical-sessions', authenticate, requireClient, backfillHistoricalSessionsHandler);
+router.get('/omni/pricing-config', authenticate, requireClient, getPricingConfigHandler);
+router.put('/omni/pricing-config', authenticate, requireClient, savePricingConfigHandler);
+router.get('/omni/cod-pricing', authenticate, requireClient, getCodPricingHandler);
 
 // Public routes (no auth required)
 router.post('/track', trackPixelEvent);

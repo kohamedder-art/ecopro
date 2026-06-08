@@ -2244,6 +2244,8 @@ export const ar = {
   "sidebar.deliveryPricing": "أسعار التوصيل",
   "sidebar.pixels": "إحصائيات البكسل",
   "sidebar.marketing": "التسويق والتحليلات",
+  "sidebar.marketingAnalytics": "التحليلات",
+  "sidebar.pricingCalculator": "حاسبة الأسعار",
   "sidebar.ads": "إعلاناتي",
   "sidebar.bot": "البوت",
   "sidebar.integrations": "ربط المنصات",
