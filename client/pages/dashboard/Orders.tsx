@@ -633,7 +633,7 @@ export default function OrdersAdmin() {
       const isStaff = localStorage.getItem('isStaff') === 'true';
       const authToken = localStorage.getItem('auth_token');
       const authHeaders = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
-      const res = await fetch(isStaff ? '/api/staff/orders' : '/api/client/orders?limit=100', { headers: authHeaders });
+      const res = await fetch(isStaff ? '/api/staff/orders' : '/api/client/orders?limit=99999', { headers: authHeaders });
 
       if (res.status === 401) {
         setError('Authentication failed. Please log in again.');

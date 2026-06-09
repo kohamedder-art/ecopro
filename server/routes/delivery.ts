@@ -395,6 +395,108 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
 };
 
 /**
+ * POST /api/delivery/integrations/:id/register-webhook
+ * Register webhook URL with the courier's API after saving credentials.
+ * Tries the courier's API first; falls back to returning the URL for manual setup.
+ */
+export const registerDeliveryWebhook: RequestHandler = async (req, res) => {
+  try {
+    const clientId = req.user?.id;
+    const integrationId = parseInt(req.params.id);
+    if (!clientId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    if (!integrationId) { res.status(400).json({ error: 'Invalid integration ID' }); return; }
+
+    // Look up the integration and company
+    const intResult = await pool.query(
+      `SELECT di.id, di.client_id, di.api_key_encrypted, di.api_secret_encrypted,
+              dc.name as company_name, dc.features
+       FROM delivery_integrations di
+       JOIN delivery_companies dc ON dc.id = di.delivery_company_id
+       WHERE di.id = $1 AND di.client_id = $2 AND di.is_enabled = true`,
+      [integrationId, clientId]
+    );
+
+    if (intResult.rows.length === 0) {
+      res.status(404).json({ error: 'Integration not found' });
+      return;
+    }
+
+    const row = intResult.rows[0];
+    const companyName = String(row.company_name || '');
+    const features = row.features || {};
+
+    // Construct the webhook URL
+    const host = req.headers.host || 'sahla4eco.com';
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const webhookUrl = `${protocol}://${host}/api/delivery/webhooks/${encodeURIComponent(companyName)}`;
+
+    // Check if this company supports webhooks
+    if (!features.supports_webhooks) {
+      res.json({
+        success: false,
+        supported: false,
+        webhookUrl,
+        message: 'هذه الشركة لا تدعم Webhooks',
+      });
+      return;
+    }
+
+    // Try to register via the courier's API
+    const service = getCourierService(companyName);
+    let registered = false;
+    let webhookSecret: string | undefined;
+
+    if (service?.registerWebhook) {
+      const { decryptData } = await import('../utils/encryption');
+      const apiKey = decryptData(row.api_key_encrypted);
+      const apiSecret = row.api_secret_encrypted ? decryptData(row.api_secret_encrypted) : undefined;
+
+      try {
+        const result = await service.registerWebhook(webhookUrl, apiKey, apiSecret);
+        if (result.supported && result.success) {
+          registered = true;
+          webhookSecret = result.webhookSecret;
+        }
+      } catch (err: any) {
+        console.error(`[Delivery] registerWebhook error for ${companyName}:`, err);
+      }
+    }
+
+    if (registered && webhookSecret) {
+      // Store the webhook secret
+      const { encryptData: enc } = await import('../utils/encryption');
+      const encrypted = enc(webhookSecret);
+      await pool.query(
+        `UPDATE delivery_integrations SET webhook_secret_encrypted = $1, updated_at = NOW()
+         WHERE id = $2 AND client_id = $3`,
+        [encrypted, integrationId, clientId]
+      );
+
+      res.json({
+        success: true,
+        supported: true,
+        registered: true,
+        webhookUrl,
+        message: 'تم تسجيل Webhook تلقائياً',
+      });
+    } else {
+      res.json({
+        success: true,
+        supported: true,
+        registered: false,
+        webhookUrl,
+        message: service?.registerWebhook
+          ? 'تعذر التسجيل التلقائي — يمكنك نسخ الرابط أدناه وتفعيله يدوياً'
+          : 'انسخ الرابط أدناه وقم بتفعيله في لوحة تحكم شركة التوصيل',
+      });
+    }
+  } catch (error: any) {
+    console.error('[Delivery] registerDeliveryWebhook error:', error);
+    res.status(500).json({ error: 'Failed to register webhook' });
+  }
+};
+
+/**
  * POST /api/webhooks/delivery/:company
  * Receive webhook updates from courier
  */
@@ -666,5 +768,6 @@ export const getOrderTrackingEventsBatch: RequestHandler = async (req, res) => {
 deliveryRouter.get('/orders/tracking-events-batch', getOrderTrackingEventsBatch);
 deliveryRouter.get('/orders/:id/label', downloadShippingLabel);
 deliveryRouter.post('/webhooks/:company', handleDeliveryWebhook);
+deliveryRouter.post('/integrations/:id/register-webhook', registerDeliveryWebhook);
 
 export default deliveryRouter;

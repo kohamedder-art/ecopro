@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { apiFetch } from '@/lib/api';
-import ProductCostsSection from '@/components/ProductCostsSection';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, BarChart, Bar, Legend,
@@ -513,15 +512,6 @@ export default function MarketingAnalytics() {
           </div>
         </div>
       )}
-
-      {/* ── Row: Product Economics Editor ── */}
-      <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
-          <span className="text-sm font-bold text-foreground">تكاليف المنتجات</span>
-        </div>
-        <ProductCostsSection />
-      </div>
 
       {/* ── Row 6: Device Breakdown ── */}
       {devices.length > 0 && (

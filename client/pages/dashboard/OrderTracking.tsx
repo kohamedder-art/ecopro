@@ -1,529 +1,358 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/i18n";
 
-// ─── Delivery step definitions ─────────────────────────────────────────────
+/*
+ * ── CRITICAL: Only in-delivery orders show here ──────
+ * Matches the 🚚 عند شركة التوصيل tab in the Orders page.
+ * Filter:
+ *   list.filter(o => o.status === 'in_delivery' || o.status === 'at_delivery')
+ * ──────────────────────────────────────────────────────
+ */
+
 const TRACKING_STEPS = [
-  { key: "confirmed",      labelKey: "tracking.stepConfirmed",    color: "#2b8a3e", icon: "S5",  bg: "#ebfbee" },
-  { key: "picked_up",      labelKey: "tracking.stepPickedUp",    color: "#1c7ed6", icon: "G4", bg: "#e7f5ff" },
-  { key: "in_transit",     labelKey: "tracking.stepInTransit",   color: "#d9480f", icon: "T2", bg: "#fff4e6" },
-  { key: "at_hub",         labelKey: "tracking.stepAtHub",       color: "#9c36b5", icon: "W3",  bg: "#f8f0fc" },
-  { key: "out_for_delivery", labelKey: "tracking.stepOutForDelivery", color: "#c2255c", icon: "H1", bg: "#fff0f6" },
-  { key: "delivered",      labelKey: "tracking.stepDelivered",   color: "#2b8a3e", icon: "D2", bg: "#ebfbee" },
+  { key: "confirmed",      labelKey: "tracking.stepConfirmed",    color: "#2b8a3e" },
+  { key: "picked_up",      labelKey: "tracking.stepPickedUp",    color: "#1c7ed6" },
+  { key: "in_transit",     labelKey: "tracking.stepInTransit",   color: "#d9480f" },
+  { key: "at_hub",         labelKey: "tracking.stepAtHub",       color: "#9c36b5" },
+  { key: "out_for_delivery", labelKey: "tracking.stepOutForDelivery", color: "#c2255c" },
+  { key: "delivered",      labelKey: "tracking.stepDelivered",   color: "#2b8a3e" },
 ];
 
-// Map status → step (covers both internal order status AND courier DeliveryStatus enum)
 const STATUS_TO_STEP: Record<string, number> = {
-  // ── internal order status ──
-  pending:              0,
-  confirmed:            0,
-  processing:           0,
-  shipped:              1,
-  in_delivery:          1,   // handed off to courier, awaiting pickup
-  in_transit:           2,
-  at_warehouse:         3,
-  out_for_delivery:     4,
-  out_delivery:         4,
-  delivered:            5,
-  completed:            5,
-  // ── courier DeliveryStatus enum (from webhooks) ──
-  assigned:             0,
-  picked_up:            1,
-  ready_for_pickup:     3,
-  at_hub:               3,
-  // in_transit, out_for_delivery, delivered, failed, returned already above
-  cancelled:           -1,
-  returned:            -1,
-  failed:              -1,
-  fake:                -1,
-  duplicate:           -1,
+  pending: 0, confirmed: 0, processing: 0,
+  shipped: 1, in_delivery: 1, in_transit: 2,
+  at_warehouse: 3, out_for_delivery: 4, out_delivery: 4,
+  delivered: 5, completed: 5,
+  assigned: 0, picked_up: 1, ready_for_pickup: 3, at_hub: 3,
+  cancelled: -1, returned: -1, failed: -1, fake: -1, duplicate: -1,
 };
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+const STATUS_GROUP: Record<string, string> = {
+  pending: "pending", confirmed: "pending", processing: "pending",
+  shipped: "transit", in_delivery: "transit", in_transit: "transit",
+  at_warehouse: "hub", out_for_delivery: "ofd", out_delivery: "ofd",
+  delivered: "done", completed: "done",
+  assigned: "transit", picked_up: "transit", ready_for_pickup: "hub", at_hub: "hub",
+  cancelled: "bad", returned: "bad", failed: "bad", fake: "bad", duplicate: "bad",
+};
+
+const GROUP_META: Record<string, { label: string; color: string; dot: string }> = {
+  pending: { label: "قيد الانتظار", color: "#0d9488", dot: "#14b8a6" },
+  transit: { label: "في الطريق",    color: "#d97706", dot: "#f59e0b" },
+  hub:     { label: "في المحطة",    color: "#7c3aed", dot: "#8b5cf6" },
+  ofd:     { label: "قيد التوصيل",  color: "#e11d48", dot: "#f43f5e" },
+  done:    { label: "تم التسليم",   color: "#059669", dot: "#10b981" },
+  bad:     { label: "مشكلة",        color: "#dc2626", dot: "#ef4444" },
+};
+
 interface TrackingOrder {
-  id: number;
-  reference_id?: string;
-  customer_name: string;
-  customer_phone: string;
-  product_title?: string;
-  product_image?: string;
-  total_price?: number;
-  delivery_fee?: number;
-  unit_price?: number;
-  quantity?: number;
-  status: string;             // internal order status
-  delivery_status?: string;   // courier-reported status (from webhooks)
-  tracking_number?: string;   // courier tracking number
-  delivery_company?: string;  // courier company name
-  created_at: string;
-  updated_at?: string;
-  customer_address?: string;
-  delivery_type?: string;
-  note?: string;
+  id: number; reference_id?: string;
+  customer_name: string; customer_phone: string;
+  product_title?: string; product_image?: string;
+  total_price?: number; delivery_fee?: number;
+  unit_price?: number; quantity?: number;
+  status: string; delivery_status?: string;
+  tracking_number?: string; delivery_company?: string;
+  created_at: string; updated_at?: string;
+  customer_address?: string; note?: string;
 }
 
 interface TrackingEvent {
-  event_type: string;
-  event_status: string;
-  description: string | null;
-  location: string | null;
-  timestamp: string;
+  event_type: string; timestamp: string;
+  description?: string | null; location?: string | null;
 }
 
-// ─── Custom step icon (SVG instead of emoji) ────────────────────────────────
-function StepIcon({ type, done, active, color }: { type: string; done: boolean; active: boolean; color: string }) {
-  const s = "13";
-  const fill = done || active ? color : "#d1d5db";
-  if (type === "S5") return <svg width={s} height={s} viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke={fill} strokeWidth="2"/>{done && <path d="M4 6.5L6 8.5L9.5 5" stroke={fill} strokeWidth="1.8" strokeLinecap="round"/>}</svg>;
-  if (type === "G4") return <svg width={s} height={s} viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2.5" stroke={fill} strokeWidth="2"/>{done && <path d="M4.5 6.5L6 8L9 5" stroke={fill} strokeWidth="1.5" strokeLinecap="round"/>}</svg>;
-  if (type === "T2") return <svg width={s} height={s} viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5H11.5M9.5 3L11.5 6.5L9.5 10" stroke={fill} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-  if (type === "W3") return <svg width={s} height={s} viewBox="0 0 13 13" fill="none"><rect x="1.5" y="3.5" width="10" height="8" rx="1.5" stroke={fill} strokeWidth="1.5"/><path d="M4.5 3.5V2A1.5 1.5 0 016 0.5H7A1.5 1.5 0 018.5 2V3.5" stroke={fill} strokeWidth="1.5"/></svg>;
-  if (type === "H1") return <svg width={s} height={s} viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5V11.5M1.5 6.5H11.5" stroke={fill} strokeWidth="1.8" strokeLinecap="round"/></svg>;
-  if (type === "D2") return <svg width={s} height={s} viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke={fill} strokeWidth="2"/><path d="M4.5 7L6 8.5L9 5" stroke={fill} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-  return null;
+function timeAgo(iso: string, locale: string): string {
+  try {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return locale === "ar" ? "الآن" : "now";
+    if (mins < 60) return locale === "ar" ? `منذ ${mins} د` : `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return locale === "ar" ? `منذ ${hrs} س` : `${hrs}h`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return locale === "ar" ? `منذ ${days} ي` : `${days}d`;
+    return new Date(iso).toLocaleDateString(locale === "ar" ? "ar-DZ" : "en-US", { day: "2-digit", month: "2-digit" });
+  } catch { return ""; }
 }
 
-// ─── Step bar component ────────────────────────────────────────────────────
-function TrackingBar({ status, updatedAt, stepTimestamps, t, locale }: { status: string; updatedAt?: string; stepTimestamps?: Record<number, string>; t: (key: string) => string; locale: string }) {
-  const rawStep     = STATUS_TO_STEP[status] ?? 0;
-  const isBad       = rawStep === -1;
+function formatPrice(n: number, locale: string): string {
+  return Math.round(n).toLocaleString(locale === "ar" ? "ar-DZ" : "en-US") + (locale === "ar" ? " دج" : " DA");
+}
+
+function getEffectiveStatus(order: TrackingOrder): string {
+  return (order.tracking_number && order.delivery_status) ? order.delivery_status : order.status;
+}
+
+// ─── Step bar ────────────────────────────────────────────────
+function StepBar({ status, stepTimestamps, t, locale }: { status: string; stepTimestamps?: Record<number, string>; t: (key: string) => string; locale: string }) {
+  const rawStep = STATUS_TO_STEP[status] ?? 0;
+  const isBad = rawStep === -1;
   const currentStep = isBad ? 0 : rawStep;
-  const isCancelled = ["cancelled", "returned", "fake", "duplicate", "failed"].includes(status);
-  const pct         = (currentStep / (TRACKING_STEPS.length - 1)) * 100;
-  const isRTL       = locale === "ar";
-  const dateLocale  = isRTL ? "ar-DZ" : "en-US";
-
-  const statusNote: Record<string, string> = {
-    delivered:        `${t("tracking.noteDelivered")}${updatedAt ? " • " + new Date(updatedAt).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) : ""}`,
-    completed:        `${t("tracking.noteCompleted")}${updatedAt ? " • " + new Date(updatedAt).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) : ""}`,
-    out_for_delivery: t("tracking.noteOutForDelivery"),
-    out_delivery:     t("tracking.noteOutForDelivery"),
-    at_hub:           t("tracking.noteAtHub"),
-    at_warehouse:     t("tracking.noteAtHub"),
-    ready_for_pickup: t("tracking.noteReadyForPickup"),
-    shipped:          t("tracking.noteShipped"),
-    in_delivery:      t("tracking.noteInDelivery"),
-    in_transit:       t("tracking.noteInTransit"),
-    picked_up:        t("tracking.notePickedUp"),
-    assigned:         t("tracking.noteAssigned"),
-    failed:           t("tracking.noteFailed"),
-    cancelled:        t("tracking.noteCancelled"),
-    returned:         t("tracking.noteReturned"),
-    fake:             t("tracking.noteFake"),
-    duplicate:        t("tracking.noteDuplicate"),
-  };
-
-  // Helper to format a real per-step timestamp (from delivery_events)
-  const fmtStepTime = (iso?: string) => {
-    if (!iso) return null;
-    try {
-      return new Date(iso).toLocaleString(dateLocale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    } catch { return null; }
-  };
+  const isCancelled = ["cancelled","returned","fake","duplicate","failed"].includes(status);
+  const isRTL = locale === "ar";
+  const pct = (currentStep / (TRACKING_STEPS.length - 1)) * 100;
 
   return (
-    <div className="flex-1 min-w-0 space-y-[7px] overflow-hidden">
-      {/* Step nodes */}
-      <div className="flex items-end justify-between gap-[2px]">
-        {TRACKING_STEPS.map((step, i) => {
-          const stepTs = stepTimestamps?.[i];
-          const tsText = fmtStepTime(stepTs);
-          const done   = !isBad && i < currentStep;
-          const active = !isBad && i === currentStep;
-          const dim = done || active ? step.color : "#d1d5db";
-          return (
-            <div key={step.key} className="flex flex-col items-center gap-[4px] flex-1 min-w-0">
-              <div
-                className="rounded-full flex items-center justify-center transition-all duration-500"
-                style={{
-                  width: active ? 20 : 16,
-                  height: active ? 20 : 16,
-                  background: done ? step.color : active ? "#fff" : "#f3f4f6",
-                  border: active ? `2px solid ${step.color}` : done ? "none" : "1.5px solid #e5e7eb",
-                  boxShadow: active ? `0 0 0 3px ${step.color}20` : "none",
-                }}
-              >
-                <StepIcon type={step.icon} done={done} active={active} color={dim} />
-              </div>
-              <span
-                className="text-[10px] leading-tight text-center font-semibold max-w-[55px]"
-                style={{ color: done || active ? step.color : "#c0c0c0" }}
-              >
-                {t(step.labelKey)}
-              </span>
-              {(done || active) && tsText && (
-                <span
-                  className="text-[8.5px] leading-none font-semibold tabular-nums"
-                  style={{ color: step.color, opacity: 0.75 }}
-                  title={stepTs}
-                >
-                  {tsText}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Progress road */}
-      <div className="relative h-[22px] mx-[2px]">
-        {/* Track */}
-        <div className="absolute top-[9px] bottom-[9px] left-0 right-0 rounded-full bg-slate-200 dark:bg-slate-700" />
-        {/* Fill — grows from start side (RTL: right, LTR: left) */}
-        <div
-          className="absolute top-[9px] bottom-[9px] rounded-full transition-all duration-700"
+    <div className="w-full">
+      <div className="relative w-full h-[52px]">
+        <div className="absolute top-[22px] left-0 right-0 h-[5px] rounded-full bg-slate-200 dark:bg-slate-700 shadow-inner" />
+        <div className={`absolute top-[22px] ${isRTL ? 'right-0' : 'left-0'} h-[5px] rounded-full transition-all duration-700 shadow-sm`}
           style={{
-            [isRTL ? "right" : "left"]: 0,
             width: `${pct}%`,
+            [isRTL ? 'left' : 'right']: 'auto',
             background: isCancelled
               ? "linear-gradient(90deg,#e03131,#fc8181)"
-              : "linear-gradient(90deg,#059669,#3b82f6,#f97316)",
+              : isRTL
+                ? "linear-gradient(270deg,#059669,#3b82f6,#f97316)"
+                : "linear-gradient(90deg,#059669,#3b82f6,#f97316)",
           }}
         />
-        {/* Moving truck — positioned from start side */}
-        <div
-          className="absolute top-0 transition-all duration-700"
-          style={{ [isRTL ? "right" : "left"]: `clamp(0px, calc(${pct}% - 11px), calc(100% - 22px))` }}
-        >
-          {isCancelled ? (
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="10" fill="#fee2e2" stroke="#fca5a5" strokeWidth="1"/><path d="M7 7L15 15M15 7L7 15" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/></svg>
-          ) : currentStep >= 5 ? (
-            // House/delivered icon
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="10" fill="#d1fae5" stroke="#6ee7b7" strokeWidth="1"/><path d="M5 11L11 5L17 11" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><rect x="8" y="12" width="6" height="5" rx="0.8" fill="#059669"/><rect x="9.5" y="13.5" width="3" height="3.5" rx="0.5" fill="#d1fae5"/></svg>
-          ) : (
-            // 3D truck facing LEFT (RTL: moving toward delivery on left)
-            <svg width="22" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2563eb"/><stop offset="100%" stopColor="#1d4ed8"/></linearGradient>
-                <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6"/><stop offset="100%" stopColor="#2563eb"/></linearGradient>
-              </defs>
-              <ellipse cx="16" cy="21" rx="13" ry="1.8" fill="#00000022"/>
-              <rect x="12" y="5" width="19" height="12" rx="2" fill="url(#tg)"/>
-              <rect x="12" y="5" width="19" height="3.5" rx="2" fill="#3b82f6"/>
-              <line x1="19" y1="5" x2="19" y2="17" stroke="#1e40af" strokeWidth="0.6"/>
-              <line x1="26" y1="5" x2="26" y2="17" stroke="#1e40af" strokeWidth="0.6"/>
-              <rect x="12" y="15.5" width="19" height="0.7" fill="#f87171" opacity="0.5"/>
-              <path d="M1 8 H11 Q13 8 13 10 L13 17 H1 Z" fill="url(#cg)"/>
-              <path d="M1 8 H9.5 Q11 8 11.5 9.5 L11.5 10 H1 Z" fill="#3b82f6"/>
-              <path d="M4 10 H10 Q11 10 11.5 11.5 V12.5 H4 Z" fill="#bfdbfe" stroke="#93c5fd" strokeWidth="0.4"/>
-              <path d="M6 10.3 H9 Q9.5 10.3 10 11 H6 Z" fill="#fff" opacity="0.35"/>
-              <rect x="2.5" y="12" width="3.2" height="3.5" rx="0.4" fill="#1e40af" stroke="#3b82f6" strokeWidth="0.4"/>
-              <rect x="2.8" y="13" width="0.8" height="0.5" rx="0.2" fill="#93c5fd"/>
-              <rect x="0.5" y="7.5" width="1" height="1.2" rx="0.3" fill="#374151" stroke="#1f2937" strokeWidth="0.3"/>
-              <rect x="0.5" y="12.8" width="1" height="2" rx="0.3" fill="#fef08a"/>
-              <rect x="0.5" y="12.8" width="1" height="2" rx="0.3" fill="#fff" opacity="0.25"/>
-              <path d="M0 13.5 L-2 12 L-2 16 Z" fill="#fef08a" opacity="0.1"/>
-              <rect x="11" y="3" width="1.5" height="4" rx="0.4" fill="#374151"/>
-              <circle cx="11.75" cy="3" r="0.8" fill="#6b7280" opacity="0.4"/>
-              <rect x="1" y="16.5" width="30" height="0.8" fill="#1f2937"/>
-              <circle cx="6" cy="18" r="3.2" fill="#1f2937"/><circle cx="6" cy="18" r="1.8" fill="#374151"/><circle cx="6" cy="18" r="1" fill="#4b5563"/><circle cx="6" cy="18" r="0.4" fill="#9ca3af"/>
-              <line x1="6" y1="16.2" x2="6" y2="19.8" stroke="#6b7280" strokeWidth="0.3"/><line x1="4.2" y1="18" x2="7.8" y2="18" stroke="#6b7280" strokeWidth="0.3"/>
-              <circle cx="17" cy="18" r="3.2" fill="#1f2937"/><circle cx="17" cy="18" r="1.8" fill="#374151"/><circle cx="17" cy="18" r="1" fill="#4b5563"/><circle cx="17" cy="18" r="0.4" fill="#9ca3af"/>
-              <line x1="17" y1="16.2" x2="17" y2="19.8" stroke="#6b7280" strokeWidth="0.3"/><line x1="15.2" y1="18" x2="18.8" y2="18" stroke="#6b7280" strokeWidth="0.3"/>
-              <circle cx="24" cy="18" r="3.2" fill="#1f2937"/><circle cx="24" cy="18" r="1.8" fill="#374151"/><circle cx="24" cy="18" r="1" fill="#4b5563"/><circle cx="24" cy="18" r="0.4" fill="#9ca3af"/>
-              <line x1="24" y1="16.2" x2="24" y2="19.8" stroke="#6b7280" strokeWidth="0.3"/><line x1="22.2" y1="18" x2="25.8" y2="18" stroke="#6b7280" strokeWidth="0.3"/>
-            </svg>
-          )}
+        <div className="absolute inset-0 flex items-center justify-between px-[2px]">
+          {TRACKING_STEPS.map((step, i) => {
+            const done = !isBad && i < currentStep;
+            const active = !isBad && i === currentStep;
+            const size = active ? 24 : done ? 18 : 14;
+            return (
+              <div key={step.key} className="flex items-center justify-center z-10 relative"
+                style={{ width: active ? 30 : 22, height: 32 }}>
+                <div className="rounded-full transition-all duration-500 flex items-center justify-center"
+                  style={{
+                    width: size, height: size,
+                    background: done ? step.color : active ? "#fff" : "#f1f5f9",
+                    border: active ? `3.5px solid ${step.color}` : done ? "none" : "2px solid #e2e8f0",
+                    boxShadow: active
+                      ? `0 0 0 6px ${step.color}20, 0 2px 10px ${step.color}30`
+                      : done
+                        ? `0 2px 4px ${step.color}30`
+                        : "inset 0 1px 2px rgba(0,0,0,0.05)",
+                  }}>
+                  {done && (
+                    <svg width="10" height="10" viewBox="0 0 13 13" fill="none">
+                      <path d="M4 6.5L5.5 8L9.5 4.5" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                  {active && (
+                    <div className="w-[8px] h-[8px] rounded-full animate-pulse" style={{ background: step.color }} />
+                  )}
+                </div>
+                {active && (
+                  <span className="absolute top-full mt-0.5 text-[10px] font-bold whitespace-nowrap leading-tight"
+                    style={{ color: step.color }}>
+                    {t(step.labelKey)}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
-
-      {/* Status note — clean text, no emoji noise */}
-      {statusNote[status] && (
-        <div
-          className="inline-flex items-center gap-[7px] rounded-[7px] px-[11px] py-[5px] text-[10px] font-semibold"
-          style={{
-            background: isCancelled ? "#fef2f2" : currentStep >= 6 ? "#ebfbee" : "#e7f5ff",
-            color: isCancelled ? "#e03131" : currentStep >= 6 ? "#2b8a3e" : "#1c7ed6",
-            border: `1px solid ${isCancelled ? "#ffc9c9" : currentStep >= 6 ? "#b2f2bb" : "#a5d8ff"}`,
-          }}
-        >
-          {statusNote[status]}
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── Tiny inline SVGs ────────────────────────────────────────────────────────
-function PhoneIcon() { return <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 1.5A11 11 0 0011.5 10" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round"/><path d="M1.5 3L4 4L5 1.5" stroke="#9ca3af" strokeWidth="1.3" strokeLinejoin="round"/><path d="M11.5 10L10 12.5L7.5 11.5" stroke="#9ca3af" strokeWidth="1.3" strokeLinejoin="round"/></svg>; }
-function CalIcon() { return <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2.5" width="11" height="9" rx="1.5" stroke="#c4c4c4" strokeWidth="1.3"/><path d="M1 5H12" stroke="#c4c4c4" strokeWidth="1.3"/><path d="M4 1V3.5M9 1V3.5" stroke="#c4c4c4" strokeWidth="1.3" strokeLinecap="round"/></svg>; }
-function BoxIcon({ color }: { color: string }) { return <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="3" y="7" width="22" height="17" rx="2" stroke={color} strokeWidth="1.5"/><path d="M3 11H25" stroke={color} strokeWidth="1.5"/><path d="M10 16H18" stroke={color} strokeWidth="1.8" strokeLinecap="round"/></svg>; }
-function CopyIcon() { return <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><rect x="2.5" y="0.5" width="6" height="6" rx="1" stroke="#9ca3af" strokeWidth="1"/><path d="M0.5 3V8H5.5" stroke="#9ca3af" strokeWidth="1"/></svg>; }
-function CopyCheck() { return <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><rect x="2.5" y="0.5" width="6" height="6" rx="1" stroke="#2b8a3e" strokeWidth="1"/><path d="M0.5 3V8H5.5" stroke="#2b8a3e" strokeWidth="1"/><path d="M3 5.5L4.5 7L7 4" stroke="#2b8a3e" strokeWidth="1.2" strokeLinecap="round"/></svg>; }
+// ─── Copy icon ───────────────────────────────────────────────
+function CopyBadge({ copied }: { copied: boolean }) {
+  return copied
+    ? <svg width="10" height="10" viewBox="0 0 9 9" fill="none"><rect x="2.5" y="0.5" width="6" height="6" rx="1" stroke="#2b8a3e" strokeWidth="1"/><path d="M0.5 3V8H5.5" stroke="#2b8a3e" strokeWidth="1"/><path d="M3 5.5L4.5 7L7 4" stroke="#2b8a3e" strokeWidth="1.2" strokeLinecap="round"/></svg>
+    : <svg width="10" height="10" viewBox="0 0 9 9" fill="none"><rect x="2.5" y="0.5" width="6" height="6" rx="1" stroke="#94a3b8" strokeWidth="1"/><path d="M0.5 3V8H5.5" stroke="#94a3b8" strokeWidth="1"/></svg>;
+}
 
-// ─── Order row ─────────────────────────────────────────────────────────────
-function OrderRow({ order, events, t, locale }: { order: TrackingOrder; events?: TrackingEvent[]; t: (key: string) => string; locale: string }) {
-  const [copied, setCopied] = useState<'none' | 'order' | 'tracking'>('none');
+// ─── 3D Order card ───────────────────────────────────────────
+function OrderCard({ order, events, t, locale }: { order: TrackingOrder; events?: TrackingEvent[]; t: (key: string) => string; locale: string }) {
+  const [copied, setCopied] = useState<'none' | 'id' | 'trk'>('none');
   const isRTL = locale === "ar";
-  const price = order.unit_price != null
-    ? (order.unit_price * (order.quantity || 1))
-    : (order.total_price ?? 0);
 
-  const effectiveStatus = (order.tracking_number && order.delivery_status)
-    ? order.delivery_status
-    : order.status;
+  const effectiveStatus = getEffectiveStatus(order);
+  const stepIdx = STATUS_TO_STEP[effectiveStatus] ?? 0;
+  const isBad = stepIdx === -1;
+  const group = STATUS_GROUP[effectiveStatus] || "pending";
+  const meta = GROUP_META[group];
+  const stepInfo = stepIdx >= 0 && stepIdx < TRACKING_STEPS.length ? TRACKING_STEPS[stepIdx] : null;
+  const stepColor = isBad ? "#dc2626" : (stepInfo?.color ?? "#6b7280");
+  const hasCourier = !!order.tracking_number;
+  const price = order.unit_price != null ? (order.unit_price * (order.quantity || 1)) : (order.total_price ?? 0);
 
-  // Map delivery_events to per-step timestamps for the tracking bar.
-  // Steps: 0=confirmed, 1=picked_up, 2=in_transit, 3=at_hub, 4=out_for_delivery, 5=delivered
   const stepTimestamps: Record<number, string> = {};
   if (events) {
-    // Step 0: order placement (or 'assigned'/'uploaded' from courier) — use earliest event
-    const assignedEv = events.find(e => e.event_type === 'assigned' || e.event_type === 'uploaded' || e.event_type === 'label_generated');
-    if (assignedEv) stepTimestamps[0] = assignedEv.timestamp;
+    const a = events.find(e => ['assigned','uploaded','label_generated'].includes(e.event_type));
+    if (a) stepTimestamps[0] = a.timestamp;
     else if (order.created_at) stepTimestamps[0] = order.created_at;
-    const pickupEv = events.find(e => e.event_type === 'pickup' || e.event_type === 'picked_up');
-    if (pickupEv) stepTimestamps[1] = pickupEv.timestamp;
-    const transitEv = events.find(e => e.event_type === 'in_transit');
-    if (transitEv) stepTimestamps[2] = transitEv.timestamp;
-    const hubEv = events.find(e => e.event_type === 'at_hub' || e.event_type === 'at_warehouse' || e.event_type === 'ready_for_pickup');
-    if (hubEv) stepTimestamps[3] = hubEv.timestamp;
-    const ofdEv = events.find(e => e.event_type === 'out_for_delivery' || e.event_type === 'out_delivery');
-    if (ofdEv) stepTimestamps[4] = ofdEv.timestamp;
-    const delivEv = events.find(e => e.event_type === 'delivered');
-    if (delivEv) stepTimestamps[5] = delivEv.timestamp;
-  } else if (order.created_at) {
-    stepTimestamps[0] = order.created_at;
-  }
+    const p = events.find(e => ['pickup','picked_up'].includes(e.event_type));
+    if (p) stepTimestamps[1] = p.timestamp;
+    const t2 = events.find(e => e.event_type === 'in_transit');
+    if (t2) stepTimestamps[2] = t2.timestamp;
+    const h = events.find(e => ['at_hub','at_warehouse','ready_for_pickup'].includes(e.event_type));
+    if (h) stepTimestamps[3] = h.timestamp;
+    const o = events.find(e => ['out_for_delivery','out_delivery'].includes(e.event_type));
+    if (o) stepTimestamps[4] = o.timestamp;
+    const d = events.find(e => e.event_type === 'delivered');
+    if (d) stepTimestamps[5] = d.timestamp;
+  } else if (order.created_at) stepTimestamps[0] = order.created_at;
 
-  const stepIdx   = STATUS_TO_STEP[effectiveStatus] ?? 0;
-  const isBad     = stepIdx === -1;
-  const stepColor = isBad ? "#e03131" : (TRACKING_STEPS[stepIdx]?.color ?? "#6b7280");
-  const isCancelled = ["cancelled","returned","fake","duplicate","failed"].includes(effectiveStatus);
-  const hasCourier  = !!order.tracking_number;
-
-  const handleCopy = (text: string, type: 'order' | 'tracking') => {
-    navigator.clipboard?.writeText(text);
-    setCopied(type);
-    setTimeout(() => setCopied('none'), 1300);
+  const handleCopy = async (text: string, type: 'id' | 'trk') => {
+    try { await navigator.clipboard.writeText(text); setCopied(type); setTimeout(() => setCopied('none'), 1200); } catch {}
   };
 
   return (
-    <div
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-xl hover:-translate-y-[2px] transition-all duration-200"
       dir={isRTL ? "rtl" : "ltr"}
-      className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm overflow-hidden transition-shadow hover:shadow-md"
-      style={{ borderRightWidth: isRTL ? '4px' : undefined, borderRightColor: isRTL ? stepColor : undefined, borderLeftWidth: isRTL ? undefined : '4px', borderLeftColor: isRTL ? undefined : stepColor }}
-    >
-      <div className="flex flex-col sm:flex-row">
-        {/* Left: Product image + info */}
-        <div className="flex items-start gap-2.5 p-3 sm:w-52 sm:shrink-0">
-          <div
-            className="w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0"
-            style={{ background: `${stepColor}12`, border: `1.5px solid ${stepColor}25` }}
-          >
-            {order.product_image ? (
-              <img src={order.product_image} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <BoxIcon color={stepColor} />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <button
-              onClick={() => handleCopy(String(order.reference_id || order.id), 'order')}
-              className="text-[11px] font-black flex items-center gap-1 group mb-0.5"
-              style={{ color: stepColor }}
-            >
-              #{order.reference_id || order.id}
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity">{copied === 'order' ? <CopyCheck /> : <CopyIcon />}</span>
-            </button>
-            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{order.customer_name}</p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5"><PhoneIcon /> {order.customer_phone}</p>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5"><CalIcon /> {new Date(order.created_at).toLocaleDateString(locale === "ar" ? "ar-DZ" : "en-US")}</p>
-            <p className="text-sm font-black mt-1" style={{ color: isCancelled ? "#e03131" : "#059669" }}>
-              {Math.round(price).toLocaleString(locale === "ar" ? "ar-DZ" : "en-US")} {locale === "ar" ? "دج" : "DA"}
-            </p>
-            {hasCourier && (
-              <button
-                onClick={() => handleCopy(order.tracking_number!, 'tracking')}
-                className="text-[9px] font-mono flex items-center gap-1 group text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors mt-0.5"
-              >
-                <svg width="9" height="9" viewBox="0 0 11 11" fill="none"><rect x="0.5" y="1.5" width="7" height="6" rx="1" stroke="currentColor" strokeWidth="1.2"/><path d="M3 4.5H8V9H4" stroke="currentColor" strokeWidth="1.2"/></svg>
-                {order.tracking_number}
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity">{copied === 'tracking' ? <CopyCheck /> : <CopyIcon />}</span>
-              </button>
-            )}
-          </div>
+      style={{
+        borderRight: isRTL ? `4px solid ${stepColor}` : undefined,
+        borderLeft: isRTL ? undefined : `4px solid ${stepColor}`,
+      }}>
+      {/* Line 1: Order info */}
+      <div className="flex items-center gap-4 px-4 py-3">
+        <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center shrink-0 shadow-sm"
+          style={{ background: `${stepColor}10`, border: `1.5px solid ${stepColor}20` }}>
+          {order.product_image ? (
+            <img src={order.product_image} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 28 28" fill="none"><rect x="3" y="7" width="22" height="17" rx="2" stroke={stepColor} strokeWidth="1.5"/><path d="M3 11H25" stroke={stepColor} strokeWidth="1.5"/><path d="M10 16H18" stroke={stepColor} strokeWidth="1.8" strokeLinecap="round"/></svg>
+          )}
         </div>
-
-        {/* Divider */}
-        <div className="hidden sm:block w-px my-3 bg-slate-100 dark:bg-slate-700 flex-shrink-0" />
-        <div className="block sm:hidden h-px mx-3 bg-slate-100 dark:bg-slate-700" />
-
-        {/* Right: Tracking bar */}
-        <div className="flex-1 min-w-0 px-3 pb-3 pt-2 sm:pt-3">
-          <div className="mb-2">
-            {hasCourier ? (
-              <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">
-                <svg width="9" height="9" viewBox="0 0 11 11" fill="none"><rect x="3.5" y="2.5" width="5" height="4" rx="0.5" fill="currentColor" opacity="0.8"/><path d="M1 4.5L2 3H3.5V7H1V4.5Z" fill="currentColor" opacity="0.6"/><circle cx="2" cy="7.5" r="1" fill="currentColor"/><circle cx="6.5" cy="7.5" r="1" fill="currentColor"/></svg>
-                {order.delivery_company || t("tracking.deliveryCompany")}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
-                <svg width="9" height="9" viewBox="0 0 11 11" fill="none"><rect x="1" y="0.5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1"/><path d="M1 4H10" stroke="currentColor" strokeWidth="1"/></svg>
-                {t("tracking.internalDelivery")}
-              </span>
-            )}
-          </div>
-          <TrackingBar status={effectiveStatus} updatedAt={order.updated_at} stepTimestamps={stepTimestamps} t={t} locale={locale} />
+        <button onClick={() => handleCopy(String(order.reference_id || order.id), 'id')}
+          className="text-sm font-black flex items-center gap-1.5 group shrink-0 hover:opacity-80 transition-opacity" style={{ color: stepColor }}>
+          #{order.reference_id || order.id}
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity"><CopyBadge copied={copied === 'id'} /></span>
+        </button>
+        <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{order.customer_name}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0 hidden sm:inline">{order.customer_phone}</span>
+        <div className="flex-1" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm"
+          style={{ background: `${meta.dot}12`, color: meta.color, border: `1px solid ${meta.dot}25` }}>
+          <span className="w-[6px] h-[6px] rounded-full" style={{ background: meta.dot }} />
+          {meta.label}
+        </span>
+        <span className="text-base font-black tabular-nums" style={{ color: isBad ? "#dc2626" : "#059669" }}>
+          {formatPrice(price, locale)}
+        </span>
+      </div>
+      {/* Line 2: 3D step bar + meta */}
+      <div className="flex items-center gap-3 px-4 pb-5">
+        <StepBar status={effectiveStatus} stepTimestamps={stepTimestamps} t={t} locale={locale} />
+        <div className="flex items-center gap-2 shrink-0">
+          {hasCourier && order.tracking_number && (
+            <button onClick={() => handleCopy(order.tracking_number!, 'trk')}
+              className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 group whitespace-nowrap border border-blue-100 dark:border-blue-500/15 shadow-sm">
+              <svg width="10" height="10" viewBox="0 0 11 11" fill="none"><rect x="3.5" y="2.5" width="5" height="4" rx="0.5" fill="currentColor" opacity="0.8"/><path d="M1 4.5L2 3H3.5V7H1V4.5Z" fill="currentColor" opacity="0.6"/><circle cx="2" cy="7.5" r="1" fill="currentColor"/><circle cx="6.5" cy="7.5" r="1" fill="currentColor"/></svg>
+              <span className="max-w-[80px] truncate hidden sm:inline">{order.delivery_company}</span>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity"><CopyBadge copied={copied === 'trk'} /></span>
+            </button>
+          )}
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap">{timeAgo(order.created_at, locale)}</span>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────
+// ─── Main page ────────────────────────────────────────────────
 export default function OrderTracking() {
   const { t, locale } = useTranslation();
   const isRTL = locale === "ar";
-  const [orders, setOrders]         = useState<TrackingOrder[]>([]);
-  const [events, setEvents]         = useState<Record<number, TrackingEvent[]>>({});
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
-  const [search, setSearch]         = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [page, setPage]             = useState(1);
+  const [orders, setOrders] = useState<TrackingOrder[]>([]);
+  const [events, setEvents] = useState<Record<number, TrackingEvent[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState("all");
+  const [page, setPage] = useState(1);
   const PER_PAGE = 20;
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
-      const params = new URLSearchParams({ limit: "200" });
+      const params = new URLSearchParams({ limit: "99999" });
       const res = await fetch(`/api/client/orders?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load orders");
       const data = await res.json();
       const list: TrackingOrder[] = (data.orders || data || []).map((o: any) => ({
-        id:             o.id,
-        reference_id:   o.reference_id || o.order_number,
-        customer_name:  o.customer_name || "—",
-        customer_phone: o.customer_phone || "—",
-        product_title:  o.product_title || o.product_name,
-        product_image:  (Array.isArray(o.product_images) ? o.product_images[0] : null) || o.product_image || o.product_thumbnail,
-        total_price:    o.total_price,
-        delivery_fee:   o.delivery_fee,
-        unit_price:     o.unit_price,
-        quantity:       o.quantity,
-        status:           o.status || "pending",
-        delivery_status:  o.delivery_status || null,
-        tracking_number:  o.tracking_number || null,
-        delivery_company: o.delivery_company_name || o.company_name || null,
-        created_at:       o.created_at,
-        updated_at:       o.updated_at,
-        customer_address: o.customer_address,
-        delivery_type:    o.delivery_type,
-        note:             o.note,
+        id: o.id, reference_id: o.reference_id || o.order_number,
+        customer_name: o.customer_name || "—", customer_phone: o.customer_phone || "—",
+        product_title: o.product_title || o.product_name,
+        product_image: (Array.isArray(o.product_images) ? o.product_images[0] : null) || o.product_image || o.product_thumbnail,
+        total_price: o.total_price, delivery_fee: o.delivery_fee, unit_price: o.unit_price, quantity: o.quantity,
+        status: o.status || "pending", delivery_status: o.delivery_status || null,
+        tracking_number: o.tracking_number || null, delivery_company: o.delivery_company_name || o.company_name || null,
+        created_at: o.created_at, updated_at: o.updated_at, customer_address: o.customer_address, note: o.note,
       }));
-      const tracked = list.filter(o => o.tracking_number);
+      const tracked = list.filter(o => o.status === 'in_delivery' || o.status === 'at_delivery');
       setOrders(tracked);
-
-      // Fetch real per-step delivery events from the courier (not the order's updated_at lie)
       if (tracked.length > 0) {
         try {
           const ids = tracked.map(o => o.id).join(',');
           const evRes = await fetch(`/api/delivery/orders/tracking-events-batch?ids=${ids}`, { credentials: "include" });
           if (evRes.ok) {
             const evData = await evRes.json();
-            // API returns { events: { "1": [...], "2": [...] } } keyed by order_id as string
             const parsed: Record<number, TrackingEvent[]> = {};
             const raw = evData.events || {};
             for (const [oid, evts] of Object.entries(raw)) {
-              parsed[Number(oid)] = (evts as any[]).map(e => ({
-                event_type: e.event_type,
-                event_status: e.event_status,
-                description: e.description ?? null,
-                location: e.location ?? null,
-                timestamp: e.timestamp,
-              }));
+              parsed[Number(oid)] = (evts as any[]).map(e => ({ event_type: e.event_type, timestamp: e.timestamp, description: e.description ?? null, location: e.location ?? null }));
             }
             setEvents(parsed);
           }
-        } catch (evErr) {
-          // Non-blocking — fall back to order.updated_at
-          console.warn('[OrderTracking] Failed to load events:', evErr);
-        }
+        } catch (evErr) { console.warn('[OrderTracking] Failed to load events:', evErr); }
       }
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  // Status tabs — built from actual statuses present
-  const STATUS_TABS = [
-    { key: "all",              labelKey: "tracking.all" },
-    { key: "pending",          labelKey: "tracking.confirmed" },
-    { key: "confirmed",        labelKey: "tracking.preparing" },
-    { key: "processing",       labelKey: "tracking.shipped" },
-    { key: "shipped",          labelKey: "tracking.inRoute" },
-    { key: "in_transit",       labelKey: "tracking.inRoute" },
-    { key: "out_for_delivery", labelKey: "tracking.outForDelivery" },
-    { key: "delivered",        labelKey: "tracking.delivered" },
-    { key: "completed",        labelKey: "tracking.completed" },
-    { key: "cancelled",        labelKey: "tracking.cancelled" },
-    { key: "returned",         labelKey: "tracking.returned" },
-    { key: "failed",           labelKey: "tracking.failed" },
-  ];
+  const liveCounts: Record<string, number> = { all: orders.length, pending: 0, transit: 0, hub: 0, ofd: 0, done: 0, bad: 0 };
+  for (const o of orders) {
+    const g = STATUS_GROUP[getEffectiveStatus(o)] || "pending";
+    if (liveCounts[g] !== undefined) liveCounts[g]++;
+  }
 
-  const TAB_ACTIVE_COLOR: Record<string, string> = {
-    all: "text-blue-600", pending: "text-emerald-600", confirmed: "text-blue-600",
-    processing: "text-violet-600", shipped: "text-orange-600", in_transit: "text-orange-600",
-    out_for_delivery: "text-rose-600", out_delivery: "text-rose-600",
-    delivered: "text-emerald-600", completed: "text-emerald-600",
-    cancelled: "text-red-600", returned: "text-orange-600", failed: "text-red-600",
-  };
-  const TAB_SHADOW_COLOR: Record<string, string> = {
-    all: "shadow-blue-600", pending: "shadow-emerald-600", confirmed: "shadow-blue-600",
-    processing: "shadow-violet-600", shipped: "shadow-orange-600", in_transit: "shadow-orange-600",
-    out_for_delivery: "shadow-rose-600", out_delivery: "shadow-rose-600",
-    delivered: "shadow-emerald-600", completed: "shadow-emerald-600",
-    cancelled: "shadow-red-600", returned: "shadow-orange-600", failed: "shadow-red-600",
-  };
-
-  const tabCounts = STATUS_TABS.reduce((acc, tab) => {
-    acc[tab.key] = tab.key === "all"
-      ? orders.length
-      : orders.filter(o => o.status === tab.key).length;
-    return acc;
-  }, {} as Record<string, number>);
+  const PIPELINE_GROUPS = ["all", "pending", "transit", "hub", "ofd", "done", "bad"] as const;
 
   const filtered = orders.filter(o => {
-    const matchStatus = statusFilter === "all" || o.status === statusFilter;
+    const g = STATUS_GROUP[getEffectiveStatus(o)] || "pending";
+    const matchGroup = groupFilter === "all" || g === groupFilter;
     const q = search.toLowerCase();
-    const matchSearch = !q ||
-      String(o.reference_id || o.id).includes(q) ||
-      o.customer_name.toLowerCase().includes(q) ||
-      o.customer_phone.includes(q);
-    return matchStatus && matchSearch;
+    return matchGroup && (!q || String(o.reference_id || o.id).includes(q) || o.customer_name.toLowerCase().includes(q) || o.customer_phone.includes(q));
   });
 
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
-  const paginated  = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const inTransit  = orders.filter(o => ["shipped","in_transit","out_for_delivery","out_delivery","assigned","picked_up","at_hub","at_warehouse","ready_for_pickup","processing","confirmed"].includes(o.status)).length;
-  const delivered  = orders.filter(o => ["delivered","completed"].includes(o.status)).length;
-  const failed     = orders.filter(o => ["failed","cancelled","returned","fake","duplicate"].includes(o.status)).length;
+  const STEP_ICON = (g: string) => {
+    switch (g) {
+      case "all": return <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.3"/><path d="M8 5.5V8.5M8 10.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
+      case "pending": return <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><rect x="2" y="3.5" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M4.5 7H11.5M4.5 10H8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
+      case "transit": return <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="4.5" width="8" height="7" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M9.5 7.5H12L13.5 9.5v3.5H9.5V7.5Z" stroke="currentColor" strokeWidth="1.3"/><circle cx="4" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="11" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/></svg>;
+      case "hub": return <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="5.5" width="11" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M5.5 5.5v-1a1.5 1.5 0 011.5-1.5h2a1.5 1.5 0 011.5 1.5v1" stroke="currentColor" strokeWidth="1.3"/></svg>;
+      case "ofd": return <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M8 2v9M3.5 7.5L8 12l4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M2.5 13h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
+      case "done": return <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5"/><path d="M5.5 8L7 9.5L10.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+      case "bad": return <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5"/><path d="M6.5 6.5l3 3m-3 0l3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
+      default: return null;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950" dir={isRTL ? "rtl" : "ltr"}>
-      <div className="max-w-screen-xl mx-auto px-3 sm:px-5 lg:px-6 py-4 space-y-3">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900" dir={isRTL ? "rtl" : "ltr"}>
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-5 lg:px-6 py-4 space-y-3">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/30 shrink-0">
-                <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="1" y="4" width="10" height="10" rx="1.5" stroke="#fff" strokeWidth="1.5"/><path d="M11 8H15L17 10.5V15H11V8Z" stroke="#fff" strokeWidth="1.5"/><circle cx="5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/><circle cx="13.5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/></svg>
-              </span>
-              {t("tracking.title")}
-            </h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 mr-9">{t("tracking.subtitle")}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <rect x="1" y="4" width="10" height="10" rx="1.5" stroke="#fff" strokeWidth="1.5"/>
+                <path d="M11 8H15L17 10.5V15H11V8Z" stroke="#fff" strokeWidth="1.5"/>
+                <circle cx="5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/>
+                <circle cx="13.5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-lg font-black bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">{t("tracking.title")}</h1>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium leading-none">{t("tracking.subtitle")}</p>
+            </div>
           </div>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm disabled:opacity-40 active:scale-95"
-          >
+          <button onClick={load} disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-sm disabled:opacity-40 active:scale-95">
             <svg className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} viewBox="0 0 14 14" fill="none">
               <path d="M12 7A5 5 0 117 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
@@ -531,110 +360,51 @@ export default function OrderTracking() {
           </button>
         </div>
 
-        {/* ── Quick stats ── */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 px-3 py-2.5 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center shrink-0">
-                <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><rect x="2" y="5" width="9" height="9" rx="1.5" stroke="#ea580c" strokeWidth="1.5"/><path d="M11 9H15L17 12V16H11V9Z" stroke="#ea580c" strokeWidth="1.5"/><circle cx="5.5" cy="16" r="2" stroke="#ea580c" strokeWidth="1.5"/><circle cx="14" cy="16" r="2" stroke="#ea580c" strokeWidth="1.5"/></svg>
-              </div>
-              <div>
-                <p className="text-xl font-black text-orange-600 dark:text-orange-400 leading-none">{inTransit}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">{t("tracking.inTransit")}</p>
-              </div>
-            </div>
+        {/* Search + Pipeline pills */}
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="relative flex-1">
+            <svg className={`absolute ${isRTL ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none`} viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+              placeholder={t("tracking.searchPlaceholder")}
+              className={`w-full ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} h-10 text-sm outline-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400/15 transition-all placeholder:text-slate-400 shadow-sm`} />
           </div>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 px-3 py-2.5 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-                <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="#059669" strokeWidth="1.5"/><path d="M6.5 10L9 12.5L13.5 7.5" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
-              <div>
-                <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{delivered}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">{t("tracking.delivered")}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 px-3 py-2.5 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
-                <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="#dc2626" strokeWidth="1.5"/><path d="M7 7L13 13M13 7L7 13" stroke="#dc2626" strokeWidth="1.8" strokeLinecap="round"/></svg>
-              </div>
-              <div>
-                <p className="text-xl font-black text-red-600 dark:text-red-400 leading-none">{failed}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">{t("tracking.issues")}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Search + Filters ── */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-sm overflow-hidden">
-          {/* Search */}
-          <div className="p-2.5 border-b border-slate-100 dark:border-slate-700">
-            <div className="relative">
-              <svg className={`absolute inset-y-0 ${isRTL ? "right-2.5" : "left-2.5"} w-3.5 h-3.5 my-auto text-slate-400 pointer-events-none`} viewBox="0 0 16 16" fill="none">
-                <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              <input
-                type="text"
-                value={search}
-                onChange={e => { setSearch(e.target.value); setPage(1); }}
-                placeholder={t("tracking.searchPlaceholder")}
-                className={`w-full ${isRTL ? "pr-8 pl-3" : "pl-8 pr-3"} py-2 text-xs outline-none bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400/20 transition-all placeholder:text-slate-400`}
-              />
-            </div>
-          </div>
-          {/* Status tabs */}
-          <div className="flex overflow-x-auto scrollbar-hide px-1">
-            {STATUS_TABS.filter(tab => tab.key === "all" || tabCounts[tab.key] > 0).map(tab => {
-              const active = statusFilter === tab.key;
-              const colors: Record<string, string> = {
-                all: "indigo", pending: "emerald", confirmed: "blue", processing: "violet",
-                shipped: "orange", in_transit: "orange", out_for_delivery: "rose",
-                delivered: "emerald", completed: "emerald", cancelled: "red", returned: "amber", failed: "red",
-              };
-              const c = colors[tab.key] || "slate";
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide bg-white dark:bg-slate-800 rounded-xl border border-slate-200/70 dark:border-slate-700/70 shadow-sm px-2 py-1.5">
+            {PIPELINE_GROUPS.map(g => {
+              const meta = g === "all" ? null : GROUP_META[g];
+              const active = groupFilter === g;
+              const count = liveCounts[g] || 0;
               return (
-                <button
-                  key={tab.key}
-                  onClick={() => { setStatusFilter(tab.key); setPage(1); }}
-                  className={`flex-shrink-0 flex items-center gap-1 px-2.5 sm:px-3 py-2 text-xs font-bold transition-all whitespace-nowrap border-b-2 ${
-                    active
-                      ? `border-${c}-500 text-${c}-600 dark:text-${c}-400`
-                      : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                  }`}
-                >
-                  {t(tab.labelKey)}
-                  {tabCounts[tab.key] > 0 && (
-                    <span className={`inline-flex items-center justify-center min-w-[16px] h-4 rounded-full px-1 text-[9px] font-bold ${
-                      active ? `bg-${c}-100 dark:bg-${c}-500/20 text-${c}-700 dark:text-${c}-300` : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-                    }`}>
-                      {tabCounts[tab.key]}
-                    </span>
-                  )}
+                <button key={g} onClick={() => { setGroupFilter(g); setPage(1); }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all
+                    ${active ? 'text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
+                  style={active && meta ? { background: meta.dot } : active && g === "all" ? { background: '#6366f1' } : undefined}>
+                  {STEP_ICON(g)}
+                  {g === "all" ? t("tracking.all") : meta!.label}
+                  <span className={`${active ? 'opacity-80' : 'opacity-50'}`}>{count}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* ── Content ── */}
+        {/* Orders list */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center">
               <svg className="w-6 h-6 animate-spin text-indigo-500" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity="0.2"/>
                 <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{t("tracking.loading")}</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">{t("tracking.loading")}</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl p-5 flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="#dc2626" strokeWidth="1.5"/><path d="M8 5V9M8 11V11.5" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-red-200 dark:border-red-800/30 shadow-md p-5 flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="#dc2626" strokeWidth="1.5"/><path d="M8 5V9M8 11V11.5" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
             </div>
             <div>
               <p className="text-sm font-bold text-red-700 dark:text-red-400">{t("tracking.loadFailed")}</p>
@@ -642,8 +412,8 @@ export default function OrderTracking() {
             </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/70 dark:border-slate-700/70 shadow-md flex flex-col items-center justify-center py-20 text-center gap-3">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center shadow-inner">
               <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="text-slate-300 dark:text-slate-600">
                 <rect x="4" y="10" width="14" height="13" rx="1" stroke="currentColor" strokeWidth="1.5"/>
                 <circle cx="9.5" cy="24" r="3" stroke="currentColor" strokeWidth="1.5"/>
@@ -652,7 +422,7 @@ export default function OrderTracking() {
               </svg>
             </div>
             <div>
-              <p className="text-slate-700 dark:text-slate-300 font-bold">{t("tracking.noOrders")}</p>
+              <p className="text-base font-bold text-slate-700 dark:text-slate-300">{t("tracking.noOrders")}</p>
               <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">{search ? t("tracking.noResults") : t("tracking.noFilterResults")}</p>
             </div>
           </div>
@@ -663,21 +433,21 @@ export default function OrderTracking() {
                 {t("tracking.showing")} <span className="font-bold text-slate-600 dark:text-slate-300">{paginated.length}</span> {t("tracking.of")} <span className="font-bold text-slate-600 dark:text-slate-300">{filtered.length}</span> {t("tracking.orders")}
               </p>
             </div>
-            <div className="space-y-3">
-              {paginated.map(order => <OrderRow key={order.id} order={order} events={events[order.id]} t={t} locale={locale} />)}
+            <div className="space-y-2.5">
+              {paginated.map(order => <OrderCard key={order.id} order={order} events={events[order.id]} t={t} locale={locale} />)}
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-2 pb-4">
+              <div className="flex items-center justify-center gap-3 pt-3 pb-5">
                 <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 text-sm font-bold disabled:opacity-30 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                  className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold disabled:opacity-30 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all shadow-sm active:scale-95">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none"><path d="M7 3L4 6L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   {t("tracking.prev")}
                 </button>
-                <span className="text-sm font-bold text-slate-500 dark:text-slate-400 px-3">
-                  {page} / {totalPages}
-                </span>
+                <span className="text-sm font-bold text-slate-400 dark:text-slate-500 px-3">{page} / {totalPages}</span>
                 <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 text-sm font-bold disabled:opacity-30 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                  className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold disabled:opacity-30 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all shadow-sm active:scale-95">
                   {t("tracking.next")}
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none"><path d="M5 3L8 6L5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
               </div>
             )}

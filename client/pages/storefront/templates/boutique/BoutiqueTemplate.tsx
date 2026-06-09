@@ -392,26 +392,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 text-white px-4 py-3 shadow-md" style={{ backgroundColor: headerColor }}>
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" />}
-            <h1
-              className="text-xl font-black tracking-tighter italic"
-              contentEditable={canManage}
-              suppressContentEditableWarning
-              onBlur={handleTextEdit('boutique_brand_name')}
-            >
-              {brandName}
-            </h1>
-          </div>
-        </div>
-      </header>
-
       {/* HERO SECTION - full width */}
       {heroProduct && (
-        <section className="relative overflow-hidden" style={{ height: '420px' }}>
+        <section className="relative overflow-hidden h-[55dvh] md:h-[420px]">
           <img
             src={heroProduct.images?.[0] || ''}
             alt={heroProduct.title}
@@ -748,6 +731,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       <style dangerouslySetInnerHTML={{ __html: `
         @media (max-width: 767px) {
           .boutique-gallery-img { max-height: 50dvh !important; }
+          .boutique-gallery-fill { aspect-ratio: unset !important; height: 70dvh !important; }
+          .boutique-gallery-fill img,
+          .boutique-gallery-fill video { object-fit: contain !important; }
         }
         @media (min-width: 768px) {
           .boutique-modal-card { height: 85vh !important; max-height: 85vh !important; }
@@ -759,13 +745,13 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       {detailProduct && (
         <div className="fixed inset-0 z-[90] flex items-end md:items-center md:justify-center md:p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} />
-          <div className="boutique-modal-card relative z-10 w-full md:max-w-4xl md:mx-auto md:rounded-[32px] overflow-hidden flex flex-col md:flex-row" dir="ltr" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, height: '100dvh', maxHeight: '100dvh' }}>
-            <button onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }}><X size={18} /></button>
+          <div className="boutique-modal-card relative z-10 w-full md:max-w-4xl md:mx-auto md:rounded-[32px] overflow-y-auto md:overflow-hidden flex flex-col md:flex-row" dir="ltr" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, height: '100dvh', maxHeight: '100dvh' }}>
+            <button onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} className="fixed top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md md:absolute" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }}><X size={18} /></button>
             <div className="w-full md:w-[55%] md:shrink-0 md:h-full">
               <BoutiqueImageGallery product={detailProduct} surfaceMuted={surfaceMuted} accentColor={accentColor} surfaceTextMuted={surfaceTextMuted} surfaceBorderColor={surfaceBorderColor} onZoom={(src) => { const imgs = detailProduct?.images?.filter(Boolean) || []; const idx = imgs.indexOf(src); setZoomState({ images: imgs.length ? imgs : [src], idx: idx >= 0 ? idx : 0 }); }} />
             </div>
-            <div className="flex-1 flex flex-col overflow-hidden" dir="rtl">
-              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            <div className="w-full md:flex-1 md:flex md:flex-col md:overflow-hidden" dir="rtl">
+              <div className="px-6 py-5 space-y-4 md:flex-1 md:overflow-y-auto">
                 <div className="flex justify-between items-start gap-4">
                   <h3 className="text-xl font-black leading-tight" style={{ color: surfaceTextColor }}>{detailProduct.title}</h3>
                   <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{Math.round(detailProduct.price ?? 0).toLocaleString()} {currency}</p>

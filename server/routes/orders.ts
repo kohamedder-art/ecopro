@@ -914,7 +914,7 @@ export const getClientOrders: RequestHandler = async (req, res) => {
     backfillDuplicateOrders(clientIdNum).catch(() => {});
 
     // Get pagination params
-    const limit = Math.min(parseInt(req.query.limit as string) || 100, 500); // Max 500 to prevent huge queries
+    const limit = Math.min(parseInt(req.query.limit as string) || 100000, 100000);
     const offset = parseInt(req.query.offset as string) || 0;
     
     // Check cache (only for initial page loads with no offset)

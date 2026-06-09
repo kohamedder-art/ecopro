@@ -65,6 +65,21 @@ export interface CourierService {
    * @returns Success/failure with a human-readable message
    */
   testCredentials(apiKey: string, secondaryCredential?: string): Promise<CourierTestResult>;
+
+  /**
+   * Register a webhook URL with the courier's API so they send status updates
+   * to our server automatically. Only supported by some couriers.
+   * @param webhookUrl The URL the courier should send webhook events to
+   * @param apiKey Primary credential
+   * @param secondaryCredential Optional secondary credential
+   * @returns Whether registration is supported and success/failure
+   */
+  registerWebhook?(webhookUrl: string, apiKey: string, secondaryCredential?: string): Promise<{
+    success: boolean;
+    supported: boolean;
+    webhookSecret?: string;
+    error?: string;
+  }>;
 }
 
 // Service Registry

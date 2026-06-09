@@ -159,7 +159,7 @@ export default function Profile() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to apply code');
-      toast({ title: 'Success!', description: `Code applied! You'll get ${data.affiliate.discount_percent}% off.` });
+      toast({ title: t('common.success'), description: t('profile.affiliateSuccess', { percent: data.affiliate.discount_percent }) });
       setAffiliateCode('');
       await loadAffiliateInfo();
     } catch (err: any) {
@@ -205,7 +205,7 @@ export default function Profile() {
       toast({ title: t('common.saved'), description: t('admin.profile.updateSuccess') });
       await load();
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+      toast({ variant: 'destructive', title: t('common.error'), description: (e as Error).message });
     } finally {
       setSaving(false);
     }
@@ -319,6 +319,7 @@ export default function Profile() {
                   className={`${inputCls} pl-8`} placeholder="mtjr-ibdaa" />
               </div>
               <p className="text-[11px] text-muted-foreground/60 mt-1">{form.subdomain ? `${form.subdomain}.sahla4eco.com` : t('profile.subdomainHint')}</p>
+              <p className="text-[11px] text-muted-foreground/50 mt-1">{t('profile.subdomainDesc')}</p>
             </Field>
 
             {/* City + Country side by side */}
@@ -342,6 +343,7 @@ export default function Profile() {
                       className={`${inputCls} pl-8 opacity-50 cursor-not-allowed`} placeholder={t('profile.placeholder.country')} />
                   )}
                 </div>
+                <p className="text-[11px] text-muted-foreground/50 mt-1">{t('profile.countryDesc')}</p>
               </Field>
             </div>
 
@@ -369,8 +371,8 @@ export default function Profile() {
               <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 px-3.5 py-3">
                 <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-bold text-amber-800 dark:text-amber-300">كلمة المرور الحالية ضعيفة</p>
-                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">يُنصح بتحديثها لحماية حسابك — استخدم حروفاً كبيرة وصغيرة وأرقاماً ورموزاً.</p>
+                  <p className="text-xs font-bold text-amber-800 dark:text-amber-300">{t('profile.weakPasswordTitle')}</p>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">{t('profile.weakPasswordDesc')}</p>
                 </div>
               </div>
             )}
@@ -398,11 +400,12 @@ export default function Profile() {
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <p className="text-[11px] text-muted-foreground/50 mt-1">{t('profile.passwordHint')}</p>
               {/* Password strength bar */}
               {passwordForm.newPassword.length > 0 && (() => {
                 const p = passwordForm.newPassword;
                 const score = [p.length >= 8, /[A-Z]/.test(p), /[0-9]/.test(p), /[^A-Za-z0-9]/.test(p)].filter(Boolean).length;
-                const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+                const labels = ['', t('profile.passwordStrength.weak'), t('profile.passwordStrength.fair'), t('profile.passwordStrength.good'), t('profile.passwordStrength.strong')];
                 const colors = ['', 'bg-red-500', 'bg-amber-500', 'bg-blue-500', 'bg-emerald-500'];
                 const textColors = ['', 'text-red-500', 'text-amber-500', 'text-blue-500', 'text-emerald-500'];
                 return (
@@ -469,6 +472,7 @@ export default function Profile() {
             </div>
 
             <div className="p-5 space-y-3">
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{t('profile.redeemCodeDesc')}</p>
               {/* Dashed ticket input area */}
               <div className="rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700/60 bg-white/60 dark:bg-black/20 p-3">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 dark:text-indigo-500 mb-2 text-center">
@@ -478,7 +482,7 @@ export default function Profile() {
                   type="text" value={voucherCode}
                   onChange={e => handleFormatVoucherCode(e.target.value)}
                   className="w-full bg-transparent text-center font-mono text-lg font-bold tracking-[0.25em] text-indigo-700 dark:text-indigo-300 placeholder:text-indigo-300 dark:placeholder:text-indigo-700 border-none outline-none"
-                  placeholder="XXXX-XXXX-XXXX"
+                  placeholder={t('profile.placeholder.voucherCode')}
                 />
               </div>
 
@@ -513,6 +517,7 @@ export default function Profile() {
             </div>
 
             <div className="p-5 space-y-3">
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{t('profile.referralDesc')}</p>
               {affiliateInfo?.discount_applied ? (
                 <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800/50 p-4 text-center space-y-2">
                   <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
@@ -523,7 +528,7 @@ export default function Profile() {
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">{affiliateInfo.voucher_code}</p>
                   <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                    <BadgeCheck className="w-3.5 h-3.5" /> Discount active on your account
+                    <BadgeCheck className="w-3.5 h-3.5" /> {t('profile.discountActive')}
                   </div>
                 </div>
               ) : (
@@ -532,7 +537,7 @@ export default function Profile() {
                     <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
                     <input type="text" value={affiliateCode} onChange={e => setAffiliateCode(e.target.value)}
                       className={`${inputCls} pl-8 uppercase tracking-widest text-center font-mono`}
-                      placeholder="PARTNER-CODE" />
+                      placeholder={t('profile.placeholder.partnerCode')} />
                   </div>
                   <button type="submit" disabled={affiliateLoading || !affiliateCode}
                     className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-emerald-600/20">

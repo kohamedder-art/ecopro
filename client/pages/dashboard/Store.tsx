@@ -1637,7 +1637,7 @@ export default function Store() {
                     {product.is_featured && (
                       <Badge className="bg-yellow-500 text-[10px] px-1.5 py-0.5">
                         <Star className="w-2.5 h-2.5 mr-0.5" />
-                        Featured
+                        {t('store.productForm.featured')}
                       </Badge>
                     )}
                   </div>

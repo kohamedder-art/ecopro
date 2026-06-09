@@ -60,6 +60,10 @@ export default function DeliveryCompanies() {
   const [integrationMetaByCompanyId, setIntegrationMetaByCompanyId] = useState<
     Record<number, { is_enabled: boolean; has_api_key: boolean; has_api_secret: boolean; updated_at?: string; configured_at?: string }>
   >({});
+  const [webhookState, setWebhookState] = useState<{
+    loading: boolean;
+    result?: { success: boolean; supported: boolean; registered: boolean; webhookUrl: string; message: string };
+  }>({ loading: false });
 
   // Only allow providers with working integrations to be configured.
   const isComingSoon = (company: DeliveryCompany) => {
@@ -507,6 +511,7 @@ export default function DeliveryCompanies() {
     setSaveError(null);
     setSaveSuccess(null);
     setSaving(true);
+    setWebhookState({ loading: false });
 
     try {
       const dbId = companyIdByName[toCompanyLookupKey(String(selectedCompany.name || ''))];
@@ -602,7 +607,23 @@ export default function DeliveryCompanies() {
           updated_at: new Date().toISOString(),
         },
       }));
-      setSaveSuccess('Saved successfully');
+      setSaveSuccess('تم الحفظ بنجاح');
+
+      // ── Step 3: Try to register webhook ──
+      const integrationId = data.integration_id;
+      if (integrationId && selectedCompany.features.webhooks) {
+        setWebhookState({ loading: true });
+        try {
+          const whRes = await fetch(`/api/delivery/integrations/${integrationId}/register-webhook`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          const whBody = await whRes.json().catch(() => ({}));
+          setWebhookState({ loading: false, result: whBody });
+        } catch {
+          setWebhookState({ loading: false, result: { success: false, supported: false, registered: false, webhookUrl: '', message: 'فشل الاتصال بالخادم' } });
+        }
+      }
     } catch (e: any) {
       setSaveError(e?.message || 'Failed to save');
     } finally {
@@ -932,27 +953,67 @@ export default function DeliveryCompanies() {
 
             {/* ── Webhook Section ── */}
             {selectedCompany?.features.webhooks && (
-              <div className="rounded-2xl border-2 border-dashed border-amber-300/60 dark:border-amber-700/40 bg-gradient-to-br from-amber-50/80 to-orange-50/50 dark:from-amber-950/10 dark:to-orange-950/10 p-4 space-y-3">
+              <div className={`rounded-2xl border-2 border-dashed p-4 space-y-3 transition-all ${
+                webhookState.result?.registered
+                  ? 'border-emerald-300/60 dark:border-emerald-700/40 bg-gradient-to-br from-emerald-50/80 to-green-50/50 dark:from-emerald-950/10 dark:to-green-950/10'
+                  : webhookState.loading
+                    ? 'border-blue-300/60 dark:border-blue-700/40 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 dark:from-blue-950/10 dark:to-indigo-950/10'
+                    : 'border-amber-300/60 dark:border-amber-700/40 bg-gradient-to-br from-amber-50/80 to-orange-50/50 dark:from-amber-950/10 dark:to-orange-950/10'
+              }`}>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                    <Wifi className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    webhookState.result?.registered
+                      ? 'bg-emerald-100 dark:bg-emerald-900/40'
+                      : webhookState.loading
+                        ? 'bg-blue-100 dark:bg-blue-900/40'
+                        : 'bg-amber-100 dark:bg-amber-900/40'
+                  }`}>
+                    {webhookState.loading ? (
+                      <Loader2 className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />
+                    ) : webhookState.result?.registered ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <Wifi className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    )}
                   </div>
                   <div>
-                    <p className="text-sm font-black text-amber-900 dark:text-amber-100">{t('delivery.webhookUrl')}</p>
-                    <p className="text-[11px] text-amber-600/80 dark:text-amber-400/60">{t('delivery.webhookUrlDesc', { company: selectedCompany.name })}</p>
+                    <p className={`text-sm font-black ${
+                      webhookState.result?.registered
+                        ? 'text-emerald-900 dark:text-emerald-100'
+                        : webhookState.loading
+                          ? 'text-blue-900 dark:text-blue-100'
+                          : 'text-amber-900 dark:text-amber-100'
+                    }`}>
+                      {webhookState.result?.registered
+                        ? 'تم تسجيل Webhook تلقائياً'
+                        : webhookState.loading
+                          ? 'جاري تسجيل Webhook...'
+                          : t('delivery.webhookUrl')}
+                    </p>
+                    <p className={`text-[11px] mt-0.5 ${
+                      webhookState.result?.registered
+                        ? 'text-emerald-600/80 dark:text-emerald-400/60'
+                        : webhookState.loading
+                          ? 'text-blue-600/80 dark:text-blue-400/60'
+                          : 'text-amber-600/80 dark:text-amber-400/60'
+                    }`}>
+                      {webhookState.result?.message || t('delivery.webhookUrlDesc', { company: selectedCompany.name })}
+                    </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <code className="flex-1 text-[11px] bg-white dark:bg-gray-900 px-3 py-2.5 rounded-xl border border-amber-200/60 dark:border-amber-800/30 text-amber-900 dark:text-amber-100 truncate direction-ltr text-left font-mono shadow-sm">
-                    https://sahla4eco.com/api/delivery/webhooks/{encodeURIComponent(selectedCompany.name)}
-                  </code>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(`https://sahla4eco.com/api/delivery/webhooks/${encodeURIComponent(selectedCompany.name)}`)}
-                    className="shrink-0 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black shadow-md shadow-amber-500/20 transition-colors"
-                  >
-                    {t('delivery.webhookUrlCopy')}
-                  </button>
-                </div>
+                {!webhookState.result?.registered && (
+                  <div className="flex gap-2">
+                    <code className="flex-1 text-[11px] bg-white dark:bg-gray-900 px-3 py-2.5 rounded-xl border border-amber-200/60 dark:border-amber-800/30 text-amber-900 dark:text-amber-100 truncate direction-ltr text-left font-mono shadow-sm">
+                      {(webhookState.result?.webhookUrl) || `https://${window.location.host}/api/delivery/webhooks/${encodeURIComponent(selectedCompany.name)}`}
+                    </code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText((webhookState.result?.webhookUrl) || `https://${window.location.host}/api/delivery/webhooks/${encodeURIComponent(selectedCompany.name)}`)}
+                      className="shrink-0 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black shadow-md shadow-amber-500/20 transition-colors"
+                    >
+                      {t('delivery.webhookUrlCopy')}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ShoppingBag,
   Truck,
@@ -135,16 +135,8 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [previewProduct, setPreviewProduct] = useState<any>(null);
-
-  // Scroll carousel when currentImgIdx changes
-  useEffect(() => {
-    for (const [pid, idx] of Object.entries(currentImgIdx)) {
-      const carousel = document.querySelector(`[data-cr="${pid}"]`) as HTMLElement;
-      if (!carousel) continue;
-      const child = carousel.children[idx] as HTMLElement;
-      if (child) carousel.scrollTo({ left: child.offsetLeft, behavior: 'smooth' });
-    }
-  }, [currentImgIdx]);
+  const galleryIdxRef = useRef<Record<string, number>>({});
+  galleryIdxRef.current = currentImgIdx as Record<string, number>;
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
   const deliveryFee = resolveDeliveryFee(selectedProduct, selectedOffer, baseDeliveryFee);
   const variantPrice = (selectedVariant?.price != null && selectedVariant.price > 0) ? selectedVariant.price : null;
@@ -277,7 +269,7 @@ const parseVideoEmbed = (videoUrl: string) => {
         {(showCountdown || canManage) && (
         <div className="text-white px-4 py-2 text-[11px] font-bold flex justify-between items-center sticky top-0 z-50 relative overflow-visible" style={{ backgroundColor: accentColor }} data-edit-path="countdown-header">
           {canManage && (
-              <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
+              <div className="absolute -bottom-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
                   <button
                       onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'needdz_show_countdown', value: !showCountdown }, '*')}
                       className="flex items-center gap-1 font-bold"
@@ -327,7 +319,7 @@ const parseVideoEmbed = (videoUrl: string) => {
           {(showTrustBanner || canManage) && (
           <div className="relative overflow-visible" data-edit-path="trust-banner">
             {canManage && (
-                <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
+                <div className="absolute -bottom-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
                     <button
                         onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'needdz_show_trust', value: !showTrustBanner }, '*')}
                         className="flex items-center gap-1 font-bold"
@@ -360,88 +352,88 @@ const parseVideoEmbed = (videoUrl: string) => {
             {displayProducts.map(product => (
               <div key={product.id} className="rounded-[32px] overflow-hidden border shadow-sm group" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
                 {/* Image Gallery */}
-                <div className="relative aspect-square overflow-hidden" style={{ backgroundColor: surfaceMuted }}>
-                  <div data-cr={product.id} className="flex h-full overflow-x-auto" style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none', touchAction: 'pan-y' }}
+                {(() => {
+                  const totalMedia = product.images.length + (product.videoUrl ? 1 : 0);
+                  const curIdx = (currentImgIdx as any)[product.id] || 0;
+                  const goTo = (idx: number) => {
+                    const clamped = ((idx % totalMedia) + totalMedia) % totalMedia;
+                    setCurrentImgIdx((prev: any) => ({ ...prev, [product.id]: clamped }));
+                  };
+                  return (
+                  <div className="relative aspect-square overflow-hidden select-none" style={{ backgroundColor: surfaceMuted, touchAction: 'pan-y' }}
                     onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
                     onTouchEnd={e => {
-                      const el = e.currentTarget as any;
-                      const dx = el._tsx - e.changedTouches[0].clientX;
-                      const dy = el._tsy - e.changedTouches[0].clientY;
-                      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-                      const total = product.images.length + (product.videoUrl ? 1 : 0);
+                      const t = e.currentTarget as any;
+                      const dx = t._tsx - e.changedTouches[0].clientX;
+                      const dy = t._tsy - e.changedTouches[0].clientY;
+                      if (t._tsx == null || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+                      const total = totalMedia;
                       if (total <= 1) return;
-                      const cur = currentImgIdx[product.id] || 0;
-                      const tgt = dx > 0 ? (cur - 1 + total) % total : (cur + 1) % total;
-                      setCurrentImgIdx(prev => ({ ...prev, [product.id]: tgt }));
+                      const cur = galleryIdxRef.current[String(product.id)] || 0;
+                      const tgt = dx > 0 ? (cur + 1) % total : (cur - 1 + total) % total;
+                      goTo(tgt);
                     }}
                   >
-                    {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
-                      const ve = parseVideoEmbed(product.videoUrl);
-                      return (
-                        <div className="w-full h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
-                          {ve.type === 'youtube' ? (
-                            <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ve.id}?autoplay=1&mute=1&loop=1&playlist=${ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                          ) : ve.type === 'video' ? (
-                            <video className="w-full h-full object-cover" src={ve.url} autoPlay muted loop playsInline />
-                          ) : (
-                            <iframe className="w-full h-full" src={ve.url} allowFullScreen />
-                          )}
+                    <div style={{
+                      display: 'flex', height: '100%',
+                      width: `${totalMedia * 100}%`,
+                      transform: `translateX(-${(curIdx / totalMedia) * 100}%)`,
+                      transition: 'transform 0.3s ease',
+                      willChange: 'transform',
+                    }}>
+                      {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
+                        const ve = parseVideoEmbed(product.videoUrl);
+                        return (
+                          <div style={{ width: `${100 / totalMedia}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
+                            {ve.type === 'youtube' ? (
+                              <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ve.id}?autoplay=1&mute=1&loop=1&playlist=${ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                            ) : ve.type === 'video' ? (
+                              <video className="w-full h-full object-cover" src={ve.url} autoPlay muted loop playsInline />
+                            ) : (
+                              <iframe className="w-full h-full" src={ve.url} allowFullScreen />
+                            )}
+                          </div>
+                        );
+                      })()}
+                      {product.images.length > 0 ? product.images.map((img: string, i: number) => (
+                        <div key={i} style={{ width: `${100 / totalMedia}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}
+                          onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}>
+                          <img src={img} alt={product.name} className="w-full h-full object-cover cursor-pointer" loading="lazy" />
                         </div>
-                      );
-                    })()}
-                    {product.images.length > 0 ? product.images.map((img: string, i: number) => (
-                      <img key={i} src={img} alt={product.name}
-                        className="w-full h-full object-cover shrink-0 cursor-pointer"
-                        loading="lazy"
-                        style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
-                        onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}
-                      />
-                    )) : (
-                      <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: textMuted }}>
-                        <ShoppingBag size={48} strokeWidth={1} />
-                      </div>
+                      )) : (
+                        <div className="w-full h-full flex items-center justify-center" style={{ width: `${100 / totalMedia}%`, color: textMuted }}>
+                          <ShoppingBag size={48} strokeWidth={1} />
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Badge */}
+                    <div className="absolute top-4 left-4 bg-black text-white px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1">
+                      <Flame size={12} className="text-orange-400" /> {product.badge}
+                    </div>
+
+                    {/* Dots */}
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
+                      {[...Array(totalMedia)].map((_, idx) => (
+                        <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${curIdx === idx ? 'w-6 bg-emerald-500' : 'w-1.5 bg-white/50'}`}></div>
+                      ))}
+                    </div>
+
+                    {totalMedia > 1 && (
+                      <>
+                        <button onClick={() => goTo(curIdx - 1)}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+                          <ChevronLeft size={20} />
+                        </button>
+                        <button onClick={() => goTo(curIdx + 1)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+                          <ChevronRight size={20} />
+                        </button>
+                      </>
                     )}
                   </div>
-                  
-                  {/* Badge */}
-                  <div className="absolute top-4 left-4 bg-black text-white px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1">
-                    <Flame size={12} className="text-orange-400" /> {product.badge}
-                  </div>
-
-                  {/* Slider Controls */}
-                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
-                    {[...Array(product.images.length + (product.videoUrl ? 1 : 0))].map((_, idx) => (
-                      <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${ (currentImgIdx[product.id] || 0) === idx ? 'w-6 bg-emerald-500' : 'w-1.5 bg-white/50'}`}></div>
-                    ))}
-                  </div>
-
-                  {product.images.length > 1 && (
-                      <>
-                      <button 
-                        onClick={e => {
-                          const total = product.images.length + (product.videoUrl ? 1 : 0);
-                          const cur = currentImgIdx[product.id] || 0;
-                          const prev = (cur - 1 + total) % total;
-                          setCurrentImgIdx(prev => ({ ...prev, [product.id]: prev }));
-                        }}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
-                      >
-                        <ChevronLeft size={20} />
-                      </button>
-                      <button 
-                        onClick={e => {
-                          const total = product.images.length + (product.videoUrl ? 1 : 0);
-                          const cur = currentImgIdx[product.id] || 0;
-                          const next = (cur + 1) % total;
-                          setCurrentImgIdx(prev => ({ ...prev, [product.id]: next }));
-                        }}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
-                      >
-                        <ChevronRight size={20} />
-                      </button>
-                      </>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {/* Content */}
                 <div className="p-6 space-y-4">
@@ -485,7 +477,7 @@ const parseVideoEmbed = (videoUrl: string) => {
           {(showSocialProof || canManage) && (
           <section className="px-6 py-10 bg-slate-900 text-white rounded-t-[40px] mt-10 relative overflow-visible" data-edit-path="social-proof">
             {canManage && (
-                <div className="absolute -top-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
+                <div className="absolute -bottom-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
                     <button
                         onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'needdz_show_social', value: !showSocialProof }, '*')}
                         className="flex items-center gap-1 font-bold"
@@ -762,11 +754,37 @@ const parseVideoEmbed = (videoUrl: string) => {
 
       {/* Image Preview Lightbox */}
       {previewImg && previewProduct && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center" onClick={() => { setPreviewImg(null); setPreviewProduct(null); }}>
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center select-none" onClick={() => { setPreviewImg(null); setPreviewProduct(null); }}>
           <button onClick={() => { setPreviewImg(null); setPreviewProduct(null); }} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-xl z-10">✕</button>
-          <img src={previewImg} alt="" className="max-w-full max-h-[70vh] object-contain px-4" onClick={e => e.stopPropagation()} />
+          <div className="flex-1 flex items-center justify-center w-full relative"
+            onTouchStart={e => { (e.currentTarget as any)._px = e.touches[0].clientX; }}
+            onTouchEnd={e => {
+              const dx = (e.currentTarget as any)._px - e.changedTouches[0].clientX;
+              if (Math.abs(dx) < 50) return;
+              const imgs = previewProduct.images;
+              if (imgs.length <= 1) return;
+              const cur = imgs.indexOf(previewImg);
+              const n = dx > 0
+                ? (cur + 1) % imgs.length
+                : (cur - 1 + imgs.length) % imgs.length;
+              setPreviewImg(imgs[n]);
+            }}>
+            <img src={previewImg} alt="" className="max-w-full max-h-[70vh] object-contain px-4" onClick={e => e.stopPropagation()} />
+            {previewProduct.images.length > 1 && (
+              <>
+                <button onClick={(e) => { e.stopPropagation(); const imgs = previewProduct.images; const cur = imgs.indexOf(previewImg); setPreviewImg(imgs[(cur - 1 + imgs.length) % imgs.length]); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white z-10 backdrop-blur-md">
+                  <ChevronLeft size={20} />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); const imgs = previewProduct.images; const cur = imgs.indexOf(previewImg); setPreviewImg(imgs[(cur + 1) % imgs.length]); }}
+                  className="absolute right-14 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white z-10 backdrop-blur-md">
+                  <ChevronRight size={20} />
+                </button>
+              </>
+            )}
+          </div>
           {previewProduct.images.length > 1 && (
-            <div className="flex gap-2 mt-4 px-4 overflow-x-auto max-w-full">
+            <div className="flex gap-2 mb-6 px-4 overflow-x-auto max-w-full">
               {previewProduct.images.map((img: string, i: number) => (
                 <button key={i} onClick={(e) => { e.stopPropagation(); setPreviewImg(img); }}
                   className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${previewImg === img ? 'border-white opacity-100' : 'border-transparent opacity-50'}`}>

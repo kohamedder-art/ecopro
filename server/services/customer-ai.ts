@@ -129,20 +129,43 @@ export function detectChangeOfMind(msg: string): boolean {
   });
 }
 
-async function autoCancelCustomerOrders(clientId: number, platform: Platform, platformChatId: string): Promise<number> {
+async function autoCancelCustomerOrders(clientId: number, platform: Platform, platformChatId: string, msg?: string): Promise<{ count: number; productName?: string }> {
   try {
     const p = await pool();
     const phone = await resolvePhone(clientId, platform, platformChatId);
-    if (!phone) return 0;
+    if (!phone) return { count: 0 };
+
+    // Try to match a specific product from the customer's message
+    let productFilter = '';
+    let productName: string | undefined;
+    if (msg) {
+      const words = msg.split(/\s+/).filter(w => w.length > 2);
+      for (const w of words) {
+        const productMatch = await p.query(
+          `SELECT title FROM client_store_products WHERE client_id = $1 AND status = 'active' AND title ILIKE $2 LIMIT 1`,
+          [clientId, `%${w}%`]
+        );
+        if (productMatch.rows.length > 0) {
+          productName = productMatch.rows[0].title;
+          productFilter = ` AND p.title ILIKE $3`;
+          break;
+        }
+      }
+    }
+
+    const params: any[] = [clientId, phone];
+    if (productFilter) params.push(`%${productName}%`);
+
     const res = await p.query(
-      `UPDATE store_orders
+      `UPDATE store_orders p
        SET status = 'cancelled', updated_at = NOW(),
            notes = COALESCE(notes, '') || ' | ألغاه الزبون عبر المحادثة'
        WHERE client_id = $1 AND customer_phone = $2
          AND status IN ('pending', 'confirmed')
          AND (delivery_status IS NULL OR delivery_status NOT IN ('shipped', 'in_transit', 'out_for_delivery', 'delivered', 'picked_up'))
+         ${productFilter}
        RETURNING id, customer_name`,
-      [clientId, phone]
+      params
     );
     if (res.rows.length > 0) {
       for (const o of res.rows) {
@@ -157,13 +180,13 @@ async function autoCancelCustomerOrders(clientId: number, platform: Platform, pl
       sendPushNotification(
         clientId,
         '🚫 إلغاء من الزبون عبر المحادثة',
-        `ألغى الزبون ${res.rows.length} طلب(ات) عبر المحادثة الآلية (الهاتف: ${phone})`
+        `ألغى الزبون ${res.rows.length} طلب(ات) عبر المحادثة الآلية (الهاتف: ${phone}${productName ? `، المنتج: ${productName}` : ''})`
       ).catch(() => {});
     }
-    return res.rows.length;
+    return { count: res.rows.length, productName };
   } catch (err) {
     console.error('[CustomerAI] autoCancel error:', err);
-    return 0;
+    return { count: 0 };
   }
 }
 
@@ -251,12 +274,13 @@ export async function handleCustomerMessage(
 
   // Change-of-mind shield: auto-cancel non-shipped orders when customer wants to cancel
   if (detectChangeOfMind(msg)) {
-    const cancelled = await autoCancelCustomerOrders(clientId, platform, platformChatId);
+    const result = await autoCancelCustomerOrders(clientId, platform, platformChatId, msg);
     let response: string;
-    if (cancelled === 0) {
+    if (result.count === 0) {
       response = 'فهمت. لا توجد أي طلبيات نشطة باسمك حالياً. إذا كنت بحاجة إلى أي شيء آخر، أنا هنا للخدمة.';
     } else {
-      response = `تم ✅ إلغاء ${cancelled} طلب(ات) غير مشحونة. إذا احتجت أي شيء آخر في المستقبل، أنا موجود.`;
+      const detail = result.productName ? ` للمنتج "${result.productName}"` : '';
+      response = `تم إلغاء ${result.count} طلب${detail}. إذا احتجت أي شيء آخر في المستقبل، أنا موجود.`;
     }
     saveHistory(clientId, platform, platformChatId, msg, response).catch(() => {});
     return response;
@@ -323,7 +347,7 @@ export async function handleCustomerMessage(
   const isPureData = /^\d+$/.test(msg.trim()) || msg.trim().length < 5;
 
   let search = '';
-  if (!isCheckoutIntent && !isPureData && msg.length > 3) {
+  if (!isPureData && msg.length > 3) {
     search = await searchProducts(clientId, msg);
   }
 
@@ -449,6 +473,20 @@ interface SlimContext {
   deliveryInfo: string;
   aiInstructions?: string;
   storeLink?: string;
+  persona?: {
+    personaName?: string;
+    tone?: string;
+    personalityNote?: string;
+    businessType?: string;
+    primaryLanguage?: string;
+    storeStory?: string;
+    productPhilosophy?: string;
+    uniqueSellingPoints?: string[];
+    useEmojis?: boolean;
+    emojiStyle?: string;
+    greetingTemplate?: string;
+    closingTemplate?: string;
+  };
 }
 
 async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
@@ -488,6 +526,29 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
 
   const aiRes = await p.query(`SELECT ai_instructions FROM ai_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
 
+  const personaRes = await p.query(
+    `SELECT persona_name, tone, personality_note, business_type, primary_language,
+            store_story, product_philosophy, unique_selling_points,
+            use_emojis, emoji_style, greeting_template, closing_template
+     FROM ai_personas WHERE client_id = $1 LIMIT 1`, [clientId]
+  ).catch(() => ({ rows: [] }));
+  const personaRow = personaRes.rows[0] || {};
+
+  const persona = personaRow.persona_name !== undefined ? {
+    personaName: String(personaRow.persona_name || ''),
+    tone: personaRow.tone || 'friendly',
+    personalityNote: personaRow.personality_note || undefined,
+    businessType: personaRow.business_type || undefined,
+    primaryLanguage: personaRow.primary_language || undefined,
+    storeStory: personaRow.store_story || undefined,
+    productPhilosophy: personaRow.product_philosophy || undefined,
+    uniqueSellingPoints: personaRow.unique_selling_points || undefined,
+    useEmojis: personaRow.use_emojis !== false,
+    emojiStyle: personaRow.emoji_style || undefined,
+    greetingTemplate: personaRow.greeting_template || undefined,
+    closingTemplate: personaRow.closing_template || undefined,
+  } : undefined;
+
   return {
     storeName: store_name || 'المتجر',
     storeDescription: store_description || '',
@@ -503,16 +564,22 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
     deliveryInfo,
     aiInstructions: aiRes.rows[0]?.ai_instructions || undefined,
     storeLink: store_slug ? `https://www.sahla4eco.com/store/${store_slug}` : undefined,
+    persona,
   };
 }
 
-/** Extract the last product title mentioned by the assistant in conversation history */
 function extractLastProductFromHistory(history: GeminiContent[]): string | null {
+  const triggers = /(متوفرة?|موجود|بسعر|موجودة|سعره|سعرها|بـ|ب\s)/;
   for (let i = history.length - 1; i >= 0; i--) {
     if (history[i].role === 'model') {
       const text = history[i].parts[0]?.text || '';
-      const match = text.match(/([^\n]+?)\s+(متوفرة?|موجود|بسعر|موجودة)/);
-      if (match) return match[1].replace(/^["\u201C\u00AB\u00BB\u201D"']|["\u201C\u00AB\u00BB\u201D"']$/g, '').trim();
+      const match = text.match(new RegExp(`([^\\n]+?)\\s+${triggers.source}`));
+      if (match) {
+        let name = match[1].trim();
+        name = name.replace(/^["\u201C\u00AB\u00BB\u201D"'،\.\s]+|["\u201C\u00AB\u00BB\u201D"'،\.\s]+$/g, '');
+        const stopWords = ['هذا', 'هذه', 'إنه', 'إنها', 'عندنا', 'فيه', 'يوجد', 'المنتج', 'منتج', 'موجود'];
+        if (name.length > 2 && !stopWords.includes(name)) return name;
+      }
     }
   }
   return null;
@@ -527,6 +594,14 @@ function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, ph
   if (factsSummary) p += `\n${factsSummary}\n`;
   if (ctx.storeDescription) p += `وصف المتجر: ${ctx.storeDescription}\n`;
   if (ctx.aiInstructions) p += `تعليمات صاحب المتجر: ${ctx.aiInstructions}\n`;
+  if (ctx.persona?.personalityNote) p += `ملاحظة شخصية: ${ctx.persona.personalityNote}\n`;
+  if (ctx.persona?.storeStory) p += `قصة المتجر: ${ctx.persona.storeStory}\n`;
+  if (ctx.persona?.productPhilosophy) p += `فلسفة المنتجات: ${ctx.persona.productPhilosophy}\n`;
+  if (ctx.persona?.uniqueSellingPoints?.length) p += `نقاط قوة المتجر: ${ctx.persona.uniqueSellingPoints.join('، ')}\n`;
+  if (ctx.persona?.businessType) p += `نوع النشاط: ${ctx.persona.businessType}\n`;
+  if (ctx.persona?.greetingTemplate) p += `تحية مخصصة: "${ctx.persona.greetingTemplate}"\n`;
+  if (ctx.persona?.closingTemplate) p += `ختام مخصص: "${ctx.persona.closingTemplate}"\n`;
+  if (ctx.persona?.useEmojis === false) p += `ملاحظة: لا تستخدم الإيموجي في الرد.\n`;
 
   if (isFirstMessage) {
     p += `\n[حالة الحوار: هذه بداية المحادثة. رد بتحية قصيرة ولطيفة بالعربية الفصحى المبسطة. لا تسأل فوراً "ماذا تريد أن تشتري؟". دع الزبون يأخذ راحته. لا تذكر معلومات التوصيل أو الدفع إلا إذا سأل عنها الزبون صراحةً.]\n`;
@@ -784,21 +859,35 @@ async function isOverDailyBudget(clientId: number): Promise<boolean> {
   } catch { return false; }
 }
 
+function normalizeSearchText(text: string): string {
+  return text
+    .replace(/[ض]/g, 'ظ')
+    .replace(/[ة]/g, 'ه')
+    .replace(/[أإآا]/g, 'ا')
+    .replace(/[ى]/g, 'ي')
+    .replace(/[ؤ]/g, 'و')
+    .replace(/[ئ]/g, 'ي')
+    .replace(/[؟\.,!،:;\-()""''«»]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function searchProducts(clientId: number, query: string): Promise<string> {
   try {
     const p = await pool();
+    const normalized = normalizeSearchText(query);
 
-    // First try: full query match
+    // First try: full query match with normalized text
     let res = await p.query(
       `SELECT p.title, p.price, p.original_price, p.stock_quantity, p.category, p.id,
               (SELECT json_agg(json_build_object('color', v.color, 'variant_name', v.variant_name, 'price', v.price, 'stock', v.stock_quantity)) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id AND v.is_active = true) as variants
        FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active' AND (p.title ILIKE $2 OR p.description ILIKE $2 OR p.category ILIKE $2) ORDER BY p.is_featured DESC NULLS LAST LIMIT 10`,
-      [clientId, `%${query}%`]
+      [clientId, `%${normalized}%`]
     );
 
-    // Second try: split query into words and match any word
-    if (res.rows.length === 0 && query.length > 3) {
-      const words = query.split(/\s+/).filter(w => w.length > 2);
+    // Second try: split normalized query into words and match any word
+    if (res.rows.length === 0 && normalized.length > 3) {
+      const words = normalized.split(/\s+/).filter(w => w.length > 2);
       if (words.length > 1) {
         const conditions = words.map((_, i) => `(p.title ILIKE $${i + 2} OR p.description ILIKE $${i + 2} OR p.category ILIKE $${i + 2})`).join(' OR ');
         const params = [clientId, ...words.map(w => `%${w}%`)];
@@ -818,6 +907,7 @@ async function searchProducts(clientId: number, query: string): Promise<string> 
       if (r.stock_quantity !== null && r.stock_quantity <= 0) l += ' | الحالة: غير متوفر';
       else l += ' | الحالة: متوفر';
       if (r.category) l += ` | القسم: ${r.category}`;
+      if (r.description) l += ` | الوصف: ${String(r.description).slice(0, 120)}`;
       const variants = r.variants as Array<{color: string; variant_name: string; price: number; stock: number}> | null;
       if (variants && variants.length > 0) {
         const colors = variants.filter((v: any) => v.stock > 0).map((v: any) => v.color);

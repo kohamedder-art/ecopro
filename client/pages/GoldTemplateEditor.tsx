@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useLayoutEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, MemoryRouter } from 'react-router-dom';
 import { createRoot } from 'react-dom/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -848,10 +848,12 @@ export default function GoldTemplateEditor() {
     }
 
     previewIframeRootRef.current.render(
-      <div>
-        <style>{`[data-edit-selected="true"]{outline:2px solid hsl(var(--primary)); outline-offset:2px;}`}</style>
-        {RenderStorefront(selectedTemplateId, templateProps as any)}
-      </div>
+      <MemoryRouter>
+        <div>
+          <style>{`[data-edit-selected="true"]{outline:2px solid hsl(var(--primary)); outline-offset:2px;}`}</style>
+          {RenderStorefront(selectedTemplateId, templateProps as any)}
+        </div>
+      </MemoryRouter>
     );
 
     // Inject font-family override into iframe head if a custom font is selected

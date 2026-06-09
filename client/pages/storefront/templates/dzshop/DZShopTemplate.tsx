@@ -12,6 +12,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Eye, EyeOff } from 'lucide-react';
 
 export default function DZShopTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
+    const rootRef = useRef<HTMLDivElement>(null);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [orderSuccess, setOrderSuccess] = React.useState(false);
     const [lastOrderId, setLastOrderId] = React.useState<number | string | null>(null);
@@ -128,26 +129,28 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         }
     }, [settings?.primary_color]);
     
-    // Inject Phosphor Icons and Google Fonts
+    // Inject Phosphor Icons and Google Fonts into the correct document (works in both iframe and standalone)
     useEffect(() => {
-        if (!document.getElementById('phosphor-icons')) {
-            const script = document.createElement('script');
+        const doc = rootRef.current?.ownerDocument || document;
+        if (!doc.getElementById('phosphor-icons')) {
+            const script = doc.createElement('script');
             script.id = 'phosphor-icons';
             script.src = 'https://unpkg.com/@phosphor-icons/web';
-            document.head.appendChild(script);
+            doc.head.appendChild(script);
         }
-        if (!document.getElementById('cairo-font')) {
-            const link = document.createElement('link');
+        if (!doc.getElementById('cairo-font')) {
+            const link = doc.createElement('link');
             link.id = 'cairo-font';
             link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Inter:wght@400;600;700&display=swap';
             link.rel = 'stylesheet';
-            document.head.appendChild(link);
+            doc.head.appendChild(link);
         }
     }, []);
 
     // Set variable on root
     useEffect(() => {
-        document.documentElement.style.setProperty('--dz-primary', primaryColor);
+        const doc = rootRef.current?.ownerDocument || document;
+        doc.documentElement.style.setProperty('--dz-primary', primaryColor);
     }, [primaryColor]);
 
     const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
@@ -253,7 +256,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     }, [activeImageIndex, allMedia.length, loopedMedia.length]);
 
     return (
-        <div className="bg-gray-50 text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || undefined }} dir="rtl">
+        <div ref={rootRef} className="bg-gray-50 text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || undefined }} dir="rtl">
             <PixelScripts storeSlug={storeSlug} />
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
@@ -271,7 +274,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     </div>
                 )}
                 {showBanner && (
-                <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_top_notice')}>
+                <span contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_top_notice" onBlur={handleTextEdit('template_top_notice')}>
                     {settings?.template_top_notice || "التوصيل متوفر لـ 58 ولاية - الدفع عند الاستلام"}
                 </span>
                 )}
@@ -403,19 +406,19 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         <>
                         <div className="text-center">
                             <i className="ph ph-truck text-2xl text-orange-500 mb-1"></i>
-                            <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_badge_1')}>
+                            <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_1" onBlur={handleTextEdit('template_badge_1')}>
                                 {settings?.template_badge_1 || "توصيل سريع"}
                             </p>
                         </div>
                         <div className="text-center">
                             <i className="ph ph-hand-coins text-2xl text-green-500 mb-1"></i>
-                            <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_badge_2')}>
+                            <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_2" onBlur={handleTextEdit('template_badge_2')}>
                                 {settings?.template_badge_2 || "الدفع عند الاستلام"}
                             </p>
                         </div>
                         <div className="text-center">
                             <i className="ph ph-shield-check text-2xl mb-1" style={{ color: 'var(--dz-primary)' }}></i>
-                            <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_badge_3')}>
+                            <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_3" onBlur={handleTextEdit('template_badge_3')}>
                                 {settings?.template_badge_3 || "ضمان الجودة"}
                             </p>
                         </div>
@@ -430,7 +433,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
                 {/* Right Column: Product Details & Form */}
                 <div className="flex flex-col">
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2 leading-snug" contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2 leading-snug" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_heading" onBlur={handleTextEdit('template_hero_heading')}>
                         {settings?.template_hero_heading || product?.title || "اسم المنتج المميز - جودة عالية وتصميم عصري"}
                     </h1>
                     
@@ -447,7 +450,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     </div>
 
                     <div className="border p-4 rounded-xl mb-6 bg-blue-50" style={{ borderColor: 'rgba(37, 99, 235, 0.1)' }}>
-                        <p className="text-sm font-semibold" style={{ color: 'var(--dz-primary)' }} contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_subtitle')}>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--dz-primary)' }} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_subtitle" onBlur={handleTextEdit('template_hero_subtitle')}>
                             {settings?.template_hero_subtitle || "🔥 عرض محدود: اطلب الآن واحصل على توصيل مجاني!"}
                         </p>
                     </div>
@@ -642,7 +645,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         {product?.description ? (
                             <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: product.description }} />
                         ) : (
-                            <div contentEditable={canManage} suppressContentEditableWarning className="prose max-w-none" onBlur={handleTextEdit('template_description_text')}>
+                            <div contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_description_text" className="prose max-w-none" onBlur={handleTextEdit('template_description_text')}>
                                 {settings?.template_description_text ? (
                                     <div dangerouslySetInnerHTML={{ __html: settings.template_description_text }} />
                                 ) : (
@@ -682,33 +685,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     <span className="font-black text-xl" style={{ color: 'var(--dz-primary)' }}>{Math.round(Number(product?.price || 4500)).toLocaleString()} دج</span>
                     <span className="text-[10px] text-gray-400">الدفع عند الاستلام</span>
                 </div>
-                <button className="text-white font-bold px-8 py-3 rounded-xl text-lg flex-grow shadow-lg" style={{ backgroundColor: accentColor }} onClick={() => window.scrollTo({top: document.querySelector('.dz-checkout-card')?.getBoundingClientRect().top || 0, behavior: 'smooth'})}>
+                <button className="text-white font-bold px-8 py-3 rounded-xl text-lg flex-grow shadow-lg" style={{ backgroundColor: accentColor }} onClick={() => { const doc = rootRef.current?.ownerDocument || document; window.scrollTo({top: doc.querySelector('.dz-checkout-card')?.getBoundingClientRect().top || 0, behavior: 'smooth'}); }}>
                     أطلب الآن
                 </button>
             </div>
 
-            {/* Admin Panel (Floating) - Only visible to store owner */}
-            {canManage && (
-            <div className="fixed bottom-24 left-6 z-[100] group hidden md:block">
-                <div className="bg-white shadow-2xl rounded-2xl p-4 border border-gray-100 scale-0 group-hover:scale-100 origin-bottom-left transition-all duration-300 w-64 mb-4">
-                    <h4 className="font-bold text-gray-800 border-b pb-2 mb-3">لوحة التحكم السريعة</h4>
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs">اللون الأساسي</span>
-                            <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-6 w-10 border-none bg-transparent cursor-pointer" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs">عملة المتجر</span>
-                            <input type="text" defaultValue="دج" className="w-12 text-center text-xs bg-gray-50 border rounded p-1" />
-                        </div>
-                        <button className="w-full py-2 bg-gray-900 text-white text-xs rounded-lg font-bold hover:bg-gray-800">حفظ التغييرات</button>
-                    </div>
-                </div>
-                <button className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:rotate-12 transition-transform shadow-gray-900/30">
-                    <i className="ph ph-gear text-2xl"></i>
-                </button>
-            </div>
-            )}
+
         </div>
     );
 }

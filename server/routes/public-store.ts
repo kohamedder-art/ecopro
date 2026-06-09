@@ -1669,11 +1669,6 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
 
     const bot = botRes.rows[0];
 
-    // Bot must be enabled for chat icons to show
-    if (!bot.enabled) {
-      return res.json({ channels: [] });
-    }
-
     const channels: { platform: string; url: string; label: string }[] = [];
 
     // --- Compute platform availability (same as server/routes/bot.ts GET handler) ---
