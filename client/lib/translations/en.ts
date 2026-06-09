@@ -2504,7 +2504,7 @@ export const en = {
   "auth.createAccount": "Create Account",
 
   // Index / Landing
-  "index.badge": "Algeria's #1 Platform",
+  "index.badge": "Ecommerce Platform in Algeria",
   "index.heroLine1": "Build Your Own Store",
   "index.heroHighlight": "With One Magic Touch.",
   "index.heroDesc": "Don't just sell — wow your customers with a world-class shopping experience. Instant, lightning-fast, built specifically for the Algerian market.",
