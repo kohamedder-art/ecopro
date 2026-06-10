@@ -175,31 +175,42 @@ export default function Storefront() {
         }
         return;
       }
+
+      const cacheKey = String(storeSlug);
+      const cached = storeDataCache.get(cacheKey);
+      if (cached) {
+        setStoreSettings(cached.settings);
+        setProducts(cached.products);
+        setCategories([]);
+        setLoading(false);
+        return;
+      }
+
+      // Use server-injected data if available — skip both API calls and loading state
+      const injectedSettings = (window as any).__STORE_SETTINGS;
+      const injectedProducts = (window as any).__STORE_PRODUCTS;
+      const hasInjected = injectedSettings && String(injectedSettings.store_slug) === cacheKey;
+      const hasProducts = Array.isArray(injectedProducts) && injectedProducts.length > 0;
+
+      if (hasInjected && hasProducts) {
+        setStoreSettings(injectedSettings);
+        setProducts(injectedProducts.map((p: any) => ({ ...p, category: undefined })));
+        setCategories([]);
+        setLoading(false);
+        (window as any).__STORE_SETTINGS = null;
+        (window as any).__STORE_PRODUCTS = null;
+        return;
+      }
+
       try {
         setLoading(true);
         setError('');
 
-        const cacheKey = String(storeSlug);
-        const cached = storeDataCache.get(cacheKey);
-        if (cached) {
-          setStoreSettings(cached.settings);
-          setProducts(cached.products);
-          setCategories([]);
-          setLoading(false);
-          return;
-        }
-
-        // Use server-injected settings if available (eliminates API round-trip)
-        const injectedSettings = (window as any).__STORE_SETTINGS;
-        const hasInjected = injectedSettings && String(injectedSettings.store_slug) === cacheKey;
         if (hasInjected) {
           setStoreSettings(injectedSettings);
           (window as any).__STORE_SETTINGS = null;
         }
 
-        // Use server-injected products if available
-        const injectedProducts = (window as any).__STORE_PRODUCTS;
-        const hasProducts = Array.isArray(injectedProducts) && injectedProducts.length > 0;
         if (hasProducts) {
           (window as any).__STORE_PRODUCTS = null;
         }
