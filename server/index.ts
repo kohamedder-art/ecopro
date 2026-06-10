@@ -1907,24 +1907,22 @@ ${urls}
                   withMeta = withMeta.replace('</head>', `<script${nonceAttr2}>window.__STORE_SETTINGS=${settingsPayload}</script></head>`);
                 }
                 // Also inject products to eliminate the second API call
-                const clientIdRes = await dbPool2.query(
-                  `SELECT client_id FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
-                  [targetSlug]
-                );
-                if (clientIdRes.rows.length > 0) {
-                  const clientId = clientIdRes.rows[0].client_id;
+                try {
                   const productsRes = await dbPool2.query(
-                    `SELECT id, title, description, price, original_price, images, stock_quantity, is_featured, slug, views, created_at, metadata
-                     FROM client_store_products WHERE client_id = $1 AND status = 'active'
-                     ORDER BY is_featured DESC, created_at DESC`,
-                    [clientId]
+                    `SELECT p.id, p.title, p.description, p.price, p.original_price, p.images,
+                            p.stock_quantity, p.is_featured, p.slug, p.views, p.created_at, p.metadata
+                     FROM client_store_products p
+                     INNER JOIN client_store_settings s ON p.client_id = s.client_id
+                     WHERE s.store_slug = $1 AND p.status = 'active'
+                     ORDER BY p.is_featured DESC, p.created_at DESC`,
+                    [targetSlug]
                   );
                   if (productsRes.rows.length > 0) {
                     const productsPayload = JSON.stringify(productsRes.rows.map((p: any) => ({ ...p, category: undefined })));
                     const nonceAttr3 = nonce ? ` nonce="${nonce}"` : '';
                     withMeta = withMeta.replace('</head>', `<script${nonceAttr3}>window.__STORE_PRODUCTS=${productsPayload}</script></head>`);
                   }
-                }
+                } catch { /* ignore — client will fetch products normally */ }
               } catch { /* ignore — client will fetch normally */ }
             }
 
