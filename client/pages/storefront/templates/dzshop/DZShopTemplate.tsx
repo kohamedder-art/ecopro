@@ -10,6 +10,7 @@ import PixelScripts from '@/components/storefront/PixelScripts';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Eye, EyeOff } from 'lucide-react';
+import { getAlgeriaCommunesByWilayaId, communeDisplayName } from '@/lib/algeriaGeo';
 
 export default function DZShopTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
     const rootRef = useRef<HTMLDivElement>(null);
@@ -287,9 +288,18 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             {/* Header */}
             <header className="bg-white border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm">
                 <div className="flex items-center gap-2">
-                    {settings?.store_logo ? (
-                        <img src={settings.store_logo} alt={settings?.store_name || "متجري"} className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
-                    ) : (
+{settings?.store_logo ? (
+  <img 
+    src={settings.store_logo} 
+    alt={settings?.store_name || "متجري"} 
+    className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
+    loading="lazy"
+    decoding="async"
+    width="36"
+    height="36"
+    style={{ contentVisibility: 'auto' }}
+  />
+) : (
                         <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ backgroundColor: 'var(--dz-primary)' }}>
                             {(settings?.store_name || 'م').charAt(0)}
                         </div>
@@ -330,7 +340,13 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                                     <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
                                                 )
                                             ) : (
-                                                <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                                                <img 
+  src={item.src} 
+  alt="" 
+  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', contentVisibility: 'auto' }} 
+  loading="lazy"
+  decoding="async"
+/>
                                             )}
                                         </div>
                                     ))}
@@ -366,7 +382,14 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     {item.type === 'video' ? (
                                         <div className="w-full h-full relative">
                                             {item.embed.type === 'youtube' ? (
-                                                <img src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                                <img 
+  src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} 
+  alt="" 
+  className="w-full h-full object-cover" 
+  loading="lazy"
+  decoding="async"
+  style={{ contentVisibility: 'auto' }}
+/>
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }} />
                                             )}
@@ -375,7 +398,14 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                             </div>
                                         </div>
                                     ) : (
-                                        <img src={item.src} alt="" className="w-full h-full object-contain" loading="lazy" />
+                                        <img 
+  src={item.src} 
+  alt="" 
+  className="w-full h-full object-contain" 
+  loading="lazy"
+  decoding="async"
+  style={{ contentVisibility: 'auto' }}
+/>
                                     )}
                                 </button>
                             ))
@@ -663,10 +693,22 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         
                         {/* Landing Page Style Image (Bottom image) */}
                         <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative" ref={bottomImagePlaceholderRef} onClick={handleBottomImageClick}>
-                            {settings?.banner_url ? (
-                                <img src={settings.banner_url} className="w-full h-full object-cover" />
-                            ) : autoBannerImage ? (
-                                <img src={autoBannerImage} className="w-full h-full object-cover" />
+{settings?.banner_url ? (
+  <img 
+    src={settings.banner_url} 
+    className="w-full h-full object-cover" 
+    loading="lazy"
+    decoding="async"
+    style={{ contentVisibility: 'auto' }}
+  />
+) : autoBannerImage ? (
+  <img 
+    src={autoBannerImage} 
+    className="w-full h-full object-cover" 
+    loading="lazy"
+    decoding="async"
+    style={{ contentVisibility: 'auto' }}
+  />
                             ) : (
                                 <div className="p-10 flex flex-col items-center justify-center pointer-events-none">
                                     <i className="ph ph-plus-circle text-3xl mb-2 text-gray-400"></i>

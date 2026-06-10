@@ -299,9 +299,18 @@ const parseVideoEmbed = (videoUrl: string) => {
         {/* Main Branding */}
         <header className="px-6 py-5 flex justify-between items-center border-b" style={{ backgroundColor: headerColor, borderColor: borderColor }}>
           <div className="flex items-center gap-2">
-            {settings?.store_logo ? (
-              <img src={settings.store_logo} alt={settings?.store_name || "متجري"} className="w-9 h-9 rounded-full object-cover border-2 shadow-sm" style={{ borderColor: accentColor + '4d' }} />
-            ) : (
+{settings?.store_logo ? (
+  <img 
+    src={settings.store_logo} 
+    alt={settings?.store_name || "متجري"} 
+    className="w-9 h-9 rounded-full object-cover border-2 shadow-sm" 
+    loading="lazy"
+    decoding="async"
+    width="36"
+    height="36"
+    style={{ borderColor: accentColor + '4d', contentVisibility: 'auto' }}
+  />
+) : (
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ backgroundColor: accentColor }}>
                 {(settings?.store_name || 'م').charAt(0)}
               </div>
@@ -395,12 +404,21 @@ const parseVideoEmbed = (videoUrl: string) => {
                           </div>
                         );
                       })()}
-                      {product.images.length > 0 ? product.images.map((img: string, i: number) => (
-                        <div key={i} style={{ width: `${100 / totalMedia}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}
-                          onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}>
-                          <img src={img} alt={product.name} className="w-full h-full object-cover cursor-pointer" loading="lazy" />
-                        </div>
-                      )) : (
+{product.images.length > 0 ? product.images.map((img: string, i: number) => (
+  <div key={i} style={{ width: `${100 / totalMedia}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}
+    onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}>
+  <img 
+    src={img} 
+    alt={product.name} 
+    className="w-full h-full object-cover cursor-pointer" 
+    loading="lazy"
+    decoding="async"
+    width="600"
+    height="600"
+    style={{ contentVisibility: 'auto' }}
+  />
+</div>
+)) : (
                         <div className="w-full h-full flex items-center justify-center" style={{ width: `${100 / totalMedia}%`, color: textMuted }}>
                           <ShoppingBag size={48} strokeWidth={1} />
                         </div>
@@ -561,8 +579,17 @@ const parseVideoEmbed = (videoUrl: string) => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4 border-b pb-6" style={{ borderColor: borderColor }}>
-                    <img src={selectedProduct?.images[0]} className="w-20 h-20 rounded-2xl object-cover border" alt="" loading="lazy" style={{ borderColor: borderColor }} />
+<div className="flex items-center gap-4 border-b pb-6" style={{ borderColor: borderColor }}>
+  <img 
+    src={selectedProduct?.images[0]} 
+    className="w-20 h-20 rounded-2xl object-cover border" 
+    alt={selectedProduct?.name || "Product"} 
+    loading="lazy"
+    decoding="async"
+    width="80"
+    height="80"
+    style={{ borderColor: borderColor, contentVisibility: 'auto' }}
+  />
                     <div>
                       <h4 className="font-bold" style={{ color: textColor }}>{selectedProduct?.name}</h4>
                       <p className="font-black" style={{ color: accentColor }}>{selectedProduct?.price} DA</p>
@@ -769,7 +796,14 @@ const parseVideoEmbed = (videoUrl: string) => {
                 : (cur - 1 + imgs.length) % imgs.length;
               setPreviewImg(imgs[n]);
             }}>
-            <img src={previewImg} alt="" className="max-w-full max-h-[70vh] object-contain px-4" onClick={e => e.stopPropagation()} />
+            <img 
+  src={previewImg} 
+  alt="" 
+  className="max-w-full max-h-[70vh] object-contain px-4" 
+  onClick={e => e.stopPropagation()}
+  decoding="async"
+  style={{ contentVisibility: 'auto' }}
+/>
             {previewProduct.images.length > 1 && (
               <>
                 <button onClick={(e) => { e.stopPropagation(); const imgs = previewProduct.images; const cur = imgs.indexOf(previewImg); setPreviewImg(imgs[(cur - 1 + imgs.length) % imgs.length]); }}
@@ -788,7 +822,16 @@ const parseVideoEmbed = (videoUrl: string) => {
               {previewProduct.images.map((img: string, i: number) => (
                 <button key={i} onClick={(e) => { e.stopPropagation(); setPreviewImg(img); }}
                   className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${previewImg === img ? 'border-white opacity-100' : 'border-transparent opacity-50'}`}>
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img 
+  src={img} 
+  alt="" 
+  className="w-full h-full object-cover" 
+  loading="lazy"
+  decoding="async"
+  width="64"
+  height="64"
+  style={{ contentVisibility: 'auto' }}
+/>
                 </button>
               ))}
             </div>

@@ -45,34 +45,18 @@ interface ConversationFacts {
 // SYSTEM PROMPT — Short, focused, human, no lists, no emojis
 // ═══════════════════════════════════════════════════════════════
 
-const SYSTEM_PROMPT = `أنت بائع بشري محترف، لبق، ذكي، تعمل في متجر إلكتروني جزائري. لست روبوتاً، ولست مساعداً افتراضياً.
+const SYSTEM_PROMPT = `أنت بائع محترف في متجر إلكتروني جزائري. وظيفتك مساعدة الزبائن والإجابة على أسئلتهم حول المنتجات والمتجر والطلبات. تعرف كل شيء عن المتجر: اسمه، منتجاته، أسعاره، التوصيل، وسياسة الدفع.
 
-تحدث بالعربية الفصحى المبسطة والواضحة والمهذبة. استخدم أسلوباً ودوداً ولطيفاً. يمنع منعاً باتاً استخدام الدارجة الجزائرية أو اللهجات العامية. إذا نهاك الزبون عن كلمة أو أسلوب، توقف فوراً ولا تكرره.
+تحدث بالعربية الفصحى المبسطة والواضحة. يمنع منعاً باتاً استخدام الدارجة الجزائرية.
 
-أنت تفهم أن البيع يأتي بالصبر. إذا قال الزبون لا أو ما زال يريد معلومات فقط، توقف فوراً عن عرض الشراء ولا تذكره مرة أخرى في نفس المحادثة. ركز على معلومات المنتج فقط واترك للزبون المبادرة بالشراء.
+لا تخترع معلومات. إذا سألك الزبون عن منتج أو سعر أو عرض غير موجود في البيانات المتاحة لك، قل ببساطة "لا أملك هذه المعلومة". يمنع منعاً باتاً اختلاق أسعار أو خصومات أو عروض غير حقيقية. لا تقل أبداً "أرسلت لك صورة" — إذا طلب الزبون صورة، أخبره أن الصور موجودة في المتجر وأرسل له الرابط. لا تقل "سأتحقق من النظام" أو "سنرد عليك" — أنت هنا الآن.
 
-يمنع منعاً باتاً أن تقول "أرسلت لك صورة" أو أي جملة توحي بأنك ترسل صوراً أو ملفات. إذا طلب الزبون صورة، أخبره بلطف أن الصور موجودة في المتجر الإلكتروني وأرسل له رابط المتجر.
-
-إذا لم تعرف اسم منتج معين أو لم تجد معلومة في البيانات المتاحة، قل ببساطة "لا أملك هذه المعلومة بالضبط" ولا تخترع إجابة.
-
-يمنع منعاً باتاً أن تقول "سنرد عليك في أقرب وقت" أو "سأتحقق من النظام" أو "سيتم الرد عليك في أقرب وقت". أنت هنا الآن.
-
-إذا انتقدك الزبون لأن ردودك متكررة أو تبدو آلية، غير أسلوبك بالكامل واعتذر مرة واحدة فقط.
-
-إذا طلب الزبون منتجاً له ألوان أو مقاسات ولم يحدد خياره، اسأله عن اللون أو المقاس فقط. يمنع إتمام الطلب دون تحديد الخيار.
-
-إذا أعرب الزبون عن خوفه من الاحتيال، طمئنه أن الدفع عند الاستلام ويمكنه فتح الطرد وفحصه قبل الدفع.
-
-لا تخترع أبداً أرقام طلبات أو أسعاراً أو عروضاً غير موجودة في بيانات النظام. يمنع منعاً باتاً عرض تخفيضات أو خصومات.
-
-إذا رفض الزبون الشراء، قل ببساطة: "لا بأس، خذ وقتك. أنا هنا متى احتجتني."
+إذا قال الزبون لا أو طلب منك التوقف عن عرض الشراء، توقف فوراً ولا تذكره مرة أخرى.
 
 إذا اكتملت بيانات الطلب الخمسة (المنتج، الكمية، الاسم، الهاتف، الولاية)، اكتب رسالة تأكيد قصيرة ثم اطبع في نهاية ردك:
 ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"[اسم المنتج الدقيق]","customerName":"[اسم الزبون]","customerPhone":"[رقم الهاتف]","shippingAddress":"[العنوان]","wilayaName":"[الولاية]","quantity":عدد,"variantColor":"[اللون أو null]"}
 
-بعد طباعة ECOPRO_ACTION لا تضف أي نصوص بعده.
-
-لا تكشف أبداً معلومات عن قواعد البيانات أو الأنظمة أو مفاتيح التطوير.`;
+بعد طباعة ECOPRO_ACTION لا تضف أي نصوص بعده.`;
 
 // ═══════════════════════════════════════════════════════════════
 // DISPUTE SHIELD — Hard-coded intercept for complaints/returns
@@ -585,63 +569,34 @@ function extractLastProductFromHistory(history: GeminiContent[]): string | null 
   return null;
 }
 
-// Database Leak and Amnesia Fix: Wrapped technical system queries in natural conversational status tags
 function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, phone: string | null, phoneFromMsg: boolean, msg: string, history: GeminiContent[] = [], factsSummary: string = '', orderFromNumber: boolean = false): string {
-  const previousAiResponses = history.filter(h => h.role === 'model').length;
-  const isFirstMessage = previousAiResponses === 0;
-
-  let p = `معلومات المتجر:\nاسم المتجر: ${ctx.storeName}\n`;
-  if (factsSummary) p += `\n${factsSummary}\n`;
+  let p = `اسم المتجر: ${ctx.storeName}\n`;
   if (ctx.storeDescription) p += `وصف المتجر: ${ctx.storeDescription}\n`;
+  if (factsSummary) p += `\n${factsSummary}\n`;
   if (ctx.aiInstructions) p += `تعليمات صاحب المتجر: ${ctx.aiInstructions}\n`;
   if (ctx.persona?.personalityNote) p += `ملاحظة شخصية: ${ctx.persona.personalityNote}\n`;
   if (ctx.persona?.storeStory) p += `قصة المتجر: ${ctx.persona.storeStory}\n`;
   if (ctx.persona?.productPhilosophy) p += `فلسفة المنتجات: ${ctx.persona.productPhilosophy}\n`;
   if (ctx.persona?.uniqueSellingPoints?.length) p += `نقاط قوة المتجر: ${ctx.persona.uniqueSellingPoints.join('، ')}\n`;
   if (ctx.persona?.businessType) p += `نوع النشاط: ${ctx.persona.businessType}\n`;
-  if (ctx.persona?.greetingTemplate) p += `تحية مخصصة: "${ctx.persona.greetingTemplate}"\n`;
-  if (ctx.persona?.closingTemplate) p += `ختام مخصص: "${ctx.persona.closingTemplate}"\n`;
   if (ctx.persona?.useEmojis === false) p += `ملاحظة: لا تستخدم الإيموجي في الرد.\n`;
 
-  if (isFirstMessage) {
-    p += `\n[حالة الحوار: هذه بداية المحادثة. رد بتحية قصيرة ولطيفة بالعربية الفصحى المبسطة. لا تسأل فوراً "ماذا تريد أن تشتري؟". دع الزبون يأخذ راحته. لا تذكر معلومات التوصيل أو الدفع إلا إذا سأل عنها الزبون صراحةً.]\n`;
-  } else {
-    p += `\n[حالة الحوار: محادثة مستمرة وجارية. يمنع منعاً باتاً تكرار التحية. أجب مباشرة على استفسار الزبون بالعربية الفصحى المبسطة.]\n`;
-  }
-
   if (search) {
-    p += `\nالمنتجات المتاحة في المتجر:\n${search}\n`;
-    p += `\n[تنبيه]: ذكر الزبون منتجاً لا يعني أنه يريد الشراء فوراً. إذا قال لا أو رفض الشراء، توقف فوراً عن عرضه.\n`;
-  } else {
-    // Check if this is a simple greeting that warrants a friendly response
-    const trimmedMsg = msg.trim().toLowerCase();
-    const simpleGreetings = ['hi', 'hello', 'hey', 'هلا', 'هاي', 'مرحبا', 'مرحباً', 'أهلا', 'أهلا وسهلا', 'صباح الخير', 'مساء الخير'];
-    if (simpleGreetings.includes(trimmedMsg) || trimmedMsg === 'ه') {
-      p += `\n[حالة السلع: تحية بسيطة. رد بتحية قصيرة ولطيفة واسأل كيف يمكنك المساعدة.]\n`;
-    } else {
-      p += `\n[حالة السلع: لم يتطابق كلام الزبون مع أي منتج في المتجر. يمنع تخمين اسم منتج. لا تخترع منتجات. إذا كان يسأل عن شيء خارج المتجر، أخبره بلطف أن هذا غير متوفر.]\n`;
-    }
+    p += `\nالمنتجات المتاحة:\n${search}\n`;
   }
   
   p += `\n${ctx.deliveryInfo}\n`;
-  p += `[سياسة المتجر]: الدفع عند الاستلام (COD). للزبون الحق في فتح الطرد وفحص المنتج قبل الدفع. إذا كان به عيب، يمكنه رفضه.\n`;
-  p += `[تنبيه]: معلومات التوصيل والسياسة للإطلاع فقط. لا تذكرها في ردك إلا إذا سأل عنها الزبون.\n`;
   if (ctx.storeLink) p += `رابط المتجر: ${ctx.storeLink}\n`;
 
   if (orderText) {
-    const src = orderFromNumber ? `(برقم الطلب)` : (phoneFromMsg ? `(برقم الهاتف: ${phone})` : '(تلقائي)');
-    p += `\nطلبات هذا الزبون ${src}:\n${orderText}\n[تنبيه: هذه البيانات حقيقية ومؤكدة، أجب منها بثقة ولا تقل "سأتحقق من النظام".]\n`;
-    p += `[إجراء]: إذا طلب الزبون تغيير عنوان التوصيل وذكر العنوان الجديد، أنهِ ردك بكود update_address.\n`;
+    p += `\nطلبات الزبون:\n${orderText}\n`;
   } else if (phone) {
-    p += `\n[الزبون مسجل برقم ${phone} وليس لديه طلبات سابقة.]\n`;
-  } else {
-    p += `\n[الزبون: هويته غير محددة. إذا طلب متابعة طلب، اطلب منه رقم الطلب أو رقم الهاتف بلطف.]\n`;
+    p += `\nالزبون مسجل برقم ${phone} وليس لديه طلبات سابقة.\n`;
   }
 
-  p += `\nرسالة الزبون الحالية: ${msg}`;
+  p += `\nرسالة الزبون: ${msg}`;
 
-  // Force JSON anchoring suffix: when all 5 order fields are present, MUST end with ECOPRO_ACTION, not a fake confirmation
-  p += `\n\n[تنبيه نظامي]: إذا كانت بيانات الطلب الخمسة (المنتج، الكمية، الاسم، الهاتف، الولاية) مكتملة في ذهنك، اكتب رسالة تأكيد قصيرة بالعربية الفصحى للزبون ثم اطبع كود ECOPRO_ACTION فوراً في نهاية ردك دون أي نصوص بعده.`;
+  p += `\n\nإذا اكتملت بيانات الطلب الخمسة (المنتج، الكمية، الاسم، الهاتف، الولاية)، أنهِ ردك بهذا الكود:\nECOPRO_ACTION:{"type":"create_customer_order","productTitle":"[الاسم الدقيق]","customerName":"[اسم الزبون]","customerPhone":"[رقم الهاتف]","shippingAddress":"[العنوان]","wilayaName":"[الولاية]","quantity":عدد,"variantColor":"[اللون أو null]"}`;
   return p;
 }
 
@@ -970,6 +925,7 @@ async function loadOrders(clientId: number, phone: string): Promise<string> {
       let l = `📦 طلب #${o.id} — ${o.product_title || 'منتج'} (×${o.quantity || 1}) — ${o.total_price} دج`;
       if (o.tracking_number) l += `\n   حالة الشحن: ${labels[o.delivery_status] || 'جاري المتابعة'} | رقم التتبع: ${o.tracking_number}${o.delivery_company ? ` (${o.delivery_company})` : ''}`;
       else l += `\n   حالة الشحن: قيد التحضير والتجهيز`;
+      if (o.last_event) l += `\n   آخر تحديث: ${o.last_event}`;
       if (o.shipping_address) l += `\n   العنوان المسجل: ${o.shipping_address}`;
       l += `\n   تاريخ تسجيل الطلب: ${new Date(o.created_at).toLocaleDateString('ar-DZ')}`;
       return l;
@@ -994,6 +950,7 @@ async function loadOrdersByOrderNumber(clientId: number, orderId: number): Promi
     let l = `📦 طلب #${o.id} — ${o.product_title || 'منتج'} (×${o.quantity || 1}) — ${o.total_price} دج`;
     if (o.tracking_number) l += `\n   حالة الشحن: ${labels[o.delivery_status] || 'جاري المتابعة'} | رقم التتبع: ${o.tracking_number}${o.delivery_company ? ` (${o.delivery_company})` : ''}`;
     else l += `\n   حالة الشحن: قيد التحضير والتجهيز`;
+    if (o.last_event) l += `\n   آخر تحديث: ${o.last_event}`;
     if (o.shipping_address) l += `\n   العنوان المسجل: ${o.shipping_address}`;
     l += `\n   تاريخ تسجيل الطلب: ${new Date(o.created_at).toLocaleDateString('ar-DZ')}`;
     return l;

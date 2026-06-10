@@ -444,9 +444,18 @@ export default function IycoTemplate({
       <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: surfaceColor, borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            {settings?.store_logo ? (
-              <img src={settings.store_logo} alt={storeName} className="w-8 h-8 rounded-full object-cover" />
-            ) : (
+{settings?.store_logo ? (
+  <img 
+    src={settings.store_logo} 
+    alt={storeName} 
+    className="w-8 h-8 rounded-full object-cover"
+    loading="lazy"
+    decoding="async"
+    width="32"
+    height="32"
+    style={{ contentVisibility: 'auto' }}
+  />
+) : (
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: accentColor }}>
                 {storeName.charAt(0)}
               </div>
@@ -530,7 +539,16 @@ export default function IycoTemplate({
                   )}
                   {mainImages.map((img, idx) => (
                     <button key={idx} onClick={() => goToSlide(videoEmbed ? idx + 1 : idx)} className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border-2 transition-all cursor-pointer" style={{ borderColor: !showVideo && selectedMainImage === idx ? accentColor : 'transparent', opacity: !showVideo && selectedMainImage === idx ? 1 : 0.6 }}>
-                      <img src={img} className="w-full h-full object-cover" alt="thumb" loading="lazy" />
+                      <img 
+  src={img} 
+  className="w-full h-full object-cover" 
+  alt="thumb" 
+  loading="lazy"
+  decoding="async"
+  width="56"
+  height="56"
+  style={{ contentVisibility: 'auto' }}
+/>
                     </button>
                   ))}
                 </div>
@@ -925,13 +943,29 @@ export default function IycoTemplate({
               setZoomState({ ...zoomState, idx: n });
             }}
           >
-            <img key={zoomState.idx} src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+            <img 
+  key={zoomState.idx} 
+  src={zoomState.images[zoomState.idx]} 
+  alt="Preview" 
+  className="max-w-full max-h-[75vh] object-contain rounded-2xl" 
+  decoding="async"
+  style={{ contentVisibility: 'auto' }}
+/>
           </div>
           {zoomState.images.length > 1 && (
             <div className="shrink-0 flex gap-2 px-4 pt-2 overflow-x-auto justify-center" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
               {zoomState.images.map((img, i) => (
                 <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 opacity-50 hover:opacity-80'}`}>
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img 
+  src={img} 
+  alt="" 
+  className="w-full h-full object-cover" 
+  loading="lazy"
+  decoding="async"
+  width="56"
+  height="56"
+  style={{ contentVisibility: 'auto' }}
+/>
                 </button>
               ))}
             </div>

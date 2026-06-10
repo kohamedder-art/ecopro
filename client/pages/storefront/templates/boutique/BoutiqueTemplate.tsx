@@ -124,7 +124,14 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
               <button key={i} onClick={() => goTo(imgIdx)}
                 className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 transition-all"
                 style={{ borderColor: !showVideo && i === idx ? accentColor : 'transparent', opacity: !showVideo && i === idx ? 1 : 0.6 }}>
-                <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <img 
+  src={img} 
+  alt="" 
+  className="w-full h-full object-cover" 
+  loading="lazy"
+  decoding="async"
+  style={{ contentVisibility: 'auto' }}
+/>
               </button>
             );
           })}
@@ -545,7 +552,18 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {/* Product Summary */}
                   <div className="flex gap-3 p-3 rounded-2xl border" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
-                    {orderProduct.images?.[0] && <img src={orderProduct.images[0]} className="w-20 h-20 object-cover rounded-xl shrink-0" alt={orderProduct.title} />}
+                    {orderProduct.images?.[0] && (
+  <img 
+    src={orderProduct.images[0]} 
+    className="w-20 h-20 object-cover rounded-xl shrink-0" 
+    alt={orderProduct.title}
+    loading="lazy"
+    decoding="async"
+    width="80"
+    height="80"
+    style={{ contentVisibility: 'auto' }}
+  />
+)}
                     <div className="flex-1">
                       <h4 className="font-bold text-sm" style={{ color: surfaceTextColor }}>{orderProduct.title}</h4>
                       {orderVariant?.variant_name && <p className="text-xs mt-0.5" style={{ color: surfaceTextMuted }}>{orderVariant.variant_name}</p>}
@@ -795,13 +813,29 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               setZoomState({ ...zoomState, idx: n });
             }}
           >
-            <img key={zoomState.idx} src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+            <img 
+  key={zoomState.idx} 
+  src={zoomState.images[zoomState.idx]} 
+  alt="Preview" 
+  className="max-w-full max-h-[75vh] object-contain rounded-2xl" 
+  decoding="async"
+  style={{ contentVisibility: 'auto' }}
+/>
           </div>
           {zoomState.images.length > 1 && (
             <div className="shrink-0 flex gap-2 px-4 pt-2 overflow-x-auto justify-center" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
               {zoomState.images.map((img, i) => (
                 <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 opacity-50 hover:opacity-80'}`}>
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img 
+  src={img} 
+  alt="" 
+  className="w-full h-full object-cover" 
+  loading="lazy"
+  decoding="async"
+  width="56"
+  height="56"
+  style={{ contentVisibility: 'auto' }}
+/>
                 </button>
               ))}
             </div>
