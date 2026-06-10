@@ -112,8 +112,6 @@ export async function assessOrderRisk(
   // ── 3. Address quality ──
   if (address) {
     const a = address.trim();
-    if (a.length < 10) { score += 15; flags.push('📍 عنوان قصير جداً'); }
-    else if (a.length < 20) { score += 5; flags.push('📍 عنوان قصير'); }
     if (/^[\d\s.\-]+$/.test(a)) { score += 20; flags.push('📍 عنوان أرقام فقط'); }
   }
 
@@ -231,22 +229,6 @@ export async function assessOrderRisk(
     }
   }
 
-  // ── 8. Cross-store phone velocity ──
-  const crossStoreRes = await q(`
-    SELECT COUNT(DISTINCT client_id) as stores FROM store_orders
-    WHERE REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '+', '') LIKE '%' || $1
-      AND client_id != $2
-      AND created_at > NOW() - INTERVAL '24 hours'
-  `, [normalizedPhone, clientId]);
-  const crossStores = parseInt(crossStoreRes.rows[0]?.stores || '0');
-  if (crossStores >= 2) {
-    score += 20;
-    flags.push(`🏪 هذا الرقم طلب في ${crossStores} متاجر أخرى مؤخراً`);
-  } else if (crossStores === 1) {
-    score += 5;
-    flags.push(`🏪 هذا الرقم طلب في متجر آخر`);
-  }
-
   // ── 9. Per-IP velocity ──
   const ipOrdersRes = await q(`
     SELECT COUNT(*) as cnt FROM store_orders
@@ -311,7 +293,8 @@ export async function assessOrderRisk(
   }
 
   if (history.totalOrders === 0) {
-    flags.push('🆕 عميل جديد - لا يوجد سجل سابق');
+    const hasIPFlag = flags.some(f => f.includes('طلب من') || f.includes('أرقام مختلفة'));
+    if (!hasIPFlag) flags.push('🆕 عميل جديد - لا يوجد سجل سابق');
   }
 
   return { score, level, flags, phoneHistory: history, recommendation };
