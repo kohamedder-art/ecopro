@@ -1914,8 +1914,8 @@ ${urls}
                 if (clientIdRes.rows.length > 0) {
                   const clientId = clientIdRes.rows[0].client_id;
                   const productsRes = await dbPool2.query(
-                    `SELECT id, title, description, price, original_price, images, stock_quantity, is_featured, slug, views, metadata
-                     FROM client_products WHERE client_id = $1 AND is_available = true
+                    `SELECT id, title, description, price, original_price, images, stock_quantity, is_featured, slug, views, created_at, metadata
+                     FROM client_store_products WHERE client_id = $1 AND status = 'active'
                      ORDER BY is_featured DESC, created_at DESC`,
                     [clientId]
                   );
