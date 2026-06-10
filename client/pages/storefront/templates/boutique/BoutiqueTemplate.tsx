@@ -332,6 +332,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           customer_address: address,
           customer_notes: customerNotes,
           shipping_wilaya_id: selectedWilayaId,
+          shipping_commune_id: Number(communeId) || undefined,
           product_name: orderProduct.title || orderProduct.name || '',
           ...getFraudData(),
         }),

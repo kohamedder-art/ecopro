@@ -216,6 +216,8 @@ const parseVideoEmbed = (videoUrl: string) => {
         customer_phone: fd.get('phone'),
         customer_address: [selectedWilaya?.labelAR, communeDisplayName(getAlgeriaCommuneById(customerCommune)!) || customerCommune, customerAddress].filter(Boolean).join(' - '),
         customer_notes: customerNotes,
+        shipping_wilaya_id: selectedWilayaId,
+        shipping_commune_id: Number(customerCommune) || undefined,
         product_name: selectedProduct.title || selectedProduct.name || '',
         ...getFraudData(),
       };
