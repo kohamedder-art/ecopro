@@ -283,6 +283,19 @@ export async function handleCustomerMessage(
   let phone = await resolvePhone(clientId, platform, platformChatId);
   let orderText = phone ? await loadOrders(clientId, phone) : '';
   let phoneFromMsg = false;
+  // WhatsApp: try all stored phones for this chat if first phone got no orders
+  if (!orderText && platform === 'whatsapp') {
+    try {
+      const p = await pool();
+      const phones = await p.query(`SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND messenger_psid = $2 AND customer_phone IS NOT NULL`, [clientId, platformChatId]);
+      for (const row of phones.rows) {
+        if (row.customer_phone !== phone) {
+          const lookup = await loadOrders(clientId, row.customer_phone);
+          if (lookup) { orderText = lookup; phone = row.customer_phone; break; }
+        }
+      }
+    } catch {}
+  }
   if (!phone || !orderText) {
     const extracted = extractPhone(msg);
     if (extracted) {
