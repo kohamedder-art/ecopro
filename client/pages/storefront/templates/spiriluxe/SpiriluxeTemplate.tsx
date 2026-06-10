@@ -155,6 +155,7 @@ export default function SpiriluxeTemplate({
         customer_address: [selectedWilaya?.labelAR || '', communeDisplayName(getAlgeriaCommuneById(customerCommune)!) || fd.get('commune') || customerCommune, fd.get('address')].filter(Boolean).join(' - '),
         customer_notes: customerNotes || fd.get('notes') || '',
         shipping_wilaya_id: selectedWilayaId,
+        shipping_commune_id: Number(customerCommune) || undefined,
         product_name: mainProduct.title || mainProduct.name || '',
         ...getFraudData(),
       };

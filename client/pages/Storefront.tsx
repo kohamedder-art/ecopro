@@ -189,22 +189,55 @@ export default function Storefront() {
           return;
         }
 
-        // Fetch settings and products in parallel using the URL slug
-        // Canonicalization redirect will re-fetch if needed
-        const slug = String(storeSlug);
-        const encodedSlug = encodeURIComponent(slug);
-        const [settingsRes, productsRes] = await Promise.all([
-          fetchWithTimeout(`/api/storefront/${encodedSlug}/settings`, 25000, { cache: 'no-store' }, 1),
-          fetchWithTimeout(`/api/storefront/${encodedSlug}/products`, 35000, { cache: 'no-store' }, 1),
-        ]);
-
-        if (!settingsRes.ok) {
-          if (settingsRes.status === 404) throw new Error(t('storefront.notAvailable'));
-          const body = await settingsRes.text().catch(() => '');
-          throw new Error(body || 'Failed to load store');
+        // Use server-injected settings if available (eliminates API round-trip)
+        const injectedSettings = (window as any).__STORE_SETTINGS;
+        const hasInjected = injectedSettings && String(injectedSettings.store_slug) === cacheKey;
+        if (hasInjected) {
+          setStoreSettings(injectedSettings);
+          (window as any).__STORE_SETTINGS = null;
         }
 
-        const settingsData = await settingsRes.json();
+        // Use server-injected products if available
+        const injectedProducts = (window as any).__STORE_PRODUCTS;
+        const hasProducts = Array.isArray(injectedProducts) && injectedProducts.length > 0;
+        if (hasProducts) {
+          (window as any).__STORE_PRODUCTS = null;
+        }
+
+        const slug = String(storeSlug);
+        const encodedSlug = encodeURIComponent(slug);
+
+        let settingsData: any = null;
+        let productsData: any = null;
+
+        if (hasInjected) {
+          settingsData = { settings: injectedSettings };
+        } else {
+          const sRes = await fetchWithTimeout(`/api/storefront/${encodedSlug}/settings`, 25000, { cache: 'no-store' }, 1);
+          if (!sRes.ok) {
+            if (sRes.status === 404) throw new Error(t('storefront.notAvailable'));
+            const body = await sRes.text().catch(() => '');
+            throw new Error(body || 'Failed to load store');
+          }
+          settingsData = await sRes.json();
+        }
+
+        if (!hasProducts) {
+          const pRes = await fetchWithTimeout(`/api/storefront/${encodedSlug}/products`, 35000, { cache: 'no-store' }, 1);
+          if (pRes.ok) productsData = await pRes.json();
+        }
+        if (!productsData) {
+          if (hasProducts) {
+            productsData = injectedProducts;
+          } else {
+            const refetchRes = await fetchWithTimeout(
+              `/api/storefront/${encodeURIComponent(settingsData?.settings?.store_slug || slug)}/products`,
+              35000, { cache: 'no-store' }, 1
+            );
+            if (refetchRes.ok) productsData = await refetchRes.json();
+            else throw new Error(t('storefront.notAvailable'));
+          }
+        }
         if (!isMounted) return;
         const incomingSettings = settingsData?.settings || settingsData || {};
         const newSettings = {
@@ -216,39 +249,16 @@ export default function Storefront() {
           store_logo: '',
           banner_url: '',
           ...incomingSettings,
-          // Use the template from store settings, or default to a valid template ID
           template: incomingSettings?.template || 'pro',
-          // Always ensure store_slug is available (use URL slug as fallback)
           store_slug: incomingSettings?.store_slug || storeSlug,
         };
         setStoreSettings(newSettings);
 
-        // Canonicalize the URL to the authoritative store_slug from the backend.
-        // Always prefer store_slug over store_name-derived slugs to avoid expensive
-        // name-normalization fallbacks on the backend.
         const canonical = String(newSettings.store_slug || storeSlug);
-
-        // If we need to canonicalize, do it first; view tracking will happen on the next render.
         if (canonical && canonical !== slug && location.pathname === `/store/${slug}`) {
           navigate(`/store/${canonical}${location.search}`, { replace: true });
           return;
         }
-
-        // If products already fetched in parallel, use them; otherwise fetch separately
-        let productsData: any = null;
-        if (productsRes && productsRes.ok) {
-          productsData = await productsRes.json();
-        }
-        if (!productsData) {
-          // Re-fetch products with canonical slug if parallel fetch failed or slug changed
-          const refetchRes = await fetchWithTimeout(
-            `/api/storefront/${encodeURIComponent(canonical)}/products`,
-            35000, { cache: 'no-store' }, 1
-          );
-          if (refetchRes.ok) productsData = await refetchRes.json();
-          else throw new Error(t('storefront.notAvailable'));
-        }
-        if (!isMounted) return;
 
         // Track storefront page view once per canonical slug.
         if (canonical && trackedViewRef.current !== canonical) {

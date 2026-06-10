@@ -1884,6 +1884,50 @@ ${urls}
               withMeta = withMeta.replace('</head>', `<script${nonceAttr}>window.__STORE_SLUG=${slugJson}</script></head>`);
             }
 
+            // Inject store settings and products inline so React renders immediately without API calls
+            if (targetSlug) {
+              try {
+                const { ensureConnection: getPool2 } = await import('./utils/database');
+                const dbPool2 = await getPool2();
+                const settingsRes = await dbPool2.query(
+                  `SELECT store_name, store_description, store_logo,
+                          primary_color, secondary_color,
+                          template, banner_url, 'DZD' as currency_code,
+                          template_settings, template_settings_by_template, global_settings,
+                          store_slug, store_images
+                   FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
+                  [targetSlug]
+                );
+                if (settingsRes.rows.length > 0) {
+                  const row = settingsRes.rows[0];
+                  const templateSettings = row.template_settings && typeof row.template_settings === 'object' ? row.template_settings : {};
+                  const globalSettings = row.global_settings && typeof row.global_settings === 'object' ? row.global_settings : {};
+                  const settingsPayload = JSON.stringify({ ...globalSettings, ...templateSettings, ...row, store_slug: row.store_slug || targetSlug });
+                  const nonceAttr2 = nonce ? ` nonce="${nonce}"` : '';
+                  withMeta = withMeta.replace('</head>', `<script${nonceAttr2}>window.__STORE_SETTINGS=${settingsPayload}</script></head>`);
+                }
+                // Also inject products to eliminate the second API call
+                const clientIdRes = await dbPool2.query(
+                  `SELECT client_id FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
+                  [targetSlug]
+                );
+                if (clientIdRes.rows.length > 0) {
+                  const clientId = clientIdRes.rows[0].client_id;
+                  const productsRes = await dbPool2.query(
+                    `SELECT id, title, description, price, original_price, images, stock_quantity, is_featured, slug, views, metadata
+                     FROM client_products WHERE client_id = $1 AND is_available = true
+                     ORDER BY is_featured DESC, created_at DESC`,
+                    [clientId]
+                  );
+                  if (productsRes.rows.length > 0) {
+                    const productsPayload = JSON.stringify(productsRes.rows.map((p: any) => ({ ...p, category: undefined })));
+                    const nonceAttr3 = nonce ? ` nonce="${nonce}"` : '';
+                    withMeta = withMeta.replace('</head>', `<script${nonceAttr3}>window.__STORE_PRODUCTS=${productsPayload}</script></head>`);
+                  }
+                }
+              } catch { /* ignore — client will fetch normally */ }
+            }
+
             const injected = nonce
               ? withMeta.replace(/<script\s+type="module"\s+/g, `<script type="module" nonce="${nonce}" `)
               : withMeta;

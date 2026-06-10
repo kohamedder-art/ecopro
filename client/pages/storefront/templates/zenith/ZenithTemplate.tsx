@@ -178,6 +178,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           customer_phone: customerPhone,
           customer_address: address,
           customer_notes: customerNotes,
+          shipping_wilaya_id: selectedWilayaId,
+          shipping_commune_id: Number(communeId) || undefined,
           product_name: mainProduct.title || mainProduct.name || '',
           ...getFraudData(),
         }),
