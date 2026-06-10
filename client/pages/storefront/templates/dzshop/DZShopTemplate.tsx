@@ -37,6 +37,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const [customerAddress, setCustomerAddress] = useState('');
     const [customerCommune, setCustomerCommune] = useState('');
     const [customerNotes, setCustomerNotes] = useState('');
+    const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+    useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
     const [quantity, setQuantity] = useState(1);
 
     // Get product first (needed for variant/offer hooks)
@@ -573,7 +575,10 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 {showCommune && (
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">البلدية</label>
-                                        <input name="commune" type="text" placeholder="البلدية" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" />
+                                        <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 appearance-none transition-colors">
+                                            <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                                            {communes.map(c => <option key={c.id} value={communeDisplayName(c)}>{communeDisplayName(c)}</option>)}
+                                        </select>
                                     </div>
                                 )}
                             </div>

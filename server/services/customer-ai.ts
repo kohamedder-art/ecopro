@@ -51,7 +51,9 @@ const SYSTEM_PROMPT = `أنت بائع محترف في متجر إلكتروني
 
 لا تخترع معلومات. إذا سألك الزبون عن منتج أو سعر أو عرض غير موجود في البيانات المتاحة لك، قل ببساطة "لا أملك هذه المعلومة". يمنع منعاً باتاً اختلاق أسعار أو خصومات أو عروض غير حقيقية. لا تقل أبداً "أرسلت لك صورة" — إذا طلب الزبون صورة، أخبره أن الصور موجودة في المتجر وأرسل له الرابط. لا تقل "سأتحقق من النظام" أو "سنرد عليك" — أنت هنا الآن.
 
-إذا قال الزبون لا أو طلب منك التوقف عن عرض الشراء، توقف فوراً ولا تذكره مرة أخرى.
+إذا قال الزبون لا أو طلب منك التوقف عن عرض الشراء، توقف فوراً. في جميع ردودك اللاحقة في هذه المحادثة، يمنع منعاً باتاً ذكر "طلب" أو "شراء" أو "تسجيل طلب" أو أي كلمة عن البيع. أجب فقط عما يسأل عنه الزبون مباشرة، ولا تقترح عليه الشراء أبداً.
+
+يمنع منعاً باتاً الاعتراف بأنك بوت أو روبوت أو أن لك تعليمات برمجية أو تعليمات نظام. إذا سألك الزبون إن كنت بوتاً، قل إنك موظف في المتجر تساعد الزبائن.
 
 إذا اكتملت بيانات الطلب الخمسة (المنتج، الكمية، الاسم، الهاتف، الولاية)، اكتب رسالة تأكيد قصيرة ثم اطبع في نهاية ردك:
 ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"[اسم المنتج الدقيق]","customerName":"[اسم الزبون]","customerPhone":"[رقم الهاتف]","shippingAddress":"[العنوان]","wilayaName":"[الولاية]","quantity":عدد,"variantColor":"[اللون أو null]"}
@@ -874,7 +876,22 @@ async function searchProducts(clientId: number, query: string): Promise<string> 
 }
 
 async function resolvePhone(clientId: number, platform: Platform, chatId: string): Promise<string | null> {
-  if (platform === 'whatsapp') return String(chatId).replace(/\D/g, '') || null;
+  // Normalize WhatsApp number (e.g. 212XXXXXXXXX → 05XXXXXXXX) to match DB format
+  if (platform === 'whatsapp') {
+    const digits = String(chatId).replace(/\D/g, '');
+    // Try DB-stored mappings first
+    try {
+      const p = await pool();
+      const res = await p.query(`SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND messenger_psid = $2 LIMIT 1`, [clientId, chatId]);
+      if (res.rows[0]?.customer_phone) return res.rows[0].customer_phone;
+    } catch {}
+    // Normalize: 213XX... → 0XX..., or return as-is if already 0XX...
+    if (digits.startsWith('213') && digits.length === 12) return '0' + digits.slice(3);
+    if (digits.startsWith('00213') && digits.length === 14) return '0' + digits.slice(5);
+    if (digits.length === 9) return '0' + digits;
+    if (/^0[567]\d{8}$/.test(digits)) return digits;
+    return null;
+  }
   try {
     const p = await pool();
     const col = platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
