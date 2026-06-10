@@ -317,7 +317,7 @@ export default function SpiriluxeTemplate({
         const globalIndex = startIndex + i;
         return (
           <div key={url + globalIndex} className="relative group">
-            <img src={url} alt="" className="w-full block" loading="lazy" />
+            <img src={url} alt="" className="w-full block" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
             {canManage && (
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                 {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}
@@ -362,7 +362,7 @@ export default function SpiriluxeTemplate({
       {/* Store Header */}
       <div className="sticky top-0 z-50 px-4 py-3" style={{ backgroundColor: bgColor, borderBottom: `1px solid ${borderColor}` }}>
         <div className="max-w-md mx-auto flex items-center gap-2">
-          {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" />}
+          {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" loading="lazy" decoding="async" width="28" height="28" style={{ contentVisibility: 'auto' }} />}
           <span className="font-bold text-base">{settings?.store_name || 'المتجر'}</span>
         </div>
       </div>

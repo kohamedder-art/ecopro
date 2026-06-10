@@ -505,7 +505,7 @@ export default function ProductDetail() {
             >
               ✕
             </button>
-            <img src={productImage} alt={productName} style={{ maxWidth: '100%', maxHeight: '100vh', display: 'block' }} />
+            <img src={productImage} alt={productName} style={{ maxWidth: '100%', maxHeight: '100vh', display: 'block' }} decoding="async" />
           </div>
         </div>
       )}

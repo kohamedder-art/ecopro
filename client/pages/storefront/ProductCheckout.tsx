@@ -1271,7 +1271,7 @@ export default function ProductCheckout() {
 
             <div className="flex items-center gap-2 min-w-0">
               {storeLogoUrl ? (
-                <img src={storeLogoUrl} alt="" className="w-8 h-8 rounded-md object-cover border border-slate-200" />
+                <img src={storeLogoUrl} alt="" className="w-8 h-8 rounded-md object-cover border border-slate-200" loading="lazy" decoding="async" width="32" height="32" style={{ contentVisibility: 'auto' }} />
               ) : null}
               <span className="font-semibold text-slate-900 truncate">{settings.store_name || 'متجر'}</span>
             </div>
@@ -1820,7 +1820,7 @@ export default function ProductCheckout() {
                             }`}
                             aria-label={`Image ${idx + 1}`}
                           >
-                            <img src={src} alt="" className="w-full h-full object-cover" />
+                            <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
                           </button>
                         );
                       })}

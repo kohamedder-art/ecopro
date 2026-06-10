@@ -14,6 +14,8 @@ import { formatMoney } from '@/utils/money';
 import { STOREFRONT_SETTINGS_KEY, STOREFRONT_TEMPLATE_KEY } from '@/lib/storefrontStorage';
 import { getResolvedStoreSlug, buildStoreUrl, isSubdomainStore } from '@/lib/resolvedStore';
 
+const storeDataCache = new Map<string, { settings: any; products: StoreProduct[] }>();
+
 interface StoreProduct {
   id: number;
   title: string;
@@ -176,6 +178,17 @@ export default function Storefront() {
       try {
         setLoading(true);
         setError('');
+
+        const cacheKey = String(storeSlug);
+        const cached = storeDataCache.get(cacheKey);
+        if (cached) {
+          setStoreSettings(cached.settings);
+          setProducts(cached.products);
+          setCategories([]);
+          setLoading(false);
+          return;
+        }
+
         // Fetch settings and products in parallel using the URL slug
         // Canonicalization redirect will re-fetch if needed
         const slug = String(storeSlug);
@@ -288,6 +301,7 @@ export default function Storefront() {
         const withoutCategories = items.map((p) => ({ ...p, category: undefined }));
         setProducts(withoutCategories);
         setCategories([]);
+        storeDataCache.set(cacheKey, { settings: newSettings, products: withoutCategories });
         setLoading(false);
       } catch (e: any) {
         if (!isMounted) return;

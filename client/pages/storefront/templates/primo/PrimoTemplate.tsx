@@ -255,6 +255,7 @@ const openProduct = (product: any) => {
           customer_address: address,
           customer_notes: customerNotes,
           shipping_wilaya_id: selectedWilayaId,
+          shipping_commune_id: Number(customerCommune) || undefined,
           product_name: mainProduct.title || mainProduct.name || '',
           ...getFraudData(),
         }),
@@ -363,7 +364,7 @@ const openProduct = (product: any) => {
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {settings?.store_logo ? (
-              <img src={settings.store_logo} alt={storeName} className="w-8 h-8 rounded-full object-cover" />
+              <img src={settings.store_logo} alt={storeName} className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" width="32" height="32" style={{ contentVisibility: 'auto' }} />
             ) : (
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: accentColor }}>
                 {storeName.charAt(0)}
@@ -424,7 +425,7 @@ const openProduct = (product: any) => {
                   return (
                     <div key={product.id} className="flex-shrink-0 w-40 cursor-pointer rounded-xl overflow-hidden transition-all hover:shadow-lg" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }} onClick={() => openProduct(product)}>
                       <div className="relative" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
-                        <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-cover" />
+                        <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" decoding="async" className="w-full h-full object-cover" style={{ contentVisibility: 'auto' }} />
                         {discount > 0 && (
                           <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
                             -{discount}%
@@ -557,7 +558,7 @@ const openProduct = (product: any) => {
                   )}
                   {mainImages.map((img, i) => (
                     <button key={i} onClick={() => { setShowVideo(false); setSelectedMainImage(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden" style={{ border: `2px solid ${!showVideo && selectedMainImage === i ? accentColor : 'transparent'}` }}>
-                      <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" />
+                      <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
                     </button>
                   ))}
                 </div>
@@ -810,7 +811,7 @@ const openProduct = (product: any) => {
             <div className="shrink-0 flex gap-2 px-4 pt-2 overflow-x-auto justify-center" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
               {zoomState.images.map((img, i) => (
                 <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 opacity-50 hover:opacity-80'}`}>
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" width="56" height="56" style={{ contentVisibility: 'auto' }} />
                 </button>
               ))}
             </div>

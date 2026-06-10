@@ -73,8 +73,10 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 customer_name: fd.get('name'),
                 customer_phone: fd.get('phone'),
                 customer_address: (fd.get('address') as string) || selectedWilaya?.labelAR || '',
-                customer_commune: fd.get('commune') || '',
-                customer_notes: fd.get('notes') || ''
+                customer_commune: fd.get('commune_name') || '',
+                customer_notes: fd.get('notes') || '',
+                shipping_wilaya_id: selectedWilayaId,
+                shipping_commune_id: Number(fd.get('commune')) || undefined,
             };
             const res = await fetch('/api/orders/create', {
                 method: 'POST',
@@ -82,14 +84,21 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            if (!res.ok) throw new Error('Order error');
+            if (!res.ok) {
+                if (data.fields) {
+                    const list = Object.values(data.fields).map((m: any) => `• ${m}`).join('\n');
+                    throw new Error((data.error || 'يرجى تصحيح البيانات') + '\n' + list);
+                }
+                throw new Error(data.error || 'حدث خطأ');
+            }
             setLastOrderId(data.order?.id || null);
             setLastTelegramUrl(data.telegramStartUrl || null);
             setCustomerPhone(fd.get('phone') as string);
             setOrderSuccess(true);
         } catch(err) {
+            const msg = err instanceof Error ? err.message : 'حدث خطأ';
+            setOrderError(msg);
             console.error(err);
-            setOrderError('حدث خطأ أثناء تقديم الطلب. حاول مرة أخرى.');
         } finally {
             setIsSubmitting(false);
         }
@@ -523,6 +532,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         
                         <h3 className="text-lg font-bold mb-4 mt-2">معلومات المشتري</h3>
 
+                        {orderError && (
+                            <div className="bg-red-50 border-2 border-red-400 rounded-xl p-4 mb-4 text-red-700 text-sm whitespace-pre-line">
+                                {orderError}
+                            </div>
+                        )}
+
                         <form className="space-y-4 mt-6" onSubmit={handleDefaultOrder}>
                             {/* Variants */}
                             {product?.variants && product.variants.length > 0 && (
@@ -576,9 +591,10 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">البلدية</label>
                                         <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 appearance-none transition-colors">
-                                            <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
-                                            {communes.map(c => <option key={c.id} value={communeDisplayName(c)}>{communeDisplayName(c)}</option>)}
+                                            <option value="">اختر البلدية</option>
+                                            {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                                         </select>
+                                        <input name="commune_name" type="hidden" value={customerCommune ? (communeDisplayName(communes.find(c => c.id === customerCommune)!) || customerCommune) : ''} />
                                     </div>
                                 )}
                             </div>

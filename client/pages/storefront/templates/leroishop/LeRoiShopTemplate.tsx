@@ -346,6 +346,7 @@ export default function LeRoiShopTemplate({
           customer_notes: fd.get('notes') as string,
           customer_address: [selectedWilaya?.labelAR || '', communeDisplayName(getAlgeriaCommuneById(communeId)!) || fd.get('commune'), fd.get('address')].filter(Boolean).join(' - '),
           shipping_wilaya_id: selectedWilayaId,
+          shipping_commune_id: Number(communeId) || undefined,
           product_name: activeProduct.title || activeProduct.name || '',
           ...getFraudData(),
         }),
@@ -389,7 +390,7 @@ export default function LeRoiShopTemplate({
   }) => (
     <div className={`relative ${className}`} style={{ backgroundColor: surfaceMuted, minHeight: src ? undefined : 200 }}>
       {src ? (
-        <img src={src} alt="" className="w-full h-auto block" />
+        <img src={src} alt="" className="w-full h-auto block" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2" style={{ color: textMuted }}>
           <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
@@ -449,7 +450,7 @@ export default function LeRoiShopTemplate({
           </div>
           <div className="flex items-center gap-2 cursor-pointer" onClick={goToCatalog}>
             {settings?.store_logo ? (
-              <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover" />
+              <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" width="32" height="32" style={{ contentVisibility: 'auto' }} />
             ) : null}
             <span className="text-xl md:text-2xl font-black tracking-tight" style={{ color: surfaceTextColor }}>
               {settings?.store_name || 'متجري'}
@@ -621,7 +622,7 @@ export default function LeRoiShopTemplate({
                                   <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
                                 )
                               ) : (
-                                <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', cursor: 'pointer' }} loading="lazy" />
+                                <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', cursor: 'pointer' }} loading="lazy" decoding="async" />
                               )}
                             </div>
                           ))}
@@ -647,7 +648,7 @@ export default function LeRoiShopTemplate({
                             {item.type === 'video' ? (
                               <div className="w-full h-full relative">
                                 {item.embed.type === 'youtube' ? (
-                                  <img src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                  <img src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }} />
                                 )}
@@ -656,7 +657,7 @@ export default function LeRoiShopTemplate({
                                 </div>
                               </div>
                             ) : (
-                              <img src={item.src} alt="" className="w-full h-full object-contain" loading="lazy" />
+                              <img src={item.src} alt="" className="w-full h-full object-contain" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
                             )}
                           </button>
                         ))}

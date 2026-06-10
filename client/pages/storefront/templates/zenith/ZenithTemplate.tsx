@@ -249,7 +249,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         {/* Header */}
         <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between gap-4" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
           <div className="flex items-center gap-2 shrink-0">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" />}
+            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" loading="lazy" decoding="async" width="28" height="28" style={{ contentVisibility: 'auto' }} />}
             <div className="font-bold text-base" style={{ color: textColor }}>
               {storeName}
             </div>
