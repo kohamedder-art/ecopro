@@ -35,9 +35,9 @@ const project = (lat: number, lng: number): [number, number] => {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────
-const fmtNum = (n: number | null | undefined) => n != null ? Number(n).toLocaleString('ar-DZ') : '0';
-const fmtCurr = (n: number | null | undefined) => n != null ? `${Number(n).toLocaleString('ar-DZ')} دج` : '0 دج';
-const fmtPct = (n: number | null | undefined) => n != null ? `${Number(n).toFixed(1)}%` : '—';
+const fmtNum = (n: number | null | undefined) => n != null ? Math.round(n).toLocaleString('ar-DZ') : '0';
+const fmtCurr = (n: number | null | undefined) => n != null ? `${Math.round(n).toLocaleString('ar-DZ')} دج` : '0 دج';
+const fmtPct = (n: number | null | undefined) => n != null ? `${Math.round(n)}%` : '—';
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('ar', { month: 'short', day: 'numeric' });
 
 const STATUS_AR: Record<string, string> = {
@@ -54,6 +54,7 @@ const STATUS_COLORS: Record<string, string> = {
 const TRAFFIC_AR: Record<string, string> = {
   facebook:'فيسبوك', instagram:'إنستغرام', google:'غوغل', tiktok:'تيك توك',
   direct:'مباشر', organic:'عضوي', email:'بريد إلكتروني', referral:'إحالة', unknown:'غير معروف',
+  fb:'فيسبوك', ig:'إنستغرام', an:'غير معروف',
 };
 
 // ─── Algeria SVG Outline (from Natural Earth GeoJSON) ──────
@@ -437,18 +438,20 @@ export default function MarketingAnalytics() {
             <span className="text-sm font-bold text-foreground">مصادر الزيارات</span>
           </div>
           {sourceData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={Math.max(200, sourceData.length * 36)}>
-              <BarChart data={sourceData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 }} width={80} axisLine={false} tickLine={false} textAnchor="end" />
-                <RechartsTooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 10, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
-                  formatter={(v: number, n: string) => [fmtNum(v), n === 'sessions' ? 'زيارات' : 'مشتريات']} />
-                <Bar dataKey="sessions" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={10} name="sessions" />
-                <Bar dataKey="purchases" fill="#10b981" radius={[0, 4, 4, 0]} barSize={10} name="purchases" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div dir="ltr">
+              <ResponsiveContainer width="100%" height={Math.max(200, sourceData.length * 36)}>
+                <BarChart data={sourceData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 }} width={80} axisLine={false} tickLine={false} textAnchor="end" />
+                  <RechartsTooltip
+                    contentStyle={{ fontSize: 11, borderRadius: 10, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
+                    formatter={(v: number, n: string) => [fmtNum(v), n === 'sessions' ? 'زيارات' : 'مشتريات']} />
+                  <Bar dataKey="sessions" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={10} name="sessions" />
+                  <Bar dataKey="purchases" fill="#10b981" radius={[0, 4, 4, 0]} barSize={10} name="purchases" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <p className="text-xs text-muted-foreground text-center py-8">لا توجد بيانات</p>
           )}

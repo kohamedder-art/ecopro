@@ -242,7 +242,8 @@ export async function upsertAnalyticSessionFromEvent(input: AnalyticEventInput) 
 
   const eventData = input.eventData && typeof input.eventData === 'object' ? input.eventData : {};
   const pagePath = parsePagePath(input.pageUrl, eventData.page_path);
-  const source = toOptionalText(eventData.source) || toOptionalText(eventData.utm_source) || 'direct';
+  const rawSource = toOptionalText(eventData.source) || toOptionalText(eventData.utm_source) || 'direct';
+  const source = rawSource === 'fb' ? 'facebook' : rawSource === 'ig' ? 'instagram' : rawSource === 'an' ? 'unknown' : rawSource;
   const medium = toOptionalText(eventData.utm_medium) || null;
   const campaignName = toOptionalText(eventData.utm_campaign || eventData.campaign_name);
   const adsetName = toOptionalText(eventData.adset_name);
@@ -842,7 +843,10 @@ export async function backfillHistoricalSessions(clientId: number, days?: number
           landingPage: pagePath,
           exitPage: pagePath,
           entryReferrer: toOptionalText(eventData.referrer),
-          entrySource: toOptionalText(eventData.source) || toOptionalText(eventData.utm_source) || normalizePlatform(row.pixel_type) || 'direct',
+          entrySource: (() => {
+            const es = toOptionalText(eventData.source) || toOptionalText(eventData.utm_source) || normalizePlatform(row.pixel_type) || 'direct';
+            return es === 'fb' ? 'facebook' : es === 'ig' ? 'instagram' : es === 'an' ? 'unknown' : es;
+          })(),
           entryMedium: toOptionalText(eventData.utm_medium) || (normalizePlatform(row.pixel_type) ? 'paid_social' : null),
           entryCampaign: toOptionalText(eventData.utm_campaign || eventData.campaign_name),
           platformHint: normalizePlatform(row.pixel_type),

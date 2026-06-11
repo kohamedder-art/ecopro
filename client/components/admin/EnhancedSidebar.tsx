@@ -7,12 +7,11 @@ import {
     Divide, Palette, User, Lock, Image, Brain, MapPin, MessageSquare,
   Receipt, Bell, DollarSign
 } from "lucide-react";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useStaffPermissions } from "@/contexts/StaffPermissionContext";
-import { prefetchRouteData } from "@/lib/prefetch";
 import { safeJsonParse } from "@/utils/safeJson";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
@@ -217,12 +216,32 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
   const isParentActive = (item: MenuItem) => 
     item.children?.some(child => location.pathname === child.path);
 
-  // IMPORTANT: prefetching dashboard endpoints on hover causes lots of extra remote DB calls
-  // (Render Postgres over the network), which makes the platform feel extremely slow.
-  // Keep the hook stable, but do nothing by default.
-  const handlePrefetch = useCallback((_path: string) => {
-    // To re-enable, change prefetchRouteData() gate in client/lib/prefetch.ts
-    // prefetchRouteData(_path);
+  // Preload JS chunk for a route on hover so navigation is instant
+  const handlePrefetch = useCallback((path: string) => {
+    try {
+      switch (path) {
+        case '/dashboard': import('@/pages/dashboard/Dashboard'); break;
+        case '/dashboard/profile': import('@/pages/dashboard/Profile'); break;
+        case '/dashboard/preview': import('@/pages/dashboard/Store'); break;
+        case '/dashboard/stock': import('@/pages/dashboard/StockManagement'); break;
+        case '/dashboard/images': import('@/pages/dashboard/ImageManager'); break;
+        case '/dashboard/alerts': import('@/pages/dashboard/Alerts'); break;
+        case '/dashboard/orders': import('@/pages/dashboard/Orders'); break;
+        case '/dashboard/orders/chat': import('@/pages/dashboard/orders/ChatOrders'); break;
+        case '/dashboard/tracking': import('@/pages/dashboard/OrderTracking'); break;
+        case '/dashboard/delivery/companies': import('@/pages/dashboard/delivery/DeliveryCompanies'); break;
+        case '/dashboard/delivery/pricing': import('@/pages/dashboard/delivery/DeliveryPricing'); break;
+        case '/dashboard/staff': import('@/pages/dashboard/StaffManagement'); break;
+        case '/dashboard/bot-settings': import('@/pages/dashboard/BotSettings'); break;
+        case '/dashboard/integrations': import('@/pages/dashboard/Integrations'); break;
+        case '/dashboard/ai-settings': import('@/pages/dashboard/AISettings'); break;
+        case '/dashboard/marketing-analytics': import('@/pages/dashboard/MarketingAnalytics'); break;
+        case '/dashboard/marketing/pricing': import('@/pages/dashboard/CODPricingCalculator'); break;
+        case '/dashboard/pixel-settings': import('@/pages/dashboard/PixelSettings'); break;
+        case '/dashboard/billing': import('@/pages/dashboard/Billing'); break;
+        case '/template-editor': import('@/pages/GoldTemplateEditor'); break;
+      }
+    } catch {}
   }, []);
 
   const renderMenuItem = (item: MenuItem, level = 0) => {

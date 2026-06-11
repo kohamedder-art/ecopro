@@ -990,12 +990,8 @@ export const savePricingConfigHandler: RequestHandler = async (req, res) => {
 
 export const getCodPricingHandler: RequestHandler = async (req, res) => {
   try {
-    const user = (req as any).user;
-    if (!user || user.role === 'admin') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
     const db = await ensureConnection();
-    const clientId = user.id;
+    const clientId = (req as any).user.id;
 
     const configRes = await db.query(
       'SELECT daily_ad_spend FROM ai_settings WHERE client_id = $1 LIMIT 1',
@@ -1006,9 +1002,9 @@ export const getCodPricingHandler: RequestHandler = async (req, res) => {
     const statsRes = await db.query(
       `SELECT
          COUNT(*)::int AS total_orders,
-         COUNT(*) FILTER (WHERE status = 'delivered' OR status = 'completed')::int AS delivered_orders,
-         COUNT(*) FILTER (WHERE status = 'returned' OR status = 'refunded')::int AS returned_orders
-       FROM orders WHERE client_id = $1`,
+         COUNT(*) FILTER (WHERE status IN ('delivered','completed'))::int AS delivered_orders,
+         COUNT(*) FILTER (WHERE status IN ('cancelled','declined','returned','refunded'))::int AS returned_orders
+       FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL`,
       [clientId]
     );
     const stats = statsRes.rows[0] || { total_orders: 0, delivered_orders: 0, returned_orders: 0 };
@@ -1031,15 +1027,15 @@ export const getCodPricingHandler: RequestHandler = async (req, res) => {
          COALESCE(pe.call_center_cost, 0) AS call_center_cost,
          COALESCE(pe.return_cost, 0) AS return_cost,
          COALESCE(pe.other_costs, 0) AS other_costs,
-         (SELECT COUNT(*)::int FROM orders o
-            JOIN order_items oi ON oi.order_id = o.id
-            WHERE o.client_id = $1 AND oi.product_id = p.id
-              AND (o.status = 'delivered' OR o.status = 'completed')
+         (SELECT COUNT(*)::int FROM store_orders o
+            WHERE o.client_id = $1 AND o.product_id = p.id
+              AND o.deleted_at IS NULL
+              AND (o.status IN ('delivered','completed'))
          ) AS delivered_count,
-         (SELECT COUNT(*)::int FROM orders o
-            JOIN order_items oi ON oi.order_id = o.id
-            WHERE o.client_id = $1 AND oi.product_id = p.id
-              AND (o.status = 'returned' OR o.status = 'refunded')
+         (SELECT COUNT(*)::int FROM store_orders o
+            WHERE o.client_id = $1 AND o.product_id = p.id
+              AND o.deleted_at IS NULL
+              AND (o.status IN ('cancelled','declined','returned','refunded'))
          ) AS returned_count
        FROM client_store_products p
        LEFT JOIN product_economics pe ON pe.client_id = p.client_id AND pe.product_id = p.id

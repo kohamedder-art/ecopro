@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { apiFetch } from '@/lib/api';
-import { Package, Save, TrendingUp, TrendingDown, DollarSign, Edit3, X, Check, Loader2 } from 'lucide-react';
+import { Package, TrendingUp, TrendingDown, DollarSign, Edit3, X, Check, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ProductEcon {
   id: number;
@@ -17,15 +17,26 @@ interface ProductEcon {
   other_costs: number;
 }
 
-const inputCls = "w-full h-9 bg-white dark:bg-zinc-800 border border-border/60 rounded-lg px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-right tabular-nums";
+const inputCls = "h-11 bg-white dark:bg-zinc-800 border border-border/60 rounded-lg px-4 text-base text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-right tabular-nums w-full";
 
-export default function ProductCostsSection() {
+const costFields = [
+  { key: 'buy_cost', label: 'شراء' },
+  { key: 'packaging_cost', label: 'تغليف' },
+  { key: 'handling_cost', label: 'مناولة' },
+  { key: 'fallback_shipping_cost', label: 'توصيل' },
+  { key: 'call_center_cost', label: 'مركز اتصال' },
+  { key: 'return_cost', label: 'ترجيع' },
+  { key: 'other_costs', label: 'أخرى' },
+] as const;
+
+export default function ProductCostsSection({ onSave }: { onSave?: () => void }) {
   const { toast } = useToast();
   const [products, setProducts] = useState<ProductEcon[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -40,6 +51,7 @@ export default function ProductCostsSection() {
 
   const startEdit = (p: ProductEcon) => {
     setEditingId(p.id);
+    setShowAdvanced(false);
     setDraft({
       buy_cost: String(p.buy_cost || ''),
       packaging_cost: String(p.packaging_cost || ''),
@@ -48,6 +60,7 @@ export default function ProductCostsSection() {
       call_center_cost: String(p.call_center_cost || ''),
       return_cost: String(p.return_cost || ''),
       other_costs: String(p.other_costs || ''),
+      quantity: '1',
     });
   };
 
@@ -82,6 +95,7 @@ export default function ProductCostsSection() {
           : prod
       ));
       setEditingId(null);
+      onSave?.();
       toast({ title: 'تم الحفظ' });
     } catch {
       toast({ title: 'خطأ في الحفظ', variant: 'destructive' });
@@ -99,7 +113,8 @@ export default function ProductCostsSection() {
     return ((p.price - totalCost(p)) / p.price * 100);
   };
 
-  const fmt = (n: number) => Math.round(n).toLocaleString('ar-DZ');
+  const fmt = (n: number) => String(Math.round(n));
+  const costVal = (v: number) => v ? fmt(v) : '—';
 
   if (loading) {
     return (
@@ -137,13 +152,9 @@ export default function ProductCostsSection() {
             <tr className="border-b border-border bg-muted/30">
               <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">المنتج</th>
               <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">سعر البيع</th>
-              <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">شراء</th>
-              <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">تغليف</th>
-              <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">مناولة</th>
-              <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">توصيل</th>
-              <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">مركز اتصال</th>
-              <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">ترجيع</th>
-              <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">أخرى</th>
+              {costFields.map(({ label }) => (
+                <th key={label} className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">{label}</th>
+              ))}
               <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">التكلفة</th>
               <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground">الربح</th>
               <th className="w-16"></th>
@@ -154,63 +165,124 @@ export default function ProductCostsSection() {
               const isEditing = editingId === p.id;
               const cost = totalCost(p);
               const margin = profitMargin(p);
+              const qty = parseInt(draft.quantity) || 1;
               return (
-                <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                  <td className="px-3 py-2.5">
-                    <span className="font-semibold text-foreground text-xs truncate max-w-[120px] block">{p.title}</span>
-                    {p.category && <span className="text-[10px] text-muted-foreground">{p.category}</span>}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs font-bold text-foreground">{fmt(p.price)} دج</td>
-                  {[
-                    { key: 'buy_cost', val: p.buy_cost },
-                    { key: 'packaging_cost', val: p.packaging_cost },
-                    { key: 'handling_cost', val: p.handling_cost },
-                    { key: 'fallback_shipping_cost', val: p.fallback_shipping_cost },
-                    { key: 'call_center_cost', val: p.call_center_cost },
-                    { key: 'return_cost', val: p.return_cost },
-                    { key: 'other_costs', val: p.other_costs },
-                  ].map(({ key, val }) => (
-                    <td key={key} className="px-3 py-2.5">
-                      {isEditing ? (
-                        <input className={inputCls} value={draft[key] || ''} onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))} type="text" inputMode="numeric" dir="ltr" />
-                      ) : (
-                        <span className="text-xs font-bold text-foreground">{fmt(val)} دج</span>
-                      )}
+                <>
+                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="px-3 py-2.5">
+                      <span className="font-semibold text-foreground text-xs truncate max-w-[120px] block">{p.title}</span>
+                      {p.category && <span className="text-[10px] text-muted-foreground">{p.category}</span>}
                     </td>
-                  ))}
-                  <td className="px-3 py-2.5 text-xs font-bold text-foreground">{fmt(cost)} دج</td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-1">
-                      {margin >= 0 ? (
-                        <TrendingUp className="w-3 h-3 text-emerald-500" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3 text-red-500" />
-                      )}
+                    <td className="px-3 py-2.5 text-xs font-bold text-foreground">{fmt(p.price)} دج</td>
+                    {costFields.map(({ key }) => (
+                      <td key={key} className="px-3 py-2.5">
+                        <span className="text-xs font-bold text-foreground">{costVal(p[key as keyof ProductEcon] as number)} دج</span>
+                      </td>
+                    ))}
+                    <td className="px-3 py-2.5 text-xs font-bold text-foreground">{costVal(cost)} دج</td>
+                    <td className="px-3 py-2.5">
                       <span className={`text-xs font-bold ${margin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                         {margin.toFixed(0)}%
                       </span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {isEditing ? (
-                      <div className="flex gap-1">
-                        <button onClick={() => save(p)} disabled={saving}
-                          className="h-7 w-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors">
-                          <Check className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => setEditingId(null)}
-                          className="h-7 w-7 rounded-lg bg-muted text-muted-foreground flex items-center justify-center hover:bg-muted/80 transition-colors">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
+                    </td>
+                    <td className="px-3 py-2.5">
                       <button onClick={() => startEdit(p)}
                         className="h-7 w-7 rounded-lg bg-muted text-muted-foreground flex items-center justify-center hover:bg-muted/80 hover:text-foreground transition-colors">
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+
+                  {isEditing && (
+                    <tr key={`${p.id}-edit`}>
+                      <td colSpan={12} className="p-0">
+                        <div className="bg-muted/20 border-t border-b border-border px-4 py-4">
+                          <div className="flex items-center gap-3 mb-4">
+                            <span className="text-sm font-bold text-foreground">{p.title}</span>
+                            <span className="text-xs text-muted-foreground">سعر البيع: {fmt(p.price)} دج</span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-foreground mb-1">سعر الشراء</label>
+                              <input
+                                className={inputCls}
+                                value={draft.buy_cost || ''}
+                                onChange={e => setDraft(d => ({ ...d, buy_cost: e.target.value }))}
+                                type="text"
+                                inputMode="numeric"
+                                dir="ltr"
+                                placeholder="0"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold text-muted-foreground mb-1">الكمية للحسبة</label>
+                              <input
+                                className={inputCls}
+                                value={draft.quantity ?? ''}
+                                onChange={e => setDraft(d => ({ ...d, quantity: e.target.value }))}
+                                type="text"
+                                inputMode="numeric"
+                                dir="ltr"
+                                placeholder="1"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <button
+                                onClick={() => setShowAdvanced(s => !s)}
+                                className="h-11 px-3 rounded-lg bg-muted text-muted-foreground text-xs font-bold flex items-center gap-1.5 hover:bg-muted/80 transition-colors w-full justify-center">
+                                {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                {showAdvanced ? 'إخفاء التكاليف الإضافية' : 'تكاليف إضافية'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {showAdvanced && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-3 mb-4 p-3 bg-background/50 rounded-xl">
+                              {costFields.slice(1).map(({ key, label }) => (
+                                <div key={key}>
+                                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">{label}</label>
+                                  <input
+                                    className={inputCls}
+                                    value={draft[key] || ''}
+                                    onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))}
+                                    type="text"
+                                    inputMode="numeric"
+                                    dir="ltr"
+                                    placeholder="0"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">تكلفة الوحدة: </span>
+                              <span className="font-bold text-foreground">{fmt(cost)} دج</span>
+                              <span className="mx-2 text-muted-foreground">×</span>
+                              <span className="font-bold text-foreground">{qty}</span>
+                              <span className="mx-2 text-muted-foreground">=</span>
+                              <span className="font-bold text-lg text-primary">{fmt(cost * qty)} دج</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => save(p)} disabled={saving}
+                                className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-bold flex items-center gap-1.5 hover:bg-primary/90 transition-colors">
+                                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                حفظ
+                              </button>
+                              <button onClick={() => { setEditingId(null); setShowAdvanced(false); }}
+                                className="h-9 px-4 rounded-lg bg-muted text-muted-foreground text-sm font-bold flex items-center gap-1.5 hover:bg-muted/80 transition-colors">
+                                <X className="w-4 h-4" />
+                                إلغاء
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               );
             })}
           </tbody>

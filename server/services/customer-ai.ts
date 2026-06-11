@@ -45,11 +45,15 @@ interface ConversationFacts {
 // SYSTEM PROMPT — Short, focused, human, no lists, no emojis
 // ═══════════════════════════════════════════════════════════════
 
-const SYSTEM_PROMPT = `أنت مساعد ذكي في متجر إلكتروني جزائري. تعرف كل شيء عن المتجر: اسمه، منتجاته، أسعاره، التوصيل، وسياسة الدفع. وظيفتك مساعدة الزبائن والإجابة على أسئلتهم بلطف وصبر.
+const SYSTEM_PROMPT = `أنت مساعد متجر معين، واسم المتجر وجميع معلوماته (المنتجات، الأسعار، التوصيل) مرفقة في سياق المحادثة أدناه. راجع تلك المعلومات قبل الرد لتتحدث باسم المتجر الصحيح.
 
 تحدث بالعربية الفصحى المبسطة والواضحة.
 
 إذا لم تجد معلومة عن شيء يسأل عنه الزبون، أخبره ببساطة أن هذا غير متوفر حالياً.
+
+إذا لاحظت أنك تكرر نفس الجملة، توقف فوراً وغير أسلوبك. الزبائن يلاحظون التكرار وينزعجون منه.
+
+إذا طلب الزبون معلومات عن طلباته أو تتبعها، راجع قائمة الطلبات المرفقة في السياق وأخبره بحالة كل طلب. لا تقترح عليه طلب جديد عندما يسأل عن طلب موجود.
 
 إذا قال الزبون لا أو طلب منك التوقف، توقفي فوراً ولا تعودي لذكر الشراء أو الطلب أبداً في نفس المحادثة.
 
@@ -580,6 +584,22 @@ function extractLastProductFromHistory(history: GeminiContent[]): string | null 
   return null;
 }
 
+function extractOrdersFromHistory(history: GeminiContent[]): string {
+  const orderLines: string[] = [];
+  for (const h of history) {
+    if (h.role === 'model') {
+      const text = h.parts[0]?.text || '';
+      const orderMatch = text.match(/رقم الطلب:\s*#(\d+)[\s\S]*?المنتج:\s*(.+?)[\n]/);
+      if (orderMatch) {
+        const id = orderMatch[1];
+        const product = orderMatch[2].trim();
+        orderLines.push(`📦 طلب #${id} — ${product}`);
+      }
+    }
+  }
+  return orderLines.length > 0 ? `\n[الطلبات التي تم إنشاؤها في هذه المحادثة]\n${orderLines.join('\n')}\n[/الطلبات]\n` : '';
+}
+
 function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, phone: string | null, phoneFromMsg: boolean, msg: string, history: GeminiContent[] = [], factsSummary: string = '', orderFromNumber: boolean = false): string {
   let p = `اسم المتجر: ${ctx.storeName}\n`;
   if (ctx.storeDescription) p += `وصف المتجر: ${ctx.storeDescription}\n`;
@@ -601,8 +621,13 @@ function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, ph
 
   if (orderText) {
     p += `\nطلبات الزبون:\n${orderText}\n`;
-  } else if (phone) {
-    p += `\nالزبون مسجل برقم ${phone} وليس لديه طلبات سابقة.\n`;
+  } else {
+    const chatOrders = extractOrdersFromHistory(history);
+    if (chatOrders) {
+      p += `\n${chatOrders}\n`;
+    } else if (phone) {
+      p += `\nالزبون مسجل برقم ${phone} وليس لديه طلبات سابقة.\n`;
+    }
   }
 
   p += `\nرسالة الزبون: ${msg}`;

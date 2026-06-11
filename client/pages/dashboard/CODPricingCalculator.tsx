@@ -4,9 +4,9 @@ import { apiFetch } from '@/lib/api';
 import ProductCostsSection from '@/components/ProductCostsSection';
 import { Save, TrendingUp, TrendingDown, DollarSign, Package, Percent, BarChart3, Truck, RotateCcw, Smartphone, CreditCard, RefreshCw } from 'lucide-react';
 
-const fmtNum = (n: number | null | undefined) => n != null ? Number(n).toLocaleString('ar-DZ') : '0';
-const fmtCurr = (n: number | null | undefined) => n != null ? `${Number(n).toLocaleString('ar-DZ')} دج` : '0 دج';
-const fmtPct = (n: number | null | undefined) => n != null ? `${Number(n).toFixed(1)}%` : '—';
+const fmtNum = (n: number | null | undefined) => n != null ? String(Math.round(n)) : '0';
+const fmtCurr = (n: number | null | undefined) => n != null ? `${Math.round(n)} دج` : '0 دج';
+const fmtPct = (n: number | null | undefined) => n != null ? `${Math.round(n)}%` : '—';
 
 export default function CODPricingCalculator() {
   const qc = useQueryClient();
@@ -128,17 +128,11 @@ export default function CODPricingCalculator() {
                 <tr className="border-b border-border/40">
                   <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">المنتج</th>
                   <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">سعر البيع</th>
-                  <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">شراء</th>
-                  <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">تغليف</th>
-                  <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">مناولة</th>
-                  <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">توصيل</th>
-                  <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">مركز اتصال</th>
-                  <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">ترجيع</th>
-                  <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">أخرى</th>
+                  <th className="text-right py-2.5 px-2 font-bold text-muted-foreground">الشراء</th>
                   <th className="text-right py-2.5 px-2 font-bold text-foreground bg-amber-50/50 dark:bg-amber-950/20">إعلان</th>
                   <th className="text-right py-2.5 px-2 font-bold text-foreground bg-emerald-50/50 dark:bg-emerald-950/20">التكلفة</th>
                   <th className="text-right py-2.5 px-2 font-bold text-foreground bg-emerald-50/50 dark:bg-emerald-950/20">الربح/طلب</th>
-                  <th className="text-right py-2.5 px-2 font-bold text-foreground">موصلة</th>
+                  <th className="text-right py-2.5 px-2 font-bold text-foreground">الكمية</th>
                   <th className="text-right py-2.5 px-2 font-bold text-foreground">الربح الكلي</th>
                   <th className="text-right py-2.5 px-2 font-bold text-foreground">ROI</th>
                 </tr>
@@ -151,12 +145,6 @@ export default function CODPricingCalculator() {
                       <td className="py-2.5 px-2 font-bold text-foreground max-w-[140px] truncate">{p.title}</td>
                       <td className="py-2.5 px-2 font-bold text-foreground tabular-nums">{fmtCurr(p.sellingPrice)}</td>
                       <td className="py-2.5 px-2 text-muted-foreground tabular-nums">{fmtCurr(p.buyCost)}</td>
-                      <td className="py-2.5 px-2 text-muted-foreground tabular-nums">{fmtCurr(p.packagingCost)}</td>
-                      <td className="py-2.5 px-2 text-muted-foreground tabular-nums">{fmtCurr(p.handlingCost)}</td>
-                      <td className="py-2.5 px-2 text-muted-foreground tabular-nums">{fmtCurr(p.shippingCost)}</td>
-                      <td className="py-2.5 px-2 text-muted-foreground tabular-nums">{fmtCurr(p.callCenterCost)}</td>
-                      <td className="py-2.5 px-2 text-muted-foreground tabular-nums">{fmtCurr(p.returnCost)}</td>
-                      <td className="py-2.5 px-2 text-muted-foreground tabular-nums">{fmtCurr(p.otherCosts)}</td>
                       <td className="py-2.5 px-2 font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 tabular-nums">{fmtCurr(p.adCostPerOrder)}</td>
                       <td className="py-2.5 px-2 font-bold text-muted-foreground bg-emerald-50/50 dark:bg-emerald-950/20 tabular-nums">{fmtCurr(cost)}</td>
                       <td className="py-2.5 px-2 bg-emerald-50/50 dark:bg-emerald-950/20">
@@ -202,7 +190,7 @@ export default function CODPricingCalculator() {
           <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500" />
           <span className="text-sm font-bold text-foreground">تعديل تكاليف المنتجات</span>
         </div>
-        <ProductCostsSection />
+        <ProductCostsSection onSave={() => qc.invalidateQueries({ queryKey: ['cod-pricing'] })} />
       </div>
     </div>
   );
