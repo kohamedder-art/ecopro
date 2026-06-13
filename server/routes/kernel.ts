@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { Router } from 'express';
 import { ensureConnection } from '../utils/database';
-import { generateToken } from '../utils/auth';
+import { generateToken, verifyToken } from '../utils/auth';
 import { hashKernelPassword, verifyKernelPassword, logSecurityEvent, getClientIp, getGeo, computeFingerprint, parseCookie } from '../utils/security';
 import { randomBytes } from 'crypto';
 import os from 'os';
@@ -41,6 +41,20 @@ function clearKernelAuthCookie(res: any) {
     domain,
     path: '/api/kernel',
   });
+}
+
+/** Read ecopro_kernel_at cookie and populate req.user */
+function kernelAuth(req: any, res: any, next: any) {
+  const token = parseCookie(req, KERNEL_ACCESS_COOKIE) || req.cookies?.[KERNEL_ACCESS_COOKIE];
+  if (token) {
+    try {
+      const decoded = verifyToken(token);
+      req.user = { ...decoded, role: decoded.role || 'root' };
+    } catch {
+      // invalid or expired — leave req.user as-is
+    }
+  }
+  next();
 }
 
 function requireRoot(req: any, res: any, next: any) {
@@ -288,6 +302,10 @@ router.post('/logout', (_req, res) => {
   clearKernelAuthCookie(res);
   return res.json({ ok: true });
 });
+
+// Kernel auth middleware — reads ecopro_kernel_at cookie before requireRoot checks req.user
+router.use(kernelAuth);
+
 router.get('/security/summary', requireRoot, getSecuritySummary);
 router.get('/security/events', requireRoot, listSecurityEvents);
 
