@@ -3,6 +3,17 @@ import { DollarSign, TrendingUp, AlertCircle, CheckCircle, CreditCard, BarChart3
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useTranslation } from '@/lib/i18n';
 
+const statusTextColors: Record<string, string> = {
+  blue: 'text-blue-400',
+  emerald: 'text-emerald-400',
+  red: 'text-red-400',
+};
+const statusBgColors: Record<string, string> = {
+  blue: 'bg-blue-500',
+  emerald: 'bg-emerald-500',
+  red: 'bg-red-500',
+};
+
 interface BillingMetrics {
   mrr: number;
   active_subscriptions: number;
@@ -135,11 +146,11 @@ export default function SubscriptionsTab({ billingMetrics, stats }: Props) {
             <div key={i} className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600 dark:text-slate-300 text-sm">{item.label}</span>
-                <span className={`text-xl font-bold text-${item.color}-400`}>{item.value}</span>
+                <span className={`text-xl font-bold ${statusTextColors[item.color] || 'text-gray-400'}`}>{item.value}</span>
               </div>
               <div className="w-full bg-slate-700/50 rounded-full h-2.5">
                 <div
-                  className={`bg-${item.color}-500 h-2.5 rounded-full transition-all duration-500`}
+                  className={`${statusBgColors[item.color] || 'bg-gray-500'} h-2.5 rounded-full transition-all duration-500`}
                   style={{ width: `${Math.min(100, (item.value / total) * 100)}%` }}
                 />
               </div>

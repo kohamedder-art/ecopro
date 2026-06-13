@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StickyNote, Plus, Pin, Trash2, Settings, X, Loader2 } from 'lucide-react';
+import { StickyNote, Plus, Pin, Trash2, Pencil, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/lib/i18n';
 
@@ -192,7 +192,7 @@ function NoteCard({ note, onEdit, onDelete, onTogglePin }: {
           <button onClick={() => onEdit(note)}
             className="p-1.5 rounded hover:bg-white/10 transition text-gray-500 dark:text-slate-500 hover:text-gray-900 dark:hover:text-gray-900 dark:text-white"
           >
-            <Settings className="w-3.5 h-3.5" />
+            <Pencil className="w-3.5 h-3.5" />
           </button>
           <button onClick={() => onDelete(note.id)}
             className="p-1.5 rounded hover:bg-red-500/20 transition text-gray-500 dark:text-slate-500 hover:text-red-400"

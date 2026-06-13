@@ -66,13 +66,13 @@ export default function ProductsTab({ products, loading, onFlag, onDelete, onUnf
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-500 w-4 h-4" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-500 w-4 h-4" />
           <input
             type="text"
             placeholder={t('platformAdmin.products.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-white/60 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-sm pl-10 pr-4 py-2.5 focus:border-blue-500/50 outline-none transition-all"
+            className="w-full bg-white/60 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-sm ps-10 pe-4 py-2.5 focus:border-blue-500/50 outline-none transition-all"
           />
         </div>
         <div className="flex gap-1.5">
@@ -128,7 +128,7 @@ export default function ProductsTab({ products, loading, onFlag, onDelete, onUnf
                   </div>
                 )}
                 {/* Hover actions */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                <div className="absolute inset-0 bg-black/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                   {p.flagged ? (
                     <Button size="sm" onClick={() => onUnflag(p.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] h-7 px-2">
                       <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> {t('platformAdmin.products.unflag')}
@@ -177,7 +177,7 @@ export default function ProductsTab({ products, loading, onFlag, onDelete, onUnf
                 </div>
                 <span className="text-xs font-bold text-emerald-400">{Number(p.price).toLocaleString()} دج</span>
                 {p.flagged && <Badge className="bg-red-500/20 text-red-300 text-[10px]">{t('platformAdmin.products.flagged')}</Badge>}
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   {p.flagged ? (
                     <button onClick={() => onUnflag(p.id)} className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-gray-500 dark:text-slate-400 hover:text-emerald-300">
                       <CheckCircle className="w-3.5 h-3.5" />

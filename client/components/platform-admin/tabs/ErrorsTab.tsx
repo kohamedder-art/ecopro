@@ -92,13 +92,13 @@ export default function ErrorsTab({ errors, loading, error: loadError, onReload,
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-500 w-4 h-4" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-500 w-4 h-4" />
           <input
             type="text"
             placeholder={t('platformAdmin.errors.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-white/60 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-sm pl-10 pr-4 py-2 focus:border-red-500/50 outline-none"
+            className="w-full bg-white/60 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-sm ps-10 pe-4 py-2 focus:border-red-500/50 outline-none"
           />
         </div>
         <div className="flex gap-1">

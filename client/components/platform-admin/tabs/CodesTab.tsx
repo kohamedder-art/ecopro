@@ -115,9 +115,9 @@ export default function CodesTab({ stats, generatedCodes, codesLoading, issuingC
             {t('platformAdmin.codes.recentCodes')}
           </h3>
           <div className="relative w-56">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-500 w-3.5 h-3.5" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-500 w-3.5 h-3.5" />
             <input type="text" placeholder={t('platformAdmin.codes.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full bg-gray-100/50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-xs pl-9 pr-3 py-2 focus:border-cyan-500/50 outline-none"
+              className="w-full bg-gray-100/50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-xs ps-9 pe-3 py-2 focus:border-cyan-500/50 outline-none"
             />
           </div>
         </div>

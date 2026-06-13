@@ -287,13 +287,13 @@ export default function BillsTab() {
           <Plus className="w-3.5 h-3.5 ml-1" /> {t('platformAdmin.bills.addBill')}
         </Button>
         <div className="flex-1 min-w-[150px] max-w-xs relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <Search className="absolute end-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             placeholder={t('platformAdmin.bills.search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full h-8 pl-3 pr-8 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none"
+            className="w-full h-8 ps-3 pe-8 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none"
           />
         </div>
         <select
@@ -320,12 +320,12 @@ export default function BillsTab() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700 text-xs text-gray-500 dark:text-slate-400">
-                    <th className="text-right p-3 font-medium">{t('platformAdmin.bills.name')}</th>
-                    <th className="text-right p-3 font-medium">{t('platformAdmin.bills.category')}</th>
-                    <th className="text-right p-3 font-medium">{t('platformAdmin.bills.amount')}</th>
-                    <th className="text-right p-3 font-medium">{t('platformAdmin.bills.dueDate')}</th>
-                    <th className="text-right p-3 font-medium">{t('platformAdmin.bills.status')}</th>
-                    <th className="text-right p-3 font-medium">{t('platformAdmin.bills.actions')}</th>
+                    <th className="text-start p-3 font-medium">{t('platformAdmin.bills.name')}</th>
+                    <th className="text-start p-3 font-medium">{t('platformAdmin.bills.category')}</th>
+                    <th className="text-start p-3 font-medium">{t('platformAdmin.bills.amount')}</th>
+                    <th className="text-start p-3 font-medium">{t('platformAdmin.bills.dueDate')}</th>
+                    <th className="text-start p-3 font-medium">{t('platformAdmin.bills.status')}</th>
+                    <th className="text-start p-3 font-medium">{t('platformAdmin.bills.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
