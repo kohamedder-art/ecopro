@@ -923,8 +923,11 @@ export const getPaymentMetrics: RequestHandler = async (req, res) => {
     );
     const tempPaidCount = parseInt(tempPaidResult.rows[0]?.temp_paid_count || 0);
 
-    // Calculate estimated MRR based on active subscriptions + temporarily paid (assuming $7/code)
-    const subscriptionPrice = 7; // $7 per month
+    // Get subscription price from platform_settings
+    const priceResult = await pool.query(
+      `SELECT setting_value::numeric as sub_price FROM platform_settings WHERE setting_key = 'subscription_price'`
+    );
+    const subscriptionPrice = parseFloat(priceResult.rows[0]?.sub_price || '7');
     const activeCount = parseInt(subscriptionResult.rows[0]?.active_subscriptions || 0);
     const mrr = (activeCount + tempPaidCount) * subscriptionPrice;
 
