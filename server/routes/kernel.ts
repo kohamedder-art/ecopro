@@ -184,7 +184,7 @@ export const getSecuritySummary: RequestHandler = async (req, res) => {
 
   const since = `${days} days`;
 
-  const [blockedByCountry, topIps, repeatFingerprints] = await Promise.all([
+  const [blockedByCountry, topIps, repeatFingerprints, threatCounts, topThreatIps] = await Promise.all([
     pool.query(
       `SELECT COALESCE(country_code, '??') as country_code, COUNT(*)::int as count
        FROM security_events
@@ -220,6 +220,32 @@ export const getSecuritySummary: RequestHandler = async (req, res) => {
        LIMIT 20`,
       [since]
     ),
+    // Threat classification counts for the last 24h
+    pool.query(
+      `SELECT
+         COUNT(*)::int as total,
+         COUNT(*) FILTER (WHERE severity IN ('error','critical'))::int as real_threats,
+         COUNT(*) FILTER (WHERE severity = 'warn')::int as probes,
+         COUNT(*) FILTER (WHERE severity = 'info')::int as info,
+         COUNT(*) FILTER (WHERE event_type = 'trap_hit' AND path ~ '^/(wp-|xmlrpc|phpmyadmin|pma|adminer|phpinfo|info\\.php|\\.(env|git|svn|htaccess|htpasswd|DS_Store|aws|ssh)|config(uration)?\\.php|settings\\.php|local\\.php|wp-config\\.php|id_rsa|id_dsa|server-status|server-info|cgi-bin)')::int as scanner_noise
+       FROM security_events
+       WHERE created_at > NOW() - INTERVAL '24 hours'`,
+    ),
+    // Top threat IPs (by error/critical count, excluding noise paths)
+    pool.query(
+      `SELECT COALESCE(ip, 'unknown') as ip,
+              COUNT(*)::int as total,
+              COUNT(*) FILTER (WHERE severity IN ('error','critical'))::int as threat_count,
+              MAX(created_at) as last_seen
+       FROM security_events
+       WHERE created_at > NOW() - $1::interval
+         AND ip NOT IN ('127.0.0.1', '::1', 'localhost', '')
+         AND severity IN ('error','critical')
+       GROUP BY 1
+       ORDER BY threat_count DESC
+       LIMIT 10`,
+      [since]
+    ),
   ]);
 
   res.json({
@@ -227,6 +253,8 @@ export const getSecuritySummary: RequestHandler = async (req, res) => {
     blockedByCountry: blockedByCountry.rows,
     topIps: topIps.rows,
     repeatFingerprints: repeatFingerprints.rows,
+    threatCounts: threatCounts.rows[0] || { total: 0, real_threats: 0, probes: 0, info: 0, scanner_noise: 0 },
+    topThreatIps: topThreatIps.rows,
   });
 };
 
@@ -288,10 +316,25 @@ export const listSecurityEvents: RequestHandler = async (req, res) => {
     }
   }
 
+// Classify a security event as attack / probe / noise / info
+function classifyThreat(ev: { path?: string | null; event_type: string; severity: string }): string {
+  const p = ev.path || '';
+  const isNoisePath = /^\/(wp-|xmlrpc|phpmyadmin|pma|adminer|phpinfo|info\.php|\.(env|git|svn|htaccess|htpasswd|DS_Store|aws|ssh)|config(uration)?\.php|settings\.php|local\.php|wp-config\.php|id_rsa|id_dsa|server-status|server-info|cgi-bin)/i.test(p);
+  const isExploitPath = /^\/(shell|cmd|c99\.php|r57\.php|api\/(shell|exec|cmd|eval)|actuator|telescope|elfinder)/i.test(p);
+
+  if (isExploitPath) return 'attack';
+  if (isNoisePath) return 'noise';
+  if (ev.severity === 'error' || ev.severity === 'critical') return 'attack';
+  if (['auth_login_failed', 'brute_force_attack', 'admin_unauthorized', 'admin_forbidden', 'suspicious_path', 'honeypot_trap', 'ip_block'].includes(ev.event_type)) return 'attack';
+  if (ev.severity === 'warn') return 'probe';
+  return 'info';
+}
+
   const mapped = events.map((ev: any) => ({
     ...ev,
     user: ev.user_id && userMap[ev.user_id] ? userMap[ev.user_id] : null,
     fingerprint_details: ev.fingerprint && fingerprintMap[ev.fingerprint] ? fingerprintMap[ev.fingerprint] : [],
+    threat_class: classifyThreat(ev),
   }));
 
   res.json({ events: mapped });

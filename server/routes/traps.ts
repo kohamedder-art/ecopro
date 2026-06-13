@@ -160,9 +160,15 @@ async function trapHandler(req: any, res: any) {
     }
   }
 
+  // Classify trap path by threat level
+  const path_ = req.path || req.url || '';
+  const isExploit = /^\/(shell|cmd|c99\.php|r57\.php|api\/(shell|exec|cmd|eval)|actuator|telescope|elfinder)/i.test(path_);
+  const isScannerNoise = /^\/(wp-|xmlrpc|phpmyadmin|pma|adminer|phpinfo|info\.php|\.(env|git|svn|htaccess|htpasswd|DS_Store|aws|ssh)|config(uration)?\.php|settings\.php|local\.php|wp-config\.php|id_rsa|id_dsa|server-status|server-info|cgi-bin)/i.test(path_);
+  const trapSeverity = isExploit ? 'error' : isScannerNoise ? 'info' : linuxUa ? 'error' : 'warn';
+
   await logSecurityEvent({
     event_type: 'trap_hit',
-    severity: linuxUa ? 'error' : 'warn',
+    severity: trapSeverity,
     request_id: (req as any).requestId || null,
     method: req.method,
     path: req.path || req.url,

@@ -58,6 +58,7 @@ type SummaryData = {
   active_threats: number
   watchlist_count: number
   top_countries: { country_code: string; count: number }[]
+  threatCounts?: { total: number; real_threats: number; probes: number; info: number; scanner_noise: number }
 }
 
 type BlockEntry = {
@@ -353,6 +354,7 @@ function Dashboard() {
   const [search, setSearch] = useState("")
   const [filterType, setFilterType] = useState("all")
   const [filterSeverity, setFilterSeverity] = useState("all")
+  const [threatClass, setThreatClass] = useState<string>("all")
   const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null)
   const esRef = useRef<EventSource | null>(null)
 
@@ -480,9 +482,10 @@ function Dashboard() {
       }
       if (filterType !== "all" && e.event_type !== filterType) return false
       if (filterSeverity !== "all" && e.severity !== filterSeverity) return false
+      if (threatClass !== "all" && (e as any).threat_class !== threatClass) return false
       return true
     })
-  }, [feed, search, filterType, filterSeverity])
+  }, [feed, search, filterType, filterSeverity, threatClass])
 
   const hasTopCountries = summary?.top_countries && summary.top_countries.length > 0
 
@@ -524,12 +527,13 @@ function Dashboard() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {[
-            { label: "Events Today", value: summary?.events_today ?? 0, icon: Activity, color: "text-blue-600 dark:text-blue-400" },
+            { label: "Total Events (24h)", value: summary?.threatCounts?.total ?? summary?.events_today ?? 0, icon: Activity, color: "text-blue-600 dark:text-blue-400" },
+            { label: "Real Threats", value: summary?.threatCounts?.real_threats ?? 0, icon: AlertTriangle, color: "text-red-600 dark:text-red-400" },
+            { label: "Probes", value: summary?.threatCounts?.probes ?? 0, icon: Eye, color: "text-orange-600 dark:text-orange-400" },
+            { label: "Scanner Noise", value: summary?.threatCounts?.scanner_noise ?? 0, icon: WifiOff, color: "text-gray-400 dark:text-zinc-500" },
             { label: "Blocked IPs", value: summary?.blocked_ips ?? 0, icon: Ban, color: "text-red-600 dark:text-red-400" },
-            { label: "Active Threats", value: summary?.active_threats ?? 0, icon: AlertTriangle, color: "text-orange-600 dark:text-orange-400" },
-            { label: "Watchlist", value: summary?.watchlist_count ?? 0, icon: Eye, color: "text-yellow-600 dark:text-yellow-400" },
           ].map((stat) => (
             <Card key={stat.label} className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800">
               <CardContent className="p-4 flex items-center gap-3">
@@ -569,6 +573,29 @@ function Dashboard() {
                     <Trash2 className="w-3 h-3 mr-1" />
                     Clear
                   </Button>
+                </div>
+                {/* Threat Tabs */}
+                <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 -mb-3">
+                  {[
+                    { key: "all", label: "All", color: "text-gray-700 dark:text-zinc-300", count: feed.length },
+                    { key: "attack", label: "Attacks", color: "text-red-600 dark:text-red-400", count: feed.filter((e: any) => e.threat_class === 'attack').length },
+                    { key: "probe", label: "Probes", color: "text-orange-600 dark:text-orange-400", count: feed.filter((e: any) => e.threat_class === 'probe').length },
+                    { key: "noise", label: "Noise", color: "text-gray-400 dark:text-zinc-500", count: feed.filter((e: any) => e.threat_class === 'noise').length },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setThreatClass(tab.key)}
+                      className={cn(
+                        "px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-[1px]",
+                        threatClass === tab.key
+                          ? "border-gray-900 dark:border-white " + tab.color
+                          : "border-transparent text-gray-400 dark:text-zinc-600 hover:text-gray-600 dark:hover:text-zinc-400"
+                      )}
+                    >
+                      {tab.label}
+                      <span className="ml-1.5 text-[10px] opacity-60">{tab.count}</span>
+                    </button>
+                  ))}
                 </div>
                 {/* Filters */}
                 <div className="flex items-center gap-2">
