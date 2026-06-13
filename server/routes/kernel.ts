@@ -948,6 +948,71 @@ router.get('/traffic/recent', requireRoot, async (req, res) => {
   res.json({ events: outEvents.slice(0, limit), suspiciousOnly: true });
 });
 
+// ── Store threat detection ─────────────────────────────────────
+router.get('/store-threats', requireRoot, async (_req, res) => {
+  try {
+    const pool = await ensureConnection();
+    const [badStores, multiStoreIps, rapidOrders] = await Promise.all([
+      // 1. Stores with high bad-order rate in last 24h
+      pool.query(`
+        SELECT css.client_id, css.store_name, css.store_slug, css.owner_name,
+               COUNT(*)::int AS total_orders,
+               COUNT(*) FILTER (WHERE so.status IN ('cancelled','fake','duplicate'))::int AS bad_orders,
+               ROUND(100.0 * COUNT(*) FILTER (WHERE so.status IN ('cancelled','fake','duplicate')) / NULLIF(COUNT(*), 0), 1) AS bad_pct,
+               COUNT(*) FILTER (WHERE so.created_at > NOW() - INTERVAL '1 hour')::int AS orders_last_hour,
+               COUNT(DISTINCT so.customer_ip)::int AS unique_ips,
+               MAX(so.created_at) AS last_order_at
+        FROM store_orders so
+        JOIN client_store_settings css ON css.client_id = so.client_id
+        WHERE so.created_at > NOW() - INTERVAL '24 hours'
+        GROUP BY css.client_id, css.store_name, css.store_slug, css.owner_name
+        HAVING COUNT(*) > 3
+        ORDER BY bad_pct DESC, total_orders DESC
+        LIMIT 20
+      `),
+      // 2. IPs ordering from 3+ different stores (fraud ring)
+      pool.query(`
+        SELECT so.customer_ip,
+               COUNT(DISTINCT so.client_id)::int AS store_count,
+               COUNT(*)::int AS total_orders,
+               STRING_AGG(DISTINCT css.store_name, ', ') AS store_names
+        FROM store_orders so
+        JOIN client_store_settings css ON css.client_id = so.client_id
+        WHERE so.created_at > NOW() - INTERVAL '7 days'
+          AND so.customer_ip IS NOT NULL
+          AND so.customer_ip NOT IN ('127.0.0.1','::1','localhost','')
+        GROUP BY so.customer_ip
+        HAVING COUNT(DISTINCT so.client_id) >= 3
+        ORDER BY store_count DESC
+        LIMIT 20
+      `),
+      // 3. Same IP rapid-ordering same store (5+ in 1 hour)
+      pool.query(`
+        SELECT so.customer_ip, css.store_name, css.store_slug,
+               COUNT(*)::int AS orders_in_hour,
+               STRING_AGG(DISTINCT so.status, ', ') AS statuses
+        FROM store_orders so
+        JOIN client_store_settings css ON css.client_id = so.client_id
+        WHERE so.created_at > NOW() - INTERVAL '1 hour'
+          AND so.customer_ip IS NOT NULL
+          AND so.customer_ip NOT IN ('127.0.0.1','::1','localhost','')
+        GROUP BY so.customer_ip, css.store_name, css.store_slug, css.client_id
+        HAVING COUNT(*) >= 5
+        ORDER BY orders_in_hour DESC
+        LIMIT 20
+      `),
+    ]);
+
+    res.json({
+      badStores: badStores.rows,
+      multiStoreIps: multiStoreIps.rows,
+      rapidOrders: rapidOrders.rows,
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message });
+  }
+});
+
 router.get('/blocks', requireRoot, async (_req, res) => {
   try {
     const pool = await ensureConnection();
