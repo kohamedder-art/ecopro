@@ -127,7 +127,7 @@ export default function MarketingAnalytics() {
     { name: 'عملاء عائدون', value: Number(nvr.returningCustomers) || 0, revenue: Number(nvr.returningRevenue) || 0, fill: '#10b981' },
   ], [nvr]);
 
-  const topWilayas = useMemo(() => wilayas.slice(0, 8), [wilayas]);
+  const topWilayas = useMemo(() => wilayas, [wilayas]);
   const wilayaMap = useMemo(() => {
     const m = new Map<number, any>();
     for (const w of wilayas) m.set(w.wilayaId, w);
@@ -377,7 +377,7 @@ export default function MarketingAnalytics() {
             )}
           </div>
           {/* Top wilayas list */}
-          <div className="lg:w-72 space-y-2">
+          <div className="lg:w-72 space-y-2 max-h-[320px] overflow-y-auto">
             {topWilayas.length > 0 ? topWilayas.map((w: any, i: number) => (
               <div key={w.wilayaId} className="flex items-center gap-2"
                 onMouseEnter={() => setHoveredWilaya(w)} onMouseLeave={() => setHoveredWilaya(null)}>
