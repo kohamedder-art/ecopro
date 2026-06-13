@@ -466,14 +466,33 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     const waTokenForDisplay = finalWhatsappToken || (wantsPlatformWhatsapp ? getPlatformWhatsappAccessToken() : null);
     if (finalWhatsappPhoneId && waTokenForDisplay) {
       try {
-        const waRes = await fetch(`https://graph.facebook.com/v25.0/${finalWhatsappPhoneId}?fields=display_phone_number`, {
+        // Try direct phone number field first
+        let waRes = await fetch(`https://graph.facebook.com/v25.0/${finalWhatsappPhoneId}?fields=display_phone_number`, {
           headers: { 'Authorization': `Bearer ${waTokenForDisplay}` }
         });
         if (waRes.ok) {
           const waData = await waRes.json();
           finalWhatsappDisplayPhone = String(waData.display_phone_number || '').replace(/[^0-9]/g, '') || null;
+        } else {
+          const errBody = await waRes.text().catch(() => '');
+          console.warn(`[BotSettings] Graph API returned ${waRes.status} for phone ID ${finalWhatsappPhoneId}: ${errBody.slice(0, 200)}`);
+          // If direct field fails, try listing phone numbers from WABA
+          const wabaId = String(process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '').trim();
+          if (wabaId) {
+            const wabaRes = await fetch(`https://graph.facebook.com/v25.0/${wabaId}/phone_numbers?fields=display_phone_number`, {
+              headers: { 'Authorization': `Bearer ${waTokenForDisplay}` }
+            });
+            if (wabaRes.ok) {
+              const wabaData = await wabaRes.json();
+              if (wabaData.data?.length) {
+                finalWhatsappDisplayPhone = String(wabaData.data[0].display_phone_number || '').replace(/[^0-9]/g, '') || null;
+              }
+            }
+          }
         }
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        console.warn(`[BotSettings] Graph API fetch failed for phone ID ${finalWhatsappPhoneId}:`, (e as any)?.message || e);
+      }
     }
 
     // ── Telegram ──

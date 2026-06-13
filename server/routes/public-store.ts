@@ -1737,25 +1737,47 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     const supportPhone = String(bot.support_phone || '').replace(/[^0-9]/g, '');
     let effectiveWaPhone = supportPhone || String(bot.whatsapp_display_phone || '').replace(/[^0-9]/g, '');
 
-    // If no phone yet, try Graph API with platform token
+    // If no phone yet, try Graph API with available tokens
     if (whatsappConnected && !effectiveWaPhone && storedWhatsappPhoneId) {
-      const waToken = storedWhatsappToken || platformWhatsappAccessToken;
-      if (waToken) {
+      const tokensToTry: string[] = [];
+      if (storedWhatsappToken) tokensToTry.push(storedWhatsappToken);
+      if (platformWhatsappAccessToken && platformWhatsappAccessToken !== storedWhatsappToken) tokensToTry.push(platformWhatsappAccessToken);
+      const wabaId = String(process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '').trim();
+      for (const waToken of tokensToTry) {
         try {
-          const waRes = await fetch(`https://graph.facebook.com/v25.0/${storedWhatsappPhoneId}?fields=display_phone_number`, {
+          // Try direct phone number field first
+          let waRes = await fetch(`https://graph.facebook.com/v25.0/${storedWhatsappPhoneId}?fields=display_phone_number`, {
             headers: { 'Authorization': `Bearer ${waToken}` }
           });
           if (waRes.ok) {
             const waData = await waRes.json();
             effectiveWaPhone = String(waData.display_phone_number || '').replace(/[^0-9]/g, '') || '';
-            if (effectiveWaPhone) {
-              await pool.query(
-                `UPDATE bot_settings SET whatsapp_display_phone = $1 WHERE client_id = $2`,
-                [effectiveWaPhone, clientId]
-              );
+          } else {
+            const errBody = await waRes.text().catch(() => '');
+            console.warn(`[ContactChannels] Graph API returned ${waRes.status} for phone ID ${storedWhatsappPhoneId}: ${errBody.slice(0, 200)}`);
+            // If direct field fails, try listing phone numbers from WABA
+            if (wabaId) {
+              const wabaRes = await fetch(`https://graph.facebook.com/v25.0/${wabaId}/phone_numbers?fields=display_phone_number`, {
+                headers: { 'Authorization': `Bearer ${waToken}` }
+              });
+              if (wabaRes.ok) {
+                const wabaData = await wabaRes.json();
+                if (wabaData.data?.length) {
+                  effectiveWaPhone = String(wabaData.data[0].display_phone_number || '').replace(/[^0-9]/g, '') || '';
+                }
+              }
             }
           }
-        } catch { /* graph API transient failure */ }
+          if (effectiveWaPhone) {
+            await pool.query(
+              `UPDATE bot_settings SET whatsapp_display_phone = $1 WHERE client_id = $2`,
+              [effectiveWaPhone, clientId]
+            );
+            break;
+          }
+        } catch (e) {
+          console.warn(`[ContactChannels] Graph API fetch failed for phone ID ${storedWhatsappPhoneId}:`, (e as any)?.message || e);
+        }
       }
     }
 
@@ -1770,7 +1792,7 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
           const ts = storeSettingsFallback.rows[0].template_settings || {};
           const gs = storeSettingsFallback.rows[0].global_settings || {};
           const merged = { ...gs, ...ts };
-          const fallbackPhone = String(merged.contact_phone || '').replace(/[^0-9]/g, '');
+          let fallbackPhone = String(merged.contact_phone || '').replace(/[^0-9]/g, '');
           if (fallbackPhone && fallbackPhone.length >= 8) {
             effectiveWaPhone = fallbackPhone;
           }

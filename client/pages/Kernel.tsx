@@ -159,12 +159,12 @@ function computeTimeline(events: SecurityEvent[]): { hour: string; count: number
   const now = Date.now()
   for (let i = 23; i >= 0; i--) {
     const d = new Date(now - i * 3600000)
-    buckets.set(d.getHours() + ":00", 0)
+    buckets.set(String(d.getUTCHours()).padStart(2, '0') + ":00", 0)
   }
   for (const e of events) {
     const d = new Date(e.created_at)
     if (now - d.getTime() > 24 * 3600000) continue
-    const k = d.getHours() + ":00"
+    const k = String(d.getUTCHours()).padStart(2, '0') + ":00"
     if (buckets.has(k)) buckets.set(k, (buckets.get(k) || 0) + 1)
   }
   return Array.from(buckets.entries()).map(([hour, count]) => ({ hour, count }))
