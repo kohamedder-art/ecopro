@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { ChevronDown, Phone, ShoppingCart, ShieldCheck } from 'lucide-react';
+import LazyVideo from '@/components/storefront/LazyVideo';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
@@ -288,7 +289,10 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                 {/* Image / Video */}
                 <div className="relative w-full" style={{ paddingBottom: '100%' }}>
                   {hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
-                    <video src={hasVideo} autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" />
+                    <LazyVideo src={hasVideo} poster={thumb}
+                      onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                      onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                      className="absolute inset-0 w-full h-full object-cover" />
                   ) : hasVideo?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
                     <iframe className="absolute inset-0 w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                   ) : thumb ? (

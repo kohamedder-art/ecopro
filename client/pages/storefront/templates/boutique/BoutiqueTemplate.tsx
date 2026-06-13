@@ -4,6 +4,7 @@ import {
   Phone, Trash2, CheckCircle2, ArrowRight, ShoppingBag,
   Home, Building2, ChevronDown
 } from 'lucide-react';
+import LazyVideo from '@/components/storefront/LazyVideo';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
@@ -70,7 +71,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
               {videoEmbed.type === 'youtube' ? (
                 <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
               ) : videoEmbed.type === 'video' ? (
-                <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline />
+                <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" />
               ) : (
                 <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
               )}
@@ -471,7 +472,10 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                 <div key={product.id} className="group cursor-pointer rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor }} onClick={() => { setDetailProduct(product); onProductView?.(product); if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug)); }}>
                   <div className="relative aspect-[4/5] overflow-hidden">
                     {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                      ? <video src={(product as any).metadata.video_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                      ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || ''}
+                          onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                          className="w-full h-full object-cover" />
                       : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                         : <img

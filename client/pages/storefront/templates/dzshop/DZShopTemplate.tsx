@@ -346,7 +346,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                                 item.embed.type === 'youtube' ? (
                                                     <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${item.embed.id}?autoplay=1&mute=1&loop=1&playlist=${item.embed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                                                 ) : item.embed.type === 'video' ? (
-                                                    <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline />
+                                                    <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline preload="metadata" />
                                                 ) : (
                                                     <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
                                                 )

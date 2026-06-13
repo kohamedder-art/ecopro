@@ -399,7 +399,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                             {ve.type === 'youtube' ? (
                               <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ve.id}?autoplay=1&mute=1&loop=1&playlist=${ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                             ) : ve.type === 'video' ? (
-                              <video className="w-full h-full object-cover" src={ve.url} autoPlay muted loop playsInline />
+                              <video className="w-full h-full object-cover" src={ve.url} autoPlay muted loop playsInline preload="metadata" />
                             ) : (
                               <iframe className="w-full h-full" src={ve.url} allowFullScreen />
                             )}

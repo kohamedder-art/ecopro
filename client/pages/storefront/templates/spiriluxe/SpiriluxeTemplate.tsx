@@ -377,7 +377,7 @@ export default function SpiriluxeTemplate({
                 <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
               </div>
             ) : videoEmbed.type === 'video' ? (
-              <video className="w-full block" src={videoEmbed.url} autoPlay muted loop playsInline />
+              <video className="w-full block" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" />
             ) : (
               <div className="aspect-video w-full">
                 <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />

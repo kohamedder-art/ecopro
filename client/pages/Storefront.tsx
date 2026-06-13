@@ -223,24 +223,29 @@ export default function Storefront() {
 
         if (hasInjected) {
           settingsData = { settings: injectedSettings };
+        } else if (hasProducts) {
+          settingsData = await fetchWithTimeout(`/api/storefront/${encodedSlug}/settings`, 25000, { cache: 'no-store' }, 1).then(async r => {
+            if (!r.ok) {
+              if (r.status === 404) throw new Error(t('storefront.notAvailable'));
+              const body = await r.text().catch(() => '');
+              throw new Error(body || 'Failed to load store');
+            }
+            return r.json();
+          });
+          productsData = injectedProducts;
         } else {
-          const sRes = await fetchWithTimeout(`/api/storefront/${encodedSlug}/settings`, 25000, { cache: 'no-store' }, 1);
+          const [sRes, pRes] = await Promise.all([
+            fetchWithTimeout(`/api/storefront/${encodedSlug}/settings`, 25000, { cache: 'no-store' }, 1),
+            fetchWithTimeout(`/api/storefront/${encodedSlug}/products`, 35000, { cache: 'no-store' }, 1),
+          ]);
           if (!sRes.ok) {
             if (sRes.status === 404) throw new Error(t('storefront.notAvailable'));
             const body = await sRes.text().catch(() => '');
             throw new Error(body || 'Failed to load store');
           }
           settingsData = await sRes.json();
-        }
-
-        if (!hasProducts) {
-          const pRes = await fetchWithTimeout(`/api/storefront/${encodedSlug}/products`, 35000, { cache: 'no-store' }, 1);
           if (pRes.ok) productsData = await pRes.json();
-        }
-        if (!productsData) {
-          if (hasProducts) {
-            productsData = injectedProducts;
-          } else {
+          if (!productsData) {
             const refetchRes = await fetchWithTimeout(
               `/api/storefront/${encodeURIComponent(settingsData?.settings?.store_slug || slug)}/products`,
               35000, { cache: 'no-store' }, 1

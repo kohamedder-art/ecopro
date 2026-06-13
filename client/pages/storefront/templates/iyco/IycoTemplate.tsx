@@ -28,6 +28,7 @@ import {
   Home,
   Building2
 } from 'lucide-react';
+import LazyVideo from '@/components/storefront/LazyVideo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
@@ -501,7 +502,7 @@ export default function IycoTemplate({
                       {videoEmbed.type === 'youtube' ? (
                         <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                       ) : videoEmbed.type === 'video' ? (
-                        <video className="w-full h-full object-contain" src={videoEmbed.url} autoPlay muted loop playsInline />
+                        <video className="w-full h-full object-contain" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" />
                       ) : (
                         <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
                       )}
@@ -835,7 +836,10 @@ export default function IycoTemplate({
                 >
                   <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3" style={{ backgroundColor: surfaceMuted }}>
                     {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                      ? <video src={(prod as any).metadata.video_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                      ? <LazyVideo src={(prod as any).metadata.video_url} poster={prod.images?.[0] || '/placeholder.png'}
+                          onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                          className="w-full h-full object-cover" />
                       : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                         : <img

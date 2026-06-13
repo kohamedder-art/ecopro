@@ -11,6 +11,7 @@ import VariantSelector, { SelectedVariant } from '@/components/storefront/Varian
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { buildStoreUrl } from '@/lib/resolvedStore';
+import LazyVideo from '@/components/storefront/LazyVideo';
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════
@@ -509,7 +510,10 @@ export default function LeRoiShopTemplate({
                     {/* Image / Video */}
                     <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 4', backgroundColor: surfaceMuted }}>
                       {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                        ? <video src={(product as any).metadata.video_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                        ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || ''}
+                            onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                            onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                            className="w-full h-full object-cover" />
                       : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                         : <img
@@ -617,7 +621,7 @@ export default function LeRoiShopTemplate({
                                 item.embed.type === 'youtube' ? (
                                   <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${item.embed.id}?autoplay=1&mute=1&loop=1&playlist=${item.embed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                                 ) : item.embed.type === 'video' ? (
-                                  <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline />
+                                  <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline preload="metadata" />
                                 ) : (
                                   <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
                                 )
@@ -891,7 +895,10 @@ export default function LeRoiShopTemplate({
                         {/* Image / Video */}
                         <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 4', backgroundColor: surfaceMuted }}>
                           {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                            ? <video src={(product as any).metadata.video_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                            ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || ''}
+                                onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                                onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                                className="w-full h-full object-cover" />
                           : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                             ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                             : <img
