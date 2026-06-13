@@ -107,54 +107,54 @@ export default function ProductsTab({ products, loading, onFlag, onDelete, onUnf
           <p className="text-gray-500 dark:text-slate-500 text-sm">{t('platformAdmin.products.noProducts')}</p>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filtered.slice(0, 40).map(p => (
-            <div key={p.id} className={`group bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl border ${p.flagged ? 'border-red-500/40' : 'border-slate-700/40'} overflow-hidden shadow-lg hover:shadow-xl transition-all`}>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+          {filtered.slice(0, 60).map(p => (
+            <div key={p.id} className={`group bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-xl border ${p.flagged ? 'border-red-500/40' : 'border-slate-700/40'} overflow-hidden shadow-md hover:shadow-lg transition-all`}>
               {/* Image */}
               <div className="aspect-square bg-slate-900/60 relative overflow-hidden">
                 {p.images?.[0] ? (
                   <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Package className="w-8 h-8 text-slate-700" />
+                    <Package className="w-6 h-6 text-slate-700" />
                   </div>
                 )}
                 {p.flagged && (
-                  <div className="absolute top-2 left-2">
-                    <Badge className="bg-red-600 text-white text-[10px] px-1.5 py-0.5">
-                      <AlertTriangle className="w-3 h-3 mr-1" />
+                  <div className="absolute top-1 left-1">
+                    <Badge className="bg-red-600 text-white text-[9px] px-1 py-0">
+                      <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
                       {t('platformAdmin.products.flagged')}
                     </Badge>
                   </div>
                 )}
                 {/* Hover actions */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                   {p.flagged ? (
-                    <Button size="sm" onClick={() => onUnflag(p.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8">
-                      <CheckCircle className="w-3 h-3 mr-1" /> {t('platformAdmin.products.unflag')}
+                    <Button size="sm" onClick={() => onUnflag(p.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] h-7 px-2">
+                      <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> {t('platformAdmin.products.unflag')}
                     </Button>
                   ) : (
-                    <Button size="sm" onClick={() => onFlag(p.id)} className="bg-orange-600 hover:bg-orange-700 text-white text-xs h-8">
-                      <Flag className="w-3 h-3 mr-1" /> {t('platformAdmin.products.flag')}
+                    <Button size="sm" onClick={() => onFlag(p.id)} className="bg-orange-600 hover:bg-orange-700 text-white text-[10px] h-7 px-2">
+                      <Flag className="w-2.5 h-2.5 mr-0.5" /> {t('platformAdmin.products.flag')}
                     </Button>
                   )}
-                  <Button size="sm" onClick={() => onDelete(p.id)} variant="destructive" className="text-xs h-8">
-                    <Trash2 className="w-3 h-3" />
+                  <Button size="sm" onClick={() => onDelete(p.id)} variant="destructive" className="text-[10px] h-7 px-2">
+                    <Trash2 className="w-2.5 h-2.5" />
                   </Button>
                 </div>
               </div>
 
               {/* Info */}
-              <div className="p-3">
-                <h4 className="text-xs font-medium text-gray-900 dark:text-white truncate">{p.title}</h4>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs font-bold text-emerald-400">{Number(p.price).toLocaleString()} دج</span>
-                  <div className="flex items-center gap-1 text-gray-500 dark:text-slate-500">
-                    <Eye className="w-3 h-3" />
-                    <span className="text-[10px]">{p.views}</span>
+              <div className="p-2">
+                <h4 className="text-[11px] font-medium text-gray-900 dark:text-white truncate leading-tight">{p.title}</h4>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-[11px] font-bold text-emerald-400">{Number(p.price).toLocaleString()} دج</span>
+                  <div className="flex items-center gap-0.5 text-gray-500 dark:text-slate-500">
+                    <Eye className="w-2.5 h-2.5" />
+                    <span className="text-[9px]">{p.views}</span>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-500 dark:text-slate-500 mt-1 truncate">{p.seller_name}</p>
+                <p className="text-[9px] text-gray-500 dark:text-slate-500 mt-0.5 truncate leading-tight">{p.seller_name}</p>
               </div>
             </div>
           ))}

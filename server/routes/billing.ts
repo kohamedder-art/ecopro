@@ -859,13 +859,28 @@ export const getPaymentMetrics: RequestHandler = async (req, res) => {
       return jsonError(res, 403, 'Admin access required');
     }
 
-    // Get subscription counts
+    // Get subscription counts from latest record per client, with effective status
     const subscriptionResult = await pool.query(
-      `SELECT 
-        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_subscriptions,
-        COUNT(CASE WHEN status = 'expired' THEN 1 END) as expired_count,
-        COUNT(CASE WHEN status = 'trial' THEN 1 END) as trial_count
-       FROM subscriptions`
+      `SELECT
+        COUNT(CASE WHEN effective_status = 'active_paid' THEN 1 END) as active_subscriptions,
+        COUNT(CASE WHEN effective_status = 'expired' THEN 1 END) as expired_count,
+        COUNT(CASE WHEN effective_status = 'active_trial' THEN 1 END) as trial_count
+       FROM (
+        SELECT c.id as client_id,
+          CASE
+            WHEN s.status = 'active' AND (s.current_period_end IS NULL OR s.current_period_end > NOW()) THEN 'active_paid'
+            WHEN s.status = 'trial' AND s.trial_ends_at > NOW() THEN 'active_trial'
+            ELSE 'expired'
+          END as effective_status
+        FROM clients c
+        LEFT JOIN LATERAL (
+          SELECT status, trial_ends_at, current_period_end, created_at
+          FROM subscriptions
+          WHERE user_id = c.id
+          ORDER BY created_at DESC
+          LIMIT 1
+        ) s ON true
+       ) client_status`
     );
 
     // Get code statistics
@@ -886,11 +901,12 @@ export const getPaymentMetrics: RequestHandler = async (req, res) => {
        AND created_at >= NOW() - INTERVAL '30 days'`
     );
 
-    // Get churn rate (expired subscriptions this month)
+    // Get churn rate (clients whose subscription expired this month)
     const churnResult = await pool.query(
-      `SELECT COUNT(*) as churn_count FROM subscriptions 
-       WHERE status IN ('expired', 'cancelled') 
-       AND updated_at >= NOW() - INTERVAL '30 days'`
+      `SELECT COUNT(*) as churn_count FROM clients
+       WHERE subscription_ends_at IS NOT NULL
+       AND subscription_ends_at >= NOW() - INTERVAL '30 days'
+       AND subscription_ends_at <= NOW()`
     );
 
     // Get new signups this month
