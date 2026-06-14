@@ -486,7 +486,12 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
               const wabaData = await wabaRes.json();
               if (wabaData.data?.length) {
                 finalWhatsappDisplayPhone = String(wabaData.data[0].display_phone_number || '').replace(/[^0-9]/g, '') || null;
+              } else {
+                console.warn(`[BotSettings] WABA phone_numbers returned empty data`);
               }
+            } else {
+              const errBody = await wabaRes.text().catch(() => '');
+              console.warn(`[BotSettings] WABA phone_numbers returned ${wabaRes.status}: ${errBody.slice(0, 200)}`);
             }
           }
         }

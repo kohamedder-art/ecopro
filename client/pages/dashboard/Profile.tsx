@@ -67,7 +67,7 @@ export default function Profile() {
   const [affiliateError, setAffiliateError] = useState<string | null>(null);
   const [affiliateInfo, setAffiliateInfo] = useState<{
     has_referral: boolean; affiliate_name?: string; voucher_code?: string;
-    discount_percent?: number; discount_applied?: boolean;
+    earn_per_referral?: number;
   } | null>(null);
 
 
@@ -159,7 +159,7 @@ export default function Profile() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to apply code');
-      toast({ title: t('common.success'), description: t('profile.affiliateSuccess', { percent: data.affiliate.discount_percent }) });
+      toast({ title: t('common.success'), description: t('profile.affiliateSuccess') });
       setAffiliateCode('');
       await loadAffiliateInfo();
     } catch (err: any) {
@@ -518,17 +518,17 @@ export default function Profile() {
 
             <div className="p-5 space-y-3">
               <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{t('profile.referralDesc')}</p>
-              {affiliateInfo?.discount_applied ? (
+              {affiliateInfo?.has_referral ? (
                 <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800/50 p-4 text-center space-y-2">
                   <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
                     <Percent className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300">
-                    {affiliateInfo.discount_percent}% <span className="text-sm font-semibold">{t('profile.percentOff')}</span>
+                  <p className="text-lg font-extrabold text-emerald-700 dark:text-emerald-300">
+                    {affiliateInfo.earn_per_referral?.toFixed(0) || '0'} دج <span className="text-sm font-semibold">{t('profile.perReferral')}</span>
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">{affiliateInfo.voucher_code}</p>
                   <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                    <BadgeCheck className="w-3.5 h-3.5" /> {t('profile.discountActive')}
+                    <BadgeCheck className="w-3.5 h-3.5" /> {t('profile.referredBy', { name: affiliateInfo.affiliate_name })}
                   </div>
                 </div>
               ) : (

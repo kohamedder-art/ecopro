@@ -24,8 +24,8 @@ interface Affiliate {
   name: string;
   email: string;
   voucher_code: string;
-  discount_percent: number;
-  commission_percent: number;
+  payment_amount: number;
+  earn_per_referral: number;
   commission_months: number;
   total_referrals: number;
   total_paid_referrals: number;
@@ -156,7 +156,7 @@ export default function AffiliateDashboard() {
   const totalPaid = stats?.commissions.totalPaid || 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800" dir="rtl">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-3xl mx-auto px-3 sm:px-4">
@@ -167,14 +167,14 @@ export default function AffiliateDashboard() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                  Affiliate Dashboard
+                  لوحة التاجر
                 </h1>
-                <p className="text-xs text-gray-500">Welcome back, {affiliate.name}</p>
+                <p className="text-xs text-gray-500">مرحباً بعودتك، {affiliate.name}</p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-3 w-3 mr-1" />
-              Logout
+              <LogOut className="h-3 w-3 ml-1" />
+              تسجيل الخروج
             </Button>
           </div>
         </div>
@@ -186,7 +186,7 @@ export default function AffiliateDashboard() {
           <CardContent className="py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <p className="text-emerald-100 text-xs mb-0.5">Your Voucher Code</p>
+                <p className="text-emerald-100 text-xs mb-0.5">رمز الكوبون الخاص بك</p>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl font-bold tracking-wider">
                     {affiliate.voucher_code}
@@ -203,16 +203,16 @@ export default function AffiliateDashboard() {
               </div>
               <div className="flex gap-4">
                 <div className="text-center">
-                  <p className="text-emerald-100 text-[10px]">Discount</p>
-                  <p className="text-lg font-bold">{affiliate.discount_percent}%</p>
+                  <p className="text-emerald-100 text-[10px]">مبلغ الدفع</p>
+                  <p className="text-lg font-bold">{affiliate.payment_amount?.toFixed(0) || '0'} دج</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-emerald-100 text-[10px]">Commission</p>
-                  <p className="text-lg font-bold">{affiliate.commission_percent}%</p>
+                  <p className="text-emerald-100 text-[10px]">الربح/عميل</p>
+                  <p className="text-lg font-bold">{affiliate.earn_per_referral?.toFixed(0) || '0'} دج</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-emerald-100 text-[10px]">Period</p>
-                  <p className="text-lg font-bold">{affiliate.commission_months}mo</p>
+                  <p className="text-emerald-100 text-[10px]">المدة</p>
+                  <p className="text-lg font-bold">{affiliate.commission_months}ش</p>
                 </div>
               </div>
             </div>
@@ -225,7 +225,7 @@ export default function AffiliateDashboard() {
             <CardContent className="pt-3 pb-2 px-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-500">Referrals</p>
+                  <p className="text-xs text-gray-500">الإحالات</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {stats?.referrals.total || 0}
                   </p>
@@ -235,7 +235,7 @@ export default function AffiliateDashboard() {
                 </div>
               </div>
               <p className="text-[10px] text-gray-500 mt-1">
-                {stats?.referrals.paid || 0} paid
+                {stats?.referrals.paid || 0} مدفوع
               </p>
             </CardContent>
           </Card>
@@ -244,9 +244,9 @@ export default function AffiliateDashboard() {
             <CardContent className="pt-3 pb-2 px-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-500">Earned</p>
+                  <p className="text-xs text-gray-500">الأرباح</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    ${totalEarned.toFixed(0)}
+                    {totalEarned.toFixed(0)} دج
                   </p>
                 </div>
                 <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-full">
@@ -254,7 +254,7 @@ export default function AffiliateDashboard() {
                 </div>
               </div>
               <p className="text-[10px] text-gray-500 mt-1">
-                Lifetime
+                إجمالي
               </p>
             </CardContent>
           </Card>
@@ -263,9 +263,9 @@ export default function AffiliateDashboard() {
             <CardContent className="pt-3 pb-2 px-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-500">Pending</p>
+                  <p className="text-xs text-gray-500">معلق</p>
                   <p className="text-2xl font-bold text-orange-600">
-                    ${pendingAmount.toFixed(0)}
+                    {pendingAmount.toFixed(0)} دج
                   </p>
                 </div>
                 <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-full">
@@ -273,7 +273,7 @@ export default function AffiliateDashboard() {
                 </div>
               </div>
               <p className="text-[10px] text-gray-500 mt-1">
-                Awaiting
+                في الانتظار
               </p>
             </CardContent>
           </Card>
@@ -282,9 +282,9 @@ export default function AffiliateDashboard() {
             <CardContent className="pt-3 pb-2 px-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-500">Paid</p>
+                  <p className="text-xs text-gray-500">مدفوع</p>
                   <p className="text-2xl font-bold text-green-600">
-                    ${totalPaid.toFixed(0)}
+                    {totalPaid.toFixed(0)} دج
                   </p>
                 </div>
                 <div className="p-2 bg-green-100 dark:bg-green-900 rounded-full">
@@ -292,7 +292,7 @@ export default function AffiliateDashboard() {
                 </div>
               </div>
               <p className="text-[10px] text-gray-500 mt-1">
-                Received
+                مستلم
               </p>
             </CardContent>
           </Card>
@@ -301,21 +301,21 @@ export default function AffiliateDashboard() {
         {/* Tabs for Referrals and Commissions */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-3">
-            <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
-            <TabsTrigger value="referrals" className="text-xs">Referrals ({referrals.length})</TabsTrigger>
-            <TabsTrigger value="commissions" className="text-xs">Commissions ({commissions.length})</TabsTrigger>
+            <TabsTrigger value="overview" className="text-xs">نظرة عامة</TabsTrigger>
+            <TabsTrigger value="referrals" className="text-xs">الإحالات ({referrals.length})</TabsTrigger>
+            <TabsTrigger value="commissions" className="text-xs">الأرباح ({commissions.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
             <div className="grid gap-3 md:grid-cols-2">
               <Card>
                 <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-sm">Recent Referrals</CardTitle>
-                  <CardDescription className="text-xs">Users who signed up with your code</CardDescription>
+                  <CardTitle className="text-sm">أحدث الإحالات</CardTitle>
+                  <CardDescription className="text-xs">المستخدمون الذين سجلوا بكودك</CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 pb-3">
                   {referrals.length === 0 ? (
-                    <p className="text-gray-500 text-center py-4 text-xs">No referrals yet</p>
+                    <p className="text-gray-500 text-center py-4 text-xs">لا توجد إحالات بعد</p>
                   ) : (
                     <div className="space-y-2">
                       {referrals.slice(0, 5).map((r) => (
@@ -327,12 +327,12 @@ export default function AffiliateDashboard() {
                             <div>
                               <p className="font-medium text-xs">{r.user_name || r.user_email}</p>
                               <p className="text-[10px] text-gray-500">
-                                {new Date(r.referred_at).toLocaleDateString()}
+                                {new Date(r.referred_at).toLocaleDateString('ar-DZ')}
                               </p>
                             </div>
                           </div>
                           <Badge variant={r.subscription_status === 'active' ? 'default' : 'secondary'} className="text-[10px] h-5">
-                            {r.subscription_status || 'trial'}
+                            {r.subscription_status === 'active' ? 'نشط' : r.subscription_status || 'تجريبي'}
                           </Badge>
                         </div>
                       ))}
@@ -343,12 +343,12 @@ export default function AffiliateDashboard() {
 
               <Card>
                 <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-sm">Recent Commissions</CardTitle>
-                  <CardDescription className="text-xs">Earnings from your referrals</CardDescription>
+                  <CardTitle className="text-sm">آخر الأرباح</CardTitle>
+                  <CardDescription className="text-xs">الأرباح من إحالاتك</CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 pb-3">
                   {commissions.length === 0 ? (
-                    <p className="text-gray-500 text-center py-4 text-xs">No commissions yet</p>
+                    <p className="text-gray-500 text-center py-4 text-xs">لا توجد أرباح بعد</p>
                   ) : (
                     <div className="space-y-2">
                       {commissions.slice(0, 5).map((c) => (
@@ -360,12 +360,12 @@ export default function AffiliateDashboard() {
                             <div>
                               <p className="font-medium text-xs">{parseFloat(c.commission_amount).toFixed(0)} دج</p>
                               <p className="text-[10px] text-gray-500">
-                                Month {c.payment_month} • {c.user_name || c.user_email}
+                                الشهر {c.payment_month} • {c.user_name || c.user_email}
                               </p>
                             </div>
                           </div>
                           <Badge variant={c.status === 'paid' ? 'default' : 'secondary'} className="text-[10px] h-5">
-                            {c.status}
+                            {c.status === 'paid' ? 'مدفوع' : 'معلق'}
                           </Badge>
                         </div>
                       ))}
@@ -379,18 +379,18 @@ export default function AffiliateDashboard() {
           <TabsContent value="referrals">
             <Card>
               <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm">All Referrals</CardTitle>
+                <CardTitle className="text-sm">جميع الإحالات</CardTitle>
                 <CardDescription className="text-xs">
-                  Users who signed up using your voucher code
+                  المستخدمون الذين سجلوا باستخدام كودك
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-4 pb-3">
                 {referrals.length === 0 ? (
                   <div className="text-center py-6">
                     <Users className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-xs">No referrals yet</p>
+                    <p className="text-gray-500 text-xs">لا توجد إحالات بعد</p>
                     <p className="text-[10px] text-gray-400 mt-1">
-                      Share your code <strong>{affiliate.voucher_code}</strong>
+                      شارك كودك <strong>{affiliate.voucher_code}</strong>
                     </p>
                   </div>
                 ) : (
@@ -398,10 +398,10 @@ export default function AffiliateDashboard() {
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-2 px-1">User</th>
-                          <th className="text-left py-2 px-1">Date</th>
-                          <th className="text-left py-2 px-1">Status</th>
-                          <th className="text-right py-2 px-1">Earned</th>
+                          <th className="text-right py-2 px-1">المستخدم</th>
+                          <th className="text-right py-2 px-1">التاريخ</th>
+                          <th className="text-right py-2 px-1">الحالة</th>
+                          <th className="text-left py-2 px-1">الأرباح</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -409,19 +409,19 @@ export default function AffiliateDashboard() {
                           <tr key={r.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
                             <td className="py-2 px-1">
                               <div>
-                                <p className="font-medium">{r.user_name || 'Unknown'}</p>
+                                <p className="font-medium">{r.user_name || 'غير معروف'}</p>
                                 <p className="text-[10px] text-gray-500">{r.user_email}</p>
                               </div>
                             </td>
                             <td className="py-2 px-1 text-gray-500">
-                              {new Date(r.referred_at).toLocaleDateString()}
+                              {new Date(r.referred_at).toLocaleDateString('ar-DZ')}
                             </td>
                             <td className="py-2 px-1">
                               <Badge variant={r.subscription_status === 'active' ? 'default' : 'secondary'} className="text-[10px] h-5">
-                                {r.subscription_status || 'trial'}
+                                {r.subscription_status === 'active' ? 'نشط' : r.subscription_status || 'تجريبي'}
                               </Badge>
                             </td>
-                            <td className="py-2 px-1 text-right">
+                            <td className="py-2 px-1 text-left">
                               <span className="font-medium">{parseFloat(r.total_commission || '0').toFixed(0)} دج</span>
                             </td>
                           </tr>
@@ -437,18 +437,18 @@ export default function AffiliateDashboard() {
           <TabsContent value="commissions">
             <Card>
               <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm">Commission History</CardTitle>
+                <CardTitle className="text-sm">سجل الأرباح</CardTitle>
                 <CardDescription className="text-xs">
-                  Detailed breakdown of your earnings
+                  تفاصيل أرباحك
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-4 pb-3">
                 {commissions.length === 0 ? (
                   <div className="text-center py-6">
                     <DollarSign className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-xs">No commissions yet</p>
+                    <p className="text-gray-500 text-xs">لا توجد أرباح بعد</p>
                     <p className="text-[10px] text-gray-400 mt-1">
-                      Earn when referrals make payments
+                      اربح عندما يقوم المحالون بالدفع
                     </p>
                   </div>
                 ) : (
@@ -456,10 +456,10 @@ export default function AffiliateDashboard() {
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-2 px-1">User</th>
-                          <th className="text-left py-2 px-1">Month</th>
-                          <th className="text-right py-2 px-1">Commission</th>
-                          <th className="text-center py-2 px-1">Status</th>
+                          <th className="text-right py-2 px-1">المستخدم</th>
+                          <th className="text-right py-2 px-1">الشهر</th>
+                          <th className="text-left py-2 px-1">العمولة</th>
+                          <th className="text-center py-2 px-1">الحالة</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -467,22 +467,22 @@ export default function AffiliateDashboard() {
                           <tr key={c.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
                             <td className="py-2 px-1">
                               <div>
-                                <p className="font-medium">{c.user_name || 'Unknown'}</p>
-                                <p className="text-[10px] text-gray-500">{new Date(c.created_at).toLocaleDateString()}</p>
+                                <p className="font-medium">{c.user_name || 'غير معروف'}</p>
+                                <p className="text-[10px] text-gray-500">{new Date(c.created_at).toLocaleDateString('ar-DZ')}</p>
                               </div>
                             </td>
                             <td className="py-2 px-1">
-                              <Badge variant="outline" className="text-[10px] h-5">Mo {c.payment_month}</Badge>
+                              <Badge variant="outline" className="text-[10px] h-5">ش {c.payment_month}</Badge>
                             </td>
-                            <td className="py-2 px-1 text-right font-medium text-emerald-600">
-                              ${parseFloat(c.commission_amount).toFixed(2)}
+                            <td className="py-2 px-1 text-left font-medium text-emerald-600">
+                              {parseFloat(c.commission_amount).toFixed(0)} دج
                             </td>
                             <td className="py-2 px-1 text-center">
                               <Badge variant={
                                 c.status === 'paid' ? 'default' :
                                 c.status === 'pending' ? 'secondary' : 'destructive'
                               } className="text-[10px] h-5">
-                                {c.status}
+                                {c.status === 'paid' ? 'مدفوع' : c.status === 'pending' ? 'معلق' : c.status}
                               </Badge>
                             </td>
                           </tr>

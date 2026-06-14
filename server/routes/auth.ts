@@ -151,20 +151,18 @@ export const register: RequestHandler = async (req, res) => {
 
     // Validate voucher code if provided and get affiliate info
     let affiliateId: number | null = null;
-    let affiliateDiscount = 0;
     let validatedVoucherCode: string | null = null;
     
     if (voucher_code) {
       const voucherCode = String(voucher_code).toUpperCase().trim();
       const affiliateResult = await pool.query(
-        `SELECT id, voucher_code, discount_percent FROM affiliates WHERE voucher_code = $1 AND status = 'active'`,
+        `SELECT id, voucher_code FROM affiliates WHERE voucher_code = $1 AND status = 'active'`,
         [voucherCode]
       );
       if (affiliateResult.rows.length > 0) {
         affiliateId = affiliateResult.rows[0].id;
-        affiliateDiscount = parseFloat(affiliateResult.rows[0].discount_percent);
         validatedVoucherCode = affiliateResult.rows[0].voucher_code;
-        console.log(`[REGISTER] Valid voucher code ${voucherCode} from affiliate ${affiliateId}, discount: ${affiliateDiscount}%`);
+        console.log(`[REGISTER] Valid voucher code ${voucherCode} from affiliate ${affiliateId}`);
       } else {
         console.log(`[REGISTER] Invalid or inactive voucher code: ${voucherCode}`);
         // Don't fail registration, just ignore invalid code
@@ -246,7 +244,7 @@ export const register: RequestHandler = async (req, res) => {
             `INSERT INTO affiliate_referrals (affiliate_id, user_id, voucher_code_used, discount_applied)
              VALUES ($1, $2, $3, $4)
              ON CONFLICT (user_id) DO NOTHING`,
-            [affiliateId, user.id, validatedVoucherCode, affiliateDiscount]
+            [affiliateId, user.id, validatedVoucherCode, false]
           );
           
           // Update affiliate referral count

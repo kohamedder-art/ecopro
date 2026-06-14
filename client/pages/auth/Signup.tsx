@@ -52,7 +52,6 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherValid, setVoucherValid] = useState<boolean | null>(null);
-  const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -80,7 +79,6 @@ export default function Signup() {
   useEffect(() => {
     if (!voucherCode.trim()) {
       setVoucherValid(null);
-      setVoucherDiscount(0);
       return;
     }
 
@@ -91,10 +89,8 @@ export default function Signup() {
         if (!res.ok) throw new Error('Invalid');
         const data = await res.json();
         setVoucherValid(data.valid);
-        setVoucherDiscount(data.valid ? data.discount_percent : 0);
       } catch {
         setVoucherValid(false);
-        setVoucherDiscount(0);
       } finally {
         setVoucherLoading(false);
       }
@@ -364,10 +360,10 @@ export default function Signup() {
                   ) : null}
                 </div>
               </div>
-              {voucherValid === true && voucherDiscount > 0 && (
+              {voucherValid === true && (
                 <p className="mt-2 text-sm text-green-600 font-bold flex items-center gap-1">
                   <Sparkles className="w-4 h-4" />
-                  {t('signup.voucherValid', { n: voucherDiscount })}
+                  {t('signup.voucherValid')}
                 </p>
               )}
               {voucherValid === false && (

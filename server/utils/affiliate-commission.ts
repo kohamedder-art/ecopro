@@ -9,7 +9,7 @@ const isProduction = process.env.NODE_ENV === 'production';
  * Logic:
  * 1. Check if user was referred by an affiliate
  * 2. Count how many subscription payments the user has made
- * 3. If within commission_months window (default 2), calculate commission
+ * 3. If within commission_months window, calculate commission (fixed amount per referral)
  * 4. Create commission record for the affiliate
  */
 export async function calculateAffiliateCommission(
@@ -21,7 +21,7 @@ export async function calculateAffiliateCommission(
     // Get the user's referral info from clients table
     const userResult = await pool.query(
       `SELECT c.referred_by_affiliate_id, c.referral_voucher_code,
-              a.commission_percent, a.commission_months, a.discount_percent
+              a.earn_per_referral, a.commission_months
        FROM clients c
        LEFT JOIN affiliates a ON a.id = c.referred_by_affiliate_id
        WHERE c.id = $1 AND c.referred_by_affiliate_id IS NOT NULL`,
@@ -33,9 +33,9 @@ export async function calculateAffiliateCommission(
       return;
     }
 
-    const { referred_by_affiliate_id, referral_voucher_code, commission_percent, commission_months, discount_percent } = userResult.rows[0];
+    const { referred_by_affiliate_id, referral_voucher_code, earn_per_referral, commission_months } = userResult.rows[0];
 
-    if (!referred_by_affiliate_id || !commission_percent) {
+    if (!referred_by_affiliate_id || !earn_per_referral) {
       return;
     }
 
@@ -80,11 +80,8 @@ export async function calculateAffiliateCommission(
       return;
     }
 
-    // Calculate the commission
-    // Platform revenue = payment amount (after any discount applied at signup)
-    // For simplicity, we assume the payment amount IS the platform revenue
-    const platformRevenue = paymentAmount;
-    const commissionAmount = (platformRevenue * commission_percent) / 100;
+    // Calculate the commission (fixed amount per referral per month)
+    const commissionAmount = Number(earn_per_referral);
 
     // Create commission record
     await pool.query(
@@ -99,8 +96,8 @@ export async function calculateAffiliateCommission(
         paymentId,
         paymentMonth,
         paymentAmount,
-        platformRevenue,
-        commission_percent,
+        paymentAmount,
+        0,
         commissionAmount,
       ]
     );

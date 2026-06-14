@@ -355,21 +355,6 @@ export async function handlePaymentCompleted(
       if (paymentId) {
         try {
           await calculateAffiliateCommission(userId, paymentId, amount / 100);
-          
-          // Mark discount as applied in referral record if this was a discounted payment
-          if (sessionMetadata.is_first_payment && sessionMetadata.affiliate_id && sessionMetadata.discount_percent > 0) {
-            await pool.query(
-              `UPDATE affiliate_referrals 
-               SET discount_applied = true 
-               WHERE affiliate_id = $1 AND user_id = $2`,
-              [sessionMetadata.affiliate_id, userId]
-            );
-            console.log('[RedotPay] Marked affiliate discount as applied:', {
-              affiliateId: sessionMetadata.affiliate_id,
-              userId,
-              discountPercent: sessionMetadata.discount_percent,
-            });
-          }
         } catch (commissionError) {
           console.warn('[RedotPay] Failed to calculate affiliate commission:', commissionError);
           // Non-critical - don't fail the payment

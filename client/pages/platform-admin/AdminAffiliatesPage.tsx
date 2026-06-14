@@ -50,9 +50,8 @@ interface Affiliate {
   email: string;
   phone: string | null;
   voucher_code: string;
-  discount_percent: string;
-  discount_months: number;
-  commission_percent: string;
+  payment_amount: string;
+  earn_per_referral: string;
   commission_months: number;
   status: string;
   notes: string | null;
@@ -119,10 +118,9 @@ export default function AdminAffiliatesPage() {
     password: '',
     phone: '',
     voucher_code: '',
-    discount_percent: '20',
-    discount_months: '1',
-    commission_percent: '50',
-    commission_months: '2',
+    payment_amount: '1500',
+    earn_per_referral: '500',
+    commission_months: '12',
     notes: '',
   });
   const [paymentData, setPaymentData] = useState({
@@ -194,10 +192,9 @@ export default function AdminAffiliatesPage() {
         credentials: 'include',
         body: JSON.stringify({
           ...formData,
-          discount_percent: parseFloat(formData.discount_percent),
-          discount_months: parseInt(formData.discount_months) || 1,
-          commission_percent: parseFloat(formData.commission_percent),
-          commission_months: parseInt(formData.commission_months),
+          payment_amount: parseFloat(formData.payment_amount) || 0,
+          earn_per_referral: parseFloat(formData.earn_per_referral) || 0,
+          commission_months: parseInt(formData.commission_months) || 12,
         }),
       });
 
@@ -233,9 +230,8 @@ export default function AdminAffiliatesPage() {
       if (formData.password) updateData.password = formData.password;
       if (formData.phone !== undefined) updateData.phone = formData.phone;
       if (formData.voucher_code) updateData.voucher_code = formData.voucher_code;
-      if (formData.discount_percent) updateData.discount_percent = parseFloat(formData.discount_percent);
-      if (formData.discount_months) updateData.discount_months = parseInt(formData.discount_months) || 1;
-      if (formData.commission_percent) updateData.commission_percent = parseFloat(formData.commission_percent);
+      if (formData.payment_amount) updateData.payment_amount = parseFloat(formData.payment_amount);
+      if (formData.earn_per_referral) updateData.earn_per_referral = parseFloat(formData.earn_per_referral);
       if (formData.commission_months) updateData.commission_months = parseInt(formData.commission_months);
       if (formData.notes !== undefined) updateData.notes = formData.notes;
 
@@ -352,9 +348,8 @@ export default function AdminAffiliatesPage() {
       password: '',
       phone: affiliate.phone || '',
       voucher_code: affiliate.voucher_code,
-      discount_percent: affiliate.discount_percent,
-      discount_months: String(affiliate.discount_months || 1),
-      commission_percent: affiliate.commission_percent,
+      payment_amount: affiliate.payment_amount,
+      earn_per_referral: affiliate.earn_per_referral,
       commission_months: String(affiliate.commission_months),
       notes: affiliate.notes || '',
     });
@@ -373,10 +368,9 @@ export default function AdminAffiliatesPage() {
       password: '',
       phone: '',
       voucher_code: '',
-      discount_percent: '20',
-      discount_months: '1',
-      commission_percent: '50',
-      commission_months: '2',
+      payment_amount: '1500',
+      earn_per_referral: '500',
+      commission_months: '12',
       notes: '',
     });
     setSelectedAffiliate(null);
@@ -400,46 +394,46 @@ export default function AdminAffiliatesPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Affiliate Program</h1>
-          <p className="text-gray-500">Manage affiliates and track commissions</p>
+          <h1 className="text-2xl font-bold">برنامج التسويق بالعمولة</h1>
+          <p className="text-gray-500">إدارة التجار وتتبع الأرباح</p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Affiliate
+              <Plus className="h-4 w-4 ml-2" />
+              إضافة تاجر
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Create New Affiliate</DialogTitle>
+              <DialogTitle>إنشاء تاجر جديد</DialogTitle>
               <DialogDescription>
-                Add a new affiliate/influencer to the program
+                إضافة تاجر/مؤثر جديد إلى البرنامج
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Name *</Label>
+                  <Label>الاسم *</Label>
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="John Doe"
+                    placeholder="محمد"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email *</Label>
+                  <Label>البريد الإلكتروني *</Label>
                   <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="john@email.com"
+                    placeholder="mohamed@email.com"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Password *</Label>
+                  <Label>كلمة المرور *</Label>
                   <Input
                     type="password"
                     value={formData.password}
@@ -448,79 +442,66 @@ export default function AdminAffiliatesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Phone</Label>
+                  <Label>رقم الهاتف</Label>
                   <Input
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+1234567890"
+                    placeholder="+213xxxxxxxxx"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Voucher Code *</Label>
+                <Label>رمز الكوبون *</Label>
                 <Input
                   value={formData.voucher_code}
                   onChange={(e) => setFormData({ ...formData, voucher_code: e.target.value.toUpperCase() })}
                   placeholder="JOHN20"
                 />
-                <p className="text-xs text-gray-500">The code users will enter at signup</p>
+                <p className="text-xs text-gray-500">الرمز الذي سيدخله العملاء عند التسجيل</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Discount %</Label>
+                  <Label>مبلغ الدفع (دج)</Label>
                   <Input
                     type="number"
-                    value={formData.discount_percent}
-                    onChange={(e) => setFormData({ ...formData, discount_percent: e.target.value })}
+                    value={formData.payment_amount}
+                    onChange={(e) => setFormData({ ...formData, payment_amount: e.target.value })}
                   />
-                  <p className="text-xs text-gray-500">Discount given to referred users</p>
+                  <p className="text-xs text-gray-500">المبلغ الذي يدفعه التاجر</p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Discount Months</Label>
+                  <Label>أرباح التاجر لكل عميل (دج)</Label>
                   <Input
                     type="number"
-                    min="1"
-                    max="12"
-                    value={formData.discount_months}
-                    onChange={(e) => setFormData({ ...formData, discount_months: e.target.value })}
+                    value={formData.earn_per_referral}
+                    onChange={(e) => setFormData({ ...formData, earn_per_referral: e.target.value })}
                   />
-                  <p className="text-xs text-gray-500">How many months user gets discount</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Commission %</Label>
-                  <Input
-                    type="number"
-                    value={formData.commission_percent}
-                    onChange={(e) => setFormData({ ...formData, commission_percent: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500">Affiliate's share of revenue</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Commission Months</Label>
-                  <Input
-                    type="number"
-                    value={formData.commission_months}
-                    onChange={(e) => setFormData({ ...formData, commission_months: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500">How many months affiliate earns</p>
+                  <p className="text-xs text-gray-500">المبلغ الذي يكسبه التاجر لكل عميل شهرياً</p>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Notes</Label>
+                <Label>عدد الأشهر</Label>
+                <Input
+                  type="number"
+                  value={formData.commission_months}
+                  onChange={(e) => setFormData({ ...formData, commission_months: e.target.value })}
+                />
+                <p className="text-xs text-gray-500">كم شهر يكسب التاجر أرباحاً لكل عميل</p>
+              </div>
+              <div className="space-y-2">
+                <Label>ملاحظات</Label>
                 <Input
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Internal notes about this affiliate"
+                  placeholder="ملاحظات داخلية عن هذا التاجر"
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>إلغاء</Button>
               <Button onClick={handleCreate} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Create Affiliate
+                إنشاء تاجر
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -534,48 +515,48 @@ export default function AdminAffiliatesPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Total Affiliates</p>
+                  <p className="text-sm text-gray-500">إجمالي التجار</p>
                   <p className="text-2xl font-bold">{programStats.total_affiliates}</p>
                 </div>
                 <Users className="h-8 w-8 text-blue-500 opacity-50" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">{programStats.active_affiliates} active</p>
+              <p className="text-xs text-gray-500 mt-1">{programStats.active_affiliates} نشط</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Total Referrals</p>
+                  <p className="text-sm text-gray-500">إجمالي الإحالات</p>
                   <p className="text-2xl font-bold">{programStats.total_referrals}</p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-emerald-500 opacity-50" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">{programStats.paid_referrals} converted</p>
+              <p className="text-xs text-gray-500 mt-1">{programStats.paid_referrals} محولة</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Total Earned</p>
+                  <p className="text-sm text-gray-500">إجمالي الأرباح</p>
                   <p className="text-2xl font-bold">{parseFloat(programStats.total_commission_earned || '0').toFixed(0)} دج</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-yellow-500 opacity-50" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">All time commissions</p>
+              <p className="text-xs text-gray-500 mt-1">الأرباح الكلية</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Pending Payout</p>
+                  <p className="text-sm text-gray-500">المدفوعات المعلقة</p>
                   <p className="text-2xl font-bold text-orange-600">{parseFloat(programStats.total_commission_pending || '0').toFixed(0)} دج</p>
                 </div>
                 <CreditCard className="h-8 w-8 text-orange-500 opacity-50" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Awaiting payment</p>
+              <p className="text-xs text-gray-500 mt-1">في انتظار الدفع</p>
             </CardContent>
           </Card>
         </div>
@@ -586,7 +567,7 @@ export default function AdminAffiliatesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by name, email, or code..."
+            placeholder="بحث بالاسم أو البريد أو الرمز..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -594,13 +575,13 @@ export default function AdminAffiliatesPage() {
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder="تصفية حسب الحالة" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="disabled">Disabled</SelectItem>
-            <SelectItem value="suspended">Suspended</SelectItem>
+            <SelectItem value="all">جميع الحالات</SelectItem>
+            <SelectItem value="active">نشط</SelectItem>
+            <SelectItem value="disabled">معطل</SelectItem>
+            <SelectItem value="suspended">موقوف</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -610,8 +591,8 @@ export default function AdminAffiliatesPage() {
         <CardContent className="p-0">
           {/* Mobile card layout */}
           <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
-            {affiliates.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">No affiliates found</div>
+              {affiliates.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">لا يوجد تجار</div>
             ) : (
               affiliates.map((a) => (
                 <div key={a.id} className="p-3">
@@ -622,7 +603,7 @@ export default function AdminAffiliatesPage() {
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <Badge variant={a.status === 'active' ? 'default' : a.status === 'disabled' ? 'secondary' : 'destructive'} className="text-[10px]">
-                        {a.status}
+                        {a.status === 'active' ? 'نشط' : a.status === 'disabled' ? 'معطل' : 'موقوف'}
                       </Badge>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -632,21 +613,21 @@ export default function AdminAffiliatesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => fetchAffiliateDetails(a.id)}>
-                            <Eye className="h-4 w-4 mr-2" /> View Details
+                            <Eye className="h-4 w-4 ml-2" /> التفاصيل
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEditDialog(a)}>
-                            <Pencil className="h-4 w-4 mr-2" /> Edit
+                            <Pencil className="h-4 w-4 ml-2" /> تعديل
                           </DropdownMenuItem>
                           {a.pending_commissions > 0 && (
                             <DropdownMenuItem onClick={() => openPayDialog(a)}>
-                              <CreditCard className="h-4 w-4 mr-2" /> Pay Commissions
+                              <CreditCard className="h-4 w-4 ml-2" /> دفع الأرباح
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem onClick={() => handleStatusChange(a.id, a.status === 'active' ? 'disabled' : 'active')}>
-                            {a.status === 'active' ? 'Disable' : 'Enable'}
+                            {a.status === 'active' ? 'تعطيل' : 'تفعيل'}
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(a.id)}>
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            <Trash2 className="h-4 w-4 ml-2" /> حذف
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -660,19 +641,19 @@ export default function AdminAffiliatesPage() {
                   </div>
                   <div className="mt-2 grid grid-cols-4 gap-1 text-[11px]">
                     <div>
-                      <span className="text-gray-500">Disc.</span>
-                      <p className="font-semibold text-blue-600">{a.discount_percent}%</p>
+                      <span className="text-gray-500">الدفع</span>
+                      <p className="font-semibold text-blue-600">{parseFloat(a.payment_amount || '0').toFixed(0)} دج</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Comm.</span>
-                      <p className="font-semibold text-emerald-600">{a.commission_percent}% \u00d7{a.commission_months}mo</p>
+                      <span className="text-gray-500">الربح/عميل</span>
+                      <p className="font-semibold text-emerald-600">{parseFloat(a.earn_per_referral || '0').toFixed(0)} دج ×{a.commission_months}ش</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Refs</span>
-                      <p className="font-semibold">{a.referral_count || a.total_referrals} <span className="text-gray-400">({a.total_paid_referrals}p)</span></p>
+                      <span className="text-gray-500">الإحالات</span>
+                      <p className="font-semibold">{a.referral_count || a.total_referrals} <span className="text-gray-400">({a.total_paid_referrals} مدفوع)</span></p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Earned</span>
+                      <span className="text-gray-500">الأرباح</span>
                       <p className="font-semibold">{parseFloat(a.total_commission_earned || '0').toFixed(0)} دج</p>
                     </div>
                   </div>
@@ -686,22 +667,22 @@ export default function AdminAffiliatesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50 dark:bg-gray-800">
-                  <th className="text-left py-4 px-4">Affiliate</th>
-                  <th className="text-left py-4 px-4">Voucher Code</th>
-                  <th className="text-center py-4 px-4">Discount</th>
-                  <th className="text-center py-4 px-4">Commission</th>
-                  <th className="text-center py-4 px-4">Referrals</th>
-                  <th className="text-right py-4 px-4">Earned</th>
-                  <th className="text-right py-4 px-4">Pending</th>
-                  <th className="text-center py-4 px-4">Status</th>
-                  <th className="text-center py-4 px-4">Actions</th>
+                  <th className="text-right py-4 px-4">التاجر</th>
+                  <th className="text-right py-4 px-4">رمز الكوبون</th>
+                  <th className="text-center py-4 px-4">الدفع</th>
+                  <th className="text-center py-4 px-4">الربح/عميل</th>
+                  <th className="text-center py-4 px-4">الإحالات</th>
+                  <th className="text-left py-4 px-4">الأرباح</th>
+                  <th className="text-left py-4 px-4">المعلق</th>
+                  <th className="text-center py-4 px-4">الحالة</th>
+                  <th className="text-center py-4 px-4">الإجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {affiliates.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="text-center py-12 text-gray-500">
-                      No affiliates found
+                      لا يوجد تجار
                     </td>
                   </tr>
                 ) : (
@@ -729,24 +710,23 @@ export default function AdminAffiliatesPage() {
                         </div>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <span className="text-blue-600 font-medium">{a.discount_percent}%</span>
-                        <span className="text-gray-400 text-xs ml-1">off</span>
+                        <span className="text-blue-600 font-medium">{parseFloat(a.payment_amount || '0').toFixed(0)} دج</span>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <span className="text-emerald-600 font-medium">{a.commission_percent}%</span>
-                        <span className="text-gray-400 text-xs ml-1">× {a.commission_months}mo</span>
+                        <span className="text-emerald-600 font-medium">{parseFloat(a.earn_per_referral || '0').toFixed(0)} دج</span>
+                        <span className="text-gray-400 text-xs mr-1">× {a.commission_months}ش</span>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <span className="font-medium">{a.referral_count || a.total_referrals}</span>
-                        <span className="text-gray-400 text-xs ml-1">({a.total_paid_referrals} paid)</span>
+                        <span className="text-gray-400 text-xs mr-1">({a.total_paid_referrals} مدفوع)</span>
                       </td>
-                      <td className="py-4 px-4 text-right font-medium">
+                      <td className="py-4 px-4 text-left font-medium">
                         {parseFloat(a.total_commission_earned || '0').toFixed(0)} دج
                       </td>
-                      <td className="py-4 px-4 text-right">
+                      <td className="py-4 px-4 text-left">
                         {a.pending_commissions > 0 ? (
                           <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                            {a.pending_commissions} pending
+                            {a.pending_commissions} معلق
                           </Badge>
                         ) : (
                           <span className="text-gray-400">-</span>
@@ -757,7 +737,7 @@ export default function AdminAffiliatesPage() {
                           a.status === 'active' ? 'default' :
                           a.status === 'disabled' ? 'secondary' : 'destructive'
                         }>
-                          {a.status}
+                          {a.status === 'active' ? 'نشط' : a.status === 'disabled' ? 'معطل' : 'موقوف'}
                         </Badge>
                       </td>
                       <td className="py-4 px-4 text-center">
@@ -769,30 +749,30 @@ export default function AdminAffiliatesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => fetchAffiliateDetails(a.id)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
+                              <Eye className="h-4 w-4 ml-2" />
+                              التفاصيل
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openEditDialog(a)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
+                              <Pencil className="h-4 w-4 ml-2" />
+                              تعديل
                             </DropdownMenuItem>
                             {a.pending_commissions > 0 && (
                               <DropdownMenuItem onClick={() => openPayDialog(a)}>
-                                <CreditCard className="h-4 w-4 mr-2" />
-                                Pay Commissions
+                                <CreditCard className="h-4 w-4 ml-2" />
+                                دفع الأرباح
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
                               onClick={() => handleStatusChange(a.id, a.status === 'active' ? 'disabled' : 'active')}
                             >
-                              {a.status === 'active' ? 'Disable' : 'Enable'}
+                              {a.status === 'active' ? 'تعطيل' : 'تفعيل'}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-red-600"
                               onClick={() => handleDelete(a.id)}
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
+                              <Trash2 className="h-4 w-4 ml-2" />
+                              حذف
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -810,22 +790,22 @@ export default function AdminAffiliatesPage() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Affiliate</DialogTitle>
+            <DialogTitle>تعديل التاجر</DialogTitle>
             <DialogDescription>
-              Update affiliate information
+              تحديث معلومات التاجر
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Name</Label>
+                <Label>الاسم</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Email</Label>
+                <Label>البريد الإلكتروني</Label>
                 <Input
                   type="email"
                   value={formData.email}
@@ -835,16 +815,16 @@ export default function AdminAffiliatesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>New Password</Label>
+                <Label>كلمة المرور الجديدة</Label>
                 <Input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Leave empty to keep current"
+                  placeholder="اتركه فارغاً للاحتفاظ بالحالي"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Phone</Label>
+                <Label>رقم الهاتف</Label>
                 <Input
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -852,7 +832,7 @@ export default function AdminAffiliatesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Voucher Code</Label>
+              <Label>رمز الكوبون</Label>
               <Input
                 value={formData.voucher_code}
                 onChange={(e) => setFormData({ ...formData, voucher_code: e.target.value.toUpperCase() })}
@@ -860,44 +840,32 @@ export default function AdminAffiliatesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Discount %</Label>
+                <Label>مبلغ الدفع (دج)</Label>
                 <Input
                   type="number"
-                  value={formData.discount_percent}
-                  onChange={(e) => setFormData({ ...formData, discount_percent: e.target.value })}
+                  value={formData.payment_amount}
+                  onChange={(e) => setFormData({ ...formData, payment_amount: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Discount Months</Label>
+                <Label>أرباح التاجر لكل عميل (دج)</Label>
                 <Input
                   type="number"
-                  min="1"
-                  max="12"
-                  value={formData.discount_months}
-                  onChange={(e) => setFormData({ ...formData, discount_months: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Commission %</Label>
-                <Input
-                  type="number"
-                  value={formData.commission_percent}
-                  onChange={(e) => setFormData({ ...formData, commission_percent: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Commission Months</Label>
-                <Input
-                  type="number"
-                  value={formData.commission_months}
-                  onChange={(e) => setFormData({ ...formData, commission_months: e.target.value })}
+                  value={formData.earn_per_referral}
+                  onChange={(e) => setFormData({ ...formData, earn_per_referral: e.target.value })}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label>عدد الأشهر</Label>
+              <Input
+                type="number"
+                value={formData.commission_months}
+                onChange={(e) => setFormData({ ...formData, commission_months: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>ملاحظات</Label>
               <Input
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -905,10 +873,10 @@ export default function AdminAffiliatesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>إلغاء</Button>
             <Button onClick={handleUpdate} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Save Changes
+              حفظ التغييرات
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -918,7 +886,7 @@ export default function AdminAffiliatesPage() {
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Affiliate Details</DialogTitle>
+            <DialogTitle>تفاصيل التاجر</DialogTitle>
             {affiliateDetails && (
               <DialogDescription>
                 {affiliateDetails.affiliate.name} ({affiliateDetails.affiliate.voucher_code})
@@ -928,28 +896,28 @@ export default function AdminAffiliatesPage() {
           {affiliateDetails && (
             <Tabs defaultValue="info">
               <TabsList>
-                <TabsTrigger value="info">Info</TabsTrigger>
-                <TabsTrigger value="referrals">Referrals ({affiliateDetails.referrals.length})</TabsTrigger>
-                <TabsTrigger value="pending">Pending ({affiliateDetails.pendingCommissions.length})</TabsTrigger>
+                <TabsTrigger value="info">معلومات</TabsTrigger>
+                <TabsTrigger value="referrals">الإحالات ({affiliateDetails.referrals.length})</TabsTrigger>
+                <TabsTrigger value="pending">المعلقة ({affiliateDetails.pendingCommissions.length})</TabsTrigger>
               </TabsList>
               <TabsContent value="info" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-gray-500">Email</Label>
+                    <Label className="text-gray-500">البريد الإلكتروني</Label>
                     <p>{affiliateDetails.affiliate.email}</p>
                   </div>
                   <div>
-                    <Label className="text-gray-500">Phone</Label>
+                    <Label className="text-gray-500">رقم الهاتف</Label>
                     <p>{affiliateDetails.affiliate.phone || '-'}</p>
                   </div>
                   <div>
-                    <Label className="text-gray-500">Total Earned</Label>
+                    <Label className="text-gray-500">إجمالي الأرباح</Label>
                     <p className="text-lg font-bold text-emerald-600">
                       {parseFloat(affiliateDetails.affiliate.total_commission || '0').toFixed(0)} دج
                     </p>
                   </div>
                   <div>
-                    <Label className="text-gray-500">Pending</Label>
+                    <Label className="text-gray-500">المعلق</Label>
                     <p className="text-lg font-bold text-orange-600">
                       {parseFloat(affiliateDetails.affiliate.pending_commission || '0').toFixed(0)} دج
                     </p>
@@ -957,7 +925,7 @@ export default function AdminAffiliatesPage() {
                 </div>
                 {affiliateDetails.affiliate.notes && (
                   <div>
-                    <Label className="text-gray-500">Notes</Label>
+                    <Label className="text-gray-500">ملاحظات</Label>
                     <p className="text-sm">{affiliateDetails.affiliate.notes}</p>
                   </div>
                 )}
@@ -971,9 +939,9 @@ export default function AdminAffiliatesPage() {
                         <p className="text-xs text-gray-500">{r.user_email}</p>
                       </div>
                       <div className="text-right">
-                        <Badge>{r.subscription_status || 'trial'}</Badge>
+                        <Badge>{r.subscription_status || 'تجريبي'}</Badge>
                         <p className="text-xs text-gray-500 mt-1">
-                          {new Date(r.created_at).toLocaleDateString()}
+                          {new Date(r.created_at).toLocaleDateString('ar-DZ')}
                         </p>
                       </div>
                     </div>
@@ -986,7 +954,7 @@ export default function AdminAffiliatesPage() {
                     <div key={c.id} className="flex justify-between items-center py-2 border-b">
                       <div>
                         <p className="font-medium">{c.user_name}</p>
-                        <p className="text-xs text-gray-500">Month {c.payment_month}</p>
+                        <p className="text-xs text-gray-500">الشهر {c.payment_month}</p>
                       </div>
                       <p className="font-bold text-emerald-600">
                         {parseFloat(c.commission_amount).toFixed(0)} دج
@@ -1004,47 +972,47 @@ export default function AdminAffiliatesPage() {
       <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Pay Pending Commissions</DialogTitle>
+            <DialogTitle>دفع الأرباح المعلقة</DialogTitle>
             <DialogDescription>
               {selectedAffiliate && (
                 <>
-                  Pay all pending commissions to {selectedAffiliate.name}
-                  ({selectedAffiliate.pending_commissions} pending)
+                  دفع جميع الأرباح المعلقة لـ {selectedAffiliate.name}
+                  ({selectedAffiliate.pending_commissions} معلقة)
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Payment Method</Label>
+              <Label>طريقة الدفع</Label>
               <Input
                 value={paymentData.payment_method}
                 onChange={(e) => setPaymentData({ ...paymentData, payment_method: e.target.value })}
-                placeholder="Bank transfer, CCP, Cash, etc."
+                placeholder="تحويل بنكي، CCP، نقداً، إلخ."
               />
             </div>
             <div className="space-y-2">
-              <Label>Reference/Receipt Number</Label>
+              <Label>رقم المرجع/الإيصال</Label>
               <Input
                 value={paymentData.reference}
                 onChange={(e) => setPaymentData({ ...paymentData, reference: e.target.value })}
-                placeholder="Transaction reference"
+                placeholder="رقم المعاملة"
               />
             </div>
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label>ملاحظات</Label>
               <Input
                 value={paymentData.notes}
                 onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
-                placeholder="Additional notes"
+                placeholder="ملاحظات إضافية"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPayDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowPayDialog(false)}>إلغاء</Button>
             <Button onClick={handleBulkPay} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-              Mark as Paid
+              تم الدفع
             </Button>
           </DialogFooter>
         </DialogContent>

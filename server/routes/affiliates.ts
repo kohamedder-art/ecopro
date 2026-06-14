@@ -145,7 +145,7 @@ router.get('/me', authenticateAffiliate, async (req, res) => {
     const affiliate = (req as any).affiliate;
     
     const result = await pool.query(
-      `SELECT id, name, email, phone, voucher_code, discount_percent, commission_percent,
+      `SELECT id, name, email, phone, voucher_code, payment_amount, earn_per_referral,
               commission_months, status, total_referrals, total_paid_referrals,
               total_commission_earned, total_commission_paid, created_at
        FROM affiliates WHERE id = $1`,
@@ -411,7 +411,7 @@ router.get('/admin/list', requireAdmin, async (req, res) => {
 // POST /api/affiliates/admin/create - Create new affiliate (admin only)
 router.post('/admin/create', requireAdmin, async (req, res) => {
   try {
-    const { name, email, password, phone, voucher_code, discount_percent, discount_months, commission_percent, commission_months, notes } = req.body;
+    const { name, email, password, phone, voucher_code, payment_amount, earn_per_referral, commission_months, notes } = req.body;
 
     if (!name || !email || !password || !voucher_code) {
       return jsonError(res, 400, 'Name, email, password, and voucher code are required');
@@ -449,19 +449,18 @@ router.post('/admin/create', requireAdmin, async (req, res) => {
     const password_hash = await bcrypt.hash(password, 12);
 
     const result = await pool.query(
-      `INSERT INTO affiliates (name, email, password_hash, phone, voucher_code, discount_percent, discount_months, commission_percent, commission_months, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING id, name, email, phone, voucher_code, discount_percent, discount_months, commission_percent, commission_months, status, created_at`,
+      `INSERT INTO affiliates (name, email, password_hash, phone, voucher_code, payment_amount, earn_per_referral, commission_months, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, name, email, phone, voucher_code, payment_amount, earn_per_referral, commission_months, status, created_at`,
       [
         name.trim(),
         email.toLowerCase().trim(),
         password_hash,
         phone || null,
         voucher_code.toUpperCase().trim(),
-        discount_percent || 20,
-        discount_months || 1,
-        commission_percent || 50,
-        commission_months || 2,
+        payment_amount || 0,
+        earn_per_referral || 0,
+        commission_months || 12,
         notes || null,
       ]
     );
@@ -480,7 +479,7 @@ router.post('/admin/create', requireAdmin, async (req, res) => {
 router.patch('/admin/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, password, phone, voucher_code, discount_percent, discount_months, commission_percent, commission_months, status, notes } = req.body;
+    const { name, email, password, phone, voucher_code, payment_amount, earn_per_referral, commission_months, status, notes } = req.body;
 
     // Check affiliate exists
     const existing = await pool.query('SELECT id FROM affiliates WHERE id = $1', [id]);
@@ -513,17 +512,13 @@ router.patch('/admin/:id', requireAdmin, async (req, res) => {
       updates.push(`voucher_code = $${paramIndex++}`);
       params.push(voucher_code.toUpperCase().trim());
     }
-    if (discount_percent !== undefined) {
-      updates.push(`discount_percent = $${paramIndex++}`);
-      params.push(discount_percent);
+    if (payment_amount !== undefined) {
+      updates.push(`payment_amount = $${paramIndex++}`);
+      params.push(payment_amount);
     }
-    if (discount_months !== undefined) {
-      updates.push(`discount_months = $${paramIndex++}`);
-      params.push(discount_months);
-    }
-    if (commission_percent !== undefined) {
-      updates.push(`commission_percent = $${paramIndex++}`);
-      params.push(commission_percent);
+    if (earn_per_referral !== undefined) {
+      updates.push(`earn_per_referral = $${paramIndex++}`);
+      params.push(earn_per_referral);
     }
     if (commission_months !== undefined) {
       updates.push(`commission_months = $${paramIndex++}`);
@@ -790,7 +785,7 @@ router.get('/validate/:code', async (req, res) => {
     const { code } = req.params;
 
     const result = await pool.query(
-      `SELECT voucher_code, discount_percent, name as affiliate_name
+      `SELECT voucher_code, name as affiliate_name
        FROM affiliates 
        WHERE voucher_code = $1 AND status = 'active'`,
       [code.toUpperCase().trim()]
@@ -830,16 +825,10 @@ router.get('/admin/client/:clientId', requireAdmin, async (req, res) => {
         a.id as affiliate_id,
         a.name as affiliate_name,
         a.email as affiliate_email,
-        a.discount_percent,
-        a.commission_percent,
+        a.payment_amount,
+        a.earn_per_referral,
         a.commission_months,
-        COALESCE(a.discount_months, 1) as discount_months,
-        ar.discount_applied,
-        COALESCE(ar.discount_months_used, 0) as discount_months_used,
-        ar.created_at as referral_date,
-        (SELECT COUNT(*) FROM payments p 
-         JOIN subscriptions s ON s.id = p.subscription_id 
-         WHERE s.user_id = c.id AND p.status = 'completed') as payment_count
+        ar.created_at as referral_date
       FROM clients c
       LEFT JOIN affiliates a ON a.id = c.referred_by_affiliate_id
       LEFT JOIN affiliate_referrals ar ON ar.user_id = c.id AND ar.affiliate_id = a.id
@@ -851,29 +840,7 @@ router.get('/admin/client/:clientId', requireAdmin, async (req, res) => {
     }
 
     const client = result.rows[0];
-    
-    // Calculate if discount should apply
-    const paymentCount = parseInt(client.payment_count);
-    const discountMonths = parseInt(client.discount_months) || 1;
-    const discountMonthsUsed = parseInt(client.discount_months_used) || 0;
     const hasAffiliate = !!client.affiliate_id;
-    
-    // Discount applies if: has affiliate, hasn't used all discount months yet
-    const discountApplicable = hasAffiliate && discountMonthsUsed < discountMonths;
-    const discountMonthsRemaining = Math.max(0, discountMonths - discountMonthsUsed);
-    
-    // Get standard subscription price
-    const priceResult = await pool.query(
-      "SELECT setting_value FROM platform_settings WHERE setting_key = 'subscription_price'"
-    );
-    const standardPrice = parseFloat(priceResult.rows[0]?.setting_value) || 7;
-    
-    let discountedPrice = standardPrice;
-    let discountAmount = 0;
-    if (discountApplicable && client.discount_percent) {
-      discountAmount = standardPrice * (parseFloat(client.discount_percent) / 100);
-      discountedPrice = standardPrice - discountAmount;
-    }
 
     res.json({
       client_id: client.client_id,
@@ -885,22 +852,11 @@ router.get('/admin/client/:clientId', requireAdmin, async (req, res) => {
         name: client.affiliate_name,
         email: client.affiliate_email,
         voucher_code: client.referral_voucher_code,
-        discount_percent: parseFloat(client.discount_percent),
-        commission_percent: parseFloat(client.commission_percent),
+        payment_amount: parseFloat(client.payment_amount || '0'),
+        earn_per_referral: parseFloat(client.earn_per_referral || '0'),
         commission_months: client.commission_months,
-        discount_months: discountMonths,
       } : null,
-      payment_count: paymentCount,
-      discount_months_used: discountMonthsUsed,
-      discount_months_remaining: discountMonthsRemaining,
       referral_date: client.referral_date,
-      pricing: {
-        standard_price: standardPrice,
-        discount_applicable: discountApplicable,
-        discount_percent: discountApplicable ? parseFloat(client.discount_percent) : 0,
-        discount_amount: discountAmount,
-        final_price: discountedPrice,
-      },
     });
   } catch (error) {
     console.error('[Affiliate Admin] Get client affiliate info error:', error);
@@ -922,10 +878,8 @@ router.post('/admin/record-payment', requireAdmin, async (req, res) => {
     const clientResult = await pool.query(`
       SELECT 
         c.id, c.referred_by_affiliate_id, c.referral_voucher_code,
-        a.commission_percent, a.commission_months, a.discount_percent,
-        COALESCE(a.discount_months, 1) as discount_months,
-        ar.id as referral_id, ar.discount_applied,
-        COALESCE(ar.discount_months_used, 0) as discount_months_used
+        a.earn_per_referral, a.commission_months,
+        ar.id as referral_id
       FROM clients c
       LEFT JOIN affiliates a ON a.id = c.referred_by_affiliate_id
       LEFT JOIN affiliate_referrals ar ON ar.user_id = c.id AND ar.affiliate_id = a.id
@@ -953,9 +907,6 @@ router.post('/admin/record-payment', requireAdmin, async (req, res) => {
     `, [client_id, client.referred_by_affiliate_id]);
     
     const paymentMonth = parseInt(paymentCountResult.rows[0].count) + 1;
-    const discountMonths = parseInt(client.discount_months) || 1;
-    const discountMonthsUsed = parseInt(client.discount_months_used) || 0;
-    const discountWasApplied = discountMonthsUsed < discountMonths;
 
     // Check if within commission period
     if (paymentMonth > client.commission_months) {
@@ -966,10 +917,8 @@ router.post('/admin/record-payment', requireAdmin, async (req, res) => {
       });
     }
 
-    // Calculate commission
-    const commissionPercent = parseFloat(client.commission_percent) || 50;
-    const platformRevenue = parseFloat(amount_paid); // Assume all is platform revenue
-    const commissionAmount = platformRevenue * (commissionPercent / 100);
+    // Calculate commission (fixed amount)
+    const commissionAmount = parseFloat(client.earn_per_referral) || 0;
 
     // Create commission record
     const commissionResult = await pool.query(`
@@ -984,8 +933,8 @@ router.post('/admin/record-payment', requireAdmin, async (req, res) => {
       client_id,
       paymentMonth,
       amount_paid,
-      platformRevenue,
-      commissionPercent,
+      amount_paid,
+      0,
       commissionAmount
     ]);
 
@@ -999,27 +948,14 @@ router.post('/admin/record-payment', requireAdmin, async (req, res) => {
       WHERE id = $2
     `, [commissionAmount, client.referred_by_affiliate_id]);
 
-    // Track discount usage - increment discount_months_used if discount was applied
-    if (discountWasApplied && client.referral_id) {
-      await pool.query(
-        `UPDATE affiliate_referrals 
-         SET discount_months_used = COALESCE(discount_months_used, 0) + 1,
-             discount_applied = true 
-         WHERE id = $1`,
-        [client.referral_id]
-      );
-    }
-
     res.json({
       success: true,
       commission_recorded: true,
       commission_id: commissionResult.rows[0].id,
       commission_amount: commissionAmount,
       payment_month: paymentMonth,
-      discount_applied: discountWasApplied,
-      discount_months_remaining: discountWasApplied ? discountMonths - discountMonthsUsed - 1 : 0,
       affiliate_id: client.referred_by_affiliate_id,
-      message: `Commission of $${commissionAmount.toFixed(2)} recorded for month ${paymentMonth}${discountWasApplied ? ` (discount applied, ${discountMonths - discountMonthsUsed - 1} months remaining)` : ''}`
+      message: `Commission of ${commissionAmount.toFixed(0)} دج recorded for month ${paymentMonth}`
     });
   } catch (error) {
     console.error('[Affiliate Admin] Record payment error:', error);
@@ -1078,7 +1014,7 @@ router.post('/apply-code', async (req, res) => {
 
     // Validate the affiliate code
     const affiliateResult = await pool.query(
-      `SELECT id, name, voucher_code, discount_percent, commission_percent, commission_months
+      `SELECT id, name, voucher_code, earn_per_referral, commission_months
        FROM affiliates 
        WHERE voucher_code = $1 AND status = 'active'`,
       [voucherCode]
@@ -1118,7 +1054,6 @@ router.post('/apply-code', async (req, res) => {
       affiliate: {
         name: affiliate.name,
         voucher_code: affiliate.voucher_code,
-        discount_percent: parseFloat(affiliate.discount_percent),
       },
     });
   } catch (error) {
@@ -1141,8 +1076,7 @@ router.get('/my-referral', async (req, res) => {
         c.referred_by_affiliate_id,
         c.referral_voucher_code,
         a.name as affiliate_name,
-        a.discount_percent,
-        ar.discount_applied,
+        a.earn_per_referral,
         ar.created_at as referral_date
       FROM clients c
       LEFT JOIN affiliates a ON a.id = c.referred_by_affiliate_id
@@ -1164,8 +1098,7 @@ router.get('/my-referral', async (req, res) => {
       has_referral: true,
       affiliate_name: row.affiliate_name,
       voucher_code: row.referral_voucher_code,
-      discount_percent: parseFloat(row.discount_percent),
-      discount_applied: row.discount_applied || false,
+      earn_per_referral: parseFloat(row.earn_per_referral || '0'),
       referral_date: row.referral_date,
     });
   } catch (error) {

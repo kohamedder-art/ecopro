@@ -488,10 +488,8 @@ export const createCheckout: RequestHandler = async (req, res) => {
 
     // Get user email and referral info for checkout (from clients table)
     const userResult = await pool.query(
-      `SELECT c.email, c.referred_by_affiliate_id, c.referral_voucher_code,
-              a.discount_percent
+      `SELECT c.email, c.referred_by_affiliate_id, c.referral_voucher_code
        FROM clients c
-       LEFT JOIN affiliates a ON a.id = c.referred_by_affiliate_id AND a.status = 'active'
        WHERE c.id = $1`,
       [userId]
     );
@@ -503,7 +501,6 @@ export const createCheckout: RequestHandler = async (req, res) => {
     const userEmail = userResult.rows[0].email;
     const affiliateId = userResult.rows[0].referred_by_affiliate_id;
     const voucherCode = userResult.rows[0].referral_voucher_code;
-    const discountPercent = parseFloat(userResult.rows[0].discount_percent) || 0;
 
     // Get or create subscription
     let subResult = await pool.query(
@@ -528,32 +525,7 @@ export const createCheckout: RequestHandler = async (req, res) => {
 
     // Get subscription price from settings
     const basePriceCents = await getNumberSetting('subscription_price', 7) * 100; // Convert to cents
-    
-    // Check if this is the user's first payment (for affiliate discount)
-    let finalPriceCents = basePriceCents;
-    let discountApplied = 0;
-    let isFirstPayment = false;
-    
-    if (affiliateId && discountPercent > 0) {
-      // Check if user has made any payments before
-      const paymentsResult = await pool.query(
-        `SELECT COUNT(*) as count FROM payments WHERE user_id = $1 AND status = 'completed'`,
-        [userId]
-      );
-      isFirstPayment = parseInt(paymentsResult.rows[0].count) === 0;
-      
-      if (isFirstPayment) {
-        // Apply affiliate discount on first payment only
-        discountApplied = Math.round(basePriceCents * discountPercent / 100);
-        finalPriceCents = basePriceCents - discountApplied;
-        
-        if (!isProduction) {
-          console.log(`[Billing] Applying affiliate discount: ${discountPercent}% off (${discountApplied} cents) for user ${userId}, code: ${voucherCode}`);
-        }
-      }
-    }
-
-    const finalPriceUnits = finalPriceCents / 100;
+    const finalPriceCents = basePriceCents;
     const basePriceUnits = basePriceCents / 100;
 
     // Create checkout session with RedotPay
@@ -562,9 +534,7 @@ export const createCheckout: RequestHandler = async (req, res) => {
       userEmail,
       subscriptionId,
       amountCents: finalPriceCents,
-      description: discountApplied > 0 
-        ? `EcoPro subscription - $${finalPriceUnits.toFixed(2)} (${discountPercent}% off with code ${voucherCode})`
-        : `EcoPro monthly subscription - $${basePriceUnits.toFixed(2)}/month`,
+      description: `EcoPro monthly subscription - $${basePriceUnits.toFixed(2)}/month`,
       metadata: {
         user_id: userId,
         subscription_id: subscriptionId,
@@ -572,10 +542,6 @@ export const createCheckout: RequestHandler = async (req, res) => {
         email: userEmail,
         affiliate_id: affiliateId || null,
         voucher_code: voucherCode || null,
-        discount_percent: discountApplied > 0 ? discountPercent : 0,
-        discount_amount: discountApplied / 100,
-        original_price: basePriceUnits,
-        is_first_payment: isFirstPayment,
       },
     });
 
@@ -584,8 +550,7 @@ export const createCheckout: RequestHandler = async (req, res) => {
         userId,
         sessionToken: checkoutSession.sessionToken,
         checkoutUrl: checkoutSession.checkoutUrl,
-        amount: finalPriceUnits,
-        discount: discountApplied > 0 ? `${discountPercent}%` : 'none',
+        amount: basePriceUnits,
       });
     }
 
@@ -594,11 +559,7 @@ export const createCheckout: RequestHandler = async (req, res) => {
       sessionToken: checkoutSession.sessionToken,
       checkoutUrl: checkoutSession.checkoutUrl,
       expiresAt: checkoutSession.expiresAt,
-      amount: finalPriceUnits,
-      originalAmount: basePriceUnits,
-      discountPercent: discountApplied > 0 ? discountPercent : 0,
-      discountAmount: discountApplied / 100,
-      voucherCode: discountApplied > 0 ? voucherCode : null,
+      amount: basePriceUnits,
       currency: 'DZD',
     });
   } catch (error) {

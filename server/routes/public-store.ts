@@ -1764,7 +1764,13 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
                 const wabaData = await wabaRes.json();
                 if (wabaData.data?.length) {
                   effectiveWaPhone = String(wabaData.data[0].display_phone_number || '').replace(/[^0-9]/g, '') || '';
+                  console.log(`[ContactChannels] WABA fallback got phone: ${effectiveWaPhone}`);
+                } else {
+                  console.warn(`[ContactChannels] WABA phone_numbers returned empty data`);
                 }
+              } else {
+                const errBody = await wabaRes.text().catch(() => '');
+                console.warn(`[ContactChannels] WABA phone_numbers returned ${wabaRes.status}: ${errBody.slice(0, 200)}`);
               }
             }
           }

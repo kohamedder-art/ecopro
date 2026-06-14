@@ -55,20 +55,9 @@ interface AffiliateInfo {
     id: number;
     name: string;
     voucher_code: string;
-    discount_percent: number;
-    commission_percent: number;
+    payment_amount: number;
+    earn_per_referral: number;
     commission_months: number;
-    discount_months: number;
-  };
-  payment_count: number;
-  discount_months_used: number;
-  discount_months_remaining: number;
-  pricing: {
-    standard_price: number;
-    discount_applicable: boolean;
-    discount_percent: number;
-    discount_amount: number;
-    final_price: number;
   };
 }
 
@@ -575,25 +564,18 @@ export default function AdminChat() {
                 )}
               </div>
               
-              {/* Affiliate Discount Info */}
-              {affiliateInfo?.has_affiliate && affiliateInfo.pricing.discount_applicable && (
+              {/* Affiliate Info */}
+              {affiliateInfo?.has_affiliate && (
                 <div className="mt-3 p-3 bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/30 rounded-lg">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-3">
                       <Percent className="w-5 h-5 text-emerald-400" />
                       <div>
                         <p className="text-xs text-emerald-300 font-medium">
-                          Referred by <strong>{affiliateInfo.affiliate?.name}</strong> ({affiliateInfo.affiliate?.voucher_code})
-                        </p>
-                        <p className="text-sm text-white">
-                          <span className="line-through text-slate-400">{affiliateInfo.pricing.standard_price.toFixed(0)} دج</span>
-                          <span className="mx-2">→</span>
-                          <span className="text-emerald-400 font-bold">{affiliateInfo.pricing.final_price.toFixed(0)} دج</span>
-                          <span className="text-xs text-emerald-300 ml-2">({affiliateInfo.pricing.discount_percent}% off)</span>
+                          تمت الإحالة بواسطة <strong>{affiliateInfo.affiliate?.name}</strong> ({affiliateInfo.affiliate?.voucher_code})
                         </p>
                         <p className="text-xs text-emerald-400/80 mt-1">
-                          📅 Discount month {affiliateInfo.discount_months_used + 1} of {affiliateInfo.affiliate?.discount_months || 1}
-                          {affiliateInfo.discount_months_remaining > 1 && ` • ${affiliateInfo.discount_months_remaining - 1} more after this`}
+                          أرباح التاجر: {affiliateInfo.affiliate?.earn_per_referral?.toFixed(0)} دج/شهرياً × {affiliateInfo.affiliate?.commission_months} أشهر
                         </p>
                       </div>
                     </div>
@@ -607,35 +589,22 @@ export default function AdminChat() {
                         {recordingPayment ? (
                           <>
                             <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            Recording...
+                            جاري التسجيل...
                           </>
                         ) : (
                           <>
                             <DollarSign className="w-3 h-3" />
-                            Record Payment
+                            تسجيل الدفع
                           </>
                         )}
                       </button>
                     ) : (
                       <div className="px-3 py-1.5 bg-emerald-500/20 text-emerald-300 text-xs font-medium rounded-lg flex items-center gap-2">
                         <CheckCircle className="w-3 h-3" />
-                        Commission Recorded
+                        تم تسجيل العمولة
                       </div>
                     )}
                   </div>
-                </div>
-              )}
-              
-              {/* Info for non-first payment or no affiliate */}
-              {affiliateInfo && !affiliateInfo.pricing.discount_applicable && affiliateInfo.has_affiliate && (
-                <div className="mt-3 p-2 bg-slate-700/30 border border-slate-600/30 rounded-lg">
-                  <p className="text-xs text-slate-400">
-                    Referred by {affiliateInfo.affiliate?.name} ({affiliateInfo.affiliate?.voucher_code}) • 
-                    {affiliateInfo.discount_months_used >= (affiliateInfo.affiliate?.discount_months || 1)
-                      ? ` All ${affiliateInfo.discount_months_used} discount months used - Standard price ${affiliateInfo.pricing.standard_price.toFixed(0)} دج`
-                      : ` Payment #${affiliateInfo.payment_count + 1} - Standard price ${affiliateInfo.pricing.standard_price.toFixed(0)} دج`
-                    }
-                  </p>
                 </div>
               )}
             </div>
