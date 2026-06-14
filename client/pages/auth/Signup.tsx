@@ -99,10 +99,6 @@ export default function Signup() {
     return () => clearTimeout(timer);
   }, [voucherCode]);
 
-  function isGmailSignup(value: string) {
-    return value.trim().toLowerCase().endsWith('@gmail.com');
-  }
-
   async function handleGoogleSignup() {
     setGoogleLoading(true);
     try {
@@ -127,10 +123,6 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      if (!isGmailSignup(email)) {
-        throw new Error(t('signup.gmailOnlyError'));
-      }
-
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -269,14 +261,11 @@ export default function Signup() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={`block w-full bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-indigo-500 focus:border-indigo-500 pr-10 py-2.5 text-base rounded-xl font-medium transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/50 ${
-                    email && !isGmailSignup(email) ? "border-red-300 focus:border-red-500 focus:ring-red-500" : ""
+                    ""
                   }`}
-                  placeholder="name@gmail.com"
+                  placeholder="email@example.com"
                   dir="ltr"
                 />
-                {email && !isGmailSignup(email) && (
-                  <p className="text-xs text-red-500 font-semibold mt-1">{t('signup.emailError')}</p>
-                )}
               </div>
             </div>
 
@@ -374,7 +363,7 @@ export default function Signup() {
             <div>
               <Button
                 type="submit"
-                disabled={loading || (email.length > 0 && !isGmailSignup(email)) || password.length < 6}
+                disabled={loading || password.length < 6}
                 className="w-full flex justify-center h-12 px-4 border border-transparent rounded-xl shadow-lg text-base font-black text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:-translate-y-0.5 group disabled:opacity-70 disabled:hover:translate-y-0"
               >
                 {loading ? (

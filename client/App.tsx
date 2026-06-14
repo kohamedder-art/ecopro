@@ -38,7 +38,6 @@ const Kernel = lazy(() => import("./pages/Kernel"));
 // ── Dashboard (store owner) ──
 const AdminLayout = lazy(() => import("./pages/dashboard/Layout"));
 const AdminDashboard = lazy(() => import("./pages/dashboard/Dashboard"));
-const EnhancedDashboard = lazy(() => import("./pages/dashboard/EnhancedDashboard"));
 const AdminOrders = lazy(() => import("./pages/dashboard/Orders"));
 const AdminCalls = lazy(() => import("./pages/dashboard/Calls"));
 const AdminBotSettings = lazy(() => import("./pages/dashboard/BotSettings"));
@@ -51,8 +50,6 @@ const CustomerBot = lazy(() => import("./pages/dashboard/CustomerBot"));
 const MarketingAnalytics = lazy(() => import("./pages/dashboard/MarketingAnalytics"));
 const CODPricingCalculator = lazy(() => import("./pages/dashboard/CODPricingCalculator"));
 const PixelSettings = lazy(() => import("./pages/dashboard/PixelSettings"));
-const LogoDemo = lazy(() => import("./pages/dashboard/LogoDemo"));
-const DataMigration = lazy(() => import("./pages/dashboard/DataMigration"));
 const StockManagement = lazy(() => import("./pages/dashboard/StockManagement"));
 const Store = lazy(() => import("./pages/dashboard/Store"));
 const ImageManager = lazy(() => import("./pages/dashboard/ImageManager"));
@@ -68,7 +65,6 @@ const DeliveryPricing = lazy(() => import("./pages/dashboard/delivery/DeliveryPr
 // ── Storefront ──
 const Storefront = lazy(() => import("./pages/Storefront"));
 const StoreLayout = lazy(() => import("./pages/StoreLayout"));
-const BuildPage = lazy(() => import("./pages/storefront/BuildPage"));
 const ProductDetail = lazy(() => import("./pages/storefront/ProductDetail"));
 const ProductCheckout = lazy(() => import("./pages/storefront/ProductCheckout"));
 const StorefrontCheckout = lazy(() => import("./pages/storefront/Checkout"));
@@ -567,11 +563,9 @@ const App = () => (
                   {/* Top-level billing page removed */}
                   {/* Storefront route removed */}
                   {/* Shop/store customer routes removed */}
-                  <Route path="/logo-demo" element={<LogoDemo />} />
                   {/* Vendor/store routes */}
                   {/* Vendor signup/dashboard removed */}
                   {/* Vendor storefront accessible via store routes */}
-                  <Route path="/data-migration" element={<DataMigration />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/pricing/tiers" element={<SubscriptionTiers />} />
                   <Route path="/about" element={<About />} />
@@ -600,7 +594,6 @@ const App = () => (
                   {/* Public storefront routes (client's store by store name or store_slug) with persistent header */}
                   <Route path="/store/:storeSlug" element={<StoreLayout />}>
                     <Route index element={<Storefront />} />
-                    <Route path="build" element={<BuildPage />} />
                     <Route path=":productSlug" element={<Storefront />} />
                     <Route path="checkout/:productSlug" element={<ProductCheckout />} />
                     <Route path="order/:orderId/confirm" element={<OrderConfirmation />} />

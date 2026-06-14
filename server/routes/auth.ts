@@ -55,11 +55,6 @@ function normalizeEmail(raw: unknown): string {
   return String(raw ?? '').toLowerCase().trim();
 }
 
-function isAllowedSignupEmail(email: string): boolean {
-  // For now: only allow gmail.com signups.
-  return email.endsWith('@gmail.com');
-}
-
 function inferLockType(dbLockType: unknown, lockedReason: unknown): 'payment' | 'critical' {
   if (dbLockType === 'payment' || dbLockType === 'critical') return dbLockType;
   const reason = typeof lockedReason === 'string' ? lockedReason : '';
@@ -113,10 +108,6 @@ export const register: RequestHandler = async (req, res) => {
   try {
     const { email, password, name, role, voucher_code } = req.body;
     const normalizedEmail = normalizeEmail(email);
-
-    if (!isAllowedSignupEmail(normalizedEmail)) {
-      return jsonError(res, 400, 'Only @gmail.com email addresses are allowed for signup');
-    }
 
     // Password policy check
     const policy = checkPasswordPolicy(password, normalizedEmail);
