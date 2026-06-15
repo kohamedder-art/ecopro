@@ -211,10 +211,22 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     };
 
     // Image Gallery State — LeRoiShop-style infinite loop
-    const [activeImageIndex, setActiveImageIndex] = useState(1);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
     const wrapRef = useRef(false);
-    const galleryIdxRef = useRef(1);
+    const galleryIdxRef = useRef(0);
     galleryIdxRef.current = activeImageIndex;
+
+    // When media count changes, clamp index so single-image doesn't start off-screen
+    useEffect(() => {
+        if (allMedia.length <= 1) {
+            setActiveImageIndex(0);
+            galleryIdxRef.current = 0;
+        } else if (activeImageIndex === 0) {
+            // First mount with >1 media: move to first real item (index 1, after clone)
+            setActiveImageIndex(1);
+            galleryIdxRef.current = 1;
+        }
+    }, [allMedia.length]);
 
     const allMedia = useMemo(() => {
         const items: ({ type: 'video'; embed: typeof videoEmbed } | { type: 'image'; src: string })[] = [];
