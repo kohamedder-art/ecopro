@@ -4,9 +4,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Search, Plus, AlertCircle } from 'lucide-react';
+import { MessageCircle, Search, Plus, AlertCircle, Paperclip } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
+import { FileUploadUI } from '../../components/chat/FileUploadUI';
 import Header from '@/components/layout/Header';
 
 interface Chat {
@@ -47,6 +48,7 @@ export default function AdminChats() {
   const [error, setError] = useState<string | null>(null);
   const [showCodePanel, setShowCodePanel] = useState(false);
   const [issuingCode, setIssuingCode] = useState<string | null>(null);
+  const [showFileUpload, setShowFileUpload] = useState(false);
 
   useEffect(() => {
     loadChats();
@@ -105,6 +107,28 @@ export default function AdminChats() {
       await loadMessages();
     } catch (err) {
       console.error('Failed to send message:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const file = e.clipboardData?.files?.[0];
+    if (!file || !file.type.startsWith('image/') || !selectedChatId) return;
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/chat/${selectedChatId}/upload`, { method: 'POST', body: formData });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Upload failed');
+      }
+      await loadMessages();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to upload pasted image');
     } finally {
       setLoading(false);
     }
@@ -287,6 +311,24 @@ export default function AdminChats() {
                         className="mt-2 max-w-xs rounded-lg"
                       />
                     )}
+                    {msg.metadata?.isImage && msg.metadata?.fileUrl && (
+                      <img 
+                        src={msg.metadata.fileUrl} 
+                        alt={msg.metadata.fileName || 'Shared image'} 
+                        className="mt-2 max-w-[200px] rounded-lg border border-white/10 cursor-pointer hover:opacity-90"
+                        onClick={() => window.open(msg.metadata.fileUrl, '_blank')}
+                      />
+                    )}
+                    {msg.metadata?.fileUrl && !msg.metadata?.isImage && !msg.metadata?.image_url && (
+                      <a 
+                        href={msg.metadata.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 flex items-center gap-2 text-blue-300 hover:text-blue-200 text-xs"
+                      >
+                        📎 {msg.metadata.fileName || 'Download file'}
+                      </a>
+                    )}
                     <p
                       className={`text-xs mt-1 ${
                         msg.sender_type === 'admin' ? 'text-blue-100' : 'text-gray-500'
@@ -304,12 +346,37 @@ export default function AdminChats() {
 
             {/* Input Area */}
             <div className="p-4 border-t bg-white space-y-3">
+              {/* File Upload */}
+              {showFileUpload && selectedChatId && (
+                <FileUploadUI
+                  chatId={selectedChatId}
+                  onClose={() => setShowFileUpload(false)}
+                  onSuccess={() => {
+                    setShowFileUpload(false);
+                    loadMessages();
+                  }}
+                />
+              )}
+
               {/* Message Input */}
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFileUpload(!showFileUpload)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    showFileUpload
+                      ? 'text-blue-500 bg-blue-50'
+                      : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'
+                  }`}
+                  title="Attach file"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onPaste={handlePaste}
                   placeholder={t('admin.chats.messagePlaceholder')}
                   disabled={loading}
                   className="flex-1 px-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
