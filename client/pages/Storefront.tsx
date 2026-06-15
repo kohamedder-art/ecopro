@@ -14,8 +14,6 @@ import { formatMoney } from '@/utils/money';
 import { STOREFRONT_SETTINGS_KEY, STOREFRONT_TEMPLATE_KEY } from '@/lib/storefrontStorage';
 import { getResolvedStoreSlug, buildStoreUrl, isSubdomainStore } from '@/lib/resolvedStore';
 
-const storeDataCache = new Map<string, { settings: any; products: StoreProduct[] }>();
-
 interface StoreProduct {
   id: number;
   title: string;
@@ -176,16 +174,6 @@ export default function Storefront() {
         return;
       }
 
-      const cacheKey = String(storeSlug);
-      const cached = storeDataCache.get(cacheKey);
-      if (cached) {
-        setStoreSettings(cached.settings);
-        setProducts(cached.products);
-        setCategories([]);
-        setLoading(false);
-        return;
-      }
-
       // Use server-injected data if available — skip both API calls and loading state
       const injectedSettings = (window as any).__STORE_SETTINGS;
       const injectedProducts = (window as any).__STORE_PRODUCTS;
@@ -327,7 +315,6 @@ export default function Storefront() {
         const withoutCategories = items.map((p) => ({ ...p, category: undefined }));
         setProducts(withoutCategories);
         setCategories([]);
-        storeDataCache.set(cacheKey, { settings: newSettings, products: withoutCategories });
         setLoading(false);
       } catch (e: any) {
         if (!isMounted) return;
