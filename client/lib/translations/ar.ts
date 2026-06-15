@@ -2502,7 +2502,7 @@ export const ar = {
   "delivery.connected": "متصل",
   "delivery.desc.yalidine": "شركة التوصيل الأولى في الجزائر — API كامل يغطي 58 ولاية.",
   "delivery.desc.guepex": "أكثر من 160 مكتب عبر 58 ولاية. توصيل سريع (24سا) واقتصادي (48سا).",
-  "delivery.desc.zrexpress": "API رسمي ZR Express. يتطلب API Key + Tenant ID لإدارة الطرود.",
+  "delivery.desc.zrexpress": "API رسمي ZR Express. يتطلب Secret Key + Tenant ID لإدارة الطرود.",
   "delivery.desc.ecotrack": "API رسمي Ecotrack. إنشاء طلبيات، تتبع فوري، مرتجعات وقائمة الولايات النشطة.",
   "delivery.desc.maystro": "أكثر من 3000 متجر و600 سائق. تخزين، تغليف ومركز اتصال مدمج.",
   "delivery.desc.dolivroo": "API موحد يجمع Yalidine وZR Express وEcotrack وMaystro في تكامل واحد.",

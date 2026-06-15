@@ -119,11 +119,11 @@ export default function DeliveryCompanies() {
       id: "zr-express",
       name: "ZR Express",
       logo: getDeliveryCompanyLogoSrc("ZR Express"),
-      description: "Official ZR Express API. Requires API Key + Tenant ID for full parcel management.",
+      description: "Official ZR Express API. Requires Secret Key + Tenant ID for full parcel management.",
       descriptionKey: "delivery.desc.zrexpress",
       apiFields: [
-        { label: "API Key", placeholder: "Your ZR Express API Key", field: "apiKey" },
-        { label: "Tenant ID", placeholder: "Your Tenant ID (X-Tenant)", field: "apiId" },
+        { label: "Secret Key", placeholder: "Your ZR Express Secret Key", field: "secretKey" },
+        { label: "Tenant ID", placeholder: "Your Tenant ID (X-Tenant)", field: "tenantId" },
       ],
       enabled: false,
       hasApi: true,
@@ -439,7 +439,7 @@ export default function DeliveryCompanies() {
     const primaryFieldByCompanyId: Record<string, string> = {
       yalidine: 'apiToken',
       guepex: 'apiToken',
-      'zr-express': 'apiKey',
+      'zr-express': 'secretKey',
       ecotrack: 'apiToken',
       maystro: 'apiToken',
       dolivroo: 'apiKey',
@@ -475,7 +475,7 @@ export default function DeliveryCompanies() {
         const id = selectedCompany.id;
         if (id === 'yalidine') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiId || '').trim() || undefined };
         if (id === 'guepex') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
-        if (id === 'zr-express') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.apiId || '').trim() || undefined };
+        if (id === 'zr-express') return { apiKey: (credentials.secretKey || '').trim(), apiSecret: (credentials.tenantId || '').trim() || undefined };
         if (id === 'ecotrack') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiUrl || '').trim() || undefined };
         if (id === 'maystro') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.storeId || '').trim() || undefined };
         if (id === 'dolivroo') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.connectionLabel || '').trim() || undefined };
@@ -484,7 +484,7 @@ export default function DeliveryCompanies() {
         if (id === 'anderson') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.accountId || '').trim() || undefined };
         if (id === 'dhd') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
         if (id === 'ecom-delivery') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.apiToken || '').trim() || undefined };
-        if (id === 'mdm-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.storeId || '').trim() || undefined };
+        if (id === 'mdm-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.productId || '').trim() || undefined, merchantId: (credentials.storeId || '').trim() || undefined };
         return { apiKey: (credentials.apiToken || credentials.apiKey || '').trim(), apiSecret: undefined };
       })();
       if (!apiKey) {
@@ -525,7 +525,7 @@ export default function DeliveryCompanies() {
         const id = selectedCompany.id;
         if (id === 'yalidine') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiId || '').trim() || undefined };
         if (id === 'guepex') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
-        if (id === 'zr-express') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.apiId || '').trim() || undefined };
+        if (id === 'zr-express') return { apiKey: (credentials.secretKey || '').trim(), apiSecret: (credentials.tenantId || '').trim() || undefined };
         if (id === 'ecotrack') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: undefined, merchantId: (credentials.apiUrl || '').trim() || undefined };
         if (id === 'maystro') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.storeId || '').trim() || undefined };
         if (id === 'dolivroo') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.connectionLabel || '').trim() || undefined };
@@ -793,7 +793,7 @@ export default function DeliveryCompanies() {
 
       {/* Configuration Dialog */}
       <Dialog open={showConfigDialog} onOpenChange={(open) => { setShowConfigDialog(open); if (!open) { setTestResult(null); setSaveError(null); setSaveSuccess(null); } }}>
-        <DialogContent className="max-w-lg border-0 shadow-2xl sm:max-w-xl p-0 gap-0 overflow-hidden rounded-2xl" dir="rtl">
+        <DialogContent className="max-w-lg border-0 shadow-2xl p-0 gap-0 rounded-2xl">
           {/* ── Hero Header ── */}
           <div className="relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950" />
@@ -892,6 +892,8 @@ export default function DeliveryCompanies() {
                 apiToken: 'رمز API',
                 apiId: 'معرف API',
                 apiKey: 'مفتاح API',
+                secretKey: 'المفتاح السري',
+                tenantId: 'معرف المستأجر',
                 storeId: 'معرف المتجر',
                 accountId: 'معرف الحساب',
                 productId: 'معرف المنتج',

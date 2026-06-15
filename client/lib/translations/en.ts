@@ -1918,7 +1918,7 @@ export const en = {
   "delivery.connected": "Connected",
   "delivery.desc.yalidine": "#1 delivery in Algeria — full REST API covering all 58 wilayas.",
   "delivery.desc.guepex": "160+ offices across 58 wilayas. Express (24h) & standard (48h) delivery.",
-  "delivery.desc.zrexpress": "Official ZR Express API. Requires API Key + Tenant ID for parcel management.",
+  "delivery.desc.zrexpress": "Official ZR Express API. Requires Secret Key + Tenant ID for parcel management.",
   "delivery.desc.ecotrack": "Official Ecotrack API. Create shipments, real-time tracking, returns & active wilayas.",
   "delivery.desc.maystro": "3K+ stores, 600+ drivers. Warehousing, packaging & call center included.",
   "delivery.desc.dolivroo": "Unified API aggregating Yalidine, ZR Express, Ecotrack & Maystro in one integration.",
