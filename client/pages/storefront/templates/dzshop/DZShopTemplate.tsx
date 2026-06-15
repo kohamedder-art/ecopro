@@ -308,29 +308,29 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             )}
 
             {/* Header */}
-            <header className="bg-white border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm">
+            <header className="border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm" style={{ backgroundColor: accentColor || 'var(--dz-primary)' }}>
                 <div className="flex items-center gap-2">
 {settings?.store_logo ? (
   <img 
     src={settings.store_logo} 
     alt={settings?.store_name || "متجري"} 
-    className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
+    className="w-9 h-9 rounded-full object-cover border-2 shadow-sm"
     loading="lazy"
     decoding="async"
     width="36"
     height="36"
-    style={{ contentVisibility: 'auto' }}
+    style={{ borderColor: 'rgba(255,255,255,0.3)', contentVisibility: 'auto' }}
   />
 ) : (
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ backgroundColor: 'var(--dz-primary)' }}>
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                             {(settings?.store_name || 'م').charAt(0)}
                         </div>
                     )}
-                    <span className="text-lg font-extrabold" style={{ color: 'var(--dz-primary)' }}>{settings?.store_name || "متجري"}</span>
+                    <span className="text-lg font-extrabold text-white">{settings?.store_name || "متجري"}</span>
                 </div>
                 <div className="flex gap-4">
-                    <i className="ph ph-shopping-cart text-2xl text-gray-700"></i>
-                    <i className="ph ph-list text-2xl text-gray-700 md:hidden"></i>
+                    <i className="ph ph-shopping-cart text-2xl text-white"></i>
+                    <i className="ph ph-list text-2xl text-white md:hidden"></i>
                 </div>
             </header>
 

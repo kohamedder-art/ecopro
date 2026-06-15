@@ -589,6 +589,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                         </div>
                       )}
                       {offers.length > 0 && orderProduct.id === heroProduct?.id && (
+                          <div className="mb-4">
                           <OfferSelector
                             offers={offers}
                             unitPrice={heroProduct?.price || 0}
@@ -600,6 +601,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             borderColor={surfaceBorderColor}
                             bgColor={surfaceMuted}
                           />
+                          </div>
                         )}
                         <form id="orderForm" onSubmit={handleOrder} noValidate className="space-y-4">
                           {/* Name + Phone */}

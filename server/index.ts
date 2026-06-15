@@ -1893,8 +1893,13 @@ ${urls}
                   `SELECT store_name, store_description, store_logo,
                           primary_color, secondary_color,
                           template, banner_url, 'DZD' as currency_code,
+                          hero_main_url, hero_tile1_url, hero_tile2_url,
+                          store_images,
+                          owner_name, owner_email,
+                          template_hero_heading, template_hero_subtitle, template_button_text,
+                          template_accent_color, template_bg_color,
                           template_settings, template_settings_by_template, global_settings,
-                          store_slug, store_images
+                          store_slug
                    FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
                   [targetSlug]
                 );

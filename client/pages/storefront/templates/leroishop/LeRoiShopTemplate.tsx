@@ -76,7 +76,9 @@ export default function LeRoiShopTemplate({
 
   /* ── State ────────────────────────────────────────────── */
   const [headerHidden, setHeaderHidden] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const lastScrollY = useRef(0);
+  useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY;
@@ -434,7 +436,7 @@ export default function LeRoiShopTemplate({
       `}</style>
 
       {/* ── ANNOUNCEMENT BAR + HEADER (hide on scroll down) ── */}
-      <div className={`sticky top-0 z-40 transition-transform duration-300 ${headerHidden ? '-translate-y-full' : 'translate-y-0'}`}>
+      <div className={`sticky top-0 z-40 ${mounted ? 'transition-transform duration-300' : ''} ${headerHidden ? '-translate-y-full' : 'translate-y-0'}`}>
       <div className="text-center py-1.5 text-xs md:text-sm font-semibold" style={{ backgroundColor: accentColor, color: '#fff' }}>
         <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('lrs_announcement')}>
           {settings?.lrs_announcement || `${settings?.store_name || 'متجري'} — منصة التسوق الإلكتروني | قدم طلبك من هنا 👉`}

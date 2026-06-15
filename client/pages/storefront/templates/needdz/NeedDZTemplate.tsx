@@ -62,8 +62,8 @@ const FALLBACK_PRODUCTS = [
   }
 ];
 
-export default function NeedDZTemplate({ settings, products, canManage, storeSlug, navigate, initialProductSlug, onProductView }: TemplateProps) {
-  const accentColor = settings?.template_accent_color || settings?.primary_color || '#059669';
+export default function NeedDZTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, navigate, initialProductSlug, onProductView }: TemplateProps) {
+  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#059669';
   const headerColor = settings?.iyco_header_color || '#ffffff';
   const bgColor = settings?.template_bg_color || '#ffffff';
   const isDark = useMemo(() => {

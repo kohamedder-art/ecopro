@@ -795,7 +795,7 @@ export default function DeliveryCompanies() {
       <Dialog open={showConfigDialog} onOpenChange={(open) => { setShowConfigDialog(open); if (!open) { setTestResult(null); setSaveError(null); setSaveSuccess(null); } }}>
         <DialogContent className="max-w-lg border-0 shadow-2xl p-0 gap-0 overflow-hidden rounded-2xl">
           {/* ── Hero Header ── */}
-          <div className="relative overflow-hidden">
+          <div className="relative overflow-hidden min-w-0 w-full">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.15),transparent_50%)]" />
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMSIgZmlsbD0icmdiYSwyNTUsMjU1LDU1KSIvPjwvc3ZnPg==')] opacity-40" />
@@ -835,7 +835,7 @@ export default function DeliveryCompanies() {
             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           </div>
 
-          <div className="space-y-5 px-7 py-6 max-h-[58vh] overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-950">
+          <div className="space-y-5 px-7 py-6 max-h-[58vh] overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-950 min-w-0 w-full">
             {/* Coming soon */}
             {selectedCompany && !canConnectSelectedCompany && (
               <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-8 text-center border border-gray-100 dark:border-gray-800">
@@ -1043,7 +1043,7 @@ export default function DeliveryCompanies() {
           </div>
 
           {/* ── Footer ── */}
-          <div className="border-t-2 border-gray-100 dark:border-gray-900 bg-gray-50/80 dark:bg-gray-900/50 px-7 py-4">
+          <div className="border-t-2 border-gray-100 dark:border-gray-900 bg-gray-50/80 dark:bg-gray-900/50 px-7 py-4 min-w-0 w-full">
             <div className="flex items-center gap-3 flex-row-reverse">
               <Button
                 size="default"
