@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Search, Send, AlertCircle, Plus, UserPlus, X, Tag, Percent, DollarSign, Gift, CheckCircle, Sparkles, Loader2 } from 'lucide-react';
+import { MessageCircle, Search, Send, AlertCircle, Plus, UserPlus, X, Tag, Percent, DollarSign, Gift, CheckCircle, Sparkles, Loader2, Paperclip } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import Header from '@/components/layout/Header';
 import { useAI } from '@/hooks/useAI';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useToast } from '@/components/ui/use-toast';
+import { FileUploadUI } from '../../components/chat/FileUploadUI';
 
 declare global {
   interface Window {
@@ -102,6 +103,7 @@ export default function AdminChat() {
   const [searchedClients, setSearchedClients] = useState<SearchedClient[]>([]);
   const [searchingClients, setSearchingClients] = useState(false);
   const [creatingChat, setCreatingChat] = useState(false);
+  const [showFileUpload, setShowFileUpload] = useState(false);
 
   useEffect(() => {
     loadChats();
@@ -691,6 +693,18 @@ export default function AdminChat() {
                 </div>
               )}
 
+              {/* File Upload */}
+              {showFileUpload && selectedChatId && (
+                <FileUploadUI
+                  chatId={Number(selectedChatId)}
+                  onClose={() => setShowFileUpload(false)}
+                  onSuccess={() => {
+                    setShowFileUpload(false);
+                    loadMessages();
+                  }}
+                />
+              )}
+
               {/* Message Input */}
               <AIDraftReplyBar
                 selectedChat={selectedChat}
@@ -699,6 +713,8 @@ export default function AdminChat() {
                 setInput={setInput}
                 loading={loading}
                 onSubmit={handleSendMessage}
+                showFileUpload={showFileUpload}
+                onToggleFileUpload={() => setShowFileUpload(!showFileUpload)}
               />
             </div>
           </>
@@ -727,6 +743,8 @@ function AIDraftReplyBar({
   setInput,
   loading,
   onSubmit,
+  showFileUpload,
+  onToggleFileUpload,
 }: {
   selectedChat: any;
   messages: any[];
@@ -734,6 +752,8 @@ function AIDraftReplyBar({
   setInput: (v: string) => void;
   loading: boolean;
   onSubmit: (e: React.FormEvent) => void;
+  showFileUpload: boolean;
+  onToggleFileUpload: () => void;
 }) {
   const { call, loading: drafting } = useAI('/api/ai/admin/draft-reply');
 
@@ -776,6 +796,18 @@ function AIDraftReplyBar({
         </div>
       )}
       <form onSubmit={onSubmit} className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleFileUpload}
+          className={`p-2 rounded-lg transition-colors ${
+            showFileUpload
+              ? 'text-blue-400 bg-blue-500/10'
+              : 'text-slate-400 hover:text-blue-400 hover:bg-blue-500/10'
+          }`}
+          title="Attach file"
+        >
+          <Paperclip className="w-4 h-4" />
+        </button>
         <input
           type="text"
           value={input}
