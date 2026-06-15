@@ -686,14 +686,6 @@ export default function DeliveryCompanies() {
         </div>
       </div>
 
-      {/* ── Tip banner ── */}
-      <div className="flex items-center gap-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-700/30 rounded-xl px-3.5 py-2.5">
-        <Zap className="w-4 h-4 text-amber-500 flex-shrink-0" />
-        <p className="text-xs text-amber-800 dark:text-amber-200">
-          <span className="font-bold">{t('delivery.recommended')}</span>{' — '}{t('delivery.recommendedDesc')}
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {sortedCompanies.map((company) => {
           const dbId = companyIdByName[toCompanyLookupKey(String(company.name || ''))];

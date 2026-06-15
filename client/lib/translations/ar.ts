@@ -2492,8 +2492,6 @@ export const ar = {
   // Delivery Companies Page
   "delivery.title": "شركات التوصيل",
   "delivery.subtitle": "اربط متجرك مع مزودي التوصيل الجزائريين. بعض الشركات جاهزة للتعيين يدوياً وبعضها يدعم التكامل عبر API.",
-  "delivery.recommended": "موصى به: استخدم Yalidine أو Dolivroo (مجمّع)",
-  "delivery.recommendedDesc": "Yalidine لديها أفضل توثيق API. Dolivroo توفر API واحد لجميع المزودين.",
   "delivery.shipments": "الشحنات",
   "delivery.tracking": "التتبع",
   "delivery.labels": "الملصقات",

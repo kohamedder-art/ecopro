@@ -1908,8 +1908,6 @@ export const en = {
   // Delivery Companies Page
   "delivery.title": "Delivery Companies",
   "delivery.subtitle": "Connect your store with Algerian delivery providers. Some providers are assignment-ready (manual) while others support full API automation.",
-  "delivery.recommended": "Recommended: Use Yalidine or Dolivroo (Aggregator)",
-  "delivery.recommendedDesc": "Yalidine has the best API documentation. Dolivroo provides a single API for all providers.",
   "delivery.shipments": "Shipments",
   "delivery.tracking": "Tracking",
   "delivery.labels": "Labels",
