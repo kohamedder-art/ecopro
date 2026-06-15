@@ -177,7 +177,7 @@ export default function Storefront() {
       // Use server-injected data if available — skip both API calls and loading state
       const injectedSettings = (window as any).__STORE_SETTINGS;
       const injectedProducts = (window as any).__STORE_PRODUCTS;
-      const hasInjected = injectedSettings && String(injectedSettings.store_slug) === cacheKey;
+      const hasInjected = injectedSettings && String(injectedSettings.store_slug) === storeSlug;
       const hasProducts = Array.isArray(injectedProducts) && injectedProducts.length > 0;
 
       if (hasInjected && hasProducts) {
