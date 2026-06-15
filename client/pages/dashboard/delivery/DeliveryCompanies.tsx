@@ -793,7 +793,7 @@ export default function DeliveryCompanies() {
 
       {/* Configuration Dialog */}
       <Dialog open={showConfigDialog} onOpenChange={(open) => { setShowConfigDialog(open); if (!open) { setTestResult(null); setSaveError(null); setSaveSuccess(null); } }}>
-        <DialogContent className="max-w-lg border-0 shadow-2xl p-0 gap-0 rounded-2xl">
+        <DialogContent className="max-w-lg border-0 shadow-2xl p-0 gap-0 overflow-hidden rounded-2xl">
           {/* ── Hero Header ── */}
           <div className="relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950" />
@@ -996,7 +996,7 @@ export default function DeliveryCompanies() {
                   </div>
                 </div>
                 {!webhookState.result?.registered && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 min-w-0">
                     <code className="flex-1 text-[11px] bg-white dark:bg-gray-900 px-3 py-2.5 rounded-xl border border-amber-200/60 dark:border-amber-800/30 text-amber-900 dark:text-amber-100 truncate direction-ltr text-left font-mono shadow-sm">
                       {(webhookState.result?.webhookUrl) || `https://${window.location.host}/api/delivery/webhooks/${encodeURIComponent(selectedCompany.name)}`}
                     </code>
@@ -1079,7 +1079,7 @@ export default function DeliveryCompanies() {
                   {t('delivery.disconnect')}
                 </Button>
               )}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 {saveError && (
                   <p className="text-xs font-bold text-red-500 flex items-center gap-1.5 truncate">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{saveError}

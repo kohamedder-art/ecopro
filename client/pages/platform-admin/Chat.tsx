@@ -221,6 +221,30 @@ export default function AdminChat() {
     }
   };
 
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const file = e.clipboardData?.files?.[0];
+    if (!file || !file.type.startsWith('image/') || !selectedChatId) return;
+    e.preventDefault();
+
+    const chatId = Number(selectedChatId);
+    setLoading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/chat/${chatId}/upload`, { method: 'POST', body: formData });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Upload failed');
+      }
+      await loadMessages();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to upload pasted image');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generateReplySuggestions = async () => {
     if (!aiSettings?.reply_suggestions || !messages.length) return;
     
@@ -713,6 +737,7 @@ export default function AdminChat() {
                 setInput={setInput}
                 loading={loading}
                 onSubmit={handleSendMessage}
+                onPaste={handlePaste}
                 showFileUpload={showFileUpload}
                 onToggleFileUpload={() => setShowFileUpload(!showFileUpload)}
               />
@@ -745,6 +770,7 @@ function AIDraftReplyBar({
   onSubmit,
   showFileUpload,
   onToggleFileUpload,
+  onPaste,
 }: {
   selectedChat: any;
   messages: any[];
@@ -754,6 +780,7 @@ function AIDraftReplyBar({
   onSubmit: (e: React.FormEvent) => void;
   showFileUpload: boolean;
   onToggleFileUpload: () => void;
+  onPaste: (e: React.ClipboardEvent) => void;
 }) {
   const { call, loading: drafting } = useAI('/api/ai/admin/draft-reply');
 
@@ -812,6 +839,7 @@ function AIDraftReplyBar({
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onPaste={onPaste}
           placeholder="Type your message..."
           disabled={loading}
           className="flex-1 px-3 py-2 rounded-lg bg-slate-700/40 backdrop-blur border border-slate-600/50 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-400 disabled:opacity-50 transition-all text-sm"
