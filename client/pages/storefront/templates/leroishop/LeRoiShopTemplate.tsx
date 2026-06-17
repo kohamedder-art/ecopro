@@ -301,7 +301,9 @@ export default function LeRoiShopTemplate({
 
   const openProduct = (product: any) => {
     setSelectedProduct(product);
-    setActiveImageIndex(1);
+    const imgCount = product.images?.filter(Boolean)?.length || 0;
+    const hasVideo = Boolean((product as any)?.metadata?.video_url);
+    setActiveImageIndex((imgCount + (hasVideo ? 1 : 0)) > 1 ? 1 : 0);
     setView('product');
     setQuantity(1);
     setOrderSuccess(false);
