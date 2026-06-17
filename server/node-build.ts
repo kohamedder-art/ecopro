@@ -1,5 +1,6 @@
 import { createServer } from "./index";
 import http from "http";
+import { ensureConnection } from "./utils/database";
 import { startScheduledMessageWorker, stopScheduledMessageWorker } from "./utils/scheduled-messages";
 import { startBotMessageWorker, stopBotMessageWorker } from "./utils/bot-messaging";
 import { startTelegramUpdatePoller, stopTelegramUpdatePoller } from "./utils/telegram-poller";
@@ -16,6 +17,15 @@ async function startServer() {
     
     // Initialize WebSocket server for real-time chat
     initWebSocket(server);
+
+    // Warm up DB connection before accepting requests
+    try {
+      await ensureConnection();
+      console.log("✅ Database connection ready");
+    } catch (err) {
+      console.error("❌ Database connection failed:", (err as any)?.message);
+      process.exit(1);
+    }
 
     server.listen(port, () => {
       console.log(`\n🚀 EcoPro server running on port ${port}`);
