@@ -1872,9 +1872,40 @@ export const exportDbSnapshot: RequestHandler = async (req, res) => {
   }
 };
 
-// List all products with owner details (admin only)
-export const listAllProducts: RequestHandler = async (_req, res) => {
+// List all products with owner details, pagination & sorting (admin only)
+export const listAllProducts: RequestHandler = async (req, res) => {
   try {
+    const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
+    const sort = String(req.query.sort || 'newest');
+    const offset = (page - 1) * limit;
+
+    let orderClause: string;
+    let joinClause = '';
+
+    switch (sort) {
+      case 'most_viewed':
+        orderClause = 'COALESCE(p.views, 0) DESC, p.id DESC';
+        break;
+      case 'most_ordered':
+        orderClause = 'COALESCE(oc.order_count, 0) DESC, p.id DESC';
+        joinClause = `LEFT JOIN (
+          SELECT product_id, COUNT(*)::int as order_count
+          FROM store_orders
+          GROUP BY product_id
+        ) oc ON oc.product_id = p.id`;
+        break;
+      case 'newest':
+      default:
+        orderClause = 'p.created_at DESC';
+        break;
+    }
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int as total FROM client_store_products p`
+    );
+    const total = countResult.rows[0]?.total || 0;
+
     const result = await pool.query(
       `SELECT 
         p.id, p.title, p.price, p.status,
@@ -1884,10 +1915,13 @@ export const listAllProducts: RequestHandler = async (_req, res) => {
         p.images
       FROM client_store_products p
       JOIN clients c ON p.client_id = c.id
-      ORDER BY p.created_at DESC
-      LIMIT 100`
+      ${joinClause}
+      ORDER BY ${orderClause}
+      LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
-    res.json(result.rows);
+
+    res.json({ products: result.rows, total, page, limit });
   } catch (err) {
     console.error('Failed to list products:', err);
     return jsonError(res, 500, "Failed to list products");

@@ -389,6 +389,9 @@ export default function PlatformAdmin() {
   });
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productPage, setProductPage] = useState(1);
+  const [productSort, setProductSort] = useState('newest');
+  const [productTotal, setProductTotal] = useState(0);
   const [stores, setStores] = useState<Store[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -664,7 +667,7 @@ export default function PlatformAdmin() {
     try {
       const [usersRes, productsRes, statsRes, storesRes, activityRes, staffRes] = await Promise.all([
         fetch('/api/admin/users'),
-        fetch('/api/admin/products').catch(() => null),
+        fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}`).catch(() => null),
         fetch('/api/admin/stats').catch(() => null),
         fetch('/api/admin/stores').catch(() => null),
         fetch('/api/admin/activity-logs').catch(() => null),
@@ -691,14 +694,16 @@ export default function PlatformAdmin() {
       }
 
       if (productsRes.ok) {
-        const productsData = await productsRes.json();
-        setProducts(productsData);
+        const data = await productsRes.json();
+        const items = Array.isArray(data) ? data : (data.products || []);
+        setProducts(items);
+        setProductTotal(data.total ?? items.length);
 
-        const activeProducts = productsData.filter((p: Product) => p.status === 'active').length;
+        const activeProducts = items.filter((p: Product) => p.status === 'active').length;
 
         setStats(prev => ({
           ...prev,
-          totalProducts: productsData.length,
+          totalProducts: data.total ?? items.length,
           activeProducts,
         }));
       }
@@ -733,6 +738,23 @@ export default function PlatformAdmin() {
       setLoading(false);
     }
   };
+
+  // Separate product fetch for pagination/sort changes (avoids re-fetching everything)
+  const loadProducts = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}`);
+      if (res.ok) {
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : (data.products || []);
+        setProducts(items);
+        setProductTotal(data.total ?? items.length);
+      }
+    } catch (e) {
+      console.error('Failed to load products:', e);
+    }
+  }, [productPage, productSort]);
+
+  useEffect(() => { loadProducts(); }, [loadProducts]);
 
   const formatBytes = (bytes: number | null | undefined) => {
     if (bytes == null || !Number.isFinite(bytes)) return '-';
@@ -1603,6 +1625,11 @@ export default function PlatformAdmin() {
           <ProductsTab
             products={products}
             loading={loading}
+            total={productTotal}
+            page={productPage}
+            sort={productSort}
+            onPageChange={setProductPage}
+            onSortChange={(sort) => { setProductSort(sort); setProductPage(1); }}
             onFlag={(id) => { setFlaggedProductId(id); setShowFlagModal(true); }}
             onDelete={async (id) => {
               if (!confirm(t('platformAdmin.alerts.confirmDeleteProduct'))) return;
