@@ -182,6 +182,10 @@ export default function LeRoiShopTemplate({
     setSelectedOffer(null);
     setActiveImageIndex(allMedia.length > 1 ? 1 : 0);
   }, [activeProduct?.id]);
+  // Clamp index when media count shrinks (e.g., multi-image → single-image)
+  useEffect(() => {
+    if (allMedia.length <= 1) setActiveImageIndex(0);
+  }, [allMedia.length]);
 
   const loopedMedia = useMemo(() => {
     const len = allMedia.length;
