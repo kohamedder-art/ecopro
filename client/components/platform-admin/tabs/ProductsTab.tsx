@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Package, Search, Flag, Eye, Trash2, Grid, List, Loader2, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, Search, Flag, Eye, ShoppingCart, Trash2, Grid, List, Loader2, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n';
@@ -12,6 +12,7 @@ interface Product {
   seller_email: string;
   status: string;
   views: number;
+  order_count: number;
   created_at: string;
   images?: string[];
   flagged?: boolean;
@@ -168,9 +169,15 @@ export default function ProductsTab({ products, loading, total, page, sort, onPa
                 <h4 className="text-[11px] font-medium text-gray-900 dark:text-white truncate leading-tight">{p.title}</h4>
                 <div className="flex items-center justify-between mt-0.5">
                   <span className="text-[11px] font-bold text-emerald-400">{Number(p.price).toLocaleString()} دج</span>
-                  <div className="flex items-center gap-0.5 text-gray-500 dark:text-slate-500">
-                    <Eye className="w-2.5 h-2.5" />
-                    <span className="text-[9px]">{p.views}</span>
+                  <div className="flex items-center gap-1.5 text-gray-500 dark:text-slate-500">
+                    <div className="flex items-center gap-0.5">
+                      <Eye className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{p.views}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      <ShoppingCart className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{p.order_count}</span>
+                    </div>
                   </div>
                 </div>
                 <p className="text-[9px] text-gray-500 dark:text-slate-500 mt-0.5 truncate leading-tight">{p.seller_name}</p>
@@ -192,7 +199,7 @@ export default function ProductsTab({ products, loading, total, page, sort, onPa
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-900 dark:text-white truncate">{p.title}</p>
-                  <p className="text-[11px] text-gray-500 dark:text-slate-500">{p.seller_name} · {p.views} views</p>
+                  <p className="text-[11px] text-gray-500 dark:text-slate-500">{p.seller_name} · {p.views} views · {p.order_count} orders</p>
                 </div>
                 <span className="text-xs font-bold text-emerald-400">{Number(p.price).toLocaleString()} دج</span>
                 {p.flagged && <Badge className="bg-red-500/20 text-red-300 text-[10px]">{t('platformAdmin.products.flagged')}</Badge>}

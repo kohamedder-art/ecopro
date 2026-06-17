@@ -1880,8 +1880,13 @@ export const listAllProducts: RequestHandler = async (req, res) => {
     const sort = String(req.query.sort || 'newest');
     const offset = (page - 1) * limit;
 
+    const orderJoin = `LEFT JOIN (
+      SELECT product_id, COUNT(*)::int as order_count
+      FROM store_orders
+      GROUP BY product_id
+    ) oc ON oc.product_id = p.id`;
+
     let orderClause: string;
-    let joinClause = '';
 
     switch (sort) {
       case 'most_viewed':
@@ -1889,11 +1894,6 @@ export const listAllProducts: RequestHandler = async (req, res) => {
         break;
       case 'most_ordered':
         orderClause = 'COALESCE(oc.order_count, 0) DESC, p.id DESC';
-        joinClause = `LEFT JOIN (
-          SELECT product_id, COUNT(*)::int as order_count
-          FROM store_orders
-          GROUP BY product_id
-        ) oc ON oc.product_id = p.id`;
         break;
       case 'newest':
       default:
@@ -1912,10 +1912,11 @@ export const listAllProducts: RequestHandler = async (req, res) => {
         COALESCE(c.name, c.email) as seller_name,
         c.email as seller_email,
         COALESCE(p.views, 0) as views, p.created_at,
-        p.images
+        p.images,
+        COALESCE(oc.order_count, 0) as order_count
       FROM client_store_products p
       JOIN clients c ON p.client_id = c.id
-      ${joinClause}
+      ${orderJoin}
       ORDER BY ${orderClause}
       LIMIT $1 OFFSET $2`,
       [limit, offset]
