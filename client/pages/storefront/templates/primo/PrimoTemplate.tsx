@@ -126,6 +126,13 @@ const openProduct = (product: any) => {
   if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug));
 };
 
+const goBackToCatalog = () => {
+  setViewMode('catalog');
+  setActiveMainProduct(null);
+  setSelectedMainImage(0);
+  if (navigate) navigate(buildStoreUrl(storeSlug));
+};
+
   const mainImages = mainProduct?.images?.length ? mainProduct.images : ['/placeholder.png'];
 
   // ── Video ──
@@ -364,16 +371,29 @@ const openProduct = (product: any) => {
       <header className="sticky top-0 z-50 backdrop-blur-md transition-transform duration-300" style={{ backgroundColor: surfaceColor + 'cc', borderBottom: `1px solid ${surfaceBorderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
+            {viewMode === 'product' && (
+              <button
+                onClick={goBackToCatalog}
+                className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                style={{ color: surfaceTextColor }}
+                aria-label="عودة إلى المتجر"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15,18 9,12 15,6" />
+                </svg>
+              </button>
+            )}
             {settings?.store_logo ? (
               <img src={settings.store_logo} alt={storeName} className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" width="32" height="32" style={{ contentVisibility: 'auto' }} />
             ) : (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: accentColor }}>
+              <div onClick={goBackToCatalog} className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm cursor-pointer" style={{ backgroundColor: accentColor }}>
                 {storeName.charAt(0)}
               </div>
             )}
             <h1
-              className="text-xl font-black tracking-tighter"
+              className="text-xl font-black tracking-tighter cursor-pointer"
               style={{ color: surfaceTextColor }}
+              onClick={goBackToCatalog}
               contentEditable={canManage}
               suppressContentEditableWarning
               onBlur={handleTextEdit('store_name')}
@@ -545,10 +565,14 @@ const openProduct = (product: any) => {
                   <>
                     <button onClick={e => { e.stopPropagation(); const t = mainImages.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const n = (c + 1) % t; if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n); } }}
                       className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
+                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15,18 9,12 15,6" /></svg>
+                    </button>
                     <button onClick={e => { e.stopPropagation(); const t = mainImages.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const p = (c - 1 + t) % t; if (p === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? p - 1 : p; setSelectedMainImage(ii); scrollCarouselTo(p); } }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9,18 15,12 9,6" /></svg>
+                    </button>
                   </>
                 )}
               </div>
@@ -792,9 +816,13 @@ const openProduct = (product: any) => {
           {zoomState.images.length > 1 && (
             <>
               <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx - 1 + zoomState.images.length) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">‹</button>
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15,18 9,12 15,6" /></svg>
+              </button>
               <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx + 1) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">›</button>
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9,18 15,12 9,6" /></svg>
+              </button>
             </>
           )}
           <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}
