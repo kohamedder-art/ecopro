@@ -451,6 +451,18 @@ export default function FloatingChatBubble() {
                     </div>
                 ) : (
                   <div className="flex items-center gap-2">
+                    {activeChatId && (
+                      <button
+                        type="button"
+                        onClick={() => setAdminSelectedChatId(null)}
+                        className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                        aria-label="Back to chat list"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="15,18 9,12 15,6" />
+                        </svg>
+                      </button>
+                    )}
                     <Sparkles className="w-4 h-4 text-white" />
                     <span className="text-sm font-bold text-white">{t('chat.support')}</span>
                   </div>
@@ -734,7 +746,7 @@ export default function FloatingChatBubble() {
                 <div className="flex-1 min-h-0 overflow-hidden" style={{ height: '100%' }}>
                   {isAdmin ? (
                     activeChatId ? (
-                      <div className="h-full overflow-hidden"><ChatWindow chatId={activeChatId} userRole="admin" userId={userId} onClose={closeMessenger} /></div>
+                      <div className="h-full overflow-hidden"><ChatWindow chatId={activeChatId} userRole="admin" userId={userId} onClose={() => setAdminSelectedChatId(null)} /></div>
                     ) : (
                       <ChatList userRole="admin" selectedChatId={adminSelectedChatId ?? undefined} onSelectChat={(id) => setAdminSelectedChatId(id)} />
                     )
