@@ -142,8 +142,8 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
   }
 
   const skipDbInit = Boolean(options?.skipDbInit);
-  if (skipDbInit && !isProduction) {
-    console.log('⏭️ SKIP_DB_INIT (dev) — skipping database initialization in createServer');
+  if (skipDbInit) {
+    console.log('⏭️ SKIP_DB_INIT — skipping database initialization in createServer');
   } else if (hasDatabaseUrl || isProduction) {
     initializeDatabase()
       .then(async () => {

@@ -1,6 +1,6 @@
 import { createServer } from "./index";
 import http from "http";
-import { ensureConnection } from "./utils/database";
+import { ensureConnection, runPendingMigrations } from "./utils/database";
 import { startScheduledMessageWorker, stopScheduledMessageWorker } from "./utils/scheduled-messages";
 import { startBotMessageWorker, stopBotMessageWorker } from "./utils/bot-messaging";
 import { startTelegramUpdatePoller, stopTelegramUpdatePoller } from "./utils/telegram-poller";
@@ -11,19 +11,21 @@ import { initWebSocket } from "./utils/websocket";
 async function startServer() {
   try {
     // Create and start server with WebSocket support
-    const app = await createServer();
+    const app = await createServer({ skipDbInit: true });
     const port = process.env.PORT || 3000;
     const server = http.createServer(app);
     
     // Initialize WebSocket server for real-time chat
     initWebSocket(server);
 
-    // Warm up DB connection before accepting requests
+    // Warm up DB connection + run pending migrations before accepting requests
     try {
       await ensureConnection();
       console.log("✅ Database connection ready");
+      await runPendingMigrations();
+      console.log("✅ Migrations up to date");
     } catch (err) {
-      console.error("❌ Database connection failed:", (err as any)?.message);
+      console.error("❌ Database initialization failed:", (err as any)?.message);
       process.exit(1);
     }
 
