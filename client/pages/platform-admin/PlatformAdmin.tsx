@@ -1424,6 +1424,40 @@ export default function PlatformAdmin() {
           />
           <div className="flex-1 min-w-0">
 
+        {/* Mobile tab bar — horizontally scrollable row visible on small screens */}
+        <div className="lg:hidden sticky top-0 z-10 mb-3 -mx-2 px-2 pt-2 pb-1 overflow-x-auto bg-gradient-to-b from-gray-50 via-gray-50 to-transparent dark:from-slate-900 dark:via-slate-900 dark:to-transparent">
+          <div className="flex gap-1.5 min-w-max">
+            {[
+              { key: 'overview' as const, label: 'Overview' },
+              { key: 'users' as const, label: 'Users' },
+              { key: 'stores' as const, label: 'Stores' },
+              { key: 'products' as const, label: 'Products' },
+              { key: 'billing' as const, label: 'Subscriptions' },
+              { key: 'codes' as const, label: 'Codes' },
+              { key: 'bills' as const, label: 'Bills' },
+              { key: 'health' as const, label: 'Health' },
+              { key: 'errors' as const, label: 'Errors' },
+              { key: 'activity' as const, label: 'Activity' },
+              { key: 'ai' as const, label: 'AI' },
+              { key: 'tools' as const, label: 'Tools' },
+              { key: 'notes' as const, label: 'Notes' },
+              { key: 'settings' as const, label: 'Settings' },
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  activeTab === t.key
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700/50'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Errors Tab */}
         {activeTab === 'errors' && (
           <ErrorsTab
