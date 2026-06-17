@@ -108,9 +108,25 @@ if (container) {
     window.addEventListener('unhandledrejection', (event) => {
       try {
         const reason: any = (event as any).reason;
+        const msg: string = reason?.message || String(reason || '');
+        const name: string = reason?.name || '';
+
+        // Auto-reload on chunk load failures after deploy
+        const isChunkError =
+          msg.includes('Loading chunk') ||
+          msg.includes('import of') ||
+          name === 'ChunkLoadError' ||
+          (name === 'TypeError' && msg.includes('Failed to fetch dynamically imported module'));
+
+        if (isChunkError) {
+          window.location.reload();
+          event.preventDefault();
+          return;
+        }
+
         reportClientError({
-          message: reason?.message || String(reason || 'Unhandled promise rejection'),
-          name: reason?.name,
+          message: msg,
+          name,
           stack: reason?.stack,
         });
       } catch {

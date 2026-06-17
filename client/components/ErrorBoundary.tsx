@@ -29,6 +29,21 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     // Log error to console in development
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     
+    // Auto-reload on chunk load failures (happens after deploy when old chunks are removed)
+    const isChunkError =
+      error?.message?.includes('Loading chunk') ||
+      error?.message?.includes('import of') ||
+      (error as any)?.name === 'ChunkLoadError' ||
+      (error as any)?.name === 'TypeError' && (
+        error?.message?.includes('Failed to fetch dynamically imported module') ||
+        error?.message?.includes('import')
+      );
+
+    if (isChunkError && import.meta.env.PROD) {
+      window.location.reload();
+      return;
+    }
+    
     // In production, report to server telemetry for the admin dashboard.
     // Use Vite env flags (process.env is not guaranteed in the browser).
     if (import.meta.env.PROD) {

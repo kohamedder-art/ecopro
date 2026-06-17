@@ -1934,7 +1934,7 @@ ${urls}
             const injected = nonce
               ? withMeta.replace(/<script\s+type="module"\s+/g, `<script type="module" nonce="${nonce}" `)
               : withMeta;
-            res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=60');
+            res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
             res.setHeader('Vary', 'Accept-Encoding');
             res.setHeader('X-Content-Type-Options', 'nosniff');
             res.type('html').send(injected);
