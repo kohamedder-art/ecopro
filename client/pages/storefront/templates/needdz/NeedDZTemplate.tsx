@@ -368,6 +368,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   const curIdx = (currentImgIdx as any)[product.id] || 0;
                   const goTo = (idx: number) => {
                     const clamped = ((idx % totalMedia) + totalMedia) % totalMedia;
+                    galleryIdxRef.current[String(product.id)] = clamped;
                     setCurrentImgIdx((prev: any) => ({ ...prev, [product.id]: clamped }));
                   };
                   return (
@@ -385,55 +386,48 @@ const parseVideoEmbed = (videoUrl: string) => {
                       goTo(tgt);
                     }}
                   >
-                    <div style={{
-                      display: 'flex', height: '100%',
-                      width: `${totalMedia * 100}%`,
-                      transform: `translateX(-${(curIdx / totalMedia) * 100}%)`,
-                      transition: 'transform 0.3s ease',
-                      willChange: 'transform',
-                    }}>
-                      {product.videoUrl && parseVideoEmbed(product.videoUrl) && (() => {
-                        const ve = parseVideoEmbed(product.videoUrl);
-                        return (
-                          <div style={{ width: `${100 / totalMedia}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
-                            {ve.type === 'youtube' ? (
-                              <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ve.id}?autoplay=1&mute=1&loop=1&playlist=${ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                            ) : ve.type === 'video' ? (
-                              <video className="w-full h-full object-cover" src={ve.url} autoPlay muted loop playsInline preload="metadata" />
-                            ) : (
-                              <iframe className="w-full h-full" src={ve.url} allowFullScreen />
-                            )}
-                          </div>
-                        );
-                      })()}
-{product.images.length > 0 ? product.images.map((img: string, i: number) => (
-  <div key={i} style={{ width: `${100 / totalMedia}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}
-    onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}>
-  <img 
-    src={img} 
-    alt={product.name} 
-    className="w-full h-full object-cover cursor-pointer" 
-    loading="lazy"
-    decoding="async"
-    width="600"
-    height="600"
-    style={{ contentVisibility: 'auto' }}
-  />
-</div>
-)) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ width: `${100 / totalMedia}%`, color: textMuted }}>
-                          <ShoppingBag size={48} strokeWidth={1} />
-                        </div>
-                      )}
-                    </div>
+                    {(() => {
+                      const ve = product.videoUrl ? parseVideoEmbed(product.videoUrl) : null;
+                      const hasVideo = !!ve;
+                      return (
+                        <>
+                          {hasVideo && (
+                            <div className="absolute inset-0 transition-opacity duration-300"
+                              style={{ opacity: curIdx === 0 ? 1 : 0, zIndex: curIdx === 0 ? 1 : 0 }}>
+                              {ve!.type === 'youtube' ? (
+                                <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ve!.id}?autoplay=1&mute=1&loop=1&playlist=${ve!.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                              ) : ve!.type === 'video' ? (
+                                <video className="w-full h-full object-cover" src={ve!.url} autoPlay muted loop playsInline preload="metadata" />
+                              ) : (
+                                <iframe className="w-full h-full" src={ve!.url} allowFullScreen />
+                              )}
+                            </div>
+                          )}
+                          {product.images.length > 0 ? product.images.map((img: string, i: number) => {
+                            const idx = hasVideo ? i + 1 : i;
+                            return (
+                              <div key={i} className="absolute inset-0 transition-opacity duration-300 cursor-pointer"
+                                style={{ opacity: curIdx === idx ? 1 : 0, zIndex: curIdx === idx ? 1 : 0, pointerEvents: curIdx === idx ? 'auto' : 'none' }}
+                                onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}>
+                                <img src={img} alt={product.name} className="w-full h-full object-cover" decoding="async" width="600" height="600" />
+                              </div>
+                            );
+                          }) : (
+                            <div className="absolute inset-0 flex items-center justify-center" style={{ color: textMuted }}>
+                              <ShoppingBag size={48} strokeWidth={1} />
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                     
                     {/* Badge */}
-                    <div className="absolute top-4 left-4 bg-black text-white px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1">
+                    <div className="absolute top-4 left-4 bg-black text-white px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1" style={{ zIndex: 10 }}>
                       <Flame size={12} className="text-orange-400" /> {product.badge}
                     </div>
 
                     {/* Dots */}
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5" style={{ zIndex: 10 }}>
                       {[...Array(totalMedia)].map((_, idx) => (
                         <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${curIdx === idx ? 'w-6 bg-emerald-500' : 'w-1.5 bg-white/50'}`}></div>
                       ))}
@@ -442,11 +436,11 @@ const parseVideoEmbed = (videoUrl: string) => {
                     {totalMedia > 1 && (
                       <>
                         <button onClick={() => goTo(curIdx - 1)}
-                          className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+                          className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white" style={{ zIndex: 10 }}>
                           <ChevronLeft size={20} />
                         </button>
                         <button onClick={() => goTo(curIdx + 1)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+                          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white" style={{ zIndex: 10 }}>
                           <ChevronRight size={20} />
                         </button>
                       </>
@@ -461,9 +455,9 @@ const parseVideoEmbed = (videoUrl: string) => {
                     <h2 className="text-xl font-bold leading-tight w-2/3" style={{ color: textColor }}>{product.name}</h2>
                     <div className="text-right">
                       {product.oldPrice > product.price && (
-                          <div className="text-xs line-through font-medium" style={{ color: textMuted }}>{product.oldPrice} DA</div>
+                          <div className="text-xs line-through font-medium" style={{ color: textMuted }}>{Math.round(product.oldPrice)} DA</div>
                       )}
-                      <div className="text-xl font-black" style={{ color: accentColor }}>{product.price} DA</div>
+                      <div className="text-xl font-black" style={{ color: accentColor }}>{Math.round(product.price)} DA</div>
                     </div>
                   </div>
 
@@ -493,45 +487,7 @@ const parseVideoEmbed = (videoUrl: string) => {
             ))}
           </div>
 
-          {/* Social Proof Section */}
-          {(showSocialProof || canManage) && (
-          <section className="px-6 py-10 bg-slate-900 text-white rounded-t-[40px] mt-10 relative overflow-visible" data-edit-path="social-proof">
-            {canManage && (
-                <div className="absolute -bottom-3 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-[60]">
-                    <button
-                        onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'needdz_show_social', value: !showSocialProof }, '*')}
-                        className="flex items-center gap-1 font-bold"
-                    >
-                        {showSocialProof ? <><Eye className="w-3 h-3"/> إخفاء</> : <><EyeOff className="w-3 h-3"/> إظهار</>}
-                    </button>
-                </div>
-            )}
-            {showSocialProof && (
-            <>
-            <h3 className="text-xl font-bold mb-6">آراء عملائنا (DZ)</h3>
-            <div className="space-y-6">
-              {[
-                { name: "Ahmed B.", city: "Oran", comment: "Qualité top, arrived in 2 days to Oran via Yalidine.", rating: 5 },
-                { name: "Sara L.", city: "Alger", comment: "Service client très sérieux. Je recommande.", rating: 5 }
-              ].map((rev, i) => (
-                <div key={i} className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                  <div className="flex justify-between mb-2">
-                    <span className="font-bold text-sm">{rev.name} <span className="text-emerald-400 ml-1">• {rev.city}</span></span>
-                    <div className="flex gap-0.5 text-yellow-400">
-                      {[...Array(rev.rating)].map((_, j) => <Star key={j} size={10} fill="currentColor" />)}
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-300 italic">"{rev.comment}"</p>
-                </div>
-              ))}
-            </div>
-            </>
-            )}
-            {canManage && !showSocialProof && (
-                <div className="text-center py-4 text-white/50 text-xs">⭐ Social proof hidden</div>
-            )}
-          </section>
-          )}
+
         </main>
 
         {/* Improved Checkout Drawer */}
@@ -594,7 +550,7 @@ const parseVideoEmbed = (videoUrl: string) => {
   />
                     <div>
                       <h4 className="font-bold" style={{ color: textColor }}>{selectedProduct?.name}</h4>
-                      <p className="font-black" style={{ color: accentColor }}>{selectedProduct?.price} DA</p>
+                      <p className="font-black" style={{ color: accentColor }}>{Math.round(selectedProduct?.price ?? 0)} DA</p>
                     </div>
                   </div>
 
@@ -784,7 +740,7 @@ const parseVideoEmbed = (videoUrl: string) => {
       {/* Image Preview Lightbox */}
       {previewImg && previewProduct && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center select-none" onClick={() => { setPreviewImg(null); setPreviewProduct(null); }}>
-          <button onClick={() => { setPreviewImg(null); setPreviewProduct(null); }} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-xl z-10">✕</button>
+          <button onClick={() => { setPreviewImg(null); setPreviewProduct(null); }} className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-xl z-20">✕</button>
           <div className="flex-1 flex items-center justify-center w-full relative"
             onTouchStart={e => { (e.currentTarget as any)._px = e.touches[0].clientX; }}
             onTouchEnd={e => {
@@ -813,7 +769,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   <ChevronLeft size={20} />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); const imgs = previewProduct.images; const cur = imgs.indexOf(previewImg); setPreviewImg(imgs[(cur + 1) % imgs.length]); }}
-                  className="absolute right-14 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white z-10 backdrop-blur-md">
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white z-10 backdrop-blur-md">
                   <ChevronRight size={20} />
                 </button>
               </>
