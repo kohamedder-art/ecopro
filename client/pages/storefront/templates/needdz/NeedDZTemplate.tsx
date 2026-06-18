@@ -62,7 +62,7 @@ const FALLBACK_PRODUCTS = [
   }
 ];
 
-export default function NeedDZTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, navigate, initialProductSlug, onProductView }: TemplateProps) {
+export default function NeedDZTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, navigate, initialProductSlug, onProductView, onCheckoutOpen }: TemplateProps) {
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#059669';
   const headerColor = settings?.iyco_header_color || '#ffffff';
   const bgColor = settings?.template_bg_color || '#ffffff';
@@ -83,10 +83,10 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
 
   // Pre-select product from URL slug on mount
   useEffect(() => {
-    if (!initialProductSlug) { setSelectedProduct(null); setIsCheckoutOpen(false); return; }
+    if (!initialProductSlug) { setSelectedProduct(null); setIsCheckoutOpen(false); onCheckoutOpen?.(false); return; }
     if (products?.length) {
       const match = products.find((p: any) => p.slug === initialProductSlug);
-      if (match) { setSelectedProduct(match); setIsCheckoutOpen(true); }
+      if (match) { setSelectedProduct(match); setIsCheckoutOpen(true); onCheckoutOpen?.(true); }
     }
   }, [initialProductSlug, products]);
 
@@ -97,11 +97,13 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const handleSelectProduct = (product: any) => {
     setSelectedProduct(product);
     setIsCheckoutOpen(true);
+    onCheckoutOpen?.(true);
     if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug));
   };
 
   const handleCloseCheckout = () => {
     setIsCheckoutOpen(false);
+    onCheckoutOpen?.(false);
     if (navigate) navigate(buildStoreUrl(storeSlug, '/'));
   };
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -493,15 +495,18 @@ const parseVideoEmbed = (videoUrl: string) => {
         {/* Improved Checkout Drawer */}
         {isCheckoutOpen && (
           <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm p-0" onClick={() => { handleCloseCheckout(); setOrderStatus('idle'); }}>
-            <div className="w-full max-w-[480px] rounded-t-[40px] p-8 animate-slide-up relative max-h-[90vh] overflow-y-auto [scrollbar-hide::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ backgroundColor: cardBg }} onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-[480px] rounded-t-[40px] animate-slide-up flex flex-col" style={{ backgroundColor: cardBg, maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
               
-              <button 
-                onClick={() => { handleCloseCheckout(); setOrderStatus('idle'); }}
-                className="absolute top-6 right-8 transition-colors" style={{ color: textMuted }}
-              >
-                <X size={28} />
-              </button>
+              <div className="flex items-center justify-end shrink-0 p-8 pb-4">
+                <button 
+                  onClick={() => { handleCloseCheckout(); setOrderStatus('idle'); }}
+                  className="transition-colors" style={{ color: textMuted }}
+                >
+                  <X size={28} />
+                </button>
+              </div>
 
+              <div className="overflow-y-auto px-8 pb-8 [scrollbar-hide::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {orderStatus === 'success' ? (
                 <div className="py-16 text-center space-y-6">
                   <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: accentColor + '20' }}>
@@ -703,6 +708,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </form>
                 </div>
               )}
+            </div>
             </div>
           </div>
         )}

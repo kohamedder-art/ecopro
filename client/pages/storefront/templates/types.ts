@@ -86,6 +86,8 @@ export interface TemplateProps {
   onProductView?: (product: StoreProduct) => void;
   /** When navigating directly to a product URL (/store/:storeSlug/:productSlug), pre-select this product */
   initialProductSlug?: string;
+  /** Called when checkout modal opens/closes (so Storefront can hide chat bubble) */
+  onCheckoutOpen?: (open: boolean) => void;
 }
 
 /**
