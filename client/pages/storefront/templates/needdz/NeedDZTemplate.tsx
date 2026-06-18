@@ -98,7 +98,6 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     setSelectedProduct(product);
     setIsCheckoutOpen(true);
     onCheckoutOpen?.(true);
-    if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug));
   };
 
   const handleCloseCheckout = () => {
