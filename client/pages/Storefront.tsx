@@ -72,7 +72,7 @@ export default function Storefront() {
   // Sorting option for templates that support sorting
   const [sortOption, setSortOption] = useState<'newest' | 'price-asc' | 'price-desc' | 'featured' | 'views-desc'>('newest');
 
-  const [chatHidden, setChatHidden] = useState(false);
+
 
   // Derived visual tokens from store settings
   const template = storeSettings.template || 'books';
@@ -420,10 +420,9 @@ export default function Storefront() {
             canManage: false,
             onProductView: handleProductView,
             initialProductSlug: initialProductSlug || undefined,
-            onCheckoutOpen: setChatHidden,
           })}
       </div>
-      <StorefrontChatBubble storeSlug={storeSlug!} enabled={chatHidden ? false : (storeSettings as any).chat_bubble_enabled !== false} />
+      <StorefrontChatBubble storeSlug={storeSlug!} enabled={(storeSettings as any).chat_bubble_enabled !== false} />
     </>
   );
 }

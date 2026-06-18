@@ -62,7 +62,7 @@ const FALLBACK_PRODUCTS = [
   }
 ];
 
-export default function NeedDZTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, navigate, initialProductSlug, onProductView, onCheckoutOpen }: TemplateProps) {
+export default function NeedDZTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, navigate, initialProductSlug, onProductView }: TemplateProps) {
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#059669';
   const headerColor = settings?.iyco_header_color || '#ffffff';
   const bgColor = settings?.template_bg_color || '#ffffff';
@@ -81,12 +81,17 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
+  // Toggle body class for chat bubble to hide itself
+  useEffect(() => {
+    document.body.classList.toggle('checkout-open', isCheckoutOpen);
+  }, [isCheckoutOpen]);
+
   // Pre-select product from URL slug on mount
   useEffect(() => {
-    if (!initialProductSlug) { setSelectedProduct(null); setIsCheckoutOpen(false); onCheckoutOpen?.(false); return; }
+    if (!initialProductSlug) { setSelectedProduct(null); setIsCheckoutOpen(false); return; }
     if (products?.length) {
       const match = products.find((p: any) => p.slug === initialProductSlug);
-      if (match) { setSelectedProduct(match); setIsCheckoutOpen(true); onCheckoutOpen?.(true); }
+      if (match) { setSelectedProduct(match); setIsCheckoutOpen(true); }
     }
   }, [initialProductSlug, products]);
 
@@ -97,12 +102,10 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const handleSelectProduct = (product: any) => {
     setSelectedProduct(product);
     setIsCheckoutOpen(true);
-    onCheckoutOpen?.(true);
   };
 
   const handleCloseCheckout = () => {
     setIsCheckoutOpen(false);
-    onCheckoutOpen?.(false);
     if (navigate) navigate(buildStoreUrl(storeSlug, '/'));
   };
   const [orderError, setOrderError] = useState<string | null>(null);

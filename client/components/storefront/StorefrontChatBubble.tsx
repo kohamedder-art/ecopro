@@ -52,6 +52,15 @@ const PLATFORM_COLORS: Record<string, string> = {
 
 export default function StorefrontChatBubble({ storeSlug, enabled }: StorefrontChatBubbleProps) {
   const [channels, setChannels] = useState<ContactChannel[]>([]);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  useEffect(() => {
+    const check = () => setCheckoutOpen(document.body.classList.contains('checkout-open'));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!enabled || !storeSlug) return;
@@ -63,7 +72,7 @@ export default function StorefrontChatBubble({ storeSlug, enabled }: StorefrontC
       .catch(() => {});
   }, [storeSlug, enabled]);
 
-  if (!enabled || channels.length === 0) return null;
+  if (!enabled || channels.length === 0 || checkoutOpen) return null;
 
   return (
     <div data-storefront-contact="true" className="fixed bottom-20 sm:bottom-6 left-4 sm:left-6 z-[9999] flex flex-col gap-3" dir="ltr">
