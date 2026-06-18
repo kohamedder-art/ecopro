@@ -492,8 +492,8 @@ const parseVideoEmbed = (videoUrl: string) => {
 
         {/* Improved Checkout Drawer */}
         {isCheckoutOpen && (
-          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm p-0">
-            <div className="w-full max-w-[480px] rounded-t-[40px] p-8 animate-slide-up relative max-h-[90vh] overflow-y-auto [scrollbar-hide::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ backgroundColor: cardBg }}>
+          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm p-0" onClick={() => { handleCloseCheckout(); setOrderStatus('idle'); }}>
+            <div className="w-full max-w-[480px] rounded-t-[40px] p-8 animate-slide-up relative max-h-[90vh] overflow-y-auto [scrollbar-hide::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ backgroundColor: cardBg }} onClick={e => e.stopPropagation()}>
               
               <button 
                 onClick={() => { handleCloseCheckout(); setOrderStatus('idle'); }}
