@@ -776,7 +776,7 @@ const parseVideoEmbed = (videoUrl: string) => {
             <img 
   src={previewImg} 
   alt="" 
-  className="max-w-full max-h-[70vh] object-contain px-4" 
+  className="max-w-full max-h-[90vh] object-contain px-2" 
   onClick={e => e.stopPropagation()}
   decoding="async"
   style={{ contentVisibility: 'auto' }}
