@@ -374,6 +374,9 @@ const parseVideoEmbed = (videoUrl: string) => {
                     const clamped = ((idx % totalMedia) + totalMedia) % totalMedia;
                     galleryIdxRef.current[String(product.id)] = clamped;
                     setCurrentImgIdx((prev: any) => ({ ...prev, [product.id]: clamped }));
+                    const nextIdx = ((clamped + 1) % totalMedia + totalMedia) % totalMedia;
+                    const mediaSrc = nextIdx === 0 && product.videoUrl ? null : product.images[nextIdx - (product.videoUrl ? 1 : 0)];
+                    if (mediaSrc) { const p = new Image(); p.src = mediaSrc; }
                   };
                   return (
                   <div className="relative aspect-square overflow-hidden select-none" style={{ backgroundColor: surfaceMuted, touchAction: 'pan-y' }}
@@ -396,14 +399,15 @@ const parseVideoEmbed = (videoUrl: string) => {
                       return (
                         <>
                           {hasVideo && (
-                            <div className="absolute inset-0 transition-opacity duration-300"
-                              style={{ opacity: curIdx === 0 ? 1 : 0, zIndex: curIdx === 0 ? 1 : 0 }}>
+                            <div className="absolute inset-0"
+                              style={{ opacity: curIdx === 0 ? 1 : 0, zIndex: curIdx === 0 ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+                              <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: surfaceMuted }} />
                               {ve!.type === 'youtube' ? (
-                                <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ve!.id}?autoplay=1&mute=1&loop=1&playlist=${ve!.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                                <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${ve!.id}?autoplay=1&mute=1&loop=1&playlist=${ve!.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                               ) : ve!.type === 'video' ? (
-                                <video className="w-full h-full object-cover" src={ve!.url} autoPlay muted loop playsInline preload="metadata" />
+                                <video className="w-full h-full object-cover relative" src={ve!.url} autoPlay muted loop playsInline preload="metadata" />
                               ) : (
-                                <iframe className="w-full h-full" src={ve!.url} allowFullScreen />
+                                <iframe className="w-full h-full relative" src={ve!.url} allowFullScreen />
                               )}
                             </div>
                           )}
