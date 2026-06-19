@@ -414,6 +414,7 @@ export default function PlatformAdmin() {
   const [systemCapacity, setSystemCapacity] = useState<any>(null);
   const [capacityLoading, setCapacityLoading] = useState(false);
   const [activeUsers, setActiveUsers] = useState<any>(null);
+  const [visitorStats, setVisitorStats] = useState<any>(null);
   const [activeUsersLoading, setActiveUsersLoading] = useState(false);
   const [browserStorage, setBrowserStorage] = useState<{ usage: number | null; quota: number | null } | null>(null);
   const [browserDownlinkMbps, setBrowserDownlinkMbps] = useState<number | null>(null);
@@ -605,6 +606,20 @@ export default function PlatformAdmin() {
     if (activeTab !== 'health') return;
     loadActiveUsers();
     const id = window.setInterval(loadActiveUsers, 5000);
+    return () => window.clearInterval(id);
+  }, [activeTab]);
+
+  // Load visitor analytics when health tab is active (every 30 seconds)
+  useEffect(() => {
+    if (activeTab !== 'health') return;
+    const loadVisitorStats = async () => {
+      try {
+        const res = await fetch('/api/admin/visitor-analytics');
+        if (res.ok) setVisitorStats(await res.json());
+      } catch { /* ignore */ }
+    };
+    loadVisitorStats();
+    const id = window.setInterval(loadVisitorStats, 30000);
     return () => window.clearInterval(id);
   }, [activeTab]);
 
@@ -2010,6 +2025,29 @@ export default function PlatformAdmin() {
                       <div className="text-slate-500 text-[10px] text-center py-4">{t('platformAdmin.health.noActiveData')}</div>
                     )}
                   </div>
+
+                  {/* Visitor Analytics */}
+                  {visitorStats && (
+                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-slate-700/60 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-sm font-bold text-white">{t('platformAdmin.health.activeUsersTitle')?.replace('Active Users', 'Visitors') || 'Visitors'}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="text-center bg-slate-800/60 rounded-xl p-3 border border-blue-500/20">
+                          <div className="text-lg font-bold text-blue-400">{visitorStats.today?.total ?? 0}</div>
+                          <div className="text-[9px] text-slate-500">TODAY</div>
+                        </div>
+                        <div className="text-center bg-slate-800/60 rounded-xl p-3 border border-purple-500/20">
+                          <div className="text-lg font-bold text-purple-400">{visitorStats.week?.total ?? 0}</div>
+                          <div className="text-[9px] text-slate-500">THIS WEEK</div>
+                        </div>
+                        <div className="text-center bg-slate-800/60 rounded-xl p-3 border border-amber-500/20">
+                          <div className="text-lg font-bold text-amber-400">{visitorStats.month?.total ?? 0}</div>
+                          <div className="text-[9px] text-slate-500">THIS MONTH</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               );
             })()}
