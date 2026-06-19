@@ -1989,9 +1989,9 @@ export default function PlatformAdmin() {
                         )}
                         {activeUsers.visitors && activeUsers.visitors.length > 0 && (
                           <div className="max-h-24 overflow-y-auto space-y-0.5">
-                            {activeUsers.visitors.slice(0, 5).map((v: any, i: number) => (
+                            {activeUsers.visitors.filter((v: any) => v.displayName).slice(0, 5).map((v: any, i: number) => (
                               <div key={i} className="flex items-center justify-between text-[9px] font-mono text-slate-500 bg-slate-800/30 rounded px-2 py-0.5">
-                                <span className="flex items-center gap-1"><span className={`w-1.5 h-1.5 rounded-full ${v.userId ? 'bg-emerald-500' : 'bg-slate-600'}`} />{v.fingerprint?.slice(0, 10)}…</span>
+                                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{v.displayName}</span>
                                 <span>{v.requestCount} req · {v.activeFor}s</span>
                               </div>
                             ))}

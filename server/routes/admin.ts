@@ -1076,7 +1076,32 @@ export const getActiveUsers: RequestHandler = async (req, res) => {
     };
     
     if (includeDetails) {
-      response.visitors = getActiveVisitorsList(windowSeconds, 30);
+      const visitors = getActiveVisitorsList(windowSeconds, 30);
+      // Look up user account names for authenticated visitors
+      const userIds = visitors.filter((v: any) => v.userId).map((v: any) => v.userId) as string[];
+      if (userIds.length > 0) {
+        const adminResult = await pool.query(
+          'SELECT id, email, full_name FROM admins WHERE id = ANY($1)',
+          [userIds]
+        );
+        const clientResult = await pool.query(
+          'SELECT id, email, name FROM clients WHERE id = ANY($1)',
+          [userIds]
+        );
+        const nameByUserId = new Map<string, string>();
+        for (const row of adminResult.rows) {
+          nameByUserId.set(String(row.id), row.full_name || row.email);
+        }
+        for (const row of clientResult.rows) {
+          nameByUserId.set(String(row.id), row.name || row.email);
+        }
+        for (const v of visitors) {
+          if (v.userId && nameByUserId.has(v.userId)) {
+            (v as any).displayName = nameByUserId.get(v.userId);
+          }
+        }
+      }
+      response.visitors = visitors;
     }
     
     res.json(response);
