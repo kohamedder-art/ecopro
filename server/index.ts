@@ -1923,7 +1923,29 @@ ${urls}
                     [targetSlug]
                   );
                   if (productsRes.rows.length > 0) {
-                    const productsPayload = JSON.stringify(productsRes.rows.map((p: any) => ({ ...p, category: undefined })));
+                    const productIds = productsRes.rows.map((p: any) => p.id);
+                    let variantsByProduct: Record<number, any[]> = {};
+                    if (productIds.length > 0) {
+                      try {
+                        const vRes = await dbPool2.query(
+                          `SELECT id, product_id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+                           FROM product_variants
+                           WHERE product_id = ANY($1) AND is_active = true
+                           ORDER BY sort_order ASC, id ASC`,
+                          [productIds]
+                        );
+                        for (const v of vRes.rows) {
+                          const pid = Number(v.product_id);
+                          if (!variantsByProduct[pid]) variantsByProduct[pid] = [];
+                          variantsByProduct[pid].push(v);
+                        }
+                      } catch { /* variants table may not exist */ }
+                    }
+                    const productsPayload = JSON.stringify(productsRes.rows.map((p: any) => ({
+                      ...p,
+                      category: undefined,
+                      variants: variantsByProduct[p.id] || [],
+                    })));
                     const nonceAttr3 = nonce ? ` nonce="${nonce}"` : '';
                     withMeta = withMeta.replace('</head>', `<script${nonceAttr3}>window.__STORE_PRODUCTS=${productsPayload}</script></head>`);
                   }

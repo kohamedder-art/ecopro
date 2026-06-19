@@ -409,11 +409,18 @@ const parseVideoEmbed = (videoUrl: string) => {
                           )}
                           {product.images.length > 0 ? product.images.map((img: string, i: number) => {
                             const idx = hasVideo ? i + 1 : i;
+                            const visible = curIdx === idx;
                             return (
-                              <div key={i} className="absolute inset-0 transition-opacity duration-300 cursor-pointer"
-                                style={{ opacity: curIdx === idx ? 1 : 0, zIndex: curIdx === idx ? 1 : 0, pointerEvents: curIdx === idx ? 'auto' : 'none' }}
+                              <div key={i} className="absolute inset-0 cursor-pointer"
+                                style={{ opacity: visible ? 1 : 0, zIndex: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none', transition: 'opacity 0.3s ease' }}
                                 onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}>
-                                <img src={img} alt={product.name} className="w-full h-full object-cover" decoding="async" width="600" height="600" />
+                                <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: surfaceMuted }} />
+                                <img src={img} alt={product.name} className="w-full h-full object-cover relative"
+                                  decoding="async" width="600" height="600"
+                                  style={{ opacity: 0 }}
+                                  onLoad={e => { (e.target as HTMLImageElement).style.opacity = '1'; }}
+                                  onError={e => { (e.target as HTMLImageElement).style.opacity = '1'; }}
+                                  ref={el => { if (el && el.complete) el.style.opacity = '1'; }} />
                               </div>
                             );
                           }) : (
