@@ -3156,27 +3156,44 @@ router.post('/catch-up-unanswered', authenticate, async (req: Request, res: Resp
   }
 });
 
-// ─── Landing Page Generator ──────────────────────────────────────────
-const landingPageLimiter = rateLimit({ windowMs: 60_000, max: 10, message: { error: 'Too many requests' } });
+// ─── Landing Page Generator (AI-only, no templates) ──────────────────
+const landingPageLimiter = rateLimit({ windowMs: 120_000, max: 5, message: { error: 'Too many requests' } });
+
+async function downloadImageBase64(url: string): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    const axios = (await import('axios')).default;
+    const res = await axios.get(url, { responseType: 'arraybuffer', timeout: 15000 });
+    const mimeType = res.headers['content-type'] || 'image/jpeg';
+    return { base64: Buffer.from(res.data).toString('base64'), mimeType };
+  } catch { return null; }
+}
+
+async function screenshotHtml(html: string, width = 1080): Promise<Buffer> {
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  await page.setViewportSize({ width, height: 800 });
+  await page.setContent(html, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(3000);
+  const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
+  await page.setViewportSize({ width, height: bodyHeight });
+  await page.waitForTimeout(500);
+  const screenshot = await page.screenshot({ fullPage: true, type: 'png' });
+  await browser.close();
+  return screenshot;
+}
 
 router.post('/landing/generate', authenticate, requireClient, landingPageLimiter, async (req: Request, res: Response) => {
   try {
-    const { renderTemplate, screenshotTemplate } = await import('../services/landing-pages/renderer');
-
     const {
-      template = 'teal',
       product_id,
       product_name,
       product_description,
       product_images = [],
       prompt = '',
       price,
-      currency = 'د.م.',
+      currency = 'د.ج',
       phone,
-      headline,
-      subheadline,
-      badge_text,
-      features,
       width = 1080,
     } = req.body;
 
@@ -3204,127 +3221,82 @@ router.post('/landing/generate', authenticate, requireClient, landingPageLimiter
       return res.status(400).json({ error: 'Product name is required' });
     }
 
-    // Use Gemini to generate structured data from the prompt
-    let generatedData: any = {};
-    if (prompt) {
-      try {
-        const genResult = await generateJSON(
-          `You are a landing page copywriter for Moroccan e-commerce stores. Generate landing page content in Arabic (RTL).
+    // Step 1: Analyze product image with vision AI if available
+    let visionAnalysis: any = {};
+    if (productImage) {
+      const img = await downloadImageBase64(productImage);
+      if (img) {
+        try {
+          visionAnalysis = await analyzeProductImage(img.base64, img.mimeType, {}, 'ar');
+        } catch (e) {
+          console.error('[landing] vision analysis failed, continuing:', e);
+        }
+      }
+    }
 
-Product: ${productName}
-Description: ${productDesc}
-User instructions: ${prompt}
-Price: ${productPrice} ${currency}
+    // Step 2: Generate hero image via Pollinations img2img
+    let heroImage = productImage;
+    try {
+      const { generateHeroImage } = await import('../services/ai-image');
+      const aiImage = await generateHeroImage(productName, productImage, prompt || 'professional product photography', 1080, 1080);
+      if (aiImage) heroImage = aiImage;
+    } catch (e) {
+      console.error('[landing] hero generation failed, using product image:', e);
+    }
 
-Return a JSON object with these fields:
+    const category = visionAnalysis.category || '';
+    const tags = visionAnalysis.tags || [];
+    const brandHints = visionAnalysis.brand_detected || '';
+
+    // Step 3: AI generates the complete HTML landing page
+    const html = await generateJSON<any>(
+      `You are a professional landing page designer and HTML/CSS expert for Algerian e-commerce.
+
+Generate a complete, production-ready HTML page for this product:
+
+PRODUCT: ${productName}
+DESCRIPTION: ${productDesc}
+PRICE: ${productPrice} ${currency}
+CATEGORY: ${category}
+TAGS: ${tags.join(', ')}
+HERO IMAGE URL: ${heroImage}
+
+RULES:
+- Use RTL (right-to-left) — Arabic e-commerce store
+- Beautiful, modern, mobile-friendly design
+- Inline CSS only (no external files)
+- Include ALL sections: hero with product image overlay, trust badges, features grid, before/after comparison, testimonials, guarantees, CTA button
+- Color palette based on the product category (${category})
+- Persuasive Arabic copywriting
+- Responsive layout
+
+Return a JSON object:
 {
-  "headline": "Main headline (bold, catchy, in Arabic)",
-  "subheadline": "Supporting text (1-2 sentences)",
-  "badge_text": "Short badge text like 'عرض خاص' or 'وصل حديثاً'",
-  "features_title": "Section title for features",
-  "features": [{"icon": "emoji", "text": "feature text in Arabic"}],
-  "cta_label": "Call to action text",
-  "cta_button": "Button text",
-  "trust_items": ["trust point 1", "trust point 2", "trust point 3"],
-  "highlights": [{"number": "100%", "label": "label"}],
-  "testimonials": [{"quote": "customer quote", "author": "name"}],
-  "guarantees": [{"icon": "🛡️", "text": "guarantee text"}]
+  "html": "the complete HTML page as a single string with inline styles"
 }
 
-Make it persuasive, professional, and appropriate for Moroccan market. Use Egyptian/Moroccan Arabic.`,
-          {}
-        );
-        if (genResult) generatedData = genResult;
-      } catch (e) {
-        console.error('[landing] Gemini generation failed, using defaults:', e);
-      }
+The HTML must be a complete, valid HTML document with <!DOCTYPE html>, <html dir="rtl">, <head>, <body>. All CSS must be inline or in <style> tags.`,
+      {}
+    );
+
+    if (!html?.html) {
+      return res.status(500).json({ error: 'AI failed to generate page' });
     }
 
-    // Generate hero image with Flux via Replicate (if prompt provided)
-    let heroImage = productImage;
-    if (prompt && process.env.REPLICATE_API_KEY) {
-      try {
-        const { generateHeroImage } = await import('../services/ai-image');
-        const aiImage = await generateHeroImage(
-          productName,
-          productImage,
-          `${prompt}. Template style: ${template}. Product: ${productName}`,
-          1080,
-          1080,
-        );
-        if (aiImage) heroImage = aiImage;
-      } catch (e) {
-        console.error('[landing] AI image generation failed, using product image:', e);
-      }
-    }
+    // Step 4: Screenshot with Playwright
+    const screenshot = await screenshotHtml(html.html, width);
 
-    // Build the template data
-    const templateData = {
-      template: template as 'dark' | 'teal' | 'minimal',
-      product_name: productName,
-      product_description: productDesc,
-      product_image: heroImage,
-      product_images: product_images.length > 0 ? product_images : heroImage ? [heroImage] : [],
-      price: productPrice || generatedData.price || '',
-      currency,
-      phone: phone || '',
-      headline: headline || generatedData.headline || productName,
-      subheadline: subheadline || generatedData.subheadline || productDesc,
-      badge_text: badge_text || generatedData.badge_text || 'عرض خاص',
-      features_title: generatedData.features_title || 'المميزات',
-      features: features || generatedData.features || [
-        { icon: '✅', text: 'جودة عالية' },
-        { icon: '🚚', text: 'توصيل سريع' },
-        { icon: '💰', text: 'سعر مناسب' },
-        { icon: '🔄', text: 'استرجاع سهل' },
-      ],
-      cta_label: generatedData.cta_label || 'اطلب الآن',
-      cta_button: generatedData.cta_button || 'اطلب عبر واتساب',
-      hero_image: heroImage,
-      trust_items: generatedData.trust_items || ['توصيل سريع', 'دفع عند الاستلام', 'ضمان المنتج'],
-      hero_badges: generatedData.trust_items?.slice(0, 3) || ['توصيل مجاني', 'دفع عند الاستلام', 'ضمان 30 يوم'],
-      callout_badges: [
-        { icon: '🚚', text: 'توصيل سريع' },
-        { icon: '💰', text: 'دفع عند الاستلام' },
-        { icon: '⭐', text: 'جودة مضمونة' },
-      ],
-      highlights: generatedData.highlights || [
-        { number: '100%', label: 'ضمان الجودة' },
-        { number: '24/7', label: 'دعم فني' },
-        { number: '30', label: 'يوم ضمان' },
-      ],
-      testimonials: generatedData.testimonials || [
-        { quote: 'منتج رائع وخدمة ممتازة!', author: 'عميل سعيد' },
-        { quote: 'أفضل منتج استعملته', author: 'عميل سابق' },
-      ],
-      guarantees: generatedData.guarantees || [
-        { icon: '🛡️', text: 'ضمان 30 يوم' },
-        { icon: '🚚', text: 'توصيل مجاني' },
-        { icon: '💰', text: 'الدفع عند الاستلام' },
-      ],
-      cta_guarantees: ['ضمان 30 يوم', 'توصيل مجاني', 'الدفع عند الاستلام'],
-    };
-
-    // Render HTML
-    const html = renderTemplate(templateData);
-
-    // Screenshot with Playwright
-    const screenshot = await screenshotTemplate(html, width);
-
-    // Save to temp and return as data URL or serve it
+    // Step 5: Save
     const filename = `landing-${Date.now()}.png`;
     const { writeFileSync, mkdirSync } = await import('fs');
     const { join, dirname } = await import('path');
     const { fileURLToPath } = await import('url');
     const __dirname = dirname(fileURLToPath(import.meta.url));
     const outputDir = join(__dirname, '..', '..', 'uploads', 'landings');
-    try { mkdirSync(outputDir, { recursive: true }); } catch {}
-    const outputPath = join(outputDir, filename);
-    writeFileSync(outputPath, screenshot);
+    mkdirSync(outputDir, { recursive: true });
+    writeFileSync(join(outputDir, filename), screenshot);
 
-    // Return the image URL
-    const imageUrl = `/api/ai/landing/image/${filename}`;
-    res.json({ image_url: imageUrl, template, filename });
+    res.json({ image_url: `/api/ai/landing/image/${filename}`, filename });
   } catch (err: any) {
     console.error('[landing] generation error:', err);
     return serverError(res, err);

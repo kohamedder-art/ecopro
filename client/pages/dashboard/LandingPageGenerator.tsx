@@ -1,61 +1,15 @@
 import { useState, useEffect } from 'react';
 import {
   Sparkles, Loader2, Download, Image as ImageIcon,
-  ShoppingBag, Square, Palette, RefreshCw,
-  Monitor, Smartphone, Tablet, AlertCircle, Layout
+  ShoppingBag, Palette, RefreshCw, AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { getCurrentUser } from '@/lib/auth';
 import { useTranslation } from '@/lib/i18n';
-
-type TemplateStyle = {
-  id: string;
-  name: string;
-  nameEn: string;
-  description: string;
-  colors: { bg: string; primary: string; accent: string };
-  preview: string; // CSS gradient preview
-};
-
-const TEMPLATE_STYLES: TemplateStyle[] = [
-  {
-    id: 'dark',
-    name: 'داكن',
-    nameEn: 'Dark',
-    description: 'مناسب للإلكترونيات والأجهزة',
-    colors: { bg: '#0a0e1a', primary: '#1a1f3a', accent: '#a855f7' },
-    preview: 'linear-gradient(135deg, #0a0e1a 0%, #1a1f3a 50%, #2d1b69 100%)',
-  },
-  {
-    id: 'teal',
-    name: 'أزرق مخضر',
-    nameEn: 'Teal',
-    description: 'مناسب للمنتجات المنزلية والنظافة',
-    colors: { bg: '#f5f5f0', primary: '#0d7377', accent: '#14a3a8' },
-    preview: 'linear-gradient(135deg, #e8f4f0 0%, #f5f5f0 50%, #d4ede8 100%)',
-  },
-  {
-    id: 'minimal',
-    name: 'عصري',
-    nameEn: 'Minimal',
-    description: 'مناسب لجميع المنتجات',
-    colors: { bg: '#ffffff', primary: '#1a1a2e', accent: '#e94560' },
-    preview: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #e9ecef 100%)',
-  },
-];
-
-const STYLE_CHIPS = [
-  { id: 'sale', label: 'تخفيضات', labelEn: 'Sale', icon: '🏷️' },
-  { id: 'new', label: 'وصل حديثاً', labelEn: 'New', icon: '🆕' },
-  { id: 'ramadan', label: 'رمضان', labelEn: 'Ramadan', icon: '🌙' },
-  { id: 'free-shipping', label: 'توصيل مجاني', labelEn: 'Free Ship', icon: '🚚' },
-  { id: 'limited', label: 'عرض محدود', labelEn: 'Limited', icon: '⏳' },
-  { id: 'luxury', label: 'فاخر', labelEn: 'Luxury', icon: '💎' },
-];
 
 interface Product {
   id: number;
@@ -74,11 +28,9 @@ export default function LandingPageGenerator() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateStyle>(TEMPLATE_STYLES[0]);
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [activeStyle, setActiveStyle] = useState<string | null>(null);
 
   useEffect(() => { loadProducts(); }, []);
 
@@ -95,10 +47,6 @@ export default function LandingPageGenerator() {
     }
   };
 
-  const handleStyleClick = (id: string) => {
-    setActiveStyle(activeStyle === id ? null : id);
-  };
-
   const handleGenerate = async () => {
     if (!selectedProduct) {
       toast({ title: isRtl ? 'الرجاء اختيار منتج' : 'Please select a product', variant: 'destructive' });
@@ -113,7 +61,6 @@ export default function LandingPageGenerator() {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          template: selectedTemplate.id,
           product_id: selectedProduct.id,
           product_name: selectedProduct.title,
           product_description: selectedProduct.description,
@@ -168,46 +115,6 @@ export default function LandingPageGenerator() {
         {/* Left — Controls (scrollable) */}
         <div className="lg:w-1/2 overflow-y-auto p-4 sm:p-6 space-y-4">
 
-          {/* Template Picker */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Layout className="w-4 h-4" />
-                {isRtl ? 'اختر التصميم' : 'Template'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-3">
-                {TEMPLATE_STYLES.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedTemplate(t)}
-                    className={`relative rounded-xl overflow-hidden text-left transition-all ${
-                      selectedTemplate.id === t.id
-                        ? 'ring-2 ring-purple-500 shadow-lg scale-[1.02]'
-                        : 'ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-slate-300'
-                    }`}
-                  >
-                    {/* Color preview */}
-                    <div
-                      className="h-20 w-full"
-                      style={{ background: t.preview }}
-                    />
-                    <div className="p-2 bg-white dark:bg-slate-800">
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{isRtl ? t.name : t.nameEn}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{t.description}</p>
-                    </div>
-                    {selectedTemplate.id === t.id && (
-                      <div className="absolute top-2 left-2 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-[10px]">✓</span>
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Product Selector */}
           <Card>
             <CardHeader className="pb-2">
@@ -247,24 +154,6 @@ export default function LandingPageGenerator() {
               )}
             </CardContent>
           </Card>
-
-          {/* Style chips */}
-          <div className="flex flex-wrap gap-1.5">
-            {STYLE_CHIPS.map(s => (
-              <button
-                key={s.id}
-                onClick={() => handleStyleClick(s.id)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                  activeStyle === s.id
-                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <span>{s.icon}</span>
-                <span>{isRtl ? s.label : s.labelEn}</span>
-              </button>
-            ))}
-          </div>
 
           {/* Prompt */}
           <Card>
@@ -352,7 +241,7 @@ export default function LandingPageGenerator() {
               <ImageIcon className="w-24 h-24 mb-4 opacity-30" />
               <p className="text-lg font-medium">{isRtl ? 'المعاينة هنا' : 'Preview Here'}</p>
               <p className="text-sm mt-1 opacity-50">
-                {isRtl ? 'اختر تصميماً ومنتجاً ثم اضغط "أنشئ"' : 'Pick a template, select a product, generate'}
+                {isRtl ? 'اختر منتجاً ثم اضغط "أنشئ"' : 'Select a product and generate'}
               </p>
             </div>
           )}
