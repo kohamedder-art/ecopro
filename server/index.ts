@@ -76,7 +76,7 @@ import whatsappCloudRouter from "./routes/whatsapp-cloud";
 import legalRouter from "./routes/legal";
 import * as platformBillsRoutes from "./routes/platform-bills";
 import deliveryPricesRouter, { getStorefrontDeliveryPrices } from "./routes/delivery-prices";
-import mobileRouter from "./routes/mobile";
+import mobileRouter, { getDownloadUrl } from "./routes/mobile";
 import notificationsRouter from "./routes/notifications";
 import {
   validate,
@@ -1733,6 +1733,9 @@ ${urls}
 
   // Subdomain resolution API (public - resolves current subdomain to store data)
   app.get('/api/resolve-subdomain', resolveSubdomainApi);
+
+  // Public app download URL (no auth required)
+  app.get('/api/mobile/download', getDownloadUrl);
 
   // Mobile app API (authenticated clients)
   app.use('/api/mobile', authenticate, requireClient, mobileRouter);

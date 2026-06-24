@@ -262,7 +262,7 @@ router.patch('/notifications/read-all', markNotificationsRead);
 let expoBuildCache: { url: string; version: string; expiresAt: number } | null = null;
 
 // Public: get latest app download URL
-router.get('/download', async (_req, res) => {
+export const getDownloadUrl: RequestHandler = async (_req, res) => {
   // 1) Check database (manually set by admin)
   try {
     const pool = await ensureConnection();
@@ -335,7 +335,9 @@ router.get('/download', async (_req, res) => {
   }
 
   res.json({ download_url: null });
-});
+};
+
+router.get('/download', getDownloadUrl);
 
 // Admin: update app download URL
 router.post('/download', async (req, res) => {
