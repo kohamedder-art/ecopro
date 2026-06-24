@@ -276,11 +276,30 @@ router.get('/download', async (_req, res) => {
     }
   } catch { /* fall through */ }
 
-  // 2) Check EXPO_TOKEN + EXPO_APP_ID — auto-fetch latest build URL
+  // 2) Check GitHub Releases — auto-discover latest APK (permanent URLs)
+  const ghOwner = String(process.env.GH_OWNER || 'kohamedder-art').trim();
+  const ghRepo = String(process.env.GH_REPO || 'sahla4eco-mobile').trim();
+  try {
+    const ghRes = await fetch(`https://api.github.com/repos/${ghOwner}/${ghRepo}/releases/latest`, {
+      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'ecopro' },
+    });
+    if (ghRes.ok) {
+      const ghData: any = await ghRes.json();
+      const apkAsset = ghData?.assets?.find((a: any) => a.name.endsWith('.apk'));
+      if (apkAsset?.browser_download_url) {
+        return res.json({
+          download_url: apkAsset.browser_download_url,
+          version: (ghData.tag_name || '').replace('build-', 'v'),
+          updated_at: ghData.published_at,
+        });
+      }
+    }
+  } catch { /* fall through */ }
+
+  // 3) Check EXPO_TOKEN + EXPO_APP_ID — auto-fetch latest build URL (may expire)
   const expoToken = String(process.env.EXPO_TOKEN || '').trim();
   const expoAppId = String(process.env.EXPO_APP_ID || '').trim();
   if (expoToken && expoAppId) {
-    // Check cache
     if (expoBuildCache && Date.now() < expoBuildCache.expiresAt) {
       return res.json({ download_url: expoBuildCache.url, version: expoBuildCache.version, updated_at: null });
     }
@@ -307,33 +326,13 @@ router.get('/download', async (_req, res) => {
           expoBuildCache = {
             url: build.artifacts.buildUrl,
             version: build.appBuildVersion || 'latest',
-            expiresAt: Date.now() + 3_600_000, // 1 hour
+            expiresAt: Date.now() + 3_600_000,
           };
           return res.json({ download_url: build.artifacts.buildUrl, version: build.appBuildVersion || 'latest', updated_at: null });
         }
       }
     } catch { /* fall through */ }
   }
-
-  // 3) Check GitHub Releases — auto-discover latest APK
-  const ghOwner = String(process.env.GH_OWNER || 'kohamedder-art').trim();
-  const ghRepo = String(process.env.GH_REPO || 'sahla4eco-mobile').trim();
-  try {
-    const ghRes = await fetch(`https://api.github.com/repos/${ghOwner}/${ghRepo}/releases/latest`, {
-      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'ecopro' },
-    });
-    if (ghRes.ok) {
-      const ghData: any = await ghRes.json();
-      const apkAsset = ghData?.assets?.find((a: any) => a.name.endsWith('.apk'));
-      if (apkAsset?.browser_download_url) {
-        return res.json({
-          download_url: apkAsset.browser_download_url,
-          version: (ghData.tag_name || '').replace('build-', 'v'),
-          updated_at: ghData.published_at,
-        });
-      }
-    }
-  } catch { /* fall through */ }
 
   res.json({ download_url: null });
 });
