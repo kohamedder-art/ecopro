@@ -3156,4 +3156,218 @@ router.post('/catch-up-unanswered', authenticate, async (req: Request, res: Resp
   }
 });
 
+// ─── Landing Page Generator ──────────────────────────────────────────
+const landingPageLimiter = rateLimit({ windowMs: 60_000, max: 10, message: { error: 'Too many requests' } });
+
+router.post('/landing/generate', authenticate, requireClient, landingPageLimiter, async (req: Request, res: Response) => {
+  try {
+    const { renderTemplate, screenshotTemplate } = await import('../services/landing-pages/renderer');
+
+    const {
+      template = 'teal',
+      product_id,
+      product_name,
+      product_description,
+      product_images = [],
+      prompt = '',
+      price,
+      currency = 'د.م.',
+      phone,
+      headline,
+      subheadline,
+      badge_text,
+      features,
+      width = 1080,
+    } = req.body;
+
+    // Fetch product data from DB if product_id provided
+    let productName = product_name || '';
+    let productDesc = product_description || '';
+    let productImage = product_images[0] || '';
+    let productPrice = price || '';
+
+    if (product_id && !product_name) {
+      const result = await pool.query(
+        'SELECT title, description, price, images FROM products WHERE id = $1 AND client_id = $2',
+        [product_id, req.user!.id]
+      );
+      if (result.rows.length > 0) {
+        const p = result.rows[0];
+        productName = p.title;
+        productDesc = p.description || '';
+        productImage = p.images?.[0] || '';
+        productPrice = p.price ? String(p.price) : '';
+      }
+    }
+
+    if (!productName) {
+      return res.status(400).json({ error: 'Product name is required' });
+    }
+
+    // Use Gemini to generate structured data from the prompt
+    let generatedData: any = {};
+    if (prompt) {
+      try {
+        const genResult = await generateJSON(
+          `You are a landing page copywriter for Moroccan e-commerce stores. Generate landing page content in Arabic (RTL).
+
+Product: ${productName}
+Description: ${productDesc}
+User instructions: ${prompt}
+Price: ${productPrice} ${currency}
+
+Return a JSON object with these fields:
+{
+  "headline": "Main headline (bold, catchy, in Arabic)",
+  "subheadline": "Supporting text (1-2 sentences)",
+  "badge_text": "Short badge text like 'عرض خاص' or 'وصل حديثاً'",
+  "features_title": "Section title for features",
+  "features": [{"icon": "emoji", "text": "feature text in Arabic"}],
+  "cta_label": "Call to action text",
+  "cta_button": "Button text",
+  "trust_items": ["trust point 1", "trust point 2", "trust point 3"],
+  "highlights": [{"number": "100%", "label": "label"}],
+  "testimonials": [{"quote": "customer quote", "author": "name"}],
+  "guarantees": [{"icon": "🛡️", "text": "guarantee text"}]
+}
+
+Make it persuasive, professional, and appropriate for Moroccan market. Use Egyptian/Moroccan Arabic.`,
+          {}
+        );
+        if (genResult) generatedData = genResult;
+      } catch (e) {
+        console.error('[landing] Gemini generation failed, using defaults:', e);
+      }
+    }
+
+    // Generate hero image with Flux via Replicate (if prompt provided)
+    let heroImage = productImage;
+    if (prompt && process.env.REPLICATE_API_KEY) {
+      try {
+        const { generateHeroImage } = await import('../services/ai-image');
+        const aiImage = await generateHeroImage(
+          productName,
+          productImage,
+          `${prompt}. Template style: ${template}. Product: ${productName}`,
+          1080,
+          1080,
+        );
+        if (aiImage) heroImage = aiImage;
+      } catch (e) {
+        console.error('[landing] AI image generation failed, using product image:', e);
+      }
+    }
+
+    // Build the template data
+    const templateData = {
+      template: template as 'dark' | 'teal' | 'minimal',
+      product_name: productName,
+      product_description: productDesc,
+      product_image: heroImage,
+      product_images: product_images.length > 0 ? product_images : heroImage ? [heroImage] : [],
+      price: productPrice || generatedData.price || '',
+      currency,
+      phone: phone || '',
+      headline: headline || generatedData.headline || productName,
+      subheadline: subheadline || generatedData.subheadline || productDesc,
+      badge_text: badge_text || generatedData.badge_text || 'عرض خاص',
+      features_title: generatedData.features_title || 'المميزات',
+      features: features || generatedData.features || [
+        { icon: '✅', text: 'جودة عالية' },
+        { icon: '🚚', text: 'توصيل سريع' },
+        { icon: '💰', text: 'سعر مناسب' },
+        { icon: '🔄', text: 'استرجاع سهل' },
+      ],
+      cta_label: generatedData.cta_label || 'اطلب الآن',
+      cta_button: generatedData.cta_button || 'اطلب عبر واتساب',
+      hero_image: heroImage,
+      trust_items: generatedData.trust_items || ['توصيل سريع', 'دفع عند الاستلام', 'ضمان المنتج'],
+      hero_badges: generatedData.trust_items?.slice(0, 3) || ['توصيل مجاني', 'دفع عند الاستلام', 'ضمان 30 يوم'],
+      callout_badges: [
+        { icon: '🚚', text: 'توصيل سريع' },
+        { icon: '💰', text: 'دفع عند الاستلام' },
+        { icon: '⭐', text: 'جودة مضمونة' },
+      ],
+      highlights: generatedData.highlights || [
+        { number: '100%', label: 'ضمان الجودة' },
+        { number: '24/7', label: 'دعم فني' },
+        { number: '30', label: 'يوم ضمان' },
+      ],
+      testimonials: generatedData.testimonials || [
+        { quote: 'منتج رائع وخدمة ممتازة!', author: 'عميل سعيد' },
+        { quote: 'أفضل منتج استعملته', author: 'عميل سابق' },
+      ],
+      guarantees: generatedData.guarantees || [
+        { icon: '🛡️', text: 'ضمان 30 يوم' },
+        { icon: '🚚', text: 'توصيل مجاني' },
+        { icon: '💰', text: 'الدفع عند الاستلام' },
+      ],
+      cta_guarantees: ['ضمان 30 يوم', 'توصيل مجاني', 'الدفع عند الاستلام'],
+    };
+
+    // Render HTML
+    const html = renderTemplate(templateData);
+
+    // Screenshot with Playwright
+    const screenshot = await screenshotTemplate(html, width);
+
+    // Save to temp and return as data URL or serve it
+    const filename = `landing-${Date.now()}.png`;
+    const { writeFileSync, mkdirSync } = await import('fs');
+    const { join } = await import('path');
+    const outputDir = join(__dirname, '..', '..', 'uploads', 'landings');
+    try { mkdirSync(outputDir, { recursive: true }); } catch {}
+    const outputPath = join(outputDir, filename);
+    writeFileSync(outputPath, screenshot);
+
+    // Return the image URL
+    const imageUrl = `/api/ai/landing/image/${filename}`;
+    res.json({ image_url: imageUrl, template, filename });
+  } catch (err: any) {
+    console.error('[landing] generation error:', err);
+    return serverError(res, err);
+  }
+});
+
+// Serve landing page images
+router.get('/landing/image/:filename', (req: Request, res: Response) => {
+  const { join } = require('path');
+  const { existsSync } = require('fs');
+  const filePath = join(__dirname, '..', '..', 'uploads', 'landings', req.params.filename);
+  if (!existsSync(filePath)) {
+    return res.status(404).json({ error: 'Image not found' });
+  }
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  const { createReadStream } = require('fs');
+  createReadStream(filePath).pipe(res);
+});
+
+// List available templates
+router.get('/landing/templates', authenticate, async (_req: Request, res: Response) => {
+  res.json([
+    {
+      id: 'dark',
+      name: 'داكن',
+      name_en: 'Dark',
+      description: 'خلفية داكنة مع تدرجات بنفسجية — مناسب للإلكترونيات والأجهزة',
+      colors: { bg: '#0a0e1a', primary: '#1a1f3a', accent: '#a855f7' },
+    },
+    {
+      id: 'teal',
+      name: 'أزرق مخضر',
+      name_en: 'Teal',
+      description: 'تصميم نظيف بألوان خضراء زرقاء — مناسب للمنتجات المنزلية والنظافة',
+      colors: { bg: '#f5f5f0', primary: '#0d7377', accent: '#14a3a8' },
+    },
+    {
+      id: 'minimal',
+      name: 'بسيط',
+      name_en: 'Minimal',
+      description: 'تصميم عصري بسيط مع صور كبيرة — مناسب لجميع المنتجات',
+      colors: { bg: '#ffffff', primary: '#1a1a2e', accent: '#e94560' },
+    },
+  ]);
+});
+
 export default router;

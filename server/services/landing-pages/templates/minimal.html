@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #fff;
+    color: #1a1a1a;
+    width: 1080px;
+    overflow: hidden;
+  }
+
+  /* HERO — full width image */
+  .hero {
+    position: relative;
+    height: 650px;
+    overflow: hidden;
+  }
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background: url('{{hero_image}}') center/cover;
+  }
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 60%);
+  }
+  .hero-content {
+    position: absolute;
+    bottom: 50px;
+    right: 80px;
+    left: 80px;
+    z-index: 2;
+    color: #fff;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: {{accent_color}};
+    color: #fff;
+    padding: 8px 24px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .hero-title {
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .hero-subtitle {
+    font-size: 22px;
+    font-weight: 600;
+    opacity: 0.9;
+  }
+
+  /* PRODUCT HIGHLIGHTS */
+  .highlights {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #eee;
+  }
+  .highlight-item {
+    flex: 1;
+    text-align: center;
+    padding: 36px 20px;
+    border-left: 1px solid #eee;
+  }
+  .highlight-item:first-child {
+    border-left: none;
+  }
+  .highlight-number {
+    font-size: 36px;
+    font-weight: 900;
+    color: {{accent_color}};
+  }
+  .highlight-label {
+    font-size: 16px;
+    color: #888;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  /* PRODUCT SECTION */
+  .product-section {
+    display: flex;
+    gap: 50px;
+    padding: 60px 80px;
+    align-items: center;
+  }
+  .product-images {
+    flex: 0 0 440px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .product-img {
+    height: 200px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f5f5f5;
+  }
+  .product-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .product-img:first-child {
+    grid-column: span 2;
+    height: 260px;
+  }
+  .product-text h2 {
+    font-size: 34px;
+    font-weight: 800;
+    color: {{primary_color}};
+    margin-bottom: 16px;
+  }
+  .product-text p {
+    font-size: 18px;
+    line-height: 1.8;
+    color: #555;
+    margin-bottom: 20px;
+  }
+  .product-price-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: {{accent_color}}15;
+    border: 2px solid {{accent_color}}40;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-size: 28px;
+    font-weight: 900;
+    color: {{accent_color}};
+  }
+
+  /* FEATURES */
+  .features-section {
+    padding: 50px 80px;
+    background: {{primary_color}}06;
+  }
+  .features-section h2 {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+    color: {{primary_color}};
+    margin-bottom: 30px;
+  }
+  .features-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .feature-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 22px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e8e8e8;
+  }
+  .feature-check {
+    width: 36px;
+    height: 36px;
+    background: {{accent_color}};
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+  .feature-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  /* GUARANTEES */
+  .guarantees {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 30px;
+    background: #fff;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+  }
+  .guarantee {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: {{primary_color}};
+  }
+  .guarantee-icon {
+    width: 40px;
+    height: 40px;
+    background: {{accent_color}}15;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  /* CTA */
+  .cta-section {
+    padding: 50px 80px;
+    text-align: center;
+    background: #fff;
+  }
+  .cta-section h2 {
+    font-size: 32px;
+    font-weight: 800;
+    color: {{primary_color}};
+    margin-bottom: 12px;
+  }
+  .cta-big-price {
+    font-size: 60px;
+    font-weight: 900;
+    color: {{accent_color}};
+  }
+  .cta-old-price {
+    font-size: 24px;
+    color: #aaa;
+    text-decoration: line-through;
+    margin-right: 12px;
+  }
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 24px;
+    padding: 20px 56px;
+    background: linear-gradient(135deg, {{primary_color}}, {{secondary_color}});
+    color: #fff;
+    border-radius: 14px;
+    font-size: 24px;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 8px 30px {{primary_color}}44;
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-badge">{{badge_text}}</div>
+    <h1 class="hero-title">{{headline}}</h1>
+    <p class="hero-subtitle">{{subheadline}}</p>
+  </div>
+</div>
+
+<!-- HIGHLIGHTS -->
+<div class="highlights">
+  {{#highlights}}
+  <div class="highlight-item">
+    <div class="highlight-number">{{number}}</div>
+    <div class="highlight-label">{{label}}</div>
+  </div>
+  {{/highlights}}
+</div>
+
+<!-- PRODUCT -->
+<div class="product-section">
+  <div class="product-images">
+    {{#product_images}}
+    <div class="product-img"><img src="{{.}}" alt=""></div>
+    {{/product_images}}
+  </div>
+  <div class="product-text">
+    <h2>{{product_name}}</h2>
+    <p>{{product_description}}</p>
+    <div class="product-price-tag">
+      {{price}} {{currency}}
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<div class="features-section">
+  <h2>{{features_title}}</h2>
+  <div class="features-list">
+    {{#features}}
+    <div class="feature-row">
+      <div class="feature-check">✓</div>
+      <div class="feature-label">{{text}}</div>
+    </div>
+    {{/features}}
+  </div>
+</div>
+
+<!-- GUARANTEES -->
+<div class="guarantees">
+  {{#guarantees}}
+  <div class="guarantee">
+    <div class="guarantee-icon">{{icon}}</div>
+    <span>{{text}}</span>
+  </div>
+  {{/guarantees}}
+</div>
+
+<!-- CTA -->
+<div class="cta-section">
+  <h2>{{cta_label}}</h2>
+  <div>
+    {{#old_price}}<span class="cta-old-price">{{old_price}} {{currency}}</span>{{/old_price}}
+    <span class="cta-big-price">{{price}} {{currency}}</span>
+  </div>
+  <a class="cta-btn" href="tel:{{phone}}">
+    📞 {{cta_button}}
+  </a>
+</div>
+
+</body>
+</html>
