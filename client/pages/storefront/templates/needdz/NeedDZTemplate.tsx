@@ -98,6 +98,15 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   // Fire product view tracking when a product is selected
   useEffect(() => { if (selectedProduct && onProductView) onProductView(selectedProduct); }, [selectedProduct?.id, onProductView]);
 
+  // Increment product view count when a product is viewed in the carousel
+  useEffect(() => {
+    if (!selectedProduct?.slug || !storeSlug) return;
+    const timer = setTimeout(() => {
+      fetch(`/api/store/${encodeURIComponent(storeSlug)}/${encodeURIComponent(selectedProduct.slug)}?track_view=1`).catch(() => {});
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [selectedProduct?.id, storeSlug]);
+
   // Update URL when product is selected
   const handleSelectProduct = (product: any) => {
     setSelectedProduct(product);
