@@ -439,6 +439,8 @@ export default function LeRoiShopTemplate({
         .lrs-card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.05); transform: translateY(-2px); }
         .lrs-offer-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; cursor: pointer; }
         .lrs-offer-row input[type="radio"] { accent-color: ${accentColor}; width: 16px; height: 16px; }
+        .lrs-fullbleed { width: 100vw; margin-inline: calc(-50vw + 50%); }
+        @media (min-width: 768px) { .lrs-fullbleed { width: 100%; margin-inline: 0; } }
       `}</style>
 
       {/* ── ANNOUNCEMENT BAR + HEADER (hide on scroll down) ── */}
@@ -475,13 +477,13 @@ export default function LeRoiShopTemplate({
       </header>
       </div>
 
-      <main className="max-w-screen-xl mx-auto px-2 sm:px-3 py-6 mb-20">
+      <main className="max-w-screen-xl mx-auto px-0 sm:px-3 py-3 mb-20">
 
         {/* ════════════════════════════════════════════════
             CATALOG VIEW
             ════════════════════════════════════════════════ */}
         {view === 'catalog' && (
-          <div>
+          <div className="px-2 sm:px-0">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold inline-block pb-2" style={{ borderBottom: `2px solid ${accentColor}` }}
                 contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('lrs_catalog_title')}>
@@ -577,7 +579,7 @@ export default function LeRoiShopTemplate({
             PRODUCT DETAIL VIEW
             ════════════════════════════════════════════════ */}
         {view === 'product' && activeProduct && (
-          <div>
+          <div className="px-2 sm:px-0">
             {/* Badge */}
             <div className="inline-block px-3 py-1 rounded text-xs font-bold mb-4" style={{ backgroundColor: accentColor + '20', color: accentColor }}
               contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('lrs_product_badge')}>
@@ -585,7 +587,7 @@ export default function LeRoiShopTemplate({
             </div>
 
             {/* Main Product Area */}
-            <div className="flex flex-col md:flex-row md:items-stretch gap-8 md:p-8 rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}>
+            <div className="flex flex-col md:flex-row md:items-stretch gap-8 md:p-8 md:rounded-xl shadow-sm md:overflow-hidden" style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}>
 
               {/* Image */}
               {(() => {
@@ -605,9 +607,9 @@ export default function LeRoiShopTemplate({
                 })();
 
                 return (
-                  <div className="w-full md:w-1/2 flex flex-col">
+                  <div className="w-full md:w-1/2 flex flex-col lrs-fullbleed">
                     {/* Main image viewport */}
-                    <div className="overflow-hidden aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] md:rounded-xl select-none" style={{ backgroundColor: surfaceMuted, position: 'relative', touchAction: 'pan-y' }}
+                    <div className="aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] md:rounded-xl select-none" style={{ backgroundColor: surfaceMuted, position: 'relative', touchAction: 'pan-y', overflow: 'hidden' }}
                       onTouchStart={e => {
                         const t = e.currentTarget as any;
                         t._ts = e.touches[0].clientX;
@@ -695,7 +697,7 @@ export default function LeRoiShopTemplate({
 
                 {/* Product description */}
                 {activeProduct.description && (
-                  <p className="text-sm leading-relaxed mb-6 whitespace-pre-line" style={{ color: textMuted }}>
+                  <p className="text-base leading-relaxed mb-6 whitespace-pre-line" style={{ color: textMuted }}>
                     {activeProduct.description}
                   </p>
                 )}
@@ -714,6 +716,7 @@ export default function LeRoiShopTemplate({
 
                 {/* ── Order Form ────────────────────────── */}
                 <div id="lrs-order-form" className="p-4 md:p-5 rounded-xl" style={{ backgroundColor: formBg, border: `1px solid ${borderColor}` }}>
+                  <h3 className="font-black text-lg mb-4 text-center" style={{ color: textColor }}>أكمل طلبك</h3>
                   {orderSuccess ? (
                     <div className="py-8 text-center">
                       <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: accentColor + '20' }}>
