@@ -245,16 +245,12 @@ router.get('/google/callback', async (req, res) => {
       token: accessToken,
     }));
 
-    // Mobile: return HTML page that redirects to deep link via JS
+    // Mobile: redirect to deep link so the app opens
     const isMobile = typeof state === 'string' && state.startsWith('mobile_');
     if (isMobile) {
-      console.log('[OAUTH] Mobile login detected, returning deep link redirect page');
+      console.log('[OAUTH] Mobile login detected, redirecting to deep link');
       const deepLink = `sahla4eco://auth?token=${encodeURIComponent(accessToken)}&user=${userParam}`;
-      return res.send(`<!DOCTYPE html><html><head><title>Sahla4Eco</title></head><body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#0f172a;color:#fff;flex-direction:column">
-        <h2>Sahla4Eco</h2>
-        <p>جاري تسجيل الدخول...</p>
-        <script>window.location="${deepLink}";</script>
-      </body></html>`);
+      return res.redirect(deepLink);
     }
     
     console.log('[OAUTH] Redirecting to login with user data');
