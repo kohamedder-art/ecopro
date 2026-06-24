@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Search, Bell, Calendar, Star, TrendingUp, MoreHorizontal, ChevronDown, X, Loader2, MapPin, Package, Sparkles
+  Search, Bell, Calendar, Star, TrendingUp, MoreHorizontal, ChevronDown, X, MapPin, Package
 } from 'lucide-react';
 import { useTranslation } from "@/lib/i18n";
-import { useAI } from '@/hooks/useAI';
 import { useToast } from '@/components/ui/use-toast';
 import { getCurrentUser } from '@/lib/auth';
 import { OnboardingWizard } from '@/components/admin/OnboardingWizard';
@@ -501,13 +500,13 @@ export default function Dashboard() {
               const rounded = Math.round(ordersPerHundred * 10) / 10;
 
               let tier: { label: string; color: string; bg: string; stars: number; tip: string };
-              if (rounded >= 4) {
+              if (rounded >= 1) {
                 tier = { label: 'ممتاز', color: 'text-emerald-500', bg: 'bg-emerald-500', stars: 5, tip: 'تسويقك مثالي — الآن وقت زيادة ميزانية الإعلانات!' };
-              } else if (rounded >= 3) {
+              } else if (rounded >= 0.5) {
                 tier = { label: 'جيد', color: 'text-teal-500', bg: 'bg-teal-400', stars: 4, tip: 'متجر ناجح — معظم المتاجر الاحترافية هنا.' };
-              } else if (rounded >= 2) {
+              } else if (rounded >= 0.25) {
                 tier = { label: 'متوسط', color: 'text-yellow-500', bg: 'bg-yellow-400', stars: 3, tip: 'معيار الصناعة — حسّن وصف المنتجات أو تصميم المتجر.' };
-              } else if (rounded >= 1) {
+              } else if (rounded >= 0.1) {
                 tier = { label: 'أقل من المتوسط', color: 'text-orange-500', bg: 'bg-orange-400', stars: 2, tip: 'مبيعات موجودة — لكن تكلفة الإعلانات مرتفعة مقارنة بالعائد.' };
               } else if (visitors === 0) {
                 tier = { label: 'لا يوجد بيانات', color: 'text-slate-400', bg: 'bg-slate-300', stars: 0, tip: 'لم يتم تسجيل زيارات بعد.' };
@@ -516,15 +515,15 @@ export default function Dashboard() {
               }
 
               const tiers = [
-                { label: 'ممتاز (4-5)', range: '4–5 طلبات', color: 'bg-emerald-500', active: rounded >= 4 },
-                { label: 'جيد (3)', range: '3 طلبات', color: 'bg-teal-400', active: rounded >= 3 && rounded < 4 },
-                { label: 'متوسط (2)', range: '2 طلبات', color: 'bg-yellow-400', active: rounded >= 2 && rounded < 3 },
-                { label: 'أقل (1)', range: '1 طلب', color: 'bg-orange-400', active: rounded >= 1 && rounded < 2 },
-                { label: 'ضعيف (0)', range: '0 طلبات', color: 'bg-red-400', active: rounded < 1 && visitors > 0 },
+                { label: 'ممتاز (1+)', range: '1+ طلب', color: 'bg-emerald-500', active: rounded >= 1 },
+                { label: 'جيد (0.5)', range: '0.5 طلب', color: 'bg-teal-400', active: rounded >= 0.5 && rounded < 1 },
+                { label: 'متوسط (0.25)', range: '0.25 طلب', color: 'bg-yellow-400', active: rounded >= 0.25 && rounded < 0.5 },
+                { label: 'أقل (0.1)', range: '0.1 طلب', color: 'bg-orange-400', active: rounded >= 0.1 && rounded < 0.25 },
+                { label: 'ضعيف (<0.1)', range: 'أقل من 0.1', color: 'bg-red-400', active: rounded < 0.1 && visitors > 0 },
               ];
 
-              // bar width: map 0-5 orders/100 to 0-100%
-              const barWidths = [100, 80, 60, 40, 20];
+              // bar width: map 0-1+ orders/100 to 0-100%
+              const barWidths = [100, 70, 45, 20, 5];
 
               return (
                 <>
@@ -579,13 +578,12 @@ export default function Dashboard() {
               <thead>
                 <tr className="text-xs font-bold text-slate-400 border-b border-slate-100 dark:border-slate-800">
                   <th className="pb-2 font-semibold">{t('dashboard.table.profile')}</th>
-                  <th className="pb-2 font-semibold">{t('dashboard.table.cityGeo')}</th>
                   <th className="pb-2 text-right font-semibold">{t('dashboard.table.sales')}</th>
                 </tr>
               </thead>
               <tbody>
                 {topSellers.length === 0 ? (
-                  <tr><td colSpan={3} className="py-6 text-center text-xs text-slate-400">{t('dashboard.noData') || 'No data yet'}</td></tr>
+                  <tr><td colSpan={2} className="py-6 text-center text-xs text-slate-400">{t('dashboard.noData') || 'No data yet'}</td></tr>
                 ) : topSellers.map((seller, i) => (
                   <tr key={i} className="group cursor-pointer">
                     <td className="py-1 border-b border-slate-50 dark:border-slate-800/50">
@@ -594,14 +592,8 @@ export default function Dashboard() {
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate max-w-[100px]">{String(seller.title).substring(0, 15)}</span>
                       </div>
                     </td>
-                    <td className="py-1 border-b border-slate-50 dark:border-slate-800/50">
-                      <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                        <div className="w-4 h-3 bg-slate-200 rounded shrink-0 shadow-sm border border-slate-300"></div>
-                        {seller.total_orders || 'Local'}
-                      </span>
-                    </td>
                     <td className="py-1 border-b border-slate-50 dark:border-slate-800/50 text-right">
-                      <span className="text-xs font-black text-slate-800 dark:text-white">{seller.price || seller.total_revenue || 0}</span>
+                      <span className="text-xs font-black text-slate-800 dark:text-white">{Math.round(seller.price || seller.total_revenue || 0).toLocaleString()} DZD</span>
                     </td>
                   </tr>
                 ))}
@@ -736,7 +728,6 @@ export default function Dashboard() {
       </div>
 
       {/* AI Insights Row */}
-      <AIInsightsCard stats={stats} analytics={analytics} dayRange={dayRange} />
 
       {/* Mobile spacing for sidebar button */}
       <div className="h-20 lg:hidden"></div>
@@ -746,112 +737,4 @@ export default function Dashboard() {
 }
 
 // ─── AI Insights Card ────────────────────────────────────────────────────────
-function AIInsightsCard({ stats, analytics, dayRange }: { stats: any; analytics: any; dayRange: number }) {
-  const { t, locale } = useTranslation();
-  const [narrative, setNarrative] = useState<string | null>(null);
-  const [warning, setWarning] = useState<string | null>(null);
-  const { call: callNarrate, loading: loadingNarrate } = useAI('/api/ai/analytics/narrate');
-  const { call: callForecast, loading: loadingForecast } = useAI('/api/ai/analytics/forecast');
-  const [forecast, setForecast] = useState<any[]>([]);
 
-  const generate = async () => {
-    if (!stats) return;
-    const [narrateData, forecastData] = await Promise.all([
-      callNarrate({ stats, analytics, days: dayRange, locale }),
-      callForecast({ locale }),
-    ]);
-    if (narrateData?.narrative) setNarrative(narrateData.narrative);
-    if (forecastData?.forecast) setForecast(forecastData.forecast.slice(0, 3));
-
-    // Check for churn warning
-    if (analytics?.dailyRevenue?.length >= 3) {
-      const csrf = document.cookie.match(/ecopro_csrf=([^;]+)/)?.[1] || '';
-      try {
-        const r = await fetch('/api/ai/analytics/churn-warning', {
-          method: 'POST', credentials: 'include',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrf) },
-          body: JSON.stringify({ revenueHistory: analytics.dailyRevenue, locale }),
-        });
-        if (r.ok) { const d = await r.json(); if (d?.warning) setWarning(d.warning); }
-      } catch { /* non-critical */ }
-    }
-  };
-
-  const loading = loadingNarrate || loadingForecast;
-
-  return (
-    <div className="bg-white dark:bg-[#111] rounded-xl border border-slate-100 dark:border-slate-800 p-3 shadow-sm mt-2">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center">
-            <Sparkles className="w-3.5 h-3.5 text-white" />
-          </div>
-          <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('dashboard.aiInsights')}</h3>
-        </div>
-        {!narrative && (
-          <button
-            onClick={generate}
-            disabled={loading}
-            className="flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
-          >
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-            {t('dashboard.analyzeWithAI')}
-          </button>
-        )}
-        {narrative && (
-          <button
-            onClick={() => { setNarrative(null); setForecast([]); setWarning(null); }}
-            className="text-xs text-slate-400 hover:text-slate-600 font-semibold"
-          >
-            {t('dashboard.aiRefresh')}
-          </button>
-        )}
-      </div>
-
-      {loading && (
-        <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
-          <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
-          <span>{t('dashboard.aiAnalyzing')}</span>
-        </div>
-      )}
-
-      {!loading && narrative && (
-        <div className="space-y-2">
-          {warning && (
-            <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg px-3 py-2">
-              <span className="text-amber-500 text-base leading-none mt-0.5">⚠️</span>
-              <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">{warning}</p>
-            </div>
-          )}
-          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{narrative}</p>
-          {forecast.length > 0 && (
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('dashboard.restockForecast')}</p>
-              <div className="flex flex-col gap-1">
-                {forecast.map((f: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between text-xs">
-                    <span className="text-slate-600 dark:text-slate-300 font-medium truncate max-w-[60%]">{f.title}</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
-                        f.expectedDemand === 'high' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                        : f.expectedDemand === 'medium' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-                        : 'bg-slate-100 text-slate-500'
-                      }`}>{f.expectedDemand}</span>
-                      <span className="text-slate-400 text-[10px] truncate max-w-[120px]">{f.recommendation}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {!loading && !narrative && (
-        <p className="text-xs text-slate-400 text-center py-3">
-          {t('dashboard.aiEmptyHint')}
-        </p>
-      )}
-    </div>
-  );
-}

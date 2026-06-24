@@ -287,9 +287,12 @@ export const getDownloadUrl: RequestHandler = async (_req, res) => {
       const ghData: any = await ghRes.json();
       const apkAsset = ghData?.assets?.find((a: any) => a.name.endsWith('.apk'));
       if (apkAsset?.browser_download_url) {
+        const tagName = ghData.tag_name || '';
+        const buildNumber = parseInt(tagName.replace('build-', ''), 10);
         return res.json({
           download_url: apkAsset.browser_download_url,
-          version: (ghData.tag_name || '').replace('build-', 'v'),
+          version: tagName.replace('build-', 'v'),
+          build_number: isNaN(buildNumber) ? null : buildNumber,
           updated_at: ghData.published_at,
         });
       }
