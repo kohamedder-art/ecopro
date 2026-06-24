@@ -98,7 +98,11 @@ router.get('/google/url', (req, res) => {
     prompt: 'select_account',
   });
 
-  res.json({ url: authUrl });
+  if (client === 'mobile') {
+    res.redirect(authUrl);
+  } else {
+    res.json({ url: authUrl });
+  }
 });
 
 /**
