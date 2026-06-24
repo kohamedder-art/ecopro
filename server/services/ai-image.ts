@@ -16,26 +16,51 @@ function getReplicateKey(): string {
   return process.env.REPLICATE_API_KEY || '';
 }
 
+async function saveImageBuffer(buffer: Buffer): Promise<string> {
+  const { writeFileSync, mkdirSync } = await import('fs');
+  const { join } = await import('path');
+  const outputDir = join(process.cwd(), 'uploads', 'landings');
+  mkdirSync(outputDir, { recursive: true });
+  const filename = `hero-${Date.now()}.jpg`;
+  writeFileSync(join(outputDir, filename), buffer);
+  return `/api/ai/landing/image/${filename}`;
+}
+
 async function generateViaPollinations(prompt: string, width = 1080, height = 1080): Promise<string | null> {
   try {
-    const url = `${POLLINATIONS_URL}/${encodeURIComponent(prompt)}&width=${width}&height=${height}&nologo=true`;
+    const url = `${POLLINATIONS_URL}/${encodeURIComponent(prompt)}?width=${width}&height=${height}&nologo=true`;
     const res = await axios.get(url, {
       responseType: 'arraybuffer',
-      timeout: 30000,
+      timeout: 60000,
     });
     if (res.status === 200 && res.data) {
-      // Upload the generated image to our server storage
-      const { writeFileSync, mkdirSync } = await import('fs');
-      const { join } = await import('path');
-      const outputDir = join(process.cwd(), 'uploads', 'landings');
-      mkdirSync(outputDir, { recursive: true });
-      const filename = `hero-${Date.now()}.jpg`;
-      writeFileSync(join(outputDir, filename), res.data);
-      return `/api/ai/landing/image/${filename}`;
+      return saveImageBuffer(res.data);
     }
     return null;
   } catch (err: any) {
     console.error('[pollinations] error:', err?.message || err);
+    return null;
+  }
+}
+
+async function generateViaPollinationsImg2Img(
+  productImageUrl: string,
+  prompt: string,
+  width = 1080,
+  height = 1080,
+): Promise<string | null> {
+  try {
+    const url = `${POLLINATIONS_URL}/${encodeURIComponent(prompt)}?model=kontext&image=${encodeURIComponent(productImageUrl)}&width=${width}&height=${height}&nologo=true`;
+    const res = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 120000,
+    });
+    if (res.status === 200 && res.data) {
+      return saveImageBuffer(res.data);
+    }
+    return null;
+  } catch (err: any) {
+    console.error('[pollinations img2img] error:', err?.message || err);
     return null;
   }
 }
@@ -110,11 +135,18 @@ export async function generateHeroImage(
     'No text, no watermark, no logos.',
   ].filter(Boolean).join(' ');
 
-  // Try Pollinations first (free)
+  // If product image provided, try img2img first (gives product-matching result)
+  if (productImageUrl) {
+    const img2imgResult = await generateViaPollinationsImg2Img(productImageUrl, prompt, width, height);
+    if (img2imgResult) return img2imgResult;
+    console.log('[ai-image] img2img failed, trying text-to-image...');
+  }
+
+  // Fallback to text-to-image
   const pollinationsResult = await generateViaPollinations(prompt, width, height);
   if (pollinationsResult) return pollinationsResult;
 
-  // Fallback to Replicate
+  // Final fallback to Replicate
   console.log('[ai-image] Pollinations failed, trying Replicate...');
   return generateViaReplicate(prompt, width, height);
 }
