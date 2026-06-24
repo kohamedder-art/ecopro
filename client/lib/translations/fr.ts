@@ -909,6 +909,11 @@ export const fr = {
   "admin.profile.enterCode": "Entrez le code du coupon",
   "admin.profile.subscriptionActivated": "Votre abonnement a été activé",
   "profile.comingSoon": "Bientôt disponible...",
+  "profile.mobileDesc": "Gérez votre boutique en déplacement. Notifications instantanées, confirmation des commandes, suivi des expéditions — le tout depuis votre téléphone.",
+  "profile.mobileFeature1": "Notifications en temps réel",
+  "profile.mobileFeature2": "Confirmation en un clic",
+  "profile.mobileFeature3": "Suivi des expéditions",
+  "profile.mobileFeature4": "Mode sombre",
 
   // Admin Panel - Chats
   "admin.chats.title": "Discussions",

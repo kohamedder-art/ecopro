@@ -266,6 +266,48 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* ── Mobile App (full width) ── */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-5 sm:p-6">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-sky-500/20">
+            <Smartphone className="w-7 h-7 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-extrabold text-foreground">{t('admin.enhanced.ourApps')}</h3>
+            <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed max-w-xl">
+              {t('profile.mobileDesc')}
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5">
+              {[t('profile.mobileFeature1'), t('profile.mobileFeature2'), t('profile.mobileFeature3'), t('profile.mobileFeature4')].map((f, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <div className="w-1 h-1 rounded-full bg-sky-500" />
+                  {f}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="shrink-0 w-full sm:w-auto">
+            {appDownloadLoading ? (
+              <div className="flex items-center justify-center h-10 px-6">
+                <Loader className="w-4 h-4 animate-spin text-muted-foreground/50" />
+              </div>
+            ) : appDownload?.download_url ? (
+              <a href={appDownload.download_url} download
+                className="flex items-center justify-center gap-2 h-10 px-6 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-sky-600/20 whitespace-nowrap">
+                <Download className="w-4 h-4" />
+                {t('admin.enhanced.downloadApp')}
+                {appDownload.version && <span className="text-[10px] opacity-70 font-mono">v{appDownload.version}</span>}
+              </a>
+            ) : (
+              <div className="flex items-center gap-2 h-10 px-5 rounded-xl bg-muted/50 border border-dashed border-border text-xs text-muted-foreground/60 whitespace-nowrap">
+                <Smartphone className="w-3.5 h-3.5" />
+                {t('profile.comingSoon')}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ── Three columns ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
@@ -507,35 +549,6 @@ export default function Profile() {
                 <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2">
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{t('profile.redeemed')}
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile App */}
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-sky-50/50 dark:bg-sky-950/20">
-              <div className="w-7 h-7 rounded-lg bg-sky-500/15 flex items-center justify-center">
-                <Smartphone className="w-4 h-4 text-sky-500" />
-              </div>
-              <span className="text-sm font-bold">{t('admin.enhanced.ourApps')}</span>
-            </div>
-            <div className="p-5 space-y-3">
-              {appDownloadLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader className="w-5 h-5 animate-spin text-muted-foreground/50" />
-                </div>
-              ) : appDownload?.download_url ? (
-                <>
-                  <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{t('admin.enhanced.availableOn')}</p>
-                  <a href={appDownload.download_url} download
-                    className="flex items-center justify-center gap-2 w-full h-10 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-sky-600/20">
-                    <Download className="w-4 h-4" />
-                    {t('admin.enhanced.downloadApp')}
-                    {appDownload.version && <span className="text-[10px] opacity-70">v{appDownload.version}</span>}
-                  </a>
-                </>
-              ) : (
-                <p className="text-[11px] text-muted-foreground/50 text-center py-4">{t('profile.comingSoon')}</p>
               )}
             </div>
           </div>

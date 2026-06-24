@@ -3037,6 +3037,11 @@ export const ar = {
   "profile.referralDesc": "تعرف شخصاً لديه حساب في سهلة 4 إيكو؟ أدخل كود الإحالة الخاص به للحصول على خصم على اشتراكك.",
   "profile.passwordHint": "لكلمة مرور قوية، استخدم 8 أحرف على الأقل مع حروف كبيرة وصغيرة وأرقام ورموز.",
   "profile.comingSoon": "قريباً...",
+  "profile.mobileDesc": "طبّق الهاتف لإدارة متجرك أثناء التنقّل. إشعارات فورية، تأكيد الطلبات، تتبّع الشحنات — كل شيء من هاتفك.",
+  "profile.mobileFeature1": "إشعارات فورية",
+  "profile.mobileFeature2": "تأكيد بنقرة واحدة",
+  "profile.mobileFeature3": "تتبّع الشحنات",
+  "profile.mobileFeature4": "الوضع الداكن",
 
   // Templates tab
   "templates.switchTemplate": "تغيير القالب",

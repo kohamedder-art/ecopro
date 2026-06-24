@@ -2442,6 +2442,11 @@ export const en = {
   "profile.referralDesc": "Know someone with a Sahla4Eco account? Enter their referral code to get a discount on your subscription.",
   "profile.passwordHint": "For a strong password, use at least 8 characters including uppercase, lowercase, numbers, and symbols.",
   "profile.comingSoon": "Coming soon...",
+  "profile.mobileDesc": "Manage your store on the go. Get instant notifications, confirm orders, track shipments, and more — all from your phone.",
+  "profile.mobileFeature1": "Real-time notifications",
+  "profile.mobileFeature2": "One-tap confirmation",
+  "profile.mobileFeature3": "Shipment tracking",
+  "profile.mobileFeature4": "Dark mode",
 
   // Templates tab
   "templates.switchTemplate": "Switch Template",
