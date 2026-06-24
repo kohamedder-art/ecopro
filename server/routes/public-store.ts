@@ -1076,23 +1076,48 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       }
     } catch (e: any) {
       console.error('[FRAUD] Risk assessment error:', e?.message || e?.stack || e);
-      // If this happens mid-transaction we still log the full error
       console.error('[FRAUD] Risk assessment full error:', JSON.stringify({ message: e?.message, stack: e?.stack?.split('\n').slice(0,3).join(' | ') }));
     }
 
-    // 3. Duplicate phone detection (only if not already flagged as fake)
-    if (initialStatus === 'pending') {
-      try {
-        const dupCheck = await client.query(
-          `SELECT id FROM store_orders
-           WHERE client_id = $1 AND customer_phone = $2
-             AND status NOT IN ('cancelled','failed','fake','duplicate','completed','delivered','returned')
-           LIMIT 1`,
-          [clientId, normalizedPhone]
+    // 3. IP-based duplicate/fake detection
+    try {
+      const currentIp = getClientIpXs(req);
+      if (currentIp) {
+        const ipRes = await client.query(
+          `SELECT COUNT(*) AS cnt FROM store_orders
+           WHERE client_id = $1 AND customer_ip = $2
+             AND created_at > NOW() - INTERVAL '1 hour'`,
+          [clientId, currentIp]
         );
-        if (dupCheck.rows.length > 0) initialStatus = 'duplicate';
-      } catch {}
-    }
+        const ipCount = parseInt(ipRes.rows[0]?.cnt || '0') + 1;
+        if (ipCount >= 3 && initialStatus !== 'fake') {
+          initialStatus = 'fake';
+          fraudFlags.push(`🌐 ${ipCount} طلبات من نفس الـ IP (وهمي)`);
+        } else if (ipCount >= 2 && initialStatus !== 'fake') {
+          initialStatus = 'duplicate';
+          fraudFlags.push(`🌐 ${ipCount} طلبات من نفس الـ IP`);
+        }
+      }
+    } catch {}
+
+    // 4. Phone-based duplicate/fake detection
+    try {
+      const phoneRes = await client.query(
+        `SELECT COUNT(*) AS cnt FROM store_orders
+         WHERE client_id = $1 AND customer_phone = $2
+           AND created_at > NOW() - INTERVAL '1 hour'
+           AND status NOT IN ('cancelled','failed','fake','duplicate','completed','delivered','returned')`,
+        [clientId, normalizedPhone]
+      );
+      const phoneCount = parseInt(phoneRes.rows[0]?.cnt || '0') + 1;
+      if (phoneCount >= 3 && initialStatus !== 'fake') {
+        initialStatus = 'fake';
+        fraudFlags.push(`📞 ${phoneCount} طلبات من نفس الرقم (وهمي)`);
+      } else if (phoneCount >= 2 && initialStatus !== 'fake' && initialStatus !== 'duplicate') {
+        initialStatus = 'duplicate';
+        fraudFlags.push(`📞 ${phoneCount} طلبات من نفس الرقم`);
+      }
+    } catch {}
 
     addCol('fraud_score', fraudScore);
     addCol('fraud_level', fraudLevel);
