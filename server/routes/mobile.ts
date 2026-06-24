@@ -315,6 +315,26 @@ router.get('/download', async (_req, res) => {
     } catch { /* fall through */ }
   }
 
+  // 3) Check GitHub Releases — auto-discover latest APK
+  const ghOwner = String(process.env.GH_OWNER || 'kohamedder-art').trim();
+  const ghRepo = String(process.env.GH_REPO || 'sahla4eco-mobile').trim();
+  try {
+    const ghRes = await fetch(`https://api.github.com/repos/${ghOwner}/${ghRepo}/releases/latest`, {
+      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'ecopro' },
+    });
+    if (ghRes.ok) {
+      const ghData: any = await ghRes.json();
+      const apkAsset = ghData?.assets?.find((a: any) => a.name.endsWith('.apk'));
+      if (apkAsset?.browser_download_url) {
+        return res.json({
+          download_url: apkAsset.browser_download_url,
+          version: (ghData.tag_name || '').replace('build-', 'v'),
+          updated_at: ghData.published_at,
+        });
+      }
+    }
+  } catch { /* fall through */ }
+
   res.json({ download_url: null });
 });
 
