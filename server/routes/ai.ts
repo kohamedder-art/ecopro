@@ -3314,7 +3314,9 @@ Make it persuasive, professional, and appropriate for Moroccan market. Use Egypt
     // Save to temp and return as data URL or serve it
     const filename = `landing-${Date.now()}.png`;
     const { writeFileSync, mkdirSync } = await import('fs');
-    const { join } = await import('path');
+    const { join, dirname } = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __dirname = dirname(fileURLToPath(import.meta.url));
     const outputDir = join(__dirname, '..', '..', 'uploads', 'landings');
     try { mkdirSync(outputDir, { recursive: true }); } catch {}
     const outputPath = join(outputDir, filename);
@@ -3330,16 +3332,17 @@ Make it persuasive, professional, and appropriate for Moroccan market. Use Egypt
 });
 
 // Serve landing page images
-router.get('/landing/image/:filename', (req: Request, res: Response) => {
-  const { join } = require('path');
-  const { existsSync } = require('fs');
+router.get('/landing/image/:filename', async (req: Request, res: Response) => {
+  const { join, dirname } = await import('path');
+  const { fileURLToPath } = await import('url');
+  const { existsSync, createReadStream } = await import('fs');
+  const __dirname = dirname(fileURLToPath(import.meta.url));
   const filePath = join(__dirname, '..', '..', 'uploads', 'landings', req.params.filename);
   if (!existsSync(filePath)) {
     return res.status(404).json({ error: 'Image not found' });
   }
   res.setHeader('Content-Type', 'image/png');
   res.setHeader('Cache-Control', 'public, max-age=86400');
-  const { createReadStream } = require('fs');
   createReadStream(filePath).pipe(res);
 });
 
