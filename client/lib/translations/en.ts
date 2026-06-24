@@ -2441,6 +2441,7 @@ export const en = {
   "profile.redeemCodeDesc": "Have a subscription code? Enter it here to activate your plan or extend your subscription.",
   "profile.referralDesc": "Know someone with a Sahla4Eco account? Enter their referral code to get a discount on your subscription.",
   "profile.passwordHint": "For a strong password, use at least 8 characters including uppercase, lowercase, numbers, and symbols.",
+  "profile.comingSoon": "Coming soon...",
 
   // Templates tab
   "templates.switchTemplate": "Switch Template",

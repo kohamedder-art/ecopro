@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
-import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, ShieldCheck, BadgeCheck, Mail, Phone, Building2, MapPin, Globe, CheckCircle2, AlertCircle, Sparkles, Tag } from 'lucide-react';
+import { Gift, Lock, Loader, Ticket, Save, User, Key, Eye, EyeOff, Percent, ShieldCheck, BadgeCheck, Mail, Phone, Building2, MapPin, Globe, CheckCircle2, AlertCircle, Sparkles, Tag, Smartphone, Download } from 'lucide-react';
 
 type SubscriptionRow = {
   tier?: string | null;
@@ -70,6 +70,8 @@ export default function Profile() {
     earn_per_referral?: number;
   } | null>(null);
 
+  const [appDownload, setAppDownload] = useState<{ download_url: string | null; version?: string } | null>(null);
+  const [appDownloadLoading, setAppDownloadLoading] = useState(true);
 
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -172,7 +174,8 @@ export default function Profile() {
   const load = async () => {
     try {
       setLoading(true);
-      const [pRes, aRes, ssRes] = await Promise.all([fetch('/api/users/me'), fetch('/api/billing/check-access'), fetch('/api/client/store/settings')]);
+      const [pRes, aRes, ssRes, mRes] = await Promise.all([fetch('/api/users/me'), fetch('/api/billing/check-access'), fetch('/api/client/store/settings'), fetch('/api/mobile/download')]);
+      if (mRes.ok) setAppDownload(await mRes.json());
       if (pRes.ok) {
         const p = (await pRes.json()) as ProfileResponse;
         let subdomain = '';
@@ -188,6 +191,7 @@ export default function Profile() {
       toast({ variant: 'destructive', title: t('common.error'), description: t('admin.profile.loadError') });
     } finally {
       setLoading(false);
+      setAppDownloadLoading(false);
     }
   };
 
@@ -503,6 +507,35 @@ export default function Profile() {
                 <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2">
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{t('profile.redeemed')}
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile App */}
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-sky-50/50 dark:bg-sky-950/20">
+              <div className="w-7 h-7 rounded-lg bg-sky-500/15 flex items-center justify-center">
+                <Smartphone className="w-4 h-4 text-sky-500" />
+              </div>
+              <span className="text-sm font-bold">{t('admin.enhanced.ourApps')}</span>
+            </div>
+            <div className="p-5 space-y-3">
+              {appDownloadLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader className="w-5 h-5 animate-spin text-muted-foreground/50" />
+                </div>
+              ) : appDownload?.download_url ? (
+                <>
+                  <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{t('admin.enhanced.availableOn')}</p>
+                  <a href={appDownload.download_url} download
+                    className="flex items-center justify-center gap-2 w-full h-10 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-sky-600/20">
+                    <Download className="w-4 h-4" />
+                    {t('admin.enhanced.downloadApp')}
+                    {appDownload.version && <span className="text-[10px] opacity-70">v{appDownload.version}</span>}
+                  </a>
+                </>
+              ) : (
+                <p className="text-[11px] text-muted-foreground/50 text-center py-4">{t('profile.comingSoon')}</p>
               )}
             </div>
           </div>

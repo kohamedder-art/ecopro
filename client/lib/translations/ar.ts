@@ -3036,6 +3036,7 @@ export const ar = {
   "profile.redeemCodeDesc": "هل لديك كود اشتراك؟ أدخله هنا لتفعيل باقتك أو تمديد اشتراكك.",
   "profile.referralDesc": "تعرف شخصاً لديه حساب في سهلة 4 إيكو؟ أدخل كود الإحالة الخاص به للحصول على خصم على اشتراكك.",
   "profile.passwordHint": "لكلمة مرور قوية، استخدم 8 أحرف على الأقل مع حروف كبيرة وصغيرة وأرقام ورموز.",
+  "profile.comingSoon": "قريباً...",
 
   // Templates tab
   "templates.switchTemplate": "تغيير القالب",

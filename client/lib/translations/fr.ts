@@ -908,6 +908,7 @@ export const fr = {
   "admin.profile.redeemCode": "Utiliser un Code",
   "admin.profile.enterCode": "Entrez le code du coupon",
   "admin.profile.subscriptionActivated": "Votre abonnement a été activé",
+  "profile.comingSoon": "Bientôt disponible...",
 
   // Admin Panel - Chats
   "admin.chats.title": "Discussions",
