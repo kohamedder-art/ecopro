@@ -343,8 +343,6 @@ export const getDownloadUrl: RequestHandler = async (_req, res) => {
 router.get('/download', getDownloadUrl);
 
 // Redirect to the actual APK (single 302 hop — avoids GitHub's multi-redirect chain)
-router.get('/download/latest', getDownloadUrlRedirect);
-
 export const getDownloadUrlRedirect: RequestHandler = async (_req, res) => {
   // Reuse the same logic to find the URL, then 302 redirect instead of JSON
   try {
@@ -374,6 +372,8 @@ export const getDownloadUrlRedirect: RequestHandler = async (_req, res) => {
 
   res.redirect(302, 'https://github.com/kohamedder-art/sahla4eco-mobile/releases/latest');
 };
+
+router.get('/download/latest', getDownloadUrlRedirect);
 
 // Admin: update app download URL
 router.post('/download', async (req, res) => {
