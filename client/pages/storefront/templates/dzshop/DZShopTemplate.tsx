@@ -344,7 +344,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 </div>
             </header>
 
-            <main className="max-w-5xl mx-auto px-4 py-6 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 pt-16">
+            <main className="w-full px-4 py-6 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 pt-16">
                 
                 {/* Left Column: Product Visuals */}
                 <div className="space-y-4">
