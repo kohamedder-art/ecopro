@@ -494,7 +494,7 @@ const goBackToCatalog = () => {
                       : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                         : imgCount > 0 ? (
-                          <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', transition: 'transform 0.4s ease', transform: `translateX(-${currentIdx * 100}%)`, width: `${imgCount * 100}%` }}>
+                          <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', transition: 'transform 0.4s ease', transform: `translateX(${currentIdx * 100}%)`, width: `${imgCount * 100}%` }}>
                             {product.images.map((img: string, i: number) => (
                               <div key={i} style={{ minWidth: `${100 / imgCount}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                                 <img src={img} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff' }} />
@@ -775,7 +775,7 @@ const goBackToCatalog = () => {
                       return (
                     <div className="overflow-hidden cursor-pointer relative" style={{ aspectRatio: '10 / 17', backgroundColor: '#fff' }} onClick={swapProduct}>
                       {otherImgCount > 0 ? (
-                        <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', transition: 'transform 0.4s ease', transform: `translateX(-${otherIdx * 100}%)`, width: `${otherImgCount * 100}%` }}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', transition: 'transform 0.4s ease', transform: `translateX(${otherIdx * 100}%)`, width: `${otherImgCount * 100}%` }}>
                           {product.images.map((img: string, i: number) => (
                             <div key={i} style={{ minWidth: `${100 / otherImgCount}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                               <img src={img} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff' }} />
