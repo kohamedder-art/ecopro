@@ -105,12 +105,24 @@ export async function sendPushNotification(clientId: number, title: string, body
       }
     }
 
-    console.log(`[push] sending FCM to ${devices.rows.length} device(s) for client ${clientId}`);
+      console.log(`[push] sending FCM to ${devices.rows.length} device(s) for client ${clientId}`);
+
+    // expo-notifications reads channelId/sound from the data section, not from
+    // android.notification in the FCM envelope. Without these, notifications
+    // are silently dropped when the app is killed.
+    const extraData = {
+      ...dataStr,
+      channelId: 'default',
+      channel_id: 'default',
+      sound: 'default',
+      experienceId: '@sahla4eco-organization/ssahla4eco',
+      _displayInForeground: 'true',
+    };
 
     const invalidTokens: string[] = [];
     for (const device of devices.rows) {
       const token = device.push_token;
-      const result = await sendFcmMessage(token, title, body, dataStr);
+      const result = await sendFcmMessage(token, title, body, extraData);
       if (result.error === 'unregistered') {
         invalidTokens.push(token);
       }
