@@ -217,32 +217,6 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     }
   };
 
-  // Order success screen
-  if (orderSuccess) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
-        <div className="max-w-md mx-auto rounded-2xl p-8 shadow-xl text-center w-full" style={{ backgroundColor: cardBg }}>
-          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
-            <ShieldCheck size={36} style={{ color: accentColor }} />
-          </div>
-          <h2 className="text-2xl font-black mb-2" style={{ color: textColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
-          <p className="text-sm mb-6" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
-          <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
-          <div className="rounded-xl p-4 text-sm space-y-2 text-right mb-4" style={{ backgroundColor: surfaceMuted }}>
-            <div className="flex justify-between"><span style={{ color: textMuted }}>المنتج</span><span className="font-bold" style={{ color: textColor }}>{mainProduct.title}</span></div>
-            <div className="flex justify-between"><span style={{ color: textMuted }}>الكمية</span><span className="font-bold" style={{ color: textColor }}>{quantity}</span></div>
-            <div className="flex justify-between"><span style={{ color: textMuted }}>التوصيل</span><span className="font-bold" style={{ color: textColor }}>{displayPrice(deliveryFee)} {currency}</span></div>
-            <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
-            <div className="flex justify-between"><span className="font-black" style={{ color: textColor }}>المجموع</span><span className="font-black text-lg" style={{ color: textColor }}>{displayPrice(totalCost)} {currency}</span></div>
-          </div>
-          <button onClick={() => setOrderSuccess(false)} className="px-6 py-2 rounded-lg text-white font-bold" style={{ backgroundColor: accentColor }}>
-            تسوق مرة أخرى
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // ── STORE GRID VIEW (multi-product, no product selected) ──
   const showStoreGrid = !currentSlug && (products?.length || 0) > 1;
 
@@ -273,6 +247,32 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, [showStoreGrid]);
+
+  // Order success screen
+  if (orderSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+        <div className="max-w-md mx-auto rounded-2xl p-8 shadow-xl text-center w-full" style={{ backgroundColor: cardBg }}>
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
+            <ShieldCheck size={36} style={{ color: accentColor }} />
+          </div>
+          <h2 className="text-2xl font-black mb-2" style={{ color: textColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
+          <p className="text-sm mb-6" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
+          <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
+          <div className="rounded-xl p-4 text-sm space-y-2 text-right mb-4" style={{ backgroundColor: surfaceMuted }}>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>المنتج</span><span className="font-bold" style={{ color: textColor }}>{mainProduct.title}</span></div>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>الكمية</span><span className="font-bold" style={{ color: textColor }}>{quantity}</span></div>
+            <div className="flex justify-between"><span style={{ color: textMuted }}>التوصيل</span><span className="font-bold" style={{ color: textColor }}>{displayPrice(deliveryFee)} {currency}</span></div>
+            <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
+            <div className="flex justify-between"><span className="font-black" style={{ color: textColor }}>المجموع</span><span className="font-black text-lg" style={{ color: textColor }}>{displayPrice(totalCost)} {currency}</span></div>
+          </div>
+          <button onClick={() => setOrderSuccess(false)} className="px-6 py-2 rounded-lg text-white font-bold" style={{ backgroundColor: accentColor }}>
+            تسوق مرة أخرى
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (showStoreGrid) {
     return (
