@@ -485,7 +485,7 @@ const goBackToCatalog = () => {
                     const currentIdx = cardImageIdx[product.id] ?? 0;
                     const imgCount = product.images?.length || 0;
                     return (
-                      <div className="relative" style={{ aspectRatio: '10 / 17', backgroundColor: surfaceMuted }}>
+                      <div className="relative overflow-hidden" style={{ aspectRatio: '10 / 17', backgroundColor: surfaceMuted }}>
                     {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                       ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[currentIdx] || '/placeholder.png'}
                           onMouseEnter={e => (e.target as HTMLVideoElement).play()}
@@ -493,7 +493,17 @@ const goBackToCatalog = () => {
                           className="w-full h-full object-cover" />
                       : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
-                        : <img key={currentIdx} src={product.images?.[currentIdx] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff', animation: 'swipeIn 0.6s ease' }} />
+                        : imgCount > 0 ? (
+                          <div style={{ display: 'flex', height: '100%', transition: 'transform 0.4s ease', transform: `translateX(-${currentIdx * 100}%)`, width: `${imgCount * 100}%` }}>
+                            {product.images.map((img: string, i: number) => (
+                              <div key={i} style={{ width: `${100 / imgCount}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
+                                <img src={img} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff' }} />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: '#f5f5f5' }}>📦</div>
+                        )
                     }
                     {discount > 0 && (
                       <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
@@ -764,13 +774,17 @@ const goBackToCatalog = () => {
                       const otherImgCount = product.images?.length || 0;
                       return (
                     <div className="overflow-hidden cursor-pointer relative" style={{ aspectRatio: '10 / 17', backgroundColor: '#fff' }} onClick={swapProduct}>
-                      <img key={otherIdx}
-                        src={product.images?.[otherIdx] || '/placeholder.png'}
-                        alt={product.title}
-                        loading="lazy"
-                        className="w-full h-full object-contain"
-                        style={{ backgroundColor: '#fff', animation: 'swipeIn 0.6s ease' }}
-                      />
+                      {otherImgCount > 0 ? (
+                        <div style={{ display: 'flex', height: '100%', transition: 'transform 0.4s ease', transform: `translateX(-${otherIdx * 100}%)`, width: `${otherImgCount * 100}%` }}>
+                          {product.images.map((img: string, i: number) => (
+                            <div key={i} style={{ width: `${100 / otherImgCount}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
+                              <img src={img} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff' }} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: '#f5f5f5' }}>📦</div>
+                      )}
                       {otherImgCount > 1 && (
                         <>
                           <button onClick={e => { e.stopPropagation(); setCardImageIdx(prev => ({ ...prev, [product.id]: (otherIdx - 1 + otherImgCount) % otherImgCount })); }} className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
