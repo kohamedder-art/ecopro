@@ -342,6 +342,39 @@ export const getDownloadUrl: RequestHandler = async (_req, res) => {
 
 router.get('/download', getDownloadUrl);
 
+// Redirect to the actual APK (single 302 hop — avoids GitHub's multi-redirect chain)
+router.get('/download/latest', getDownloadUrlRedirect);
+
+export const getDownloadUrlRedirect: RequestHandler = async (_req, res) => {
+  // Reuse the same logic to find the URL, then 302 redirect instead of JSON
+  try {
+    const pool = await ensureConnection();
+    const result = await pool.query(
+      `SELECT download_url FROM app_downloads WHERE platform = 'android' ORDER BY created_at DESC LIMIT 1`
+    );
+    if (result.rows.length > 0) {
+      return res.redirect(302, result.rows[0].download_url);
+    }
+  } catch {}
+
+  const ghOwner = String(process.env.GH_OWNER || 'kohamedder-art').trim();
+  const ghRepo = String(process.env.GH_REPO || 'sahla4eco-mobile').trim();
+  try {
+    const ghRes = await fetch(`https://api.github.com/repos/${ghOwner}/${ghRepo}/releases/latest`, {
+      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'ecopro' },
+    });
+    if (ghRes.ok) {
+      const ghData: any = await ghRes.json();
+      const apkAsset = ghData?.assets?.find((a: any) => a.name.endsWith('.apk'));
+      if (apkAsset?.browser_download_url) {
+        return res.redirect(302, apkAsset.browser_download_url);
+      }
+    }
+  } catch {}
+
+  res.redirect(302, 'https://github.com/kohamedder-art/sahla4eco-mobile/releases/latest');
+};
+
 // Admin: update app download URL
 router.post('/download', async (req, res) => {
   try {
