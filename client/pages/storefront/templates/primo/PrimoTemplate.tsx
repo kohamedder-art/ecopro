@@ -493,7 +493,7 @@ const goBackToCatalog = () => {
                           className="w-full h-full object-cover" />
                       : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
-                        : <img key={currentIdx} src={product.images?.[currentIdx] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff', animation: 'fadeIn 0.2s ease' }} />
+                        : <img key={currentIdx} src={product.images?.[currentIdx] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff', animation: 'swipeIn 0.35s ease' }} />
                     }
                     {discount > 0 && (
                       <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
@@ -769,7 +769,7 @@ const goBackToCatalog = () => {
                         alt={product.title}
                         loading="lazy"
                         className="w-full h-full object-contain"
-                        style={{ backgroundColor: '#fff', animation: 'fadeIn 0.2s ease' }}
+                        style={{ backgroundColor: '#fff', animation: 'swipeIn 0.35s ease' }}
                       />
                       {otherImgCount > 1 && (
                         <>
