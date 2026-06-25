@@ -23,6 +23,8 @@ import { generateStoreUrl, storeNameToSlug } from '@/utils/storeUrl';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import { useStoreProducts } from '@/hooks/useStoreProducts';
 import { useAISettings } from '@/hooks/useAISettings';
 import { markOnboardingStepComplete } from '@/lib/onboarding';
@@ -655,6 +657,25 @@ export default function Store() {
   // Product logic
   const [savingSettings, setSavingSettings] = useState(false);
   const [statsServer, setStatsServer] = useState<{total_products:number;active_products:number;draft_products:number;total_views:number;page_views?:number;total_product_views?:number}|null>(null);
+
+  // Rich text editor for product description
+  const descEditor = useEditor({
+    extensions: [StarterKit],
+    content: formData.description || '',
+    onUpdate: ({ editor }) => {
+      setFormData(prev => ({ ...prev, description: editor.getHTML() }));
+    },
+  });
+
+  // Sync editor content when formData.description changes externally (e.g. AI generate)
+  useEffect(() => {
+    if (descEditor && formData.description !== undefined) {
+      const currentContent = descEditor.getHTML();
+      if (formData.description !== currentContent) {
+        descEditor.commands.setContent(formData.description || '', false);
+      }
+    }
+  }, [formData.description]);
   // Handler for saving store settings
   const saveStoreSettings = async () => {
           try {
@@ -2149,14 +2170,9 @@ export default function Store() {
                       onGenerate={(desc) => setFormData({ ...formData, description: desc })}
                     />
                   </div>
-                  <Textarea
-                    id="description"
-                    value={formData.description || ''}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder={t('store.productForm.descriptionPlaceholder')}
-                    rows={3}
-                    className="border-primary/30 focus:border-primary/60 transition-colors resize-none text-base"
-                  />
+                  <div className="border rounded-md min-h-[80px] text-base">
+                    <EditorContent editor={descEditor} />
+                  </div>
                 </div>
 
                 <div className="space-y-1">

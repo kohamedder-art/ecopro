@@ -93,6 +93,7 @@ export default function LeRoiShopTemplate({
   }, []);
 
   const [view, setView] = useState<'catalog' | 'product'>('catalog');
+  const [descExpanded, setDescExpanded] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   useEffect(() => {
     if (!initialProductSlug) { setView('catalog'); setSelectedProduct(null); return; }
@@ -306,6 +307,7 @@ export default function LeRoiShopTemplate({
     setActiveImageIndex((imgCount + (hasVideo ? 1 : 0)) > 1 ? 1 : 0);
     setView('product');
     setQuantity(1);
+    setDescExpanded(false);
     setOrderSuccess(false);
     setSelectedWilayaId(null);
     if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug));
@@ -607,7 +609,7 @@ export default function LeRoiShopTemplate({
                 })();
 
                 return (
-                  <div className="w-full md:w-1/2 flex flex-col lrs-fullbleed">
+                  <div className="w-full md:w-1/2 flex flex-col">
                     {/* Main image viewport */}
                     <div className="aspect-[4/5] md:aspect-auto md:flex-1 md:min-h-[400px] md:max-h-[75vh] md:rounded-xl select-none" style={{ backgroundColor: surfaceMuted, position: 'relative', touchAction: 'pan-y', overflow: 'hidden' }}
                       onTouchStart={e => {
@@ -695,15 +697,54 @@ export default function LeRoiShopTemplate({
                   )}
                 </div>
 
-                {/* Product description */}
+                {/* Trust badges — Hijab Saba style */}
+                <div className="flex items-center justify-center gap-6 py-3 mb-4 border rounded-xl" style={{ borderColor: borderColor, backgroundColor: surfaceMuted }}>
+                  <div className="flex flex-col items-center gap-1">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a2 2 0 01-2 2h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                    <span className="text-[10px] font-bold" style={{ color: textColor }}>توصيل 1-3 أيام</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><path d="M12 8v4l2 2"/></svg>
+                    <span className="text-[10px] font-bold" style={{ color: textColor }}>إمكانية الإرجاع</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                    <span className="text-[10px] font-bold" style={{ color: textColor }}>الدفع عند الاستلام</span>
+                  </div>
+                </div>
+
+                {/* Free shipping banner */}
+                <div className="text-center py-2.5 mb-4 rounded-xl text-sm font-bold" style={{ backgroundColor: accentColor + '15', color: accentColor }}>
+                  🚚 التوصيل ابتداءً من 300 دج
+                </div>
+
+                {/* Product description — structured */}
                 {activeProduct.description && (
-                  <p className="text-base leading-relaxed mb-6 whitespace-pre-line" style={{ color: textMuted }}>
-                    {activeProduct.description}
-                  </p>
+                  <div className="relative mb-4">
+                    <div
+                      className="text-sm leading-loose overflow-hidden transition-all duration-300 text-left"
+                      style={{
+                        color: textColor,
+                        display: '-webkit-box',
+                        WebkitLineClamp: descExpanded ? 'unset' : 4,
+                        WebkitBoxOrient: 'vertical',
+                      }}
+                      dangerouslySetInnerHTML={{ __html: activeProduct.description }}
+                    />
+                    {activeProduct.description.split('\n').length > 4 && (
+                      <button
+                        onClick={() => setDescExpanded(!descExpanded)}
+                        className="text-xs font-bold mt-1 text-center w-full"
+                        style={{ color: accentColor }}
+                      >
+                        {descExpanded ? 'عرض أقل ▲' : 'عرض المزيد ▼'}
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {/* Feature bullets (editable) */}
-                <ul className="space-y-2 text-sm mb-6 font-semibold" style={{ color: textMuted }}>
+                <ul className="space-y-2 text-sm mb-6 font-semibold text-left" style={{ color: textMuted }}>
                   {[
                     { key: 'lrs_bullet1', def: '👑 جودة عالية - منتج أصلي وموثوق' },
                     { key: 'lrs_bullet2', def: '💼 شحن سريع إلى 58 ولاية' },

@@ -246,11 +246,49 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   // ── STORE GRID VIEW (multi-product, no product selected) ──
   const showStoreGrid = !currentSlug && (products?.length || 0) > 1;
 
+  // Scroll direction detection for hiding header
+  const [gridScrollY, setGridScrollY] = useState(0);
+  const [gridLastScrollY, setGridLastScrollY] = useState(0);
+  const [gridHeaderVisible, setGridHeaderVisible] = useState(true);
+
+  useEffect(() => {
+    if (!showStoreGrid) return;
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY;
+          if (currentY <= 0) {
+            setGridHeaderVisible(true);
+          } else if (currentY > gridLastScrollY) {
+            setGridHeaderVisible(false);
+          } else {
+            setGridHeaderVisible(true);
+          }
+          setGridLastScrollY(currentY);
+          setGridScrollY(currentY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [showStoreGrid, gridLastScrollY]);
+
   if (showStoreGrid) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5', fontFamily: "'Cairo', sans-serif" }} dir="rtl">
         {/* Header */}
-        <div className="sticky top-0 z-50 px-6 py-4 flex items-center justify-between gap-4" style={{ backgroundColor: '#fff', borderBottom: '1px solid #eee' }}>
+        <div
+          className="sticky top-0 z-50 px-6 py-4 flex items-center justify-between gap-4"
+          style={{
+            backgroundColor: '#fff',
+            borderBottom: '1px solid #eee',
+            transform: gridHeaderVisible ? 'translateY(0)' : 'translateY(-100%)',
+            transition: 'transform 0.3s ease-in-out',
+          }}
+        >
           <div className="flex items-center gap-3 shrink-0">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" width="36" height="36" />}
             <div className="font-bold text-lg" style={{ color: '#1a1a2e' }}>
@@ -269,7 +307,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
         {/* Clean White Product Grid — Hijab Saba style */}
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
             {products?.map((product: any, index: number) => {
               const thumb = product.images?.[0] || '';
               const price = product.price || 0;
@@ -286,7 +324,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   style={{ backgroundColor: '#fff' }}
                 >
                   {/* Image */}
-                  <div className="relative w-full" style={{ paddingBottom: '120%' }}>
+                  <div className="relative w-full" style={{ paddingBottom: '140%' }}>
                     {hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
                       <LazyVideo src={hasVideo} poster={thumb}
                         onMouseEnter={e => (e.target as HTMLVideoElement).play()}
@@ -298,7 +336,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       <img
                         src={thumb}
                         alt={product.title || ''}
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-contain"
+                        style={{ backgroundColor: '#fff' }}
                         loading="lazy"
                       />
                     ) : (
@@ -311,6 +350,21 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       <div className="absolute top-3 right-3 px-2 py-1 text-xs font-bold text-white rounded-lg" style={{ backgroundColor: '#e74c3c' }}>
                         OFF {discount}%
                       </div>
+                    )}
+                    {/* Swipe arrows */}
+                    {product.images && product.images.length > 1 && (
+                      <>
+                        <div className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="15 18 9 12 15 6"/>
+                          </svg>
+                        </div>
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
+                        </div>
+                      </>
                     )}
                   </div>
 
