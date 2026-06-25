@@ -31,6 +31,23 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const showBanner = settings?.dzshop_show_banner !== false;
     const showTrustBadges = settings?.dzshop_show_trust !== false;
 
+    // Smart header: hide on scroll down, show on scroll up
+    const [headerVisible, setHeaderVisible] = useState(true);
+    const lastScrollY = useRef(0);
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentY = window.scrollY;
+            if (currentY > lastScrollY.current && currentY > 80) {
+                setHeaderVisible(false);
+            } else {
+                setHeaderVisible(true);
+            }
+            lastScrollY.current = currentY;
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
     const baseDeliveryFee = selectedWilaya
       ? (selectedDeliveryType === 'home' ? (selectedWilaya.homePrice ?? 0) : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0))
       : 0;
@@ -307,8 +324,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             </div>
             )}
 
-            {/* Header */}
-            <header className="border-b sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm" style={{ backgroundColor: accentColor || 'var(--dz-primary)' }}>
+            {/* Header — hides on scroll down, shows on scroll up */}
+            <header className={`border-b fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm transition-transform duration-300`} style={{ backgroundColor: accentColor || 'var(--dz-primary)', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
                 <div className="flex items-center gap-2">
 {settings?.store_logo ? (
   <img 
@@ -334,7 +351,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 </div>
             </header>
 
-            <main className="max-w-5xl mx-auto px-4 py-6 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+            <main className="max-w-5xl mx-auto px-4 py-6 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 pt-16">
                 
                 {/* Left Column: Product Visuals */}
                 <div className="space-y-4">
