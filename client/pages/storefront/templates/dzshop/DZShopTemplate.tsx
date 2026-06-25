@@ -31,18 +31,11 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const showBanner = settings?.dzshop_show_banner !== false;
     const showTrustBadges = settings?.dzshop_show_trust !== false;
 
-    // Smart header: hide on scroll down, show on scroll up
+    // Header: visible only at the very top of the page, hidden when scrolled
     const [headerVisible, setHeaderVisible] = useState(true);
-    const lastScrollY = useRef(0);
     useEffect(() => {
         const handleScroll = () => {
-            const currentY = window.scrollY;
-            if (currentY > lastScrollY.current && currentY > 80) {
-                setHeaderVisible(false);
-            } else {
-                setHeaderVisible(true);
-            }
-            lastScrollY.current = currentY;
+            setHeaderVisible(window.scrollY === 0);
         };
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
