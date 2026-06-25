@@ -94,6 +94,7 @@ export default function PrimoTemplate({
   const [activeMainProduct, setActiveMainProduct] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'catalog' | 'product'>('catalog');
   const [cardImageIdx, setCardImageIdx] = useState<Record<number, number>>({});
+  const [cardSwipeDir, setCardSwipeDir] = useState<Record<number, string>>({});
   const baseMainProduct = useMemo(() => {
     if (initialProductSlug) {
       const bySlug = products?.find((p: any) => p.slug === initialProductSlug);
@@ -187,25 +188,13 @@ const goBackToCatalog = () => {
   const [selectedMainImage, setSelectedMainImage] = useState(0);
   const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
 
-  const scrollCarouselTo = (i: number) => {
-    const container = carouselRef.current;
-    if (!container) return;
-    const target = container.children[i] as HTMLElement | undefined;
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-  };
-
-  const handleCarouselScroll = () => {
-    if (!carouselRef.current) return;
-    const el = carouselRef.current;
-    const childWidth = el.children[0]?.getBoundingClientRect().width || 1;
-    const idx = Math.round(el.scrollLeft / childWidth);
+  const totalSlides = (videoEmbed ? 1 : 0) + mainImages.length;
+  const slideTo = (idx: number) => {
+    const clamped = ((idx % totalSlides) + totalSlides) % totalSlides;
+    setSelectedMainImage(clamped);
     if (videoEmbed) {
-      if (idx === 0) { setShowVideo(true); setSelectedMainImage(0); }
-      else { setShowVideo(false); setSelectedMainImage(idx - 1); }
-    } else {
-      setSelectedMainImage(idx);
+      setShowVideo(clamped === 0);
     }
   };
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
@@ -446,7 +435,7 @@ const goBackToCatalog = () => {
                   const discount = product.original_price ? Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
                   return (
                     <div key={product.id} className="flex-shrink-0 w-40 cursor-pointer rounded-xl overflow-hidden transition-all hover:shadow-lg" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }} onClick={() => openProduct(product)}>
-                  <div className="relative" style={{ aspectRatio: '10 / 17', backgroundColor: surfaceMuted }}>
+                  <div className="relative" style={{ aspectRatio: '2 / 3', backgroundColor: surfaceMuted }}>
                         <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" decoding="async" className="w-full h-full object-contain" style={{ backgroundColor: '#fff' }} />
                         {discount > 0 && (
                           <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
@@ -485,7 +474,7 @@ const goBackToCatalog = () => {
                     const currentIdx = cardImageIdx[product.id] ?? 0;
                     const imgCount = product.images?.length || 0;
                     return (
-                      <div className="relative overflow-hidden" style={{ aspectRatio: '10 / 17', backgroundColor: surfaceMuted }}>
+                      <div className="relative overflow-hidden" style={{ aspectRatio: '2 / 3', backgroundColor: surfaceMuted }}>
                     {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                       ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[currentIdx] || '/placeholder.png'}
                           onMouseEnter={e => (e.target as HTMLVideoElement).play()}
@@ -494,10 +483,10 @@ const goBackToCatalog = () => {
                       : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                         : imgCount > 0 ? (
-                          <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', transition: 'transform 0.4s ease', transform: `translateX(${currentIdx * 100}%)`, width: `${imgCount * 100}%` }}>
+                          <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', width: `${imgCount * 100}%`, transition: 'transform 0.4s ease', transform: `translateX(-${(currentIdx / imgCount) * 100}%)` }}>
                             {product.images.map((img: string, i: number) => (
-                              <div key={i} style={{ minWidth: `${100 / imgCount}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
-                                <img src={img} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff' }} />
+                              <div key={i} style={{ width: `${100 / imgCount}%`, flexShrink: 0, height: '100%' }}>
+                                <img src={img} alt={product.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff' }} />
                               </div>
                             ))}
                           </div>
@@ -517,12 +506,12 @@ const goBackToCatalog = () => {
                     )}
                     {imgCount > 1 && (
                       <>
-                        <button onClick={e => { e.stopPropagation(); setCardImageIdx(prev => ({ ...prev, [product.id]: (currentIdx - 1 + imgCount) % imgCount })); }} className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                        <button onClick={e => { e.stopPropagation(); setCardSwipeDir(prev => ({ ...prev, [product.id]: 'prev' })); setCardImageIdx(prev => ({ ...prev, [product.id]: (currentIdx - 1 + imgCount) % imgCount })); }} className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
                           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="15 18 9 12 15 6"/>
                           </svg>
                         </button>
-                        <button onClick={e => { e.stopPropagation(); setCardImageIdx(prev => ({ ...prev, [product.id]: (currentIdx + 1) % imgCount })); }} className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                        <button onClick={e => { e.stopPropagation(); setCardSwipeDir(prev => ({ ...prev, [product.id]: 'next' })); setCardImageIdx(prev => ({ ...prev, [product.id]: (currentIdx + 1) % imgCount })); }} className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
                           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="9 18 15 12 9 6"/>
                           </svg>
@@ -564,12 +553,26 @@ const goBackToCatalog = () => {
           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
 
             {/* LEFT: Image Gallery */}
-            <div className="w-full lg:w-[48%] flex flex-col gap-3 lg:self-stretch">
-              {/* Main display: video or image */}
-              <div className="rounded-2xl overflow-hidden shadow-xl aspect-[4/5] lg:aspect-auto lg:flex-1 min-h-[300px] lg:max-h-[70vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory' }} onScroll={handleCarouselScroll}>
+            <div className="w-full lg:w-[58%] lg:h-[calc(100vh-80px)] lg:flex lg:flex-row lg:items-stretch lg:gap-3">
+              {/* Thumbnails: vertical stack on desktop right (first in DOM = right in RTL) */}
+              <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:w-[60px] lg:overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+                {videoEmbed && (
+                  <button onClick={() => slideTo(0)} className="flex-shrink-0 w-[60px] h-[60px] rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `2px solid ${selectedMainImage === 0 ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+                  </button>
+                )}
+                {mainImages.map((img, i) => (
+                  <button key={i} onClick={() => slideTo(videoEmbed ? i + 1 : i)} className="flex-shrink-0 w-[60px] h-[60px] rounded-lg overflow-hidden" style={{ border: `2px solid ${selectedMainImage === (videoEmbed ? i + 1 : i) ? accentColor : 'transparent'}` }}>
+                    <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
+                  </button>
+                ))}
+              </div>
+              {/* Main Image */}
+              <div className="w-full lg:flex-1 lg:h-full">
+                <div className="relative rounded-2xl overflow-hidden shadow-xl lg:h-full" style={{ backgroundColor: surfaceMuted }}>
+                <div className="flex h-full" style={{ width: `${totalSlides * 100}%`, transform: `translateX(${(selectedMainImage / totalSlides) * 100}%)`, transition: 'transform 0.35s ease' }}>
                   {videoEmbed && (
-                    <div className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}>
+                    <div className="h-full shrink-0" style={{ width: `${100 / totalSlides}%` }}>
                       {videoEmbed.type === 'youtube' ? (
                         <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                       ) : videoEmbed.type === 'video' ? (
@@ -581,51 +584,50 @@ const goBackToCatalog = () => {
                   )}
                   {mainImages.length > 0 ? mainImages.map((img, i) => (
                     <img key={i} src={img} alt={mainProduct.title}
-                      className="w-full h-full object-contain shrink-0 cursor-pointer"
+                      className="h-full object-contain shrink-0 cursor-pointer"
                       loading={i === 0 ? 'eager' : 'lazy'}
-                      style={{ flex: '0 0 100%', scrollSnapAlign: 'center' }}
+                      style={{ width: `${100 / totalSlides}%` }}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
                   )) : (
-                    <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: textMuted }}>
+                    <div className="h-full flex items-center justify-center shrink-0" style={{ width: `${100 / totalSlides}%`, color: textMuted }}>
                       <ShoppingBag size={48} strokeWidth={1} />
                     </div>
                   )}
                 </div>
-                {mainImages.length > 1 && (
+                {totalSlides > 1 && (
                   <>
-                    <div className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage + 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-md hover:bg-white transition-colors">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="15 18 9 12 15 6"/>
                       </svg>
-                    </div>
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage - 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-md hover:bg-white transition-colors">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 18 15 12 9 6"/>
                       </svg>
-                    </div>
+                    </button>
                   </>
                 )}
-              </div>
-              {/* Thumbnails: video first, then images */}
-              {(videoEmbed || mainImages.length > 1) && (
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {videoEmbed && (
-                    <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `2px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
-                    </button>
-                  )}
-                  {mainImages.map((img, i) => (
-                    <button key={i} onClick={() => { setShowVideo(false); setSelectedMainImage(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden" style={{ border: `2px solid ${!showVideo && selectedMainImage === i ? accentColor : 'transparent'}` }}>
-                      <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
-                    </button>
-                  ))}
                 </div>
-              )}
+              </div>
+              {/* Mobile: horizontal thumbnails below */}
+              <div className="lg:hidden flex gap-2 overflow-x-auto pb-1">
+                {videoEmbed && (
+                  <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `2px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+                  </button>
+                )}
+                {mainImages.map((img, i) => (
+                  <button key={i} onClick={() => { setShowVideo(false); setSelectedMainImage(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden" style={{ border: `2px solid ${!showVideo && selectedMainImage === i ? accentColor : 'transparent'}` }}>
+                    <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* RIGHT: Info + Order Form */}
-            <div className="w-full lg:w-[52%] flex flex-col gap-3">
+            <div className="w-full lg:w-[42%] flex flex-col gap-3">
               {/* Product Info */}
               <div>
                 <span className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-2" style={{ backgroundColor: accentColor + '15', color: accentColor }}>
@@ -773,12 +775,12 @@ const goBackToCatalog = () => {
                       const otherIdx = cardImageIdx[product.id] ?? 0;
                       const otherImgCount = product.images?.length || 0;
                       return (
-                    <div className="overflow-hidden cursor-pointer relative" style={{ aspectRatio: '10 / 17', backgroundColor: '#fff' }} onClick={swapProduct}>
+                    <div className="overflow-hidden cursor-pointer relative" style={{ aspectRatio: '2 / 3', backgroundColor: '#fff' }} onClick={swapProduct}>
                       {otherImgCount > 0 ? (
-                        <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', transition: 'transform 0.4s ease', transform: `translateX(${otherIdx * 100}%)`, width: `${otherImgCount * 100}%` }}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', width: `${otherImgCount * 100}%`, transition: 'transform 0.4s ease', transform: `translateX(-${(otherIdx / otherImgCount) * 100}%)` }}>
                           {product.images.map((img: string, i: number) => (
-                            <div key={i} style={{ minWidth: `${100 / otherImgCount}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
-                              <img src={img} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff' }} />
+                            <div key={i} style={{ width: `${100 / otherImgCount}%`, flexShrink: 0, height: '100%' }}>
+                              <img src={img} alt={product.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff' }} />
                             </div>
                           ))}
                         </div>
@@ -787,12 +789,12 @@ const goBackToCatalog = () => {
                       )}
                       {otherImgCount > 1 && (
                         <>
-                          <button onClick={e => { e.stopPropagation(); setCardImageIdx(prev => ({ ...prev, [product.id]: (otherIdx - 1 + otherImgCount) % otherImgCount })); }} className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                          <button onClick={e => { e.stopPropagation(); setCardSwipeDir(prev => ({ ...prev, [product.id]: 'prev' })); setCardImageIdx(prev => ({ ...prev, [product.id]: (otherIdx - 1 + otherImgCount) % otherImgCount })); }} className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="15 18 9 12 15 6"/>
                             </svg>
                           </button>
-                          <button onClick={e => { e.stopPropagation(); setCardImageIdx(prev => ({ ...prev, [product.id]: (otherIdx + 1) % otherImgCount })); }} className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                          <button onClick={e => { e.stopPropagation(); setCardSwipeDir(prev => ({ ...prev, [product.id]: 'next' })); setCardImageIdx(prev => ({ ...prev, [product.id]: (otherIdx + 1) % otherImgCount })); }} className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="9 18 15 12 9 6"/>
                             </svg>
