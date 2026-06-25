@@ -248,118 +248,97 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   if (showStoreGrid) {
     return (
-      <div className="min-h-screen font-sans" style={{ backgroundColor: surfaceMuted, color: textColor }} dir="rtl">
+      <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5', fontFamily: "'Cairo', sans-serif" }} dir="rtl">
         {/* Header */}
-        <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between gap-4" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
-          <div className="flex items-center gap-2 shrink-0">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" loading="lazy" decoding="async" width="28" height="28" style={{ contentVisibility: 'auto' }} />}
-            <div className="font-bold text-base" style={{ color: textColor }}>
+        <div className="sticky top-0 z-50 px-6 py-4 flex items-center justify-between gap-4" style={{ backgroundColor: '#fff', borderBottom: '1px solid #eee' }}>
+          <div className="flex items-center gap-3 shrink-0">
+            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" width="36" height="36" />}
+            <div className="font-bold text-lg" style={{ color: '#1a1a2e' }}>
               {storeName}
             </div>
           </div>
-          {/* Search bar (desktop) */}
-          <div className="hidden md:flex flex-1 max-w-md items-center gap-2 px-3 py-2 rounded-full" style={{ backgroundColor: surfaceMuted }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {/* Search bar */}
+          <div className="hidden md:flex flex-1 max-w-md items-center gap-2 px-4 py-2.5 rounded-full" style={{ backgroundColor: '#f5f5f5' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
             </svg>
-            <span className="text-sm" style={{ color: textMuted }}>ابحث في المنتجات...</span>
+            <span className="text-sm" style={{ color: '#999' }}>ابحث في المنتجات...</span>
           </div>
-          <span className="text-xs shrink-0" style={{ color: textMuted }}>{products?.length} منتج</span>
+          <span className="text-sm shrink-0" style={{ color: '#666' }}>{products?.length} منتج</span>
         </div>
 
-        {/* Temu-style Product Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-2">
-          {products?.map((product: any, index: number) => {
-            const thumb = product.images?.[0] || '';
-            const price = product.price || 0;
-            const hasVideo = product.metadata?.video_url;
-            const discount = product.original_price && product.original_price > price
-              ? Math.round(((product.original_price - price) / product.original_price) * 100)
-              : 0;
-            const salesCount = product.views || 0;
-            const salesLabel = salesCount >= 1000 ? `${(salesCount / 1000).toFixed(1)}K+` : salesCount > 0 ? `${salesCount}+` : '';
+        {/* Clean White Product Grid — Hijab Saba style */}
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {products?.map((product: any, index: number) => {
+              const thumb = product.images?.[0] || '';
+              const price = product.price || 0;
+              const hasVideo = product.metadata?.video_url;
+              const discount = product.original_price && product.original_price > price
+                ? Math.round(((product.original_price - price) / product.original_price) * 100)
+                : 0;
 
-            return (
-              <button
-                key={product.id}
-                onClick={() => goToProduct(product)}
-                className="w-full text-right overflow-hidden"
-                style={{ backgroundColor: cardBg }}
-              >
-                {/* Image / Video */}
-                <div className="relative w-full" style={{ paddingBottom: '100%' }}>
-                  {hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
-                    <LazyVideo src={hasVideo} poster={thumb}
-                      onMouseEnter={e => (e.target as HTMLVideoElement).play()}
-                      onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                      className="absolute inset-0 w-full h-full object-cover" />
-                  ) : hasVideo?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
-                    <iframe className="absolute inset-0 w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
-                  ) : thumb ? (
-                    <img
-                      src={thumb}
-                      alt={product.title || ''}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ backgroundColor: surfaceMuted }}>
-                      📦
-                    </div>
-                  )}
-                  {/* Discount badge */}
-                  {discount > 0 && (
-                    <div className="absolute top-0 left-0 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: accentColor }}>
-                      {discount}% OFF
-                    </div>
-                  )}
-                  {/* Add to cart button */}
-                  <div className="absolute bottom-2 left-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md" style={{ backgroundColor: accentColor }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-                      <path d="m1 1 4 0 2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="p-2">
-                  <h3 className="text-xs font-medium leading-tight mb-1 line-clamp-2" style={{ color: textColor, minHeight: '2.5em' }}>
-                    {product.title || product.name || 'منتج'}
-                  </h3>
-                  {/* Stars */}
-                  <div className="flex items-center gap-0.5 mb-1">
-                    {[1,2,3,4,5].map(i => (
-                      <svg key={i} width="10" height="10" viewBox="0 0 24 24" fill={i <= 4 ? accentColor : borderColor}>
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
-                    ))}
-                    {salesLabel && (
-                      <span className="text-[9px] mr-0.5" style={{ color: textMuted }}>({salesLabel})</span>
+              return (
+                <button
+                  key={product.id}
+                  onClick={() => goToProduct(product)}
+                  className="w-full text-right overflow-hidden rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+                  style={{ backgroundColor: '#fff' }}
+                >
+                  {/* Image */}
+                  <div className="relative w-full" style={{ paddingBottom: '120%' }}>
+                    {hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
+                      <LazyVideo src={hasVideo} poster={thumb}
+                        onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                        onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                        className="absolute inset-0 w-full h-full object-cover" />
+                    ) : hasVideo?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
+                      <iframe className="absolute inset-0 w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                    ) : thumb ? (
+                      <img
+                        src={thumb}
+                        alt={product.title || ''}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-4xl" style={{ backgroundColor: '#f5f5f5' }}>
+                        📦
+                      </div>
+                    )}
+                    {/* Discount badge */}
+                    {discount > 0 && (
+                      <div className="absolute top-3 right-3 px-2 py-1 text-xs font-bold text-white rounded-lg" style={{ backgroundColor: '#e74c3c' }}>
+                        OFF {discount}%
+                      </div>
                     )}
                   </div>
-                  {/* Price */}
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-sm font-black" style={{ color: textColor }}>
-                      {displayPrice(price).toLocaleString()}
-                    </span>
-                    <span className="text-[10px] font-medium" style={{ color: textColor }}>{currency}</span>
-                  </div>
-                  {/* Original price + sales */}
-                  <div className="flex items-center gap-1 mt-0.5">
-                    {product.original_price && product.original_price > price && (
-                      <span className="text-[10px] line-through" style={{ color: textMuted }}>
-                        {displayPrice(product.original_price).toLocaleString()}
+
+                  {/* Info */}
+                  <div className="p-4">
+                    <h3 className="text-sm font-bold leading-snug mb-2 line-clamp-2" style={{ color: '#1a1a2e', minHeight: '2.5em' }}>
+                      {product.title || product.name || 'منتج'}
+                    </h3>
+                    {/* Price */}
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <span className="text-lg font-black" style={{ color: '#1a1a2e' }}>
+                        {displayPrice(price).toLocaleString()} {currency}
                       </span>
-                    )}
-                    {salesLabel && (
-                      <span className="text-[9px]" style={{ color: textMuted }}>{salesLabel} sold</span>
-                    )}
+                      {product.original_price && product.original_price > price && (
+                        <span className="text-sm line-through" style={{ color: '#999' }}>
+                          {displayPrice(product.original_price).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    {/* Order Button */}
+                    <div className="w-full py-2.5 rounded-xl text-center text-sm font-bold text-white" style={{ backgroundColor: accentColor }}>
+                      اطلب الآن
+                    </div>
                   </div>
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
