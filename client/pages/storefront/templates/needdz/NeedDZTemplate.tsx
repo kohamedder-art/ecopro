@@ -107,6 +107,29 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     return () => clearTimeout(timer);
   }, [selectedProduct?.id, storeSlug]);
 
+  // Track views via IntersectionObserver when products scroll into viewport
+  const trackedSlugsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!storeSlug) return;
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const slug = (entry.target as HTMLElement).dataset.viewProduct;
+          if (slug && !trackedSlugsRef.current.has(slug)) {
+            trackedSlugsRef.current.add(slug);
+            const product = products?.find((p: any) => p.slug === slug);
+            if (product && onProductView) onProductView(product);
+            fetch(`/api/store/${encodeURIComponent(storeSlug)}/${encodeURIComponent(slug)}?track_view=1`).catch(() => {});
+          }
+        }
+      });
+    }, { threshold: 0.3 });
+    const els = document.querySelectorAll('[data-view-product]');
+    els.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [storeSlug, products]);
+
   // Update URL when product is selected
   const handleSelectProduct = (product: any) => {
     setSelectedProduct(product);
@@ -114,6 +137,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   };
 
   const handleCloseCheckout = () => {
+    setSelectedProduct(null);
     setIsCheckoutOpen(false);
     if (navigate) navigate(buildStoreUrl(storeSlug, '/'));
   };
@@ -374,7 +398,7 @@ const parseVideoEmbed = (videoUrl: string) => {
           {/* Product Feed */}
           <div className="p-4 space-y-10 mt-2">
             {displayProducts.map(product => (
-              <div key={product.id} className="rounded-[32px] overflow-hidden border shadow-sm group" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
+              <div key={product.id} data-view-product={product.slug} className="rounded-[32px] overflow-hidden border shadow-sm group" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
                 {/* Image Gallery */}
                 {(() => {
                   const totalMedia = product.images.length + (product.videoUrl ? 1 : 0);
