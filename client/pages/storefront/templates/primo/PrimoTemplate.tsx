@@ -93,6 +93,7 @@ export default function PrimoTemplate({
   // ── Main Product ──
   const [activeMainProduct, setActiveMainProduct] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'catalog' | 'product'>('catalog');
+  const [cardImageIdx, setCardImageIdx] = useState<Record<number, number>>({});
   const baseMainProduct = useMemo(() => {
     if (initialProductSlug) {
       const bySlug = products?.find((p: any) => p.slug === initialProductSlug);
@@ -369,7 +370,7 @@ const goBackToCatalog = () => {
 
       {/* ── HEADER / NAV ── */}
       <header className="sticky top-0 z-50 backdrop-blur-md transition-transform duration-300" style={{ backgroundColor: surfaceColor + 'cc', borderBottom: `1px solid ${surfaceBorderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {viewMode === 'product' && (
               <button
@@ -422,7 +423,7 @@ const goBackToCatalog = () => {
           CATALOG VIEW
           ══════════════════════════════════════ */}
       {viewMode === 'catalog' && products && products.length > 0 && (
-        <main className="max-w-6xl mx-auto px-4 py-6 pb-24 md:pb-6">
+        <main className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -445,8 +446,8 @@ const goBackToCatalog = () => {
                   const discount = product.original_price ? Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
                   return (
                     <div key={product.id} className="flex-shrink-0 w-40 cursor-pointer rounded-xl overflow-hidden transition-all hover:shadow-lg" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }} onClick={() => openProduct(product)}>
-                      <div className="relative" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
-                        <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" decoding="async" className="w-full h-full object-cover" style={{ contentVisibility: 'auto' }} />
+                  <div className="relative" style={{ aspectRatio: '10 / 17', backgroundColor: surfaceMuted }}>
+                        <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" decoding="async" className="w-full h-full object-contain" style={{ backgroundColor: '#fff' }} />
                         {discount > 0 && (
                           <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
                             -{discount}%
@@ -480,15 +481,19 @@ const goBackToCatalog = () => {
                   style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}
                   onClick={() => openProduct(product)}
                 >
-                  <div className="relative" style={{ aspectRatio: '4 / 5', backgroundColor: surfaceMuted }}>
+                  {(() => {
+                    const currentIdx = cardImageIdx[product.id] ?? 0;
+                    const imgCount = product.images?.length || 0;
+                    return (
+                      <div className="relative" style={{ aspectRatio: '10 / 17', backgroundColor: surfaceMuted }}>
                     {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                      ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || '/placeholder.png'}
+                      ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[currentIdx] || '/placeholder.png'}
                           onMouseEnter={e => (e.target as HTMLVideoElement).play()}
                           onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
                           className="w-full h-full object-cover" />
                       : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
-                        : <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                        : <img key={currentIdx} src={product.images?.[currentIdx] || '/placeholder.png'} alt={product.title} loading="lazy" className="w-full h-full object-contain" style={{ backgroundColor: '#fff', animation: 'fadeIn 0.2s ease' }} />
                     }
                     {discount > 0 && (
                       <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
@@ -500,7 +505,23 @@ const goBackToCatalog = () => {
                         {product.stock_quantity} قطع متبقية
                       </span>
                     )}
+                    {imgCount > 1 && (
+                      <>
+                        <button onClick={e => { e.stopPropagation(); setCardImageIdx(prev => ({ ...prev, [product.id]: (currentIdx - 1 + imgCount) % imgCount })); }} className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="15 18 9 12 15 6"/>
+                          </svg>
+                        </button>
+                        <button onClick={e => { e.stopPropagation(); setCardImageIdx(prev => ({ ...prev, [product.id]: (currentIdx + 1) % imgCount })); }} className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
+                        </button>
+                      </>
+                    )}
                   </div>
+                    );
+                  })()}
                   <div className="p-2.5">
                     <h3 className="text-xs font-semibold leading-snug mb-1.5 line-clamp-2 text-right" style={{ color: surfaceTextColor }}>
                       {product.title}
@@ -527,7 +548,7 @@ const goBackToCatalog = () => {
       )}
 
       {viewMode === 'product' && mainProduct && (
-        <main className="max-w-6xl mx-auto px-4 py-4 lg:py-6 pb-24 md:pb-6">
+        <main className="max-w-7xl mx-auto px-4 py-4 lg:py-6 pb-24 md:pb-6">
 
           {/* ── SPLIT LAYOUT: Images LEFT, Form RIGHT ── */}
           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
@@ -563,16 +584,16 @@ const goBackToCatalog = () => {
                 </div>
                 {mainImages.length > 1 && (
                   <>
-                    <button onClick={e => { e.stopPropagation(); const t = mainImages.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const n = (c + 1) % t; if (n === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? n - 1 : n; setSelectedMainImage(ii); scrollCarouselTo(n); } }}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15,18 9,12 15,6" /></svg>
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); const t = mainImages.length + (videoEmbed?1:0); const c = showVideo ? 0 : (videoEmbed ? selectedMainImage + 1 : selectedMainImage); const p = (c - 1 + t) % t; if (p === 0 && videoEmbed) { setShowVideo(true); scrollCarouselTo(0); } else { setShowVideo(false); const ii = videoEmbed ? p - 1 : p; setSelectedMainImage(ii); scrollCarouselTo(p); } }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9,18 15,12 9,6" /></svg>
-                    </button>
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"/>
+                      </svg>
+                    </div>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                    </div>
                   </>
                 )}
               </div>
@@ -738,14 +759,35 @@ const goBackToCatalog = () => {
                   const swapProduct = () => { setActiveMainProduct(product); setSelectedMainImage(0); setViewMode('product'); onProductView?.(product); window.scrollTo({ top: 0, behavior: 'smooth' }); if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug)); };
                   return (
                   <div key={product.id} className="rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
-                    <div className="overflow-hidden cursor-pointer" style={{ aspectRatio: '4 / 5' }} onClick={swapProduct}>
-                      <img
-                        src={product.images?.[0] || '/placeholder.png'}
+                    {(() => {
+                      const otherIdx = cardImageIdx[product.id] ?? 0;
+                      const otherImgCount = product.images?.length || 0;
+                      return (
+                    <div className="overflow-hidden cursor-pointer relative" style={{ aspectRatio: '10 / 17', backgroundColor: '#fff' }} onClick={swapProduct}>
+                      <img key={otherIdx}
+                        src={product.images?.[otherIdx] || '/placeholder.png'}
                         alt={product.title}
                         loading="lazy"
-                        className="w-full h-full object-cover transition-transform hover:scale-105 duration-500"
+                        className="w-full h-full object-contain"
+                        style={{ backgroundColor: '#fff', animation: 'fadeIn 0.2s ease' }}
                       />
+                      {otherImgCount > 1 && (
+                        <>
+                          <button onClick={e => { e.stopPropagation(); setCardImageIdx(prev => ({ ...prev, [product.id]: (otherIdx - 1 + otherImgCount) % otherImgCount })); }} className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                          </button>
+                          <button onClick={e => { e.stopPropagation(); setCardImageIdx(prev => ({ ...prev, [product.id]: (otherIdx + 1) % otherImgCount })); }} className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="9 18 15 12 9 6"/>
+                            </svg>
+                          </button>
+                        </>
+                      )}
                     </div>
+                      );
+                    })()}
                     <div className="p-3">
                       <h4 className="font-bold mb-1 text-sm line-clamp-1" style={{ color: surfaceTextColor }}>{product.title}</h4>
                       <p className="font-black mb-2" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
@@ -770,7 +812,7 @@ const goBackToCatalog = () => {
 
       {/* ── FOOTER ── */}
       <footer className="py-12 mt-20" style={{ backgroundColor: surfaceColor, borderTop: `1px solid ${surfaceBorderColor}` }}>
-        <div className="max-w-6xl mx-auto px-4 text-center">
+        <div className="max-w-7xl mx-auto px-4 text-center">
           <h2 className="text-2xl font-black mb-4" style={{ color: surfaceTextColor }}>{storeName}</h2>
           <p className="text-sm font-bold mb-8" style={{ color: surfaceTextMuted }}>{heroTitle}</p>
           <div className="flex justify-center gap-6 mb-8">

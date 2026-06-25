@@ -247,8 +247,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const showStoreGrid = !currentSlug && (products?.length || 0) > 1;
 
   // Scroll direction detection for hiding header
-  const [gridScrollY, setGridScrollY] = useState(0);
-  const [gridLastScrollY, setGridLastScrollY] = useState(0);
+  const gridLastScrollYRef = useRef(0);
   const [gridHeaderVisible, setGridHeaderVisible] = useState(true);
 
   useEffect(() => {
@@ -260,13 +259,12 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           const currentY = window.scrollY;
           if (currentY <= 0) {
             setGridHeaderVisible(true);
-          } else if (currentY > gridLastScrollY) {
+          } else if (currentY > gridLastScrollYRef.current) {
             setGridHeaderVisible(false);
           } else {
             setGridHeaderVisible(true);
           }
-          setGridLastScrollY(currentY);
-          setGridScrollY(currentY);
+          gridLastScrollYRef.current = currentY;
           ticking = false;
         });
         ticking = true;
@@ -274,7 +272,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [showStoreGrid, gridLastScrollY]);
+  }, [showStoreGrid]);
 
   if (showStoreGrid) {
     return (

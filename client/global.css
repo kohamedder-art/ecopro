@@ -644,3 +644,8 @@ body {
   margin: 0.5em 0;
   color: #666;
 }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
