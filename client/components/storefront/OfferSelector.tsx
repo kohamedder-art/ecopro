@@ -101,53 +101,63 @@ export default function OfferSelector({
       {offers.map((offer) => {
         const active = isSelected(offer);
         const displayLabel = offer.label
-          || `${offer.quantity} منتج 💚${offer.free_delivery ? ' + توصيل مجاني ✅' : ''}`;
+          || `${offer.quantity} منتج${offer.free_delivery ? ' + توصيل مجاني' : ''}`;
 
         return (
           <label
             key={offer.id}
-            className="flex items-center justify-between w-full p-3 rounded-lg cursor-pointer transition-all"
+            onClick={() => active ? onSelect(null) : onSelect({
+              offer_id: offer.id,
+              quantity: offer.quantity,
+              bundle_price: offer.bundle_price,
+              free_delivery: offer.free_delivery,
+            })}
+            className="flex items-center justify-between w-full px-3 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-sm"
             style={{
-              border: `2px solid ${active ? accentColor : borderColor}`,
-              backgroundColor: active ? accentColor + '10' : (bgColor || '#fff'),
+              border: `1.5px solid ${active ? accentColor : '#e5e7eb'}`,
+              backgroundColor: active ? accentColor + '08' : '#fff',
+              boxShadow: active ? `0 0 0 1px ${accentColor}20` : 'none',
             }}
           >
-            <div className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="product-offer"
-                checked={active}
-                onClick={() => active ? onSelect(null) : onSelect({
-                  offer_id: offer.id,
-                  quantity: offer.quantity,
-                  bundle_price: offer.bundle_price,
-                  free_delivery: offer.free_delivery,
-                })}
-                className="w-4 h-4 accent-orange-500 cursor-pointer"
-              />
+            <div className="flex items-center gap-3">
+              {/* Custom checkmark instead of radio */}
+              <div
+                className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200"
+                style={{
+                  borderColor: active ? accentColor : '#d1d5db',
+                  backgroundColor: active ? accentColor : 'transparent',
+                }}
+              >
+                {active && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
               {offer.image_url && (
                 <img
                   src={offer.image_url}
                   alt=""
-                  className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                  className="w-11 h-11 rounded-lg object-cover flex-shrink-0"
+                  style={{ border: `1px solid #f3f4f6` }}
                 />
               )}
-              <span className="font-bold text-sm" style={{ color: textColor }}>
-                {displayLabel}
-              </span>
-            </div>
-            <div className="text-left">
-              {!hidePrice && (
-                <>
-                  {offer.compare_price != null && offer.compare_price > offer.bundle_price && (
-                    <span className="line-through text-[10px] block" style={{ color: '#ef4444' }}>
-                      {Math.round(offer.compare_price).toLocaleString()} {currency}
-                    </span>
-                  )}
-                  <span className="font-bold text-sm" style={{ color: textColor }}>
-                    {Math.round(offer.bundle_price).toLocaleString()} {currency}
+              <div className="flex flex-col">
+                <span className="font-bold text-sm leading-tight" style={{ color: textColor }}>
+                  {displayLabel}
+                </span>
+                {offer.compare_price != null && offer.compare_price > offer.bundle_price && (
+                  <span className="line-through text-[11px] mt-0.5" style={{ color: '#9ca3af' }}>
+                    {Math.round(offer.compare_price).toLocaleString()} {currency}
                   </span>
-                </>
+                )}
+              </div>
+            </div>
+            <div className="text-left flex-shrink-0">
+              {!hidePrice && (
+                <span className="font-extrabold text-base" style={{ color: active ? accentColor : textColor }}>
+                  {Math.round(offer.bundle_price).toLocaleString()} {currency}
+                </span>
               )}
             </div>
           </label>

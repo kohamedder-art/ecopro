@@ -212,14 +212,13 @@ export default function VariantSelector({
     <div className="flex flex-col gap-3" dir={dir}>
       {/* Color selector - Visual style like Temu (shows variant images) */}
       {hasColors && visualMode && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <span className="text-xs font-semibold opacity-70">
             اللون{selectedColor ? `: ${selectedColor}` : ''}
           </span>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2.5">
             {colors.map(c => {
               const isActive = !!(selectedColor && c.name && selectedColor.trim().toLowerCase() === c.name.trim().toLowerCase());
-              // Find variant with this color to get its image
               const colorVariant = variants.find(v => v.color === c.name);
               const variantImage = colorVariant?.images?.[0];
               const outOfStock = isColorOutOfStock(c.name);
@@ -229,15 +228,14 @@ export default function VariantSelector({
                   key={c.name}
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleColorClick(c.name); }}
-                  className="relative flex flex-col items-center gap-1 transition-all"
+                  className="relative flex flex-col items-center gap-1.5 transition-all duration-200"
                 >
-                  {/* Image thumbnail like Temu */}
                   <div 
-                    className="relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all"
+                    className="relative w-16 h-20 rounded-xl overflow-hidden transition-all duration-200"
                     style={{
-                      borderColor: isActive ? accentColor : 'transparent',
-                      boxShadow: isActive ? `0 0 0 1px ${accentColor}` : '0 1px 3px rgba(0,0,0,0.1)',
-                      transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                      border: `2px solid ${isActive ? accentColor : '#f3f4f6'}`,
+                      boxShadow: isActive ? `0 4px 12px ${accentColor}25` : '0 1px 3px rgba(0,0,0,0.08)',
+                      transform: isActive ? 'scale(1.08)' : 'scale(1)',
                     }}
                   >
                     {variantImage ? (
@@ -265,25 +263,26 @@ export default function VariantSelector({
                     )}
                     
                     {outOfStock && (
-                      <div className="absolute inset-0 bg-white/60 dark:bg-black/60 flex items-center justify-center">
-                        <span className="text-[9px] font-black text-red-600 bg-white/80 px-1 py-0.5 rounded">نفد</span>
+                      <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                        <span className="text-[9px] font-black text-red-600 bg-white/80 px-1.5 py-0.5 rounded-full">نفد</span>
+                      </div>
+                    )}
+                    {isActive && (
+                      <div className="absolute top-1 left-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                       </div>
                     )}
                   </div>
                   
-                  {/* Color name below image */}
                   <span 
                     className="text-[11px] font-medium truncate max-w-[64px] text-center"
                     style={{ 
-                      color: isActive ? accentColor : 'inherit',
+                      color: isActive ? accentColor : '#6b7280',
                       fontWeight: isActive ? 700 : 500,
                     }}
                   >
                     {c.name}
                   </span>
-                  {outOfStock && (
-                    <span className="text-[9px] font-bold text-red-500">نفد</span>
-                  )}
                 </button>
               );
             })}
@@ -297,39 +296,43 @@ export default function VariantSelector({
           <span className="text-xs font-semibold opacity-70">
             اللون{selectedColor ? `: ${selectedColor}` : ''}
           </span>
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex flex-wrap gap-2.5 items-center">
             {colors.map(c => {
               const isActive = !!(selectedColor && c.name && selectedColor.trim().toLowerCase() === c.name.trim().toLowerCase());
               const hex = c.hex;
               const outOfStock = isColorOutOfStock(c.name);
               return (
-                <div key={c.name} className="flex flex-col items-center gap-0.5">
+                <div key={c.name} className="flex flex-col items-center gap-1">
                   <button
                     type="button"
                     title={c.name}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleColorClick(c.name); }}
                     className="relative rounded-full transition-all duration-200"
                     style={{
-                      width: isActive ? 40 : 28,
-                      height: isActive ? 40 : 28,
+                      width: isActive ? 36 : 30,
+                      height: isActive ? 36 : 30,
                       backgroundColor: hex || (c.name.includes(',') ? undefined : '#ccc'),
                       backgroundImage: !hex
                         ? c.name.includes(',')
                           ? multiColorGradient(c.name)
                           : `linear-gradient(135deg, #f87171 25%, #facc15 25%, #facc15 50%, #34d399 50%, #34d399 75%, #60a5fa 75%)`
                         : undefined,
-                      border: isActive ? `3px solid ${accentColor}` : '2px solid rgba(0,0,0,0.15)',
-                      opacity: outOfStock ? 0.3 : (selectedColor && !isActive ? 0.35 : 1),
-                      transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                      border: isActive ? `2.5px solid ${accentColor}` : '2px solid rgba(0,0,0,0.1)',
+                      opacity: outOfStock ? 0.3 : (selectedColor && !isActive ? 0.4 : 1),
+                      transform: isActive ? 'scale(1.15)' : 'scale(1)',
                       cursor: outOfStock ? 'not-allowed' : 'pointer',
-                      boxShadow: isActive ? `0 0 0 2px white, 0 0 0 4px ${accentColor}40` : '0 1px 3px rgba(0,0,0,0.1)',
-                      textDecoration: outOfStock ? 'line-through' : 'none',
+                      boxShadow: isActive ? `0 2px 8px ${accentColor}30` : '0 1px 2px rgba(0,0,0,0.08)',
                     }}
                   >
                     {!hex && !c.name.includes(',') && (
                       <span className="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-white drop-shadow-sm">
                         {c.name.slice(0, 2)}
                       </span>
+                    )}
+                    {isActive && (
+                      <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
                     )}
                   </button>
                   {outOfStock && <span className="text-[8px] text-red-500 font-bold">نفد</span>}
@@ -342,11 +345,11 @@ export default function VariantSelector({
 
       {/* Size selector */}
       {hasSizes && (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <span className="text-xs font-semibold opacity-70">
             المقاس{selectedSize ? `: ${selectedSize}` : ''}
           </span>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {sizes.map(size => {
               const isAvailable = availableSizes.has(size);
               const isActive = selectedSize === size;
@@ -356,13 +359,15 @@ export default function VariantSelector({
                   type="button"
                   disabled={!isAvailable}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSizeClick(size); }}
-                  className="min-w-[36px] h-9 px-2.5 rounded-lg text-xs font-bold transition-all border"
+                  className="min-w-[40px] h-10 px-3 rounded-full text-xs font-bold transition-all duration-200 border-2"
                   style={{
-                    backgroundColor: isActive ? accentColor : 'transparent',
-                    borderColor: isActive ? accentColor : 'rgba(128,128,128,0.3)',
-                    color: isActive ? '#fff' : 'inherit',
-                    opacity: isAvailable ? 1 : 0.3,
+                    backgroundColor: isActive ? accentColor : '#fff',
+                    borderColor: isActive ? accentColor : '#e5e7eb',
+                    color: isActive ? '#fff' : '#374151',
+                    opacity: isAvailable ? 1 : 0.35,
                     cursor: isAvailable ? 'pointer' : 'not-allowed',
+                    boxShadow: isActive ? `0 2px 8px ${accentColor}30` : '0 1px 2px rgba(0,0,0,0.05)',
+                    transform: isActive ? 'scale(1.05)' : 'scale(1)',
                   }}
                 >
                   {size}
