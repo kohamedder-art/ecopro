@@ -131,6 +131,11 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 .dz-image-placeholder { background: #e5e7eb; display: flex; align-items: center; justify-content: center; border: 2px dashed #d1d5db; cursor: pointer; transition: 0.3s; }
                 .dz-image-placeholder:hover { background: #d1d5db; }
                 .ph { vertical-align: middle; }
+                .dz-checkout-card { transition: box-shadow 0.3s ease; }
+                .dz-checkout-card:focus-within { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+                input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(0,0,0,0.04); }
+                .dz-checkout-card input, .dz-checkout-card select, .dz-checkout-card textarea { transition: all 0.2s ease; }
+                .dz-checkout-card input:hover, .dz-checkout-card select:hover { border-color: #d1d5db; }
             `;
     // Smart image classification: routes square images to gallery, wide/tall to banner
     const { slots: imageSlots, loading: classifyingImages } = useImageClassifier(product?.images, 'dzshop');
@@ -289,7 +294,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     }, [activeImageIndex, allMedia.length, loopedMedia.length]);
 
     return (
-        <div ref={rootRef} className="bg-gray-50 text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || undefined }} dir="rtl">
+        <div ref={rootRef} className="text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || '#f3f4f6', backgroundImage: settings?.template_bg_image ? `url(${settings.template_bg_image})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} dir="rtl">
             <PixelScripts storeSlug={storeSlug} />
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
@@ -318,7 +323,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             )}
 
             {/* Header — hides on scroll down, shows on scroll up */}
-            <header className={`border-b fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm transition-transform duration-300`} style={{ backgroundColor: accentColor || 'var(--dz-primary)', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
+            <header className={`fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm transition-transform duration-300`} style={{ backgroundColor: accentColor || 'var(--dz-primary)', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
                 <div className="flex items-center gap-2">
 {settings?.store_logo ? (
   <img 
@@ -453,7 +458,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
                     {/* Trust Badges (Desktop) */}
                     {(showTrustBadges || canManage) && (
-                    <div className="hidden md:grid grid-cols-3 gap-4 py-6 border-t border-gray-100 relative overflow-visible" data-edit-path="trust-badges">
+                    <div className="hidden md:grid grid-cols-3 gap-3 py-4 border-t border-gray-100 relative overflow-visible" data-edit-path="trust-badges">
                         {canManage && (
                             <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                                 <button
@@ -511,8 +516,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">-35%</span>
                     </div>
 
-                    <div className="border p-4 rounded-xl mb-6 bg-blue-50" style={{ borderColor: 'rgba(37, 99, 235, 0.1)' }}>
-                        <p className="text-sm font-semibold" style={{ color: 'var(--dz-primary)' }} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_subtitle" onBlur={handleTextEdit('template_hero_subtitle')}>
+                    <div className="border border-gray-200 p-3 rounded-xl mb-4 bg-white">
+                        <p className="text-sm font-semibold text-gray-600" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_subtitle" onBlur={handleTextEdit('template_hero_subtitle')}>
                             {settings?.template_hero_subtitle || "🔥 عرض محدود: اطلب الآن واحصل على توصيل مجاني!"}
                         </p>
                     </div>
@@ -546,20 +551,15 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         </button>
     </div>
 ) : (
-<div className="dz-checkout-card bg-white rounded-2xl p-6 border-2 relative" style={{ borderColor: accentColor }}>
-                        <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold uppercase" style={{ backgroundColor: accentColor }}>
-                            أكمل البيانات للطلب
-                        </div>
+            <div className="dz-checkout-card bg-white rounded-2xl p-6 border border-gray-200 relative">
                         
-                        <h3 className="text-lg font-bold mb-4 mt-2">معلومات المشتري</h3>
-
                         {orderError && (
-                            <div className="bg-red-50 border-2 border-red-400 rounded-xl p-4 mb-4 text-red-700 text-sm whitespace-pre-line">
+                            <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-4 text-red-700 text-sm whitespace-pre-line">
                                 {orderError}
                             </div>
                         )}
 
-                        <form className="space-y-4 mt-6" onSubmit={handleDefaultOrder}>
+                        <form className="space-y-3" onSubmit={handleDefaultOrder}>
                             {/* Variants */}
                             {product?.variants && product.variants.length > 0 && (
                                 <VariantSelector 
@@ -583,70 +583,70 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     accentColor={accentColor} 
                                     textColor="#1e293b" 
                                     borderColor="#e2e8f0" 
-                                    
                                 />
                             )}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">الاسم الكامل</label>
-                                    <input required name="name" type="text" placeholder="أدخل اسمك الكامل" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" />
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="relative">
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    </span>
+                                    <input required name="name" type="text" placeholder="الاسم الكامل" className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none transition-all text-sm bg-white" />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">رقم الهاتف</label>
-                                    <input required name="phone" type="tel" placeholder="رقم الهاتف المحمول" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 text-right transition-colors" dir="ltr" />
+                                <div className="relative">
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                    </span>
+                                    <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none transition-all text-sm bg-white text-right" dir="ltr" />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">الولاية</label>
-                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 appearance-none transition-colors">
-                                        <option value="">اختر الولاية</option>
+                                <div className="relative">
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    </span>
+                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none appearance-none transition-all text-sm bg-white">
+                                        <option value="">الولاية</option>
                                         {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                                     </select>
+                                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
                                 </div>
                                 {showAddress && (
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">العنوان</label>
-                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" />
+                                    <div className="relative">
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                        </span>
+                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none transition-all text-sm bg-white" />
                                     </div>
                                 )}
                                 {showCommune && (
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">البلدية</label>
-                                        <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 appearance-none transition-colors">
-                                            <option value="">اختر البلدية</option>
-                                            {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
-                                        </select>
+                                    <>
+                                        <div className="relative">
+                                            <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none appearance-none transition-all text-sm bg-white">
+                                                <option value="">البلدية</option>
+                                                {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
+                                            </select>
+                                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                        </div>
                                         <input name="commune_name" type="hidden" value={customerCommune ? (communeDisplayName(communes.find(c => c.id === customerCommune)!) || customerCommune) : ''} />
-                                    </div>
+                                    </>
                                 )}
                             </div>
 
                             {showNotes && (
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">ملاحظات</label>
-                                    <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-gray-50 transition-colors" rows={3} />
-                                </div>
+                                <textarea name="notes" placeholder="ملاحظات (اختياري)" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none transition-all text-sm bg-white" rows={2} />
                             )}
 
-                            <div className="pt-2">
-                                <label className="block text-sm font-bold text-gray-700 mb-1.5">الكمية</label>
-                                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                        className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
-                                    >-</button>
-                                    <span className="font-black text-lg">{quantity}</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))}
-                                        className="w-10 h-10 bg-white border border-gray-200 rounded-md font-bold text-xl text-gray-600 active:bg-gray-100 flex items-center justify-center"
-                                    >+</button>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-gray-600">الكمية</span>
+                                <div className="flex items-center gap-3">
+                                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 active:bg-gray-100 transition-colors">−</button>
+                                    <span className="font-bold text-base min-w-[20px] text-center">{quantity}</span>
+                                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 active:bg-gray-100 transition-colors">+</button>
                                 </div>
                             </div>
 
                             {(showHomeDelivery || showDeskDelivery) && (
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">نوع التوصيل</label>
+                                <label className="block text-sm font-bold text-gray-600 mb-2">نوع التوصيل</label>
                                 <div className="grid grid-cols-2 gap-3">
                                     {showHomeDelivery && (
                                     <button
@@ -681,25 +681,35 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                             )}
                             
                             {selectedWilayaId && (
-                                <div className="space-y-1 pt-2 text-sm" style={{ borderTop: '1px solid #e5e7eb' }}>
+                                <div className="space-y-1.5 pt-2 text-sm border-t border-gray-100">
                                     <div className="flex justify-between">
+                                        <span className="text-gray-500">سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
                                         <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
-                                        <span style={{ color: '#6b7280' }}>سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
                                     </div>
                                     <div className="flex justify-between">
+                                        <span className="text-gray-500">التوصيل</span>
                                         <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
-                                        <span style={{ color: '#6b7280' }}>التوصيل</span>
                                     </div>
-                                    <div className="flex justify-between pt-2" style={{ borderTop: '1px solid #e5e7eb' }}>
-                                        <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                                    <div className="flex justify-between pt-2 border-t border-gray-100">
                                         <span className="font-bold">المجموع</span>
+                                        <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
                                     </div>
                                 </div>
                             )}
 
-                            <button className="w-full text-white font-black py-5 rounded-2xl text-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3" style={{ backgroundColor: accentColor }}>
-                                اضغط هنا للطلب الآن
-                                <i className="ph ph-cursor-click"></i>
+                            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                                {product?.images?.[0] && (
+                                    <img src={product.images[0]} alt="" className="w-14 h-14 rounded-lg object-contain bg-white" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold truncate">{product?.title || 'المنتج'}</p>
+                                    <p className="text-xs text-gray-400">{selectedOffer ? `${selectedOffer.quantity} قطعة` : `× ${quantity}`}</p>
+                                </div>
+                                <span className="font-black text-base" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                            </div>
+
+                            <button className="w-full text-white font-bold py-3.5 rounded-xl text-base shadow-md transition-transform active:scale-[0.98] flex items-center justify-center gap-2" style={{ backgroundColor: accentColor }}>
+                                أطلب الآن
                             </button>
                             
                             <p className="text-center text-gray-500 text-xs mt-3 flex items-center justify-center gap-1">
@@ -764,7 +774,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             </main>
 
             {/* Sticky Mobile Order Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white dz-sticky-order-bar p-3 md:hidden z-[100] border-t flex gap-3">
+            <div className="fixed bottom-0 left-0 right-0 bg-white dz-sticky-order-bar p-3 md:hidden z-[100] border-t border-gray-100 flex gap-3 shadow-lg">
                 <div className="flex-1 flex flex-col justify-center px-2">
                     <span className="font-black text-xl" style={{ color: 'var(--dz-primary)' }}>{Math.round(Number(product?.price || 4500)).toLocaleString()} دج</span>
                     <span className="text-[10px] text-gray-400">الدفع عند الاستلام</span>

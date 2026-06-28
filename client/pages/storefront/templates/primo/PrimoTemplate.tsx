@@ -186,16 +186,13 @@ const goBackToCatalog = () => {
 
   // ── Image / FAQ state ──
   const [selectedMainImage, setSelectedMainImage] = useState(0);
-  const [showVideo, setShowVideo] = useState(true);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const totalSlides = (videoEmbed ? 1 : 0) + mainImages.length;
   const slideTo = (idx: number) => {
     const clamped = ((idx % totalSlides) + totalSlides) % totalSlides;
     setSelectedMainImage(clamped);
-    if (videoEmbed) {
-      setShowVideo(clamped === 0);
-    }
   };
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
     e.currentTarget.setAttribute('data-setting-key', key);
@@ -570,7 +567,18 @@ const goBackToCatalog = () => {
               {/* Main Image */}
               <div className="w-full lg:flex-1 lg:h-full">
                 <div className="relative rounded-2xl overflow-hidden shadow-xl lg:h-full" style={{ backgroundColor: surfaceMuted }}>
-                <div className="flex h-full" style={{ width: `${totalSlides * 100}%`, transform: `translateX(${(selectedMainImage / totalSlides) * 100}%)`, transition: 'transform 0.35s ease' }}>
+                <div className="flex h-full" style={{ width: `${totalSlides * 100}%`, transform: `translateX(${(selectedMainImage / totalSlides) * 100}%)`, transition: 'transform 0.35s ease', touchAction: 'pan-y' }}
+                  onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
+                  onTouchMove={e => {
+                    if (touchStartX.current === null) return;
+                    const dx = touchStartX.current - e.touches[0].clientX;
+                    if (Math.abs(dx) > 40) {
+                      touchStartX.current = null;
+                      slideTo(selectedMainImage + (dx > 0 ? 1 : -1));
+                    }
+                  }}
+                  onTouchEnd={() => { touchStartX.current = null; }}
+                >
                   {videoEmbed && (
                     <div className="h-full shrink-0" style={{ width: `${100 / totalSlides}%` }}>
                       {videoEmbed.type === 'youtube' ? (
@@ -614,12 +622,12 @@ const goBackToCatalog = () => {
               {/* Mobile: horizontal thumbnails below */}
               <div className="lg:hidden flex gap-2 overflow-x-auto pb-1">
                 {videoEmbed && (
-                  <button onClick={() => { setShowVideo(true); scrollCarouselTo(0); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `2px solid ${showVideo ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
+                  <button onClick={() => slideTo(0)} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden flex items-center justify-center" style={{ border: `2px solid ${selectedMainImage === 0 ? accentColor : 'transparent'}`, backgroundColor: '#000' }}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
                   </button>
                 )}
                 {mainImages.map((img, i) => (
-                  <button key={i} onClick={() => { setShowVideo(false); setSelectedMainImage(i); scrollCarouselTo(videoEmbed ? i + 1 : i); }} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden" style={{ border: `2px solid ${!showVideo && selectedMainImage === i ? accentColor : 'transparent'}` }}>
+                  <button key={i} onClick={() => slideTo(videoEmbed ? i + 1 : i)} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden" style={{ border: `2px solid ${selectedMainImage === (videoEmbed ? i + 1 : i) ? accentColor : 'transparent'}` }}>
                     <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
                   </button>
                 ))}
