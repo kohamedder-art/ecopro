@@ -212,8 +212,8 @@ export default function VariantSelector({
     <div className="flex flex-col gap-3" dir={dir}>
       {/* Color selector - Visual style like Temu (shows variant images) */}
       {hasColors && visualMode && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-semibold opacity-70">
+        <div className="flex flex-col gap-2.5">
+          <span className="text-sm font-semibold opacity-70">
             اللون{selectedColor ? `: ${selectedColor}` : ''}
           </span>
           <div className="flex flex-wrap gap-2.5">
@@ -292,8 +292,8 @@ export default function VariantSelector({
 
       {/* Color selector - Classic color circles (fallback) */}
       {hasColors && !visualMode && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-semibold opacity-70">
+        <div className="flex flex-col gap-2.5">
+          <span className="text-sm font-semibold opacity-70">
             اللون{selectedColor ? `: ${selectedColor}` : ''}
           </span>
           <div className="flex flex-wrap gap-2.5 items-center">
@@ -345,11 +345,11 @@ export default function VariantSelector({
 
       {/* Size selector */}
       {hasSizes && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-semibold opacity-70">
+        <div className="flex flex-col gap-2.5">
+          <span className="text-sm font-semibold opacity-70">
             المقاس{selectedSize ? `: ${selectedSize}` : ''}
           </span>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2.5">
             {sizes.map(size => {
               const isAvailable = availableSizes.has(size);
               const isActive = selectedSize === size;
@@ -359,14 +359,14 @@ export default function VariantSelector({
                   type="button"
                   disabled={!isAvailable}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSizeClick(size); }}
-                  className="min-w-[40px] h-10 px-3 rounded-full text-xs font-bold transition-all duration-200 border-2"
+                  className="min-w-[52px] h-12 px-5 rounded-2xl text-sm font-bold transition-all duration-200 border-2"
                   style={{
                     backgroundColor: isActive ? accentColor : '#fff',
                     borderColor: isActive ? accentColor : '#e5e7eb',
                     color: isActive ? '#fff' : '#374151',
                     opacity: isAvailable ? 1 : 0.35,
                     cursor: isAvailable ? 'pointer' : 'not-allowed',
-                    boxShadow: isActive ? `0 2px 8px ${accentColor}30` : '0 1px 2px rgba(0,0,0,0.05)',
+                    boxShadow: isActive ? `0 4px 14px ${accentColor}30` : '0 1px 3px rgba(0,0,0,0.06)',
                     transform: isActive ? 'scale(1.05)' : 'scale(1)',
                   }}
                 >
