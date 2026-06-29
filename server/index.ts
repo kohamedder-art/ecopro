@@ -532,6 +532,13 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
   // Lightweight in-memory traffic capture (used by Kernel portal)
   app.use(trafficMiddleware);
 
+  // Account tracking + suspicious activity detection
+  const { trackAccountRequest } = await import('./utils/accountTracking');
+  app.use((req, res, next) => {
+    res.on('finish', () => { trackAccountRequest(req).catch(() => {}); });
+    next();
+  });
+
     // Platform page view tracking (lightweight, batched)
   const { pageViewMiddleware } = await import('./utils/pageViews');
   app.use(pageViewMiddleware);

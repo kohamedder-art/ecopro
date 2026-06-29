@@ -1013,6 +1013,87 @@ router.get('/store-threats', requireRoot, async (_req, res) => {
   }
 });
 
+// List all accounts with tracking data and suspicious flags
+router.get('/accounts', requireRoot, async (req, res) => {
+  try {
+    const pool = await ensureConnection();
+    const filter = String(req.query.filter || '');
+    const search = String(req.query.search || '');
+
+    let whereClause = '';
+    const params: any[] = [];
+    let paramIdx = 1;
+
+    if (filter === 'suspicious') {
+      whereClause = `WHERE at.is_suspicious = true`;
+    } else if (filter === 'tracked') {
+      whereClause = `WHERE at.user_id IS NOT NULL`;
+    }
+
+    if (search) {
+      const searchWhere = `LOWER(COALESCE(u.email, '')) LIKE LOWER($${paramIdx}) OR LOWER(COALESCE(u.name, '')) LIKE LOWER($${paramIdx})`;
+      whereClause = whereClause ? `${whereClause} AND (${searchWhere})` : `WHERE (${searchWhere})`;
+      params.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    const accounts = await pool.query(
+      `SELECT u.id, u.email, u.name, u.user_type, u.role, u.created_at,
+              at.last_ip, at.last_user_agent, at.device_info,
+              at.last_country, at.last_region, at.last_city,
+              at.last_seen_at, at.first_seen_at, at.total_requests,
+              at.is_suspicious, at.suspicious_flags, at.last_suspicious_at
+       FROM (
+         SELECT id::text, email, COALESCE(full_name, '') AS name, user_type, role, created_at FROM admins
+         UNION ALL
+         SELECT id::text, email, COALESCE(name, '') AS name, user_type, role, created_at FROM clients
+       ) u
+       LEFT JOIN account_tracking at ON at.user_id = u.id
+       ${whereClause}
+       ORDER BY COALESCE(at.last_suspicious_at, at.last_seen_at, u.created_at) DESC
+       LIMIT 100`,
+      params
+    );
+
+    // Count totals
+    const totalCount = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM (SELECT id FROM admins UNION ALL SELECT id FROM clients) u`
+    );
+    const suspiciousCount = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM account_tracking WHERE is_suspicious = true`
+    );
+
+    res.json({
+      accounts: accounts.rows,
+      total: totalCount.rows[0].total,
+      suspicious: suspiciousCount.rows[0].total,
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message });
+  }
+});
+
+// Get suspicious acts for a specific account
+router.get('/accounts/:id/acts', requireRoot, async (req, res) => {
+  try {
+    const pool = await ensureConnection();
+    const userId = req.params.id;
+
+    const events = await pool.query(
+      `SELECT id, created_at, event_type, severity, method, path, ip, user_agent, country_code, region, city, metadata
+       FROM security_events
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [userId]
+    );
+
+    res.json({ acts: events.rows });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message });
+  }
+});
+
 router.get('/blocks', requireRoot, async (_req, res) => {
   try {
     const pool = await ensureConnection();
