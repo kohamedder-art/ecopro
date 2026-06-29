@@ -802,7 +802,7 @@ function Dashboard() {
                 </div>
               </div>
             ) : (
-              <div className="max-h-80 overflow-y-auto">
+              <div className="max-h-[600px] overflow-y-auto">
                 {accounts.length === 0 ? (
                   <div className="flex items-center justify-center h-20 text-gray-400 dark:text-zinc-600 text-xs">
                     No accounts found
