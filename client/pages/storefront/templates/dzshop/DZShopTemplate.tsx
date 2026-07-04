@@ -294,13 +294,13 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     }, [activeImageIndex, allMedia.length, loopedMedia.length]);
 
     return (
-        <div ref={rootRef} className="text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || '#f3f4f6', backgroundImage: settings?.template_bg_image ? `url(${settings.template_bg_image})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} dir="rtl">
+        <div ref={rootRef} className="text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || '#f3f4f6', backgroundImage: settings?.template_bg_image ? (settings.template_bg_image.startsWith('linear') || settings.template_bg_image.startsWith('radial') || settings.template_bg_image.startsWith('url(') ? settings.template_bg_image : `url(${settings.template_bg_image})`) : undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', backgroundRepeat: 'no-repeat' }} dir="rtl">
             <PixelScripts storeSlug={storeSlug} />
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
             {/* Top Bar Notice */}
             {(showBanner || canManage) && (
-            <div className="text-white text-center py-2 text-sm font-bold relative overflow-visible" style={{ backgroundColor: 'var(--dz-primary)' }} data-edit-path="top-notice">
+            <div className="text-white text-center py-2 text-sm font-bold relative overflow-visible" style={{ backgroundColor: (accentColor || 'var(--dz-primary)') + 'cc', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} data-edit-path="top-notice">
                 {canManage && (
                     <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-50">
                         <button
@@ -323,7 +323,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             )}
 
             {/* Header — hides on scroll down, shows on scroll up */}
-            <header className={`fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm transition-transform duration-300`} style={{ backgroundColor: accentColor || 'var(--dz-primary)', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
+            <header className={`fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm transition-transform duration-300`} style={{ backgroundColor: (accentColor || 'var(--dz-primary)'), backdropFilter: 'none', WebkitBackdropFilter: 'none', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
                 <div className="flex items-center gap-2">
 {settings?.store_logo ? (
   <img 
@@ -354,7 +354,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 {/* Left Column: Product Visuals */}
                 <div className="space-y-4">
                     {/* Main Product Image (LeRoiShop-style translateX gallery) */}
-                    <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-sm bg-white relative group">
+                    <div className="aspect-[4/5] rounded-2xl overflow-hidden relative group" style={{ boxShadow: `0 4px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.3) inset`, backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>
                         {allMedia.length > 0 ? (
                             <div className="h-full relative select-none" style={{ touchAction: 'pan-y' }}
                               onTouchStart={e => { (e.currentTarget as any)._ts = e.touches[0].clientX; (e.currentTarget as any)._tsy = e.touches[0].clientY; }}
@@ -415,7 +415,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar" style={{ direction: 'ltr' }}>
                         {allMedia.length > 1 ? (
                             allMedia.map((item, i) => (
-                                <button key={i} onClick={() => goToMedia(i + 1)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${i === realMediaIndex ? 'var(--dz-primary)' : 'transparent'}`, opacity: i === realMediaIndex ? 1 : 0.6 }}>
+                                <button key={i} onClick={() => goToMedia(i + 1)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${i === realMediaIndex ? 'var(--dz-primary)' : 'transparent'}` }}>
                                     {item.type === 'video' ? (
                                         <div className="w-full h-full relative">
                                             {item.embed.type === 'youtube' ? (
@@ -458,7 +458,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
                     {/* Trust Badges (Desktop) */}
                     {(showTrustBadges || canManage) && (
-                    <div className="hidden md:grid grid-cols-3 gap-3 py-4 border-t border-gray-100 relative overflow-visible" data-edit-path="trust-badges">
+                    <div className="hidden md:grid grid-cols-3 gap-3 py-4 relative overflow-visible" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }} data-edit-path="trust-badges">
                         {canManage && (
                             <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
                                 <button
@@ -500,7 +500,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
                 {/* Right Column: Product Details & Form */}
                 <div className="flex flex-col">
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2 leading-snug" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_heading" onBlur={handleTextEdit('template_hero_heading')}>
+                    <h1 className="text-2xl md:text-3xl font-extrabold mb-2 leading-snug" style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd, #6366f1)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_heading" onBlur={handleTextEdit('template_hero_heading')}>
                         {settings?.template_hero_heading || product?.title || "اسم المنتج المميز - جودة عالية وتصميم عصري"}
                     </h1>
                     
@@ -516,7 +516,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">-35%</span>
                     </div>
 
-                    <div className="border border-gray-200 p-3 rounded-xl mb-4 bg-white">
+                    <div className="p-3 rounded-xl mb-4" style={{ backgroundColor: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.3)' }}>
                         <p className="text-sm font-semibold text-gray-600" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_subtitle" onBlur={handleTextEdit('template_hero_subtitle')}>
                             {settings?.template_hero_subtitle || "🔥 عرض محدود: اطلب الآن واحصل على توصيل مجاني!"}
                         </p>
@@ -524,7 +524,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
                     {/* Checkout Form */}
                     {orderSuccess ? (
-    <div className="dz-checkout-card bg-green-50 rounded-2xl p-6 border-2 border-green-500 text-center relative">
+    <div className="dz-checkout-card rounded-2xl p-6 text-center relative" style={{ backgroundColor: 'rgba(240,253,244,0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(34,197,94,0.3)', boxShadow: `0 8px 32px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.5) inset` }}>
         <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <i className="ph ph-check text-3xl" style={{ color: accentColor }}></i>
         </div>
@@ -551,7 +551,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         </button>
     </div>
 ) : (
-            <div className="dz-checkout-card bg-white rounded-2xl p-6 border border-gray-200 relative">
+            <div className="dz-checkout-card bg-white/70 backdrop-blur-xl rounded-2xl p-6 border border-white/30 relative" style={{ boxShadow: `0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.5) inset, 0 10px 40px ${accentColor}30` }}>
                         
                         {orderError && (
                             <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-4 text-red-700 text-sm whitespace-pre-line">
@@ -586,61 +586,61 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 />
                             )}
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="pt-4 mt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="relative">
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                     </span>
-                                    <input required name="name" type="text" placeholder="الاسم الكامل" className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none transition-all text-sm bg-white" />
+                                    <input required name="name" type="text" placeholder="الاسم" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700 placeholder:text-gray-400" />
                                 </div>
                                 <div className="relative">
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                     </span>
-                                    <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none transition-all text-sm bg-white text-right" dir="ltr" />
+                                    <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700 placeholder:text-gray-400 text-right" dir="ltr" />
                                 </div>
                                 <div className="relative">
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                                     </span>
-                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none appearance-none transition-all text-sm bg-white">
-                                        <option value="">الولاية</option>
+                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700">
+                                        <option value="">اختر الولاية</option>
                                         {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                                     </select>
-                                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
                                 </div>
-                                {showAddress && (
+                                {showCommune && (
                                     <div className="relative">
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                                        </span>
-                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none transition-all text-sm bg-white" />
+                                        <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700">
+                                            <option value="">اختر البلدية</option>
+                                            {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
+                                        </select>
+                                        <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                        <input name="commune_name" type="hidden" value={customerCommune ? (communeDisplayName(communes.find(c => c.id === customerCommune)!) || customerCommune) : ''} />
                                     </div>
                                 )}
-                                {showCommune && (
-                                    <>
-                                        <div className="relative">
-                                            <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none appearance-none transition-all text-sm bg-white">
-                                                <option value="">البلدية</option>
-                                                {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
-                                            </select>
-                                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
-                                        </div>
-                                        <input name="commune_name" type="hidden" value={customerCommune ? (communeDisplayName(communes.find(c => c.id === customerCommune)!) || customerCommune) : ''} />
-                                    </>
+                                {showAddress && (
+                                    <div className="relative">
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                        </span>
+                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700 placeholder:text-gray-400" />
+                                    </div>
                                 )}
+                            </div>
                             </div>
 
                             {showNotes && (
-                                <textarea name="notes" placeholder="ملاحظات (اختياري)" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 outline-none transition-all text-sm bg-white" rows={2} />
+                                <textarea name="notes" placeholder="ملاحظات (اختياري)" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700 placeholder:text-gray-400" rows={2} />
                             )}
 
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-bold text-gray-600">الكمية</span>
-                                <div className="flex items-center gap-3">
-                                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 active:bg-gray-100 transition-colors">−</button>
-                                    <span className="font-bold text-base min-w-[20px] text-center">{quantity}</span>
-                                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 active:bg-gray-100 transition-colors">+</button>
+                            <div className="flex items-center justify-between py-1">
+                                <span className="text-base font-bold text-gray-600">الكمية</span>
+                                <div className="flex items-center gap-4">
+                                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:scale-90 transition-all text-lg" style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(4px)' }}>−</button>
+                                    <span className="font-bold text-lg min-w-[24px] text-center">{quantity}</span>
+                                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:scale-90 transition-all text-lg" style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(4px)' }}>+</button>
                                 </div>
                             </div>
 
@@ -654,9 +654,11 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         onClick={() => setSelectedDeliveryType('home')}
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
                                         style={{
-                                            borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb',
-                                            backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#fff',
+                                            borderColor: selectedDeliveryType === 'home' ? accentColor : 'rgba(255,255,255,0.2)',
+                                            backgroundColor: selectedDeliveryType === 'home' ? accentColor + '20' : 'rgba(255,255,255,0.4)',
                                             color: selectedDeliveryType === 'home' ? accentColor : '#374151',
+                                            backdropFilter: 'blur(8px)',
+                                            WebkitBackdropFilter: 'blur(8px)',
                                         }}
                                     >
                                         <span className="text-sm font-bold">التوصيل للمنزل</span>
@@ -668,9 +670,11 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         onClick={() => setSelectedDeliveryType('desk')}
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
                                         style={{
-                                            borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb',
-                                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#fff',
+                                            borderColor: selectedDeliveryType === 'desk' ? accentColor : 'rgba(255,255,255,0.2)',
+                                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '20' : 'rgba(255,255,255,0.4)',
                                             color: selectedDeliveryType === 'desk' ? accentColor : '#374151',
+                                            backdropFilter: 'blur(8px)',
+                                            WebkitBackdropFilter: 'blur(8px)',
                                         }}
                                     >
                                         <span className="text-sm font-bold">الاستلام من المكتب</span>
@@ -681,7 +685,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                             )}
                             
                             {selectedWilayaId && (
-                                <div className="space-y-1.5 pt-2 text-sm border-t border-gray-100">
+                                <div className="space-y-1.5 pt-2 text-sm" style={{ borderTop: '1px solid rgba(255,255,255,0.3)' }}>
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
                                         <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
@@ -697,7 +701,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 </div>
                             )}
 
-                            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
                                 {product?.images?.[0] && (
                                     <img src={product.images[0]} alt="" className="w-14 h-14 rounded-lg object-contain bg-white" />
                                 )}
@@ -708,11 +712,11 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 <span className="font-black text-base" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
                             </div>
 
-                            <button className="w-full text-white font-bold py-3.5 rounded-xl text-base shadow-md transition-transform active:scale-[0.98] flex items-center justify-center gap-2" style={{ backgroundColor: accentColor }}>
+                            <button className="w-full text-white font-bold py-3.5 rounded-xl text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2" style={{ backgroundColor: accentColor, boxShadow: `0 4px 20px ${accentColor}50, 0 0 60px ${accentColor}20` }}>
                                 أطلب الآن
                             </button>
                             
-                            <p className="text-center text-gray-500 text-xs mt-3 flex items-center justify-center gap-1">
+                            <p className="text-center text-gray-500 text-xs mt-3 flex items-center justify-center gap-1 py-2 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)' }}>
                                 <i className="ph ph-lock-key"></i>
                                 الدفع عند الاستلام بعد معاينة المنتج
                             </p>

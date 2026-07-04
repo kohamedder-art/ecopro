@@ -1,39 +1,26 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
-import { Navbar, Hero } from './sections/Hero';
-import { Features } from './sections/Features';
-import { HowItWorks } from './sections/HowItWorks';
-import { PricingCTA } from './sections/PricingCTA';
+import { Navbar } from './sections/Navbar';
+import { Chapter1 } from './sections/Chapter1';
+import { Chapter2 } from './sections/Chapter2';
+import { Chapter3 } from './sections/Chapter3';
+import { Chapter4 } from './sections/Chapter4';
+import { FinalCTA } from './sections/FinalCTA';
 import { Footer } from './sections/Footer';
 
 export default function Index() {
   const { locale } = useTranslation();
   const isRTL = locale === 'ar';
-  const [trialDays, setTrialDays] = useState<number>(30);
-
-  useEffect(() => {
-    const fetchBilling = async () => {
-      try {
-        const res = await apiFetch<{ trialDays: number }>('/api/billing/public');
-        if (res?.trialDays) {
-          setTrialDays(res.trialDays);
-        }
-      } catch {
-        // keep default fallback
-      }
-    };
-
-    fetchBilling();
-  }, []);
 
   return (
-    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-x-hidden">
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
       <Navbar />
-      <Hero />
-      <Features />
-      <HowItWorks />
-      <PricingCTA />
+      <Chapter1 />
+      <Chapter2 />
+      <Chapter3 />
+      <Chapter4 />
+      <FinalCTA />
       <Footer />
     </div>
   );

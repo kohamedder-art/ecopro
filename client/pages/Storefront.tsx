@@ -75,7 +75,7 @@ export default function Storefront() {
 
 
   // Derived visual tokens from store settings
-  const template = storeSettings.template || 'books';
+  const template = storeSettings.template || 'zenith';
   const primaryColor = storeSettings.primary_color || '#16a34a';
   const secondaryColor = storeSettings.secondary_color || '#0ea5e9';
   const bannerUrl = storeSettings.banner_url || '';

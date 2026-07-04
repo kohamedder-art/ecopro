@@ -27,11 +27,11 @@ export function normalizeTemplateId(id: string): string {
     if (id === 'bassem28') return 'primo';
     const validIds = ['dzshop', 'needdz', 'zenith', 'boutique', 'iyco', 'primo', 'spiriluxe', 'leroishop'];
     if (validIds.includes(id)) return id;
-    return 'leroishop'; // Fallback
+    return 'zenith'; // Fallback
 }
 
 export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
-  const id = normalizeTemplateId(String(t || (props.settings as any)?.template || 'leroishop'));
+  const id = normalizeTemplateId(String(t || (props.settings as any)?.template || 'zenith'));
 
 
   // If a main product is selected, move it to the front of the products array so single-product templates pick it up automatically
