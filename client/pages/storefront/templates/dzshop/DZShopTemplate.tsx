@@ -227,6 +227,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
     // Image Gallery State — LeRoiShop-style infinite loop
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [lightboxOpen, setLightboxOpen] = useState<string | false>(false);
     const wrapRef = useRef(false);
     const galleryIdxRef = useRef(0);
     galleryIdxRef.current = activeImageIndex;
@@ -349,12 +350,13 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 </div>
             </header>
 
-            <main className="max-w-6xl mx-auto px-[9px] py-6 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 pt-16">
+            <main className="w-full px-3 py-6 md:py-10 grid grid-cols-1 md:grid-cols-[4fr_3fr] gap-8 relative z-10 pt-16 md:min-h-[80vh]">
                 
                 {/* Left Column: Product Visuals */}
-                <div className="space-y-4">
+                <div className="md:h-full">
+                <div className="flex flex-col md:flex-row gap-4 md:h-full">
                     {/* Main Product Image (LeRoiShop-style translateX gallery) */}
-                    <div className="h-[70vh] md:aspect-[4/5] md:h-auto rounded-2xl overflow-hidden relative group" style={{ boxShadow: `0 4px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.3) inset`, backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>
+                    <div className="h-[70vh] md:flex-1 md:h-[90vh] rounded-2xl overflow-hidden relative group" style={{ boxShadow: `0 4px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.3) inset`, backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>
                         {allMedia.length > 0 ? (
                             <div className="h-full relative select-none" style={{ touchAction: 'pan-y' }}
                               onTouchStart={e => { (e.currentTarget as any)._ts = e.touches[0].clientX; (e.currentTarget as any)._tsy = e.touches[0].clientY; }}
@@ -394,9 +396,10 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                                 <img 
   src={item.src} 
   alt="" 
-  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', contentVisibility: 'auto' }} 
+  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', contentVisibility: 'auto', cursor: 'pointer' }} 
   loading="lazy"
   decoding="async"
+  onClick={() => setLightboxOpen(item.src)}
 />
                                             )}
                                         </div>
@@ -426,7 +429,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     </div>
 
                     {/* Thumbnail Scrollable Row */}
-                    <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar" style={{ direction: 'ltr' }}>
+                    <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar md:w-20 shrink-0 md:order-first pb-2 md:pb-0" style={{ direction: 'ltr' }}>
                         {allMedia.length > 1 ? (
                             allMedia.map((item, i) => (
                                 <button key={i} onClick={() => goToMedia(i + 1)} className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer transition-all" style={{ border: `3px solid ${i === realMediaIndex ? 'var(--dz-primary)' : 'transparent'}` }}>
@@ -469,52 +472,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                             </div>
                         )}
                     </div>
-
-                    {/* Trust Badges (Desktop) */}
-                    {(showTrustBadges || canManage) && (
-                    <div className="hidden md:grid grid-cols-3 gap-3 py-4 relative overflow-visible" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }} data-edit-path="trust-badges">
-                        {canManage && (
-                            <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
-                                <button
-                                    onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'dzshop_show_trust', value: !showTrustBadges }, '*')}
-                                    className="flex items-center gap-1 font-bold"
-                                >
-                                    {showTrustBadges ? <><Eye className="w-3 h-3"/> إخفاء</> : <><EyeOff className="w-3 h-3"/> إظهار</>}
-                                </button>
-                            </div>
-                        )}
-                        {showTrustBadges && (
-                        <>
-                        <div className="text-center">
-                            <i className="ph ph-truck text-2xl text-orange-500 mb-1"></i>
-                            <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_1" onBlur={handleTextEdit('template_badge_1')}>
-                                {settings?.template_badge_1 || "توصيل سريع"}
-                            </p>
-                        </div>
-                        <div className="text-center">
-                            <i className="ph ph-hand-coins text-2xl text-green-500 mb-1"></i>
-                            <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_2" onBlur={handleTextEdit('template_badge_2')}>
-                                {settings?.template_badge_2 || "الدفع عند الاستلام"}
-                            </p>
-                        </div>
-                        <div className="text-center">
-                            <i className="ph ph-shield-check text-2xl mb-1" style={{ color: 'var(--dz-primary)' }}></i>
-                            <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_3" onBlur={handleTextEdit('template_badge_3')}>
-                                {settings?.template_badge_3 || "ضمان الجودة"}
-                            </p>
-                        </div>
-                        </>
-                        )}
-                        {canManage && !showTrustBadges && (
-                            <span className="text-gray-400 text-xs">🛡️ Trust badges hidden</span>
-                        )}
-                    </div>
-                    )}
+                </div>
                 </div>
 
                 {/* Right Column: Product Details & Form */}
                 <div className="flex flex-col">
-                    <h1 className="text-2xl md:text-3xl font-extrabold mb-2 leading-snug" style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd, #6366f1)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_heading" onBlur={handleTextEdit('template_hero_heading')}>
+                    <h1 className="text-2xl md:text-3xl font-extrabold mb-2 leading-snug" style={{ color: '#111827' }} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_heading" onBlur={handleTextEdit('template_hero_heading')}>
                         {settings?.template_hero_heading || product?.title || "اسم المنتج المميز - جودة عالية وتصميم عصري"}
                     </h1>
                     
@@ -788,7 +751,48 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         </div>
                         {canManage && <input type="file" ref={bottomFileInputRef} className="hidden" accept="image/*" onChange={handleBottomFileChange} /> }
                     </div>
+                    </div>
+
+                {/* Trust Badges (Full Width Below Grid) */}
+                {(showTrustBadges || canManage) && (
+                <div className="grid grid-cols-3 gap-3 py-4 relative overflow-visible w-full" style={{ borderTop: '1px solid rgba(0,0,0,0.1)' }} data-edit-path="trust-badges">
+                    {canManage && (
+                        <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
+                            <button
+                                onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'dzshop_show_trust', value: !showTrustBadges }, '*')}
+                                className="flex items-center gap-1 font-bold"
+                            >
+                                {showTrustBadges ? <><Eye className="w-3 h-3"/> إخفاء</> : <><EyeOff className="w-3 h-3"/> إظهار</>}
+                            </button>
+                        </div>
+                    )}
+                    {showTrustBadges && (
+                    <>
+                    <div className="text-center">
+                        <i className="ph ph-truck text-2xl text-orange-500 mb-1"></i>
+                        <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_1" onBlur={handleTextEdit('template_badge_1')}>
+                            {settings?.template_badge_1 || "توصيل سريع"}
+                        </p>
+                    </div>
+                    <div className="text-center">
+                        <i className="ph ph-hand-coins text-2xl text-green-500 mb-1"></i>
+                        <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_2" onBlur={handleTextEdit('template_badge_2')}>
+                            {settings?.template_badge_2 || "الدفع عند الاستلام"}
+                        </p>
+                    </div>
+                    <div className="text-center">
+                        <i className="ph ph-shield-check text-2xl mb-1" style={{ color: 'var(--dz-primary)' }}></i>
+                        <p className="text-xs font-bold" contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_3" onBlur={handleTextEdit('template_badge_3')}>
+                            {settings?.template_badge_3 || "ضمان الجودة"}
+                        </p>
+                    </div>
+                    </>
+                    )}
+                    {canManage && !showTrustBadges && (
+                        <span className="text-gray-400 text-xs">🛡️ Trust badges hidden</span>
+                    )}
                 </div>
+                )}
             </main>
 
             {/* Sticky Mobile Order Bar */}
@@ -802,6 +806,16 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 </button>
             </div>
 
+            {/* Image Preview Lightbox */}
+            {lightboxOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90" onClick={() => setLightboxOpen(false)}>
+                    <button className="absolute top-4 right-4 text-white text-4xl font-bold hover:opacity-70 z-10" onClick={() => setLightboxOpen(false)}>✕</button>
+                    <img src={lightboxOpen} alt="" className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+                </div>
+            )}
+                    <img src={galleryImages[lightboxIdx]} alt="" className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+                </div>
+            )}
 
         </div>
     );
