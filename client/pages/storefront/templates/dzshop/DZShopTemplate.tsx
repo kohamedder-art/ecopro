@@ -551,7 +551,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         </button>
     </div>
 ) : (
-            <div className="dz-checkout-card bg-white/30 backdrop-blur-xl rounded-2xl p-6 border border-white/40 relative" style={{ boxShadow: `0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.5) inset, 0 10px 40px ${accentColor}30` }}>
+            <div className="dz-checkout-card bg-white/40 backdrop-blur-xl rounded-2xl p-6 border border-white/40 relative" style={{ boxShadow: `0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.5) inset, 0 10px 40px ${accentColor}30` }}>
                         
                         {orderError && (
                             <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-4 text-red-700 text-sm whitespace-pre-line">
@@ -592,19 +592,19 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                     </span>
-                                    <input required name="name" type="text" placeholder="الاسم" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700 placeholder:text-gray-400" />
+                                    <input required name="name" type="text" placeholder="الاسم" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500" />
                                 </div>
                                 <div className="relative">
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                     </span>
-                                    <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700 placeholder:text-gray-400 text-right" dir="ltr" />
+                                    <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500 text-right" dir="ltr" />
                                 </div>
                                 <div className="relative">
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                                     </span>
-                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700">
+                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900">
                                         <option value="">اختر الولاية</option>
                                         {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                                     </select>
@@ -612,7 +612,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 </div>
                                 {showCommune && (
                                     <div className="relative">
-                                        <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700">
+                                        <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900">
                                             <option value="">اختر البلدية</option>
                                             {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                                         </select>
@@ -625,14 +625,14 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                                         </span>
-                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700 placeholder:text-gray-400" />
+                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500" />
                                     </div>
                                 )}
                             </div>
                             </div>
 
                             {showNotes && (
-                                <textarea name="notes" placeholder="ملاحظات (اختياري)" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-4 rounded-2xl border border-white/40 focus:border-white/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/30 backdrop-blur-xl text-gray-700 placeholder:text-gray-400" rows={2} />
+                                <textarea name="notes" placeholder="ملاحظات (اختياري)" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500" rows={2} />
                             )}
 
                             <div className="flex items-center justify-between py-1">
