@@ -349,12 +349,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 </div>
             </header>
 
-            <main className="max-w-6xl mx-auto px-4 py-6 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 pt-16">
+            <main className="max-w-6xl mx-auto px-[9px] py-6 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 pt-16">
                 
                 {/* Left Column: Product Visuals */}
                 <div className="space-y-4">
                     {/* Main Product Image (LeRoiShop-style translateX gallery) */}
-                    <div className="aspect-[4/5] rounded-2xl overflow-hidden relative group" style={{ boxShadow: `0 4px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.3) inset`, backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>
+                    <div className="h-[70vh] md:aspect-[4/5] md:h-auto rounded-2xl overflow-hidden relative group" style={{ boxShadow: `0 4px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.3) inset`, backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>
                         {allMedia.length > 0 ? (
                             <div className="h-full relative select-none" style={{ touchAction: 'pan-y' }}
                               onTouchStart={e => { (e.currentTarget as any)._ts = e.touches[0].clientX; (e.currentTarget as any)._tsy = e.touches[0].clientY; }}
@@ -551,7 +551,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         </button>
     </div>
 ) : (
-            <div className="dz-checkout-card bg-white/70 backdrop-blur-xl rounded-2xl p-6 border border-white/30 relative" style={{ boxShadow: `0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.5) inset, 0 10px 40px ${accentColor}30` }}>
+            <div className="dz-checkout-card bg-white/30 backdrop-blur-xl rounded-2xl p-6 border border-white/40 relative" style={{ boxShadow: `0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.5) inset, 0 10px 40px ${accentColor}30` }}>
                         
                         {orderError && (
                             <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-4 text-red-700 text-sm whitespace-pre-line">
