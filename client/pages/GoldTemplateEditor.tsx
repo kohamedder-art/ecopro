@@ -229,7 +229,15 @@ export default function GoldTemplateEditor() {
     // Copy over styles so Tailwind/media queries work inside the iframe.
     const head = doc.head;
     // Remove any previous copied styles (but keep meta/charset).
-    Array.from(head.querySelectorAll('style[data-ecopro],link[data-ecopro]')).forEach((n) => n.remove());
+    Array.from(head.querySelectorAll('style[data-ecopro],link[data-ecopro],base[data-ecopro]')).forEach((n) => n.remove());
+
+    // Inject base tag so absolute paths (/store-backgrounds/...) resolve correctly in srcdoc iframe
+    if (!doc.querySelector('base[data-ecopro]')) {
+      const base = doc.createElement('base');
+      base.href = window.location.origin;
+      base.setAttribute('data-ecopro', '1');
+      head.appendChild(base);
+    }
 
     const parentNodes = Array.from(document.head.querySelectorAll('link[rel="stylesheet"],style'));
     parentNodes.forEach((node) => {

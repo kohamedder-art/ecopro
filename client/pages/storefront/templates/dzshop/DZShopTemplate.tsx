@@ -300,7 +300,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
             {/* Top Bar Notice */}
             {(showBanner || canManage) && (
-            <div className="text-white text-center py-2 text-sm font-bold relative overflow-visible" style={{ backgroundColor: (accentColor || 'var(--dz-primary)') + 'cc', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} data-edit-path="top-notice">
+            <div className="text-white text-center py-2 text-sm font-bold relative z-20 overflow-visible" style={{ backgroundColor: (accentColor || 'var(--dz-primary)') + 'cc', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} data-edit-path="top-notice">
                 {canManage && (
                     <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-50">
                         <button
