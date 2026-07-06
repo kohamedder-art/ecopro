@@ -401,74 +401,56 @@ const parseVideoEmbed = (videoUrl: string) => {
               <div key={product.id} data-view-product={product.slug} className="rounded-[32px] overflow-hidden border shadow-sm group" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
                 {/* Image Gallery */}
                 {(() => {
-                  const totalMedia = product.images.length + (product.videoUrl ? 1 : 0);
+                  const ve = product.videoUrl ? parseVideoEmbed(product.videoUrl) : null;
+                  const media = ve ? [{ type: 'video' as const, ve }, ...product.images.map((src: string) => ({ type: 'image' as const, src }))] : product.images.map((src: string) => ({ type: 'image' as const, src }));
+                  const totalMedia = media.length;
                   const curIdx = (currentImgIdx as any)[product.id] || 0;
                   const goTo = (idx: number) => {
-                    const clamped = ((idx % totalMedia) + totalMedia) % totalMedia;
+                    const clamped = Math.max(0, Math.min(idx, totalMedia - 1));
                     galleryIdxRef.current[String(product.id)] = clamped;
                     setCurrentImgIdx((prev: any) => ({ ...prev, [product.id]: clamped }));
-                    const nextIdx = ((clamped + 1) % totalMedia + totalMedia) % totalMedia;
-                    const mediaSrc = nextIdx === 0 && product.videoUrl ? null : product.images[nextIdx - (product.videoUrl ? 1 : 0)];
+                    const nextIdx = clamped + 1;
+                    const mediaSrc = nextIdx < totalMedia && media[nextIdx]?.type === 'image' ? media[nextIdx].src : null;
                     if (mediaSrc) { const p = new Image(); p.src = mediaSrc; }
                   };
                   return (
-                  <div className="relative aspect-square overflow-hidden select-none" style={{ backgroundColor: surfaceMuted, touchAction: 'pan-y' }}
+                  <div className="relative aspect-[10/13] overflow-hidden select-none" style={{ backgroundColor: surfaceMuted, touchAction: 'pan-y' }}
                     onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
                     onTouchEnd={e => {
                       const t = e.currentTarget as any;
                       const dx = t._tsx - e.changedTouches[0].clientX;
                       const dy = t._tsy - e.changedTouches[0].clientY;
                       if (t._tsx == null || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-                      const total = totalMedia;
-                      if (total <= 1) return;
+                      if (totalMedia <= 1) return;
                       const cur = galleryIdxRef.current[String(product.id)] || 0;
-                      const tgt = dx > 0 ? (cur + 1) % total : (cur - 1 + total) % total;
+                      const tgt = dx > 0 ? cur + 1 : cur - 1;
+                      if (tgt < 0 || tgt >= totalMedia) return;
                       goTo(tgt);
                     }}
                   >
-                    {(() => {
-                      const ve = product.videoUrl ? parseVideoEmbed(product.videoUrl) : null;
-                      const hasVideo = !!ve;
-                      return (
-                        <>
-                          {hasVideo && (
-                            <div className="absolute inset-0"
-                              style={{ opacity: curIdx === 0 ? 1 : 0, zIndex: curIdx === 0 ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+                    <div style={{ display: 'flex', height: '100%', direction: 'ltr', transform: `translateX(-${curIdx * 100}%)`, transition: 'transform 0.3s ease', willChange: 'transform' }}>
+                      {media.map((item: any, i: number) => (
+                        <div key={i} className="w-full h-full shrink-0 relative overflow-hidden">
+                          {item.type === 'video' ? (
+                            <>
                               <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: surfaceMuted }} />
-                              {ve!.type === 'youtube' ? (
-                                <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${ve!.id}?autoplay=1&mute=1&loop=1&playlist=${ve!.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                              ) : ve!.type === 'video' ? (
-                                <video className="w-full h-full object-cover relative" src={ve!.url} autoPlay muted loop playsInline preload="metadata" />
+                              {item.ve.type === 'youtube' ? (
+                                <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${item.ve.id}?autoplay=1&mute=1&loop=1&playlist=${item.ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                              ) : item.ve.type === 'video' ? (
+                                <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" />
                               ) : (
-                                <iframe className="w-full h-full relative" src={ve!.url} allowFullScreen />
+                                <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
                               )}
-                            </div>
+                            </>
+                          ) : (
+                            <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
+                              onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
+                              decoding="async" width="600" height="600" />
                           )}
-                          {product.images.length > 0 ? product.images.map((img: string, i: number) => {
-                            const idx = hasVideo ? i + 1 : i;
-                            const visible = curIdx === idx;
-                            return (
-                              <div key={i} className="absolute inset-0 cursor-pointer"
-                                style={{ opacity: visible ? 1 : 0, zIndex: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none', transition: 'opacity 0.3s ease' }}
-                                onClick={() => { setPreviewImg(img); setPreviewProduct(product); }}>
-                                <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: surfaceMuted }} />
-                                <img src={img} alt={product.name} className="w-full h-full object-cover relative"
-                                  decoding="async" width="600" height="600"
-                                  style={{ opacity: 0 }}
-                                  onLoad={e => { (e.target as HTMLImageElement).style.opacity = '1'; }}
-                                  onError={e => { (e.target as HTMLImageElement).style.opacity = '1'; }}
-                                  ref={el => { if (el && el.complete) el.style.opacity = '1'; }} />
-                              </div>
-                            );
-                          }) : (
-                            <div className="absolute inset-0 flex items-center justify-center" style={{ color: textMuted }}>
-                              <ShoppingBag size={48} strokeWidth={1} />
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                    
+                        </div>
+                      ))}
+                    </div>
+
                     {/* Badge */}
                     <div className="absolute top-4 left-4 bg-black text-white px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1" style={{ zIndex: 10 }}>
                       <Flame size={12} className="text-orange-400" /> {product.badge}
@@ -483,14 +465,18 @@ const parseVideoEmbed = (videoUrl: string) => {
 
                     {totalMedia > 1 && (
                       <>
+                        {curIdx > 0 && (
                         <button onClick={() => goTo(curIdx - 1)}
                           className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white" style={{ zIndex: 10 }}>
                           <ChevronLeft size={20} />
                         </button>
+                        )}
+                        {curIdx < totalMedia - 1 && (
                         <button onClick={() => goTo(curIdx + 1)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white" style={{ zIndex: 10 }}>
                           <ChevronRight size={20} />
                         </button>
+                        )}
                       </>
                     )}
                   </div>
