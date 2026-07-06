@@ -172,6 +172,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [previewProduct, setPreviewProduct] = useState<any>(null);
+  const [expandedDescs, setExpandedDescs] = useState<Record<number, boolean>>({});
   const galleryIdxRef = useRef<Record<string, number>>({});
   galleryIdxRef.current = currentImgIdx as Record<string, number>;
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
@@ -495,7 +496,14 @@ const parseVideoEmbed = (videoUrl: string) => {
                     </div>
                   </div>
 
-                  <p className="text-sm leading-relaxed" style={{ color: textMuted }}>{product.description}</p>
+                  <div>
+                    <p className={`text-sm leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: '#404040' }}>{product.description}</p>
+                    {product.description.length > 100 && (
+                      <button onClick={() => setExpandedDescs(prev => ({ ...prev, [product.id]: !prev[product.id] }))} className="text-[11px] font-bold mt-1" style={{ color: accentColor }}>
+                        {expandedDescs[product.id] ? 'إخفاء' : 'قراءة المزيد'}
+                      </button>
+                    )}
+                  </div>
 
                   <div className="flex flex-wrap gap-2">
                     {product.features.map((f: string) => (
