@@ -369,13 +369,27 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     {loopedMedia.map((item, i) => (
                                         <div key={i} style={{ width: `${100 / loopedMedia.length}%`, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                                             {item.type === 'video' ? (
-                                                item.embed.type === 'youtube' ? (
-                                                    <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${item.embed.id}?autoplay=1&mute=1&loop=1&playlist=${item.embed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                                                ) : item.embed.type === 'video' ? (
-                                                    <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline preload="metadata" />
-                                                ) : (
-                                                    <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
-                                                )
+                                                (() => {
+                                                    const posterSrc = galleryImages[0] || product?.images?.[0] || '';
+                                                    const ytThumb = item.embed.type === 'youtube' ? `https://img.youtube.com/vi/${item.embed.id}/hqdefault.jpg` : '';
+                                                    const bgImg = item.embed.type === 'youtube' ? ytThumb : posterSrc;
+                                                    return (
+                                                        <div className="relative w-full h-full" style={{ background: bgImg ? `center/cover no-repeat url(${bgImg})` : undefined }}>
+                                                            {item.embed.type === 'youtube' ? (
+                                                                <iframe className="w-full h-full absolute inset-0" src={`https://www.youtube.com/embed/${item.embed.id}?autoplay=1&mute=1&loop=1&playlist=${item.embed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                                                            ) : item.embed.type === 'video' ? (
+                                                                <video className="w-full h-full absolute inset-0 object-cover" src={item.embed.url} autoPlay muted loop playsInline preload="metadata" poster={posterSrc || undefined} />
+                                                            ) : (
+                                                                <iframe className="w-full h-full absolute inset-0" src={item.embed.url} allowFullScreen />
+                                                            )}
+                                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                <div className="w-14 h-14 rounded-full bg-black/40 backdrop-blur flex items-center justify-center">
+                                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21" /></svg>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()
                                             ) : (
                                                 <img 
   src={item.src} 
@@ -592,19 +606,19 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                     </span>
-                                    <input required name="name" type="text" placeholder="الاسم" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500" />
+                                    <input required name="name" type="text" placeholder="الاسم" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-black/40 focus:border-black/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500" />
                                 </div>
                                 <div className="relative">
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                     </span>
-                                    <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500 text-right" dir="ltr" />
+                                    <input required name="phone" type="tel" placeholder="رقم الهاتف" className="w-full pr-12 pl-4 py-4 rounded-2xl border border-black/40 focus:border-black/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500 text-right" dir="ltr" />
                                 </div>
                                 <div className="relative">
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                                     </span>
-                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900">
+                                    <select required name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-black/40 focus:border-black/60 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900">
                                         <option value="">اختر الولاية</option>
                                         {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                                     </select>
@@ -612,7 +626,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 </div>
                                 {showCommune && (
                                     <div className="relative">
-                                        <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900">
+                                        <select name="commune" value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} disabled={!selectedWilayaId} required className="w-full pr-12 pl-4 py-4 rounded-2xl border border-black/40 focus:border-black/60 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900">
                                             <option value="">اختر البلدية</option>
                                             {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                                         </select>
@@ -625,22 +639,22 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                                         </span>
-                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500" />
+                                        <input name="address" type="text" placeholder="العنوان" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full pr-12 pl-4 py-4 rounded-2xl border border-black/40 focus:border-black/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500" />
                                     </div>
                                 )}
                             </div>
                             </div>
 
                             {showNotes && (
-                                <textarea name="notes" placeholder="ملاحظات (اختياري)" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-4 rounded-2xl border border-white/60 focus:border-white/80 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500" rows={2} />
+                                <textarea name="notes" placeholder="ملاحظات (اختياري)" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-4 rounded-2xl border border-black/40 focus:border-black/60 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-base bg-white/50 backdrop-blur-xl text-gray-900 placeholder:text-gray-500" rows={2} />
                             )}
 
                             <div className="flex items-center justify-between py-1">
                                 <span className="text-base font-bold text-gray-600">الكمية</span>
                                 <div className="flex items-center gap-4">
-                                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:scale-90 transition-all text-lg" style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(4px)' }}>−</button>
+                                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:scale-90 transition-all text-lg" style={{ border: '1px solid rgba(0,0,0,0.4)', backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>−</button>
                                     <span className="font-bold text-lg min-w-[24px] text-center">{quantity}</span>
-                                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:scale-90 transition-all text-lg" style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(4px)' }}>+</button>
+                                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:scale-90 transition-all text-lg" style={{ border: '1px solid rgba(0,0,0,0.4)', backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>+</button>
                                 </div>
                             </div>
 
@@ -654,8 +668,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         onClick={() => setSelectedDeliveryType('home')}
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
                                         style={{
-                                            borderColor: selectedDeliveryType === 'home' ? accentColor : 'rgba(255,255,255,0.2)',
-                                            backgroundColor: selectedDeliveryType === 'home' ? accentColor + '20' : 'rgba(255,255,255,0.4)',
+                                            borderColor: selectedDeliveryType === 'home' ? accentColor : 'rgba(0,0,0,0.4)',
+                                            backgroundColor: selectedDeliveryType === 'home' ? accentColor + '20' : 'rgba(255,255,255,0.6)',
                                             color: selectedDeliveryType === 'home' ? accentColor : '#374151',
                                             backdropFilter: 'blur(8px)',
                                             WebkitBackdropFilter: 'blur(8px)',
@@ -670,8 +684,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         onClick={() => setSelectedDeliveryType('desk')}
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
                                         style={{
-                                            borderColor: selectedDeliveryType === 'desk' ? accentColor : 'rgba(255,255,255,0.2)',
-                                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '20' : 'rgba(255,255,255,0.4)',
+                                            borderColor: selectedDeliveryType === 'desk' ? accentColor : 'rgba(0,0,0,0.4)',
+                                            backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '20' : 'rgba(255,255,255,0.6)',
                                             color: selectedDeliveryType === 'desk' ? accentColor : '#374151',
                                             backdropFilter: 'blur(8px)',
                                             WebkitBackdropFilter: 'blur(8px)',
@@ -685,7 +699,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                             )}
                             
                             {selectedWilayaId && (
-                                <div className="space-y-1.5 pt-2 text-sm" style={{ borderTop: '1px solid rgba(255,255,255,0.3)' }}>
+                                <div className="space-y-1.5 pt-2 text-sm" style={{ borderTop: '1px solid rgba(0,0,0,0.15)' }}>
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
                                         <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
@@ -701,7 +715,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 </div>
                             )}
 
-                            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(0,0,0,0.4)' }}>
                                 {product?.images?.[0] && (
                                     <img src={product.images[0]} alt="" className="w-14 h-14 rounded-lg object-contain bg-white" />
                                 )}
@@ -716,7 +730,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 أطلب الآن
                             </button>
                             
-                            <p className="text-center text-gray-500 text-xs mt-3 flex items-center justify-center gap-1 py-2 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)' }}>
+                            <p className="text-center text-gray-500 text-xs mt-3 flex items-center justify-center gap-1 py-2 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>
                                 <i className="ph ph-lock-key"></i>
                                 الدفع عند الاستلام بعد معاينة المنتج
                             </p>
