@@ -2221,22 +2221,22 @@ export default function GoldTemplateEditor() {
                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300 block">صورة الخلفية</span>
                           <div className="grid grid-cols-3 gap-2">
                             {[
-                              { label: 'مودرن', gradient: 'url(/uploads/store-backgrounds/mitchell-luo-_A1pTfsMNY4-unsplash.jpg)' },
-                              { label: 'زهور', gradient: 'url(/uploads/store-backgrounds/patrick-tomasso-QMDap1TAu0g-unsplash.jpg)' },
-                              { label: 'موجات', gradient: 'url(/uploads/store-backgrounds/white-wave-background-free-vector.webp)' },
-                              { label: 'أبيض', gradient: 'url(/uploads/store-backgrounds/white-colored-background-free-vector.webp)' },
-                              { label: 'مبسط', gradient: 'url(/uploads/store-backgrounds/1085722-simple-backgrounds-2560x1440-xiaomi.webp)' },
-                              { label: 'بёبل', gradient: 'url(/uploads/store-backgrounds/simple-zoom-background-xo95fqa3fnc1box0.webp)' },
-                              { label: 'وردي', gradient: 'url(/uploads/store-backgrounds/60916c2a-b285-4348-b785-df50555a1f58.webp)' },
-                              { label: 'ناعم', gradient: 'url(/uploads/store-backgrounds/pexels-photo-13551576.webp)' },
-                              { label: 'رمادي', gradient: 'url(/uploads/store-backgrounds/ai-generated-plain-grey-empty-background-photo.webp)' },
-                              { label: 'هادئ', gradient: 'url(/uploads/store-backgrounds/pexels-photo-4252525.webp)' },
-                              { label: 'أنيق', gradient: 'url(/uploads/store-backgrounds/premium_photo-1699282283231-18de6494873d.webp)' },
-                              { label: 'فاتح', gradient: 'url(/uploads/store-backgrounds/premium_photo-1699851157839-5a1773bc27e1.webp)' },
-                              { label: 'داكن', gradient: 'url(/uploads/store-backgrounds/smooth-elegant-abstract-curves-of-light-in-blue-and-purple-on-a-dark-background-flowing.webp)' },
-                              { label: 'منصة', gradient: 'url(/uploads/store-backgrounds/white-product-display-podium-stand-background-geometric-display-presentation-concept-display-scene-stage-platform-showcase-product-sale-banner-cosmetic-3d-rendering-photo.webp)' },
-                              { label: 'دائري', gradient: 'url(/uploads/store-backgrounds/9.webp)' },
-                              { label: 'حلقي', gradient: 'url(/uploads/store-backgrounds/360_F_644654023_cZMVl6feXmUMSNi9CPb9qygWkl64gtMl.webp)' },
+                              { label: 'مودرن', gradient: 'url(/store-backgrounds/mitchell-luo-_A1pTfsMNY4-unsplash.jpg)' },
+                              { label: 'زهور', gradient: 'url(/store-backgrounds/patrick-tomasso-QMDap1TAu0g-unsplash.jpg)' },
+                              { label: 'موجات', gradient: 'url(/store-backgrounds/white-wave-background-free-vector.webp)' },
+                              { label: 'أبيض', gradient: 'url(/store-backgrounds/white-colored-background-free-vector.webp)' },
+                              { label: 'مبسط', gradient: 'url(/store-backgrounds/1085722-simple-backgrounds-2560x1440-xiaomi.webp)' },
+                              { label: 'بёبل', gradient: 'url(/store-backgrounds/simple-zoom-background-xo95fqa3fnc1box0.webp)' },
+                              { label: 'وردي', gradient: 'url(/store-backgrounds/60916c2a-b285-4348-b785-df50555a1f58.webp)' },
+                              { label: 'ناعم', gradient: 'url(/store-backgrounds/pexels-photo-13551576.webp)' },
+                              { label: 'رمادي', gradient: 'url(/store-backgrounds/ai-generated-plain-grey-empty-background-photo.webp)' },
+                              { label: 'هادئ', gradient: 'url(/store-backgrounds/pexels-photo-4252525.webp)' },
+                              { label: 'أنيق', gradient: 'url(/store-backgrounds/premium_photo-1699282283231-18de6494873d.webp)' },
+                              { label: 'فاتح', gradient: 'url(/store-backgrounds/premium_photo-1699851157839-5a1773bc27e1.webp)' },
+                              { label: 'داكن', gradient: 'url(/store-backgrounds/smooth-elegant-abstract-curves-of-light-in-blue-and-purple-on-a-dark-background-flowing.webp)' },
+                              { label: 'منصة', gradient: 'url(/store-backgrounds/white-product-display-podium-stand-background-geometric-display-presentation-concept-display-scene-stage-platform-showcase-product-sale-banner-cosmetic-3d-rendering-photo.webp)' },
+                              { label: 'دائري', gradient: 'url(/store-backgrounds/9.webp)' },
+                              { label: 'حلقي', gradient: 'url(/store-backgrounds/360_F_644654023_cZMVl6feXmUMSNi9CPb9qygWkl64gtMl.webp)' },
                             ].map((preset) => (
                               <button
                                 key={preset.label}
