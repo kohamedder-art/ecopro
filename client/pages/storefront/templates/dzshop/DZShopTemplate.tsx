@@ -813,9 +813,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     <img src={lightboxOpen} alt="" className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
                 </div>
             )}
-                    <img src={galleryImages[lightboxIdx]} alt="" className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
-                </div>
-            )}
 
         </div>
     );
