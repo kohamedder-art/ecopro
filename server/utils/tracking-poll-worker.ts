@@ -75,7 +75,13 @@ async function getCredentials(clientId: number, companyName: string): Promise<{ 
     const secondary = row.account_number || row.merchant_id || (row.api_secret_encrypted ? decryptData(row.api_secret_encrypted) : undefined);
     return { apiKey, secondary };
   } catch (err: any) {
-    console.error(`[TrackingPoll] Failed to decrypt credentials for order (client=${clientId}, company=${companyName}):`, err?.message || err);
+    // Disable broken integrations so we don't retry every 3 minutes
+    await pool.query(
+      `UPDATE delivery_integrations SET is_enabled = false, updated_at = NOW()
+       WHERE client_id = $1 AND delivery_company_id = (SELECT id FROM delivery_companies WHERE name = $2) AND is_enabled = true`,
+      [clientId, companyName]
+    );
+    console.warn(`[TrackingPoll] Disabled broken ${companyName} integration for client ${clientId}:`, err?.message || err);
     return null;
   }
 }
@@ -92,10 +98,7 @@ async function pollOrderStatus(order: PollableOrder): Promise<void> {
     }
 
     const creds = await getCredentials(order.client_id, order.company_name);
-    if (!creds) {
-      console.warn(`[TrackingPoll] No credentials for order ${order.order_id}, company ${order.company_name}`);
-      return;
-    }
+    if (!creds) return;
 
     // Get status from courier API
     const statusResponse = await service.getStatus(
@@ -185,15 +188,11 @@ async function pollAllOrders(): Promise<void> {
     const orders = await fetchPollableOrders();
     if (orders.length === 0) return;
 
-    console.log(`[TrackingPoll] Polling ${orders.length} orders...`);
-
     // Process in batches of 5 to avoid rate limiting
     for (let i = 0; i < orders.length; i += 5) {
       const batch = orders.slice(i, i + 5);
       await Promise.allSettled(batch.map(order => pollOrderStatus(order)));
     }
-
-    console.log(`[TrackingPoll] Polling complete`);
   } catch (err: any) {
     console.error('[TrackingPoll] Poll cycle error:', err?.message || err);
   }
