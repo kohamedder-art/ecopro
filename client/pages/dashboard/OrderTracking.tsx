@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/lib/i18n";
 
 /*
@@ -96,16 +97,22 @@ function StepBar({ status, stepTimestamps, t, locale }: { status: string; stepTi
   return (
     <div className="w-full">
       <div className="relative w-full h-[52px]">
-        <div className="absolute top-[22px] left-0 right-0 h-[5px] rounded-full bg-slate-200 dark:bg-slate-700 shadow-inner" />
-        <div className={`absolute top-[22px] ${isRTL ? 'right-0' : 'left-0'} h-[5px] rounded-full transition-all duration-700 shadow-sm`}
+        <div className="absolute top-[22px] left-0 right-0 h-[4px] rounded-full bg-gray-200 dark:bg-white/[0.06] shadow-inner" />
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 1, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className={`absolute top-[22px] ${isRTL ? 'right-0' : 'left-0'} h-[4px] rounded-full shadow-sm`}
           style={{
-            width: `${pct}%`,
             [isRTL ? 'left' : 'right']: 'auto',
             background: isCancelled
               ? "linear-gradient(90deg,#e03131,#fc8181)"
               : isRTL
-                ? "linear-gradient(270deg,#059669,#3b82f6,#f97316)"
-                : "linear-gradient(90deg,#059669,#3b82f6,#f97316)",
+                ? "linear-gradient(270deg,#34d399,#6366f1,#f97316)"
+                : "linear-gradient(90deg,#34d399,#6366f1,#f97316)",
+            boxShadow: isCancelled
+              ? "0 0 8px rgba(224,49,49,0.4)"
+              : "0 0 8px rgba(99,102,241,0.3)",
           }}
         />
         <div className="absolute inset-0 flex items-center justify-between px-[2px]">
@@ -119,13 +126,13 @@ function StepBar({ status, stepTimestamps, t, locale }: { status: string; stepTi
                 <div className="rounded-full transition-all duration-500 flex items-center justify-center"
                   style={{
                     width: size, height: size,
-                    background: done ? step.color : active ? "#fff" : "#f1f5f9",
-                    border: active ? `3.5px solid ${step.color}` : done ? "none" : "2px solid #e2e8f0",
+                    background: done ? step.color : active ? "transparent" : "rgba(0,0,0,0.04)",
+                    border: active ? `3px solid ${step.color}` : done ? "none" : "1.5px solid rgba(0,0,0,0.12)",
                     boxShadow: active
-                      ? `0 0 0 6px ${step.color}20, 0 2px 10px ${step.color}30`
+                      ? `0 0 0 6px ${step.color}25, 0 0 20px ${step.color}30, inset 0 1px 0 rgba(255,255,255,0.2)`
                       : done
-                        ? `0 2px 4px ${step.color}30`
-                        : "inset 0 1px 2px rgba(0,0,0,0.05)",
+                        ? `0 0 10px ${step.color}30`
+                        : "inset 0 1px 0 rgba(255,255,255,0.1)",
                   }}>
                   {done && (
                     <svg width="10" height="10" viewBox="0 0 13 13" fill="none">
@@ -159,9 +166,23 @@ function CopyBadge({ copied }: { copied: boolean }) {
 }
 
 // ─── 3D Order card ───────────────────────────────────────────
-function OrderCard({ order, events, t, locale }: { order: TrackingOrder; events?: TrackingEvent[]; t: (key: string) => string; locale: string }) {
+function OrderCard({ order, events, t, locale, index }: { order: TrackingOrder; events?: TrackingEvent[]; t: (key: string) => string; locale: string; index: number }) {
   const [copied, setCopied] = useState<'none' | 'id' | 'trk'>('none');
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const cardRef = useRef<HTMLDivElement>(null);
   const isRTL = locale === "ar";
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: x * 12, y: y * -12 });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setTilt({ x: 0, y: 0 });
+  }, []);
 
   const effectiveStatus = getEffectiveStatus(order);
   const stepIdx = STATUS_TO_STEP[effectiveStatus] ?? 0;
@@ -195,16 +216,25 @@ function OrderCard({ order, events, t, locale }: { order: TrackingOrder; events?
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-xl hover:-translate-y-[2px] transition-all duration-200"
-      dir={isRTL ? "rtl" : "ltr"}
+    <motion.div
+      ref={cardRef}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.07, ease: [0.25, 0.46, 0.45, 0.94] }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] backdrop-blur-xl rounded-2xl shadow-lg transition-all duration-200 cursor-default"
       style={{
-        borderRight: isRTL ? `4px solid ${stepColor}` : undefined,
-        borderLeft: isRTL ? undefined : `4px solid ${stepColor}`,
+        borderRight: isRTL ? `3px solid ${stepColor}` : undefined,
+        borderLeft: isRTL ? undefined : `3px solid ${stepColor}`,
+        boxShadow: `0 4px 24px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.2)`,
+        transform: `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${-tilt.x}deg)`,
+        transition: tilt.x === 0 && tilt.y === 0 ? 'all 0.5s ease' : 'box-shadow 0.2s ease',
       }}>
       {/* Line 1: Order info */}
       <div className="flex items-center gap-4 px-4 py-3">
         <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center shrink-0 shadow-sm"
-          style={{ background: `${stepColor}10`, border: `1.5px solid ${stepColor}20` }}>
+          style={{ background: `${stepColor}15`, border: `1.5px solid ${stepColor}25` }}>
           {order.product_image ? (
             <img src={order.product_image} alt="" className="w-full h-full object-cover" />
           ) : (
@@ -216,15 +246,19 @@ function OrderCard({ order, events, t, locale }: { order: TrackingOrder; events?
           #{order.reference_id || order.id}
           <span className="opacity-0 group-hover:opacity-100 transition-opacity"><CopyBadge copied={copied === 'id'} /></span>
         </button>
-        <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{order.customer_name}</span>
-        <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0 hidden sm:inline">{order.customer_phone}</span>
+        <span className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{order.customer_name}</span>
+        <span className="text-xs text-gray-400 dark:text-white/30 shrink-0 hidden sm:inline">{order.customer_phone}</span>
         <div className="flex-1" />
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm"
-          style={{ background: `${meta.dot}12`, color: meta.color, border: `1px solid ${meta.dot}25` }}>
-          <span className="w-[6px] h-[6px] rounded-full" style={{ background: meta.dot }} />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold backdrop-blur"
+          style={{ background: `${meta.dot}18`, color: meta.dot, border: `1px solid ${meta.dot}25` }}>
+          <motion.span
+            animate={{ opacity: [1, 0.4, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="w-[6px] h-[6px] rounded-full" style={{ background: meta.dot, boxShadow: `0 0 6px ${meta.dot}` }}
+          />
           {meta.label}
         </span>
-        <span className="text-base font-black tabular-nums" style={{ color: isBad ? "#dc2626" : "#059669" }}>
+        <span className="text-base font-black tabular-nums" style={{ color: isBad ? "#f87171" : "#34d399" }}>
           {formatPrice(price, locale)}
         </span>
       </div>
@@ -234,16 +268,16 @@ function OrderCard({ order, events, t, locale }: { order: TrackingOrder; events?
         <div className="flex items-center gap-2 shrink-0">
           {hasCourier && order.tracking_number && (
             <button onClick={() => handleCopy(order.tracking_number!, 'trk')}
-              className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 group whitespace-nowrap border border-blue-100 dark:border-blue-500/15 shadow-sm">
+              className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 group whitespace-nowrap border border-indigo-200 dark:border-indigo-500/15 backdrop-blur shadow-sm">
               <svg width="10" height="10" viewBox="0 0 11 11" fill="none"><rect x="3.5" y="2.5" width="5" height="4" rx="0.5" fill="currentColor" opacity="0.8"/><path d="M1 4.5L2 3H3.5V7H1V4.5Z" fill="currentColor" opacity="0.6"/><circle cx="2" cy="7.5" r="1" fill="currentColor"/><circle cx="6.5" cy="7.5" r="1" fill="currentColor"/></svg>
               <span className="max-w-[80px] truncate hidden sm:inline">{order.delivery_company}</span>
               <span className="opacity-0 group-hover:opacity-100 transition-opacity"><CopyBadge copied={copied === 'trk'} /></span>
             </button>
           )}
-          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap">{timeAgo(order.created_at, locale)}</span>
+          <span className="text-[11px] text-gray-400 dark:text-white/30 font-medium whitespace-nowrap">{timeAgo(order.created_at, locale)}</span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -332,27 +366,56 @@ export default function OrderTracking() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900" dir={isRTL ? "rtl" : "ltr"}>
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-5 lg:px-6 py-4 space-y-3">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="min-h-screen bg-gray-50 dark:bg-[#03050A] relative overflow-hidden"
+      dir={isRTL ? "rtl" : "ltr"}
+    >
+      {/* Background orbs — dark only */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none hidden dark:block">
+        <motion.div
+          animate={{ x: [0, 30, -20, 0], y: [0, -30, 20, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute top-1/4 -left-20 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[120px]"
+        />
+        <motion.div
+          animate={{ x: [0, -20, 30, 0], y: [0, 30, -20, 0] }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-1/4 -right-20 w-[500px] h-[500px] bg-violet-500/5 rounded-full blur-[150px]"
+        />
+        <motion.div
+          animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.1, 1] }}
+          transition={{ duration: 8, repeat: Infinity }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/[0.02] rounded-full blur-[200px]"
+        />
+      </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div className="relative z-10 max-w-screen-xl mx-auto px-4 sm:px-5 lg:px-6 py-6 space-y-4">
+
+        {/* Header — glass */}
+        <div className="flex items-center justify-between bg-white/80 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] backdrop-blur-xl rounded-2xl px-5 py-4 shadow-lg dark:shadow-none">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <motion.div
+              animate={{ scale: [1, 1.05, 1], boxShadow: ["0 0 0 0 rgba(99,102,241,0.3)", "0 0 20px 4px rgba(99,102,241,0.2)", "0 0 0 0 rgba(99,102,241,0.3)"] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 flex items-center justify-center shadow-lg"
+            >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <rect x="1" y="4" width="10" height="10" rx="1.5" stroke="#fff" strokeWidth="1.5"/>
                 <path d="M11 8H15L17 10.5V15H11V8Z" stroke="#fff" strokeWidth="1.5"/>
                 <circle cx="5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/>
                 <circle cx="13.5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/>
               </svg>
-            </div>
+            </motion.div>
             <div>
-              <h1 className="text-lg font-black bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">{t("tracking.title")}</h1>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium leading-none">{t("tracking.subtitle")}</p>
+              <h1 className="text-lg font-black text-gray-900 dark:text-white">{t("tracking.title")}</h1>
+              <p className="text-[11px] text-gray-400 dark:text-white/40 font-medium leading-none">{t("tracking.subtitle")}</p>
             </div>
           </div>
           <button onClick={load} disabled={loading}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-sm disabled:opacity-40 active:scale-95">
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-bold bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/60 hover:bg-gray-50 dark:hover:bg-white/10 hover:text-gray-700 dark:hover:text-white/80 hover:border-gray-300 dark:hover:border-white/20 transition-all shadow-sm disabled:opacity-40 active:scale-95">
             <svg className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} viewBox="0 0 14 14" fill="none">
               <path d="M12 7A5 5 0 117 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
@@ -360,18 +423,87 @@ export default function OrderTracking() {
           </button>
         </div>
 
-        {/* Search + Pipeline pills */}
+        {/* Live pipeline — animated stages */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="bg-white/80 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] backdrop-blur-xl rounded-2xl p-4 overflow-hidden shadow-lg dark:shadow-none"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <motion.span
+                animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
+                transition={{ duration: 1.2, repeat: Infinity }}
+                className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]"
+              />
+              <span className="text-xs font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider">Live</span>
+            </div>
+            <div className="flex-1 h-px bg-gradient-to-r from-gray-200 dark:from-white/10 to-transparent" />
+            <span className="text-[11px] font-medium text-gray-400 dark:text-white/30">{orders.length} orders in pipeline</span>
+          </div>
+          <div className="flex items-center gap-0">
+            {(["pending","transit","hub","ofd","done","bad"] as const).map((g, i) => {
+              const meta = GROUP_META[g];
+              const count = liveCounts[g] || 0;
+              const isLast = i === 5;
+              return (
+                <React.Fragment key={g}>
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.3 + i * 0.08, type: "spring", stiffness: 300 }}
+                    className="flex flex-col items-center gap-1"
+                  >
+                    <motion.div
+                      animate={count > 0 ? {
+                        boxShadow: [`0 0 0 0 ${meta.dot}50`, `0 0 0 10px ${meta.dot}00`]
+                      } : {}}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-black shadow-lg"
+                      style={{ background: `linear-gradient(135deg, ${meta.dot}, ${meta.color})` }}
+                    >
+                      {count}
+                    </motion.div>
+                    <span className="text-[10px] font-bold text-gray-500 dark:text-white/40 whitespace-nowrap">{meta.label}</span>
+                  </motion.div>
+                  {!isLast && (
+                    <div className="flex-1 relative h-10 mx-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full h-[2px] rounded-full bg-gray-200 dark:bg-white/[0.06]" />
+                        <motion.div
+                          animate={{ x: ["0%", "100%"] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "linear", delay: i * 0.4 }}
+                          className="absolute w-2.5 h-2.5 rounded-full bg-gray-400 dark:bg-white/20 shadow-lg"
+                          style={{ marginLeft: "-5px" }}
+                        />
+                        <motion.div
+                          animate={{ x: ["0%", "100%"] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "linear", delay: i * 0.4 + 1.2 }}
+                          className="absolute w-1.5 h-1.5 rounded-full"
+                          style={{ background: meta.dot, marginLeft: "-3px", boxShadow: `0 0 6px ${meta.dot}` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* Search + Pipeline pills — glass */}
         <div className="flex flex-col sm:flex-row gap-2.5">
           <div className="relative flex-1">
-            <svg className={`absolute ${isRTL ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none`} viewBox="0 0 16 16" fill="none">
+            <svg className={`absolute ${isRTL ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/30 pointer-events-none`} viewBox="0 0 16 16" fill="none">
               <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
             <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
               placeholder={t("tracking.searchPlaceholder")}
-              className={`w-full ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} h-10 text-sm outline-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400/15 transition-all placeholder:text-slate-400 shadow-sm`} />
+              className={`w-full ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} h-10 text-sm outline-none bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-gray-800 dark:text-white/80 rounded-xl focus:border-indigo-400 dark:focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-400/15 dark:focus:ring-indigo-500/10 transition-all placeholder:text-gray-400 dark:placeholder:text-white/25 shadow-sm`} />
           </div>
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide bg-white dark:bg-slate-800 rounded-xl border border-slate-200/70 dark:border-slate-700/70 shadow-sm px-2 py-1.5">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide bg-white/80 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] backdrop-blur-xl rounded-xl shadow-sm px-2 py-1.5">
             {PIPELINE_GROUPS.map(g => {
               const meta = g === "all" ? null : GROUP_META[g];
               const active = groupFilter === g;
@@ -379,7 +511,7 @@ export default function OrderTracking() {
               return (
                 <button key={g} onClick={() => { setGroupFilter(g); setPage(1); }}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all
-                    ${active ? 'text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
+                    ${active ? 'text-white shadow-md' : 'text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-700 dark:hover:text-white/60'}`}
                   style={active && meta ? { background: meta.dot } : active && g === "all" ? { background: '#6366f1' } : undefined}>
                   {STEP_ICON(g)}
                   {g === "all" ? t("tracking.all") : meta!.label}
@@ -393,28 +525,28 @@ export default function OrderTracking() {
         {/* Orders list */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center">
-              <svg className="w-6 h-6 animate-spin text-indigo-500" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity="0.2"/>
+            <div className="w-14 h-14 rounded-2xl bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.06] flex items-center justify-center">
+              <svg className="w-7 h-7 animate-spin text-indigo-500 dark:text-indigo-400" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity="0.15"/>
                 <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
-            <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">{t("tracking.loading")}</p>
+            <p className="text-sm text-gray-400 dark:text-white/30 font-medium">{t("tracking.loading")}</p>
           </div>
         ) : error ? (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-red-200 dark:border-red-800/30 shadow-md p-5 flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="#dc2626" strokeWidth="1.5"/><path d="M8 5V9M8 11V11.5" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <div className="bg-white/80 dark:bg-white/[0.03] border border-red-300 dark:border-red-500/20 backdrop-blur-xl rounded-2xl shadow-md p-5 flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/10 flex items-center justify-center shrink-0 border border-red-200 dark:border-red-500/10">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="#ef4444" strokeWidth="1.5"/><path d="M8 5V9M8 11V11.5" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round"/></svg>
             </div>
             <div>
               <p className="text-sm font-bold text-red-700 dark:text-red-400">{t("tracking.loadFailed")}</p>
-              <p className="text-xs mt-1 text-red-600/70 dark:text-red-400/70">{error}</p>
+              <p className="text-xs mt-1 text-red-500/70 dark:text-red-400/60">{error}</p>
             </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/70 dark:border-slate-700/70 shadow-md flex flex-col items-center justify-center py-20 text-center gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center shadow-inner">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="text-slate-300 dark:text-slate-600">
+          <div className="bg-white/80 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] backdrop-blur-xl rounded-2xl shadow-lg flex flex-col items-center justify-center py-20 text-center gap-3">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.06] flex items-center justify-center">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="text-gray-300 dark:text-white/15">
                 <rect x="4" y="10" width="14" height="13" rx="1" stroke="currentColor" strokeWidth="1.5"/>
                 <circle cx="9.5" cy="24" r="3" stroke="currentColor" strokeWidth="1.5"/>
                 <circle cx="22" cy="24" r="3" stroke="currentColor" strokeWidth="1.5"/>
@@ -422,30 +554,30 @@ export default function OrderTracking() {
               </svg>
             </div>
             <div>
-              <p className="text-base font-bold text-slate-700 dark:text-slate-300">{t("tracking.noOrders")}</p>
-              <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">{search ? t("tracking.noResults") : t("tracking.noFilterResults")}</p>
+              <p className="text-base font-bold text-gray-600 dark:text-white/50">{t("tracking.noOrders")}</p>
+              <p className="text-sm text-gray-400 dark:text-white/30 mt-1">{search ? t("tracking.noResults") : t("tracking.noFilterResults")}</p>
             </div>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                {t("tracking.showing")} <span className="font-bold text-slate-600 dark:text-slate-300">{paginated.length}</span> {t("tracking.of")} <span className="font-bold text-slate-600 dark:text-slate-300">{filtered.length}</span> {t("tracking.orders")}
+              <p className="text-xs text-gray-400 dark:text-white/30">
+                {t("tracking.showing")} <span className="font-bold text-gray-700 dark:text-white/60">{paginated.length}</span> {t("tracking.of")} <span className="font-bold text-gray-700 dark:text-white/60">{filtered.length}</span> {t("tracking.orders")}
               </p>
             </div>
-            <div className="space-y-2.5">
-              {paginated.map(order => <OrderCard key={order.id} order={order} events={events[order.id]} t={t} locale={locale} />)}
+            <div className="space-y-3">
+              {paginated.map((order, i) => <OrderCard key={order.id} order={order} events={events[order.id]} t={t} locale={locale} index={i} />)}
             </div>
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-3 pt-3 pb-5">
                 <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                  className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold disabled:opacity-30 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all shadow-sm active:scale-95">
+                  className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold disabled:opacity-20 bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-white/50 rounded-xl hover:bg-gray-50 dark:hover:bg-white/[0.08] hover:text-gray-700 dark:hover:text-white/70 hover:border-gray-300 dark:hover:border-white/[0.12] transition-all shadow-sm active:scale-95">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none"><path d="M7 3L4 6L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   {t("tracking.prev")}
                 </button>
-                <span className="text-sm font-bold text-slate-400 dark:text-slate-500 px-3">{page} / {totalPages}</span>
+                <span className="text-sm font-bold text-gray-400 dark:text-white/30 px-3">{page} / {totalPages}</span>
                 <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-                  className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold disabled:opacity-30 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all shadow-sm active:scale-95">
+                  className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold disabled:opacity-20 bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-white/50 rounded-xl hover:bg-gray-50 dark:hover:bg-white/[0.08] hover:text-gray-700 dark:hover:text-white/70 hover:border-gray-300 dark:hover:border-white/[0.12] transition-all shadow-sm active:scale-95">
                   {t("tracking.next")}
                   <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none"><path d="M5 3L8 6L5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
@@ -454,6 +586,6 @@ export default function OrderTracking() {
           </>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -59,7 +59,7 @@ import pixelsRouter from "./routes/pixels";
 import affiliatesRouter from "./routes/affiliates";
 import colorIntelligenceRouter from "./routes/color-intelligence";
 import { authenticateStaff, requireStaffPermission, requireStaffClientAccess } from "./utils/staff-middleware";
-import { initializeDatabase, createDefaultAdmin, runPendingMigrations } from "./utils/database";
+import { initializeDatabase, createDefaultAdmin, runPendingMigrations, pool } from "./utils/database";
 import { handleHealth } from "./routes/health";
 import { handleDbCheck } from "./routes/db-check";
 import { hashPassword } from "./utils/auth";
@@ -1749,6 +1749,37 @@ ${urls}
 
   // Push notification device registration (authenticated clients)
   app.use('/api/notifications', authenticate, notificationsRouter);
+
+  // Landing page live tracking feed (public)
+  app.get("/api/landing/tracking-feed", async (_req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT o.id, o.total_price, o.status, o.delivery_status,
+               o.tracking_number, o.created_at,
+               dc.name AS company_name,
+               w.name_ar AS wilaya_ar, w.name AS wilaya_en,
+               cp.title AS product_title,
+               json_agg(
+                 json_build_object('type', de.event_type, 'ts', de.created_at)
+                 ORDER BY de.created_at ASC
+               ) FILTER (WHERE de.id IS NOT NULL) AS events
+        FROM store_orders o
+        LEFT JOIN delivery_companies dc ON o.delivery_company_id = dc.id
+        LEFT JOIN wilayas w ON o.shipping_wilaya_id = w.id
+        LEFT JOIN client_store_products cp ON o.product_id = cp.id
+        LEFT JOIN delivery_events de ON de.order_id = o.id
+        WHERE o.status IN ('in_delivery', 'at_delivery')
+          AND o.deleted_at IS NULL
+        GROUP BY o.id, dc.name, w.name_ar, w.name, cp.title
+        ORDER BY o.created_at DESC
+        LIMIT 30
+      `);
+      res.json(result.rows);
+    } catch (err) {
+      console.error('[landing/tracking]', err);
+      res.status(500).json({ error: 'Failed to load tracking' });
+    }
+  });
 
   // Checkout session routes (database-backed, not localStorage)
   app.post("/api/checkout/save-product", orderRoutes.saveProductForCheckout); // Public - save product for checkout

@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '@/lib/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 import { ArrowRight, Zap, Package, CreditCard, Truck } from 'lucide-react';
 
 export function Chapter1() {
   const { t, locale } = useTranslation();
+  const { theme, toggle } = useTheme();
   const isRTL = locale === 'ar';
+  const isDark = theme === 'dark';
 
   const [simulatedOrder, setSimulatedOrder] = useState<string | null>(null);
 
@@ -42,9 +45,23 @@ export function Chapter1() {
           alt=""
           className="w-full h-full object-cover"
         />
-        {/* Dark gradient overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
+        {/* Gradient overlay — dark in dark mode, light in light mode */}
+        <div
+          className="absolute inset-0 transition-colors duration-300"
+          style={{
+            background: isDark
+              ? 'linear-gradient(to right, rgba(0,0,0,0.85), rgba(0,0,0,0.6), rgba(0,0,0,0.3))'
+              : 'linear-gradient(to right, rgba(255,255,255,0.70), rgba(255,255,255,0.45), rgba(255,255,255,0.15))'
+          }}
+        />
+        <div
+          className="absolute inset-0 transition-colors duration-300"
+          style={{
+            background: isDark
+              ? 'linear-gradient(to top, rgba(0,0,0,0.7), transparent, rgba(0,0,0,0.3))'
+              : 'linear-gradient(to top, rgba(255,255,255,0.50), transparent, rgba(255,255,255,0.10))'
+          }}
+        />
       </div>
 
       {/* Decorative blur accents */}
@@ -53,16 +70,16 @@ export function Chapter1() {
         <div className="absolute bottom-1/3 right-1/4 w-[20rem] h-[20rem] bg-purple-600/8 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 w-full pt-32 pb-20">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 w-full pt-20 pb-20">
         <div className="max-w-3xl">
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10 backdrop-blur-md text-xs md:text-sm font-semibold text-white/90 mb-8"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 dark:bg-white/10 border border-white/10 dark:border-white/10 backdrop-blur-md text-xs md:text-sm font-semibold text-gray-900 dark:text-white/90 mb-8"
           >
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
             <span>{isRTL ? "منصة التجارة الإلكترونية الأولى في الجزائر" : "Algeria's #1 COD E-commerce Platform"}</span>
           </motion.div>
 
@@ -71,7 +88,7 @@ export function Chapter1() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
-            className="text-4xl md:text-5xl lg:text-7xl font-black tracking-tight leading-[1.1] text-white mb-6"
+            className="text-4xl md:text-5xl lg:text-7xl font-black tracking-tight leading-[1.1] text-gray-900 dark:text-white mb-6"
           >
             <span>{isRTL ? "أنشئ متجرك. أدر كل شيء." : "Build Your Store."}</span>
             <br />
@@ -80,7 +97,7 @@ export function Chapter1() {
             <span
               className="bg-clip-text text-transparent"
               style={{
-                backgroundImage: 'linear-gradient(135deg, #a5b4fc 0%, #818cf8 40%, #6366f1 70%, #4f46e5 100%)',
+                backgroundImage: 'linear-gradient(135deg, #6366f1 0%, #818cf8 40%, #a5b4fc 70%)',
               }}
             >
               {isRTL ? "توصيل سريع لكل ولاية." : "Ship Everywhere."}
@@ -92,7 +109,7 @@ export function Chapter1() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="text-lg md:text-xl text-white/60 max-w-xl leading-relaxed mb-10 font-medium"
+            className="text-lg md:text-xl text-gray-600 dark:text-white/60 max-w-xl leading-relaxed mb-10 font-medium"
           >
             {isRTL
               ? "منصة شاملة لإدارة متجرك: تصميم المتجر، إدارة الطلبات، التوصيل، والمدفوعات — كل شيء في مكان واحد."
@@ -117,7 +134,7 @@ export function Chapter1() {
 
             <Link
               to="/pricing"
-              className="inline-flex items-center justify-center gap-2 text-base font-bold h-14 px-8 rounded-2xl border border-white/15 hover:border-white/25 text-white/80 hover:text-white bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all active:scale-[0.98] w-full sm:w-auto"
+              className="inline-flex items-center justify-center gap-2 text-base font-bold h-14 px-8 rounded-2xl border border-gray-300 dark:border-white/15 text-gray-700 dark:text-white/80 bg-white/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 backdrop-blur-sm transition-all active:scale-[0.98] w-full sm:w-auto"
             >
               <span>{isRTL ? "استعرض الأسعار" : "View Pricing"}</span>
             </Link>
@@ -132,12 +149,12 @@ export function Chapter1() {
           >
             {stats.map((stat, i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center">
-                  <stat.icon className="w-5 h-5 text-indigo-400" />
+                <div className="w-10 h-10 rounded-xl bg-white/80 dark:bg-white/10 border border-gray-200 dark:border-white/10 backdrop-blur-md flex items-center justify-center">
+                  <stat.icon className="w-5 h-5 text-indigo-500" />
                 </div>
                 <div>
-                  <div className="text-lg font-black text-white">{stat.value}</div>
-                  <div className="text-xs text-white/50 font-medium">{stat.label}</div>
+                  <div className="text-lg font-black text-gray-900 dark:text-white">{stat.value}</div>
+                  <div className="text-xs text-gray-500 dark:text-white/50 font-medium">{stat.label}</div>
                 </div>
               </div>
             ))}
@@ -152,7 +169,7 @@ export function Chapter1() {
             initial={{ opacity: 0, y: 30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed bottom-6 left-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-black/80 border border-emerald-500/30 text-emerald-400 font-bold text-xs md:text-sm shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+            className="fixed bottom-6 left-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-black/80 dark:bg-black/80 bg-white/90 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs md:text-sm shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl"
           >
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
             <span>{simulatedOrder}</span>
