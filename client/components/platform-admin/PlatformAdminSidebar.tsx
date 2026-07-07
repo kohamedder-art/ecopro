@@ -5,7 +5,7 @@ import {
   TrendingUp, Menu, X, ShoppingBag, MessageCircle
 } from 'lucide-react';
 
-type TabKey = 'overview' | 'users' | 'stores' | 'products' | 'activity' | 'errors' | 'health' | 'settings' | 'billing' | 'payment-failures' | 'codes' | 'tools' | 'affiliates' | 'notes' | 'ai' | 'bills' | 'chat';
+type TabKey = 'overview' | 'users' | 'stores' | 'products' | 'activity' | 'errors' | 'health' | 'settings' | 'billing' | 'payment-failures' | 'codes' | 'tools' | 'affiliates' | 'notes' | 'ai' | 'bills' | 'pixels' | 'chat';
 
 interface Props {
   activeTab: TabKey;
@@ -65,6 +65,7 @@ export default function PlatformAdminSidebar({ activeTab, onTabChange, onBilling
         { key: 'ai', label: 'AI', icon: <Brain className="w-4 h-4" /> },
         { key: 'tools', label: 'Tools', icon: <Zap className="w-4 h-4" /> },
         { key: 'notes', label: 'Notes', icon: <StickyNote className="w-4 h-4" />, onClick: onNotesClick },
+        { key: 'pixels', label: 'Pixels', icon: <Activity className="w-4 h-4" /> },
         { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" />, onClick: onSettingsClick },
       ],
     },

@@ -1,11 +1,114 @@
-import { useTranslation } from "@/lib/i18n";
+import { useEffect } from 'react';
+import { useTranslation } from '@/lib/i18n';
 import { Chapter1 } from './sections/Chapter1';
 import { Chapter2 } from './sections/Chapter2';
 import { Chapter3 } from './sections/Chapter3';
 
+declare global {
+  interface Window {
+    fbq: any;
+    _fbq: any;
+    ttq: any;
+    TiktokAnalyticsObject: string;
+  }
+}
+
+function injectFacebookPixel(pixelId: string) {
+  if (document.getElementById('fb-pixel-script')) {
+    if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
+      try { window.fbq('init', pixelId); } catch {}
+      try { window.fbq('track', 'PageView'); } catch {}
+    }
+    return;
+  }
+
+  const n = window.fbq = function() {
+    n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+  } as any;
+  if (!window._fbq) window._fbq = n;
+  n.push = n;
+  n.loaded = true;
+  n.version = '2.0';
+  n.queue = [];
+
+  try { window.fbq('init', pixelId); } catch {}
+  try { window.fbq('track', 'PageView'); } catch {}
+
+  const script = document.createElement('script');
+  script.id = 'fb-pixel-script';
+  script.async = true;
+  script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+  document.head.appendChild(script);
+
+  const noscript = document.createElement('noscript');
+  const img = document.createElement('img');
+  img.height = 1;
+  img.width = 1;
+  img.style.display = 'none';
+  img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`;
+  noscript.appendChild(img);
+  document.body.appendChild(noscript);
+}
+
+function injectTikTokPixel(pixelId: string) {
+  if (document.getElementById('tt-pixel-script')) return;
+
+  window.TiktokAnalyticsObject = 'ttq';
+  const ttq = window.ttq = window.ttq || [] as any;
+  ttq.methods = ['page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie'];
+  ttq.setAndDefer = function(t: any, e: string) {
+    t[e] = function() {
+      t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+    };
+  };
+  for (let i = 0; i < ttq.methods.length; i++) {
+    ttq.setAndDefer(ttq, ttq.methods[i]);
+  }
+  ttq.instance = function(t: string) {
+    const e = ttq._i[t] || [];
+    for (let n = 0; n < ttq.methods.length; n++) {
+      ttq.setAndDefer(e, ttq.methods[n]);
+    }
+    return e;
+  };
+  ttq.load = function(e: string, n?: any) {
+    const i = 'https://analytics.tiktok.com/i18n/pixel/events.js';
+    ttq._i = ttq._i || {};
+    ttq._i[e] = [];
+    ttq._i[e]._u = i;
+    ttq._t = ttq._t || {};
+    ttq._t[e] = +new Date();
+    ttq._o = ttq._o || {};
+    ttq._o[e] = n || {};
+    const o = document.createElement('script');
+    o.id = 'tt-pixel-script';
+    o.type = 'text/javascript';
+    o.async = true;
+    o.src = i + '?sdkid=' + e + '&lib=ttq';
+    const a = document.getElementsByTagName('script')[0];
+    a?.parentNode?.insertBefore(o, a);
+  };
+  try { window.ttq.load(pixelId); } catch {}
+  try { window.ttq.page(); } catch {}
+}
+
 export default function Index() {
   const { locale } = useTranslation();
   const isRTL = locale === 'ar';
+
+  useEffect(() => {
+    fetch('/api/platform/pixel-config')
+      .then(r => r.json())
+      .then((pixels: any[]) => {
+        if (!Array.isArray(pixels)) return;
+        pixels.forEach(p => {
+          if (!p.pixel_id || !p.enabled) return;
+          if (p.platform === 'facebook') injectFacebookPixel(p.pixel_id);
+          else if (p.platform === 'tiktok') injectTikTokPixel(p.pixel_id);
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">

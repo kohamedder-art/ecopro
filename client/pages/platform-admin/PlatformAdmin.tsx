@@ -66,6 +66,7 @@ import ToolsTab from '@/components/platform-admin/tabs/ToolsTab';
 import SettingsTab from '@/components/platform-admin/tabs/SettingsTab';
 import NotesTab from '@/components/platform-admin/tabs/NotesTab';
 import BillsTab from '@/components/platform-admin/tabs/BillsTab';
+import PixelsTab from '@/components/platform-admin/tabs/PixelsTab';
 import LockedAccountsManager from '@/components/platform-admin/LockedAccountsManager';
 import PlatformAdminSidebar from '@/components/platform-admin/PlatformAdminSidebar';
 
@@ -398,7 +399,7 @@ export default function PlatformAdmin() {
   const [adminAuditLogs, setAdminAuditLogs] = useState<AdminAuditLog[]>([]);
   const [logMode, setLogMode] = useState<'staff' | 'admin'>('staff');
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'stores' | 'products' | 'activity' | 'errors' | 'health' | 'settings' | 'billing' | 'payment-failures' | 'codes' | 'tools' | 'affiliates' | 'notes' | 'ai' | 'bills'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'stores' | 'products' | 'activity' | 'errors' | 'health' | 'settings' | 'billing' | 'payment-failures' | 'codes' | 'tools' | 'affiliates' | 'notes' | 'ai' | 'bills' | 'pixels'>('overview');
 
   const [platformErrorDays, setPlatformErrorDays] = useState(3);
   const [platformErrorSource, setPlatformErrorSource] = useState<'all' | 'client' | 'server'>('all');
@@ -1456,6 +1457,7 @@ export default function PlatformAdmin() {
               { key: 'ai' as const, label: 'AI' },
               { key: 'tools' as const, label: 'Tools' },
               { key: 'notes' as const, label: 'Notes' },
+              { key: 'pixels' as const, label: 'Pixels' },
               { key: 'settings' as const, label: 'Settings' },
             ].map((t) => (
               <button
@@ -2247,6 +2249,9 @@ export default function PlatformAdmin() {
             saving={savingNote}
           />
         )}
+
+        {/* Pixels Tab */}
+        {activeTab === 'pixels' && <PixelsTab />}
           </div>
         </div>
       </div>

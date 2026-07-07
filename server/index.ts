@@ -1781,6 +1781,61 @@ ${urls}
     }
   });
 
+  // Platform pixel config (admin only)
+  app.get("/api/platform-admin/pixels", authenticate, requireAdmin, async (_req, res) => {
+    try {
+      const result = await pool.query(
+        `SELECT setting_value FROM platform_settings WHERE setting_key = 'pixel_config'`
+      );
+      const rows = result.rows;
+      if (rows.length === 0) return res.json([]);
+      try {
+        return res.json(JSON.parse(rows[0].setting_value));
+      } catch {
+        return res.json([]);
+      }
+    } catch (err) {
+      console.error('[platform-admin/pixels]', err);
+      res.status(500).json({ error: 'Failed to load pixel config' });
+    }
+  });
+
+  app.put("/api/platform-admin/pixels", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { pixels } = req.body;
+      if (!Array.isArray(pixels)) {
+        return res.status(400).json({ error: 'pixels must be an array' });
+      }
+      const adminId = (req.user as any)?.id;
+      await pool.query(
+        `UPDATE platform_settings SET setting_value = $1, updated_by = $2, updated_at = NOW()
+         WHERE setting_key = 'pixel_config'`,
+        [JSON.stringify(pixels), adminId]
+      );
+      res.json({ message: 'Pixel config updated' });
+    } catch (err) {
+      console.error('[platform-admin/pixels]', err);
+      res.status(500).json({ error: 'Failed to update pixel config' });
+    }
+  });
+
+  // Public platform pixel config (no auth — used by landing page)
+  app.get("/api/platform/pixel-config", async (_req, res) => {
+    try {
+      const result = await pool.query(
+        `SELECT setting_value FROM platform_settings WHERE setting_key = 'pixel_config'`
+      );
+      const rows = result.rows;
+      if (rows.length === 0) return res.json([]);
+      const parsed = JSON.parse(rows[0].setting_value);
+      const enabled = (Array.isArray(parsed) ? parsed : []).filter((p: any) => p?.enabled);
+      res.json(enabled);
+    } catch (err) {
+      console.error('[platform/pixel-config]', err);
+      res.json([]);
+    }
+  });
+
   // Checkout session routes (database-backed, not localStorage)
   app.post("/api/checkout/save-product", orderRoutes.saveProductForCheckout); // Public - save product for checkout
   app.get("/api/checkout/get-product/:sessionId", orderRoutes.getProductForCheckout); // Public - retrieve product from checkout session
