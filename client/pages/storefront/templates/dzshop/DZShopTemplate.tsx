@@ -324,39 +324,39 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             )}
 
             {/* Header — hides on scroll down, shows on scroll up */}
-            <header className={`fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center shadow-sm transition-transform duration-300`} style={{ backgroundColor: (accentColor || 'var(--dz-primary)'), backdropFilter: 'none', WebkitBackdropFilter: 'none', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
-                <div className="flex items-center gap-2">
+            <header className={`fixed top-0 left-0 right-0 z-50 px-3 py-1 flex justify-between items-center shadow-sm transition-transform duration-300`} style={{ backgroundColor: (accentColor || 'var(--dz-primary)'), backdropFilter: 'none', WebkitBackdropFilter: 'none', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
+                <div className="flex items-center gap-3">
 {settings?.store_logo ? (
   <img 
     src={settings.store_logo} 
     alt={settings?.store_name || "متجري"} 
-    className="w-9 h-9 rounded-full object-cover border-2 shadow-sm"
+    className="rounded-full object-cover border shadow-sm"
+    style={{ width: 45, height: 45, borderColor: 'rgba(255,255,255,0.3)', contentVisibility: 'auto' }}
     loading="lazy"
     decoding="async"
-    width="36"
-    height="36"
-    style={{ borderColor: 'rgba(255,255,255,0.3)', contentVisibility: 'auto' }}
+    width="45"
+    height="45"
   />
 ) : (
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                        <div className="rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ width: 45, height: 45, backgroundColor: 'rgba(255,255,255,0.2)' }}>
                             {(settings?.store_name || 'م').charAt(0)}
                         </div>
                     )}
-                    <span className="text-lg font-extrabold text-white">{settings?.store_name || "متجري"}</span>
+                    <span className="text-xl font-bold text-white">{settings?.store_name || "متجري"}</span>
                 </div>
-                <div className="flex gap-4">
-                    <i className="ph ph-shopping-cart text-2xl text-white"></i>
-                    <i className="ph ph-list text-2xl text-white md:hidden"></i>
+                <div className="flex gap-3">
+                    <i className="ph ph-shopping-cart text-xl text-white"></i>
+                    <i className="ph ph-list text-xl text-white md:hidden"></i>
                 </div>
             </header>
 
-            <main className="w-full px-3 py-6 md:py-10 grid grid-cols-1 md:grid-cols-[4fr_3fr] gap-8 relative z-10 pt-16 md:min-h-[80vh]">
+            <main className="w-full px-3 py-6 md:py-10 grid grid-cols-1 md:grid-cols-[5fr_3fr] gap-8 relative z-10 pt-14 md:min-h-[80vh]">
                 
                 {/* Left Column: Product Visuals */}
                 <div className="md:h-full">
                 <div className="flex flex-col md:flex-row gap-4 md:h-full">
                     {/* Main Product Image (LeRoiShop-style translateX gallery) */}
-                    <div className="h-[70vh] md:flex-1 md:h-[90vh] rounded-2xl overflow-hidden relative group" style={{ boxShadow: `0 4px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.3) inset`, backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>
+                    <div className="h-[65vh] md:flex-1 md:h-[90vh] rounded-2xl overflow-hidden relative group" style={{ boxShadow: `0 4px 30px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.3) inset`, backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}>
                         {allMedia.length > 0 ? (
                             <div className="h-full relative select-none" style={{ touchAction: 'pan-y' }}
                               onTouchStart={e => { (e.currentTarget as any)._ts = e.touches[0].clientX; (e.currentTarget as any)._tsy = e.touches[0].clientY; }}
@@ -396,7 +396,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                                 <img 
   src={item.src} 
   alt="" 
-  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', contentVisibility: 'auto', cursor: 'pointer' }} 
+  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', contentVisibility: 'auto', cursor: 'pointer' }} 
   loading="lazy"
   decoding="async"
   onClick={() => setLightboxOpen(item.src)}
