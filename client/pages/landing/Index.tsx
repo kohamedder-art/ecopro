@@ -14,6 +14,10 @@ declare global {
 }
 
 function injectFacebookPixel(pixelId: string) {
+  const eventId = `pv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  new Image().src = `https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1&eid=${eventId}`;
+
   if (document.getElementById('fb-pixel-script')) {
     if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
       try { window.fbq('init', pixelId); } catch {}
@@ -39,18 +43,11 @@ function injectFacebookPixel(pixelId: string) {
   script.async = true;
   script.src = 'https://connect.facebook.net/en_US/fbevents.js';
   document.head.appendChild(script);
-
-  const noscript = document.createElement('noscript');
-  const img = document.createElement('img');
-  img.height = 1;
-  img.width = 1;
-  img.style.display = 'none';
-  img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`;
-  noscript.appendChild(img);
-  document.body.appendChild(noscript);
 }
 
 function injectTikTokPixel(pixelId: string) {
+  new Image().src = `https://analytics.tiktok.com/i18n/pixel/static?id=${pixelId}&ev=PageView`;
+
   if (document.getElementById('tt-pixel-script')) return;
 
   window.TiktokAnalyticsObject = 'ttq';
@@ -97,6 +94,21 @@ export default function Index() {
   const isRTL = locale === 'ar';
 
   useEffect(() => {
+    const preconnects = [
+      { rel: 'dns-prefetch', href: 'https://connect.facebook.net' },
+      { rel: 'dns-prefetch', href: 'https://www.facebook.com' },
+      { rel: 'dns-prefetch', href: 'https://analytics.tiktok.com' },
+      { rel: 'preconnect', href: 'https://connect.facebook.net' },
+      { rel: 'preconnect', href: 'https://www.facebook.com' },
+      { rel: 'preconnect', href: 'https://analytics.tiktok.com' },
+    ];
+    for (const link of preconnects) {
+      const el = document.createElement('link');
+      el.rel = link.rel;
+      el.href = link.href;
+      document.head.appendChild(el);
+    }
+
     fetch('/api/platform/pixel-config')
       .then(r => r.json())
       .then((pixels: any[]) => {

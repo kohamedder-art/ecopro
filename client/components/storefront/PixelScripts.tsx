@@ -48,7 +48,22 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
   // Fetch pixel config on mount
   useEffect(() => {
     if (!storeSlug) return;
-    
+
+    const preconnects = [
+      { rel: 'dns-prefetch', href: 'https://connect.facebook.net' },
+      { rel: 'dns-prefetch', href: 'https://www.facebook.com' },
+      { rel: 'dns-prefetch', href: 'https://analytics.tiktok.com' },
+      { rel: 'preconnect', href: 'https://connect.facebook.net' },
+      { rel: 'preconnect', href: 'https://www.facebook.com' },
+      { rel: 'preconnect', href: 'https://analytics.tiktok.com' },
+    ];
+    for (const link of preconnects) {
+      const el = document.createElement('link');
+      el.rel = link.rel;
+      el.href = link.href;
+      document.head.appendChild(el);
+    }
+
     fetch(`/api/pixels/config/${storeSlug}`)
       .then(res => res.json())
       .then(data => {
@@ -185,16 +200,18 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
   useEffect(() => {
     if (!config?.facebook_pixel_id || !config.is_facebook_enabled) return;
 
-    // Support storing multiple pixel IDs as comma-separated values
     const ids = String(config.facebook_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return;
 
-    // Deduplicate IDs
     const uniqueIds = [...new Set(ids)];
+
+    // Always fire img pixels first (works even with ad blockers on mobile)
+    uniqueIds.forEach(id => {
+      new Image().src = `https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1`;
+    });
 
     // Prevent duplicate script loading
     if (document.getElementById('facebook-pixel-script')) {
-      // Script already loaded, just re-init pixels
       if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
         uniqueIds.forEach(id => {
           try { window.fbq('init', id); } catch (e) { /* ignore */ }
@@ -204,10 +221,8 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       return;
     }
 
-    // Preserve any events already queued by trackFacebookEvent before fbq loaded
     const existingQueue = (window as any).fbq?.queue || [];
 
-    // Initialize fbq without inline script (CSP-safe)
     const n = window.fbq = function() {
       n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
     } as any;
@@ -217,18 +232,15 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     n.version = '2.0';
     n.queue = [];
 
-    // Re-queue any events fired before fbq was fully initialized
     existingQueue.forEach((args: any[]) => {
       try { window.fbq.apply(null, args); } catch (e) { /* ignore */ }
     });
 
-    // Queue init and PageView events BEFORE loading the script (standard Facebook pattern)
     uniqueIds.forEach(id => {
       try { window.fbq('init', id); } catch (e) { /* ignore */ }
     });
     try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
 
-    // Load the Facebook SDK via external script
     const script = document.createElement('script');
     script.id = 'facebook-pixel-script';
     script.async = true;
@@ -241,18 +253,6 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       console.error('[Pixel] Facebook SDK failed to load');
     };
     document.head.appendChild(script);
-
-    // Add noscript fallbacks for each id
-    const noscript = document.createElement('noscript');
-    uniqueIds.forEach(id => {
-      const img = document.createElement('img');
-      img.height = 1;
-      img.width = 1;
-      img.style.display = 'none';
-      img.src = `https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1`;
-      noscript.appendChild(img);
-    });
-    document.body.appendChild(noscript);
 
     console.log('[Pixel] Facebook Pixel initialized:', uniqueIds.join(','));
 
@@ -268,8 +268,12 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     const ids = String(config.tiktok_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return;
 
-    // Deduplicate IDs
     const uniqueIds = [...new Set(ids)];
+
+    // Always fire img pixels first (works even with ad blockers on mobile)
+    uniqueIds.forEach(id => {
+      new Image().src = `https://analytics.tiktok.com/i18n/pixel/static?id=${id}&ev=PageView`;
+    });
 
     // If ttq exists, load/instantiate each id
     if (window.ttq) {
@@ -280,12 +284,10 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       return;
     }
 
-    // Prevent duplicate script loading
     if (document.getElementById('tiktok-pixel-script')) {
       return;
     }
 
-    // Initialize TikTok Pixel without inline script (CSP-safe)
     window.TiktokAnalyticsObject = 'ttq';
     const ttq = window.ttq = window.ttq || [] as any;
     ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie"];
