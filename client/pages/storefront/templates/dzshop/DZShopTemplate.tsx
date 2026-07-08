@@ -139,7 +139,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             `;
     // Smart image classification: routes square images to gallery, wide/tall to banner
     const { slots: imageSlots, loading: classifyingImages } = useImageClassifier(product?.images, 'dzshop');
-    const galleryImages = imageSlots.gallery?.length > 0 ? imageSlots.gallery : (product?.images || []);
+    const galleryImages = imageSlots.gallery?.length > 0 ? imageSlots.gallery : (product?.images?.filter(Boolean) || []);
     const autoBannerImage = imageSlots.banner?.[0] || null;
     const rawVideoUrl = (product as any)?.metadata?.video_url || '';
     const videoEmbed = useMemo(() => {
@@ -233,9 +233,10 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     galleryIdxRef.current = activeImageIndex;
 
     const allMedia = useMemo(() => {
-        const items: ({ type: 'video'; embed: typeof videoEmbed } | { type: 'image'; src: string })[] = [];
-        if (videoEmbed) items.push({ type: 'video', embed: videoEmbed });
-        galleryImages.forEach((src: string) => items.push({ type: 'image', src }));
+        const items: MediaItem[] = [];
+        if (videoEmbed) items.push({ type: 'video', embed: videoEmbed, src: '' });
+        const imgs = galleryImages.length > 0 ? galleryImages : ['/placeholder.png'];
+        imgs.forEach((src: string) => items.push({ type: 'image', src }));
         return items;
     }, [videoEmbed, galleryImages]);
 
@@ -417,15 +418,15 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                     </>
                                 )}
                             </div>
-                        ) : (
+                        ) : canManage ? (
                             <>
                                 <div className="dz-image-placeholder w-full h-full" ref={mainImagePlaceholderRef} onClick={handleMainImageClick}>
                                     <i className="ph ph-image text-4xl text-gray-400"></i>
                                     <p className="text-xs text-gray-400 mt-2 absolute bottom-4">انقر لتغيير الصورة (أو أضف منتج من لوحة التحكم)</p>
                                 </div>
-                                {canManage && <input type="file" ref={mainFileInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} /> }
+                                <input type="file" ref={mainFileInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
                             </>
-                        )}
+                        ) : null}
                     </div>
 
                     {/* Thumbnail Scrollable Row */}
@@ -725,6 +726,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         )}
                         
                         {/* Landing Page Style Image (Bottom image) */}
+                        {(settings?.banner_url || autoBannerImage || canManage) ? (
                         <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative" ref={bottomImagePlaceholderRef} onClick={handleBottomImageClick}>
 {settings?.banner_url ? (
   <img 
@@ -742,13 +744,14 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     decoding="async"
     style={{ contentVisibility: 'auto' }}
   />
-                            ) : (
+                            ) : canManage ? (
                                 <div className="p-10 flex flex-col items-center justify-center pointer-events-none">
                                     <i className="ph ph-plus-circle text-3xl mb-2 text-gray-400"></i>
                                     <span className="text-sm font-bold text-gray-500">أضف صورة توضيحية للمميزات</span>
                                 </div>
-                            )}
+                            ) : null}
                         </div>
+                        ) : null}
                         {canManage && <input type="file" ref={bottomFileInputRef} className="hidden" accept="image/*" onChange={handleBottomFileChange} /> }
                     </div>
                     </div>
