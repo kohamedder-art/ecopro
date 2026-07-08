@@ -134,15 +134,21 @@ export default function Dashboard() {
   const isRTL = t('direction') === 'rtl' || document.dir === 'rtl' || ['ar', 'he', 'ur'].includes(t('locale'));
 
   const rawChartData = analytics?.dailyRevenue && analytics.dailyRevenue.length > 0
-    ? analytics.dailyRevenue.slice(-10)
+    ? analytics.dailyRevenue
     : [];
 
   // Sort chronologically (oldest date first) so chart flows left-to-right
-  const chartData = [...rawChartData].sort((a, b) => {
+  let chartData = [...rawChartData].sort((a, b) => {
     const dateA = new Date(a.date).getTime();
     const dateB = new Date(b.date).getTime();
     return dateA - dateB;
   });
+
+  // Cap at ~20 points max by sampling evenly
+  if (chartData.length > 20) {
+    const step = Math.floor((chartData.length - 1) / 19);
+    chartData = chartData.filter((_, i) => i % step === 0 || i === chartData.length - 1);
+  }
 
   const maxRevenue = Math.max(...chartData.map(d => Number(d.revenue) || 0), 1);
   const maxOrders = Math.max(...chartData.map(d => Number(d.orders) || 1), 1);
@@ -161,26 +167,6 @@ export default function Dashboard() {
 
   const totalRevenuePeriod = chartData.reduce((s, d) => s + (Number(d.revenue) || 0), 0);
   const totalOrdersPeriod = chartData.reduce((s, d) => s + (Number(d.orders) || 0), 0);
-
-  const visitorsPoints = (() => {
-    const rawViewsData = analytics?.dailyViews && analytics.dailyViews.length > 0 ? analytics.dailyViews : [];
-    // Sort chronologically (oldest date first)
-    const viewsData = [...rawViewsData].sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      return dateA - dateB;
-    });
-    if (viewsData.length === 0) return chartData.map((d, i) => {
-      const x = (i / Math.max(chartData.length - 1, 1)) * 100;
-      return `${x},50`;
-    }).join(' ');
-    const maxViews = Math.max(...viewsData.map((d: any) => Number(d.views) || 0), 1);
-    return viewsData.map((d: any, i: number) => {
-      const x = (i / Math.max(viewsData.length - 1, 1)) * 100;
-      const y = 100 - ((Number(d.views) || 0) / maxViews) * 100;
-      return `${x},${y}`;
-    }).join(' ');
-  })();
 
   const cityData = analytics?.cityBreakdown && analytics.cityBreakdown.length > 0
     ? analytics.cityBreakdown.slice(0, 6)
@@ -416,15 +402,15 @@ export default function Dashboard() {
                     {[20, 40, 60, 80].map(y => (
                       <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="currentColor" className="text-slate-100 dark:text-slate-800/50" strokeWidth="0.5" strokeDasharray="2,2" />
                     ))}
-                    {/* Orders area + line (behind) */}
+                    {/* Orders line (thin) */}
                     <polygon points={`0,100 ${ordersPoints} 100,100`} fill="url(#ordersGrad)" />
-                    <polyline points={ordersPoints} fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4,3" />
-                    {/* Revenue area + line (front) */}
+                    <polyline points={ordersPoints} fill="none" stroke="#10B981" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4,3" />
+                    {/* Revenue line (thick) */}
                     <polygon points={`0,100 ${points} 100,100`} fill="url(#chartFill)" />
-                    <polyline points={points} fill="none" stroke="#4379EE" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    {points.split(' ').map((p, i) => {
+                    <polyline points={points} fill="none" stroke="#4379EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    {chartData.length <= 20 && points.split(' ').filter((_, i) => i % 3 === 0).map((p, i) => {
                       const [x, y] = p.split(',');
-                      return (i % 3 === 0) ? <circle key={i} cx={x} cy={y} r="1.5" fill="#fff" stroke="#4379EE" strokeWidth="1" /> : null;
+                      return <circle key={i} cx={x} cy={y} r="1.5" fill="#fff" stroke="#4379EE" strokeWidth="1" />;
                     })}
                   </svg>
                 </div>
@@ -616,31 +602,33 @@ export default function Dashboard() {
             {(() => {
               const rawViewsData: {date: string; views: number}[] = analytics?.dailyViews ?? [];
               // Sort chronologically (oldest first)
-              const viewsData = [...rawViewsData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-              const cumulativeViews = viewsData.reduce((acc, item) => {
+              let viewsData = [...rawViewsData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+              // Cumulative running total (all time)
+              viewsData = viewsData.reduce((acc, item) => {
                 const last = acc.length > 0 ? acc[acc.length - 1].views : 0;
                 acc.push({ date: item.date, views: last + (Number(item.views) || 0) });
                 return acc;
               }, [] as {date: string; views: number}[]);
-
-              const maxViews = Math.max(stats.visitors || 0, ...cumulativeViews.map(d => Number(d.views) || 0), 1);
-              const vPoints = cumulativeViews.length > 1
-                ? cumulativeViews.map((d, i) => {
-                    const x = (i / (cumulativeViews.length - 1)) * 100;
+              const maxViewsRaw = Math.max(...viewsData.map(d => Number(d.views) || 0), 1);
+              const step = Math.pow(10, Math.floor(Math.log10(maxViewsRaw))) / 2;
+              const maxViews = Math.ceil(maxViewsRaw / step) * step;
+              const vPoints = viewsData.length > 1
+                ? viewsData.map((d, i) => {
+                    const x = (i / (viewsData.length - 1)) * 100;
                     const y = 100 - ((Number(d.views) || 0) / maxViews) * 100;
                     return `${x},${y}`;
                   }).join(' ')
-                : cumulativeViews.length === 1 ? `0,${100 - ((Number(cumulativeViews[0].views) || 0) / maxViews) * 100} 100,${100 - ((Number(cumulativeViews[0].views) || 0) / maxViews) * 100}` : '0,50 100,50';
+                : viewsData.length === 1 ? `0,${100 - ((Number(viewsData[0].views) || 0) / maxViews) * 100} 100,${100 - ((Number(viewsData[0].views) || 0) / maxViews) * 100}` : '0,50 100,50';
 
-              const yAxisLabels = cumulativeViews.length > 0
+              const yAxisLabels = viewsData.length > 0
                 ? [maxViews, Math.ceil(maxViews * 0.75), Math.ceil(maxViews * 0.5), Math.ceil(maxViews * 0.25), 0]
                 : [0, 0, 0, 0, 0];
-              const xLabels = cumulativeViews.length === 0
+              const xLabels = viewsData.length === 0
                 ? []
                 : (() => {
-                    const step = Math.max(1, Math.floor((cumulativeViews.length - 1) / 5));
-                    return [0, step, step*2, step*3, step*4, cumulativeViews.length - 1]
-                      .filter((v, i, a) => a.indexOf(v) === i && v < cumulativeViews.length);
+                    const step = Math.max(1, Math.floor((viewsData.length - 1) / 5));
+                    return [0, step, step*2, step*3, step*4, viewsData.length - 1]
+                      .filter((v, i, a) => a.indexOf(v) === i && v < viewsData.length);
                   })();
 
               return (

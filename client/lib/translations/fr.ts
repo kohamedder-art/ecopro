@@ -1611,5 +1611,15 @@ export const fr = {
   "chatOrders.timeAgo.now": "À l'instant",
   "chatOrders.timeAgo.minutes": "Il y a {n} min",
   "chatOrders.timeAgo.hours": "Il y a {n}h",
-  "chatOrders.timeAgo.days": "Il y a {n}j"
+  "chatOrders.timeAgo.days": "Il y a {n}j",
+
+  "subscriptionPageLock.title": "Abonnement expiré",
+  "subscriptionPageLock.subtitle": "Cette page nécessite un abonnement actif",
+  "subscriptionPageLock.subtitle.bot": "Tous les bots sont désactivés",
+  "subscriptionPageLock.description": "Votre mois est terminé. Pour débloquer les commandes et le bot, entrez un code de réduction ou contactez le support.",
+  "subscriptionPageLock.description.bot": "Vos bots ne fonctionneront pas jusqu'au renouvellement de votre abonnement. Entrez un code ou contactez le support.",
+  "subscriptionPageLock.getCode": "Obtenir un code d'abonnement",
+  "subscriptionPageLock.contactSupport": "Contacter le support",
+  "subscriptionPageLock.note": "Le support peut émettre un code ou débloquer votre compte après renouvellement.",
+  "subscriptionPageLock.note.bot": "Tous les messages du bot et confirmations de commandes sont en pause jusqu'au renouvellement."
 };

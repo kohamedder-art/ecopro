@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Gift, Lock, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n';
 
 interface SubscriptionPageLockProps {
   children: ReactNode;
@@ -16,6 +17,7 @@ interface SubscriptionPageLockProps {
  * - User can still go to Codes and Chat to request/unlock.
  */
 export default function SubscriptionPageLock({ children }: SubscriptionPageLockProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -89,18 +91,15 @@ export default function SubscriptionPageLock({ children }: SubscriptionPageLockP
               <div className="w-24 h-24 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-amber-500/50">
                 <Lock className="w-12 h-12 text-amber-400" />
               </div>
-              <h2 className="text-2xl font-bold text-amber-300">Subscription Ended</h2>
+              <h2 className="text-2xl font-bold text-amber-300">{t('subscriptionPageLock.title')}</h2>
               <p className="text-amber-200/80 mt-2">
-                {isBotPage ? 'All bots are disabled' : 'This page requires an active subscription'}
+                {isBotPage ? t('subscriptionPageLock.subtitle.bot') : t('subscriptionPageLock.subtitle')}
               </p>
             </div>
 
             <div className="p-6 space-y-4">
               <p className="text-slate-300 text-center">
-                {isBotPage 
-                  ? 'Your bots will not work until you renew your subscription. Enter a voucher code or contact support to restore your service.'
-                  : 'Your month ended. To unlock Orders and Bot, enter a voucher code or contact support.'
-                }
+                {isBotPage ? t('subscriptionPageLock.description.bot') : t('subscriptionPageLock.description')}
               </p>
 
               <div className="space-y-3">
@@ -109,7 +108,7 @@ export default function SubscriptionPageLock({ children }: SubscriptionPageLockP
                   className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white h-12 text-lg font-semibold"
                 >
                   <Gift className="w-5 h-5 mr-2" />
-                  Get Subscription Code
+                  {t('subscriptionPageLock.getCode')}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
 
@@ -119,16 +118,13 @@ export default function SubscriptionPageLock({ children }: SubscriptionPageLockP
                   className="w-full border-slate-600 text-slate-300 hover:bg-slate-800 h-11"
                 >
                   <MessageCircle className="w-5 h-5 mr-2" />
-                  Contact Support
+                  {t('subscriptionPageLock.contactSupport')}
                 </Button>
               </div>
 
               <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
                 <p className="text-sm text-slate-400 text-center">
-                  {isBotPage 
-                    ? 'All bot messages and order confirmations are paused until your subscription is renewed.'
-                    : 'Support can issue a code or unlock your account after renewal.'
-                  }
+                  {isBotPage ? t('subscriptionPageLock.note.bot') : t('subscriptionPageLock.note')}
                 </p>
               </div>
             </div>
