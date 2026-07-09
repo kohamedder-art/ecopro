@@ -45,22 +45,20 @@ interface ConversationFacts {
 // SYSTEM PROMPT — Short, focused, human, no lists, no emojis
 // ═══════════════════════════════════════════════════════════════
 
-const SYSTEM_PROMPT = `أنت مساعد متجر معين، واسم المتجر وجميع معلوماته (المنتجات، الأسعار، التوصيل) مرفقة في سياق المحادثة أدناه. راجع تلك المعلومات قبل الرد لتتحدث باسم المتجر الصحيح.
+const SYSTEM_PROMPT = `أنت موظفة في متجر، واسم المتجر وجميع معلوماته موجودة في السياق أدناه.
 
-تحدث بالعربية الفصحى المبسطة والواضحة.
+شخصيتك: لطيفة، صبورة، تحبين تساعدي الزبائن. تتكلمين بالدارجة أو العربية الفصحى المبسطة - على كيف الزبون.
 
-إذا لم تجد معلومة عن شيء يسأل عنه الزبون، أخبره ببساطة أن هذا غير متوفر حالياً.
+عملك:
+- الزبون يسأل على منتج → تعطيه المعلومات وينصحيه
+- الزبون يسأل على طلبو → تشوفي الطلبات المرفقة في السياق وتعطيه الخبر
+- الزبون يشكي أو عنده مشكل → تسمعيه وتوجهيه لخدمة الزبائن
+- الزبون يحب يطلب → تجمعي المعلومات وتسجلي الطلب
 
-إذا لاحظت أنك تكرر نفس الجملة، توقف فوراً وغير أسلوبك. الزبائن يلاحظون التكرار وينزعجون منه.
+إذا اكتملت معلومات الطلب (المنتج، الكمية، الاسم، الهاتف، الولاية)، أكدي للزبون ثم أضيفي في آخر الرد:
+ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"[اسم المنتج الدقيق]","customerName":"[اسم الزبون]","customerPhone":"[رقم الهاتف]","shippingAddress":"[العنوان]","wilayaName":"[الولاية]","quantity":عدد,"variantColor":"[اللون أو null]"}
 
-إذا طلب الزبون معلومات عن طلباته أو تتبعها، راجع قائمة الطلبات المرفقة في السياق وأخبره بحالة كل طلب. لا تقترح عليه طلب جديد عندما يسأل عن طلب موجود، ولا تقترح له منتجات.
-
-لا تعرض المنتجات أو تبدأ حديث البيع إلا إذا سأل الزبون عن المنتجات صراحة. إذا بدأ الزبون المحادثة بسؤال عن طلبه أو بدون طلب محدد، رحب به واسأله كيف يمكنك مساعدته دون ذكر المنتجات.
-
-إذا قال الزبون لا أو طلب منك التوقف، توقفي فوراً ولا تعودي لذكر الشراء أو الطلب أبداً في نفس المحادثة.
-
-إذا اكتملت بيانات الطلب الخمسة (المنتج، الكمية، الاسم، الهاتف، الولاية)، اكتبي رسالة تأكيد قصيرة ثم اطبقي في نهاية ردك:
-ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"[اسم المنتج الدقيق]","customerName":"[اسم الزبون]","customerPhone":"[رقم الهاتف]","shippingAddress":"[العنوان]","wilayaName":"[الولاية]","quantity":عدد,"variantColor":"[اللون أو null]"}`;
+كوني طبيعية ومفيدة. الزبون يحب يحس أنو يكلم إنسان، لا روبوت.`;
 
 // ═══════════════════════════════════════════════════════════════
 // DISPUTE SHIELD — Hard-coded intercept for complaints/returns
@@ -878,7 +876,7 @@ async function searchProducts(clientId: number, query: string): Promise<string> 
     // First try: full query match with normalized text
     let res = await p.query(
       `SELECT p.title, p.price, p.original_price, p.stock_quantity, p.category, p.id,
-              (SELECT json_agg(json_build_object('color', v.color, 'variant_name', v.variant_name, 'price', v.price, 'stock', v.stock_quantity)) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id AND v.is_active = true) as variants
+              (SELECT json_agg(json_build_object('color', v.color, 'size', v.size, 'size2', v.size2, 'variant_name', v.variant_name, 'price', v.price, 'stock', v.stock_quantity)) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id AND v.is_active = true) as variants
        FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active' AND (p.title ILIKE $2 OR p.description ILIKE $2 OR p.category ILIKE $2) ORDER BY p.is_featured DESC NULLS LAST LIMIT 10`,
       [clientId, `%${normalized}%`]
     );
@@ -891,7 +889,7 @@ async function searchProducts(clientId: number, query: string): Promise<string> 
         const params = [clientId, ...words.map(w => `%${w}%`)];
         res = await p.query(
           `SELECT p.title, p.price, p.original_price, p.stock_quantity, p.category, p.id,
-                  (SELECT json_agg(json_build_object('color', v.color, 'variant_name', v.variant_name, 'price', v.price, 'stock', v.stock_quantity)) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id AND v.is_active = true) as variants
+                  (SELECT json_agg(json_build_object('color', v.color, 'size', v.size, 'size2', v.size2, 'variant_name', v.variant_name, 'price', v.price, 'stock', v.stock_quantity)) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id AND v.is_active = true) as variants
            FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active' AND (${conditions}) ORDER BY p.is_featured DESC NULLS LAST LIMIT 10`,
           params
         );
@@ -906,7 +904,7 @@ async function searchProducts(clientId: number, query: string): Promise<string> 
       else l += ' | الحالة: متوفر';
       if (r.category) l += ` | القسم: ${r.category}`;
       if (r.description) l += ` | الوصف: ${String(r.description).slice(0, 120)}`;
-      const variants = r.variants as Array<{color: string; variant_name: string; price: number; stock: number}> | null;
+      const variants = r.variants as Array<{color: string; size: string; size2: string; variant_name: string; price: number; stock: number}> | null;
       if (variants && variants.length > 0) {
         const colors = variants.filter((v: any) => v.stock > 0).map((v: any) => v.color);
         l += ` | الألوان: ${colors.join('، ')}`;
@@ -1050,6 +1048,8 @@ async function createOrder(data: OrderData): Promise<{ orderId: number; total: n
     add('status', 'pending'); add('payment_status', 'unpaid');
     add('order_source', 'ai_chat'); add('source_platform', data.platform); add('created_at', new Date());
     add('variant_color', data.variantColor || null);
+    add('variant_size', data.variantSize || null);
+    add('variant_size2', data.variantSize2 || null);
 
     const ph = insertVals.map((_, i) => `$${i + 1}`).join(',');
     const result = await p.query(`INSERT INTO store_orders (${insertCols.join(',')}) VALUES (${ph}) RETURNING id, total_price`, insertVals);
