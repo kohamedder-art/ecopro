@@ -602,13 +602,7 @@ export default function Dashboard() {
             {(() => {
               const rawViewsData: {date: string; views: number}[] = analytics?.dailyViews ?? [];
               // Sort chronologically (oldest first)
-              let viewsData = [...rawViewsData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-              // Cumulative running total (all time)
-              viewsData = viewsData.reduce((acc, item) => {
-                const last = acc.length > 0 ? acc[acc.length - 1].views : 0;
-                acc.push({ date: item.date, views: last + (Number(item.views) || 0) });
-                return acc;
-              }, [] as {date: string; views: number}[]);
+              const viewsData = [...rawViewsData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
               const maxViewsRaw = Math.max(...viewsData.map(d => Number(d.views) || 0), 1);
               const step = Math.pow(10, Math.floor(Math.log10(maxViewsRaw))) / 2;
               const maxViews = Math.ceil(maxViewsRaw / step) * step;
