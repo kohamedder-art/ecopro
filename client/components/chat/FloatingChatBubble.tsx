@@ -8,6 +8,8 @@ import { safeJsonParse } from '@/utils/safeJson';
 import { apiFetch } from '@/lib/api';
 import { ChatList } from './ChatList';
 import { ChatWindow } from './ChatWindow';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // AI chat history is persisted server-side at /api/ai/chat-history
 
@@ -620,7 +622,7 @@ export default function FloatingChatBubble() {
                         {m.role === 'assistant' ? (
                           <div className="max-w-[85%] group relative">
                             <div className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-2xl rounded-bl-sm px-3 py-2 text-xs leading-relaxed">
-                              {m.content}
+                              <div className="chat-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div>
                             </div>
                             {m.sources && m.sources.length > 0 && (
                               <div className="mt-1 px-1 space-y-0.5">

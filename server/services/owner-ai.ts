@@ -39,6 +39,7 @@ const SYSTEM_PROMPT = `أنت مساعد ذكي لصاحب متجر على Sahla
 • إذا كرر المستخدم نفس الشكوى → راجع ردودك السابقة واعترف بالخطأ بدل ما تعيد نفس النصيحة.
 • لا تبدأ الرد بترحيب (مرحباً) في كل مرة. جاوب مباشر.
 • ردودك بالدارجة أو العربية الفصحى حسب المستخدم.
+• استخدم **عناوين عريضة** و - قوائم نقطية باش تنظم الرد وتكون القراينة واضحة.
 
 أنت خبير في التجارة الإلكترونية في السوق الجزائري. استخدم خبرتك باش تفيد صاحب المتجر بنصيحة عملية يقدر يطبقها اليوم.`;
 
@@ -104,6 +105,11 @@ export async function handleOwnerMessage(
     }
     answer = validated;
 
+    const topic = detectTopic(question);
+
+    // Save conversation (non-blocking)
+    saveOwnerHistory(clientId, question, answer, topic).catch(() => {});
+
     return { answer, action };
   } catch (err) {
     console.error(`[OwnerAI] Error for client ${clientId}:`, err);
@@ -156,38 +162,28 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
 const DASHBOARD_PATTERNS = /تحقق|لوحة التحكم|يمكنك رؤية|يمكنك الاطلاع|تستطيع رؤية|يمكنك مراجعة|من خلال قسم|في قسم|صفحة.*الإعدادات|تقرير مفصل/i;
 
 function validateResponse(answer: string, question: string, ctx: SlimContext): string {
-  // Only override if the response is a "check dashboard" type AND we have actual data
   if (!DASHBOARD_PATTERNS.test(answer)) return answer;
 
   const q = question.toLowerCase();
 
-  // Questions about orders
+  let md = '';
   if (q.includes('طلبات') || q.includes('طلب')) {
-    if (q.includes('معلق') || q.includes('بانتظار')) {
-      return `عندك ${ctx.pendingOrders} طلب معلق حالياً من أصل ${ctx.totalOrders} طلب إجمالي.`;
-    }
-    return `عندك ${ctx.totalOrders} طلب إجمالي.`;
+    md = `**الطلبات**\n- الإجمالي: ${ctx.totalOrders}\n- المعلقة: ${ctx.pendingOrders}`;
+    return md;
   }
-
-  // Questions about revenue/income
   if (q.includes('دخل') || q.includes('ارباح') || q.includes('أرباح') || q.includes('مبيعات') || q.includes('إيرادات')) {
-    return `الدخل هاد الشهر: ${ctx.totalRevenue.toLocaleString('ar-DZ')} دج.`;
+    md = `**الإيرادات**\n- هذا الشهر: ${ctx.totalRevenue.toLocaleString('ar-DZ')} دج`;
+    return md;
   }
-
-  // Questions about products
   if (q.includes('منتج') || q.includes('منتجات')) {
-    let response = `عندك ${ctx.totalProducts} منتج نشط.`;
-    if (ctx.lowStockProducts.length) response += ` المخزون منخفض: ${ctx.lowStockProducts.join('، ')}.`;
-    if (ctx.topProducts.length) response += ` الأكثر مبيعاً: ${ctx.topProducts.join('، ')}.`;
-    return response;
+    md = `**المنتجات**\n- النشطة: ${ctx.totalProducts}`;
+    if (ctx.lowStockProducts.length) md += `\n- مخزون منخفض: ${ctx.lowStockProducts.join('، ')}`;
+    if (ctx.topProducts.length) md += `\n- الأكثر مبيعاً: ${ctx.topProducts.join('، ')}`;
+    return md;
   }
-
-  // Questions about store name
   if (q.includes('اسم') && (q.includes('متجر') || q.includes('المتجر'))) {
-    return `اسم متجرك: ${ctx.storeName}.`;
+    return `**اسم المتجر:** ${ctx.storeName}`;
   }
-
-  // If we can't match a specific question, return original answer
   return answer;
 }
 
@@ -239,7 +235,6 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
 }
 
 function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: string): string {
-  // Fact sheet — clean, direct, easy for the model to read
   let p = `=== بيانات المتجر ===\n`;
   p += `المتجر: ${ctx.storeName}\n`;
   p += `الطلبات: ${ctx.totalOrders} (${ctx.pendingOrders} معلقة)\n`;
@@ -248,8 +243,29 @@ function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: s
   if (ctx.lowStockProducts?.length) p += `\nمخزون منخفض: ${ctx.lowStockProducts.join('، ')}`;
   if (ctx.topProducts?.length) p += `\nالأكثر مبيعاً: ${ctx.topProducts.join('، ')}`;
 
+  // Past topics from history
+  const pastTopics = history
+    .filter(m => m.parts?.[0]?.text?.startsWith('[topic]'))
+    .map(m => m.parts[0].text.replace('[topic] ', ''))
+    .slice(-3);
+  if (pastTopics.length) {
+    p += `\n\n=== مواضيع سابقة ===\n- ${pastTopics.join('\n- ')}`;
+  }
+
   p += `\n\nسؤال المستخدم: ${question || ''}`;
   return p;
+}
+
+function detectTopic(question: string): string {
+  const q = question.toLowerCase();
+  if (q.includes('طلب') || q.includes('طلبات') || q.includes('اوردر') || q.includes('شحنة') || q.includes('توصيل')) return '📦 طلبات';
+  if (q.includes('منتج') || q.includes('منتجات') || q.includes('مخزون') || q.includes('سلعة')) return '🏷️ منتجات';
+  if (q.includes('دخل') || q.includes('ارباح') || q.includes('مبيعات') || q.includes('إيرادات') || q.includes('ربح') || q.includes('فلوس')) return '💰 مبيعات';
+  if (q.includes('زبون') || q.includes('زبائن') || q.includes('عميل') || q.includes('عملاء') || q.includes('شاري')) return '👤 زبائن';
+  if (q.includes('تسويق') || q.includes('اعلان') || q.includes('دعاية') || q.includes('برومو') || q.includes('اشهار')) return '📢 تسويق';
+  if (q.includes('كوبون') || q.includes('تخفيض') || q.includes('خصم') || q.includes('عرض')) return '🎉 عروض';
+  if (q.includes('متجر') || q.includes('تصميم') || q.includes('شكل') || q.includes('الوان') || q.includes('ثيم')) return '🎨 المتجر';
+  return '💬 عام';
 }
 
 async function searchStoreData(clientId: number, dataType: string, query: string): Promise<any[]> {
@@ -289,14 +305,19 @@ export async function getOwnerHistory(clientId: number): Promise<GeminiContent[]
   try {
     const p = await pool();
     const res = await p.query(`SELECT role, message FROM store_owner_conversations WHERE client_id = $1 ORDER BY created_at DESC LIMIT 8`, [clientId]);
-    return res.rows.reverse().map((r: any) => ({ role: r.role === 'owner' ? 'user' as const : 'model' as const, parts: [{ text: r.message }] }));
+    return res.rows.reverse().map((r: any) => {
+      let text = r.message;
+      if (r.role === 'assistant') text = text.replace(/^\[topic\].*\n?/, '');
+      return { role: r.role === 'owner' ? 'user' as const : 'model' as const, parts: [{ text }] };
+    });
   } catch { return []; }
 }
 
-export async function saveOwnerHistory(clientId: number, message: string, response: string): Promise<void> {
+export async function saveOwnerHistory(clientId: number, message: string, response: string, topic?: string): Promise<void> {
   try {
     const p = await pool();
-    await p.query(`INSERT INTO store_owner_conversations (client_id, role, message) VALUES ($1, 'owner', $2), ($1, 'assistant', $3)`, [clientId, message, response]);
+    const tag = topic ? `[topic] ${topic}\n` : '';
+    await p.query(`INSERT INTO store_owner_conversations (client_id, role, message) VALUES ($1, 'owner', $2), ($1, 'assistant', $3)`, [clientId, message, tag + response]);
     await p.query(`DELETE FROM store_owner_conversations WHERE client_id = $1 AND id NOT IN (SELECT id FROM store_owner_conversations WHERE client_id = $1 ORDER BY created_at DESC LIMIT 50)`, [clientId]).catch(() => {});
   } catch {}
 }

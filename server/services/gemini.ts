@@ -1,28 +1,16 @@
 /**
- * AI Service (DeepInfra with Gemini fallback)
+ * AI Service — uses local bridge server (opencode serve with free models)
  *
  * All AI calls happen SERVER-SIDE only. The API key never reaches the client.
  * Role-Based System Prompts enforce data isolation between user types.
  * Every call injects an [IDENTITY ENFORCEMENT] clause so the model cannot
  * be prompt-injected into accessing unauthorized data.
  *
- * Primary: DeepInfra (Qwen 72B / Llama) via OpenAI-compatible endpoint
- * Fallback: Google Gemini 2.5 Flash (free tier)
- *
  * Quota tracking: All AI calls are tracked per store with monthly limits.
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
-const DEEPINFRA_API_BASE = 'https://api.deepinfra.com/v1/openai';
-
-// Dual-AI Model Strategy
-const OWNER_AI_MODEL = 'Qwen/Qwen2.5-72B-Instruct'; // Better instruction following than Llama 70B
-const CUSTOMER_AI_MODEL = 'Qwen/Qwen2.5-14B-Instruct'; // Customer chat ($0.12/1M input, $0.24/1M output)
-const AI_FALLBACK_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Fallback if primary fails
-const VISION_MODEL = 'meta-llama/Llama-3.2-90B-Vision-Instruct'; // Multimodal — can actually see images
-const MAX_RETRIES = 3;
-const RETRY_DELAYS = [1000, 3000, 6000]; // ms
-const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash';
+const BRIDGE_BASE = process.env.AI_BRIDGE_URL || 'http://127.0.0.1:3456';
+const BRIDGE_KEY = process.env.AI_BRIDGE_KEY || 'sk-bridge-dev';
 
 import { checkQuota, recordUsage, type UserType } from './ai-quota';
 
@@ -345,181 +333,36 @@ async function callAI(
   conversationHistory: GeminiContent[] = [],
   images?: { mimeType: string; base64: string }[],
   temperature: number = 0.7,
-  model?: string,
+  _model?: string,
   maxTokens?: number
 ): Promise<{ text: string; tokensInput: number; tokensOutput: number; totalTokens: number; costUsd: number }> {
-  const apiKey = process.env.DEEPINFRA_API_KEY;
-  if (!apiKey) throw new Error('DEEPINFRA_API_KEY is not configured');
-
-  // Build messages array
-  const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt },
-    ...convertHistory(conversationHistory),
-  ];
-
-  // If images provided, use multimodal content format for vision models
-  const isVisionRequest = images && images.length > 0;
-  if (isVisionRequest) {
-    const visionContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-      { type: 'text', text: userMessage },
-      ...images!.map(img => ({
-        type: 'image_url',
-        image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
-      })),
-    ];
-    messages.push({ role: 'user', content: visionContent });
-  } else {
-    messages.push({ role: 'user', content: userMessage });
+  if (images) {
+    console.warn('[AI] Bridge does not support images, falling back to text-only call');
   }
 
-  const buildBody = (model: string) => {
-    const isCustomer = model !== OWNER_AI_MODEL;
-    return {
-      model,
-      messages,
-      max_tokens: maxTokens || 1024,
+  const res = await fetch(`${BRIDGE_BASE}/ai/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Api-Key': BRIDGE_KEY },
+    body: JSON.stringify({
+      system_prompt: systemPrompt,
+      prompt: userMessage,
+      history: conversationHistory,
       temperature,
-      top_p: 0.95,
-      ...(isCustomer ? { frequency_penalty: 0.5, presence_penalty: 0.4 } : {}),
-    };
-  };
+      max_tokens: maxTokens || 1024,
+    }),
+    signal: AbortSignal.timeout(180000),
+  });
 
-  // Retry with backoff, fallback to smaller model on final attempt
-  try {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      // Use vision model when images are attached, otherwise use the requested or default model
-      const selectedModel = isVisionRequest ? VISION_MODEL : (model || OWNER_AI_MODEL);
-      const useModel = attempt === MAX_RETRIES ? (isVisionRequest ? VISION_MODEL : AI_FALLBACK_MODEL) : selectedModel;
-      const url = `${DEEPINFRA_API_BASE}/chat/completions`;
-
-      let response: Response;
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify(buildBody(useModel)),
-          signal: AbortSignal.timeout(60000),
-        });
-      } catch (err: any) {
-        console.warn(`[AI] Network error on attempt ${attempt + 1}: ${err?.message || err}`);
-        if (attempt < MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
-          continue;
-        }
-        throw new Error(`AI API network error after ${MAX_RETRIES + 1} attempts: ${err?.message || err}`);
-      }
-
-      if (response.ok) {
-        const data: any = await response.json();
-        const text = data?.choices?.[0]?.message?.content;
-        if (!text) throw new Error('Empty response from AI');
-
-        // Extract actual token usage from DeepInfra response
-        const usage = data?.usage || {};
-        const tokensInput = usage.prompt_tokens || 0;
-        const tokensOutput = usage.completion_tokens || 0;
-        const totalTokens = usage.total_tokens || (tokensInput + tokensOutput);
-
-        // Calculate actual cost based on model using separate input/output pricing
-        // DeepInfra pricing (May 2026):
-        //   Qwen2.5-72B-Instruct: $0.36/1M input, $0.40/1M output
-        //   Qwen3-14B:            $0.12/1M input, $0.24/1M output
-        //   Llama-3.2-90B-Vision: $0.15/1M input, $0.60/1M output
-        //   Fallback (7B):        $0.03/1M flat
-        let costUsd = 0;
-        if (useModel === OWNER_AI_MODEL) {
-          costUsd = (tokensInput * 0.36 + tokensOutput * 0.40) / 1_000_000;
-        } else if (useModel === VISION_MODEL) {
-          costUsd = (tokensInput * 0.15 + tokensOutput * 0.60) / 1_000_000;
-        } else if (useModel === AI_FALLBACK_MODEL) {
-          costUsd = totalTokens * 0.03 / 1_000_000;
-        } else {
-          costUsd = (tokensInput * 0.12 + tokensOutput * 0.24) / 1_000_000;
-        }
-
-        return { 
-          text: text.trim(), 
-          tokensInput, 
-          tokensOutput, 
-          totalTokens, 
-          costUsd 
-        };
-      }
-
-      if (response.status === 429) throw new Error('AI_QUOTA_EXCEEDED');
-
-      if (response.status === 503 && attempt < MAX_RETRIES) {
-        console.warn(`[AI] 503 on attempt ${attempt + 1}, retrying in ${RETRY_DELAYS[attempt]}ms...`);
-        await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
-        continue;
-      }
-
-      const errText = await response.text();
-      if (attempt === MAX_RETRIES) {
-        throw new Error(`AI API error ${response.status} (after ${MAX_RETRIES + 1} attempts): ${errText}`);
-      }
-    }
-  } catch (deepInfraError) {
-    const geminiKey = process.env.GOOGLE_AI_API_KEY;
-    if (geminiKey) {
-      console.warn('[AI] DeepInfra failed, falling back to Gemini');
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      const geminiModel = genAI.getGenerativeModel({ model: GEMINI_FALLBACK_MODEL });
-
-      const contents: { role: string; parts: any[] }[] = [];
-
-      for (const h of conversationHistory) {
-        contents.push({
-          role: h.role,
-          parts: [{ text: h.parts.map(p => p.text).join('\n') }],
-        });
-      }
-
-      if (isVisionRequest && images) {
-        const parts: any[] = [{ text: userMessage }];
-        for (const img of images) {
-          parts.push({
-            inlineData: { mimeType: img.mimeType, data: img.base64 },
-          });
-        }
-        contents.push({ role: 'user', parts });
-      } else {
-        contents.push({ role: 'user', parts: [{ text: userMessage }] });
-      }
-
-      try {
-        const result = await geminiModel.generateContent({
-          contents,
-          systemInstruction: { role: 'user', parts: [{ text: systemPrompt }] },
-          generationConfig: {
-            temperature,
-            maxOutputTokens: maxTokens || 1024,
-            topP: 0.95,
-          },
-        });
-
-        const response = result.response;
-        const text = response.text();
-
-        return {
-          text: text.trim(),
-          tokensInput: 0,
-          tokensOutput: 0,
-          totalTokens: 0,
-          costUsd: 0,
-        };
-      } catch (geminiErr: any) {
-        console.error('[AI] Gemini fallback also failed:', geminiErr?.message || geminiErr);
-        throw new Error(`DeepInfra failed and Gemini fallback also failed: ${geminiErr?.message || geminiErr}`);
-      }
-    }
-    throw deepInfraError;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Bridge error ${res.status}: ${text.slice(0, 200)}`);
   }
 
-  throw new Error('AI API: all retries exhausted');
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content || data?.answer || '';
+  if (!text) throw new Error('Empty response from bridge');
+
+  return { text: text.trim(), tokensInput: 0, tokensOutput: 0, totalTokens: 0, costUsd: 0 };
 }
 
 // ─── Search-grounded generation (no native search — uses prompt-based approach) ─
@@ -535,9 +378,8 @@ interface SearchGroundedResult {
 }
 
 /**
- * Generate a response for queries that might benefit from web knowledge.
- * DeepInfra/Llama doesn't have native search grounding, so we rely on the
- * model's training knowledge. Sources array will be empty.
+ * Calls AI with search-grounded context.
+ * Sources array will be empty (bridge doesn't support search).
  */
 async function callAIWithSearch(
   systemPrompt: string,
@@ -597,10 +439,7 @@ export async function generateText(
   const error = validatePrompt(prompt, role);
   if (error) return error;
 
-  // Customer-facing conversations - moderate temperature for coherent, natural responses
-  const temp = role === 'customer' ? 0.7 : 0.7;
-  // Select model based on role
-  const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
+  const temp = 0.7;
 
   // Limit chat history to last 20 messages for customers to keep context
   const limitedHistory = role === 'customer' ? history.slice(-20) : history;
@@ -622,7 +461,7 @@ export async function generateText(
   }
 
   const startTime = Date.now();
-  const aiResponse = await callAI(systemPrompt, prompt, limitedHistory, images, temp, model, maxTokens);
+  const aiResponse = await callAI(systemPrompt, prompt, limitedHistory, images, temp, undefined, maxTokens);
   const duration = Date.now() - startTime;
 
   // Record usage if clientId and userType are provided
@@ -631,7 +470,7 @@ export async function generateText(
       clientId: ctx.clientId,
       userType: ctx.userType,
       platformChatId: ctx.platformChatId,
-      modelUsed: model,
+      modelUsed: 'bridge',
       tokensInput: aiResponse.tokensInput,
       tokensOutput: aiResponse.tokensOutput,
       totalTokens: aiResponse.totalTokens,
@@ -645,8 +484,7 @@ export async function generateText(
 
 /**
  * Generate a text response with search-grounded knowledge.
- * DeepInfra/Llama relies on training data rather than live search.
- * Returns both the text and any web sources used (empty for Llama).
+ * Returns both the text and any web sources used.
  */
 export async function generateTextWithSearch(
   role: AIUserRole,
@@ -661,7 +499,6 @@ export async function generateTextWithSearch(
   if (error) return { text: error, sources: [] };
 
   const temp = 0.7;
-  const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
 
   // Limit chat history to last 20 messages for customers
   const limitedHistory = role === 'customer' ? history.slice(-20) : history;
@@ -679,7 +516,7 @@ export async function generateTextWithSearch(
     }
   }
 
-  const aiResponse = await callAI(systemPrompt, prompt, limitedHistory, undefined, temp, model, maxTokens);
+  const aiResponse = await callAI(systemPrompt, prompt, limitedHistory, undefined, temp, undefined, maxTokens);
 
   // Record usage if clientId and userType are provided
   if (ctx.clientId && ctx.userType) {
@@ -687,7 +524,7 @@ export async function generateTextWithSearch(
       clientId: ctx.clientId,
       userType: ctx.userType,
       platformChatId: ctx.platformChatId,
-      modelUsed: model,
+      modelUsed: 'bridge',
       tokensInput: aiResponse.tokensInput,
       tokensOutput: aiResponse.tokensOutput,
       totalTokens: aiResponse.totalTokens,
@@ -711,21 +548,20 @@ export async function generateJSON<T = any>(
 ): Promise<T> {
   const systemPrompt = buildSystemPrompt(role, ctx);
   const jsonPrompt = `${prompt}\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no explanation text.`;
-  const model = role === 'customer' ? CUSTOMER_AI_MODEL : OWNER_AI_MODEL;
 
   if (ctx.clientId && ctx.userType) {
     const quotaStatus = await checkQuota(ctx.clientId, ctx.userType);
     if (!quotaStatus.allowed) return '{}' as T;
   }
 
-  const aiResponse = await callAI(systemPrompt, jsonPrompt, [], images, 0.7, model);
+  const aiResponse = await callAI(systemPrompt, jsonPrompt, [], images, 0.7);
 
   if (ctx.clientId && ctx.userType) {
     await recordUsage({
       clientId: ctx.clientId,
       userType: ctx.userType,
       platformChatId: ctx.platformChatId,
-      modelUsed: model,
+      modelUsed: 'bridge',
       tokensInput: aiResponse.tokensInput,
       tokensOutput: aiResponse.tokensOutput,
       totalTokens: aiResponse.totalTokens,
@@ -780,14 +616,14 @@ export async function analyzeProductImage(
 Context: This is for the Algerian market. Currency is DZD (Algerian Dinar). Prices should be realistic for Algeria.
 IMPORTANT: Respond ONLY with valid JSON. No markdown fences.`;
 
-  const aiResponse = await callAI(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }], 0.7, OWNER_AI_MODEL);
+  const aiResponse = await callAI(systemPrompt, prompt, [], [{ mimeType, base64: imageBase64 }], 0.7);
 
   if (ctx.clientId && ctx.userType) {
     await recordUsage({
       clientId: ctx.clientId,
       userType: ctx.userType,
       platformChatId: ctx.platformChatId,
-      modelUsed: OWNER_AI_MODEL,
+      modelUsed: 'bridge',
       tokensInput: aiResponse.tokensInput,
       tokensOutput: aiResponse.tokensOutput,
       totalTokens: aiResponse.totalTokens,

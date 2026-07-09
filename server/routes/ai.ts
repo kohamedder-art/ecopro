@@ -1160,9 +1160,6 @@ router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
       // Use clean owner AI
       const { answer, action } = await handleOwnerMessage(clientId, question, geminiHistory);
 
-      // Save conversation (non-blocking)
-      saveOwnerHistory(clientId, question, answer).catch(() => {});
-
       return res.json({ answer, ...(action ? { action } : {}) });
     }
 
