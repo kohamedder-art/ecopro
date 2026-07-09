@@ -54,16 +54,23 @@ function parseBody(req) {
 }
 
 async function ocFetch(method, path, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 180000);
   const opts = {
     method,
     headers: { 'Authorization': AUTH_HEADER, 'Content-Type': 'application/json' },
+    signal: controller.signal,
   };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${OPENCODE_BASE}${path}`, opts);
-  const text = await res.text();
-  if (!res.ok) throw new Error(`opencode ${path}: ${res.status} ${text.slice(0, 200)}`);
-  try { return JSON.parse(text); }
-  catch { return text; }
+  try {
+    const res = await fetch(`${OPENCODE_BASE}${path}`, opts);
+    const text = await res.text();
+    if (!res.ok) throw new Error(`opencode ${path}: ${res.status} ${text.slice(0, 200)}`);
+    try { return JSON.parse(text); }
+    catch { return text; }
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // In-memory session store: clientId -> opencode sessionId
@@ -215,4 +222,20 @@ server.listen(BRIDGE_PORT, '0.0.0.0', () => {
   Auth: X-Api-Key header
   CORS: ${PRODUCTION_URL}
   `);
+
+  // Warm up: pre-create a session so the first user request isn't slow
+  (async () => {
+    try {
+      const warm = await ocFetch('POST', '/session', { title: 'bridge-warmup' });
+      await ocFetch('POST', `/session/${warm.id}/message`, {
+        parts: [{ type: 'text', text: 'مرحبا' }],
+        agent: DEFAULT_AGENT,
+        model: DEFAULT_MODEL,
+        noReply: true,
+      });
+      console.log('  🔥 Warm-up complete, model is loaded');
+    } catch (e) {
+      console.log('  Warm-up skipped (first request may be slow):', e.message.slice(0, 60));
+    }
+  })();
 });
