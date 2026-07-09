@@ -666,6 +666,11 @@ body {
 }
 
 /* Chat markdown styles */
+.chat-markdown {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
 .chat-markdown strong {
   font-weight: 700;
 }
