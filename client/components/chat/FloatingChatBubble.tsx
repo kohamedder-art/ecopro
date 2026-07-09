@@ -726,13 +726,14 @@ export default function FloatingChatBubble() {
                     >
                       <ImagePlus className="w-3.5 h-3.5" />
                     </button>
-                    <input
+                    <textarea
                       value={aiInput}
                       onChange={(e) => setAiInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendAI(); } }}
                       placeholder={aiAttachedImage ? t('chat.askAboutImage') : t('chat.askQuestion')}
                       disabled={aiLoading}
-                      className="flex-1 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                      rows={1}
+                      className="flex-1 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 resize-none overflow-y-auto min-h-[34px] max-h-[100px]"
                     />
                     <button
                       onClick={() => void sendAI()}
