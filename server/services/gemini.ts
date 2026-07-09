@@ -342,7 +342,7 @@ async function callAI(
 
   const res = await fetch(`${BRIDGE_BASE}/ai/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Api-Key': BRIDGE_KEY },
+    headers: { 'Content-Type': 'application/json', 'X-Api-Key': BRIDGE_KEY, 'User-Agent': 'Sahla4Eco/1.0' },
     body: JSON.stringify({
       system_prompt: systemPrompt,
       prompt: userMessage,
