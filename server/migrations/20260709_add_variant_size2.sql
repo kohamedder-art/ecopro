@@ -16,6 +16,6 @@ ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS variant_size2 TEXT;
 ALTER TABLE client_stock_variants ADD COLUMN IF NOT EXISTS size2 TEXT NULL;
 
 -- Update stock variants unique index
-DROP INDEX IF EXISTS uniq_stock_variants_product_color_size;
-CREATE UNIQUE INDEX uniq_stock_variants_product_color_size
-  ON client_stock_variants (product_id, LOWER(COALESCE(color, '')), LOWER(COALESCE(size, '')), LOWER(COALESCE(size2, '')));
+DROP INDEX IF EXISTS uniq_client_stock_variants_stock_color_size;
+CREATE UNIQUE INDEX uniq_client_stock_variants_stock_color_size
+  ON client_stock_variants (stock_id, LOWER(COALESCE(color, '')), LOWER(COALESCE(size, '')), LOWER(COALESCE(size2, '')));
