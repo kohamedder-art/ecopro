@@ -497,11 +497,9 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
   const { store_name, store_description, store_slug } = sRes.rows[0];
 
   const prodRes = await p.query(
-    `SELECT title, price, original_price, stock_quantity, category, description,
-            (SELECT json_agg(json_build_object('quantity', o.quantity, 'bundle_price', o.bundle_price, 'free_delivery', o.free_delivery)) FROM product_offers o WHERE o.product_id = p.id AND o.client_id = p.client_id AND o.is_active = true) as offers,
-            (SELECT json_agg(json_build_object('name', v.variant_name, 'value', v.variant_name, 'price', v.price, 'stock', v.stock_quantity, 'inStock', (v.stock_quantity > 0))) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id) as variants
+    `SELECT title, price, original_price, stock_quantity, category, description
      FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active'
-     ORDER BY p.is_featured DESC NULLS LAST, p.created_at DESC LIMIT 30`, [clientId]
+     ORDER BY p.is_featured DESC NULLS LAST, p.created_at DESC LIMIT 10`, [clientId]
   );
 
   // Load per-wilaya delivery prices
@@ -556,11 +554,9 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
     products: prodRes.rows.map((r: any) => ({
       title: r.title, price: Number(r.price),
       originalPrice: r.original_price ? Number(r.original_price) : undefined,
-      description: r.description ? String(r.description).slice(0, 200) : undefined,
+      description: r.description ? String(r.description).slice(0, 100) : undefined,
       inStock: (r.stock_quantity ?? 1) > 0, stockQuantity: r.stock_quantity,
       category: r.category || undefined,
-      variants: Array.isArray(r.variants) ? r.variants : undefined,
-      offers: Array.isArray(r.offers) ? r.offers : undefined,
     })),
     deliveryInfo,
     aiInstructions: aiRes.rows[0]?.ai_instructions || undefined,
@@ -645,7 +641,7 @@ async function getHistory(clientId: number, platform: Platform, chatId: string):
   try {
     const p = await pool();
     const res = await p.query(
-      `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 ORDER BY created_at DESC LIMIT 10`,
+      `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 ORDER BY created_at DESC LIMIT 5`,
       [clientId, platform, chatId]
     );
     return res.rows.reverse().map((r: any) => ({ role: r.role === 'customer' ? 'user' as const : 'model' as const, parts: [{ text: r.message }] }));
@@ -877,7 +873,7 @@ async function searchProducts(clientId: number, query: string): Promise<string> 
     let res = await p.query(
       `SELECT p.title, p.price, p.original_price, p.stock_quantity, p.category, p.id,
               (SELECT json_agg(json_build_object('color', v.color, 'size', v.size, 'size2', v.size2, 'variant_name', v.variant_name, 'price', v.price, 'stock', v.stock_quantity)) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id AND v.is_active = true) as variants
-       FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active' AND (p.title ILIKE $2 OR p.description ILIKE $2 OR p.category ILIKE $2) ORDER BY p.is_featured DESC NULLS LAST LIMIT 10`,
+       FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active' AND (p.title ILIKE $2 OR p.description ILIKE $2 OR p.category ILIKE $2) ORDER BY p.is_featured DESC NULLS LAST LIMIT 5`,
       [clientId, `%${normalized}%`]
     );
 
@@ -890,7 +886,7 @@ async function searchProducts(clientId: number, query: string): Promise<string> 
         res = await p.query(
           `SELECT p.title, p.price, p.original_price, p.stock_quantity, p.category, p.id,
                   (SELECT json_agg(json_build_object('color', v.color, 'size', v.size, 'size2', v.size2, 'variant_name', v.variant_name, 'price', v.price, 'stock', v.stock_quantity)) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id AND v.is_active = true) as variants
-           FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active' AND (${conditions}) ORDER BY p.is_featured DESC NULLS LAST LIMIT 10`,
+           FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active' AND (${conditions}) ORDER BY p.is_featured DESC NULLS LAST LIMIT 5`,
           params
         );
       }
@@ -903,7 +899,7 @@ async function searchProducts(clientId: number, query: string): Promise<string> 
       if (r.stock_quantity !== null && r.stock_quantity <= 0) l += ' | الحالة: غير متوفر';
       else l += ' | الحالة: متوفر';
       if (r.category) l += ` | القسم: ${r.category}`;
-      if (r.description) l += ` | الوصف: ${String(r.description).slice(0, 120)}`;
+      if (r.description) l += ` | الوصف: ${String(r.description).slice(0, 60)}`;
       const variants = r.variants as Array<{color: string; size: string; size2: string; variant_name: string; price: number; stock: number}> | null;
       if (variants && variants.length > 0) {
         const colors = variants.filter((v: any) => v.stock > 0).map((v: any) => v.color);
@@ -973,7 +969,7 @@ async function loadOrders(clientId: number, phone: string): Promise<string> {
               (SELECT de.description FROM delivery_events de WHERE de.order_id = o.id ORDER BY de.created_at DESC LIMIT 1) as last_event,
               (SELECT de.event_type FROM delivery_events de WHERE de.order_id = o.id ORDER BY de.created_at DESC LIMIT 1) as event_type
        FROM store_orders o LEFT JOIN client_store_products p ON p.id = o.product_id LEFT JOIN delivery_companies dc ON dc.id = o.delivery_company_id
-       WHERE o.client_id = $1 AND o.customer_phone = $2 ORDER BY o.created_at DESC LIMIT 5`, [clientId, phone]
+       WHERE o.client_id = $1 AND o.customer_phone = $2 ORDER BY o.created_at DESC LIMIT 3`, [clientId, phone]
     );
     if (!res.rows.length) return '';
     const labels: Record<string, string> = { pending: 'لم يُشحن بعد', assigned: 'تم تعيين شركة التوصيل', picked_up: 'تم الاستلام', in_transit: 'في الطريق', out_for_delivery: 'خرج للتوصيل', delivered: 'تم التسليم بالفعل', failed: 'فشلت محاولة التوصيل', returned: 'تم الإرجاع' };
