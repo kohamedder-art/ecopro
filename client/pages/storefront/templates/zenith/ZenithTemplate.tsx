@@ -225,6 +225,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   // ── STORE GRID VIEW (multi-product, no product selected) ──
   const showStoreGrid = !currentSlug && (products?.length || 0) > 1;
+  const [gridImageIndex, setGridImageIndex] = useState<Record<number, number>>({});
 
   // Scroll direction detection for hiding header
   const gridLastScrollYRef = useRef(0);
@@ -313,7 +314,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
             {products?.map((product: any, index: number) => {
-              const thumb = product.images?.[0] || '';
+              const thumb = product.images?.[gridImageIndex[product.id] || 0] || product.images?.[0] || '';
               const price = product.price || 0;
               const hasVideo = product.metadata?.video_url;
               const discount = product.original_price && product.original_price > price
@@ -358,16 +359,34 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                     {/* Swipe arrows */}
                     {product.images && product.images.length > 1 && (
                       <>
-                        <div className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const total = product.images.length;
+                            const current = gridImageIndex[product.id] || 0;
+                            setGridImageIndex(prev => ({ ...prev, [product.id]: (current - 1 + total) % total }));
+                          }}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10 p-1"
+                        >
                           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="15 18 9 12 15 6"/>
                           </svg>
-                        </div>
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md">
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const total = product.images.length;
+                            const current = gridImageIndex[product.id] || 0;
+                            setGridImageIndex(prev => ({ ...prev, [product.id]: (current + 1) % total }));
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10 p-1"
+                        >
                           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="9 18 15 12 9 6"/>
                           </svg>
-                        </div>
+                        </button>
                       </>
                     )}
                   </div>
