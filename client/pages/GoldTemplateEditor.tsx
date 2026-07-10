@@ -2271,9 +2271,9 @@ export default function GoldTemplateEditor() {
                             <input
                               type="text"
                               placeholder="أو الصق رابط صورة..."
-                              value={settings.template_bg_image?.startsWith('linear') ? '' : (settings.template_bg_image || '')}
+                              value={settings.template_bg_image?.startsWith('linear') || settings.template_bg_image?.startsWith('radial') ? '' : (settings.template_bg_image || '')}
                               onChange={(e) => handleSettingChange('template_bg_image', e.target.value)}
-                              className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                              className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 truncate"
                             />
                             {settings.template_bg_image && (
                               <button
