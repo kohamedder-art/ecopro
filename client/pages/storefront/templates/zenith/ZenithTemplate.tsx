@@ -473,8 +473,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
         
         {/* ── ORDER FORM ── */}
-        <div ref={formRef} className="p-5 pb-24" id="checkout-form">
-          <div className="rounded-2xl p-5 shadow-sm relative" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}` }}>
+        <div ref={formRef} className="py-5 pb-24" id="checkout-form">
+          <div className="rounded-none p-5 shadow-sm relative" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}`, borderLeft: 'none', borderRight: 'none' }}>
             <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
               أكمل البيانات للطلب
             </div>
