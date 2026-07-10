@@ -2215,7 +2215,7 @@ export default function GoldTemplateEditor() {
                             <span className="text-xs font-mono text-slate-500">{settings.template_bg_color || '#ffffff'}</span>
                           </div>
                           <div className="flex gap-2">
-                            <input type="color" value={settings.template_bg_color || '#ffffff'} onChange={(e) => handleSettingChange('template_bg_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
+                             <input type="color" value={settings.template_bg_color || '#ffffff'} onChange={(e) => handleSettingChange('template_bg_color', e.target.value)} onInput={(e) => handleSettingChange('template_bg_color', (e.target as HTMLInputElement).value)} onBlur={(e) => handleSettingChange('template_bg_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
                             <div className="flex-1 flex gap-1">
                                {['#ffffff', '#f8fafc', '#f9f8f6', '#0a0a0a', '#080808', '#0f172a'].map(color => (
                                   <button key={color} onClick={() => handleSettingChange('template_bg_color', color)} className="flex-1 rounded-lg border border-slate-300 dark:border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
