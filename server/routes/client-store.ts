@@ -1103,7 +1103,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       'hero_video_url', // Video hero support
       // Template customization fields
       'template_hero_heading', 'template_hero_subtitle', 'template_button_text', 'template_accent_color',
-      'template_bg_color', 'template_text_color', 'template_muted_color',
+      'template_bg_color', 'template_bg_image', 'template_hotspot_image', 'template_text_color', 'template_muted_color',
       'template_header_bg', 'template_header_text',
       'template_hero_title_color', 'template_hero_title_size',
       'template_hero_subtitle_color', 'template_hero_subtitle_size',
@@ -1143,6 +1143,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       'template_button_text',
       'template_accent_color',
       'template_bg_color',
+      'template_bg_image',
       'hero_main_url',
       'hero_tile1_url',
       'hero_tile2_url',
