@@ -240,6 +240,7 @@ export default function Store() {
     id?: number;
     color?: string;
     size?: string;
+    size2?: string;
     variant_name?: string;
     price?: number;
     stock_quantity: number;
@@ -331,6 +332,7 @@ export default function Store() {
           id: v.id,
           color: v.color ?? '',
           size: v.size ?? '',
+          size2: v.size2 ?? '',
           variant_name: v.variant_name ?? '',
           price: v.price == null ? undefined : Number(v.price),
           stock_quantity: Number(v.stock_quantity ?? 0),
@@ -360,6 +362,7 @@ export default function Store() {
           ...(v.id ? { id: v.id } : {}),
           color: (v.color || '').trim() || undefined,
           size: (v.size || '').trim() || undefined,
+          size2: (v.size2 || '').trim() || undefined,
           variant_name: (v.variant_name || '').trim() || undefined,
           price: v.price === undefined || v.price === null || Number.isNaN(Number(v.price)) ? undefined : Number(v.price),
           stock_quantity: Number(v.stock_quantity ?? 0),
@@ -1905,7 +1908,7 @@ export default function Store() {
                             .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
                             .map((v: any) => {
                               const id = Number(v.id);
-                              const label = String(v.variant_name || '').trim() || [v.color, v.size].filter(Boolean).join(' / ') || 'Variant';
+                              const label = String(v.variant_name || '').trim() || [v.color, v.size, v.size2].filter(Boolean).join(' / ') || 'Variant';
                               const checked = selectedInventoryVariantIds.includes(id);
                               return (
                                 <label key={id} className="flex items-center justify-between gap-2 px-2 py-1.5 border-b last:border-b-0 cursor-pointer">
@@ -2311,27 +2314,34 @@ export default function Store() {
               const CLOTHING = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
               const SHOES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
 
-              // Derive selected colors & sizes from existing draft
+              // Derive selected colors, sizes & sizes2 from existing draft
               const existingColors = [...new Set(variantsDraft.map(v => (v.color || '').trim()).filter(Boolean))];
               const existingSizes = [...new Set(variantsDraft.map(v => (v.size || '').trim()).filter(Boolean))];
+              const existingSizes2 = [...new Set(variantsDraft.map(v => (v.size2 || '').trim()).filter(Boolean))];
 
               const splitColors = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean);
 
-              // Helper: generate all combos from selected colors × sizes
-              const generateCombos = (colors: string[], sizes: string[]) => {
+              // Generate 3D combos from colors × sizes × sizes2
+              const generateCombos = (colors: string[], sizes: string[], sizes2: string[]) => {
                 const newVariants: typeof variantsDraft = [];
-                const existingKeys = new Set(variantsDraft.map(v => `${(v.color||'').trim()}|${(v.size||'').trim()}`));
-                for (const c of colors) {
-                  for (const s of sizes) {
-                    if (!existingKeys.has(`${c}|${s}`)) {
-                      newVariants.push({
-                        color: c,
-                        size: s,
-                        variant_name: '',
-                        stock_quantity: 0,
-                        is_active: true,
-                        sort_order: variantsDraft.length + newVariants.length,
-                      });
+                const existingKeys = new Set(variantsDraft.map(v => `${(v.color||'').trim()}|${(v.size||'').trim()}|${(v.size2||'').trim()}`));
+                const cArr = colors.length > 0 ? colors : [''];
+                const sArr = sizes.length > 0 ? sizes : [''];
+                const s2Arr = sizes2.length > 0 ? sizes2 : [''];
+                for (const c of cArr) {
+                  for (const s of sArr) {
+                    for (const s2 of s2Arr) {
+                      if (!existingKeys.has(`${c}|${s}|${s2}`)) {
+                        newVariants.push({
+                          color: c || '',
+                          size: s || '',
+                          size2: s2 || '',
+                          variant_name: '',
+                          stock_quantity: 0,
+                          is_active: true,
+                          sort_order: variantsDraft.length + newVariants.length,
+                        });
+                      }
                     }
                   }
                 }
@@ -2342,18 +2352,14 @@ export default function Store() {
               const toggleColor = (colorName: string) => {
                 const has = existingColors.includes(colorName);
                 if (has) {
-                  // Remove all variants with this color
                   setVariantsDraft(prev => prev.filter(v => (v.color || '').trim() !== colorName));
                 } else {
-                  // Add variants for this color × all existing sizes
-                  const sizesToUse = existingSizes.length > 0 ? existingSizes : [''];
-                  const newOnes = generateCombos([colorName], sizesToUse);
+                  const newOnes = generateCombos([colorName], existingSizes, existingSizes2);
                   if (newOnes.length > 0) {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
-                    // No sizes yet, add one empty
                     setVariantsDraft(prev => [...prev, {
-                      color: colorName, size: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
+                      color: colorName, size: '', size2: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
                     }]);
                   }
                 }
@@ -2361,19 +2367,37 @@ export default function Store() {
                 setVariantsLoaded(true);
               };
 
-              // Toggle size: add/remove all variants of that size
+              // Toggle size (letter): add/remove all variants of that size
               const toggleSize = (sizeName: string) => {
                 const has = existingSizes.includes(sizeName);
                 if (has) {
                   setVariantsDraft(prev => prev.filter(v => (v.size || '').trim() !== sizeName));
                 } else {
-                  const colorsToUse = existingColors.length > 0 ? existingColors : [''];
-                  const newOnes = generateCombos(colorsToUse, [sizeName]);
+                  const newOnes = generateCombos(existingColors, [sizeName], existingSizes2);
                   if (newOnes.length > 0) {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
                     setVariantsDraft(prev => [...prev, {
-                      color: '', size: sizeName, variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
+                      color: '', size: sizeName, size2: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
+                    }]);
+                  }
+                }
+                setVariantsDirty(true);
+                setVariantsLoaded(true);
+              };
+
+              // Toggle size2 (number): add/remove all variants of that size2
+              const toggleSize2 = (size2Name: string) => {
+                const has = existingSizes2.includes(size2Name);
+                if (has) {
+                  setVariantsDraft(prev => prev.filter(v => (v.size2 || '').trim() !== size2Name));
+                } else {
+                  const newOnes = generateCombos(existingColors, existingSizes, [size2Name]);
+                  if (newOnes.length > 0) {
+                    setVariantsDraft(prev => [...prev, ...newOnes]);
+                  } else {
+                    setVariantsDraft(prev => [...prev, {
+                      color: '', size: '', size2: size2Name, variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
                     }]);
                   }
                 }
@@ -2495,15 +2519,15 @@ export default function Store() {
                   </div>
                 </div>
                 
-                {/* ═══ STEP 2: Pick Sizes ═══ */}
+                {/* ═══ STEP 2: Pick Letter Sizes ═══ */}
                 <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
                   <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
                       <Ruler className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <span className="text-sm font-bold text-slate-800 dark:text-white">② اختر المقاسات المتوفرة</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 block">اضغط على كل مقاس متوفر لديك</span>
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">② اختر مقاسات الملابس (اختياري)</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">مثل S, M, L, XL</span>
                     </div>
                     {existingSizes.length > 0 && (
                       <span className="text-xs font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-300 px-2.5 py-1 rounded-full">
@@ -2520,32 +2544,6 @@ export default function Store() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {CLOTHING.map((s) => {
-                          const selected = existingSizes.includes(s);
-                          return (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() => toggleSize(s)}
-                              className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                                selected
-                                  ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105'
-                                  : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-                              }`}
-                            >
-                              {s}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    {/* Shoes */}
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <Footprints className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">أحذية</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {SHOES.map((s) => {
                           const selected = existingSizes.includes(s);
                           return (
                             <button
@@ -2585,15 +2583,79 @@ export default function Store() {
                   </div>
                 </div>
 
-                {/* ═══ STEP 3: Generated Variants Table ═══ */}
-                {variantsDraft.length > 0 && (
+                {/* ═══ STEP 3: Pick Number Sizes (Shoe sizes) ═══ */}
                 <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
                   <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                      <Footprints className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">③ اختر المقاسات الرقمية (اختياري)</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">مثل 39, 40, 41 للأحذية</span>
+                    </div>
+                    {existingSizes2.length > 0 && (
+                      <span className="text-xs font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2.5 py-1 rounded-full">
+                        {existingSizes2.length} مقاس
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {/* Shoes */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Footprints className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">أحذية</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {SHOES.map((s) => {
+                          const selected = existingSizes2.includes(s);
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => toggleSize2(s)}
+                              className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                selected
+                                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25 scale-105'
+                                  : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                              }`}
+                            >
+                              {s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* Custom size2 */}
+                    <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 w-fit">
+                      <Plus className="h-4 w-4 text-slate-400" />
+                      <Input
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = (e.target as HTMLInputElement).value.trim();
+                            if (val && !existingSizes2.includes(val)) {
+                              toggleSize2(val);
+                              (e.target as HTMLInputElement).value = '';
+                            }
+                          }
+                        }}
+                        placeholder="مقاس رقمي آخر + Enter"
+                        className="h-7 w-28 border-0 p-0 text-sm bg-transparent focus-visible:ring-0 shadow-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ═══ STEP 4: Generated Variants Table ═══ */}
+                {variantsDraft.length > 0 && (
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
                       <Package className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <span className="text-sm font-bold text-slate-800 dark:text-white">③ المخزون لكل نوع</span>
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">④ المخزون لكل نوع</span>
                       <span className="text-xs text-slate-500 dark:text-slate-400 block">أدخل الكمية المتوفرة لكل نوع</span>
                     </div>
                     <span className="text-xs font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2.5 py-1 rounded-full">
@@ -2696,6 +2758,13 @@ export default function Store() {
                               v.size ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
                             }`}>
                               {v.size || '—'}
+                            </span>
+
+                            {/* Size2 badge */}
+                            <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${
+                              v.size2 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
+                            }`}>
+                              {v.size2 || '—'}
                             </span>
 
                             {/* Stock input */}

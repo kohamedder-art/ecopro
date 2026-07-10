@@ -260,7 +260,7 @@ export const createOrder: RequestHandler = async (req, res) => {
     let variantRow: any | null = null;
     if (variant_id) {
       const vRes = await pool.query(
-        `SELECT id, color, size, variant_name, price, stock_quantity, is_active
+        `SELECT id, color, size, size2, variant_name, price, stock_quantity, is_active
          FROM product_variants
          WHERE id = $1 AND product_id = $2 AND client_id = $3 AND is_active = true
          LIMIT 1`,
@@ -355,6 +355,7 @@ export const createOrder: RequestHandler = async (req, res) => {
     addCol('variant_id', variantRow ? Number(variantRow.id) : null);
     addCol('variant_color', variantRow ? (variantRow.color || null) : null);
     addCol('variant_size', variantRow ? (variantRow.size || null) : null);
+    addCol('variant_size2', variantRow ? (variantRow.size2 || null) : null);
     addCol('variant_name', variantRow ? (variantRow.variant_name || null) : null);
     addCol('unit_price', unitPrice);
     addCol('offer_id', offerRow ? Number(offerRow.id) : null);
@@ -760,7 +761,7 @@ export const createClientOrder: RequestHandler = async (req, res) => {
       // Resolve variant if given
       if (resolvedVariantId) {
         const vRes = await pool.query(
-          `SELECT id, price, variant_name, color, size FROM product_variants
+          `SELECT id, price, variant_name, color, size, size2 FROM product_variants
            WHERE id = $1 AND product_id = $2 AND client_id = $3 AND is_active = true LIMIT 1`,
           [resolvedVariantId, resolvedProductId, clientId]
         );
@@ -771,6 +772,7 @@ export const createClientOrder: RequestHandler = async (req, res) => {
         addCol('variant_name', variant.variant_name || null);
         addCol('variant_color', variant.color || null);
         addCol('variant_size', variant.size || null);
+        addCol('variant_size2', variant.size2 || null);
       }
     }
 
@@ -955,6 +957,7 @@ export const getClientOrders: RequestHandler = async (req, res) => {
         o.variant_id,
         o.variant_color,
         o.variant_size,
+        o.variant_size2,
         o.variant_name,
         o.unit_price,
         o.customer_name,
@@ -1060,7 +1063,7 @@ export const getChatOrders: RequestHandler = async (req, res) => {
         o.delivery_type, o.created_at, o.updated_at,
         o.order_source, o.source_platform,
         o.tracking_number, o.delivery_status,
-        o.variant_id, o.variant_color, o.variant_size, o.variant_name,
+        o.variant_id, o.variant_color, o.variant_size, o.variant_size2, o.variant_name,
         COALESCE(cp.title, 'Deleted Product') as product_title,
         COALESCE(cp.images, '{}') as product_images
        FROM store_orders o
@@ -1506,7 +1509,7 @@ export const updateClientOrder: RequestHandler = async (req, res) => {
     let variantRow: any | null = null;
     if (newVariantId != null) {
       const vRes = await client.query(
-        `SELECT id, color, size, variant_name, price, stock_quantity, is_active
+        `SELECT id, color, size, size2, variant_name, price, stock_quantity, is_active
          FROM product_variants
          WHERE id = $1 AND product_id = $2 AND client_id = $3 AND is_active = true
          LIMIT 1`,
@@ -1598,13 +1601,14 @@ export const updateClientOrder: RequestHandler = async (req, res) => {
            variant_id = $10,
            variant_color = $11,
            variant_size = $12,
-           variant_name = $13,
-           unit_price = $14,
-           quantity = $15,
-           total_price = $16,
-           cod_amount = $16,
+           variant_size2 = $13,
+           variant_name = $14,
+           unit_price = $15,
+           quantity = $16,
+           total_price = $17,
+           cod_amount = $17,
            updated_at = NOW()
-       WHERE id = $17 AND client_id = $18
+       WHERE id = $18 AND client_id = $19
        RETURNING *`,
       [
         String(newCustomerName),
@@ -1619,6 +1623,7 @@ export const updateClientOrder: RequestHandler = async (req, res) => {
         newVariantId == null ? null : Number(newVariantId),
         variantRow ? (variantRow.color || null) : null,
         variantRow ? (variantRow.size || null) : null,
+        variantRow ? (variantRow.size2 || null) : null,
         variantRow ? (variantRow.variant_name || null) : null,
         unitPrice,
         newQuantity,

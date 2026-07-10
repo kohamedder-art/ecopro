@@ -9,6 +9,7 @@ const VariantSchema = z
     id: z.preprocess((v) => (v === null || v === undefined || v === '' ? undefined : Number(v)), z.number().int().positive()).optional(),
     color: z.preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().max(160)).optional(),
     size: z.preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().max(80)).optional(),
+    size2: z.preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().max(80)).optional(),
     variant_name: z.preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().max(160)).optional(),
     price: z
       .preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().positive())
@@ -26,10 +27,10 @@ const PutVariantsSchema = z
   })
   .strict();
 
-function computeVariantName(v: { color?: string; size?: string; variant_name?: string }) {
+function computeVariantName(v: { color?: string; size?: string; size2?: string; variant_name?: string }) {
   const explicit = String(v.variant_name || '').trim();
   if (explicit) return explicit;
-  const parts = [String(v.color || '').trim(), String(v.size || '').trim()].filter(Boolean);
+  const parts = [String(v.color || '').trim(), String(v.size || '').trim(), String(v.size2 || '').trim()].filter(Boolean);
   return parts.join(' / ') || null;
 }
 
@@ -45,7 +46,7 @@ export const getClientProductVariants: RequestHandler = async (req, res) => {
     if (!owns.rowCount) return res.status(404).json({ error: 'Product not found' });
 
     const result = await pool.query(
-      `SELECT id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+      `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
        FROM product_variants
        WHERE product_id = $1 AND client_id = $2
        ORDER BY sort_order ASC, id ASC`,
@@ -87,7 +88,8 @@ export const putClientProductVariants: RequestHandler = async (req, res) => {
     for (const v of data.variants) {
       const color = v.color != null && String(v.color).trim() ? String(v.color).trim() : null;
       const size = v.size != null && String(v.size).trim() ? String(v.size).trim() : null;
-      const variantName = computeVariantName({ color: color || undefined, size: size || undefined, variant_name: v.variant_name });
+      const size2 = v.size2 != null && String(v.size2).trim() ? String(v.size2).trim() : null;
+      const variantName = computeVariantName({ color: color || undefined, size: size || undefined, size2: size2 || undefined, variant_name: v.variant_name });
       const price = v.price === undefined ? null : Number(v.price);
       const stockQty = Number(v.stock_quantity);
       const images = Array.isArray(v.images) ? v.images : null;
@@ -100,23 +102,24 @@ export const putClientProductVariants: RequestHandler = async (req, res) => {
           `UPDATE product_variants
            SET color = $1,
                size = $2,
-               variant_name = $3,
-               price = $4,
-               stock_quantity = $5,
-               images = $6,
-               is_active = $7,
-               sort_order = $8,
+               size2 = $3,
+               variant_name = $4,
+               price = $5,
+               stock_quantity = $6,
+               images = $7,
+               is_active = $8,
+               sort_order = $9,
                updated_at = NOW()
-           WHERE id = $9 AND product_id = $10 AND client_id = $11`,
-          [color, size, variantName, price, stockQty, images, isActive, sortOrder, v.id, productId, clientId]
+           WHERE id = $10 AND product_id = $11 AND client_id = $12`,
+          [color, size, size2, variantName, price, stockQty, images, isActive, sortOrder, v.id, productId, clientId]
         );
       } else {
         const inserted = await client.query(
           `INSERT INTO product_variants
-           (client_id, product_id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           (client_id, product_id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
            RETURNING id`,
-          [clientId, productId, color, size, variantName, price, stockQty, images, isActive, sortOrder]
+          [clientId, productId, color, size, size2, variantName, price, stockQty, images, isActive, sortOrder]
         );
         keepIds.add(Number(inserted.rows[0].id));
       }
@@ -148,7 +151,7 @@ export const putClientProductVariants: RequestHandler = async (req, res) => {
     inTransaction = false;
 
     const out = await pool.query(
-      `SELECT id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+      `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
        FROM product_variants
        WHERE product_id = $1 AND client_id = $2
        ORDER BY sort_order ASC, id ASC`,

@@ -8,7 +8,8 @@
     "tunnel": "node tunnel.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "localtunnel": "^2.0.2"
   }
 }

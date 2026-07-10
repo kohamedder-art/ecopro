@@ -2024,7 +2024,7 @@ ${urls}
                     if (productIds.length > 0) {
                       try {
                         const vRes = await dbPool2.query(
-                          `SELECT id, product_id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+                          `SELECT id, product_id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
                            FROM product_variants
                            WHERE product_id = ANY($1) AND is_active = true
                            ORDER BY sort_order ASC, id ASC`,

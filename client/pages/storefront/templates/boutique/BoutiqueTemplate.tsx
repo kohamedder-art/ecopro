@@ -271,7 +271,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       image: variant?.images?.[0] || product.images?.[0] || '',
       qty: 1,
       variant_id: variant?.id,
-      variant_name: variant?.variant_name || [variant?.color, variant?.size].filter(Boolean).join(' / ') || undefined,
+      variant_name: variant?.variant_name || [variant?.color, variant?.size, variant?.size2].filter(Boolean).join(' / ') || undefined,
     };
     setCart(prev => {
       const exists = prev.find(i => i.id === item.id && i.variant_id === item.variant_id);

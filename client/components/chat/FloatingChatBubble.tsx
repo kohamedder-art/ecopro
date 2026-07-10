@@ -44,7 +44,7 @@ export default function FloatingChatBubble() {
   // AI mode for client users
   type ChatMode = 'admin' | 'ai';
   const [chatMode, setChatMode] = useState<ChatMode>('admin');
-  type AIMsg = { role: 'user' | 'assistant'; content: string; imageUrl?: string; sources?: { title: string; uri: string }[] };
+  type AIMsg = { role: 'user' | 'assistant'; content: string; imageUrl?: string; sources?: { title: string; uri: string }[]; createdAt?: number };
   type AIAction = {
     type: string;
     orderId?: number;
@@ -133,7 +133,7 @@ export default function FloatingChatBubble() {
     if (!file) return;
     if (!file.type.startsWith('image/')) return;
     if (file.size > 4 * 1024 * 1024) {
-      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Image is too large (max 4MB). Please choose a smaller one.' }]);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Image is too large (max 4MB). Please choose a smaller one.', createdAt: Date.now() }]);
       return;
     }
     const csrfMatch = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
@@ -164,7 +164,7 @@ export default function FloatingChatBubble() {
     if (!message) setAiInput('');
     setAiAttachedImage(null);
     setPendingAction(null);
-    const userMsg: AIMsg = { role: 'user', content: q || '(image attached)', ...(attachedImg ? { imageUrl: attachedImg } : {}) };
+    const userMsg: AIMsg = { role: 'user', content: q || '(image attached)', ...(attachedImg ? { imageUrl: attachedImg } : {}), createdAt: Date.now() };
     const next: AIMsg[] = [...aiMessages, userMsg];
     setAiMessages(next);
     setAiLoading(true);
@@ -211,7 +211,7 @@ export default function FloatingChatBubble() {
         await new Promise(r => setTimeout(r, 1500));
         result = await attempt();
       }
-      const assistantMsg: AIMsg = { role: 'assistant', content: result.answer, ...(result.sources?.length ? { sources: result.sources } : {}) };
+      const assistantMsg: AIMsg = { role: 'assistant', content: result.answer, ...(result.sources?.length ? { sources: result.sources } : {}), createdAt: Date.now() };
       setAiMessages([...next, assistantMsg]);
       const csrfSave = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
       const csrfTok = csrfSave ? decodeURIComponent(csrfSave[1]) : '';
@@ -230,7 +230,7 @@ export default function FloatingChatBubble() {
         setPendingAction(result.action as AIAction);
       }
     } catch {
-      setAiMessages([...next, { role: 'assistant', content: 'Could not reach the AI service. Please check your connection and try again.' }]);
+      setAiMessages([...next, { role: 'assistant', content: 'Could not reach the AI service. Please check your connection and try again.', createdAt: Date.now() }]);
     } finally {
       setAiLoading(false);
     }
@@ -249,12 +249,12 @@ export default function FloatingChatBubble() {
       const data = await res.json();
       if (res.ok) {
         const preview = data.preview ? `\n\n> ${data.preview}` : '';
-        setAiMessages(prev => [...prev, { role: 'assistant', content: `✓ ${data.message}${preview}` }]);
+        setAiMessages(prev => [...prev, { role: 'assistant', content: `✓ ${data.message}${preview}`, createdAt: Date.now() }]);
       } else {
-        setAiMessages(prev => [...prev, { role: 'assistant', content: `Could not apply bot action: ${data.error}` }]);
+        setAiMessages(prev => [...prev, { role: 'assistant', content: `Could not apply bot action: ${data.error}`, createdAt: Date.now() }]);
       }
     } catch {
-      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Failed to apply bot action. Please check your connection.' }]);
+        setAiMessages(prev => [...prev, { role: 'assistant', content: 'Failed to apply bot action. Please check your connection.', createdAt: Date.now() }]);
     }
   };
 
@@ -273,7 +273,7 @@ export default function FloatingChatBubble() {
           body: JSON.stringify(pendingAction),
         });
         const data = await res.json();
-        setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ ${data.message}` : `Could not complete: ${data.error}` }]);
+        setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ ${data.message}` : `Could not complete: ${data.error}`, createdAt: Date.now() }]);
         setPendingAction(null);
         setActionLoading(false);
         return;
@@ -287,7 +287,7 @@ export default function FloatingChatBubble() {
           body: JSON.stringify(pendingAction),
         });
         const data = await res.json();
-        setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ ${data.message}` : `Could not complete: ${data.error}` }]);
+        setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ ${data.message}` : `Could not complete: ${data.error}`, createdAt: Date.now() }]);
         if (res.ok) {
           // Refresh template editor preview if it's open
           queryClient.invalidateQueries({ queryKey: ['storeSettings'] });
@@ -304,9 +304,9 @@ export default function FloatingChatBubble() {
         body: JSON.stringify({ orderId: pendingAction.orderId, newStatus: pendingAction.newStatus }),
       });
       const data = await res.json();
-      setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ Done — ${data.message}` : `Could not update the order: ${data.error}` }]);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ Done — ${data.message}` : `Could not update the order: ${data.error}`, createdAt: Date.now() }]);
     } catch {
-      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Failed to complete action. Please check your connection.' }]);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Failed to complete action. Please check your connection.', createdAt: Date.now() }]);
     } finally {
       setActionLoading(false);
       setPendingAction(null);
@@ -418,11 +418,7 @@ export default function FloatingChatBubble() {
           <div className="fixed inset-0 z-[9999] bg-black/20 backdrop-blur-[2px] sm:hidden" onClick={closeMessenger} />
 
           <div
-            className={`fixed z-[10000] bottom-0 border border-white/20 dark:border-white/10 flex flex-col overflow-hidden ${isEditorPage ? 'left-0' : 'right-0'} ${
-              expanded
-                ? '!z-[99999] bg-white dark:bg-slate-900 backdrop-blur-2xl shadow-2xl w-full sm:!w-[576px] sm:!rounded-[24px] sm:!bottom-[88px] sm:!right-6 !rounded-t-[20px]'
-                : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl shadow-2xl w-full sm:w-96 sm:rounded-[24px] rounded-t-[20px] sm:right-6 sm:bottom-[88px]'
-            }`}
+            className={'fixed z-[10000] bottom-0 border border-white/20 dark:border-white/10 flex flex-col overflow-hidden transition-all duration-300 ease-out ' + (isEditorPage ? 'left-0' : 'right-0') + ' ' + (expanded ? '!z-[99999] bg-white dark:bg-slate-900 backdrop-blur-2xl shadow-2xl w-full sm:!w-[576px] sm:!rounded-[24px] sm:!bottom-[88px] sm:!right-6 !rounded-t-[20px]' : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl shadow-2xl w-full sm:w-96 sm:rounded-[24px] rounded-t-[20px] sm:right-6 sm:bottom-[88px]') + ' ' + (open ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0')}
             style={{
               ...(expanded ? { top: 'calc(64px + 8px)', maxHeight: '840px' } : { height: 'min(560px, calc(100dvh - 32px))' }),
               animation: 'fcb-slide-up 180ms ease',
@@ -430,7 +426,7 @@ export default function FloatingChatBubble() {
             onWheel={(e) => e.stopPropagation()}
           >
             {/* ─ Header ─ */}
-            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 flex-shrink-0">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 dark:bg-slate-800 flex-shrink-0">
               <div className="flex items-center gap-2">
                   {!isAdmin ? (
                     <div className="flex items-center gap-2">
@@ -608,7 +604,7 @@ export default function FloatingChatBubble() {
                               key={si}
                               onClick={() => void sendAI(sq)}
                               disabled={aiLoading}
-                              className="w-full text-left text-[11px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-40"
+                              className="w-full text-left text-[11px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 truncate overflow-hidden whitespace-nowrap"
                             >
                               {sq}
                             </button>
@@ -618,48 +614,58 @@ export default function FloatingChatBubble() {
                     )}
 
                     {aiMessages.map((m, i) => (
-                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        {m.role === 'assistant' ? (
-                          <div className="max-w-[85%] group relative">
+                      <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'} ${i > 0 ? 'mt-2.5' : ''}`}>
+                        {m.role === 'assistant' && (
+                          <div className="w-6 h-6 mt-0.5 rounded-full bg-slate-700 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
+                            <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                          </div>
+                        )}
+                        <div className={`max-w-[80%] group relative ${m.role === 'user' ? 'order-first' : ''}`}>
+                          {m.role === 'assistant' ? (
                             <div className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-2xl rounded-bl-sm px-3 py-2 text-xs leading-relaxed">
                               <div className="chat-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div>
                             </div>
-                            {m.sources && m.sources.length > 0 && (
-                              <div className="mt-1 px-1 space-y-0.5">
-                                <p className="text-[9px] font-semibold text-violet-500 dark:text-violet-400 flex items-center gap-0.5">
-                                  <ExternalLink className="w-2.5 h-2.5" />
-                                  {t('chat.sources', { count: m.sources.length })}
-                                </p>
-                                {m.sources.slice(0, 5).map((src, si) => (
-                                  <a
-                                    key={si}
-                                    href={src.uri}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block text-[9px] text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 truncate transition-colors"
-                                    title={src.uri}
-                                  >
-                                    {src.title}
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-                            <button
-                              onClick={() => copyAIMessage(m.content, i)}
-                              className="absolute -top-1 -right-1 w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                              title={t('chat.copy')}
-                            >
-                              {copiedIdx === i ? <Check className="w-2.5 h-2.5 text-green-500" /> : <Copy className="w-2.5 h-2.5" />}
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="max-w-[85%] bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-2xl rounded-br-sm px-3 py-2 text-xs leading-relaxed">
-                            {m.imageUrl && (
-                              <img src={m.imageUrl} alt={t('chat.imageAttached')} className="max-w-full max-h-32 rounded-lg mb-2 object-cover" />
-                            )}
-                            {m.content !== '(image attached)' && m.content}
-                          </div>
-                        )}
+                          ) : (
+                            <div className="bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-2xl rounded-br-sm px-3 py-2 text-xs leading-relaxed">
+                              {m.imageUrl && (
+                                <img src={m.imageUrl} alt={t('chat.imageAttached')} className="max-w-full max-h-32 rounded-lg mb-2 object-cover" />
+                              )}
+                              {m.content !== '(image attached)' && <div className="chat-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div>}
+                            </div>
+                          )}
+                          {m.createdAt && (
+                            <p className={`text-[9px] text-slate-400 dark:text-slate-500 mt-0.5 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+                              {new Date(m.createdAt).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                          {m.sources && m.sources.length > 0 && (
+                            <div className="mt-1 px-1 space-y-0.5">
+                              <p className="text-[9px] font-semibold text-violet-500 dark:text-violet-400 flex items-center gap-0.5">
+                                <ExternalLink className="w-2.5 h-2.5" />
+                                {t('chat.sources', { count: m.sources.length })}
+                              </p>
+                              {m.sources.slice(0, 5).map((src, si) => (
+                                <a
+                                  key={si}
+                                  href={src.uri}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block text-[9px] text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 truncate transition-colors"
+                                  title={src.uri}
+                                >
+                                  {src.title}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => copyAIMessage(m.content, i)}
+                            className="absolute -top-1 -right-1 w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                            title={t('chat.copy')}
+                          >
+                            {copiedIdx === i ? <Check className="w-2.5 h-2.5 text-green-500" /> : <Copy className="w-2.5 h-2.5" />}
+                          </button>
+                        </div>
                       </div>
                     ))}
 

@@ -5,6 +5,7 @@ export interface SelectedVariant {
   id: number;
   color: string | null;
   size: string | null;
+  size2: string | null;
   variant_name: string | null;
   price: number | null;
   images: string[] | null;
@@ -21,6 +22,9 @@ interface VariantSelectorProps {
   dir?: 'rtl' | 'ltr';
   /** Show visual color thumbnails like Temu instead of color circles */
   visualMode?: boolean;
+  /** Labels for size selectors */
+  sizeLabel?: string;
+  size2Label?: string;
 }
 
 /** Map common color names (Arabic + English + French) to hex  */
@@ -88,61 +92,74 @@ export default function VariantSelector({
 }: VariantSelectorProps) {
   if (!variants || variants.length === 0) return null;
 
-  // Determine available color and size groups
-  const { colors, sizes, hasColors, hasSizes } = useMemo(() => {
+  // Determine available color, size and size2 groups
+  const { colors, sizes, sizes2, hasColors, hasSizes, hasSizes2 } = useMemo(() => {
     const colorSet = new Map<string, { hex: string | null; name: string }>();
     const sizeSet = new Set<string>();
+    const size2Set = new Set<string>();
     for (const v of variants) {
       if (v.color) {
         const hex = resolveColor(v.color);
         colorSet.set(v.color, { hex, name: v.color });
       }
       if (v.size) sizeSet.add(v.size);
+      if (v.size2) size2Set.add(v.size2);
     }
     return {
       colors: Array.from(colorSet.values()),
       sizes: Array.from(sizeSet),
+      sizes2: Array.from(size2Set),
       hasColors: colorSet.size > 0,
       hasSizes: sizeSet.size > 0,
+      hasSizes2: size2Set.size > 0,
     };
   }, [variants]);
 
   // Current selections (trimmed for robust matching)
   const selectedColor = selected?.color?.trim() || null;
   const selectedSize = selected?.size?.trim() || null;
+  const selectedSize2 = selected?.size2?.trim() || null;
 
-  // Find matching variant for a color+size combo
-  const findVariant = (color: string | null, size: string | null): ProductVariant | undefined => {
-    // Try exact match first
+  // Find matching variant for a color+size+size2 combo
+  const findVariant = (color: string | null, size: string | null, size2: string | null): ProductVariant | undefined => {
     const exact = variants.find(v => {
       const colorMatch = !hasColors || v.color === color;
       const sizeMatch = !hasSizes || v.size === size;
-      return colorMatch && sizeMatch;
+      const size2Match = !hasSizes2 || v.size2 === size2;
+      return colorMatch && sizeMatch && size2Match;
     });
     if (exact) return exact;
-    // Fallback: match by size only (pick first variant with that size)
-    if (size && !exact) {
-      return variants.find(v => v.size === size);
-    }
-    // Fallback: match by color only
-    if (color && !exact) {
-      return variants.find(v => v.color === color);
-    }
+    // Fallbacks
+    if (size && size2) return variants.find(v => v.size === size && v.size2 === size2);
+    if (size) return variants.find(v => v.size === size);
+    if (size2) return variants.find(v => v.size2 === size2);
+    if (color) return variants.find(v => v.color === color);
     return undefined;
   };
 
-  // Which sizes are still in stock for the selected color?
+  // Which sizes are still in stock for the selected color+size2?
   const availableSizes = useMemo(() => {
-    if (!hasColors || !selectedColor) {
-      // No color selected — only show sizes with at least one in-stock variant
-      return new Set(
-        variants.filter(v => v.stock_quantity == null || v.stock_quantity > 0).map(v => v.size).filter(Boolean) as string[]
-      );
-    }
+    const filtered = variants.filter(v => {
+      if (hasColors && selectedColor && v.color !== selectedColor) return false;
+      if (hasSizes2 && selectedSize2 && v.size2 !== selectedSize2) return false;
+      return true;
+    });
     return new Set(
-      variants.filter(v => v.color === selectedColor && (v.stock_quantity == null || v.stock_quantity > 0)).map(v => v.size).filter(Boolean) as string[]
+      filtered.filter(v => v.stock_quantity == null || v.stock_quantity > 0).map(v => v.size).filter(Boolean) as string[]
     );
-  }, [variants, selectedColor, hasColors, sizes]);
+  }, [variants, selectedColor, selectedSize2, hasColors, hasSizes2]);
+
+  // Which sizes2 are still in stock for the selected color+size?
+  const availableSizes2 = useMemo(() => {
+    const filtered = variants.filter(v => {
+      if (hasColors && selectedColor && v.color !== selectedColor) return false;
+      if (hasSizes && selectedSize && v.size !== selectedSize) return false;
+      return true;
+    });
+    return new Set(
+      filtered.filter(v => v.stock_quantity == null || v.stock_quantity > 0).map(v => v.size2).filter(Boolean) as string[]
+    );
+  }, [variants, selectedColor, selectedSize, hasColors, hasSizes]);
 
   // Check if a specific variant is out of stock
   const isVariantOutOfStock = (variant: ProductVariant | undefined): boolean => {
@@ -161,15 +178,17 @@ export default function VariantSelector({
       onSelect(null);
       return;
     }
-    // Auto-select: prefer variant with both color+size, fall back to color-only
+    // Auto-select: prefer variant with all dimensions
+    const withAll = variants.find(v => v.color === colorName && v.size && v.size2);
     const withSize = variants.find(v => v.color === colorName && v.size);
-    const colorOnly = variants.find(v => v.color === colorName);
-    const firstMatch = withSize || colorOnly;
+    const withSize2 = variants.find(v => v.color === colorName && v.size2);
+    const firstMatch = withAll || withSize || withSize2 || variants.find(v => v.color === colorName);
     if (firstMatch) {
       onSelect({
         id: firstMatch.id,
         color: firstMatch.color,
         size: firstMatch.size,
+        size2: firstMatch.size2,
         variant_name: firstMatch.variant_name,
         price: firstMatch.price,
         images: firstMatch.images,
@@ -178,28 +197,61 @@ export default function VariantSelector({
   };
 
   const handleSizeClick = (size: string) => {
-    if (selectedSize === size && !hasColors) {
+    if (selectedSize === size && !hasColors && !hasSizes2) {
       onSelect(null);
       return;
     }
-    const match = findVariant(selectedColor, size);
+    const match = findVariant(selectedColor, size, selectedSize2);
     if (match && !isVariantOutOfStock(match)) {
       onSelect({
         id: match.id,
         color: match.color,
         size: match.size,
+        size2: match.size2,
         variant_name: match.variant_name,
         price: match.price,
         images: match.images,
       });
-    } else if (hasColors && !selectedColor) {
-      // No color selected yet — pick the first in-stock variant with this size
+    } else if ((hasColors || hasSizes2) && !selectedColor && !selectedSize2) {
       const fallback = variants.find(v => v.size === size && (v.stock_quantity == null || v.stock_quantity > 0));
       if (fallback) {
         onSelect({
           id: fallback.id,
           color: fallback.color,
           size: fallback.size,
+          size2: fallback.size2,
+          variant_name: fallback.variant_name,
+          price: fallback.price,
+          images: fallback.images,
+        });
+      }
+    }
+  };
+
+  const handleSize2Click = (size2: string) => {
+    if (selectedSize2 === size2 && !hasColors && !hasSizes) {
+      onSelect(null);
+      return;
+    }
+    const match = findVariant(selectedColor, selectedSize, size2);
+    if (match && !isVariantOutOfStock(match)) {
+      onSelect({
+        id: match.id,
+        color: match.color,
+        size: match.size,
+        size2: match.size2,
+        variant_name: match.variant_name,
+        price: match.price,
+        images: match.images,
+      });
+    } else if ((hasColors || hasSizes) && !selectedColor && !selectedSize) {
+      const fallback = variants.find(v => v.size2 === size2 && (v.stock_quantity == null || v.stock_quantity > 0));
+      if (fallback) {
+        onSelect({
+          id: fallback.id,
+          color: fallback.color,
+          size: fallback.size,
+          size2: fallback.size2,
           variant_name: fallback.variant_name,
           price: fallback.price,
           images: fallback.images,
@@ -371,6 +423,41 @@ export default function VariantSelector({
                   }}
                 >
                   {size}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Size2 selector (number sizes like 39, 40, 41) */}
+      {hasSizes2 && (
+        <div className="flex flex-col gap-2.5">
+          <span className="text-sm font-semibold opacity-70">
+            {size2Label || 'المقاس الرقمي'}{selectedSize2 ? `: ${selectedSize2}` : ''}
+          </span>
+          <div className="flex flex-wrap gap-2.5">
+            {sizes2.map(size2 => {
+              const isAvailable = availableSizes2.has(size2);
+              const isActive = selectedSize2 === size2;
+              return (
+                <button
+                  key={size2}
+                  type="button"
+                  disabled={!isAvailable}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSize2Click(size2); }}
+                  className="min-w-[52px] h-12 px-5 rounded-2xl text-sm font-bold transition-all duration-200 border-2"
+                  style={{
+                    backgroundColor: isActive ? accentColor : '#fff',
+                    borderColor: isActive ? accentColor : '#e5e7eb',
+                    color: isActive ? '#fff' : '#374151',
+                    opacity: isAvailable ? 1 : 0.35,
+                    cursor: isAvailable ? 'pointer' : 'not-allowed',
+                    boxShadow: isActive ? `0 4px 14px ${accentColor}30` : '0 1px 3px rgba(0,0,0,0.06)',
+                    transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                  }}
+                >
+                  {size2}
                 </button>
               );
             })}

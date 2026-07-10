@@ -175,12 +175,12 @@ export default function OrderConfirmation() {
                     <span className="text-gray-600">{t('orderConfirmation.label.product')}:</span>
                     <span className="font-semibold text-gray-800">{order.product_title}</span>
                   </div>
-                  {(order.variant_name || order.variant_color || order.variant_size) && (
+                  {(order.variant_name || order.variant_color || order.variant_size || order.variant_size2) && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">{t('orderConfirmation.label.variant')}:</span>
                       <span className="font-semibold text-gray-800">
                         {String(order.variant_name || '').trim() ||
-                          [String(order.variant_color || '').trim(), String(order.variant_size || '').trim()]
+                          [String(order.variant_color || '').trim(), String(order.variant_size || '').trim(), String(order.variant_size2 || '').trim()]
                             .filter(Boolean)
                             .join(' / ')}
                       </span>

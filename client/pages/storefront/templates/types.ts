@@ -6,6 +6,7 @@ export interface ProductVariant {
   product_id: number;
   color: string | null;
   size: string | null;
+  size2: string | null;
   variant_name: string | null;
   price: number | null;
   stock_quantity: number;

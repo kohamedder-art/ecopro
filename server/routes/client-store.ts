@@ -196,6 +196,7 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
       is_featured,
       metadata,
       sizes,
+      sizes2,
       colors,
       source_stock_id,
       stock_variant_ids,
@@ -362,7 +363,7 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
               null,
               description || null,
               category || null,
-              Array.isArray(sizes) ? sizes : [],
+              Array.isArray(sizes) ? [...sizes, ...(Array.isArray(sizes2) ? sizes2 : [])] : (Array.isArray(sizes2) ? sizes2 : []),
               Array.isArray(colors) ? colors : [],
               qty,
               price == null ? null : Number(price),
@@ -439,10 +440,10 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
       }
     }
 
-    const computeVariantName = (v: { color?: string | null; size?: string | null; variant_name?: string | null }) => {
+    const computeVariantName = (v: { color?: string | null; size?: string | null; size2?: string | null; variant_name?: string | null }) => {
       const explicit = String(v.variant_name || '').trim();
       if (explicit) return explicit;
-      const parts = [String(v.color || '').trim(), String(v.size || '').trim()].filter(Boolean);
+      const parts = [String(v.color || '').trim(), String(v.size || '').trim(), String(v.size2 || '').trim()].filter(Boolean);
       return parts.join(' / ') || null;
     };
 
@@ -461,13 +462,13 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
       let stockVariants: any[] = [];
       try {
         const variantsRes = await client.query(
-          `SELECT id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
-           FROM client_stock_variants
-           WHERE client_id = $1 AND stock_id = $2 AND id = ANY($3::bigint[])
-           ORDER BY sort_order ASC, id ASC`,
-          [clientId, importStockId, uniqueImportVariantIds]
-        );
-        stockVariants = Array.isArray(variantsRes.rows) ? variantsRes.rows : [];
+        `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
+         FROM client_stock_variants
+         WHERE client_id = $1 AND stock_id = $2 AND id = ANY($3::bigint[])
+         ORDER BY sort_order ASC, id ASC`,
+        [clientId, importStockId, uniqueImportVariantIds]
+      );
+      stockVariants = Array.isArray(variantsRes.rows) ? variantsRes.rows : [];
       } catch (err: any) {
         if (err?.code === '42P01') {
           await client.query('ROLLBACK');
@@ -489,11 +490,12 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
       for (const sv of stockVariants) {
         const color = sv.color != null && String(sv.color).trim() ? String(sv.color).trim() : null;
         const size = sv.size != null && String(sv.size).trim() ? String(sv.size).trim() : null;
-        const key = `${String(color || '').toLowerCase()}::${String(size || '').toLowerCase()}`;
+        const size2 = sv.size2 != null && String(sv.size2).trim() ? String(sv.size2).trim() : null;
+        const key = String(color || '').toLowerCase() + '::' + String(size || '').toLowerCase() + '::' + String(size2 || '').toLowerCase();
         if (seenKey.has(key)) continue;
         seenKey.add(key);
 
-        const variantName = computeVariantName({ color, size, variant_name: sv.variant_name });
+        const variantName = computeVariantName({ color, size, size2, variant_name: sv.variant_name });
         const vPrice = sv.price == null ? null : Number(sv.price);
         const vStock = Number(sv.stock_quantity ?? 0);
         const vImages = Array.isArray(sv.images) ? sv.images : null;
@@ -502,9 +504,9 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
 
         await client.query(
           `INSERT INTO product_variants
-           (client_id, product_id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-          [clientId, product.id, color, size, variantName, vPrice, vStock, vImages, isActive, sortOrder]
+           (client_id, product_id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          [clientId, product.id, color, size, size2, variantName, vPrice, vStock, vImages, isActive, sortOrder]
         );
       }
 
@@ -538,23 +540,47 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
     };
 
     const normalizedSizes = normalizeOptionList(sizes);
+    const normalizedSizes2 = normalizeOptionList(sizes2);
     const normalizedColors = normalizeOptionList(colors);
 
-    if (!importFromStockVariants && (normalizedSizes.length || normalizedColors.length)) {
+    if (!importFromStockVariants && (normalizedSizes.length || normalizedSizes2.length || normalizedColors.length)) {
       const hasSize = normalizedSizes.length > 0;
+      const hasSize2 = normalizedSizes2.length > 0;
       const hasColor = normalizedColors.length > 0;
 
-      const combos: Array<{ color: string | null; size: string | null }> = [];
-      if (hasColor && hasSize) {
+      const combos: Array<{ color: string | null; size: string | null; size2: string | null }> = [];
+      if (hasColor && hasSize && hasSize2) {
         for (const c of normalizedColors) {
           for (const s of normalizedSizes) {
-            combos.push({ color: c, size: s });
+            for (const s2 of normalizedSizes2) {
+              combos.push({ color: c, size: s, size2: s2 });
+            }
+          }
+        }
+      } else if (hasColor && hasSize) {
+        for (const c of normalizedColors) {
+          for (const s of normalizedSizes) {
+            combos.push({ color: c, size: s, size2: null });
+          }
+        }
+      } else if (hasColor && hasSize2) {
+        for (const c of normalizedColors) {
+          for (const s2 of normalizedSizes2) {
+            combos.push({ color: c, size: null, size2: s2 });
+          }
+        }
+      } else if (hasSize && hasSize2) {
+        for (const s of normalizedSizes) {
+          for (const s2 of normalizedSizes2) {
+            combos.push({ color: null, size: s, size2: s2 });
           }
         }
       } else if (hasColor) {
-        for (const c of normalizedColors) combos.push({ color: c, size: null });
+        for (const c of normalizedColors) combos.push({ color: c, size: null, size2: null });
       } else if (hasSize) {
-        for (const s of normalizedSizes) combos.push({ color: null, size: s });
+        for (const s of normalizedSizes) combos.push({ color: null, size: s, size2: null });
+      } else if (hasSize2) {
+        for (const s2 of normalizedSizes2) combos.push({ color: null, size: null, size2: s2 });
       }
 
       const total = Math.max(0, Number(stock_quantity || 0));
@@ -566,19 +592,20 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
         const combo = combos[i];
         const qty = base + (remainder > 0 ? 1 : 0);
         if (remainder > 0) remainder--;
-        const nameParts = [combo.color || '', combo.size || ''].map((x) => String(x).trim()).filter(Boolean);
+        const nameParts = [combo.color || '', combo.size || '', combo.size2 || ''].map((x) => String(x).trim()).filter(Boolean);
         const variantName = nameParts.length ? nameParts.join(' / ') : null;
 
         // Best-effort insert; unique index prevents duplicates.
         await client.query(
-          `INSERT INTO product_variants (client_id, product_id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          `INSERT INTO product_variants (client_id, product_id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
            ON CONFLICT DO NOTHING`,
           [
             clientId,
             product.id,
             combo.color,
             combo.size,
+            combo.size2,
             variantName,
             null,
             qty,

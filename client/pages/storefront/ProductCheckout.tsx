@@ -1428,7 +1428,7 @@ export default function ProductCheckout() {
                             const out = Number(v?.stock_quantity ?? 0) <= 0;
                             const label =
                               String(v?.variant_name || '').trim() ||
-                              [String(v?.color || '').trim(), String(v?.size || '').trim()]
+                              [String(v?.color || '').trim(), String(v?.size || '').trim(), String(v?.size2 || '').trim()]
                                 .filter(Boolean)
                                 .join(' / ') ||
                               `خيار رقم ${v.id}`;

@@ -141,7 +141,7 @@ export class DeliveryService {
       const productTitle = String((order as any)?.product_title || '').trim();
       const variantLabel =
         String(order.variant_name || '').trim() ||
-        [order.variant_color, order.variant_size].filter((v: any) => v != null && String(v).trim().length > 0).join(' / ');
+        [order.variant_color, order.variant_size, order.variant_size2].filter((v: any) => v != null && String(v).trim().length > 0).join(' / ');
       const productDescription = (() => {
         const base = productTitle || 'Products';
         const withVariant = variantLabel ? `${base} (${variantLabel})` : base;

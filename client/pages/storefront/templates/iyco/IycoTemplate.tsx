@@ -149,7 +149,7 @@ export default function IycoTemplate({
         image: product.images?.[0] || '/placeholder.png',
         qty: 1,
         variant_id: vid,
-        variant_name: variant ? (variant.variant_name || [variant.color, variant.size].filter(Boolean).join(' / ')) : undefined,
+        variant_name: variant ? (variant.variant_name || [variant.color, variant.size, variant.size2].filter(Boolean).join(' / ')) : undefined,
       }];
     });
     trackAllPixels(PixelEvents.ADD_TO_CART, {

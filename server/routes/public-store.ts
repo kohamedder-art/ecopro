@@ -213,7 +213,7 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
         if (productIds.length > 0) {
           try {
             const vRes = await pool.query(
-              `SELECT id, product_id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+              `SELECT id, product_id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
                FROM product_variants
                WHERE product_id = ANY($1) AND is_active = true
                ORDER BY sort_order ASC, id ASC`,
@@ -643,7 +643,7 @@ export const getPublicProduct: RequestHandler = async (req, res) => {
     let variants: any[] = [];
     try {
       const vRes = await pool.query(
-        `SELECT id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+        `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
          FROM product_variants
          WHERE product_id = $1
          ORDER BY sort_order ASC, id ASC`,
@@ -719,7 +719,7 @@ export const getStorefrontProductById: RequestHandler = async (req, res) => {
     let variants: any[] = [];
     try {
       const vRes = await pool.query(
-        `SELECT id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+        `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
          FROM product_variants
          WHERE product_id = $1
          ORDER BY sort_order ASC, id ASC`,
@@ -917,16 +917,12 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     let variantRow: any | null = null;
     if (variant_id) {
       const vRes = await pool.query(
-        `SELECT id, color, size, variant_name, price, stock_quantity, is_active
+        `SELECT id, color, size, size2, variant_name, price, stock_quantity, is_active
          FROM product_variants
          WHERE id = $1 AND product_id = $2 AND COALESCE(is_active, true) = true
          LIMIT 1`,
         [Number(variant_id), product_id]
       );
-      if (vRes.rows.length === 0) {
-        return res.status(400).json({ error: 'Invalid variant' });
-      }
-      variantRow = vRes.rows[0];
       const vStock = Number(variantRow.stock_quantity ?? 0);
       if (!Number.isFinite(vStock) || vStock < Number(quantity)) {
         return res.status(400).json({ error: 'Insufficient stock.' });
@@ -1017,6 +1013,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     addCol('variant_id', variantRow ? Number(variantRow.id) : null);
     addCol('variant_color', variantRow ? (variantRow.color || null) : null);
     addCol('variant_size', variantRow ? (variantRow.size || null) : null);
+    addCol('variant_size2', variantRow ? (variantRow.size2 || null) : null);
     addCol('variant_name', variantRow ? (variantRow.variant_name || null) : null);
     addCol('unit_price', unitPrice);
     addCol('offer_id', offerRow ? Number(offerRow.id) : null);
@@ -1546,7 +1543,7 @@ export const getProductWithStoreInfo: RequestHandler = async (req, res) => {
       let variants: any[] = [];
       try {
         const vRes = await pool.query(
-          `SELECT id, color, size, variant_name, price, stock_quantity, images, sort_order
+          `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, sort_order
            FROM product_variants
            WHERE product_id = $1 AND client_id = $2 AND is_active = true
            ORDER BY sort_order ASC, id ASC`,

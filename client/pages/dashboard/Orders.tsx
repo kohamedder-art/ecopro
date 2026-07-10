@@ -684,6 +684,7 @@ export default function OrdersAdmin() {
           variant_id: order.variant_id ?? null,
           variant_color: order.variant_color ?? null,
           variant_size: order.variant_size ?? null,
+          variant_size2: order.variant_size2 ?? null,
           variant_name: order.variant_name ?? null,
           raw_id: order.id,
           // Delivery fields
@@ -1417,7 +1418,7 @@ export default function OrdersAdmin() {
                             <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
                               <div className="text-xs font-semibold text-foreground/60">{t('orders.variant')}</div>
                               <div className="font-bold text-sm">
-                                {o.variant_name || [o.variant_color, o.variant_size].filter(Boolean).join(' / ') || '—'}
+                                {o.variant_name || [o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ') || '—'}
                               </div>
                             </div>
                             <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">

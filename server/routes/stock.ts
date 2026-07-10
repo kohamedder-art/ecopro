@@ -115,6 +115,7 @@ const StockVariantSchema = z
       .optional(),
     color: z.preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().max(80)).optional(),
     size: z.preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().max(80)).optional(),
+    size2: z.preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().max(80)).optional(),
     variant_name: z.preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().max(160)).optional(),
     price: z
       .preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().positive())
@@ -134,10 +135,10 @@ const PutStockVariantsSchema = z
   })
   .strict();
 
-function computeVariantName(v: { color?: string; size?: string; variant_name?: string }) {
+function computeVariantName(v: { color?: string; size?: string; size2?: string; variant_name?: string }) {
   const explicit = String(v.variant_name || '').trim();
   if (explicit) return explicit;
-  const parts = [String(v.color || '').trim(), String(v.size || '').trim()].filter(Boolean);
+  const parts = [String(v.color || '').trim(), String(v.size || '').trim(), String(v.size2 || '').trim()].filter(Boolean);
   return parts.join(' / ') || null;
 }
 
@@ -616,7 +617,7 @@ export const getClientStockVariants: RequestHandler = async (req, res) => {
 
     try {
       const result = await pool.query(
-        `SELECT id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+        `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
          FROM client_stock_variants
          WHERE stock_id = $1 AND client_id = $2
          ORDER BY sort_order ASC, id ASC`,
@@ -681,17 +682,18 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
     const existingIds = new Set<number>(existing.rows.map((r: any) => Number(r.id)));
     const keepIds = new Set<number>();
 
-    // Deduplicate incoming variants by (color,size) case-insensitive to avoid unique index violations.
+    // Deduplicate incoming variants by (color,size,size2) case-insensitive to avoid unique index violations.
     const seenKey = new Set<string>();
 
     for (const v of data.variants) {
       const color = v.color != null && String(v.color).trim() ? String(v.color).trim() : null;
       const size = v.size != null && String(v.size).trim() ? String(v.size).trim() : null;
-      const key = `${String(color || '').toLowerCase()}::${String(size || '').toLowerCase()}`;
+      const size2 = v.size2 != null && String(v.size2).trim() ? String(v.size2).trim() : null;
+      const key = `${String(color || '').toLowerCase()}::${String(size || '').toLowerCase()}::${String(size2 || '').toLowerCase()}`;
       if (seenKey.has(key)) continue;
       seenKey.add(key);
 
-      const variantName = computeVariantName({ color: color || undefined, size: size || undefined, variant_name: v.variant_name });
+      const variantName = computeVariantName({ color: color || undefined, size: size || undefined, size2: size2 || undefined, variant_name: v.variant_name });
       const price = v.price === undefined ? null : Number(v.price);
       const stockQty = Number(v.stock_quantity);
       const images = Array.isArray(v.images) ? v.images : null;
@@ -704,23 +706,24 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
           `UPDATE client_stock_variants
            SET color = $1,
                size = $2,
-               variant_name = $3,
-               price = $4,
-               stock_quantity = $5,
-               images = $6,
-               is_active = $7,
-               sort_order = $8,
+               size2 = $3,
+               variant_name = $4,
+               price = $5,
+               stock_quantity = $6,
+               images = $7,
+               is_active = $8,
+               sort_order = $9,
                updated_at = NOW()
-           WHERE id = $9 AND stock_id = $10 AND client_id = $11`,
-          [color, size, variantName, price, stockQty, images, isActive, sortOrder, v.id, stockId, clientId]
+           WHERE id = $10 AND stock_id = $11 AND client_id = $12`,
+          [color, size, size2, variantName, price, stockQty, images, isActive, sortOrder, v.id, stockId, clientId]
         );
       } else {
         const inserted = await client.query(
           `INSERT INTO client_stock_variants
-           (client_id, stock_id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           (client_id, stock_id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
            RETURNING id`,
-          [clientId, stockId, color, size, variantName, price, stockQty, images, isActive, sortOrder]
+          [clientId, stockId, color, size, size2, variantName, price, stockQty, images, isActive, sortOrder]
         );
         keepIds.add(Number(inserted.rows[0].id));
       }
@@ -770,7 +773,7 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
     inTransaction = false;
 
     const out = await pool.query(
-      `SELECT id, color, size, variant_name, price, stock_quantity, images, is_active, sort_order
+      `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
        FROM client_stock_variants
        WHERE stock_id = $1 AND client_id = $2
        ORDER BY sort_order ASC, id ASC`,

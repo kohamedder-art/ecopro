@@ -93,6 +93,7 @@ type StockVariantDraft = {
   id?: number;
   color?: string;
   size?: string;
+  size2?: string;
   variant_name?: string;
   price?: number;
   stock_quantity: number;
@@ -399,6 +400,7 @@ export default function StockManagement() {
           id: v.id,
           color: v.color ?? '',
           size: v.size ?? '',
+          size2: v.size2 ?? '',
           variant_name: v.variant_name ?? '',
           price: v.price == null ? undefined : Number(v.price),
           stock_quantity: Number(v.stock_quantity ?? 0),
@@ -482,6 +484,7 @@ export default function StockManagement() {
           ...(v.id ? { id: v.id } : {}),
           color: (v.color || '').trim() || undefined,
           size: (v.size || '').trim() || undefined,
+          size2: (v.size2 || '').trim() || undefined,
           variant_name: (v.variant_name || '').trim() || undefined,
           price: v.price === undefined || v.price === null || Number.isNaN(Number(v.price)) ? undefined : Number(v.price),
           stock_quantity: Number(v.stock_quantity ?? 0),
@@ -1790,6 +1793,9 @@ export default function StockManagement() {
                           <div key={v.originalIndex} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
                             <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${v.size ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
                               {v.size || '—'}
+                            </span>
+                            <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${v.size2 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                              {v.size2 || '—'}
                             </span>
                             <div className="flex items-center gap-1.5 flex-1">
                               <span className="text-xs text-slate-400">الكمية:</span>

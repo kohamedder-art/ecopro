@@ -35,6 +35,7 @@ interface ChatOrder {
   variant_id?: number;
   variant_color?: string;
   variant_size?: string;
+  variant_size2?: string;
   variant_name?: string;
 }
 
@@ -702,10 +703,10 @@ export default function ChatOrders() {
                             {o.product_title || "—"}
                           </span>
                           {o.variant_name && <span className="text-xs text-muted-foreground block">{o.variant_name}</span>}
-                          {(o.variant_color || o.variant_size) && (
+                          {(o.variant_color || o.variant_size || o.variant_size2) && (
                             <span className="text-xs text-muted-foreground block">
                               {o.variant_color && <span className="inline-block w-2 h-2 rounded-full mr-1" style={{ backgroundColor: o.variant_color }}></span>}
-                              {o.variant_color}{o.variant_size ? ` / ${o.variant_size}` : ''}
+                              {[o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ')}
                             </span>
                           )}
                           <span className="text-xs text-muted-foreground">×{o.quantity}</span>
@@ -967,10 +968,10 @@ export default function ChatOrders() {
                         </div>
                         <p className="text-sm font-bold truncate">{o.product_title || "—"}</p>
                         {o.variant_name && <p className="text-xs text-muted-foreground">{o.variant_name}</p>}
-                        {(o.variant_color || o.variant_size) && (
+                        {(o.variant_color || o.variant_size || o.variant_size2) && (
                           <p className="text-xs text-muted-foreground">
                             {o.variant_color && <span className="inline-block w-2 h-2 rounded-full mr-1 align-middle" style={{ backgroundColor: o.variant_color }}></span>}
-                            {o.variant_color}{o.variant_size ? ` / ${o.variant_size}` : ''}
+                            {[o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ')}
                           </p>
                         )}
                         <div className="flex items-center justify-between mt-1">
@@ -1053,12 +1054,12 @@ export default function ChatOrders() {
                               <p className="font-semibold">{o.variant_name}</p>
                             </div>
                           )}
-                          {(o.variant_color || o.variant_size) && (
+                          {(o.variant_color || o.variant_size || o.variant_size2) && (
                             <div className="col-span-2">
                               <span className="text-[10px] text-muted-foreground">{isRTL ? "التفاصيل" : "Details"}</span>
                               <p className="font-semibold">
                                 {o.variant_color && <span className="inline-block w-3 h-3 rounded-full mr-1 align-middle" style={{ backgroundColor: o.variant_color }}></span>}
-                                {o.variant_color}{o.variant_size ? ` / ${o.variant_size}` : ''}
+                                {[o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ')}
                               </p>
                             </div>
                           )}
@@ -1171,7 +1172,7 @@ export default function ChatOrders() {
                   {(editingOrder.variant_color || editingOrder.variant_size) && (
                     <p className="text-xs text-muted-foreground">
                       {editingOrder.variant_color && <span className="inline-block w-2 h-2 rounded-full mr-1 align-middle" style={{ backgroundColor: editingOrder.variant_color }}></span>}
-                      {editingOrder.variant_color}{editingOrder.variant_size ? ` / ${editingOrder.variant_size}` : ''}
+                      {[editingOrder.variant_color, editingOrder.variant_size, editingOrder.variant_size2].filter(Boolean).join(' / ')}
                     </p>
                   )}
                 </div>
