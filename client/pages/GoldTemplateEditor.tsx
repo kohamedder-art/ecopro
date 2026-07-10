@@ -2267,23 +2267,21 @@ export default function GoldTemplateEditor() {
                               </button>
                             ))}
                           </div>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="أو الصق رابط صورة..."
-                              value={settings.template_bg_image?.startsWith('linear') || settings.template_bg_image?.startsWith('radial') ? '' : (settings.template_bg_image || '')}
-                              onChange={(e) => handleSettingChange('template_bg_image', e.target.value)}
-                              className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-                            />
-                            {settings.template_bg_image && (
-                              <button
-                                onClick={() => handleSettingChange('template_bg_image', '')}
-                                className="px-3 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
-                              >
-                                مسح
-                              </button>
-                            )}
-                          </div>
+                          <input
+                            type="text"
+                            placeholder="أو الصق رابط صورة..."
+                            value={settings.template_bg_image?.startsWith('linear') || settings.template_bg_image?.startsWith('radial') ? '' : (settings.template_bg_image || '')}
+                            onChange={(e) => handleSettingChange('template_bg_image', e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                          />
+                          {settings.template_bg_image && (
+                            <button
+                              onClick={() => handleSettingChange('template_bg_image', '')}
+                              className="w-full px-3 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+                            >
+                              مسح الصورة
+                            </button>
+                          )}
                         </div>
 
                         {/* Header / Surface color (for templates that support it) */}
