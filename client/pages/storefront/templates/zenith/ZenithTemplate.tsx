@@ -330,12 +330,12 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                 >
                   {/* Image */}
                   <div className="relative w-full" style={{ paddingBottom: '140%' }}>
-                    {hasVideo && (gridImageIndex[product.id] || 0) === 0 && hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
+                    {hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
                       <LazyVideo src={hasVideo} poster={thumb}
                         onMouseEnter={e => (e.target as HTMLVideoElement).play()}
                         onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
                         className="absolute inset-0 w-full h-full object-cover" />
-                    ) : hasVideo && (gridImageIndex[product.id] || 0) === 0 && hasVideo?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
+                    ) : hasVideo?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
                       <iframe className="absolute inset-0 w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                     ) : thumb ? (
                       <img
