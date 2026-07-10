@@ -286,7 +286,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
       <div className="min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', fontFamily: "'Cairo', sans-serif" }} dir="rtl">
         {/* Header */}
         <div
-          className="sticky top-0 z-50 px-6 py-3 flex items-center justify-between gap-4"
+          className="sticky top-0 z-50 px-6 py-2 flex items-center justify-between gap-4"
           style={{
             backgroundColor: cardBg,
             borderBottom: `1px solid ${borderColor}`,
@@ -294,8 +294,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             transition: 'transform 0.3s ease-in-out',
           }}
         >
-          <div className="flex items-center gap-3 shrink-0">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-12 h-12 rounded-full object-cover" loading="lazy" decoding="async" width="48" height="48" />}
+          <div className="flex items-center gap-2 shrink-0">
+            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" loading="lazy" decoding="async" width="28" height="28" />}
             <div className="font-bold text-lg" style={{ color: textColor }}>
               {storeName}
             </div>
@@ -428,9 +428,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
       <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-md mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: bgColor }}>
 
         {/* ── STICKY HEADER ── */}
-        <div className="sticky top-0 z-50 backdrop-blur-md px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
+        <div className="sticky top-0 z-50 backdrop-blur-md px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
           <button onClick={goToStore} className="flex items-center gap-2">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-12 h-12 rounded-full object-cover" />}
+            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" />}
             <div
               className="font-black text-xl tracking-wider"
               style={{ color: textColor }}
