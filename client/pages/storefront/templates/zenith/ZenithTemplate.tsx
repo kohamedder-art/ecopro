@@ -17,6 +17,12 @@ import { buildStoreUrl } from '@/lib/resolvedStore';
 export default function ZenithTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, initialProductSlug, navigate, onProductView }: TemplateProps) {
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#000000';
   const bgColor = settings?.template_bg_color || '#f3f4f6';
+  const rawBgImage = settings?.template_bg_image || '';
+  const bgImageCss = rawBgImage
+    ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
+      ? rawBgImage
+      : `url(${rawBgImage})`)
+    : '';
   const isDark = useMemo(() => {
     const hex = bgColor.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
@@ -251,7 +257,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   // Order success screen
   if (orderSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
         <div className="max-w-md mx-auto rounded-2xl p-8 shadow-xl text-center w-full" style={{ backgroundColor: cardBg }}>
           <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <ShieldCheck size={36} style={{ color: accentColor }} />
@@ -276,31 +282,31 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   if (showStoreGrid) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5', fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      <div className="min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', fontFamily: "'Cairo', sans-serif" }} dir="rtl">
         {/* Header */}
         <div
           className="sticky top-0 z-50 px-6 py-4 flex items-center justify-between gap-4"
           style={{
-            backgroundColor: '#fff',
-            borderBottom: '1px solid #eee',
+            backgroundColor: cardBg,
+            borderBottom: `1px solid ${borderColor}`,
             transform: gridHeaderVisible ? 'translateY(0)' : 'translateY(-100%)',
             transition: 'transform 0.3s ease-in-out',
           }}
         >
           <div className="flex items-center gap-3 shrink-0">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" width="36" height="36" />}
-            <div className="font-bold text-lg" style={{ color: '#1a1a2e' }}>
+            <div className="font-bold text-lg" style={{ color: textColor }}>
               {storeName}
             </div>
           </div>
           {/* Search bar */}
-          <div className="hidden md:flex flex-1 max-w-md items-center gap-2 px-4 py-2.5 rounded-full" style={{ backgroundColor: '#f5f5f5' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="hidden md:flex flex-1 max-w-md items-center gap-2 px-4 py-2.5 rounded-full" style={{ backgroundColor: surfaceMuted }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
             </svg>
-            <span className="text-sm" style={{ color: '#999' }}>ابحث في المنتجات...</span>
+            <span className="text-sm" style={{ color: textMuted }}>ابحث في المنتجات...</span>
           </div>
-          <span className="text-sm shrink-0" style={{ color: '#666' }}>{products?.length} منتج</span>
+          <span className="text-sm shrink-0" style={{ color: textMuted }}>{products?.length} منتج</span>
         </div>
 
         {/* Clean White Product Grid — Hijab Saba style */}
@@ -319,7 +325,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   key={product.id}
                   onClick={() => goToProduct(product)}
                   className="w-full text-right overflow-hidden rounded-2xl shadow-sm hover:shadow-md transition-shadow"
-                  style={{ backgroundColor: '#fff' }}
+                  style={{ backgroundColor: cardBg }}
                 >
                   {/* Image */}
                   <div className="relative w-full" style={{ paddingBottom: '140%' }}>
@@ -335,11 +341,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                         src={thumb}
                         alt={product.title || ''}
                         className="absolute inset-0 w-full h-full object-contain"
-                        style={{ backgroundColor: '#fff' }}
+                        style={{ backgroundColor: cardBg }}
                         loading="lazy"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-4xl" style={{ backgroundColor: '#f5f5f5' }}>
+                      <div className="absolute inset-0 flex items-center justify-center text-4xl" style={{ backgroundColor: surfaceMuted }}>
                         📦
                       </div>
                     )}
@@ -368,16 +374,16 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
                   {/* Info */}
                   <div className="p-4">
-                    <h3 className="text-sm font-bold leading-snug mb-2 line-clamp-2" style={{ color: '#1a1a2e', minHeight: '2.5em' }}>
+                    <h3 className="text-sm font-bold leading-snug mb-2 line-clamp-2" style={{ color: textColor, minHeight: '2.5em' }}>
                       {product.title || product.name || 'منتج'}
                     </h3>
                     {/* Price */}
                     <div className="flex items-baseline gap-2 mb-3">
-                      <span className="text-lg font-black" style={{ color: '#1a1a2e' }}>
+                      <span className="text-lg font-black" style={{ color: textColor }}>
                         {displayPrice(price).toLocaleString()} {currency}
                       </span>
                       {product.original_price && product.original_price > price && (
-                        <span className="text-sm line-through" style={{ color: '#999' }}>
+                        <span className="text-sm line-through" style={{ color: textMuted }}>
                           {displayPrice(product.original_price).toLocaleString()}
                         </span>
                       )}
@@ -397,7 +403,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   }
 
   return (
-    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
+    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor }} dir="rtl">
 
       {/* Mobile Container */}
       <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-md mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: bgColor }}>
