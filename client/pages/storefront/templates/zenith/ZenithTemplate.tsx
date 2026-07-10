@@ -295,7 +295,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           }}
         >
           <div className="flex items-center gap-2 shrink-0">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" loading="lazy" decoding="async" width="28" height="28" />}
+            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" width="36" height="36" />}
             <div className="font-bold text-lg" style={{ color: textColor }}>
               {storeName}
             </div>
@@ -430,7 +430,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         {/* ── STICKY HEADER ── */}
         <div className="sticky top-0 z-50 backdrop-blur-md px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
           <button onClick={goToStore} className="flex items-center gap-2">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" />}
+            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-full object-cover" />}
             <div
               className="font-black text-xl tracking-wider"
               style={{ color: textColor }}
