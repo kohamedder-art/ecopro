@@ -53,6 +53,7 @@ import { deliveryRouter, handleDeliveryWebhook } from "./routes/delivery";
 import googleSheetsRouter from "./routes/google-sheets";
 import chatRouter from "./routes/chat";
 import aiRouter from "./routes/ai";
+import templateGenerateRouter from "./routes/template-generate";
 import codesRouter from "./routes/codes";
 import customerBotRouter from "./routes/customer-bot";
 import pixelsRouter from "./routes/pixels";
@@ -1719,6 +1720,9 @@ ${urls}
 
   // AI routes (mixed auth - each sub-route enforces its own role)
   app.use('/api/ai', aiRouter);
+
+  // Template generator routes (authenticated)
+  app.use('/api/ai/template-generate', templateGenerateRouter);
 
   // Subscription codes routes (authenticated - client/seller operations)
   app.use('/api/codes', authenticate, codesRouter);

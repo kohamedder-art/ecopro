@@ -23,6 +23,7 @@ import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import { generateText, generateTextWithSearch, generateJSON, analyzeProductImage } from '../services/gemini';
 import { handleOwnerMessage, getOwnerHistory, saveOwnerHistory, executeAction } from '../services/owner-ai';
+import { handleStoreBuilderMessage, parseBuildConfig } from '../services/store-builder-ai';
 import { verifyToken } from '../utils/auth';
 import { authenticate, requireAdmin, requireClient } from '../middleware/auth';
 import { authenticateStaff } from '../utils/staff-middleware';
@@ -3297,6 +3298,139 @@ The HTML must be a complete, valid HTML document with <!DOCTYPE html>, <html dir
   } catch (err: any) {
     console.error('[landing] generation error:', err);
     return serverError(res, err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════
+// AI STORE BUILDER — Build store via conversation
+// ════════════════════════════════════════════════════════════
+
+/**
+ * POST /api/ai/store-builder/chat
+ * Chat with the store builder AI
+ * Body: { question, history }
+ */
+router.post('/store-builder/chat', authAiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { question, history } = req.body;
+    if (!question) return res.status(400).json({ error: 'question is required' });
+
+    const user = extractAiUser(req);
+    if (!user || (user.role !== 'user' && user.role !== 'seller' && user.role !== 'client' && user.user_type !== 'client')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const clientId = user.id || user.clientId;
+
+    const prevHistory: Array<{ role: string; content: string }> = Array.isArray(history) ? history.slice(-20) : [];
+    const geminiHistory = prevHistory.map((m: any) => ({
+      role: m.role === 'user' ? 'user' as const : 'model' as const,
+      parts: [{ text: m.content }],
+    }));
+
+    const { answer, config } = await handleStoreBuilderMessage(clientId, question, geminiHistory);
+
+    return res.json({ answer, ...(config ? { config } : {}) });
+  } catch (err) {
+    console.error('[StoreBuilder] Chat error:', err);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+/**
+ * POST /api/ai/store-builder/apply
+ * Apply store builder config to the user's store
+ * Body: { config: StoreBuildConfig }
+ */
+router.post('/store-builder/apply', authAiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { config } = req.body;
+    if (!config) return res.status(400).json({ error: 'config is required' });
+
+    const user = extractAiUser(req);
+    if (!user || (user.role !== 'user' && user.role !== 'seller' && user.role !== 'client' && user.user_type !== 'client')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const clientId = user.id || user.clientId;
+    const p = await pool();
+
+    const template = config.template || 'zenith';
+
+    // Save design-specific fields into template_settings JSONB
+    const designSettings: Record<string, any> = {};
+    if (config.theme) designSettings.theme = config.theme;
+    if (config.backgroundColor) designSettings.backgroundColor = config.backgroundColor;
+    if (config.heroLayout) designSettings.heroLayout = config.heroLayout;
+    if (config.gridColumns) designSettings.gridColumns = config.gridColumns;
+    if (config.cardStyle) designSettings.cardStyle = config.cardStyle;
+    if (config.cardRadius !== undefined) designSettings.cardRadius = config.cardRadius;
+    if (config.hoverEffect) designSettings.hoverEffect = config.hoverEffect;
+    if (config.showProductShadows !== undefined) designSettings.showProductShadows = config.showProductShadows;
+    if (config.fontFamilyBody) designSettings.fontFamilyBody = config.fontFamilyBody;
+
+    // Update store settings
+    await p.query(
+      `UPDATE client_store_settings SET
+        store_name = COALESCE($1, store_name),
+        store_description = COALESCE($2, store_description),
+        template = COALESCE($3, template),
+        template_hero_heading = COALESCE($4, template_hero_heading),
+        template_hero_subtitle = COALESCE($5, template_hero_subtitle),
+        template_button_text = COALESCE($6, template_button_text),
+        primary_color = COALESCE($7, primary_color),
+        template_accent_color = COALESCE($8, template_accent_color),
+        template_font_family = COALESCE($9, template_font_family),
+        template_bg_color = COALESCE($10, template_bg_color),
+        template_settings = COALESCE(template_settings, '{}'::jsonb) || $11::jsonb,
+        is_public = true,
+        updated_at = NOW()
+      WHERE client_id = $12`,
+      [
+        config.storeName || null,
+        config.storeDescription || null,
+        template,
+        config.heroHeading || null,
+        config.heroSubtitle || null,
+        config.buttonText || 'تسوق الآن',
+        config.primaryColor || null,
+        config.accentColor || null,
+        config.fontFamily || null,
+        config.backgroundColor || null,
+        JSON.stringify(designSettings),
+        clientId,
+      ]
+    );
+
+    // Create sample products (max 3)
+    const products = (config.sampleProducts || []).slice(0, 3);
+    let productCount = 0;
+    for (const product of products) {
+      if (!product.title) continue;
+      try {
+        await p.query(
+          `INSERT INTO client_store_products (client_id, title, description, price, category, stock_quantity, status)
+           VALUES ($1, $2, $3, $4, $5, 10, 'active')`,
+          [clientId, product.title, '', product.price || 0, product.category || 'general']
+        );
+        productCount++;
+      } catch (e) {
+        console.error('[StoreBuilder] Error creating product:', e);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `تم تطبيق تصميم "${config.storeName}" بنجاح! القالب: ${template}. ${productCount} منتجات مثال.`,
+      config: {
+        template,
+        storeName: config.storeName,
+        productsCreated: productCount,
+      },
+    });
+  } catch (err) {
+    console.error('[StoreBuilder] Apply error:', err);
+    return res.status(500).json({ error: 'Internal error' });
   }
 });
 

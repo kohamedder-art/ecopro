@@ -14,22 +14,29 @@
   const API_BASE = window.ECOPRO_API_URL || '/api';
   const STORE_SLUG = window.ECOPRO_STORE_SLUG || '';
   
+  function safeGet(storage, key) {
+    try { return storage.getItem(key); } catch { return null; }
+  }
+  function safeSet(storage, key, value) {
+    try { storage.setItem(key, value); } catch { /* storage blocked */ }
+  }
+
   // Generate or retrieve visitor ID
   function getVisitorId() {
-    let visitorId = localStorage.getItem('ecopro_visitor_id');
+    let visitorId = safeGet(localStorage, 'ecopro_visitor_id');
     if (!visitorId) {
       visitorId = 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('ecopro_visitor_id', visitorId);
+      safeSet(localStorage, 'ecopro_visitor_id', visitorId);
     }
     return visitorId;
   }
   
   // Generate or retrieve session ID
   function getSessionId() {
-    let sessionId = sessionStorage.getItem('ecopro_session_id');
+    let sessionId = safeGet(sessionStorage, 'ecopro_session_id');
     if (!sessionId) {
       sessionId = 's_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      sessionStorage.setItem('ecopro_session_id', sessionId);
+      safeSet(sessionStorage, 'ecopro_session_id', sessionId);
     }
     return sessionId;
   }

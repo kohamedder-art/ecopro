@@ -426,6 +426,7 @@ export const en = {
   "store.privateStore": "Private Store",
   "store.manageExclusive": "Manage your exclusive products and share individual links",
   "store.viewStorefront": "View Storefront",
+  "store.aiBuilder": "AI Builder",
   "store.templateEditor": "Template Editor",
   "store.addProduct": "Add Product",
   "store.totalProducts": "Total Products",

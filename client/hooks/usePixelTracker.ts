@@ -18,34 +18,38 @@ export function usePixelTracker(storeSlug: string) {
     // Get or create visitor ID (persistent)
     let vid = '';
     for (const key of LEGACY_VISITOR_KEYS) {
-      const existing = localStorage.getItem(key);
-      if (existing) {
-        vid = existing;
-        break;
-      }
+      try {
+        const existing = localStorage.getItem(key);
+        if (existing) {
+          vid = existing;
+          break;
+        }
+      } catch { /* storage blocked */ }
     }
     if (!vid) {
       vid = 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
     for (const key of LEGACY_VISITOR_KEYS) {
-      localStorage.setItem(key, vid);
+      try { localStorage.setItem(key, vid); } catch { /* storage blocked */ }
     }
     visitorId.current = vid;
     
     // Get or create session ID (per session)
     let sid = '';
     for (const key of LEGACY_SESSION_KEYS) {
-      const existing = sessionStorage.getItem(key);
-      if (existing) {
-        sid = existing;
-        break;
-      }
+      try {
+        const existing = sessionStorage.getItem(key);
+        if (existing) {
+          sid = existing;
+          break;
+        }
+      } catch { /* storage blocked */ }
     }
     if (!sid) {
       sid = 's_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
     for (const key of LEGACY_SESSION_KEYS) {
-      sessionStorage.setItem(key, sid);
+      try { sessionStorage.setItem(key, sid); } catch { /* storage blocked */ }
     }
     sessionId.current = sid;
     

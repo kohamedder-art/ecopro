@@ -44,6 +44,12 @@ export default function MyStoreIndex() {
                 {t('store.viewStorefront')}
               </button>
               <button
+                className="px-4 py-2 rounded bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold shadow-lg shadow-violet-500/20"
+                onClick={() => navigate(`/my-store/ai-builder`)}
+              >
+                🚀 AI Builder
+              </button>
+              <button
                 className="px-4 py-2 rounded border border-slate-200 bg-white text-slate-900 font-bold"
                 onClick={() => navigate(`/template-editor`)}
               >

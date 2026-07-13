@@ -480,6 +480,7 @@ export const ar = {
   "store.privateStore": "متجر خاص",
   "store.manageExclusive": "إدارة منتجاتك الحصرية ومشاركة روابط فردية",
   "store.viewStorefront": "عرض المتجر",
+  "store.aiBuilder": "البناء بالذكاء الاصطناعي",
   "store.templateEditor": "محرر القالب",
   "store.checkoutSettings": "إعدادات الشراء",
   "store.purchaseSettings": "إعدادات الشراء",

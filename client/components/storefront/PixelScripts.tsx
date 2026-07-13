@@ -146,10 +146,10 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
   useEffect(() => {
     if (!storeSlug) return;
 
-    const lastPageViewKey = sessionStorage.getItem('last_pageview_key');
+    const lastPageViewKey = safeSessionGet('last_pageview_key');
     const currentKey = `${storeSlug}|${location.pathname}`;
     if (lastPageViewKey !== currentKey) {
-      sessionStorage.setItem('last_pageview_key', currentKey);
+      safeSessionSet('last_pageview_key', currentKey);
       trackPageView(storeSlug);
     }
   }, [location.pathname, storeSlug]);
@@ -420,11 +420,24 @@ function trackPageView(storeSlug: string) {
   trackToBackend(storeSlug, 'PageView', { page_url: window.location.href });
 }
 
+function safeSessionGet(key: string): string | null {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+}
+function safeSessionSet(key: string, value: string) {
+  try { sessionStorage.setItem(key, value); } catch { /* storage blocked */ }
+}
+function safeLocalGet(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function safeLocalSet(key: string, value: string) {
+  try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+}
+
 // Get or create session ID (per browser session)
 function getSessionId(): string {
   let sessionId = '';
   for (const key of LEGACY_SESSION_KEYS) {
-    const existing = sessionStorage.getItem(key);
+    const existing = safeSessionGet(key);
     if (existing) {
       sessionId = existing;
       break;
@@ -434,7 +447,7 @@ function getSessionId(): string {
     sessionId = 'sess_' + Math.random().toString(36).substring(2, 15);
   }
   for (const key of LEGACY_SESSION_KEYS) {
-    sessionStorage.setItem(key, sessionId);
+    safeSessionSet(key, sessionId);
   }
   return sessionId;
 }
@@ -443,7 +456,7 @@ function getSessionId(): string {
 function getVisitorId(): string {
   let visitorId = '';
   for (const key of LEGACY_VISITOR_KEYS) {
-    const existing = localStorage.getItem(key);
+    const existing = safeLocalGet(key);
     if (existing) {
       visitorId = existing;
       break;
@@ -453,7 +466,7 @@ function getVisitorId(): string {
     visitorId = 'vis_' + Math.random().toString(36).substring(2, 15);
   }
   for (const key of LEGACY_VISITOR_KEYS) {
-    localStorage.setItem(key, visitorId);
+    safeLocalSet(key, visitorId);
   }
   return visitorId;
 }
@@ -479,8 +492,7 @@ function setBackendPixelPreferenceFromConfig(data: PixelConfig) {
 
 export function setCurrentStoreSlug(slug: string) {
   currentStoreSlug = slug;
-  // Also save to localStorage for other pages
-  if (slug) localStorage.setItem('currentStoreSlug', slug);
+  if (slug) safeLocalSet('currentStoreSlug', slug);
 }
 
 let currentCurrency = 'DZD';
@@ -497,7 +509,7 @@ export function trackAllPixels(eventName: string, params?: Record<string, any>) 
   trackTikTokEvent(eventName, params);
   
   // Track to our backend for statistics (only ONE event, not duplicated)
-  const storeSlug = currentStoreSlug || localStorage.getItem('currentStoreSlug') || '';
+  const storeSlug = currentStoreSlug || safeLocalGet('currentStoreSlug') || '';
   if (storeSlug && eventName !== 'PageView') {
     // PageView is handled separately with deduplication
     trackToBackend(storeSlug, eventName, params);
