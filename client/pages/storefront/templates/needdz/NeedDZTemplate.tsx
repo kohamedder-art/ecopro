@@ -78,11 +78,9 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
   const rawBgImage = settings?.template_bg_image || '';
   const bgImageCss = rawBgImage
-    ? (rawBgImage.startsWith('http') || rawBgImage.startsWith('data:') || rawBgImage.startsWith('/')
-      ? `url("${rawBgImage}")`
-      : rawBgImage.startsWith('linear-gradient') || rawBgImage.startsWith('radial-gradient')
-        ? rawBgImage
-        : `url("${rawBgImage}")`)
+    ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
+      ? rawBgImage
+      : `url(${rawBgImage})`)
     : '';
   const headerIsDark = useMemo(() => {
     const hex = headerColor.replace('#', '');
