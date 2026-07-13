@@ -328,8 +328,8 @@ const parseVideoEmbed = (videoUrl: string) => {
   };
 
   return (
-    <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} dir="rtl">
-      <div className="w-full max-w-[480px] relative flex flex-col shadow-xl min-h-screen" style={{ backgroundColor: cardBg }}>
+    <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: bgColor }} dir="rtl">
+      <div className="w-full max-w-[480px] relative flex flex-col shadow-xl min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
         
         {/* Urgent Header */}
         {(showCountdown || canManage) && (
@@ -579,7 +579,7 @@ const parseVideoEmbed = (videoUrl: string) => {
           return (
           <div className="flex flex-col pb-36">
             {/* Back button */}
-            <div className="sticky top-0 z-50 px-4 py-4 flex items-center gap-3" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
+            <div className="sticky top-0 z-50 px-4 py-4 flex items-center gap-3" style={{ backgroundColor: bgColor, borderBottom: `1px solid ${borderColor}` }}>
               <button onClick={handleBackToFeed} className="flex items-center gap-2 text-sm font-bold" style={{ color: textColor }}>
                 <ChevronRight size={20} />
                 العودة
