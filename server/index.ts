@@ -1998,6 +1998,7 @@ ${urls}
                           owner_name, owner_email,
                           template_hero_heading, template_hero_subtitle, template_button_text,
                           template_accent_color, template_bg_color,
+                          template_bg_image, template_header_bg, template_header_text, template_text_color, template_muted_color,
                           template_settings, template_settings_by_template, global_settings,
                           store_slug
                    FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,

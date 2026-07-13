@@ -378,6 +378,7 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
                 store_images,
                 owner_name, owner_email,
                 template_hero_heading, template_hero_subtitle, template_button_text, template_accent_color, template_bg_color,
+                template_bg_image, template_header_bg, template_header_text, template_text_color, template_muted_color,
                 template_settings, template_settings_by_template, global_settings,
                 store_slug
          FROM client_store_settings
@@ -388,6 +389,7 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
                 NULL as hero_main_url, NULL as hero_tile1_url, NULL as hero_tile2_url,
                 store_images, owner_name, owner_email,
                 NULL as template_hero_heading, NULL as template_hero_subtitle, NULL as template_button_text, NULL as template_accent_color,
+                NULL as template_bg_image, NULL as template_header_bg, NULL as template_header_text, NULL as template_text_color, NULL as template_muted_color,
                 NULL as template_settings, NULL as template_settings_by_template, NULL as global_settings,
                 store_slug
          FROM client_store_settings
