@@ -3,8 +3,6 @@ import {
   ShoppingBag,
   Truck,
   ShieldCheck,
-  Star,
-  X,
   Phone,
   CheckCircle2,
   Clock,
@@ -64,7 +62,7 @@ const FALLBACK_PRODUCTS = [
 
 export default function NeedDZTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, navigate, initialProductSlug, onProductView }: TemplateProps) {
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#059669';
-  const headerColor = settings?.iyco_header_color || '#ffffff';
+  const headerColor = settings?.template_header_bg || settings?.iyco_header_color || '#ffffff';
   const bgColor = settings?.template_bg_color || '#ffffff';
   const isDark = useMemo(() => {
     const hex = bgColor.replace('#', '');
@@ -78,20 +76,49 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const borderColor = isDark ? '#334155' : '#e5e7eb';
   const cardBg = isDark ? '#1e293b' : '#ffffff';
   const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
+  const rawBgImage = settings?.template_bg_image || '';
+  const bgImageCss = rawBgImage
+    ? (rawBgImage.startsWith('http') || rawBgImage.startsWith('data:') || rawBgImage.startsWith('/')
+      ? `url("${rawBgImage}")`
+      : rawBgImage.startsWith('linear-gradient') || rawBgImage.startsWith('radial-gradient')
+        ? rawBgImage
+        : `url("${rawBgImage}")`)
+    : '';
+  const headerIsDark = useMemo(() => {
+    const hex = headerColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, [headerColor]);
+  const headerTextColor = settings?.primary_color || (headerIsDark ? '#f1f5f9' : '#1f2937');
+  const [view, setView] = useState<'feed' | 'product'>('feed');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const handleOpenProduct = (product: any) => {
+    setSelectedProduct(product);
+    setView('product');
+    setOrderStatus('idle');
+    setOrderError(null);
+    setSelectedVariant(null);
+    setSelectedOffer(null);
+  };
+  const handleBackToFeed = () => {
+    setSelectedProduct(null);
+    setView('feed');
+    setOrderStatus('idle');
+  };
 
-  // Toggle body class for chat bubble to hide itself
+  // Toggle body class when product detail is open
   useEffect(() => {
-    document.body.classList.toggle('checkout-open', isCheckoutOpen);
-  }, [isCheckoutOpen]);
+    document.body.classList.toggle('checkout-open', view === 'product');
+  }, [view]);
 
   // Pre-select product from URL slug on mount
   useEffect(() => {
-    if (!initialProductSlug) { setSelectedProduct(null); setIsCheckoutOpen(false); return; }
+    if (!initialProductSlug) { setSelectedProduct(null); setView('feed'); return; }
     if (products?.length) {
       const match = products.find((p: any) => p.slug === initialProductSlug);
-      if (match) { setSelectedProduct(match); setIsCheckoutOpen(true); }
+      if (match) { setSelectedProduct(match); setView('product'); }
     }
   }, [initialProductSlug, products]);
 
@@ -133,14 +160,13 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   // Update URL when product is selected
   const handleSelectProduct = (product: any) => {
     setSelectedProduct(product);
-    setIsCheckoutOpen(true);
+    setView('product');
+    setOrderStatus('idle');
+    setOrderError(null);
+    setSelectedVariant(null);
+    setSelectedOffer(null);
   };
 
-  const handleCloseCheckout = () => {
-    setSelectedProduct(null);
-    setIsCheckoutOpen(false);
-    if (navigate) navigate(buildStoreUrl(storeSlug, '/'));
-  };
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orderStatus, setOrderStatus] = useState('idle');
   const [timeLeft, setTimeLeft] = useState(() => {
@@ -302,7 +328,7 @@ const parseVideoEmbed = (videoUrl: string) => {
   };
 
   return (
-    <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: settings?.template_bg_color || '#f1f5f9' }} dir="rtl">
+    <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} dir="rtl">
       <div className="w-full max-w-[480px] relative flex flex-col shadow-xl min-h-screen" style={{ backgroundColor: cardBg }}>
         
         {/* Urgent Header */}
@@ -338,7 +364,7 @@ const parseVideoEmbed = (videoUrl: string) => {
 
         {/* Main Branding */}
         <header className="px-6 py-5 flex justify-between items-center border-b" style={{ backgroundColor: headerColor, borderColor: borderColor }}>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={handleBackToFeed}>
 {settings?.store_logo ? (
   <img 
     src={settings.store_logo} 
@@ -355,15 +381,17 @@ const parseVideoEmbed = (videoUrl: string) => {
                 {(settings?.store_name || 'م').charAt(0)}
               </div>
             )}
-            <span className="text-lg font-black" style={{ color: textColor }}>{settings?.store_name || "متجري"}</span>
+            <span className="text-lg font-black" style={{ color: headerTextColor }}>{settings?.store_name || "متجري"}</span>
           </div>
           <div className="relative">
-            <ShoppingBag size={24} style={{ color: textColor }} />
+            <ShoppingBag size={24} style={{ color: headerTextColor }} />
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold">2</span>
           </div>
         </header>
 
-        <main className="flex-1 pb-32">
+        <main className={`flex-1 ${view === 'feed' ? 'pb-32' : ''}`}>
+          {view === 'feed' && (
+          <>
           {/* Trust Banner */}
           {(showTrustBanner || canManage) && (
           <div className="relative overflow-visible" data-edit-path="trust-banner">
@@ -486,7 +514,7 @@ const parseVideoEmbed = (videoUrl: string) => {
 
                 {/* Content */}
                 <div className="p-6 space-y-4">
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start cursor-pointer" onClick={() => handleOpenProduct(product)}>
                     <h2 className="text-xl font-bold leading-tight w-2/3" style={{ color: textColor }}>{product.name}</h2>
                     <div className="text-right">
                       {product.oldPrice > product.price && (
@@ -497,7 +525,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </div>
 
                   <div>
-                    <p className={`text-sm leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: '#404040' }}>{product.description}</p>
+                    <p className={`text-sm leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: textColor }}>{product.description}</p>
                     {product.description.length > 100 && (
                       <button onClick={() => setExpandedDescs(prev => ({ ...prev, [product.id]: !prev[product.id] }))} className="text-[11px] font-bold mt-1" style={{ color: accentColor }}>
                         {expandedDescs[product.id] ? 'إخفاء' : 'قراءة المزيد'}
@@ -530,37 +558,142 @@ const parseVideoEmbed = (videoUrl: string) => {
           </div>
 
 
-        </main>
+          </>
+          )}
 
-        {/* Improved Checkout Drawer */}
-        {isCheckoutOpen && (
-          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm p-0" onClick={() => { handleCloseCheckout(); setOrderStatus('idle'); }}>
-            <div className="w-full max-w-[480px] rounded-t-[40px] animate-slide-up flex flex-col" style={{ backgroundColor: cardBg, maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
-              
-              <div className="flex items-center justify-end shrink-0 p-8 pb-4">
-                <button 
-                  onClick={() => { handleCloseCheckout(); setOrderStatus('idle'); }}
-                  className="transition-colors" style={{ color: textMuted }}
-                >
-                  <X size={28} />
-                </button>
+        {/* ── Product Detail View ── */}
+        {view === 'product' && selectedProduct && (() => {
+          const product = selectedProduct;
+          const ve = product.videoUrl ? parseVideoEmbed(product.videoUrl) : null;
+          const media = ve ? [{ type: 'video' as const, ve }, ...product.images.map((src: string) => ({ type: 'image' as const, src }))] : product.images.map((src: string) => ({ type: 'image' as const, src }));
+          const totalMedia = media.length;
+          const curIdx = (currentImgIdx as any)[product.id] || 0;
+          const goTo = (idx: number) => {
+            const clamped = Math.max(0, Math.min(idx, totalMedia - 1));
+            galleryIdxRef.current[String(product.id)] = clamped;
+            setCurrentImgIdx((prev: any) => ({ ...prev, [product.id]: clamped }));
+            const nextIdx = clamped + 1;
+            const mediaSrc = nextIdx < totalMedia && media[nextIdx]?.type === 'image' ? media[nextIdx].src : null;
+            if (mediaSrc) { const p = new Image(); p.src = mediaSrc; }
+          };
+          return (
+          <div className="flex flex-col pb-36">
+            {/* Back button */}
+            <div className="sticky top-0 z-50 px-4 py-4 flex items-center gap-3" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
+              <button onClick={handleBackToFeed} className="flex items-center gap-2 text-sm font-bold" style={{ color: textColor }}>
+                <ChevronRight size={20} />
+                العودة
+              </button>
+              <span className="text-sm font-bold truncate" style={{ color: textMuted }}>{product.name}</span>
+            </div>
+
+            {/* Gallery */}
+            <div className="relative aspect-[10/13] overflow-hidden select-none" style={{ backgroundColor: surfaceMuted, touchAction: 'pan-y' }}
+              onTouchStart={e => { const t = e.currentTarget as any; t._tsx = e.touches[0].clientX; t._tsy = e.touches[0].clientY; }}
+              onTouchEnd={e => {
+                const t = e.currentTarget as any;
+                const dx = t._tsx - e.changedTouches[0].clientX;
+                const dy = t._tsy - e.changedTouches[0].clientY;
+                if (t._tsx == null || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+                if (totalMedia <= 1) return;
+                const cur = galleryIdxRef.current[String(product.id)] || 0;
+                const tgt = dx > 0 ? cur + 1 : cur - 1;
+                if (tgt < 0 || tgt >= totalMedia) return;
+                goTo(tgt);
+              }}
+            >
+              <div style={{ display: 'flex', height: '100%', direction: 'ltr', transform: `translateX(-${curIdx * 100}%)`, transition: 'transform 0.3s ease', willChange: 'transform' }}>
+                {media.map((item: any, i: number) => (
+                  <div key={i} className="w-full h-full shrink-0 relative overflow-hidden">
+                    {item.type === 'video' ? (
+                      <>
+                        <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: surfaceMuted }} />
+                        {item.ve.type === 'youtube' ? (
+                          <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${item.ve.id}?autoplay=1&mute=1&loop=1&playlist=${item.ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                        ) : item.ve.type === 'video' ? (
+                          <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" />
+                        ) : (
+                          <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
+                        )}
+                      </>
+                    ) : (
+                      <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
+                        onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
+                        decoding="async" width="600" height="600" />
+                    )}
+                  </div>
+                ))}
               </div>
 
-              <div className="overflow-y-auto px-8 pb-8 [scrollbar-hide::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {/* Badge */}
+              <div className="absolute top-4 left-4 bg-black text-white px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1" style={{ zIndex: 10 }}>
+                <Flame size={12} className="text-orange-400" /> {product.badge}
+              </div>
+
+              {/* Dots */}
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5" style={{ zIndex: 10 }}>
+                {[...Array(totalMedia)].map((_, idx) => (
+                  <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${curIdx === idx ? 'w-6 bg-emerald-500' : 'w-1.5 bg-white/50'}`}></div>
+                ))}
+              </div>
+
+              {totalMedia > 1 && (
+                <>
+                  {curIdx > 0 && (
+                  <button onClick={() => goTo(curIdx - 1)}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white" style={{ zIndex: 10 }}>
+                    <ChevronLeft size={20} />
+                  </button>
+                  )}
+                  {curIdx < totalMedia - 1 && (
+                  <button onClick={() => goTo(curIdx + 1)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white" style={{ zIndex: 10 }}>
+                    <ChevronRight size={20} />
+                  </button>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Product Info */}
+            <div className="p-6 space-y-4 border-b" style={{ borderColor }}>
+              <div className="flex justify-between items-start">
+                <h1 className="text-2xl font-bold leading-tight w-2/3" style={{ color: textColor }}>{product.name}</h1>
+                <div className="text-right">
+                  {product.oldPrice > product.price && (
+                    <div className="text-xs line-through font-medium" style={{ color: textMuted }}>{Math.round(product.oldPrice)} DA</div>
+                  )}
+                  <div className="text-2xl font-black" style={{ color: accentColor }}>{Math.round(product.price)} DA</div>
+                </div>
+              </div>
+              <div>
+                <p className={`text-sm leading-relaxed`} style={{ color: textColor }}>{product.description}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {product.features.map((f: string) => (
+                  <span key={f} className="text-[10px] font-bold px-2 py-1 rounded-md italic" style={{ color: textMuted, backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}># {f}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Order Form - Inline */}
+            <div className="px-6 py-6 space-y-6">
+              <h3 className="font-black text-lg text-center" style={{ color: textColor }}>أكمل طلبك الآن</h3>
+
               {orderStatus === 'success' ? (
-                <div className="py-16 text-center space-y-6">
+                <div className="py-8 text-center space-y-6">
                   <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: accentColor + '20' }}>
                     <CheckCircle2 size={40} style={{ color: accentColor }} />
                   </div>
                   <div>
                     <h2 className="text-2xl font-black" style={{ color: accentColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
-                    <p className="mt-2 px-6" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
+                    <p className="mt-2" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
                   </div>
                   <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={submittedPhone} />
                   <div className="text-right rounded-xl p-4 space-y-2 border" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
                     <div className="flex justify-between text-sm">
-                      <span>{selectedProduct?.name || 'المنتج'} × {selectedOffer?.quantity || quantity}</span>
-                      <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                      <span>{product.name} × {selectedOffer?.quantity || quantity}</span>
+                      <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span style={{ color: textMuted }}>التوصيل</span>
@@ -569,189 +702,169 @@ const parseVideoEmbed = (videoUrl: string) => {
                     <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
                     <div className="flex justify-between font-black">
                       <span>المجموع</span>
-                      <span style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                      <span style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
                     </div>
                   </div>
-                  <button 
-                    onClick={handleCloseCheckout}
-                    className="w-full text-white font-bold py-5 rounded-2xl"
-                    style={{ backgroundColor: accentColor }}
-                  >
+                  <button onClick={handleBackToFeed} className="w-full text-white font-bold py-5 rounded-2xl" style={{ backgroundColor: accentColor }}>
                     تسوق مرة أخرى
                   </button>
                 </div>
               ) : (
-                <div className="space-y-6">
-<div className="flex items-center gap-4 border-b pb-6" style={{ borderColor: borderColor }}>
-  <img 
-    src={selectedProduct?.images[0]} 
-    className="w-20 h-20 rounded-2xl object-cover border" 
-    alt={selectedProduct?.name || "Product"} 
-    loading="lazy"
-    decoding="async"
-    width="80"
-    height="80"
-    style={{ borderColor: borderColor, contentVisibility: 'auto' }}
-  />
-                    <div>
-                      <h4 className="font-bold" style={{ color: textColor }}>{selectedProduct?.name}</h4>
-                      <p className="font-black" style={{ color: accentColor }}>{Math.round(selectedProduct?.price ?? 0)} DA</p>
+                <form className="space-y-5" onSubmit={handleOrder}>
+                  {/* Variants */}
+                  {product.variants && product.variants.length > 0 && (
+                    <VariantSelector
+                      variants={product.variants}
+                      selected={selectedVariant}
+                      onSelect={setSelectedVariant}
+                      accentColor={accentColor}
+                      currency={settings?.currency_code || 'دج'}
+                      basePrice={product.price}
+                    />
+                  )}
+
+                  {/* Offers */}
+                  {offers.length > 0 && (
+                    <OfferSelector
+                      offers={offers}
+                      unitPrice={product?.price || 0}
+                      currency={settings?.currency_code || 'دج'}
+                      selectedOfferId={selectedOffer?.offer_id ?? null}
+                      onSelect={handleOfferSelect}
+                      accentColor={accentColor}
+                      textColor={textColor}
+                      borderColor={borderColor}
+                      bgColor={cardBg}
+                    />
+                  )}
+
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>الاسم واللقب</label>
+                        <input required name="name" type="text" placeholder="مثال: محمد علامي" className="w-full px-4 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>رقم الهاتف</label>
+                        <div className="relative">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: textMuted }} />
+                          <input required name="phone" type="tel" maxLength={10} placeholder="05 / 06 / 07 XX XX XX XX" className="w-full pl-12 pr-5 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>الولاية</label>
+                        <select name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm font-medium" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
+                          <option value="">اختر...</option>
+                          {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
+                        </select>
+                      </div>
+                      {showCommune && (
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>البلدية</label>
+                          <div className="relative">
+                            <select name="commune" required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm appearance-none disabled:opacity-50" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
+                              <option value="">{selectedWilayaId ? 'اختر...' : 'اختر الولاية أولاً'}</option>
+                              {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
+                            </select>
+                            <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {showAddress && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>العنوان</label>
+                        <input name="address" type="text" placeholder="أدخل عنوانك" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                      </div>
+                    )}
+
+                    {showNotes && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>ملاحظات</label>
+                        <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm resize-none" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} rows={2} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="pt-2">
+                    <label className="text-[11px] font-black uppercase mb-2 block" style={{ color: textMuted }}>الكمية</label>
+                    <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
+                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>−</button>
+                      <span className="font-black text-lg">{quantity}</span>
+                      <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>+</button>
                     </div>
                   </div>
 
-                  <form className="space-y-5" onSubmit={handleOrder}>
-                    {/* Variants */}
-                    {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
-                      <VariantSelector 
-                        variants={selectedProduct.variants} 
-                        selected={selectedVariant} 
-                        onSelect={setSelectedVariant} 
-                        accentColor={accentColor} 
-                        currency={settings?.currency_code || 'دج'} 
-                        basePrice={selectedProduct.price} 
-                      />
-                    )}
-
-                    {/* Offers */}
-                    {offers.length > 0 && (
-                      <OfferSelector 
-                        offers={offers} 
-                        unitPrice={selectedProduct?.price || 0} 
-                        currency={settings?.currency_code || 'دج'} 
-                        selectedOfferId={selectedOffer?.offer_id ?? null} 
-                        onSelect={handleOfferSelect} 
-                        accentColor={accentColor} 
-                        textColor={textColor} 
-                        borderColor={borderColor} 
-                        bgColor={cardBg}
-                      />
-                    )}
-                    <div className="grid gap-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>الاسم واللقب</label>
-                          <input required name="name" type="text" placeholder="مثال: محمد علامي" className="w-full px-4 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>رقم الهاتف</label>
-                          <div className="relative">
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: textMuted }} />
-                            <input required name="phone" type="tel" maxLength={10} placeholder="05 / 06 / 07 XX XX XX XX" className="w-full pl-12 pr-5 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>الولاية</label>
-                          <select name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm font-medium" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
-                            <option value="">اختر...</option>
-                            {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
-                          </select>
-                        </div>
-                        {showCommune && (
-                          <div className="space-y-1.5">
-                            <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>البلدية</label>
-                            <div className="relative">
-                              <select name="commune" required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm appearance-none disabled:opacity-50" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
-                                <option value="">{selectedWilayaId ? 'اختر...' : 'اختر الولاية أولاً'}</option>
-                                {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
-                              </select>
-                              <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
-                            </div>
-                          </div>
+                  {/* Delivery Type Buttons */}
+                  {(showHomeDelivery || showDeskDelivery) && (
+                    <div>
+                      <label className="text-[11px] font-black uppercase mb-2 block" style={{ color: textMuted }}>نوع التوصيل</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {showHomeDelivery && (
+                          <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
+                            <Home size={16} />
+                            <span>التوصيل للمنزل</span>
+                          </button>
+                        )}
+                        {showDeskDelivery && (
+                          <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
+                            <Building2 size={16} />
+                            <span>الاستلام من المكتب</span>
+                          </button>
                         )}
                       </div>
-
-                      {showAddress && (
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>العنوان</label>
-                          <input name="address" type="text" placeholder="أدخل عنوانك" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
-                        </div>
-                      )}
-
-                      {showNotes && (
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>ملاحظات</label>
-                          <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm resize-none" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} rows={2} />
-                        </div>
-                      )}
                     </div>
+                  )}
 
-                    {/* Quantity */}
-                    <div className="pt-2">
-                      <label className="text-[11px] font-black uppercase mb-2 block" style={{ color: textMuted }}>الكمية</label>
-                      <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
-                        <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>−</button>
-                        <span className="font-black text-lg">{quantity}</span>
-                        <button type="button" onClick={() => setQuantity(Math.min(selectedProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>+</button>
+                  {/* Price Breakdown */}
+                  {selectedWilayaId && (
+                    <div className="p-4 rounded-2xl space-y-2 border" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
+                      <div className="flex justify-between text-sm">
+                        <span className="font-bold" style={{ color: textColor }}>سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
+                        <span className="font-black">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="font-bold" style={{ color: textColor }}>التوصيل</span>
+                        <span className="font-black">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
+                      </div>
+                      <div className="h-px" style={{ backgroundColor: borderColor }} />
+                      <div className="flex justify-between">
+                        <span className="font-black text-lg">المجموع</span>
+                        <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
                       </div>
                     </div>
+                  )}
 
-                    {/* Delivery Type Buttons */}
-                    {(showHomeDelivery || showDeskDelivery) && (
-                      <div>
-                        <label className="text-[11px] font-black uppercase mb-2 block" style={{ color: textMuted }}>نوع التوصيل</label>
-                        <div className="grid grid-cols-2 gap-3">
-                          {showHomeDelivery && (
-                            <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
-                              <Home size={16} />
-                              <span>التوصيل للمنزل</span>
-                            </button>
-                          )}
-                          {showDeskDelivery && (
-                            <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
-                              <Building2 size={16} />
-                              <span>الاستلام من المكتب</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                  {orderError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#dc2626' }}>
+                      {orderError}
+                    </div>
+                  )}
+
+                  <button
+                    disabled={orderStatus === 'loading'}
+                    className="w-full text-white font-black py-5 rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    {orderStatus === 'loading' ? (
+                      <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                      <>تأكيد الطلب <ArrowRight size={20} /></>
                     )}
-
-                    {/* Price Breakdown */}
-                    {selectedWilayaId && (
-                      <div className="p-4 rounded-2xl space-y-2 border" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
-                        <div className="flex justify-between text-sm">
-                          <span className="font-bold" style={{ color: textColor }}>سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
-                          <span className="font-black">{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="font-bold" style={{ color: textColor }}>التوصيل</span>
-                          <span className="font-black">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
-                        </div>
-                        <div className="h-px" style={{ backgroundColor: borderColor }} />
-                        <div className="flex justify-between">
-                          <span className="font-black text-lg">المجموع</span>
-                          <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (selectedProduct?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {orderError && (
-                      <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#dc2626' }}>
-                        {orderError}
-                      </div>
-                    )}
-
-                    <button 
-                      disabled={orderStatus === 'loading'}
-                      className="w-full text-white font-black py-5 rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
-                      style={{ backgroundColor: accentColor }}
-                    >
-                      {orderStatus === 'loading' ? (
-                        <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      ) : (
-                        <>تأكيد الطلب <ArrowRight size={20} /></>
-                      )}
-                    </button>
-                  </form>
-                </div>
+                  </button>
+                </form>
               )}
             </div>
-            </div>
           </div>
-        )}
+          );
+        })()}
+
+        </main>
 
         {/* Sticky Call Action for Mobile - Highly Effective in DZ */}
         <div className="fixed bottom-6 left-6 right-6 flex gap-3 z-40">
