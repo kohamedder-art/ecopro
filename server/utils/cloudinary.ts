@@ -196,4 +196,29 @@ export function isCloudinaryUrl(url: string): boolean {
   return url?.includes('cloudinary.com') || false;
 }
 
+/**
+ * Sign a Cloudinary URL for restricted access
+ * When Cloudinary "Restrict access" is enabled, assets need signed URLs.
+ */
+export function signCloudinaryUrl(url: string): string {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  if (url.includes('/s--')) return url;
+
+  const publicId = extractPublicIdFromUrl(url);
+  if (!publicId) return url;
+
+  const resourceType = url.includes('/video/') ? 'video' : 'image';
+
+  try {
+    return cloudinary.url(publicId, {
+      resource_type: resourceType,
+      sign_url: true,
+      secure: true,
+    });
+  } catch (error) {
+    console.error('[signCloudinaryUrl] Failed:', error);
+    return url;
+  }
+}
+
 export { cloudinary };

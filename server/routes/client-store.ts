@@ -6,6 +6,7 @@ import { logStoreSettings } from "../utils/logger";
 import { invalidateStorefrontSettingsCache, invalidateAllStorefrontSettingsCache, invalidateStorefrontProductsCache } from "./public-store";
 import { getPublicBaseUrl } from "../utils/public-url";
 import { generateText } from "../services/gemini";
+import { signCloudinaryUrl, isCloudinaryUrl } from "../utils/cloudinary";
 
 const router = Router();
 
@@ -113,12 +114,22 @@ export const getStoreProducts: RequestHandler = async (req, res) => {
 
     const result = await pool.query(query, params);
     
+    // Sign Cloudinary URLs for restricted access
+    const signedRows = result.rows.map((p: any) => ({
+      ...p,
+      images: Array.isArray(p.images) ? p.images.map((img: string) => isCloudinaryUrl(img) ? signCloudinaryUrl(img) : img) : p.images,
+      metadata: p.metadata ? {
+        ...p.metadata,
+        video_url: p.metadata.video_url && isCloudinaryUrl(p.metadata.video_url) ? signCloudinaryUrl(p.metadata.video_url) : p.metadata.video_url,
+      } : p.metadata,
+    }));
+    
     // Cache unfiltered results
     if (!hasFilters) {
-      setCachedProducts(clientId, result.rows);
+      setCachedProducts(clientId, signedRows);
     }
     
-    res.json(result.rows);
+    res.json(signedRows);
   } catch (error) {
     console.error("Get store products error:", error);
     console.error("Get store products stack:", (error as Error).stack);
