@@ -228,6 +228,7 @@ const parseVideoEmbed = (videoUrl: string) => {
   const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
   if (yt) return { type: 'youtube' as const, id: yt[1] };
   if (/\.(mp4|webm|ogg)(\?|$)/i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
+  if (/cloudinary\.com\/.*\/video\/upload\//i.test(videoUrl)) return { type: 'video' as const, url: videoUrl };
   return { type: 'iframe' as const, url: videoUrl };
 };
 
@@ -459,16 +460,13 @@ const parseVideoEmbed = (videoUrl: string) => {
                       {media.map((item: any, i: number) => (
                         <div key={i} className="w-full h-full shrink-0 relative overflow-hidden">
                           {item.type === 'video' ? (
-                            <>
-                              <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: surfaceMuted }} />
-                              {item.ve.type === 'youtube' ? (
-                                <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${item.ve.id}?autoplay=1&mute=1&loop=1&playlist=${item.ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                              ) : item.ve.type === 'video' ? (
-                                <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" />
-                              ) : (
-                                <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
-                              )}
-                            </>
+                            item.ve.type === 'youtube' ? (
+                              <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${item.ve.id}?autoplay=1&mute=1&loop=1&playlist=${item.ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                            ) : item.ve.type === 'video' ? (
+                              <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" controls />
+                            ) : (
+                              <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
+                            )}
                           ) : (
                             <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
                               onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
@@ -604,16 +602,13 @@ const parseVideoEmbed = (videoUrl: string) => {
                 {media.map((item: any, i: number) => (
                   <div key={i} className="w-full h-full shrink-0 relative overflow-hidden">
                     {item.type === 'video' ? (
-                      <>
-                        <div className="absolute inset-0 animate-pulse" style={{ backgroundColor: surfaceMuted }} />
-                        {item.ve.type === 'youtube' ? (
-                          <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${item.ve.id}?autoplay=1&mute=1&loop=1&playlist=${item.ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
-                        ) : item.ve.type === 'video' ? (
-                          <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" />
-                        ) : (
-                          <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
-                        )}
-                      </>
+                      item.ve.type === 'youtube' ? (
+                        <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${item.ve.id}?autoplay=1&mute=1&loop=1&playlist=${item.ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
+                      ) : item.ve.type === 'video' ? (
+                        <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" controls />
+                      ) : (
+                        <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
+                      )}
                     ) : (
                       <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
                         onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
