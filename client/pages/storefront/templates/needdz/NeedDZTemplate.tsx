@@ -466,7 +466,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                               <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" controls />
                             ) : (
                               <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
-                            )}
+                            )
                           ) : (
                             <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
                               onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
@@ -608,7 +608,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                         <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" controls />
                       ) : (
                         <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
-                      )}
+                      )
                     ) : (
                       <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
                         onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
