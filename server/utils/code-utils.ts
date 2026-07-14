@@ -384,6 +384,7 @@ export async function redeemSubscriptionCode(
           `UPDATE subscriptions 
            SET status = 'active', 
                tier = $1,
+               current_period_start = NOW(),
                current_period_end = to_timestamp($2 / 1000.0),
                updated_at = NOW()
            WHERE id = $3
