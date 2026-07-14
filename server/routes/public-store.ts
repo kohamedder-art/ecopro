@@ -8,7 +8,6 @@ import { assessOrderRisk } from "../utils/fraud-detection";
 import { z, ZodError } from "zod";
 import type { Pool } from "pg";
 import { notifyOrderCreated } from '../services/push-notifications';
-import { signCloudinaryUrl, isCloudinaryUrl } from '../utils/cloudinary';
 
 const StoreSlugSchema = z
   .string()
@@ -241,11 +240,7 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
         const isDataUri = (s: string) => typeof s === 'string' && s.startsWith('data:');
         const cleanProducts = productsWithSlugs.map((p: any) => ({
           ...p,
-          images: Array.isArray(p.images) ? p.images.filter((img: string) => !isDataUri(img)).map((img: string) => isCloudinaryUrl(img) ? signCloudinaryUrl(img) : img) : p.images,
-          metadata: p.metadata ? {
-            ...p.metadata,
-            video_url: p.metadata.video_url && isCloudinaryUrl(p.metadata.video_url) ? signCloudinaryUrl(p.metadata.video_url) : p.metadata.video_url,
-          } : p.metadata,
+          images: Array.isArray(p.images) ? p.images.filter((img: string) => !isDataUri(img)) : p.images,
         }));
         setCached(storefrontProductsCache, cacheKey, cleanProducts, PRODUCTS_CACHE_TTL_MS);
         return cleanProducts;
@@ -555,12 +550,11 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
         ...row,
         template: dbTemplate, // Explicitly set to ensure it's not overridden
         store_slug: row?.store_slug || storeSlug,
-        store_logo: row?.store_logo && isCloudinaryUrl(row.store_logo) ? signCloudinaryUrl(row.store_logo) : row?.store_logo,
-        banner_url: row.banner_url && isCloudinaryUrl(row.banner_url) ? signCloudinaryUrl(sanitize(row.banner_url)) : sanitize(row.banner_url),
-        hero_main_url: row.hero_main_url && isCloudinaryUrl(row.hero_main_url) ? signCloudinaryUrl(sanitize(row.hero_main_url)) : sanitize(row.hero_main_url),
-        hero_tile1_url: row.hero_tile1_url && isCloudinaryUrl(row.hero_tile1_url) ? signCloudinaryUrl(sanitize(row.hero_tile1_url)) : sanitize(row.hero_tile1_url),
-        hero_tile2_url: row.hero_tile2_url && isCloudinaryUrl(row.hero_tile2_url) ? signCloudinaryUrl(sanitize(row.hero_tile2_url)) : sanitize(row.hero_tile2_url),
-        store_images: storeImagesArr?.map((img: string) => isCloudinaryUrl(img) ? signCloudinaryUrl(img) : img) || storeImagesArr,
+        banner_url: sanitize(row.banner_url),
+        hero_main_url: sanitize(row.hero_main_url),
+        hero_tile1_url: sanitize(row.hero_tile1_url),
+        hero_tile2_url: sanitize(row.hero_tile2_url),
+        store_images: storeImagesArr,
       };
       setCached(storefrontSettingsCache, cacheKey, payload, SETTINGS_CACHE_TTL_MS);
       return payload;
@@ -642,7 +636,6 @@ export const getPublicProduct: RequestHandler = async (req, res) => {
       }
       return res.json({
         ...mprod,
-        images: Array.isArray(mprod.images) ? mprod.images.map((img: string) => isCloudinaryUrl(img) ? signCloudinaryUrl(img) : img) : mprod.images,
         views: (mprod.views || 0) + (shouldTrackView ? 1 : 0),
       });
     }
@@ -673,11 +666,6 @@ export const getPublicProduct: RequestHandler = async (req, res) => {
 
     res.json({
       ...product,
-      images: Array.isArray(product.images) ? product.images.map((img: string) => isCloudinaryUrl(img) ? signCloudinaryUrl(img) : img) : product.images,
-      metadata: product.metadata ? {
-        ...product.metadata,
-        video_url: product.metadata.video_url && isCloudinaryUrl(product.metadata.video_url) ? signCloudinaryUrl(product.metadata.video_url) : product.metadata.video_url,
-      } : product.metadata,
       variants,
       views: (product.views || 0) + (shouldTrackView ? 1 : 0),
     });
@@ -744,15 +732,7 @@ export const getStorefrontProductById: RequestHandler = async (req, res) => {
       variants = [];
     }
 
-    res.json({
-      ...product,
-      images: Array.isArray(product.images) ? product.images.map((img: string) => isCloudinaryUrl(img) ? signCloudinaryUrl(img) : img) : product.images,
-      metadata: product.metadata ? {
-        ...product.metadata,
-        video_url: product.metadata.video_url && isCloudinaryUrl(product.metadata.video_url) ? signCloudinaryUrl(product.metadata.video_url) : product.metadata.video_url,
-      } : product.metadata,
-      variants,
-    });
+    res.json({ ...product, variants });
   } catch (error) {
     console.error('Get storefront product by ID error:', isProduction ? (error as any)?.message : error);
     res.status(500).json({ error: 'Failed to fetch product' });
