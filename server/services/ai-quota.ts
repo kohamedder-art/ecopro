@@ -1,9 +1,9 @@
 /**
  * AI Quota Management
  *
- * Tracks per-store AI usage and enforces monthly dollar-based budgets.
- * Budget resets when the store owner pays for a new billing period
- * (tied to subscriptions.current_period_start, NOT calendar month).
+ * With local AI models (opencode bridge), usage costs are effectively $0.
+ * Quotas are lifted — all stores get unlimited access.
+ * Usage is still logged for display purposes only.
  */
 
 import { ensureConnection } from '../utils/database';
@@ -18,79 +18,21 @@ interface QuotaStatus {
   userType: UserType;
 }
 
-const DEFAULT_MONTHLY_BUDGET = 2.00;
-
 /**
- * Get the billing period start for a store owner from their subscription.
- * Falls back to first day of month if no subscription found.
+ * Check if a store has remaining AI budget — always allowed with local AI.
  */
-async function getBillingPeriodStart(clientId: number): Promise<Date> {
-  const pool = await ensureConnection();
-  const result = await pool.query(
-    `SELECT current_period_start
-     FROM subscriptions
-     WHERE user_id = $1
-     LIMIT 1`,
-    [clientId]
-  );
-
-  if (result.rows.length > 0 && result.rows[0].current_period_start) {
-    return new Date(result.rows[0].current_period_start);
-  }
-
-  // No subscription row or missing period_start — fall back to 30 days ago
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  return thirtyDaysAgo;
-}
-
-async function getBillingPeriodEnd(clientId: number): Promise<Date | null> {
-  const pool = await ensureConnection();
-  const result = await pool.query(
-    `SELECT current_period_end
-     FROM subscriptions
-     WHERE user_id = $1
-     LIMIT 1`,
-    [clientId]
-  );
-
-  if (result.rows.length > 0 && result.rows[0].current_period_end) {
-    return new Date(result.rows[0].current_period_end);
-  }
-
-  return null;
-}
-
-/**
- * Check if a store has remaining AI budget for the current billing period.
- */
-export async function checkQuota(clientId: number, userType: UserType): Promise<QuotaStatus> {
-  const pool = await ensureConnection();
-  const budget = DEFAULT_MONTHLY_BUDGET;
-  const periodStart = await getBillingPeriodStart(clientId);
-  const periodEnd = await getBillingPeriodEnd(clientId);
-
-  const result = await pool.query(
-    `SELECT COALESCE(SUM(cost_usd), 0) as total_spent
-     FROM ai_usage_logs
-     WHERE client_id = $1 AND created_at >= $2`,
-    [clientId, periodStart]
-  );
-
-  const totalSpent = Number(result.rows[0].total_spent);
-  const remaining = Math.max(0, budget - totalSpent);
-
+export async function checkQuota(_clientId: number, userType: UserType): Promise<QuotaStatus> {
   return {
-    allowed: remaining > 0,
-    remaining,
-    limit: budget,
-    resetDate: periodEnd,
+    allowed: true,
+    remaining: 999_999_999,
+    limit: 999_999_999,
+    resetDate: null,
     userType,
   };
 }
 
 /**
- * Record an AI usage event with actual cost from API response.
+ * Record an AI usage event (for display/history only, no enforcement).
  */
 export async function recordUsage(params: {
   clientId: number;
@@ -124,8 +66,8 @@ export async function recordUsage(params: {
 }
 
 /**
- * Get quota usage summary for a store.
- * Returns token counts for display (old UI format) but budget is enforced in dollars.
+ * Get quota usage summary for display.
+ * Returns unlimited limits since AI is local/free.
  */
 export async function getQuotaSummary(clientId: number): Promise<{
   ownerUsed: number;
@@ -135,29 +77,26 @@ export async function getQuotaSummary(clientId: number): Promise<{
   periodStart: Date;
 }> {
   const pool = await ensureConnection();
-  const periodStart = await getBillingPeriodStart(clientId);
 
   const result = await pool.query(
     `SELECT
        COALESCE(SUM(CASE WHEN user_type = 'owner' THEN total_tokens ELSE 0 END), 0) as owner_tokens,
        COALESCE(SUM(CASE WHEN user_type = 'customer' THEN total_tokens ELSE 0 END), 0) as customer_tokens
      FROM ai_usage_logs
-     WHERE client_id = $1 AND created_at >= $2`,
-    [clientId, periodStart]
+     WHERE client_id = $1`,
+    [clientId]
   );
 
   const ownerUsed = Number(result.rows[0].owner_tokens);
   const customerUsed = Number(result.rows[0].customer_tokens);
 
-  // Show token-equivalent of the $2 budget at 14B rates (~$0.156/1M avg)
-  // This is what store owners see in the UI (not dollars)
-  const CUSTOMER_TOKEN_LIMIT = 12_000_000;
-
   return {
     ownerUsed,
-    ownerLimit: 5_000_000,
+    ownerLimit: 999_999_999,
     customerUsed,
-    customerLimit: CUSTOMER_TOKEN_LIMIT,
-    periodStart,
+    customerLimit: 999_999_999,
+    periodStart: new Date(0),
   };
 }
+
+
