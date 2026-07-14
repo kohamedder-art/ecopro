@@ -1,4 +1,5 @@
 import { ensureConnection } from './database';
+import { getIPIntelligence } from '../services/ip-intelligence';
 
 export interface RiskAssessment {
   score: number;
@@ -153,12 +154,8 @@ export async function assessOrderRisk(
       flags.push(`👥 ${distinctPhones} أرقام مختلفة من نفس الـ IP`);
     }
 
-    const ipIntelRes = await q(`
-      SELECT is_vpn, is_proxy, is_tor, is_datacenter, fraud_score
-      FROM ip_intelligence WHERE ip = $1
-    `, [ip]);
-    if (ipIntelRes.rows.length > 0) {
-      const intel = ipIntelRes.rows[0];
+    try {
+      const intel = await getIPIntelligence(ip);
       if (intel.is_vpn || intel.is_proxy || intel.is_tor) {
         score += 25;
         flags.push('🛡️ اتصال عبر VPN أو بروكسي');
@@ -167,10 +164,12 @@ export async function assessOrderRisk(
         score += 15;
         flags.push('🏢 عنوان IP لمركز بيانات (غير معتاد)');
       }
-      if (parseInt(intel.fraud_score || '0') >= 70) {
+      if (intel.fraud_score >= 70) {
         score += 20;
         flags.push(`⚠️ نقاط احتيال IP: ${intel.fraud_score}`);
       }
+    } catch (e: any) {
+      console.error('[FRAUD] IP intelligence error:', e?.message?.slice(0, 200));
     }
   }
 
@@ -229,21 +228,7 @@ export async function assessOrderRisk(
     }
   }
 
-  // ── 9. Per-IP velocity ──
-  const ipOrdersRes = await q(`
-    SELECT COUNT(*) as cnt FROM store_orders
-    WHERE client_id = $1 AND customer_ip = $2 AND created_at > NOW() - INTERVAL '1 hour'
-  `, [clientId, ip]);
-  const ipOrders = parseInt(ipOrdersRes.rows[0]?.cnt || '0') + 1; // include current
-  if (ipOrders >= 10) {
-    score += 30;
-    flags.push(`🚨 ${ipOrders} طلب من هذا الـ IP آخر ساعة (نشاط غير طبيعي)`);
-  } else if (ipOrders >= 5) {
-    score += 15;
-    flags.push(`📊 ${ipOrders} طلب من هذا الـ IP آخر ساعة`);
-  }
-
-  // ── 10. Sequential phone detection (e.g., 0555000001, 0555000002) ──
+  // ── 9. Sequential phone detection (e.g., 0555000001, 0555000002) ──
   const phoneSuffix = normalizedPhone.slice(-4);
   if (/^\d{4}$/.test(phoneSuffix)) {
     const seqRes = await q(`
