@@ -86,13 +86,22 @@ const publicAiLimiter = rateLimit({
   message: { error: 'Too many AI requests. Please wait a moment.' },
 });
 
-// Authenticated AI endpoints allow more headroom
+// Authenticated AI endpoints
 const authAiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many AI requests. Please wait a moment.' },
+});
+
+// Stricter limiter for chat — main abuse vector
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many chat requests. Slow down.' },
 });
 
 // ════════════════════════════════════════════════════════════
@@ -1137,7 +1146,7 @@ Answer helpfully in 2–3 sentences. If the answer is not about EcoPro, say "I c
  * - Unauthenticated → uses public/faq mode
  * Body: { question }
  */
-router.post('/chat', authAiLimiter, async (req: Request, res: Response) => {
+router.post('/chat', chatLimiter, async (req: Request, res: Response) => {
   try {
     const { question, history } = req.body;
     if (!question) return res.status(400).json({ error: 'question is required' });

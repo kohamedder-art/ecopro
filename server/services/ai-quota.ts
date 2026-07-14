@@ -2,8 +2,8 @@
  * AI Quota Management
  *
  * With local AI models (opencode bridge), usage costs are effectively $0.
- * Quotas are lifted — all stores get unlimited access.
- * Usage is still logged for display purposes only.
+ * No dollar budget — but daily request caps prevent abuse.
+ * Usage is logged for display.
  */
 
 import { ensureConnection } from '../utils/database';
@@ -18,14 +18,32 @@ interface QuotaStatus {
   userType: UserType;
 }
 
+const DAILY_LIMITS: Record<UserType, number> = {
+  owner: 500,
+  customer: 200,
+};
+
 /**
- * Check if a store has remaining AI budget — always allowed with local AI.
+ * Check daily request quota — prevents abuse without costing money.
  */
-export async function checkQuota(_clientId: number, userType: UserType): Promise<QuotaStatus> {
+export async function checkQuota(clientId: number, userType: UserType): Promise<QuotaStatus> {
+  const pool = await ensureConnection();
+  const limit = DAILY_LIMITS[userType];
+
+  const result = await pool.query(
+    `SELECT COUNT(*)::int as req_count
+     FROM ai_usage_logs
+     WHERE client_id = $1 AND user_type = $2 AND created_at > NOW() - INTERVAL '24 hours'`,
+    [clientId, userType]
+  );
+
+  const used = result.rows[0]?.req_count || 0;
+  const remaining = Math.max(0, limit - used);
+
   return {
-    allowed: true,
-    remaining: 999_999_999,
-    limit: 999_999_999,
+    allowed: remaining > 0,
+    remaining,
+    limit,
     resetDate: null,
     userType,
   };
