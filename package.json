@@ -28,6 +28,7 @@
     "e2e:smoke": "node scripts/e2e-smoke.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1088.0",
     "@google/generative-ai": "^0.24.1",
     "@tiptap/pm": "^3.27.1",
     "@tiptap/react": "^3.27.1",

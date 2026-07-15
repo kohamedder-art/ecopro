@@ -7,7 +7,7 @@ import multer from 'multer';
 import { fileTypeFromFile } from 'file-type';
 import { scanFileForMalware } from '../utils/malware-scan';
 import { isSafeUploadName, signUploadPath, verifyUploadSignature } from '../utils/upload-signing';
-import { isCloudinaryConfigured, uploadToCloudinary } from '../utils/cloudinary';
+import { isR2Configured, uploadToR2, deleteFromR2 } from '../utils/r2-storage';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -93,36 +93,33 @@ export const uploadImage: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: scan.reason });
     }
 
-    // If Cloudinary is configured, upload there (persistent storage)
-    const cloudConfigured = isCloudinaryConfigured();
-    if (!cloudConfigured) {
-      console.warn('[uploadImage] Cloudinary not configured — using local storage');
-    }
-    if (cloudConfigured) {
+    // If R2 storage is configured, upload there (persistent storage on Render)
+    const r2Configured = isR2Configured();
+    if (r2Configured) {
       try {
         const clientId = req.user.id;
-        const result = await uploadToCloudinary(req.file.path, {
-          folder: `ecopro/client_${clientId}`,
-          resourceType: detected.mime.startsWith('video/') ? 'video' : 'image',
-        });
+        const ext = detected.ext;
+        const key = `ecopro/client_${clientId}/${crypto.randomUUID()}.${ext}`;
+        const result = await uploadToR2(req.file.path, key, detected.mime);
 
         // Clean up temp file
         await fs.unlink(req.file.path).catch(() => null);
 
-        console.log('[uploadImage] Cloudinary upload successful:', result.url);
+        const filename = key.split('/').pop() || key;
+        console.log('[uploadImage] R2 upload successful:', result.url);
         return res.status(200).json({
           url: result.url,
-          filename: result.publicId.split('/').pop() || result.publicId,
-          size: result.bytes,
+          filename,
+          size: req.file.size,
           mimetype: detected.mime,
-          cloudinary: true,
+          r2: true,
         });
-      } catch (cloudErr) {
-        console.error('[uploadImage] Cloudinary upload failed:', cloudErr);
+      } catch (r2Err) {
+        console.error('[uploadImage] R2 upload failed:', r2Err);
         // Fall through to local storage as fallback
       }
     } else {
-      console.log('[uploadImage] Using local storage (Cloudinary not configured)');
+      console.log('[uploadImage] Using local storage (R2 not configured)');
     }
 
     // Local storage fallback (development or if Cloudinary fails)
