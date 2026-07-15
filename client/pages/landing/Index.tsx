@@ -15,12 +15,15 @@ declare global {
   }
 }
 
+const injectedFbScripts: HTMLScriptElement[] = [];
+
 function injectFacebookPixel(pixelId: string) {
   const eventId = `pv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   new Image().src = `https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1&eid=${eventId}`;
 
-  if (document.getElementById('fb-pixel-script')) {
+  // Detect any existing fbevents.js script (from either this component or PixelScripts)
+  if (document.getElementById('fb-pixel-script') || document.getElementById('facebook-pixel-script')) {
     if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
       try { window.fbq('init', pixelId); } catch {}
       try { window.fbq('track', 'PageView'); } catch {}
@@ -45,12 +48,16 @@ function injectFacebookPixel(pixelId: string) {
   script.async = true;
   script.src = 'https://connect.facebook.net/en_US/fbevents.js';
   document.head.appendChild(script);
+  injectedFbScripts.push(script);
 }
+
+const injectedTtScripts: HTMLScriptElement[] = [];
 
 function injectTikTokPixel(pixelId: string) {
   new Image().src = `https://analytics.tiktok.com/i18n/pixel/static?id=${pixelId}&ev=PageView`;
 
-  if (document.getElementById('tt-pixel-script')) return;
+  // Detect any existing TikTok script (from either this component or PixelScripts)
+  if (document.getElementById('tt-pixel-script') || document.getElementById('tiktok-pixel-script')) return;
 
   window.TiktokAnalyticsObject = 'ttq';
   const ttq = window.ttq = window.ttq || [] as any;
@@ -84,6 +91,7 @@ function injectTikTokPixel(pixelId: string) {
     o.type = 'text/javascript';
     o.async = true;
     o.src = i + '?sdkid=' + e + '&lib=ttq';
+    injectedTtScripts.push(o);
     const a = document.getElementsByTagName('script')[0];
     a?.parentNode?.insertBefore(o, a);
   };
@@ -104,11 +112,13 @@ export default function Index() {
       { rel: 'preconnect', href: 'https://www.facebook.com' },
       { rel: 'preconnect', href: 'https://analytics.tiktok.com' },
     ];
+    const links: HTMLLinkElement[] = [];
     for (const link of preconnects) {
       const el = document.createElement('link');
       el.rel = link.rel;
       el.href = link.href;
       document.head.appendChild(el);
+      links.push(el);
     }
 
     fetch('/api/platform/pixel-config')
@@ -122,6 +132,16 @@ export default function Index() {
         });
       })
       .catch(() => {});
+
+    return () => {
+      // Cleanup: remove injected scripts and links when leaving landing page
+      links.forEach(el => el.remove());
+      injectedFbScripts.forEach(el => el.remove());
+      injectedTtScripts.forEach(el => el.remove());
+      // Clear arrays for next mount
+      injectedFbScripts.length = 0;
+      injectedTtScripts.length = 0;
+    };
   }, []);
 
   return (

@@ -27,6 +27,10 @@ declare global {
   }
 }
 
+// Global singleton flags — ensure pixels are only initialized ONCE across all mounts/unmounts
+let facebookPixelGloballyInit = false;
+let tiktokPixelGloballyInit = false;
+
 /**
  * PixelScripts - Injects Facebook and TikTok pixel scripts based on store settings
  * This component should be included in the storefront layout
@@ -210,8 +214,20 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       new Image().src = `https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1`;
     });
 
-    // Prevent duplicate script loading
-    if (document.getElementById('facebook-pixel-script')) {
+    // Global singleton: only inject the SDK once across all mount/unmount cycles
+    if (facebookPixelGloballyInit) {
+      // SDK already injected — just fire PageView
+      uniqueIds.forEach(id => {
+        try { window.fbq?.('init', id); } catch (e) { /* ignore */ }
+      });
+      try { window.fbq?.('track', 'PageView'); } catch (e) { /* ignore */ }
+      return;
+    }
+    facebookPixelGloballyInit = true;
+
+    // Prevent duplicate script loading — detect any existing fbevents.js script
+    const existingFbScript = document.getElementById('facebook-pixel-script') || document.getElementById('fb-pixel-script');
+    if (existingFbScript) {
       if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
         uniqueIds.forEach(id => {
           try { window.fbq('init', id); } catch (e) { /* ignore */ }
@@ -255,10 +271,6 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     document.head.appendChild(script);
 
     console.log('[Pixel] Facebook Pixel initialized:', uniqueIds.join(','));
-
-    return () => {
-      // Cleanup not required in most SPA flows
-    };
   }, [config?.facebook_pixel_id, config?.is_facebook_enabled]);
 
   // Inject TikTok Pixel (supports multiple comma-separated IDs)
@@ -275,6 +287,16 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       new Image().src = `https://analytics.tiktok.com/i18n/pixel/static?id=${id}&ev=PageView`;
     });
 
+    // Global singleton: only inject the SDK once across all mount/unmount cycles
+    if (tiktokPixelGloballyInit) {
+      uniqueIds.forEach(id => {
+        try { window.ttq?.load(id); } catch (e) { /* ignore */ }
+      });
+      try { window.ttq?.page(); } catch (e) { /* ignore */ }
+      return;
+    }
+    tiktokPixelGloballyInit = true;
+
     // If ttq exists, load/instantiate each id
     if (window.ttq) {
       uniqueIds.forEach(id => {
@@ -284,7 +306,8 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
       return;
     }
 
-    if (document.getElementById('tiktok-pixel-script')) {
+    // Detect any existing TikTok script (from either this component or landing page)
+    if (document.getElementById('tiktok-pixel-script') || document.getElementById('tt-pixel-script')) {
       return;
     }
 
@@ -330,10 +353,6 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     try { window.ttq.page(); } catch (e) { /* ignore */ }
 
     console.log('[Pixel] TikTok Pixel initialized:', uniqueIds.join(','));
-
-    return () => {
-      // Cleanup not required
-    };
   }, [config?.tiktok_pixel_id, config?.is_tiktok_enabled]);
 
   // This component doesn't render anything visible
