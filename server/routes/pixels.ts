@@ -1191,4 +1191,70 @@ router.post('/track', trackPixelEvent);
 router.post('/session', trackSessionSummary);
 router.get('/config/:storeSlug', getPublicPixelConfig);
 
+// =====================================================================
+// Pixel proxy — forwards pixel beacons through OUR domain so they are
+// NOT blocked by mobile carriers / DNS-level ad blockers that target
+// facebook.com / connect.facebook.net / analytics.tiktok.com directly.
+// The client fires these as <img> beacons to /api/pixels/proxy/<fb|tt>.
+// =====================================================================
+const PIXEL_PROXY_TARGETS: Record<string, string> = {
+  fb: 'https://www.facebook.com/tr',
+  tt: 'https://analytics.tiktok.com/i18n/pixel/static',
+};
+
+export const pixelProxyHandler: RequestHandler = async (req, res) => {
+  try {
+    const platform = String(req.params.platform || '').toLowerCase();
+    const target = PIXEL_PROXY_TARGETS[platform];
+    if (!target) {
+      res.status(400).send('Unknown pixel platform');
+      return;
+    }
+
+    // Forward only safe, known pixel query params (never arbitrary URLs).
+    const allowed = ['id', 'ev', 'noscript', 'eid', 'dl', 'rl', 'if', 'ts', 'v', 'ec', 'el', 'ea', 'ed', 'tid', 'advanced_mapping'];
+    const fwd = new URLSearchParams();
+    for (const [key, val] of Object.entries(req.query)) {
+      if (val === undefined || val === null) continue;
+      if (key === 'cd' && typeof val === 'object') {
+        // Express parses cd[value]=123 into req.query.cd = { value: '123' }
+        for (const [subKey, subVal] of Object.entries(val as Record<string, any>)) {
+          fwd.set(`cd[${subKey}]`, String(subVal));
+        }
+      } else if (allowed.includes(key)) {
+        fwd.set(key, String(val));
+      }
+    }
+    // Always mark as noscript beacon (img-based) for reliability
+    if (!fwd.has('noscript')) fwd.set('noscript', '1');
+
+    const url = `${target}?${fwd.toString()}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      await fetch(url, {
+        method: 'GET',
+        headers: { 'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0', 'Accept': '*/*' },
+        redirect: 'follow',
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch {
+    /* swallow upstream errors — never break the page */
+  } finally {
+    // Always return a 1x1 transparent gif so the <img> beacon resolves cleanly
+    const buf = Buffer.from(
+      'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+      'base64'
+    );
+    res.setHeader('Content-Type', 'image/gif');
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).send(buf);
+  }
+};
+
+router.get('/proxy/:platform', pixelProxyHandler);
+
 export default router;

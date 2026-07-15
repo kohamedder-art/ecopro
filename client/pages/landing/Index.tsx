@@ -20,7 +20,7 @@ const injectedFbScripts: HTMLScriptElement[] = [];
 function injectFacebookPixel(pixelId: string) {
   const eventId = `pv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-  new Image().src = `https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1&eid=${eventId}`;
+  new Image().src = `/api/pixels/proxy/fb?id=${pixelId}&ev=PageView&noscript=1&eid=${eventId}`;
 
   // Detect any existing fbevents.js script (from either this component or PixelScripts)
   if (document.getElementById('fb-pixel-script') || document.getElementById('facebook-pixel-script')) {
@@ -54,7 +54,7 @@ function injectFacebookPixel(pixelId: string) {
 const injectedTtScripts: HTMLScriptElement[] = [];
 
 function injectTikTokPixel(pixelId: string) {
-  new Image().src = `https://analytics.tiktok.com/i18n/pixel/static?id=${pixelId}&ev=PageView`;
+  new Image().src = `/api/pixels/proxy/tt?id=${pixelId}&ev=PageView`;
 
   // Detect any existing TikTok script (from either this component or PixelScripts)
   if (document.getElementById('tt-pixel-script') || document.getElementById('tiktok-pixel-script')) return;

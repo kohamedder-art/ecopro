@@ -31,6 +31,37 @@ declare global {
 let facebookPixelGloballyInit = false;
 let tiktokPixelGloballyInit = false;
 
+// Store resolved pixel IDs globally so event helpers can fire proxy beacons
+let fbPixelIds: string[] = [];
+let ttPixelIds: string[] = [];
+
+// Fire an <img> beacon through OUR domain proxy for a given event. This is the
+// most reliable path on mobile: it bypasses carriers / DNS blockers that target
+// facebook.com / tiktok.com directly, and does not depend on the SDK script.
+function fireProxyPixel(platform: 'fb' | 'tt', eventName: string, params?: Record<string, any>) {
+  const ids = platform === 'fb' ? fbPixelIds : ttPixelIds;
+  if (!ids.length || typeof window === 'undefined') return;
+  try {
+    const q = new URLSearchParams();
+    q.set('ev', eventName);
+    q.set('noscript', '1');
+    if (params && typeof params === 'object') {
+      for (const key of ['value', 'currency', 'content_name', 'content_category', 'order_id', 'content_ids']) {
+        const v = (params as any)[key];
+        if (v !== undefined && v !== null) {
+          q.set('cd[' + key + ']', Array.isArray(v) ? v.join(',') : String(v));
+        }
+      }
+    }
+    for (const id of ids) {
+      q.set('id', id);
+      new Image().src = `/api/pixels/proxy/${platform}?${q.toString()}`;
+    }
+  } catch {
+    /* never break the page */
+  }
+}
+
 /**
  * PixelScripts - Injects Facebook and TikTok pixel scripts based on store settings
  * This component should be included in the storefront layout
@@ -208,10 +239,13 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     if (ids.length === 0) return;
 
     const uniqueIds = [...new Set(ids)];
+    fbPixelIds = uniqueIds;
 
-    // Always fire img pixels first (works even with ad blockers on mobile)
+    // Always fire img pixels first — routed through our own domain proxy so
+    // mobile carriers / DNS ad-blockers that block facebook.com directly
+    // cannot prevent the beacon from reaching Facebook.
     uniqueIds.forEach(id => {
-      new Image().src = `https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1`;
+      new Image().src = `/api/pixels/proxy/fb?id=${id}&ev=PageView&noscript=1`;
     });
 
     // Global singleton: only inject the SDK once across all mount/unmount cycles
@@ -281,10 +315,13 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     if (ids.length === 0) return;
 
     const uniqueIds = [...new Set(ids)];
+    ttPixelIds = uniqueIds;
 
-    // Always fire img pixels first (works even with ad blockers on mobile)
+    // Always fire img pixels first — routed through our own domain proxy so
+    // mobile carriers / DNS ad-blockers that block tiktok.com directly
+    // cannot prevent the beacon from reaching TikTok.
     uniqueIds.forEach(id => {
-      new Image().src = `https://analytics.tiktok.com/i18n/pixel/static?id=${id}&ev=PageView`;
+      new Image().src = `/api/pixels/proxy/tt?id=${id}&ev=PageView`;
     });
 
     // Global singleton: only inject the SDK once across all mount/unmount cycles
@@ -366,12 +403,16 @@ export function trackFacebookEvent(eventName: string, params?: Record<string, an
   if (typeof window !== 'undefined' && window.fbq) {
     window.fbq('track', eventName, params);
   }
+  // Fire through our own-domain proxy so mobile blockers can't stop it
+  fireProxyPixel('fb', eventName, params);
 }
 
 export function trackTikTokEvent(eventName: string, params?: Record<string, any>) {
   if (typeof window !== 'undefined' && window.ttq) {
     window.ttq.track(eventName, params);
   }
+  // Fire through our own-domain proxy so mobile blockers can't stop it
+  fireProxyPixel('tt', eventName, params);
 }
 
 /**
