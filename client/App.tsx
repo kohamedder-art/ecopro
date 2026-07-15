@@ -43,6 +43,7 @@ const AdminCalls = lazy(() => import("./pages/dashboard/Calls"));
 const AdminBotSettings = lazy(() => import("./pages/dashboard/BotSettings"));
 const AdminIntegrations = lazy(() => import("./pages/dashboard/Integrations"));
 const AdminAISettings = lazy(() => import("./pages/dashboard/AISettings"));
+const LandingPageGenerator = lazy(() => import("./pages/dashboard/LandingPageGenerator"));
 const Profile = lazy(() => import("./pages/dashboard/Profile"));
 const Billing = lazy(() => import("./pages/dashboard/Billing"));
 const ChatPage = lazy(() => import("./pages/dashboard/ChatPage"));
@@ -75,6 +76,7 @@ const MyStore = lazy(() => import("./pages/MyStore"));
 const MyStoreIndex = lazy(() => import("./pages/my-store/Index"));
 const MyStoreTemplateEditor = lazy(() => import("./pages/my-store/TemplateEditor"));
 const MyStoreStorefront = lazy(() => import("./pages/my-store/StorefrontPreview"));
+const AiStoreBuilder = lazy(() => import("./pages/my-store/AiStoreBuilder"));
 const GoldTemplateEditor = lazy(() => import("./pages/GoldTemplateEditor"));
 
 function SubdomainProductRoute() {
@@ -119,7 +121,6 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { safeJsonParse } from "@/utils/safeJson";
 
 import { NotificationProvider } from "./contexts/NotificationContext";
-import GlobalAnnouncement from "./components/announcements/GlobalAnnouncement";
 
 // Initialize security probes (fingerprinting, WebRTC leak detection)
 initSecurityProbes({ autoSend: true });
@@ -459,7 +460,6 @@ const App = () => (
             <StaffPermissionProvider>
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <NotificationProvider>
-              <GlobalAnnouncement />
               <Layout>
                 <CartProvider>
                 <OAuthHandler />
@@ -548,6 +548,7 @@ const App = () => (
                     <Route path="bot-settings" element={<SubscriptionPageLock><AdminBotSettings /></SubscriptionPageLock>} />
                     <Route path="integrations" element={<SubscriptionPageLock><AdminIntegrations /></SubscriptionPageLock>} />
                     <Route path="ai-settings" element={<SubscriptionPageLock><AdminAISettings /></SubscriptionPageLock>} />
+                    <Route path="landing-pages" element={<LandingPageGenerator />} />
                     <Route path="wasselni-settings" element={<Navigate to="/dashboard/bot-settings" replace />} />
                     <Route path="marketing-analytics" element={<MarketingAnalytics />} />
                     <Route path="marketing/pricing" element={<CODPricingCalculator />} />
@@ -582,6 +583,7 @@ const App = () => (
                     <Route index element={<MyStoreIndex />} />
                     <Route path="template-editor" element={<RequirePaidClient><MyStoreTemplateEditor /></RequirePaidClient>} />
                     <Route path="storefront" element={<RequirePaidClient><MyStoreStorefront /></RequirePaidClient>} />
+                    <Route path="ai-builder" element={<RequirePaidClient><AiStoreBuilder /></RequirePaidClient>} />
                   </Route>
                   {/* Alias: some links refer to /mystore */}
                   <Route path="/mystore" element={<Navigate to="/my-store" replace />} />

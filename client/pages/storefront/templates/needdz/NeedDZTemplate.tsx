@@ -523,7 +523,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </div>
 
                   <div>
-                    <p className={`text-sm leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: textColor }}>{product.description}</p>
+                    <div className={`text-sm leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
                     {product.description.length > 100 && (
                       <button onClick={() => setExpandedDescs(prev => ({ ...prev, [product.id]: !prev[product.id] }))} className="text-[11px] font-bold mt-1" style={{ color: accentColor }}>
                         {expandedDescs[product.id] ? 'إخفاء' : 'قراءة المزيد'}
@@ -665,7 +665,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                 </div>
               </div>
               <div>
-                <p className={`text-sm leading-relaxed`} style={{ color: textColor }}>{product.description}</p>
+                <div className="text-sm leading-relaxed" style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
               </div>
               <div className="flex flex-wrap gap-2">
                 {product.features.map((f: string) => (

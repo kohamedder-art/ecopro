@@ -25,7 +25,7 @@ const BRIDGE_API_KEY = process.env.BRIDGE_API_KEY || 'sk-bridge-dev';
 const PRODUCTION_URL = process.env.PRODUCTION_URL || 'http://localhost:8080';
 
 const OPENCODE_BASE = `http://${OPENCODE_HOST}:${OPENCODE_PORT}`;
-const DEFAULT_AGENT = 'sahla-consultant';
+const DEFAULT_AGENT = 'build';
 const DEFAULT_MODEL = { providerID: 'opencode', modelID: 'deepseek-v4-flash-free' };
 const AUTH_HEADER = 'Basic ' + Buffer.from(`${OPENCODE_USER}:${OPENCODE_PASS}`).toString('base64');
 
