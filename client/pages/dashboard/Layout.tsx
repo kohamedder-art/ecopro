@@ -12,6 +12,7 @@ import { useStaffPermissions } from "@/contexts/StaffPermissionContext";
 import { PermissionGate } from "@/components/PermissionGate";
 import Header from "@/components/layout/Header";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { GlobalAnnouncement } from "@/components/GlobalAnnouncement";
 
 
 export default function AdminLayout() {
@@ -56,7 +57,10 @@ export default function AdminLayout() {
     )}>
       {/* Platform Header */}
       <Header />
-      
+
+      {/* Global platform announcement (store owners + staff) */}
+      <GlobalAnnouncement />
+
       {/* Main content area with sidebar */}
       <div className="flex flex-1">
         <EnhancedSidebar
