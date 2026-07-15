@@ -52,7 +52,7 @@ export default function AdminLayout() {
 
   return (
     <div className={cn(
-      "flex flex-col min-h-screen admin-no-break",
+      "relative flex flex-col min-h-screen admin-no-break",
       isDark ? "bg-black" : "bg-gray-200"
     )}>
       {/* Platform Header */}

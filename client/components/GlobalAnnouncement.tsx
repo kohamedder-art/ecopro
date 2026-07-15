@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { X, Info, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Button } from "@/components/ui/button";
 
 interface Announcement {
   id: number;
@@ -18,6 +17,7 @@ export function GlobalAnnouncement() {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [canDismiss, setCanDismiss] = useState(false);
+  const [countdown, setCountdown] = useState(10);
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -29,6 +29,8 @@ export function GlobalAnnouncement() {
         if (active && data.announcement) {
           setAnnouncement(data.announcement);
           const ms = Number(data.announcement.min_view_ms) || 0;
+          const seconds = ms > 0 ? Math.ceil(ms / 1000) : 10;
+          setCountdown(seconds);
           if (ms > 0) {
             setCanDismiss(false);
             setTimeout(() => setCanDismiss(true), ms);
@@ -42,6 +44,21 @@ export function GlobalAnnouncement() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (dismissed || countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setDismissed(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [dismissed, countdown]);
 
   if (!announcement || dismissed) return null;
 
@@ -63,34 +80,32 @@ export function GlobalAnnouncement() {
   };
 
   return (
-    <div className="px-4 md:px-6 pt-4 animate-announcement-in">
+    <div className="absolute top-[64px] left-0 right-0 z-50 animate-announcement-in px-4 sm:px-6 lg:px-8 pt-3">
       <div
         className={cn(
-          "relative rounded-xl border shadow-sm overflow-hidden",
+          "relative mx-auto w-full max-w-xl rounded-xl border shadow-lg overflow-hidden",
           isRed
             ? isDark
-              ? "bg-red-950/40 border-red-800/60"
+              ? "bg-red-950/70 border-red-800/60"
               : "bg-red-50 border-red-200"
             : isDark
-              ? "bg-blue-950/40 border-blue-800/60"
+              ? "bg-blue-950/70 border-blue-800/60"
               : "bg-blue-50 border-blue-200"
         )}
       >
-        {/* Left accent stripe */}
         <div
           className={cn(
-            "absolute inset-y-0 left-0 w-1",
+            "absolute inset-y-0 right-0 w-1",
             isRed
               ? isDark ? "bg-red-500" : "bg-red-400"
               : isDark ? "bg-blue-500" : "bg-blue-400"
           )}
         />
 
-        <div className="flex items-start gap-3 p-4 pl-5">
-          {/* Icon badge */}
+        <div className="flex items-start gap-3 p-3.5 pl-4">
           <div
             className={cn(
-              "shrink-0 flex items-center justify-center w-8 h-8 rounded-lg mt-0.5",
+              "shrink-0 flex items-center justify-center w-7 h-7 rounded-md mt-0.5",
               isRed
                 ? isDark
                   ? "bg-red-900/70 text-red-300"
@@ -100,12 +115,11 @@ export function GlobalAnnouncement() {
                   : "bg-blue-100 text-blue-600"
             )}
           >
-            <Icon className="w-4 h-4" />
+            <Icon className="w-3.5 h-3.5" />
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
-            <h4
+            <div
               className={cn(
                 "font-semibold text-sm",
                 isRed
@@ -114,10 +128,10 @@ export function GlobalAnnouncement() {
               )}
             >
               {announcement.title}
-            </h4>
+            </div>
             <div
               className={cn(
-                "mt-1.5 text-sm leading-relaxed whitespace-pre-wrap",
+                "mt-1 text-sm leading-relaxed",
                 isRed
                   ? isDark ? "text-red-300/80" : "text-red-700"
                   : isDark ? "text-blue-300/80" : "text-blue-700"
@@ -125,37 +139,42 @@ export function GlobalAnnouncement() {
             >
               {announcement.body}
             </div>
+            <div
+              className={cn(
+                "mt-2 text-xs font-medium",
+                isRed
+                  ? isDark ? "text-red-400/60" : "text-red-400"
+                  : isDark ? "text-blue-400/60" : "text-blue-400"
+              )}
+            >
+              سيختفي خلال {countdown} ثانية
+            </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {announcement.allow_never_show_again && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={handleNeverShow}
                 className={cn(
-                  "text-xs h-7 px-2",
+                  "text-xs underline underline-offset-2 whitespace-nowrap transition-colors px-1.5 py-1 rounded",
                   isRed
                     ? isDark
-                      ? "text-red-400 hover:text-red-300 hover:bg-red-900/40"
-                      : "text-red-600 hover:text-red-700 hover:bg-red-100"
+                      ? "text-red-400 hover:text-red-300"
+                      : "text-red-600 hover:text-red-700"
                     : isDark
-                      ? "text-blue-400 hover:text-blue-300 hover:bg-blue-900/40"
-                      : "text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                      ? "text-blue-400 hover:text-blue-300"
+                      : "text-blue-600 hover:text-blue-700"
                 )}
               >
                 لا تظهر مجدداً
-              </Button>
+              </button>
             )}
             {announcement.allow_dismiss && canDismiss && (
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
                 onClick={handleDismiss}
                 aria-label="إغلاق"
                 className={cn(
-                  "h-7 w-7",
+                  "transition-colors p-1 rounded",
                   isRed
                     ? isDark
                       ? "text-red-400 hover:text-red-300 hover:bg-red-900/40"
@@ -165,8 +184,8 @@ export function GlobalAnnouncement() {
                       : "text-blue-500 hover:text-blue-700 hover:bg-blue-100"
                 )}
               >
-                <X className="w-4 h-4" />
-              </Button>
+                <X className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
         </div>
