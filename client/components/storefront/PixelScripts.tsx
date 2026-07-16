@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import {
+  initPixels,
+  trackFacebookEvent as coreFbTrack,
+  trackTikTokEvent as coreTtTrack,
+} from '../../lib/pixel';
 
 interface PixelConfig {
   facebook_pixel_id: string | null;
@@ -17,54 +22,21 @@ const CANONICAL_VISITOR_KEY = 'ecopro_visitor_id';
 const LEGACY_SESSION_KEYS = [CANONICAL_SESSION_KEY, 'pixel_session_id'];
 const LEGACY_VISITOR_KEYS = [CANONICAL_VISITOR_KEY, 'pixel_visitor_id'];
 
-// Declare global types for pixel SDKs
-declare global {
-  interface Window {
-    fbq: any;
-    _fbq: any;
-    ttq: any;
-    TiktokAnalyticsObject: string;
-  }
-}
-
-// Global singleton flags — ensure pixels are only initialized ONCE across all mounts/unmounts
-let facebookPixelGloballyInit = false;
-let tiktokPixelGloballyInit = false;
-
 // Store resolved pixel IDs globally so event helpers can fire proxy beacons
 let fbPixelIds: string[] = [];
 let ttPixelIds: string[] = [];
 
-// Fire an <img> beacon through OUR domain proxy for a given event. This is the
-// most reliable path on mobile: it bypasses carriers / DNS blockers that target
-// facebook.com / tiktok.com directly, and does not depend on the SDK script.
-function fireProxyPixel(platform: 'fb' | 'tt', eventName: string, params?: Record<string, any>) {
-  const ids = platform === 'fb' ? fbPixelIds : ttPixelIds;
-  if (!ids.length || typeof window === 'undefined') return;
-  try {
-    const q = new URLSearchParams();
-    q.set('ev', eventName);
-    q.set('noscript', '1');
-    if (params && typeof params === 'object') {
-      for (const key of ['value', 'currency', 'content_name', 'content_category', 'order_id', 'content_ids']) {
-        const v = (params as any)[key];
-        if (v !== undefined && v !== null) {
-          q.set('cd[' + key + ']', Array.isArray(v) ? v.join(',') : String(v));
-        }
-      }
-    }
-    for (const id of ids) {
-      q.set('id', id);
-      new Image().src = `/api/pixels/proxy/${platform}?${q.toString()}`;
-    }
-  } catch {
-    /* never break the page */
-  }
-}
+let currentStoreSlug = '';
+let backendPixelTypePreference: 'facebook' | 'tiktok' | '' = '';
+let currentCurrency = 'DZD';
 
 /**
- * PixelScripts - Injects Facebook and TikTok pixel scripts based on store settings
- * This component should be included in the storefront layout
+ * PixelScripts - Fetches store pixel config and initialises the SDKs via the
+ * shared core engine, plus our first-party session/event analytics.
+ *
+ * NOTE: the actual init + PageView is owned by the global <PixelManager />.
+ * This component still loads config (for currency/session/backend context) and
+ * initialises pixels defensively, but never fires a second PageView.
  */
 export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
   const location = useLocation();
@@ -73,39 +45,29 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
   const maxScrollDepthRef = useRef<number>(0);
   const lastFlushRef = useRef<string>('');
 
-  // Set current store slug for backend tracking
   useEffect(() => {
-    if (storeSlug) {
-      setCurrentStoreSlug(storeSlug);
-    }
+    if (storeSlug) setCurrentStoreSlug(storeSlug);
   }, [storeSlug]);
 
-  // Fetch pixel config on mount
   useEffect(() => {
     if (!storeSlug) return;
-
-    const preconnects = [
-      { rel: 'dns-prefetch', href: 'https://connect.facebook.net' },
-      { rel: 'dns-prefetch', href: 'https://www.facebook.com' },
-      { rel: 'dns-prefetch', href: 'https://analytics.tiktok.com' },
-      { rel: 'preconnect', href: 'https://connect.facebook.net' },
-      { rel: 'preconnect', href: 'https://www.facebook.com' },
-      { rel: 'preconnect', href: 'https://analytics.tiktok.com' },
-    ];
-    for (const link of preconnects) {
-      const el = document.createElement('link');
-      el.rel = link.rel;
-      el.href = link.href;
-      document.head.appendChild(el);
-    }
-
     fetch(`/api/pixels/config/${storeSlug}`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data: PixelConfig) => {
         setConfig(data);
         setBackendPixelPreferenceFromConfig(data);
+
+        const fb = data?.is_facebook_enabled && data?.facebook_pixel_id
+          ? String(data.facebook_pixel_id).split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+        const tt = data?.is_tiktok_enabled && data?.tiktok_pixel_id
+          ? String(data.tiktok_pixel_id).split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+        fbPixelIds = Array.from(new Set(fb));
+        ttPixelIds = Array.from(new Set(tt));
+        initPixels({ facebook: fbPixelIds, tiktok: ttPixelIds });
       })
-      .catch(err => console.error('Failed to load pixel config:', err));
+      .catch((err) => console.error('Failed to load pixel config:', err));
   }, [storeSlug]);
 
   useEffect(() => {
@@ -177,20 +139,7 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     };
   }, [location.pathname, location.search, storeSlug]);
 
-  // Always track PageView to backend (independent of pixel config)
-  useEffect(() => {
-    if (!storeSlug) return;
-
-    const lastPageViewKey = safeSessionGet('last_pageview_key');
-    const currentKey = `${storeSlug}|${location.pathname}`;
-    if (lastPageViewKey !== currentKey) {
-      safeSessionSet('last_pageview_key', currentKey);
-      trackPageView(storeSlug);
-    }
-  }, [location.pathname, storeSlug]);
-
   // Auto-track Purchase events by intercepting order creation API calls.
-  // This runs globally so ALL templates get tracking without individual changes.
   useEffect(() => {
     if (!storeSlug) return;
 
@@ -203,16 +152,14 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
         if (url.includes('/api/orders/create') && init?.method?.toUpperCase() === 'POST' && response.ok) {
           const body = typeof init.body === 'string' ? JSON.parse(init.body) : null;
           if (body) {
-            // Clone to read response without consuming it
             const cloned = response.clone();
             cloned.json().then((data: any) => {
               const orderId = data?.order?.id || data?.orderId || data?.order_id || '';
               const value = body.total_price || body.offer_bundle_price || body.unit_price || 0;
-              console.log('[Pixel] Purchase detected:', { orderId, value, product_id: body.product_id });
               trackAllPixels(PixelEvents.PURCHASE, {
                 content_ids: [body.product_id],
                 content_name: body.product_name || '',
-                value: value,
+                value,
                 currency: 'DZD',
                 order_id: String(orderId),
               });
@@ -220,7 +167,7 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
           }
         }
       } catch {
-        // Non-critical: don't break order flow if tracking fails
+        // Non-critical
       }
 
       return response;
@@ -231,197 +178,17 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
     };
   }, [storeSlug]);
 
-  // Inject Facebook Pixel (supports multiple comma-separated IDs)
-  useEffect(() => {
-    if (!config?.facebook_pixel_id || !config.is_facebook_enabled) return;
-
-    const ids = String(config.facebook_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
-    if (ids.length === 0) return;
-
-    const uniqueIds = [...new Set(ids)];
-    fbPixelIds = uniqueIds;
-
-    // Always fire img pixels first — routed through our own domain proxy so
-    // mobile carriers / DNS ad-blockers that block facebook.com directly
-    // cannot prevent the beacon from reaching Facebook.
-    uniqueIds.forEach(id => {
-      new Image().src = `/api/pixels/proxy/fb?id=${id}&ev=PageView&noscript=1`;
-    });
-
-    // Global singleton: only inject the SDK once across all mount/unmount cycles
-    if (facebookPixelGloballyInit) {
-      // SDK already injected — just fire PageView
-      uniqueIds.forEach(id => {
-        try { window.fbq?.('init', id); } catch (e) { /* ignore */ }
-      });
-      try { window.fbq?.('track', 'PageView'); } catch (e) { /* ignore */ }
-      return;
-    }
-    facebookPixelGloballyInit = true;
-
-    // Prevent duplicate script loading — detect any existing fbevents.js script
-    const existingFbScript = document.getElementById('facebook-pixel-script') || document.getElementById('fb-pixel-script');
-    if (existingFbScript) {
-      if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
-        uniqueIds.forEach(id => {
-          try { window.fbq('init', id); } catch (e) { /* ignore */ }
-        });
-        try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
-      }
-      return;
-    }
-
-    const existingQueue = (window as any).fbq?.queue || [];
-
-    const n = window.fbq = function() {
-      n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-    } as any;
-    if (!window._fbq) window._fbq = n;
-    n.push = n;
-    n.loaded = true;
-    n.version = '2.0';
-    n.queue = [];
-
-    existingQueue.forEach((args: any[]) => {
-      try { window.fbq.apply(null, args); } catch (e) { /* ignore */ }
-    });
-
-    uniqueIds.forEach(id => {
-      try { window.fbq('init', id); } catch (e) { /* ignore */ }
-    });
-    try { window.fbq('track', 'PageView'); } catch (e) { /* ignore */ }
-
-    const script = document.createElement('script');
-    script.id = 'facebook-pixel-script';
-    script.async = true;
-    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-    script.onload = () => {
-      console.log('[Pixel] Facebook SDK loaded, fbq.callMethod:', typeof window.fbq?.callMethod);
-      console.log('[Pixel] Facebook queue length:', window.fbq?.queue?.length);
-    };
-    script.onerror = () => {
-      console.error('[Pixel] Facebook SDK failed to load');
-    };
-    document.head.appendChild(script);
-
-    console.log('[Pixel] Facebook Pixel initialized:', uniqueIds.join(','));
-  }, [config?.facebook_pixel_id, config?.is_facebook_enabled]);
-
-  // Inject TikTok Pixel (supports multiple comma-separated IDs)
-  useEffect(() => {
-    if (!config?.tiktok_pixel_id || !config.is_tiktok_enabled) return;
-
-    const ids = String(config.tiktok_pixel_id).split(',').map(s => s.trim()).filter(Boolean);
-    if (ids.length === 0) return;
-
-    const uniqueIds = [...new Set(ids)];
-    ttPixelIds = uniqueIds;
-
-    // Always fire img pixels first — routed through our own domain proxy so
-    // mobile carriers / DNS ad-blockers that block tiktok.com directly
-    // cannot prevent the beacon from reaching TikTok.
-    uniqueIds.forEach(id => {
-      new Image().src = `/api/pixels/proxy/tt?id=${id}&ev=PageView`;
-    });
-
-    // Global singleton: only inject the SDK once across all mount/unmount cycles
-    if (tiktokPixelGloballyInit) {
-      uniqueIds.forEach(id => {
-        try { window.ttq?.load(id); } catch (e) { /* ignore */ }
-      });
-      try { window.ttq?.page(); } catch (e) { /* ignore */ }
-      return;
-    }
-    tiktokPixelGloballyInit = true;
-
-    // If ttq exists, load/instantiate each id
-    if (window.ttq) {
-      uniqueIds.forEach(id => {
-        try { window.ttq.load(id); } catch (e) { /* ignore */ }
-      });
-      try { window.ttq.page(); } catch (e) { /* ignore */ }
-      return;
-    }
-
-    // Detect any existing TikTok script (from either this component or landing page)
-    if (document.getElementById('tiktok-pixel-script') || document.getElementById('tt-pixel-script')) {
-      return;
-    }
-
-    window.TiktokAnalyticsObject = 'ttq';
-    const ttq = window.ttq = window.ttq || [] as any;
-    ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie"];
-    ttq.setAndDefer = function(t: any, e: string) {
-      t[e] = function() {
-        t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
-      };
-    };
-    for (let i = 0; i < ttq.methods.length; i++) {
-      ttq.setAndDefer(ttq, ttq.methods[i]);
-    }
-    ttq.instance = function(t: string) {
-      const e = ttq._i[t] || [];
-      for (let n = 0; n < ttq.methods.length; n++) {
-        ttq.setAndDefer(e, ttq.methods[n]);
-      }
-      return e;
-    };
-    ttq.load = function(e: string, n?: any) {
-      const i = "https://analytics.tiktok.com/i18n/pixel/events.js";
-      ttq._i = ttq._i || {};
-      ttq._i[e] = [];
-      ttq._i[e]._u = i;
-      ttq._t = ttq._t || {};
-      ttq._t[e] = +new Date();
-      ttq._o = ttq._o || {};
-      ttq._o[e] = n || {};
-      const o = document.createElement("script");
-      o.id = 'tiktok-pixel-script';
-      o.type = "text/javascript";
-      o.async = true;
-      o.src = i + "?sdkid=" + e + "&lib=ttq";
-      const a = document.getElementsByTagName("script")[0];
-      a?.parentNode?.insertBefore(o, a);
-    };
-
-    uniqueIds.forEach(id => {
-      try { window.ttq.load(id); } catch (e) { /* ignore */ }
-    });
-    try { window.ttq.page(); } catch (e) { /* ignore */ }
-
-    console.log('[Pixel] TikTok Pixel initialized:', uniqueIds.join(','));
-  }, [config?.tiktok_pixel_id, config?.is_tiktok_enabled]);
-
-  // This component doesn't render anything visible
   return null;
 }
 
-/**
- * Helper functions to track events from other components
- */
 export function trackFacebookEvent(eventName: string, params?: Record<string, any>) {
-  // Only call the SDK if the pixel has been initialized (fbPixelIds populated
-  // after config loads). Calling fbq('track') before fbq('init', id) throws
-  // "Track event before pixel init". The proxy below is the reliable path.
-  if (typeof window !== 'undefined' && window.fbq && fbPixelIds.length > 0) {
-    window.fbq('track', eventName, params);
-  }
-  // Fire through our own-domain proxy so mobile blockers can't stop it
-  fireProxyPixel('fb', eventName, params);
+  coreFbTrack(eventName, params);
 }
 
 export function trackTikTokEvent(eventName: string, params?: Record<string, any>) {
-  if (typeof window !== 'undefined' && window.ttq && ttPixelIds.length > 0) {
-    window.ttq.track(eventName, params);
-  }
-  // Fire through our own-domain proxy so mobile blockers can't stop it
-  fireProxyPixel('tt', eventName, params);
+  coreTtTrack(eventName, params);
 }
 
-/**
- * Send event to our backend for statistics tracking
- * Only sends ONE event per call (not duplicated per pixel type)
- */
 function trackToBackend(storeSlug: string, eventName: string, params?: Record<string, any>) {
   if (!storeSlug) return;
 
@@ -443,7 +210,7 @@ function trackToBackend(storeSlug: string, eventName: string, params?: Record<st
     (ttclid || refLower.includes('tiktok.com') ? 'tiktok' : '') ||
     (gclid ? 'google' : '') ||
     'direct';
-  
+
   fetch('/api/pixels/track', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -470,18 +237,33 @@ function trackToBackend(storeSlug: string, eventName: string, params?: Record<st
       revenue: params?.value,
       currency: params?.currency || 'DZD',
       session_id: getSessionId(),
-      visitor_id: getVisitorId()
-    })
-  }).catch(err => console.error('[Pixel] Backend tracking failed:', err));
+      visitor_id: getVisitorId(),
+    }),
+  }).catch((err) => console.error('[Pixel] Backend tracking failed:', err));
 }
 
-/**
- * Track PageView - only one event per page navigation
- */
-function trackPageView(storeSlug: string) {
-  trackFacebookEvent('PageView');
-  trackToBackend(storeSlug, 'PageView', { page_url: window.location.href });
+export function trackAllPixels(eventName: string, params?: Record<string, any>) {
+  trackFacebookEvent(eventName, params);
+  trackTikTokEvent(eventName, params);
+
+  const storeSlug = currentStoreSlug || safeLocalGet('currentStoreSlug') || '';
+  if (storeSlug && eventName !== 'PageView') {
+    trackToBackend(storeSlug, eventName, params);
+  }
 }
+
+// Event name mappings for common events
+export const PixelEvents = {
+  PAGE_VIEW: 'PageView',
+  VIEW_CONTENT: 'ViewContent',
+  ADD_TO_CART: 'AddToCart',
+  INITIATE_CHECKOUT: 'InitiateCheckout',
+  PURCHASE: 'Purchase',
+  SEARCH: 'Search',
+  ADD_TO_WISHLIST: 'AddToWishlist',
+  COMPLETE_REGISTRATION: 'CompleteRegistration',
+  LEAD: 'Lead',
+};
 
 function safeSessionGet(key: string): string | null {
   try { return sessionStorage.getItem(key); } catch { return null; }
@@ -496,7 +278,6 @@ function safeLocalSet(key: string, value: string) {
   try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
 }
 
-// Get or create session ID (per browser session)
 function getSessionId(): string {
   let sessionId = '';
   for (const key of LEGACY_SESSION_KEYS) {
@@ -515,7 +296,6 @@ function getSessionId(): string {
   return sessionId;
 }
 
-// Get or create visitor ID (persistent across sessions)
 function getVisitorId(): string {
   let visitorId = '';
   for (const key of LEGACY_VISITOR_KEYS) {
@@ -534,13 +314,6 @@ function getVisitorId(): string {
   return visitorId;
 }
 
-// Store the current store slug for backend tracking
-let currentStoreSlug = '';
-
-// Used to choose the backend pixel_type for analytics buckets.
-// We intentionally keep ONE backend record per event.
-let backendPixelTypePreference: 'facebook' | 'tiktok' | '' = '';
-
 function setBackendPixelPreferenceFromConfig(data: PixelConfig) {
   if (data?.is_facebook_enabled && data?.facebook_pixel_id) {
     backendPixelTypePreference = 'facebook';
@@ -558,36 +331,9 @@ export function setCurrentStoreSlug(slug: string) {
   if (slug) safeLocalSet('currentStoreSlug', slug);
 }
 
-let currentCurrency = 'DZD';
 export function setStoreCurrency(currency: string) {
   currentCurrency = currency;
 }
 export function getStoreCurrency() {
   return currentCurrency;
 }
-
-export function trackAllPixels(eventName: string, params?: Record<string, any>) {
-  // Track to Facebook and TikTok SDKs (client-side)
-  trackFacebookEvent(eventName, params);
-  trackTikTokEvent(eventName, params);
-  
-  // Track to our backend for statistics (only ONE event, not duplicated)
-  const storeSlug = currentStoreSlug || safeLocalGet('currentStoreSlug') || '';
-  if (storeSlug && eventName !== 'PageView') {
-    // PageView is handled separately with deduplication
-    trackToBackend(storeSlug, eventName, params);
-  }
-}
-
-// Event name mappings for common events
-export const PixelEvents = {
-  PAGE_VIEW: 'PageView',
-  VIEW_CONTENT: 'ViewContent',
-  ADD_TO_CART: 'AddToCart',
-  INITIATE_CHECKOUT: 'InitiateCheckout',
-  PURCHASE: 'Purchase',
-  SEARCH: 'Search',
-  ADD_TO_WISHLIST: 'AddToWishlist',
-  COMPLETE_REGISTRATION: 'CompleteRegistration',
-  LEAD: 'Lead',
-};

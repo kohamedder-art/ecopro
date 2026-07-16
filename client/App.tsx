@@ -10,6 +10,7 @@ import { getCurrentUser, removeAuthToken, syncAuthState, startAutoRefresh } from
 import Layout from "@/components/layout/Layout";
 import React, { Suspense, lazy } from "react";
 import { isSubdomainStore } from "@/lib/resolvedStore";
+import PixelManager from "@/components/PixelManager";
 
 // Lazy load ALL pages — keep main bundle minimal
 // ── Landing ──
@@ -463,6 +464,7 @@ const App = () => (
               <Layout>
                 <CartProvider>
                 <OAuthHandler />
+                <PixelManager />
                 <Suspense fallback={<PageLoader />}>
                 {isSubdomainStore() ? <SubdomainRoutes /> : (
                 <Routes>
