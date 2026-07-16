@@ -60,6 +60,19 @@ const FALLBACK_PRODUCTS = [
   }
 ];
 
+// Render description as HTML, preserving line breaks (\n → <br>) for plain text
+// while keeping any existing HTML tags (p, br, ul, strong, em, etc.) intact.
+function formatDescription(desc: string | undefined): string {
+  if (!desc) return '';
+  const hasHtml = /<[a-z][\s\S]*>/i.test(desc);
+  if (hasHtml) {
+    // Keep tags, turn standalone newlines between/outside tags into <br>
+    return desc.replace(/\r\n|\r|\n/g, '<br>');
+  }
+  // Plain text: convert newlines to <br> so the layout from the editor is kept
+  return desc.replace(/\r\n|\r|\n/g, '<br>');
+}
+
 export default function NeedDZTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, navigate, initialProductSlug, onProductView }: TemplateProps) {
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#059669';
   const headerColor = settings?.template_header_bg || settings?.iyco_header_color || '#ffffff';
@@ -523,7 +536,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </div>
 
                   <div>
-                    <div className={`text-base leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
+                    <div className={`text-base leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: formatDescription(product.description) }} />
                     {product.description.length > 100 && (
                       <button onClick={() => setExpandedDescs(prev => ({ ...prev, [product.id]: !prev[product.id] }))} className="text-[11px] font-bold mt-1" style={{ color: accentColor }}>
                         {expandedDescs[product.id] ? 'إخفاء' : 'قراءة المزيد'}
@@ -665,7 +678,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                 </div>
               </div>
               <div>
-                <div className="text-base leading-relaxed" style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
+                <div className="text-base leading-relaxed" style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: formatDescription(product.description) }} />
               </div>
               <div className="flex flex-wrap gap-2">
                 {(product.features || []).map((f: string) => (

@@ -1199,7 +1199,7 @@ router.get('/config/:storeSlug', getPublicPixelConfig);
 // =====================================================================
 const PIXEL_PROXY_TARGETS: Record<string, string> = {
   fb: 'https://www.facebook.com/tr',
-  tt: 'https://analytics.tiktok.com/i18n/pixel/static',
+  tt: 'https://analytics.tiktok.com/i18n/pixel/',
 };
 
 export const pixelProxyHandler: RequestHandler = async (req, res) => {
@@ -1212,15 +1212,14 @@ export const pixelProxyHandler: RequestHandler = async (req, res) => {
     }
 
     // Forward only safe, known pixel query params (never arbitrary URLs).
+    // Allow standard params + cd[*] custom data (value, currency, content_name, etc.)
     const allowed = ['id', 'ev', 'noscript', 'eid', 'dl', 'rl', 'if', 'ts', 'v', 'ec', 'el', 'ea', 'ed', 'tid', 'advanced_mapping'];
     const fwd = new URLSearchParams();
     for (const [key, val] of Object.entries(req.query)) {
       if (val === undefined || val === null) continue;
-      if (key === 'cd' && typeof val === 'object') {
-        // Express parses cd[value]=123 into req.query.cd = { value: '123' }
-        for (const [subKey, subVal] of Object.entries(val as Record<string, any>)) {
-          fwd.set(`cd[${subKey}]`, String(subVal));
-        }
+      if (key.startsWith('cd[') && key.endsWith(']')) {
+        // Allow all cd[*] custom data params
+        fwd.set(key, String(val));
       } else if (allowed.includes(key)) {
         fwd.set(key, String(val));
       }
