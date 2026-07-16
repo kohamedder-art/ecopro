@@ -2093,13 +2093,55 @@ ${urls}
               } catch { /* ignore — client will fetch normally */ }
             }
 
-            const injected = nonce
+            // Inject CSP nonce on module scripts
+            const withNonce = nonce
               ? withMeta.replace(/<script\s+type="module"\s+/g, `<script type="module" nonce="${nonce}" `)
               : withMeta;
+
+            // Inject noscript<img> tags for Facebook pixel detection (Meta Event Setup tool)
+            let withNoscript = withNonce;
+            try {
+              const { ensureConnection: getPoolNs } = await import('./utils/database');
+              const dbPoolNs = await getPoolNs();
+              let fbPixelIds: string[] = [];
+
+              if (targetSlug) {
+                // Store page: get per-store Facebook pixel
+                const storePixelRes = await dbPoolNs.query(
+                  `SELECT facebook_pixel_id FROM client_pixel_settings
+                   WHERE client_id = (SELECT client_id FROM client_store_settings WHERE store_slug = $1 LIMIT 1)
+                     AND is_facebook_enabled = true AND facebook_pixel_id IS NOT NULL
+                   LIMIT 1`,
+                  [targetSlug]
+                );
+                if (storePixelRes.rows.length > 0) {
+                  fbPixelIds = String(storePixelRes.rows[0].facebook_pixel_id).split(',').map((s: string) => s.trim()).filter(Boolean);
+                }
+              } else if (req.path === '/') {
+                // Landing page: get platform pixels
+                const platformRes = await dbPoolNs.query(
+                  `SELECT setting_value FROM platform_settings WHERE setting_key = 'pixel_config'`
+                );
+                if (platformRes.rows.length > 0) {
+                  const parsed = JSON.parse(platformRes.rows[0].setting_value);
+                  if (Array.isArray(parsed)) {
+                    fbPixelIds = parsed
+                      .filter((p: any) => p?.enabled && p?.platform === 'facebook' && p?.pixel_id)
+                      .map((p: any) => String(p.pixel_id).trim());
+                  }
+                }
+              }
+
+              for (const pid of fbPixelIds) {
+                const noscriptTag = `<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${encodeURIComponent(pid)}&ev=PageView&noscript=1"/></noscript>`;
+                withNoscript = withNoscript.replace('</body>', noscriptTag + '</body>');
+              }
+            } catch { /* don't break page rendering */ }
+
             res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
             res.setHeader('Vary', 'Accept-Encoding');
             res.setHeader('X-Content-Type-Options', 'nosniff');
-            res.type('html').send(injected);
+            res.type('html').send(withNoscript);
           })
           .catch(() => {
             res.sendFile(indexPath);
