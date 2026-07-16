@@ -416,7 +416,7 @@ export default function SpiriluxeTemplate({
           onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload('below', f); e.target.value=''; }} />
 
         {/* Order Form */}
-        <div className="px-0 py-4">
+        <div className="px-2 py-4">
           <div className="rounded-2xl shadow-xl px-4 py-6" style={{ backgroundColor: cardBg }}>
             
             {orderSuccess ? (
