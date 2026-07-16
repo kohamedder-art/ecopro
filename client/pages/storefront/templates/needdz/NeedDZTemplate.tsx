@@ -71,7 +71,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     const b = parseInt(hex.substring(4, 6), 16);
     return (r * 299 + g * 587 + b * 114) / 1000 < 128;
   }, [bgColor]);
-  const textColor = settings?.primary_color || (isDark ? '#f1f5f9' : '#1f2937');
+  const textColor = isDark ? '#f1f5f9' : '#1f2937';
   const textMuted = isDark ? '#94a3b8' : '#6b7280';
   const borderColor = isDark ? '#334155' : '#e5e7eb';
   const cardBg = isDark ? '#1e293b' : '#ffffff';
@@ -523,7 +523,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </div>
 
                   <div>
-                    <div className={`text-sm leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
+                    <div className={`text-base leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
                     {product.description.length > 100 && (
                       <button onClick={() => setExpandedDescs(prev => ({ ...prev, [product.id]: !prev[product.id] }))} className="text-[11px] font-bold mt-1" style={{ color: accentColor }}>
                         {expandedDescs[product.id] ? 'إخفاء' : 'قراءة المزيد'}
@@ -532,7 +532,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {product.features.map((f: string) => (
+                    {(product.features || []).map((f: string) => (
                       <span key={f} className="text-[10px] font-bold px-2 py-1 rounded-md italic" style={{ color: textMuted, backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}># {f}</span>
                     ))}
                   </div>
@@ -665,10 +665,10 @@ const parseVideoEmbed = (videoUrl: string) => {
                 </div>
               </div>
               <div>
-                <div className="text-sm leading-relaxed" style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
+                <div className="text-base leading-relaxed" style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
               </div>
               <div className="flex flex-wrap gap-2">
-                {product.features.map((f: string) => (
+                {(product.features || []).map((f: string) => (
                   <span key={f} className="text-[10px] font-bold px-2 py-1 rounded-md italic" style={{ color: textMuted, backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}># {f}</span>
                 ))}
               </div>
