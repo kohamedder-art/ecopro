@@ -2098,15 +2098,15 @@ ${urls}
               ? withMeta.replace(/<script\s+type="module"\s+/g, `<script type="module" nonce="${nonce}" `)
               : withMeta;
 
-            // Inject noscript<img> tags for Facebook pixel detection (Meta Event Setup tool)
-            let withNoscript = withNonce;
+            // Inject full Facebook Pixel base code in <head> (standard fbq snippet)
+            // This runs synchronously before React mounts, so Meta Event Setup tool detects it.
+            let withPixel = withNonce;
             try {
               const { ensureConnection: getPoolNs } = await import('./utils/database');
               const dbPoolNs = await getPoolNs();
               let fbPixelIds: string[] = [];
 
               if (targetSlug) {
-                // Store page: get per-store Facebook pixel
                 const storePixelRes = await dbPoolNs.query(
                   `SELECT facebook_pixel_id FROM client_pixel_settings
                    WHERE client_id = (SELECT client_id FROM client_store_settings WHERE store_slug = $1 LIMIT 1)
@@ -2118,7 +2118,6 @@ ${urls}
                   fbPixelIds = String(storePixelRes.rows[0].facebook_pixel_id).split(',').map((s: string) => s.trim()).filter(Boolean);
                 }
               } else if (req.path === '/') {
-                // Landing page: get platform pixels
                 const platformRes = await dbPoolNs.query(
                   `SELECT setting_value FROM platform_settings WHERE setting_key = 'pixel_config'`
                 );
@@ -2133,15 +2132,30 @@ ${urls}
               }
 
               for (const pid of fbPixelIds) {
-                const noscriptTag = `<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${encodeURIComponent(pid)}&ev=PageView&noscript=1"/></noscript>`;
-                withNoscript = withNoscript.replace('</body>', noscriptTag + '</body>');
+                const pixelCode = `
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '${pid.replace(/'/g, "\\'")}');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=${encodeURIComponent(pid)}&ev=PageView&noscript=1"/>
+</noscript>`;
+                withPixel = withPixel.replace('</head>', pixelCode + '</head>');
               }
             } catch { /* don't break page rendering */ }
 
             res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
             res.setHeader('Vary', 'Accept-Encoding');
             res.setHeader('X-Content-Type-Options', 'nosniff');
-            res.type('html').send(withNoscript);
+            res.type('html').send(withPixel);
           })
           .catch(() => {
             res.sendFile(indexPath);
