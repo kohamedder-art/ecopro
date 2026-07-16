@@ -18,25 +18,20 @@ declare global {
 const injectedFbScripts: HTMLScriptElement[] = [];
 
 function injectFacebookPixel(pixelId: string) {
-  const eventId = `pv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-  new Image().src = `/api/pixels/proxy/fb?id=${pixelId}&ev=PageView&noscript=1&eid=${eventId}`;
-
-  // If fbq is already loaded (from pixel.js in index.html), just re-init and track
+  // If fbq is already loaded (e.g. pixel.js in index.html), PageView was already
+  // fired there — do NOT re-init/track again or Meta logs a duplicate event.
   if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
-    try { window.fbq('init', pixelId); } catch {}
-    try { window.fbq('track', 'PageView'); } catch {}
     return;
   }
 
-  // Detect any existing fbevents.js script (from PixelScripts component)
+  // Detect any existing fbevents.js script (from PixelScripts component) — already initialized
   if (document.getElementById('fb-pixel-script') || document.getElementById('facebook-pixel-script')) {
-    if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
-      try { window.fbq('init', pixelId); } catch {}
-      try { window.fbq('track', 'PageView'); } catch {}
-    }
     return;
   }
+
+  // Fallback: fbq not yet present — fire server-side proxy PageView, then init fbq
+  const eventId = `pv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  new Image().src = `/api/pixels/proxy/fb?id=${pixelId}&ev=PageView&noscript=1&eid=${eventId}`;
 
   const n = window.fbq = function() {
     n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
