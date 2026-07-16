@@ -400,7 +400,10 @@ export default function PixelScripts({ storeSlug }: PixelScriptsProps) {
  * Helper functions to track events from other components
  */
 export function trackFacebookEvent(eventName: string, params?: Record<string, any>) {
-  if (typeof window !== 'undefined' && window.fbq) {
+  // Only call the SDK if the pixel has been initialized (fbPixelIds populated
+  // after config loads). Calling fbq('track') before fbq('init', id) throws
+  // "Track event before pixel init". The proxy below is the reliable path.
+  if (typeof window !== 'undefined' && window.fbq && fbPixelIds.length > 0) {
     window.fbq('track', eventName, params);
   }
   // Fire through our own-domain proxy so mobile blockers can't stop it
@@ -408,7 +411,7 @@ export function trackFacebookEvent(eventName: string, params?: Record<string, an
 }
 
 export function trackTikTokEvent(eventName: string, params?: Record<string, any>) {
-  if (typeof window !== 'undefined' && window.ttq) {
+  if (typeof window !== 'undefined' && window.ttq && ttPixelIds.length > 0) {
     window.ttq.track(eventName, params);
   }
   // Fire through our own-domain proxy so mobile blockers can't stop it

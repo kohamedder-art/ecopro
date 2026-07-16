@@ -1,16 +1,5 @@
 import telemetryRouter from './routes/telemetry';
 import dotenv from 'dotenv';
-
-// Prevent a single failed query (e.g. DB read timeout) from crashing the whole
-// server. Log and swallow unhandled rejections / exceptions so the process stays up.
-process.on('unhandledRejection', (reason: any) => {
-  const msg = (reason && (reason.message || reason.code)) || String(reason);
-  console.error('[unhandledRejection]', msg);
-});
-process.on('uncaughtException', (err: any) => {
-  console.error('[uncaughtException]', err?.message || err);
-});
-
 // Load env files for local/dev.
 // Important: never let dotenv override real environment variables (e.g. when we export DATABASE_URL).
 // We still want .env.local to override .env for *unset* vars.
