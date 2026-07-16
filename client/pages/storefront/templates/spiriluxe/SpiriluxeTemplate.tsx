@@ -361,10 +361,10 @@ export default function SpiriluxeTemplate({
   return (
     <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, color: textColor }}>
       {/* Store Header */}
-      <div className="sticky top-0 z-50 px-4 py-3" style={{ backgroundColor: bgColor, borderBottom: `1px solid ${borderColor}` }}>
+      <div className="sticky top-0 z-50 px-3 py-4" style={{ backgroundColor: bgColor, borderBottom: `1px solid ${borderColor}` }}>
         <div className="max-w-3xl mx-auto flex items-center gap-2">
-          {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" loading="lazy" decoding="async" width="28" height="28" style={{ contentVisibility: 'auto' }} />}
-          <span className="font-bold text-base">{settings?.store_name || 'المتجر'}</span>
+          {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-11 h-11 rounded-full object-cover" loading="lazy" decoding="async" width="44" height="44" style={{ contentVisibility: 'auto' }} />}
+          <span className="font-extrabold text-xl">{settings?.store_name || 'المتجر'}</span>
         </div>
       </div>
       <div className="max-w-3xl mx-auto">
