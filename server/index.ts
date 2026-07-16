@@ -1824,7 +1824,7 @@ ${urls}
   });
 
   // Public platform pixel config (no auth — used by landing page)
-  app.get("/api/platform/pixel-config", async (_req, res) => {
+  app.get("/api/platform/pixel-config", async (req, res) => {
     try {
       const result = await pool.query(
         `SELECT setting_value FROM platform_settings WHERE setting_key = 'pixel_config'`
@@ -1833,6 +1833,45 @@ ${urls}
       if (rows.length === 0) return res.json([]);
       const parsed = JSON.parse(rows[0].setting_value);
       const enabled = (Array.isArray(parsed) ? parsed : []).filter((p: any) => p?.enabled);
+
+      // Fire server-side platform pixels (non-blocking, bypasses mobile blockers)
+      for (const p of enabled) {
+        const pixelId = String(p.pixel_id || '').trim();
+        if (!pixelId) continue;
+        if (p.platform === 'facebook') {
+          const params = new URLSearchParams();
+          params.set('id', pixelId);
+          params.set('ev', 'PageView');
+          params.set('noscript', '1');
+          params.set('srv', '1');
+          params.set('dl', req.headers['referer'] || req.headers['origin'] || 'https://sahla4eco.com');
+          const url = `https://www.facebook.com/tr?${params.toString()}`;
+          fetch(url, {
+            method: 'GET',
+            headers: {
+              'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+              'Accept': '*/*',
+            },
+            redirect: 'follow',
+            signal: AbortSignal.timeout(3000),
+          }).catch(() => {});
+        } else if (p.platform === 'tiktok') {
+          const params = new URLSearchParams();
+          params.set('id', pixelId);
+          params.set('ev', 'PageView');
+          params.set('srv', '1');
+          const url = `https://analytics.tiktok.com/i18n/pixel/static?${params.toString()}`;
+          fetch(url, {
+            method: 'GET',
+            headers: {
+              'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+              'Accept': '*/*',
+            },
+            signal: AbortSignal.timeout(3000),
+          }).catch(() => {});
+        }
+      }
+
       res.json(enabled);
     } catch (err) {
       console.error('[platform/pixel-config]', err);
