@@ -3,7 +3,7 @@
  *
  * Sits on top of `opencode serve`. Each store owner on Sahla4Eco
  * gets their own opencode session. Messages are routed through
- * opencode's HTTP API using free models (big-pickle, deepseek-v4).
+ * opencode's HTTP API using free models (big-pickle, hy3-free).
  *
  * Usage:
  *   # Terminal 1: start opencode headless server
@@ -26,7 +26,7 @@ const PRODUCTION_URL = process.env.PRODUCTION_URL || 'http://localhost:8080';
 
 const OPENCODE_BASE = `http://${OPENCODE_HOST}:${OPENCODE_PORT}`;
 const DEFAULT_AGENT = 'build';
-const DEFAULT_MODEL = { providerID: 'opencode', modelID: 'deepseek-v4-flash-free' };
+const DEFAULT_MODEL = { providerID: 'opencode', modelID: 'big-pickle' };
 const AUTH_HEADER = 'Basic ' + Buffer.from(`${OPENCODE_USER}:${OPENCODE_PASS}`).toString('base64');
 
 // ─── Helpers ───────────────────────────────────────────────────
