@@ -22,7 +22,14 @@ function injectFacebookPixel(pixelId: string) {
 
   new Image().src = `/api/pixels/proxy/fb?id=${pixelId}&ev=PageView&noscript=1&eid=${eventId}`;
 
-  // Detect any existing fbevents.js script (from either this component or PixelScripts)
+  // If fbq is already loaded (from pixel.js in index.html), just re-init and track
+  if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
+    try { window.fbq('init', pixelId); } catch {}
+    try { window.fbq('track', 'PageView'); } catch {}
+    return;
+  }
+
+  // Detect any existing fbevents.js script (from PixelScripts component)
   if (document.getElementById('fb-pixel-script') || document.getElementById('facebook-pixel-script')) {
     if (window.fbq && typeof window.fbq.callMethod !== 'undefined') {
       try { window.fbq('init', pixelId); } catch {}
