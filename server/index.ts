@@ -269,7 +269,15 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
             defaultSrc: ["'self'"],
             baseUri: ["'self'"],
             objectSrc: ["'none'"],
-            frameAncestors: ["'none'"],
+            // Allow Facebook domains to embed the site (needed for Meta Event Setup Tool iframe),
+            // plus our own origin. Still blocks arbitrary third-party iframes.
+            frameAncestors: [
+              "'self'",
+              'https://www.facebook.com',
+              'https://www.instagram.com',
+              'https://business.facebook.com',
+              'https://web.facebook.com',
+            ],
             formAction: ["'self'"],
             blockAllMixedContent: [],
             upgradeInsecureRequests: [],
