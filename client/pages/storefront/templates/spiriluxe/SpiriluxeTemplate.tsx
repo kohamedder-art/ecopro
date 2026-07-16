@@ -362,12 +362,12 @@ export default function SpiriluxeTemplate({
     <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, color: textColor }}>
       {/* Store Header */}
       <div className="sticky top-0 z-50 px-4 py-3" style={{ backgroundColor: bgColor, borderBottom: `1px solid ${borderColor}` }}>
-        <div className="max-w-xl mx-auto flex items-center gap-2">
+        <div className="max-w-3xl mx-auto flex items-center gap-2">
           {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" loading="lazy" decoding="async" width="28" height="28" style={{ contentVisibility: 'auto' }} />}
           <span className="font-bold text-base">{settings?.store_name || 'المتجر'}</span>
         </div>
       </div>
-      <div className="max-w-xl mx-auto">
+      <div className="max-w-3xl mx-auto">
 
         {/* Video Embed (above images) */}
         {videoEmbed && (
@@ -416,8 +416,8 @@ export default function SpiriluxeTemplate({
           onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload('below', f); e.target.value=''; }} />
 
         {/* Order Form */}
-        <div className="px-6 py-4">
-          <div className="rounded-2xl shadow-xl p-6" style={{ backgroundColor: cardBg }}>
+        <div className="px-0 py-4">
+          <div className="rounded-2xl shadow-xl px-4 py-6" style={{ backgroundColor: cardBg }}>
             
             {orderSuccess ? (
               <div className="text-center py-8">

@@ -425,7 +425,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor }} dir="rtl">
 
       {/* Mobile Container */}
-      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-xl mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: bgColor }}>
+      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-3xl mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: bgColor }}>
 
         {/* ── STICKY HEADER ── */}
         <div className="sticky top-0 z-50 backdrop-blur-md px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
@@ -493,7 +493,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         
         {/* ── ORDER FORM ── */}
         <div ref={formRef} className="py-5 pb-24" id="checkout-form">
-          <div className="rounded-none p-5 shadow-sm relative" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}`, borderLeft: 'none', borderRight: 'none' }}>
+            <div className="rounded-none px-4 py-5 shadow-sm relative" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}`, borderLeft: 'none', borderRight: 'none' }}>
             <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
               أكمل البيانات للطلب
             </div>
