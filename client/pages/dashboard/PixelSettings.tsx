@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { apiFetch } from '@/lib/api';
 import { MkrFacebook, MkrPlus, MkrTrash } from '@/components/icons/MarketingIcons';
 import TikTokIcon from '@/components/icons/TikTokIcon';
-import { Save, Plus, Trash2, RefreshCw } from 'lucide-react';
+import { Save, Plus, Trash2, RefreshCw, BugPlay, Smartphone, Laptop, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 interface PixelItem {
   id: string; type: 'facebook' | 'tiktok'; pixel_id: string;
@@ -242,6 +242,130 @@ export default function PixelSettings() {
           إضافة بكسل
         </button>
       </div>
+
+      {/* Diagnose */}
+      <DiagnosticSection />
+    </div>
+  );
+}
+
+function DiagnosticSection() {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [diagResult, setDiagResult] = useState<any>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+
+  const runDiagnostic = async () => {
+    setDiagLoading(true);
+    setDiagResult(null);
+    try {
+      const res = await apiFetch<any>('/api/pixels/diagnose');
+      setDiagResult(res);
+    } catch (e: any) {
+      toast({ title: 'خطأ في التشخيص', description: e?.message || e, variant: 'destructive' });
+    } finally {
+      setDiagLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+          <span className="text-sm font-bold text-foreground">تشخيص البكسل</span>
+        </div>
+        <button onClick={runDiagnostic} disabled={diagLoading}
+          className="h-8 px-3 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-lg shadow-amber-500/20">
+          {diagLoading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <BugPlay className="w-3.5 h-3.5" />
+          )}
+          تشخيص
+        </button>
+      </div>
+
+      {diagLoading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+            <span className="text-xs text-muted-foreground">جاري اختبار البكسل...</span>
+          </div>
+        </div>
+      )}
+
+      {diagResult && !diagLoading && (
+        <div className="space-y-3">
+          {/* Verdict */}
+          <div className={`rounded-xl p-3 text-xs font-bold flex items-center gap-2 ${
+            diagResult.verdict?.startsWith('✅') ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' :
+            diagResult.verdict?.startsWith('❌') ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' :
+            'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
+          }`}>
+            {diagResult.verdict?.startsWith('✅') ? <CheckCircle2 className="w-4 h-4 shrink-0" /> :
+             diagResult.verdict?.startsWith('❌') ? <XCircle className="w-4 h-4 shrink-0" /> :
+             <BugPlay className="w-4 h-4 shrink-0" />}
+            {diagResult.verdict}
+          </div>
+
+          {/* Mobile test results */}
+          {diagResult.mobileTest && diagResult.mobileTest.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs font-bold text-foreground">اختبار الـ Proxy (من السيرفر)</span>
+              </div>
+              <div className="space-y-1.5">
+                {diagResult.mobileTest.map((t: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                    {t.ok ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    ) : (
+                      <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                    )}
+                    <span className="text-xs font-medium text-foreground">{t.label}</span>
+                    <span className="text-[10px] text-muted-foreground mr-auto">{t.note}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent events */}
+          {diagResult.recentEvents && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Laptop className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs font-bold text-foreground">
+                  أحداث البكسل (آخر 7 أيام): {diagResult.recentEvents.total7days}
+                </span>
+              </div>
+              {diagResult.recentEvents.summary?.length > 0 ? (
+                <div className="space-y-1">
+                  {diagResult.recentEvents.summary.map((r: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-1.5 text-[11px]">
+                      <span className="font-bold text-foreground">{r.pixel_type}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="text-foreground">{r.event_name}</span>
+                      <span className="mr-auto text-muted-foreground">{r.count} مرة</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">لا توجد أحداث بكسل مسجلة في قاعدة البيانات</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!diagResult && !diagLoading && (
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <BugPlay className="w-8 h-8 text-muted-foreground/40 mb-2" />
+          <p className="text-xs text-muted-foreground">اختبر البكسل من السيرفر لترى إن كان يشتغل صح على الموبايل</p>
+        </div>
+      )}
     </div>
   );
 }

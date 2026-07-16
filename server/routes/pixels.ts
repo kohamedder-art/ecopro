@@ -1256,4 +1256,153 @@ export const pixelProxyHandler: RequestHandler = async (req, res) => {
 
 router.get('/proxy/:platform', pixelProxyHandler);
 
+// =====================================================================
+// Pixel diagnostic — tests if the pixel proxy relay works with different
+// user agents (mobile, desktop) and checks recent events in the DB.
+// =====================================================================
+export const pixelDiagnosticHandler: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role === 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const clientId = user.id;
+    const pool = await getPool();
+
+    // 1. Get pixel configuration
+    const pixelRes = await pool.query(
+      `SELECT facebook_pixel_id, tiktok_pixel_id, is_facebook_enabled, is_tiktok_enabled, facebook_access_token
+       FROM client_pixel_settings WHERE client_id = $1`,
+      [clientId]
+    );
+    const config = pixelRes.rows[0] || null;
+
+    const result: Record<string, any> = {
+      configured: !!config,
+      facebook: { enabled: false, pixelId: null, proxyTest: null },
+      tiktok: { enabled: false, pixelId: null, proxyTest: null },
+      recentEvents: null,
+      mobileTest: null,
+    };
+
+    if (!config) {
+      result.error = 'No pixel configured for this store';
+      return res.json(result);
+    }
+
+    result.facebook.enabled = config.is_facebook_enabled;
+    result.facebook.pixelId = config.facebook_pixel_id;
+    result.tiktok.enabled = config.is_tiktok_enabled;
+    result.tiktok.pixelId = config.tiktok_pixel_id;
+
+    const testPixelId = 'test_' + Date.now();
+
+    // 2. Test proxy relay with mobile Android UA
+    const mobileUserAgents = [
+      {
+        label: 'Android Chrome',
+        ua: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36',
+      },
+      {
+        label: 'iPhone Safari',
+        ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+      },
+      {
+        label: 'Desktop Chrome',
+        ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+      },
+    ];
+
+    result.mobileTest = [];
+    for (const { label, ua } of mobileUserAgents) {
+      const testUrl = `https://www.facebook.com/tr?id=${testPixelId}&ev=PageView&noscript=1&test_ua=${encodeURIComponent(label)}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        const fbResp = await fetch(testUrl, {
+          method: 'GET',
+          headers: { 'User-Agent': ua, 'Accept': '*/*' },
+          redirect: 'manual',
+          signal: controller.signal,
+        });
+        result.mobileTest.push({
+          label,
+          status: fbResp.status,
+          ok: fbResp.ok || fbResp.status === 302 || fbResp.status === 301,
+          note: fbResp.ok ? 'Proxy relay OK' : fbResp.status === 302 ? 'Redirect (expected) - Facebook accepted' : `HTTP ${fbResp.status}`,
+        });
+      } catch (e: any) {
+        result.mobileTest.push({
+          label,
+          status: 'error',
+          ok: false,
+          note: e?.message?.includes('abort') ? 'Timeout' : e?.message?.slice(0, 80),
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    // 3. Test actual proxy endpoint (our server's relay)
+    if (config.facebook_pixel_id && config.is_facebook_enabled) {
+      const proxyUrl = `/api/pixels/proxy/fb?id=${config.facebook_pixel_id}&ev=PageView&noscript=1&diag=1`;
+      result.facebook.proxyTest = {
+        url: proxyUrl,
+        note: 'Call this URL from a mobile browser to test if the proxy relay works',
+      };
+    }
+
+    // 4. Check recent pixel_events in DB
+    const eventsRes = await pool.query(
+      `SELECT pixel_type, event_name, COUNT(*) as count,
+        MIN(created_at) as first_seen, MAX(created_at) as last_seen
+       FROM pixel_events
+       WHERE client_id = $1
+         AND created_at > NOW() - INTERVAL '7 days'
+       GROUP BY pixel_type, event_name
+       ORDER BY last_seen DESC
+       LIMIT 20`,
+      [clientId]
+    );
+
+    const recentEventsRaw = await pool.query(
+      `SELECT id, pixel_type, event_name, page_url, created_at
+       FROM pixel_events
+       WHERE client_id = $1
+       ORDER BY created_at DESC
+       LIMIT 5`,
+      [clientId]
+    );
+
+    result.recentEvents = {
+      summary: eventsRes.rows,
+      last5: recentEventsRaw.rows,
+      total7days: eventsRes.rows.reduce((sum: number, r: any) => sum + parseInt(String(r.count)), 0),
+    };
+
+    // 5. Overall verdict
+    const anyMobileOk = result.mobileTest?.some((t: any) => t.ok);
+    const hasRecentEvents = result.recentEvents?.total7days > 0;
+    result.verdict = !config.is_facebook_enabled && !config.is_tiktok_enabled
+      ? '⚠️ No pixel enabled — go to Pixel Statistics to enable'
+      : !config.facebook_pixel_id && !config.tiktok_pixel_id
+        ? '⚠️ No pixel ID configured'
+        : anyMobileOk && hasRecentEvents
+          ? '✅ Pixel proxy works from mobile UA and events are being recorded'
+          : anyMobileOk && !hasRecentEvents
+            ? '⚠️ Proxy relay works but no events in DB — check if visitors actually browse the store'
+            : !anyMobileOk && hasRecentEvents
+              ? '⚠️ Events recorded in DB but proxy relay failed from server — may be a network/blocking issue'
+              : '❌ Proxy relay failed and no recent events — pixel likely not firing';
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Pixel diagnostic error:', error);
+    res.status(500).json({ error: error?.message || 'Diagnostic failed' });
+  }
+};
+
+router.get('/diagnose', authenticate, requireClient, pixelDiagnosticHandler);
+
 export default router;

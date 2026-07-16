@@ -1592,6 +1592,44 @@ export const getProductWithStoreInfo: RequestHandler = async (req, res) => {
   }
 };
 
+// Fire a Facebook pixel event from the server side (bypasses browser blockers)
+async function fireServerSideFacebookPixel(
+  pixelId: string,
+  eventName: string,
+  pageUrl: string,
+  userAgent: string | undefined,
+  clientIp: string | undefined,
+) {
+  const ids = String(pixelId).split(',').map(s => s.trim()).filter(Boolean);
+  for (const id of ids) {
+    const params = new URLSearchParams();
+    params.set('id', id);
+    params.set('ev', eventName);
+    params.set('noscript', '1');
+    params.set('dl', pageUrl);
+    if (userAgent) params.set('ua', userAgent.substring(0, 200));
+    params.set('srv', '1'); // marks server-side fired events
+    const url = `https://www.facebook.com/tr?${params.toString()}`;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      await fetch(url, {
+        method: 'GET',
+        headers: {
+          'User-Agent': userAgent || 'Mozilla/5.0 (compatible; Sahla4Eco Server)',
+          'Accept': '*/*',
+          ...(clientIp ? { 'X-Forwarded-For': clientIp } : {}),
+        },
+        redirect: 'follow',
+        signal: controller.signal,
+      }).catch(() => {});
+      clearTimeout(timer);
+    } catch {
+      /* never break the page */
+    }
+  }
+}
+
 // Track storefront page view (increments page_views counter in client_store_settings)
 export const trackStorefrontPageView: RequestHandler = async (req, res) => {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -1625,6 +1663,24 @@ export const trackStorefrontPageView: RequestHandler = async (req, res) => {
          DO UPDATE SET views = client_store_daily_views.views + 1`,
         [clientId]
       ).catch(() => {}); // non-critical
+
+      // Fire server-side Facebook pixel (non-blocking)
+      pool.query(
+        `SELECT facebook_pixel_id FROM client_pixel_settings
+         WHERE client_id = $1 AND is_facebook_enabled = true AND facebook_pixel_id IS NOT NULL
+         LIMIT 1`,
+        [clientId]
+      ).then(pixelRes => {
+        if (pixelRes.rows.length > 0) {
+          fireServerSideFacebookPixel(
+            pixelRes.rows[0].facebook_pixel_id,
+            'PageView',
+            req.headers['referer'] || req.headers['origin'] || `/store/${storeSlug}`,
+            req.headers['user-agent'],
+            req.ip || req.socket?.remoteAddress,
+          );
+        }
+      }).catch(() => {});
     }
 
     if (result.rows.length === 0) {
