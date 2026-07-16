@@ -2117,18 +2117,6 @@ ${urls}
                 if (storePixelRes.rows.length > 0) {
                   fbPixelIds = String(storePixelRes.rows[0].facebook_pixel_id).split(',').map((s: string) => s.trim()).filter(Boolean);
                 }
-              } else if (req.path === '/') {
-                const platformRes = await dbPoolNs.query(
-                  `SELECT setting_value FROM platform_settings WHERE setting_key = 'pixel_config'`
-                );
-                if (platformRes.rows.length > 0) {
-                  const parsed = JSON.parse(platformRes.rows[0].setting_value);
-                  if (Array.isArray(parsed)) {
-                    fbPixelIds = parsed
-                      .filter((p: any) => p?.enabled && p?.platform === 'facebook' && p?.pixel_id)
-                      .map((p: any) => String(p.pixel_id).trim());
-                  }
-                }
               }
 
               for (const pid of fbPixelIds) {
