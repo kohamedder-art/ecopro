@@ -362,12 +362,12 @@ export default function SpiriluxeTemplate({
     <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, color: textColor }}>
       {/* Store Header */}
       <div className="sticky top-0 z-50 px-4 py-3" style={{ backgroundColor: bgColor, borderBottom: `1px solid ${borderColor}` }}>
-        <div className="max-w-md mx-auto flex items-center gap-2">
+        <div className="max-w-xl mx-auto flex items-center gap-2">
           {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" loading="lazy" decoding="async" width="28" height="28" style={{ contentVisibility: 'auto' }} />}
           <span className="font-bold text-base">{settings?.store_name || 'المتجر'}</span>
         </div>
       </div>
-      <div className="max-w-md mx-auto">
+      <div className="max-w-xl mx-auto">
 
         {/* Video Embed (above images) */}
         {videoEmbed && (
@@ -454,7 +454,8 @@ export default function SpiriluxeTemplate({
               </div>
             ) : (
               <form onSubmit={handleOrder} className="space-y-5">
-                {orderError && (
+                 <h3 className="text-xl font-extrabold text-center mb-1" style={{ color: textColor }}>اطلب الان</h3>
+                 {orderError && (
                   <div className="text-sm font-semibold rounded-xl px-4 py-3 whitespace-pre-line text-start" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
                       {orderError}
                     </div>

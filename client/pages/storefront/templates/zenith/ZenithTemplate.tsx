@@ -123,7 +123,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   // Editable text fields
   const storeName = settings?.zenith_store_name || settings?.store_name || 'STORE';
   const ctaText = settings?.zenith_cta_text || settings?.template_button_text || 'اطلب الان';
-  const formTitle = settings?.zenith_form_title || 'معلومات الطلب';
+  const formTitle = settings?.zenith_form_title || 'اطلب الان';
   const submitText = settings?.zenith_submit_text || 'تأكيد الطلب';
 
   // Smart image classification: prefers tall images for landing strips
@@ -425,7 +425,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor }} dir="rtl">
 
       {/* Mobile Container */}
-      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-md mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: bgColor }}>
+      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-xl mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: bgColor }}>
 
         {/* ── STICKY HEADER ── */}
         <div className="sticky top-0 z-50 backdrop-blur-md px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
