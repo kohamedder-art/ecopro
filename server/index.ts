@@ -261,7 +261,6 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
           preload: true,
         },
         referrerPolicy: { policy: 'no-referrer' },
-        frameguard: { action: 'deny' },
         noSniff: true,
         contentSecurityPolicy: {
           useDefaults: true,
