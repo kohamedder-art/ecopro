@@ -1958,6 +1958,12 @@ ${urls}
               ? html.replace(/(href|src)=(['"])(\/assets\/[^'"?]+)\2/g, `$1=$2$3?v=${buildId}$2`)
               : html;
             let withMeta = withBuild;
+            // Inject CSP nonce into inline pixel script (or remove the attribute if no nonce)
+            if (nonce) {
+              withMeta = withMeta.replace('__PIXEL_NONCE__', nonce);
+            } else {
+              withMeta = withMeta.replace(' nonce="__PIXEL_NONCE__"', '');
+            }
 
             // Inject dynamic meta tags for store pages (from URL slug or subdomain resolution)
             const storeMatch = req.path.match(/^\/store\/([^/]+)/);
