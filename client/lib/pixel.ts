@@ -141,16 +141,12 @@ export function trackPixelEvent(event: string, params: Record<string, any> = {})
  */
 export function trackPageView(path: string = window.location.pathname): void {
   const now = Date.now();
-  if (path === lastPageViewPath && now - lastPageViewTs < 1500) return;
+  if (path === lastPageViewPath && now - lastPageViewTs < 3000) return;
   lastPageViewPath = path;
   lastPageViewTs = now;
 
-  for (const id of FB_INIT) {
-    trackFacebookEvent('PageView');
-  }
-  for (const id of TT_INIT) {
-    trackTikTokEvent('PageView');
-  }
+  trackFacebookEvent('PageView');
+  trackTikTokEvent('PageView');
 }
 
 export async function loadPlatformPixelConfig(): Promise<PixelConfig> {
