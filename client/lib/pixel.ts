@@ -162,8 +162,10 @@ export async function loadPlatformPixelConfig(): Promise<PixelConfig> {
     const arr = Array.isArray(data) ? data : data?.pixels ?? [];
     for (const p of arr) {
       if (!p?.enabled || !p?.pixel_id) continue;
-      if (p.platform === 'facebook' || p.platform === 'meta') config.facebook.push(p.pixel_id);
-      if (p.platform === 'tiktok') config.tiktok.push(p.pixel_id);
+      const id = String(p.pixel_id).trim();
+      if (!id) continue;
+      if (p.platform === 'facebook' || p.platform === 'meta') config.facebook.push(id);
+      if (p.platform === 'tiktok') config.tiktok.push(id);
     }
     return config;
   } catch {

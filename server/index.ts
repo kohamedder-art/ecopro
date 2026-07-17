@@ -1817,11 +1817,16 @@ ${urls}
       if (!Array.isArray(pixels)) {
         return res.status(400).json({ error: 'pixels must be an array' });
       }
+      // Trim pixel IDs to avoid leading/trailing whitespace issues
+      const cleaned = pixels.map((p: any) => ({
+        ...p,
+        pixel_id: typeof p.pixel_id === 'string' ? p.pixel_id.trim() : p.pixel_id,
+      }));
       const adminId = (req.user as any)?.id;
       await pool.query(
         `UPDATE platform_settings SET setting_value = $1, updated_by = $2, updated_at = NOW()
          WHERE setting_key = 'pixel_config'`,
-        [JSON.stringify(pixels), adminId]
+        [JSON.stringify(cleaned), adminId]
       );
       res.json({ message: 'Pixel config updated' });
     } catch (err) {
