@@ -1203,55 +1203,59 @@ const PIXEL_PROXY_TARGETS: Record<string, string> = {
 };
 
 export const pixelProxyHandler: RequestHandler = async (req, res) => {
-  try {
-    const platform = String(req.params.platform || '').toLowerCase();
-    const target = PIXEL_PROXY_TARGETS[platform];
-    if (!target) {
-      res.status(400).send('Unknown pixel platform');
-      return;
-    }
-
-    // Forward only safe, known pixel query params (never arbitrary URLs).
-    // Allow standard params + cd[*] custom data (value, currency, content_name, etc.)
-    const allowed = ['id', 'ev', 'noscript', 'eid', 'dl', 'rl', 'if', 'ts', 'v', 'ec', 'el', 'ea', 'ed', 'tid', 'advanced_mapping'];
-    const fwd = new URLSearchParams();
-    for (const [key, val] of Object.entries(req.query)) {
-      if (val === undefined || val === null) continue;
-      if (key.startsWith('cd[') && key.endsWith(']')) {
-        // Allow all cd[*] custom data params
-        fwd.set(key, String(val));
-      } else if (allowed.includes(key)) {
-        fwd.set(key, String(val));
-      }
-    }
-    // Always mark as noscript beacon (img-based) for reliability
-    if (!fwd.has('noscript')) fwd.set('noscript', '1');
-
-    const url = `${target}?${fwd.toString()}`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    try {
-      await fetch(url, {
-        method: 'GET',
-        headers: { 'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0', 'Accept': '*/*' },
-        redirect: 'follow',
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
-  } catch {
-    /* swallow upstream errors — never break the page */
-  } finally {
-    // Always return a 1x1 transparent gif so the <img> beacon resolves cleanly
-    const buf = Buffer.from(
-      'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-      'base64'
-    );
-    res.setHeader('Content-Type', 'image/gif');
-    res.setHeader('Cache-Control', 'no-store');
-    res.status(200).send(buf);
+  const platform = String(req.params.platform || '').toLowerCase();
+  const target = PIXEL_PROXY_TARGETS[platform];
+  if (!target) {
+    res.status(400).send('Unknown pixel platform');
+    return;
   }
+
+  // Forward only safe, known pixel query params (never arbitrary URLs).
+  // Allow standard params + cd[*] custom data (value, currency, content_name, etc.)
+  const allowed = ['id', 'ev', 'noscript', 'eid', 'dl', 'rl', 'if', 'ts', 'v', 'ec', 'el', 'ea', 'ed', 'tid', 'advanced_mapping'];
+  const fwd = new URLSearchParams();
+  for (const [key, val] of Object.entries(req.query)) {
+    if (val === undefined || val === null) continue;
+    if (key.startsWith('cd[') && key.endsWith(']')) {
+      fwd.set(key, String(val));
+    } else if (allowed.includes(key)) {
+      fwd.set(key, String(val));
+    }
+  }
+  if (!fwd.has('noscript')) fwd.set('noscript', '1');
+
+  const url = `${target}?${fwd.toString()}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let relayOk = false;
+  try {
+    const relay = await fetch(url, {
+      method: 'GET',
+      headers: { 'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0', 'Accept': '*/*' },
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    relayOk = relay.ok;
+  } catch (err: any) {
+    console.error(`[pixel-proxy] Relay to ${platform} failed:`, err?.message || err);
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!relayOk && platform === 'fb') {
+    // Facebook's /tr often returns 302/200 even for successful noscript hits,
+    // but log when it looks wrong so we can debug.
+    console.log(`[pixel-proxy] fb relay: id=${fwd.get('id')} ev=${fwd.get('ev')} ok=${relayOk}`);
+  }
+
+  // Always return a 1x1 transparent gif so the <img> beacon resolves cleanly
+  const buf = Buffer.from(
+    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    'base64'
+  );
+  res.setHeader('Content-Type', 'image/gif');
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).send(buf);
 };
 
 router.get('/proxy/:platform', pixelProxyHandler);
