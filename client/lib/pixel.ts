@@ -37,11 +37,11 @@ declare global {
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve) => {
-    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const existing = document.querySelector(`script[src="${src}"], script[src*="${src.split('/').pop()}"]`);
+    if (existing) return resolve();
     const s = document.createElement('script');
     s.src = src;
     s.async = true;
-    s.crossOrigin = 'anonymous';
     s.onload = () => resolve();
     s.onerror = () => resolve();
     document.head.appendChild(s);
