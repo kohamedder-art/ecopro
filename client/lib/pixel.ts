@@ -93,14 +93,41 @@ export async function initTikTokPixels(ids: string[]): Promise<void> {
   }
 }
 
+function fireProxyBeacon(platform: 'fb' | 'tt', event: string, ids: string[], params?: Record<string, any>) {
+  if (!ids.length) return;
+  try {
+    const q = new URLSearchParams();
+    q.set('ev', event);
+    q.set('noscript', '1');
+    if (params && typeof params === 'object') {
+      for (const key of ['value', 'currency', 'content_name', 'content_category', 'order_id', 'content_ids']) {
+        const v = params[key];
+        if (v !== undefined && v !== null) {
+          q.set('cd[' + key + ']', Array.isArray(v) ? v.join(',') : String(v));
+        }
+      }
+    }
+    for (const id of ids) {
+      q.set('id', id);
+      new Image().src = `/api/pixels/proxy/${platform}?${q.toString()}`;
+    }
+  } catch {
+    /* never break the page */
+  }
+}
+
 export function trackFacebookEvent(event: string, params: Record<string, any> = {}): void {
   if (!window.fbq) return;
   window.fbq('track', event, params);
+  // Reliable fallback: fire an <img> beacon through our server proxy so events
+  // reach Meta even when the client SDK is blocked (mobile carriers, DNS, ad-blockers).
+  fireProxyBeacon('fb', event, Array.from(FB_INIT), params);
 }
 
 export function trackTikTokEvent(event: string, params: Record<string, any> = {}): void {
   if (!window.ttq) return;
   window.ttq.track(event, params);
+  fireProxyBeacon('tt', event, Array.from(TT_INIT), params);
 }
 
 export function trackPixelEvent(event: string, params: Record<string, any> = {}): void {
