@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Check, Crown, Zap, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { trackFacebookEvent } from '@/lib/pixel';
 
 interface Tier {
   id: string;
@@ -70,7 +71,7 @@ export default function SubscriptionTiers() {
         'SSL security',
       ],
       cta: 'Get Started',
-      ctaAction: () => navigate('/signup'),
+      ctaAction: () => { trackFacebookEvent('Lead', { source: 'bronze_cta' }); navigate('/signup'); },
     },
     {
       id: 'gold',
@@ -102,7 +103,7 @@ export default function SubscriptionTiers() {
         'Marketing tools',
       ],
       cta: 'Start Free Trial',
-      ctaAction: () => navigate('/dashboard'),
+      ctaAction: () => { trackFacebookEvent('Lead', { source: 'gold_cta' }); navigate('/dashboard'); },
     },
     {
       id: 'platinum',
@@ -135,7 +136,7 @@ export default function SubscriptionTiers() {
         'SLA guarantee',
       ],
       cta: 'Contact Sales',
-      ctaAction: () => navigate('/contact'),
+      ctaAction: () => { trackFacebookEvent('Lead', { source: 'platinum_cta' }); navigate('/contact'); },
     },
   ];
 

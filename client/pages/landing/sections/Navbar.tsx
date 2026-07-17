@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Menu, X, Globe } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
+import { trackFacebookEvent } from '@/lib/pixel';
 
 export function Navbar() {
   const { t, locale, setLocale } = useTranslation();
@@ -51,6 +52,7 @@ export function Navbar() {
             to="/signup"
             className="text-sm font-extrabold h-10 px-6 rounded-xl text-white transition-all active:scale-[0.97] flex items-center gap-2"
             style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+            onClick={() => trackFacebookEvent('Lead', { source: 'navbar_start_free' })}
           >
             {locale === 'ar' ? 'ابدأ مجاناً' : 'Start Free'}
           </Link>
@@ -79,7 +81,7 @@ export function Navbar() {
             </Link>
             <Link
               to="/signup"
-              onClick={() => setOpen(false)}
+              onClick={() => { trackFacebookEvent('Lead', { source: 'navbar_mobile_start_free' }); setOpen(false); }}
               className="block text-center text-sm font-extrabold h-10 rounded-xl text-white flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
             >

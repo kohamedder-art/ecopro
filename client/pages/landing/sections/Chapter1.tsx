@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from '@/lib/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ArrowRight, Zap, Package, CreditCard, Truck } from 'lucide-react';
+import { trackFacebookEvent } from '@/lib/pixel';
 
 export function Chapter1() {
   const { t, locale } = useTranslation();
@@ -127,6 +128,7 @@ export function Chapter1() {
               to="/signup"
               className="group relative inline-flex items-center justify-center gap-2 text-base font-extrabold h-14 px-8 rounded-2xl text-white overflow-hidden shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_40px_rgba(99,102,241,0.5)] transition-all active:scale-[0.98] w-full sm:w-auto"
               style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+              onClick={() => trackFacebookEvent('Lead', { source: 'hero_start_free' })}
             >
               <span>{isRTL ? "ابدأ مجاناً" : "Start Free"}</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -135,6 +137,7 @@ export function Chapter1() {
             <Link
               to="/pricing"
               className="inline-flex items-center justify-center gap-2 text-base font-bold h-14 px-8 rounded-2xl border border-gray-300 dark:border-white/15 text-gray-700 dark:text-white/80 bg-white/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 backdrop-blur-sm transition-all active:scale-[0.98] w-full sm:w-auto"
+              onClick={() => trackFacebookEvent('Lead', { source: 'hero_view_pricing' })}
             >
               <span>{isRTL ? "استعرض الأسعار" : "View Pricing"}</span>
             </Link>

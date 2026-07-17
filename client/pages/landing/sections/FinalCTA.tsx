@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
+import { trackFacebookEvent } from '@/lib/pixel';
 
 export function FinalCTA() {
   const { t, locale } = useTranslation();
@@ -54,6 +55,7 @@ export function FinalCTA() {
             to="/signup"
             className="inline-flex items-center gap-3 h-14 px-10 rounded-2xl text-white text-base font-extrabold transition-all active:scale-[0.97] shadow-2xl shadow-indigo-500/30"
             style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+            onClick={() => trackFacebookEvent('Lead', { source: 'final_cta' })}
           >
             {t('index.ctaCta')}
             <ArrowLeft className="w-5 h-5" />

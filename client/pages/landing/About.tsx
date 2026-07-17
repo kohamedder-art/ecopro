@@ -1,5 +1,6 @@
 import { Heart, Zap, Shield, Target, Users, Sparkles, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import { trackFacebookEvent } from "@/lib/pixel";
 
 export default function About() {
   return (
@@ -91,7 +92,7 @@ export default function About() {
               <p className="text-white font-black text-xl mb-8">
                 حان الوقت للتوقف عن دفع الأسعار الخيالية. ابدأ اليوم مع Sahla4Eco.
               </p>
-              <Link to="/dashboard" className="inline-flex items-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-full font-black text-lg hover:bg-slate-50 transition-colors shadow-lg hover:scale-105 active:scale-95">
+              <Link to="/dashboard" onClick={() => trackFacebookEvent('Lead', { source: 'about_cta' })} className="inline-flex items-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-full font-black text-lg hover:bg-slate-50 transition-colors shadow-lg hover:scale-105 active:scale-95">
                 ابدأ الآن مجاناً
                 <ArrowLeft className="w-5 h-5 text-indigo-600" />
               </Link>

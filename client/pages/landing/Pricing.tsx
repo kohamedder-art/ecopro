@@ -5,6 +5,7 @@ import { MessageCircle, Loader2, Check, Rocket, Gift, Shield, Sparkles, Zap, Arr
 import { useTranslation } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
+import { trackFacebookEvent } from '@/lib/pixel';
 
 type PublicBillingInfo = {
   trialDays: number;
@@ -163,7 +164,7 @@ export default function Pricing() {
           <p className="text-slate-600 dark:text-slate-400 font-semibold mb-8 text-lg">
             {t('pricing.faqDesc')}
           </p>
-          <Link to="/contact" className="inline-flex items-center space-x-2 space-x-reverse font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors bg-white dark:bg-slate-800 px-6 py-3 rounded-full shadow-sm hover:shadow-md border border-indigo-50 dark:border-slate-700">
+          <Link to="/contact" onClick={() => trackFacebookEvent('Lead', { source: 'pricing_faq_cta' })} className="inline-flex items-center space-x-2 space-x-reverse font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors bg-white dark:bg-slate-800 px-6 py-3 rounded-full shadow-sm hover:shadow-md border border-indigo-50 dark:border-slate-700">
             <span>{t('pricing.faqCta')}</span>
             <ArrowLeft className="w-4 h-4" />
           </Link>

@@ -7,6 +7,7 @@ import { Mail, Lock, AlertCircle, Zap, ArrowRight, Loader2, Eye, EyeOff } from "
 import { authApi } from "@/lib/auth";
 import { safeJsonParse } from "@/utils/safeJson";
 import { useTranslation } from "@/lib/i18n";
+import { trackFacebookEvent } from "@/lib/pixel";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -97,6 +98,7 @@ export default function Login() {
         localStorage.setItem('isAdmin', 'true');
       }
       toast.success(t('login.success'));
+      trackFacebookEvent('CompleteRegistration', { source: 'login' });
 
       if (targetPath) {
         navigate(targetPath);

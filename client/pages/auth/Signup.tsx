@@ -17,6 +17,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { trackFacebookEvent } from "@/lib/pixel";
 
 // Google Icon Component
 function GoogleIcon({ className }: { className?: string }) {
@@ -171,6 +172,7 @@ export default function Signup() {
       }
 
       setSuccess(t('signup.success'));
+      trackFacebookEvent('CompleteRegistration', { source: 'signup' });
       setTimeout(() => navigate('/dashboard'), 1500);
 
     } catch (err: any) {
