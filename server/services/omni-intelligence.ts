@@ -216,9 +216,9 @@ async function saveSessionTouch(sessionDbId: string | number, clientId: number, 
       toOptionalText(data.creativeName),
       creativeKey,
       toOptionalText(data.landingPage),
-      toOptionalText(data.fbclid),
-      toOptionalText(data.ttclid),
-      toOptionalText(data.gclid),
+      toOptionalText(data.fbclid)?.slice(0, 255) ?? null,
+      toOptionalText(data.ttclid)?.slice(0, 255) ?? null,
+      toOptionalText(data.gclid)?.slice(0, 255) ?? null,
     ]
   );
 }
