@@ -33,6 +33,7 @@ declare global {
     _fbq?: any;
     ttq?: any;
     __PIXEL_BACKEND_URL__?: string;
+    __META_PIXEL_IDS__?: string[];
   }
 }
 
@@ -118,11 +119,13 @@ function fireProxyBeacon(platform: 'fb' | 'tt', event: string, ids: string[], pa
 }
 
 export function trackFacebookEvent(event: string, params: Record<string, any> = {}): void {
-  if (!window.fbq) return;
-  window.fbq('track', event, params);
+  if (window.fbq) {
+    window.fbq('track', event, params);
+  }
   // Reliable fallback: fire an <img> beacon through our server proxy so events
   // reach Meta even when the client SDK is blocked (mobile carriers, DNS, ad-blockers).
-  fireProxyBeacon('fb', event, Array.from(FB_INIT), params);
+  const ids = Array.from(FB_INIT).length ? Array.from(FB_INIT) : (window.__META_PIXEL_IDS__ ?? []);
+  fireProxyBeacon('fb', event, ids, params);
 }
 
 export function trackTikTokEvent(event: string, params: Record<string, any> = {}): void {
