@@ -122,8 +122,6 @@ export function trackFacebookEvent(event: string, params: Record<string, any> = 
   if (window.fbq) {
     window.fbq('track', event, params);
   }
-  // Reliable fallback: fire an <img> beacon through our server proxy so events
-  // reach Meta even when the client SDK is blocked (mobile carriers, DNS, ad-blockers).
   const ids = Array.from(FB_INIT).length ? Array.from(FB_INIT) : (window.__META_PIXEL_IDS__ ?? []);
   fireProxyBeacon('fb', event, ids, params);
 }
