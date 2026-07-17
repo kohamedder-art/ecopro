@@ -375,6 +375,7 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
                 primary_color, secondary_color,
                 template, banner_url, 'DZD' as currency_code,
                 hero_main_url, hero_tile1_url, hero_tile2_url, 
+                hero_video_url,
                 store_images,
                 owner_name, owner_email,
                 template_hero_heading, template_hero_subtitle, template_button_text, template_accent_color, template_bg_color,
@@ -386,7 +387,7 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
 
       const selectClientSettingsLegacy = (whereSql: string) =>
         `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, 'DZD' as currency_code,
-                NULL as hero_main_url, NULL as hero_tile1_url, NULL as hero_tile2_url,
+                NULL as hero_main_url, NULL as hero_tile1_url, NULL as hero_tile2_url, NULL as hero_video_url,
                 store_images, owner_name, owner_email,
                 NULL as template_hero_heading, NULL as template_hero_subtitle, NULL as template_button_text, NULL as template_accent_color,
                 NULL as template_bg_image, NULL as template_header_bg, NULL as template_header_text, NULL as template_text_color, NULL as template_muted_color,

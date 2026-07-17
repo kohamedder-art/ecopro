@@ -82,8 +82,8 @@ export default function SpiriluxeTemplate({
 
   useEffect(() => { if (mainProduct && onProductView) onProductView(mainProduct); }, [mainProduct?.id]);
 
-  // ── Video ──
-  const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
+  // ── Video (product metadata or store-level hero_video_url) ──
+  const videoUrl = (mainProduct as any)?.metadata?.video_url || (settings as any)?.hero_video_url || '';
   const videoEmbed = useMemo(() => {
     if (!videoUrl) return null;
     const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);

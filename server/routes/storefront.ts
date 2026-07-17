@@ -51,8 +51,8 @@ const productBodySchema = z
     description: z.string().trim().max(5000).optional().nullable(),
     price: z.preprocess((v) => (typeof v === 'string' ? Number(v) : v), z.number().finite().positive()),
     category: z.string().trim().max(100).optional().nullable(),
-  })
-  .strict();
+    metadata: z.record(z.unknown()).optional().nullable(),
+  });
 
 export const createProduct: RequestHandler = async (req, res) => {
   const { storeSlug } = req.params as any;
@@ -62,12 +62,12 @@ export const createProduct: RequestHandler = async (req, res) => {
     if (parsed.success === false) {
       return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
     }
-    const { title, description, price, category } = parsed.data;
+    const { title, description, price, category, metadata } = parsed.data;
 
     const r = await pool.query(
-      `INSERT INTO client_store_products (client_id, store_slug, title, description, price, category, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id`,
-      [clientId, storeSlug, title, description ?? null, price, category ?? null]
+      `INSERT INTO client_store_products (client_id, store_slug, title, description, price, category, metadata, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) RETURNING id`,
+      [clientId, storeSlug, title, description ?? null, price, category ?? null, metadata ?? {}]
     );
     res.json({ id: r.rows[0].id });
   } catch (e: any) {
@@ -86,12 +86,23 @@ export const updateProduct: RequestHandler = async (req, res) => {
     if (parsed.success === false) {
       return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
     }
-    const { title, description, price, category } = parsed.data;
+    const { title, description, price, category, metadata: incomingMeta } = parsed.data;
+
+    // Merge incoming metadata with existing to preserve fields like stock_id, alt_texts
+    const existing = await pool.query(
+      `SELECT metadata FROM client_store_products WHERE id=$2 AND store_slug=$1 AND client_id=$3`,
+      [storeSlug, id, clientId]
+    );
+    const existingMeta = existing.rows[0]?.metadata && typeof existing.rows[0].metadata === 'object'
+      ? existing.rows[0].metadata : {};
+    const mergedMeta = incomingMeta && typeof incomingMeta === 'object'
+      ? { ...existingMeta, ...incomingMeta }
+      : existingMeta;
 
     await pool.query(
-      `UPDATE client_store_products SET title=$3, description=$4, price=$5, category=$6, updated_at=NOW()
-       WHERE id=$2 AND store_slug=$1 AND client_id=$7`,
-      [storeSlug, id, title, description ?? null, price, category ?? null, clientId]
+      `UPDATE client_store_products SET title=$3, description=$4, price=$5, category=$6, metadata=$7, updated_at=NOW()
+       WHERE id=$2 AND store_slug=$1 AND client_id=$8`,
+      [storeSlug, id, title, description ?? null, price, category ?? null, JSON.stringify(mergedMeta), clientId]
     );
     res.json({ ok: true });
   } catch (e: any) {
