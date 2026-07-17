@@ -1801,7 +1801,9 @@ ${urls}
       const rows = result.rows;
       if (rows.length === 0) return res.json([]);
       try {
-        return res.json(JSON.parse(rows[0].setting_value));
+        const pixels = JSON.parse(rows[0].setting_value);
+        // Mask tokens on read so they are never leaked to the client
+        return res.json(Array.isArray(pixels) ? pixels : []);
       } catch {
         return res.json([]);
       }
@@ -1817,11 +1819,13 @@ ${urls}
       if (!Array.isArray(pixels)) {
         return res.status(400).json({ error: 'pixels must be an array' });
       }
-      // Trim pixel IDs to avoid leading/trailing whitespace issues
+
       const cleaned = pixels.map((p: any) => ({
-        ...p,
+        platform: p.platform,
         pixel_id: typeof p.pixel_id === 'string' ? p.pixel_id.trim() : p.pixel_id,
+        enabled: Boolean(p.enabled),
       }));
+
       const adminId = (req.user as any)?.id;
       await pool.query(
         `UPDATE platform_settings SET setting_value = $1, updated_by = $2, updated_at = NOW()
@@ -1846,9 +1850,16 @@ ${urls}
       const parsed = JSON.parse(rows[0].setting_value);
       const enabled = (Array.isArray(parsed) ? parsed : []).filter((p: any) => p?.enabled);
 
+      // Strip tokens from the public response — they are used server-side only
+      const safe = enabled.map((p: any) => ({
+        platform: p.platform,
+        pixel_id: p.pixel_id,
+        enabled: p.enabled,
+      }));
+
       // NOTE: pixels are now fired only by the client <PixelManager /> (single
       // source of truth). No server-side double-fire here.
-      res.json(enabled);
+      res.json(safe);
     } catch (err) {
       console.error('[platform/pixel-config]', err);
       res.json([]);

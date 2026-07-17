@@ -1224,6 +1224,10 @@ export const pixelProxyHandler: RequestHandler = async (req, res) => {
   }
   if (!fwd.has('noscript')) fwd.set('noscript', '1');
 
+  const pixelId = fwd.get('id') || '';
+  const eventName = fwd.get('ev') || 'PageView';
+  console.log(`[pixel-proxy] ${platform} request: id=${pixelId} ev=${eventName} forwarding...`);
+
   const url = `${target}?${fwd.toString()}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
@@ -1242,10 +1246,8 @@ export const pixelProxyHandler: RequestHandler = async (req, res) => {
     clearTimeout(timeout);
   }
 
-  if (!relayOk && platform === 'fb') {
-    // Facebook's /tr often returns 302/200 even for successful noscript hits,
-    // but log when it looks wrong so we can debug.
-    console.log(`[pixel-proxy] fb relay: id=${fwd.get('id')} ev=${fwd.get('ev')} ok=${relayOk}`);
+  if (platform === 'fb' || platform === 'tt') {
+    console.log(`[pixel-proxy] ${platform} relay: id=${pixelId} ev=${eventName} ok=${relayOk}`);
   }
 
   // Always return a 1x1 transparent gif so the <img> beacon resolves cleanly
