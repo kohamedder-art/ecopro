@@ -467,7 +467,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
         
         {/* ── ORDER FORM ── */}
-        <div ref={formRef} className="px-4 py-5 pb-24" id="checkout-form">
+        <div ref={formRef} className="px-[5px] py-5 pb-24" id="checkout-form">
             <div className="rounded-2xl px-4 py-5 shadow-sm relative" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}` }}>
             <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
               أكمل البيانات للطلب
@@ -758,6 +758,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             </form>
           </div>
         </div>
+
+        {/* ── FOOTER ── */}
+        <footer className="py-6 text-center text-xs" style={{ color: textMuted, borderTop: `1px solid ${borderColor}` }}>
+          © {new Date().getFullYear()} {settings?.store_name || 'متجري'}. جميع الحقوق محفوظة · صنع بواسطة <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor, textDecoration: 'none' }}>Sahla4Eco</a>
+        </footer>
 
       </div>
     </div>
