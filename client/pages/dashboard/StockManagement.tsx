@@ -2178,7 +2178,7 @@ export default function StockManagement() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="truncate max-w-[200px]">{uploadFileName}</span>
-                        <span dir="ltr">{uploadProgress}%</span>
+                        <span dir="ltr">{uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
                         <div
@@ -2243,7 +2243,7 @@ export default function StockManagement() {
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="truncate max-w-[200px]">{uploadFileName}</span>
-                        <span dir="ltr">{uploadProgress}%</span>
+                        <span dir="ltr">{uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
                         <div
