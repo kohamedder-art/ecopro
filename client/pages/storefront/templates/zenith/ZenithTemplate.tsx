@@ -15,8 +15,8 @@ import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, initialProductSlug, navigate, onProductView }: TemplateProps) {
-  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#a0876a';
-  const bgColor = settings?.template_bg_color || '#f7f1ea';
+  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#0d7c6b';
+  const bgColor = settings?.template_bg_color || '#ffffff';
   const rawBgImage = settings?.template_bg_image || '';
   const bgImageCss = rawBgImage
     ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
@@ -33,6 +33,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const textColor = isDark ? '#f1f5f9' : '#1f2937';
   const textMuted = isDark ? '#94a3b8' : '#6b7280';
   const borderColor = isDark ? '#334155' : '#e5e7eb';
+  const inputBorderColor = isDark ? '#475569' : '#9ca3af';
   const cardBg = isDark ? '#1e293b' : '#ffffff';
   const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
   const formRef = useRef<HTMLDivElement>(null);
@@ -310,9 +311,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           <span className="text-sm shrink-0" style={{ color: textMuted }}>{products?.length} منتج</span>
         </div>
 
-        {/* Clean White Product Grid — Hijab Saba style */}
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
+        {/* Product Grid — Leroi style */}
+        <div className="max-w-7xl mx-auto px-2 py-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
             {products?.map((product: any, index: number) => {
               const thumb = product.images?.[gridImageIndex[product.id] || 0] || product.images?.[0] || '';
               const price = product.price || 0;
@@ -320,99 +321,73 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               const discount = product.original_price && product.original_price > price
                 ? Math.round(((product.original_price - price) / product.original_price) * 100)
                 : 0;
+              const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
 
               return (
-                <button
+                <div
                   key={product.id}
+                  className="group cursor-pointer rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+                  style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
                   onClick={() => goToProduct(product)}
-                  className="w-full text-right overflow-hidden rounded-2xl shadow-sm hover:shadow-md transition-shadow"
-                  style={{ backgroundColor: cardBg }}
                 >
                   {/* Image */}
-                  <div className="relative w-full" style={{ paddingBottom: '140%' }}>
+                  <div className="relative overflow-hidden" style={{ aspectRatio: '5 / 7', backgroundColor: surfaceMuted }}>
                     {hasVideo && (gridImageIndex[product.id] || 0) === 0 && hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
                       <LazyVideo src={hasVideo} poster={thumb}
                         onMouseEnter={e => (e.target as HTMLVideoElement).play()}
                         onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                        className="absolute inset-0 w-full h-full object-cover" />
+                        className="w-full h-full object-cover" />
                     ) : hasVideo && (gridImageIndex[product.id] || 0) === 0 && hasVideo?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
-                      <iframe className="absolute inset-0 w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                      <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                     ) : thumb ? (
                       <img
                         src={thumb}
                         alt={product.title || ''}
-                        className="absolute inset-0 w-full h-full object-contain"
-                        style={{ backgroundColor: cardBg }}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-4xl" style={{ backgroundColor: surfaceMuted }}>
+                      <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: surfaceMuted }}>
                         📦
                       </div>
                     )}
-                    {/* Discount badge */}
-                    {discount > 0 && (
-                      <div className="absolute top-3 right-3 px-2 py-1 text-xs font-bold text-white rounded-lg" style={{ backgroundColor: '#e74c3c' }}>
-                        OFF {discount}%
-                      </div>
-                    )}
-                    {/* Swipe arrows */}
-                    {product.images && product.images.length > 1 && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const total = product.images.length;
-                            const current = gridImageIndex[product.id] || 0;
-                            setGridImageIndex(prev => ({ ...prev, [product.id]: (current - 1 + total) % total }));
-                          }}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10 p-1"
-                        >
-                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="15 18 9 12 15 6"/>
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const total = product.images.length;
-                            const current = gridImageIndex[product.id] || 0;
-                            setGridImageIndex(prev => ({ ...prev, [product.id]: (current + 1) % total }));
-                          }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10 p-1"
-                        >
-                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="9 18 15 12 9 6"/>
-                          </svg>
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-4">
-                    <h3 className="text-sm font-bold leading-snug mb-2 line-clamp-2" style={{ color: textColor, minHeight: '2.5em' }}>
-                      {product.title || product.name || 'منتج'}
-                    </h3>
-                    {/* Price */}
-                    <div className="flex items-baseline gap-2 mb-3">
-                      <span className="text-lg font-black" style={{ color: textColor }}>
-                        {displayPrice(price).toLocaleString()} {currency}
-                      </span>
-                      {product.original_price && product.original_price > price && (
-                        <span className="text-sm line-through" style={{ color: textMuted }}>
-                          {displayPrice(product.original_price).toLocaleString()}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute top-2 left-2 flex flex-col gap-1">
+                      {discount > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow">
+                          -{discount}%
+                        </span>
+                      )}
+                      {isLowStock && (
+                        <span className="bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow">
+                          ⚡ {product.stock_quantity} left
                         </span>
                       )}
                     </div>
-                    {/* Order Button */}
-                    <div className="w-full py-2.5 rounded-xl text-center text-sm font-bold text-white" style={{ backgroundColor: accentColor }}>
-                      اطلب الآن
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-3">
+                    <h3 className="text-xs font-semibold leading-snug mb-2 line-clamp-2 text-right" style={{ color: textColor }}>
+                      {product.title || product.name || 'منتج'}
+                    </h3>
+                    {product.original_price && product.original_price > price && (
+                      <div className="text-[10px] line-through text-right mb-0.5" style={{ color: textMuted }}>
+                        {Math.round(product.original_price).toLocaleString()} {currency}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-base" style={{ color: accentColor }}>
+                        {Math.round(price ?? 0).toLocaleString()} <span className="text-xs font-semibold">{currency}</span>
+                      </span>
+                      {product.views > 0 && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: textMuted }}>
+                          🔥 {product.views > 1000 ? `${Math.floor(product.views/1000)}K+` : `${product.views}+`} sold
+                        </span>
+                      )}
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -428,9 +403,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
       <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-3xl mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: bgColor }}>
 
         {/* ── STICKY HEADER ── */}
-        <div className="sticky top-0 z-50 backdrop-blur-md px-3 py-3 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
+        <div className="sticky top-0 z-50 backdrop-blur-md px-3 py-2.5 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
           <button onClick={goToStore} className="flex items-center gap-1.5">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-12 h-12 rounded-full object-cover" />}
+            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-10 h-10 rounded-full object-cover" />}
             <div
               className="font-black text-2xl tracking-wider"
               style={{ color: textColor }}
@@ -492,8 +467,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
         
         {/* ── ORDER FORM ── */}
-        <div ref={formRef} className="py-5 pb-24" id="checkout-form">
-            <div className="rounded-none px-4 py-5 shadow-sm relative" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}`, borderLeft: 'none', borderRight: 'none' }}>
+        <div ref={formRef} className="px-4 py-5 pb-24" id="checkout-form">
+            <div className="rounded-2xl px-4 py-5 shadow-sm relative" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}` }}>
             <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
               أكمل البيانات للطلب
             </div>
@@ -544,12 +519,12 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                     type="text"
                     required
                     placeholder="أدخل اسمك الكامل"
-                    className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all"
-                    style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
+                    className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all shadow-sm"
+                    style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                    onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                    onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
                   />
                 </div>
 
@@ -563,10 +538,10 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       dir="ltr"
                       placeholder="05 55 55 55 55"
                       maxLength={10}
-                      className="w-full border rounded-lg px-4 pl-10 py-3 text-right text-sm focus:ring-2 outline-none transition-all"
+                      className="w-full border rounded-lg px-4 pl-10 py-3 text-right text-sm focus:ring-2 outline-none transition-all shadow-sm"
                       style={{
-                        backgroundColor: surfaceMuted,
-                        borderColor: phoneError ? '#ef4444' : borderColor,
+                        backgroundColor: '#ffffff',
+                        borderColor: phoneError ? '#ef4444' : inputBorderColor,
                         color: textColor,
                       }}
                       value={customerPhone}
@@ -580,7 +555,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                         }
                       }}
                       onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                      onBlur={e => e.currentTarget.style.borderColor = phoneError ? '#ef4444' : borderColor}
+                      onBlur={e => e.currentTarget.style.borderColor = phoneError ? '#ef4444' : inputBorderColor}
                     />
                     <Phone size={18} className="absolute left-3 top-3.5" style={{ color: textMuted }} />
                   </div>
@@ -596,12 +571,12 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <div className="relative">
                     <select
                       required
-                      className="w-full border rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 outline-none transition-all"
-                      style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
+                      className="w-full border rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 outline-none transition-all shadow-sm"
+                      style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
                       value={selectedWilayaId ?? ''}
                       onChange={(e) => setSelectedWilayaId(e.target.value ? Number(e.target.value) : null)}
                       onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                      onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
                     >
                       <option value="">اختر الولاية</option>
                       {wilayas.map((w) => (
@@ -623,12 +598,12 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       <select
                         required
                         disabled={!selectedWilayaId}
-                        className="w-full border rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 outline-none transition-all disabled:opacity-50"
-                        style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
+                        className="w-full border rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 outline-none transition-all shadow-sm disabled:opacity-50"
+                        style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
                         value={communeId}
                         onChange={(e) => setCommuneId(e.target.value)}
                         onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                        onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                        onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
                       >
                         <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
                         {communes.map((c) => (
@@ -650,30 +625,30 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <input
                     type="text"
                     placeholder="أدخل عنوانك"
-                    className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all"
-                    style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
+                    className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all shadow-sm"
+                    style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
                     onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                    onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                    onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
                   />
                 </div>
               )}
               <div className="pt-2">
                 <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>الكمية</label>
-                <div className="flex items-center justify-between border rounded-lg p-1" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
+                <div className="flex items-center justify-between border rounded-lg p-1 shadow-sm" style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor }}>
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     className="w-10 h-10 border rounded-md font-bold text-xl flex items-center justify-center"
-                    style={{ backgroundColor: cardBg, borderColor: borderColor, color: textMuted }}
+                    style={{ backgroundColor: cardBg, borderColor: inputBorderColor, color: textMuted }}
                   >-</button>
                   <span className="font-black text-lg" style={{ color: textColor }}>{quantity}</span>
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.min(safeProduct?.stock_quantity ?? 999, quantity + 1))}
                     className="w-10 h-10 border rounded-md font-bold text-xl flex items-center justify-center"
-                    style={{ backgroundColor: cardBg, borderColor: borderColor, color: textMuted }}
+                    style={{ backgroundColor: cardBg, borderColor: inputBorderColor, color: textMuted }}
                   >+</button>
                 </div>
               </div>
@@ -723,11 +698,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                     placeholder="ملاحظات إضافية"
                     value={customerNotes}
                     onChange={(e) => setCustomerNotes(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition-all text-sm"
-                    style={{ backgroundColor: surfaceMuted, borderColor: borderColor, color: textColor }}
+                    className="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition-all text-sm shadow-sm"
+                    style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
                     rows={3}
                     onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                    onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                    onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
                   />
                 </div>
               )}

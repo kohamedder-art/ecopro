@@ -370,69 +370,26 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
 
       // Try client storefront settings first
       let clientRes: any;
+      // Use SELECT * so that missing columns don't force a legacy fallback that NULLs out template fields.
+      // Any column that doesn't exist simply won't be in the result — the template handles undefined gracefully.
       const selectClientSettings = (whereSql: string) =>
-        `SELECT store_name, store_description, store_logo, 
-                primary_color, secondary_color,
-                template, banner_url, 'DZD' as currency_code,
-                hero_main_url, hero_tile1_url, hero_tile2_url, 
-                hero_video_url,
-                store_images,
-                owner_name, owner_email,
-                template_hero_heading, template_hero_subtitle, template_button_text, template_accent_color, template_bg_color,
-                template_bg_image, template_header_bg, template_header_text, template_text_color, template_muted_color,
-                template_settings, template_settings_by_template, global_settings,
-                store_slug
-         FROM client_store_settings
-         ${whereSql}`;
-
-      const selectClientSettingsLegacy = (whereSql: string) =>
-        `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, 'DZD' as currency_code,
-                NULL as hero_main_url, NULL as hero_tile1_url, NULL as hero_tile2_url, NULL as hero_video_url,
-                store_images, owner_name, owner_email,
-                NULL as template_hero_heading, NULL as template_hero_subtitle, NULL as template_button_text, NULL as template_accent_color,
-                NULL as template_bg_image, NULL as template_header_bg, NULL as template_header_text, NULL as template_text_color, NULL as template_muted_color,
-                NULL as template_settings, NULL as template_settings_by_template, NULL as global_settings,
-                store_slug
+        `SELECT *, 'DZD' as currency_code
          FROM client_store_settings
          ${whereSql}`;
 
       // IMPORTANT: exact store_slug match first (indexed), fallback to expensive name normalization only if needed.
-      try {
-        clientRes = await withDbRetry((db) => db.query(selectClientSettings('WHERE store_slug = $1'), [querySlug]) as any);
-      } catch (err: any) {
-        if (err.code === '42703') {
-          clientRes = await withDbRetry((db) => db.query(selectClientSettingsLegacy('WHERE store_slug = $1'), [querySlug]) as any);
-        } else {
-          throw err;
-        }
-      }
+      clientRes = await withDbRetry((db) => db.query(selectClientSettings('WHERE store_slug = $1'), [querySlug]) as any);
 
       if (clientRes.rows.length === 0) {
-        try {
-          clientRes = await withDbRetry(
-            (db) =>
-              db.query(
-                selectClientSettings(
-                  "WHERE LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)"
-                ),
-                [querySlug]
-              ) as any
-          );
-        } catch (err: any) {
-          if (err.code === '42703') {
-            clientRes = await withDbRetry(
-              (db) =>
-                db.query(
-                  selectClientSettingsLegacy(
-                    "WHERE LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)"
-                  ),
-                  [querySlug]
-                ) as any
-            );
-          } else {
-            throw err;
-          }
-        }
+        clientRes = await withDbRetry(
+          (db) =>
+            db.query(
+              selectClientSettings(
+                "WHERE LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)"
+              ),
+              [querySlug]
+            ) as any
+        );
       }
 
       let row: any = null;
@@ -442,52 +399,22 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
         // Fall back to seller storefront settings
         let sellerRes: any;
         const selectSellerSettings = (whereSql: string) =>
-          `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, 'DZD' as currency_code, 
-                  hero_main_url, hero_tile1_url, hero_tile2_url, store_images
-           FROM seller_store_settings
-           ${whereSql}`;
-        const selectSellerSettingsLegacy = (whereSql: string) =>
-          `SELECT store_name, store_description, store_logo, primary_color, secondary_color, template, banner_url, 'DZD' as currency_code,
-                  NULL as hero_main_url, NULL as hero_tile1_url, NULL as hero_tile2_url, store_images
+          `SELECT *, 'DZD' as currency_code
            FROM seller_store_settings
            ${whereSql}`;
 
-        try {
-          sellerRes = await withDbRetry((db) => db.query(selectSellerSettings('WHERE store_slug = $1'), [querySlug]) as any);
-        } catch (err: any) {
-          if (err.code === '42703') {
-            sellerRes = await withDbRetry((db) => db.query(selectSellerSettingsLegacy('WHERE store_slug = $1'), [querySlug]) as any);
-          } else {
-            throw err;
-          }
-        }
+        sellerRes = await withDbRetry((db) => db.query(selectSellerSettings('WHERE store_slug = $1'), [querySlug]) as any);
 
         if (sellerRes.rows.length === 0) {
-          try {
-            sellerRes = await withDbRetry(
-              (db) =>
-                db.query(
-                  selectSellerSettings(
-                    "WHERE LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)"
-                  ),
-                  [querySlug]
-                ) as any
-            );
-          } catch (err: any) {
-            if (err.code === '42703') {
-              sellerRes = await withDbRetry(
-                (db) =>
-                  db.query(
-                    selectSellerSettingsLegacy(
-                      "WHERE LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)"
-                    ),
-                    [querySlug]
-                  ) as any
-              );
-            } else {
-              throw err;
-            }
-          }
+          sellerRes = await withDbRetry(
+            (db) =>
+              db.query(
+                selectSellerSettings(
+                  "WHERE LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)"
+                ),
+                [querySlug]
+              ) as any
+          );
         }
 
         if (sellerRes.rows.length === 0) {
