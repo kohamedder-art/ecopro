@@ -15,8 +15,8 @@ import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, initialProductSlug, navigate, onProductView }: TemplateProps) {
-  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#7c9885';
-  const bgColor = settings?.template_bg_color || '#f7f3ee';
+  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#000000';
+  const bgColor = settings?.template_bg_color || '#f3f4f6';
   const rawBgImage = settings?.template_bg_image || '';
   const bgImageCss = rawBgImage
     ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
@@ -30,11 +30,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     const b = parseInt(hex.substring(4, 6), 16);
     return (r * 299 + g * 587 + b * 114) / 1000 < 128;
   }, [bgColor]);
-  const textColor = isDark ? '#f1ece8' : '#2d2320';
-  const textMuted = isDark ? '#a09088' : '#8c7e75';
-  const borderColor = isDark ? '#4a3f38' : '#ece3da';
-  const cardBg = isDark ? '#1c1613' : '#ffffff';
-  const surfaceMuted = isDark ? '#2d2320' : '#f8f4ef';
+  const textColor = isDark ? '#f1f5f9' : '#1f2937';
+  const textMuted = isDark ? '#94a3b8' : '#6b7280';
+  const borderColor = isDark ? '#334155' : '#e5e7eb';
+  const cardBg = isDark ? '#1e293b' : '#ffffff';
+  const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
   const formRef = useRef<HTMLDivElement>(null);
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
