@@ -367,13 +367,13 @@ export default function SpiriluxeTemplate({
   return (
     <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor }}>
       {/* Store Header */}
-      <div className="sticky top-0 z-50 px-3 py-3" style={{ backgroundColor: bgColor, borderBottom: `1px solid ${borderColor}` }}>
+      <div className="sticky top-0 z-50 px-3 py-3" style={{ backgroundColor: bgImageCss ? 'transparent' : bgColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}` }}>
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" width="36" height="36" style={{ contentVisibility: 'auto' }} />}
           <span className="font-bold text-lg">{settings?.store_name || 'المتجر'}</span>
         </div>
       </div>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto pt-2">
 
         {/* Video Embed (above images) */}
         {videoEmbed && (
