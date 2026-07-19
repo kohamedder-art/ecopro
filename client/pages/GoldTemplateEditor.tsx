@@ -1777,7 +1777,7 @@ export default function GoldTemplateEditor() {
                           <div className="flex-1">
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300 block">لون الخلفية</span>
                             <div className="flex gap-1.5 mt-1.5">
-                              {['#ffffff', '#f8fafc', '#f9f8f6', '#0a0a0a', '#080808', '#0f172a'].map(c => (
+                              {['#ffffff', '#f8fafc', '#f9f8f6', '#f5efe6', '#e8dccc', '#0a0a0a', '#1e293b', '#2d2d2d', '#0d7c6b', '#a0876a'].map(c => (
                                 <button key={c} onClick={() => handleSettingChange('template_bg_color', c)} className="w-6 h-6 rounded-lg border border-slate-300 dark:border-white/10 active:scale-95 transition-transform" style={{backgroundColor: c}} />
                               ))}
                             </div>
@@ -2217,7 +2217,7 @@ export default function GoldTemplateEditor() {
                           <div className="flex gap-2">
                              <input type="color" value={settings.template_bg_color || '#ffffff'} onChange={(e) => handleSettingChange('template_bg_color', e.target.value)} onInput={(e) => handleSettingChange('template_bg_color', (e.target as HTMLInputElement).value)} onBlur={(e) => handleSettingChange('template_bg_color', e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent" />
                             <div className="flex-1 flex gap-1">
-                               {['#ffffff', '#f8fafc', '#f9f8f6', '#0a0a0a', '#080808', '#0f172a'].map(color => (
+                               {['#ffffff', '#f8fafc', '#f9f8f6', '#f5efe6', '#e8dccc', '#0a0a0a', '#1e293b', '#2d2d2d', '#0d7c6b', '#a0876a'].map(color => (
                                   <button key={color} onClick={() => handleSettingChange('template_bg_color', color)} className="flex-1 rounded-lg border border-slate-300 dark:border-white/10 hover:scale-110 transition-transform" style={{backgroundColor: color}} />
                                ))}
                             </div>
