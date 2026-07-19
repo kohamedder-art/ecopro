@@ -437,7 +437,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
 
         {/* ── LONG IMAGE STACK ── */}
-        <div className="w-full flex flex-col">
+        <div className="w-full flex flex-col pt-1.5">
           {videoUrl && (
             <video
               src={videoUrl}
