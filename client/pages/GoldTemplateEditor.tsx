@@ -2596,7 +2596,7 @@ export default function GoldTemplateEditor() {
 
           <div
             ref={canvasContainerRef}
-            className="flex-1 w-full z-10 flex items-center justify-center overflow-hidden"
+            className="flex-1 w-full z-10 flex items-center justify-center overflow-auto"
           >
             {previewDevice !== 'desktop' ? (
               /* Compensating wrapper: layout footprint = visual (scaled) size */
