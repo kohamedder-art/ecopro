@@ -33,7 +33,7 @@ const PRESETS: Record<string, { primary: string; accent: string; bg: string; hea
   food: { primary: '#DC2626', accent: '#F87171', bg: '#FFFBEB', heading: 'طعم أصيل', sub: 'أطباق شهية بوصفات مغربية', btn: 'اطلب الآن' },
   sports: { primary: '#059669', accent: '#34D399', bg: '#022C22', heading: 'ريادة الأداء', sub: 'معدات رياضية احترافية', btn: 'ابدأ التسوق' },
   beauty: { primary: '#DB2777', accent: '#F472B6', bg: '#FFF1F2', heading: 'جمال طبيعي', sub: 'منتجات عناية بجودة عالية', btn: 'تسوقي الآن' },
-  general: { primary: '#8a9a8b', accent: '#7c9885', bg: '#f7f3ee', heading: 'مرحباً بكم', sub: 'منتجات مميزة بأسعار منافسة', btn: 'تسوق الآن' },
+  general: { primary: '#a0876a', accent: '#c4956a', bg: '#f7f1ea', heading: 'مرحباً بكم', sub: 'منتجات مميزة بأسعار منافسة', btn: 'تسوق الآن' },
 };
 
 function keywordPreset(description: string): typeof PRESETS.general {

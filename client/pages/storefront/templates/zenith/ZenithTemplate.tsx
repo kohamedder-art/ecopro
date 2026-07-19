@@ -15,8 +15,8 @@ import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 
 export default function ZenithTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, initialProductSlug, navigate, onProductView }: TemplateProps) {
-  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#000000';
-  const bgColor = settings?.template_bg_color || '#f3f4f6';
+  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#a0876a';
+  const bgColor = settings?.template_bg_color || '#f7f1ea';
   const rawBgImage = settings?.template_bg_image || '';
   const bgImageCss = rawBgImage
     ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
