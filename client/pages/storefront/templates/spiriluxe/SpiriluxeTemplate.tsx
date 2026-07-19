@@ -24,8 +24,14 @@ export default function SpiriluxeTemplate({
   navigate,
 }: TemplateProps) {
   // ── Settings & State ──
-  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#8b5cf6';
+  const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#ff6b35';
   const bgColor = settings?.template_bg_color || '#ffffff';
+  const rawBgImage = settings?.template_bg_image || '';
+  const bgImageCss = rawBgImage
+    ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
+      ? rawBgImage
+      : `url(${rawBgImage})`)
+    : '';
   const isDark = useMemo(() => {
     const hex = bgColor.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
@@ -359,7 +365,7 @@ export default function SpiriluxeTemplate({
 
   // ─── Render ───
   return (
-    <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, color: textColor }}>
+    <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor }}>
       {/* Store Header */}
       <div className="sticky top-0 z-50 px-3 py-3" style={{ backgroundColor: bgColor, borderBottom: `1px solid ${borderColor}` }}>
         <div className="max-w-3xl mx-auto flex items-center gap-2">
