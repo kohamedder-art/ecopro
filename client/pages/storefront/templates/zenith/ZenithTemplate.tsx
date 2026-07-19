@@ -400,7 +400,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor }} dir="rtl">
 
       {/* Mobile Container */}
-      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-3xl mx-auto'} min-h-screen relative shadow-2xl`} style={{ backgroundColor: bgColor }}>
+      <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-3xl mx-auto'} min-h-screen relative shadow-2xl`}>
 
         {/* ── STICKY HEADER ── */}
         <div className="sticky top-0 z-50 backdrop-blur-md px-3 py-2.5 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>

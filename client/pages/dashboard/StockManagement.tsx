@@ -47,6 +47,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { markOnboardingStepComplete } from '@/lib/onboarding';
 import { formatPriceForInput } from '@/lib/formatPrice';
+import { uploadFileWithProgress } from '@/lib/api';
 import { useAI } from '@/hooks/useAI';
 
 interface StockItem {
@@ -305,6 +306,8 @@ export default function StockManagement() {
   const [formData, setFormData] = useState<Partial<StockItem>>({});
   const [uploading, setUploading] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFileName, setUploadFileName] = useState('');
   const [activeFormSection, setActiveFormSection] = useState<'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'video' | 'notes'>('product');
   const [adjustData, setAdjustData] = useState({
     adjustment: undefined as number | undefined,
@@ -654,23 +657,9 @@ export default function StockManagement() {
       throw new Error('Please select an image file');
     }
 
-    const uploadFormData = new FormData();
-    uploadFormData.append('image', file);
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      body: uploadFormData,
-    });
-    const responseText = await res.text();
-    if (!res.ok) {
-      try {
-        const error = JSON.parse(responseText);
-        throw new Error(error.error || 'Upload failed');
-      } catch {
-        throw new Error(`Upload failed: ${res.statusText}`);
-      }
-    }
-    if (!responseText) throw new Error('Upload succeeded but server returned empty response');
-    const data = JSON.parse(responseText);
+    setUploadFileName(file.name);
+    setUploadProgress(0);
+    const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct));
     return data.url;
   };
 
@@ -2185,6 +2174,20 @@ export default function StockManagement() {
                     disabled={uploading || ((formData.images?.length || 0) >= 10)}
                     className="cursor-pointer"
                   />
+                  {uploading && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="truncate max-w-[200px]">{uploadFileName}</span>
+                        <span dir="ltr">{uploadProgress}%</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all duration-200"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Upload up to 10 images. Each image must be &lt; 10MB.
                   </p>
@@ -2221,12 +2224,10 @@ export default function StockManagement() {
                           return;
                         }
                         setUploadingVideo(true);
+                        setUploadFileName(file.name);
+                        setUploadProgress(0);
                         try {
-                          const fd = new FormData();
-                          fd.append('image', file);
-                          const res = await fetch('/api/upload', { method: 'POST', body: fd });
-                          if (!res.ok) throw new Error('فشل الرفع');
-                          const data = await res.json();
+                          const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct), 'image');
                           setFormData((prev) => ({ ...prev, video_url: data.url }));
                           toast({ title: 'تم رفع الفيديو ✓' });
                         } catch {
@@ -2238,6 +2239,20 @@ export default function StockManagement() {
                       }}
                     />
                   </label>
+                  {uploadingVideo && (
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="truncate max-w-[200px]">{uploadFileName}</span>
+                        <span dir="ltr">{uploadProgress}%</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all duration-200"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                   <span className="text-xs text-muted-foreground">أو الصق رابطاً أدناه</span>
                 </div>
                 <div className="space-y-1">

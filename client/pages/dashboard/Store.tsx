@@ -29,6 +29,7 @@ import { useStoreProducts } from '@/hooks/useStoreProducts';
 import { useAISettings } from '@/hooks/useAISettings';
 import { markOnboardingStepComplete } from '@/lib/onboarding';
 import { formatPriceForInput } from '@/lib/formatPrice';
+import { uploadFileWithProgress } from '@/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -234,6 +235,8 @@ export default function Store() {
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFileName, setUploadFileName] = useState('');
   const [creatingSampleProducts, setCreatingSampleProducts] = useState(false);
 
   type ProductVariantDraft = {
@@ -1150,25 +1153,9 @@ export default function Store() {
     }
 
     const uploadOne = async (file: File): Promise<string> => {
-      const uploadFormData = new FormData();
-      uploadFormData.append('image', file);
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: uploadFormData,
-      });
-
-      const responseText = await res.text();
-      if (!res.ok) {
-        try {
-          const error = JSON.parse(responseText);
-          throw new Error(error?.error || 'Upload failed');
-        } catch {
-          throw new Error(`Upload failed: ${res.statusText}`);
-        }
-      }
-
-      if (!responseText) throw new Error('Upload succeeded but server returned empty response');
-      const data = JSON.parse(responseText);
+      setUploadFileName(file.name);
+      setUploadProgress(0);
+      const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct));
       const url = String((data as any)?.url || '').trim();
       if (!url) throw new Error('Upload succeeded but server returned invalid url');
       return url;
@@ -3235,7 +3222,7 @@ export default function Store() {
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                       <Input
                         id="image-upload"
@@ -3255,6 +3242,21 @@ export default function Store() {
                         {uploading ? t('store.productForm.uploading') : t('store.productForm.upload')}
                       </Button>
                     </div>
+
+                    {uploading && (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="truncate max-w-[200px]">{uploadFileName}</span>
+                          <span dir="ltr">{uploadProgress}%</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-200"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     <p className="text-xs text-muted-foreground">
                       {t('store.productForm.imageUrlHint')}
@@ -3309,12 +3311,10 @@ export default function Store() {
                           return;
                         }
                         setUploadingVideo(true);
+                        setUploadFileName(file.name);
+                        setUploadProgress(0);
                         try {
-                          const fd = new FormData();
-                          fd.append('image', file);
-                          const res = await fetch('/api/upload', { method: 'POST', body: fd });
-                          if (!res.ok) throw new Error('فشل الرفع');
-                          const data = await res.json();
+                          const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct), 'image');
                           setFormData((prev) => ({ ...prev, video_url: data.url }));
                           toast({ title: 'تم رفع الفيديو ✓' });
                         } catch {
@@ -3326,6 +3326,20 @@ export default function Store() {
                       }}
                     />
                   </label>
+                  {uploadingVideo && (
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="truncate max-w-[200px]">{uploadFileName}</span>
+                        <span dir="ltr">{uploadProgress}%</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all duration-200"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                   <span className="text-xs text-muted-foreground">أو الصق رابطاً أدناه</span>
                 </div>
                 <div className="space-y-1">

@@ -65,6 +65,51 @@ export async function uploadImage(file: File): Promise<{ url: string }> {
   return res.json();
 }
 
+// Upload a file with progress tracking via XHR
+export function uploadFileWithProgress(
+  file: File,
+  onProgress: (pct: number) => void,
+  fieldName: string = 'image',
+): Promise<{ url: string }> {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append(fieldName, file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_URL}/upload`);
+
+    const csrfToken = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/)?.[1] || '';
+    if (csrfToken) xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data);
+        } catch {
+          reject(new Error('Invalid server response'));
+        }
+      } else {
+        try {
+          const err = JSON.parse(xhr.responseText);
+          reject(new Error(err.error || 'Upload failed'));
+        } catch {
+          reject(new Error(`Upload failed: ${xhr.statusText}`));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.send(formData);
+  });
+}
+
 export async function deletePublicProduct(productId: string, ownerKey: string): Promise<any> {
   const res = await fetch(`${API_URL}/products/${productId}`, {
     method: 'DELETE',
