@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import fs from 'fs/promises';
+import { createReadStream } from 'fs';
 import path from 'path';
 
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '';
@@ -33,12 +33,12 @@ export async function uploadToR2(
   key: string,
   contentType: string
 ): Promise<{ url: string; key: string }> {
-  const fileContent = await fs.readFile(filePath);
+  const fileStream = createReadStream(filePath);
 
   await getClient().send(new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
-    Body: fileContent,
+    Body: fileStream,
     ContentType: contentType,
     CacheControl: 'public, max-age=31536000',
   }));
