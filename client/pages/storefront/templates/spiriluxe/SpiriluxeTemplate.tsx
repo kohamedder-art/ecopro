@@ -369,7 +369,7 @@ export default function SpiriluxeTemplate({
       {/* Store Header */}
       <div className="sticky top-0 z-50 px-3 py-3" style={{ backgroundColor: bgImageCss ? 'transparent' : bgColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}` }}>
         <div className="max-w-3xl mx-auto flex items-center gap-2">
-          {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-7 h-7 rounded-full object-cover" loading="lazy" decoding="async" width="28" height="28" style={{ contentVisibility: 'auto' }} />}
+          {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" width="36" height="36" style={{ contentVisibility: 'auto' }} />}
           <span className="font-bold text-2xl">{settings?.store_name || 'المتجر'}</span>
         </div>
       </div>
