@@ -34,6 +34,12 @@ export default function LeRoiShopTemplate({
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#f59e0b';
   const bgColor = settings?.template_bg_color || '#fafafa';
   const primaryColor = settings?.primary_color || '#1f2937';
+  const rawBgImage = settings?.template_bg_image || '';
+  const bgImageCss = rawBgImage
+    ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
+      ? rawBgImage
+      : `url(${rawBgImage})`)
+    : '';
 
   const isDark = useMemo(() => {
     const hex = bgColor.replace('#', '');
@@ -434,7 +440,7 @@ export default function LeRoiShopTemplate({
      RENDER
      ══════════════════════════════════════════════════════ */
   return (
-    <div style={{ fontFamily: "'Cairo', sans-serif", backgroundColor: bgColor, color: textColor, minHeight: '100dvh' }} dir="rtl">
+    <div style={{ fontFamily: "'Cairo', sans-serif", backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, minHeight: '100dvh' }} dir="rtl">
       <style>{`
         [contenteditable="true"]:focus { outline: 2px solid ${accentColor}; border-radius: 4px; }
         .lrs-card { transition: all 0.3s ease; }
@@ -454,7 +460,7 @@ export default function LeRoiShopTemplate({
       </div>
 
       {/* ── HEADER ────────────────────────────────────── */}
-      <header className="shadow-sm" style={{ backgroundColor: headerColor, borderBottom: `1px solid ${surfaceBorderColor}` }}>
+      <header className="shadow-sm" style={{ backgroundColor: bgImageCss ? 'transparent' : headerColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${surfaceBorderColor}` }}>
         <div className="max-w-screen-xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <button onClick={goToCatalog} className="font-bold text-sm transition-colors hover:opacity-80" style={{ color: surfaceTextColor }}>

@@ -52,6 +52,13 @@ export default function PrimoTemplate({
   const storeName = settings?.store_name || 'المتجر';
 
   // ── Dark/Light detection from bgColor ──
+  const rawBgImage = settings?.template_bg_image || '';
+  const bgImageCss = rawBgImage
+    ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
+      ? rawBgImage
+      : `url(${rawBgImage})`)
+    : '';
+
   const isDark = useMemo(() => {
     const hex = bgColor.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
@@ -341,7 +348,7 @@ const goBackToCatalog = () => {
   // MAIN TEMPLATE RENDER
   // ══════════════════════════════════════
   return (
-    <div className="min-h-screen" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+    <div className="min-h-screen relative" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
 
       {/* ── TOP BANNER ── */}
       <div className="py-2 text-center text-xs font-bold tracking-widest" style={{ backgroundColor: isDark ? '#000000' : '#111111', color: '#ffffff' }}>
@@ -650,7 +657,7 @@ const goBackToCatalog = () => {
                   <span className="text-3xl font-black" style={{ color: accentColor }}>{Math.round(productPrice ?? 0).toLocaleString()} {currency}</span>
                   {(mainProduct as any).original_price && <span className="text-base line-through font-bold" style={{ color: textMuted }}>{Math.round((mainProduct as any).original_price ?? 0).toLocaleString()} {currency}</span>}
                 </div>
-                {mainProduct.description && <p className="text-xs leading-relaxed" style={{ color: textMuted }}>{mainProduct.description}</p>}
+                {mainProduct.description && <p className="text-sm leading-relaxed" style={{ color: textMuted }} dangerouslySetInnerHTML={{ __html: mainProduct.description }} />}
               </div>
 
               {/* Benefits */}
@@ -721,7 +728,7 @@ const goBackToCatalog = () => {
                   <div className="flex items-center justify-between rounded-lg p-1" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, border: `1px solid ${surfaceBorderColor}` }}>
                     <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-md font-bold text-xl flex items-center justify-center" style={{ color: textColor, border: `1px solid ${surfaceBorderColor}`, backgroundColor: surfaceColor }}>−</button>
                     <span className="font-black text-lg" style={{ color: surfaceTextColor }}>{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-md font-bold text-xl flex items-center justify-center" style={{ color: textColor, border: `1px solid ${surfaceBorderColor}`, backgroundColor: surfaceColor }}>+</button>
+                    <button type="button" onClick={() => setQuantity(Math.min((mainProduct?.stock_quantity != null && mainProduct.stock_quantity > 0) ? mainProduct.stock_quantity : 999, quantity + 1))} className="w-10 h-10 rounded-md font-bold text-xl flex items-center justify-center" style={{ color: textColor, border: `1px solid ${surfaceBorderColor}`, backgroundColor: surfaceColor }}>+</button>
                   </div>
                 </div>
 

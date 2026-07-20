@@ -56,6 +56,22 @@ export default function SpiriluxeTemplate({
   const [quantity, setQuantity] = useState(1);
   const [customerCommune, setCustomerCommune] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
+  const [showHeader, setShowHeader] = useState(true);
+  const lastScrollY = useRef(0);
+
+  // ── Scroll-to-hide Header ──
+  useEffect(() => {
+    const handleScroll = () => {
+      const sy = window.scrollY;
+      const dy = sy - lastScrollY.current;
+      if (Math.abs(dy) > 10) {
+        setShowHeader(dy < 0);
+        lastScrollY.current = sy;
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // ── Product Images State ──
   const [productImages, setProductImages] = useState<string[]>([]);
@@ -365,9 +381,9 @@ export default function SpiriluxeTemplate({
 
   // ─── Render ───
   return (
-    <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor }}>
+    <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', color: textColor }}>
       {/* Store Header */}
-      <div className="sticky top-0 z-50 px-3 py-3" style={{ backgroundColor: bgImageCss ? 'transparent' : bgColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}` }}>
+      <div className="sticky top-0 z-50 px-3 py-3 transition-transform duration-300" style={{ backgroundColor: bgImageCss ? 'transparent' : bgColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
         <div className="max-w-3xl mx-auto flex items-center justify-center gap-2">
           {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" width="40" height="40" style={{ contentVisibility: 'auto' }} />}
           <span className="font-bold text-2xl">{settings?.store_name || 'المتجر'}</span>
@@ -599,7 +615,7 @@ export default function SpiriluxeTemplate({
                   <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `2px solid ${borderColor}` }}>
                     <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>−</button>
                     <span className="font-black text-lg" style={{ color: textColor }}>{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>+</button>
+                    <button type="button" onClick={() => setQuantity(Math.min((mainProduct?.stock_quantity != null && mainProduct.stock_quantity > 0) ? mainProduct.stock_quantity : 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>+</button>
                   </div>
                 </div>
 

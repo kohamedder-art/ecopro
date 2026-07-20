@@ -71,9 +71,10 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     const b = parseInt(hex.substring(4, 6), 16);
     return (r * 299 + g * 587 + b * 114) / 1000 < 128;
   }, [bgColor]);
-  const textColor = isDark ? '#f1f5f9' : '#1f2937';
+  const textColor = isDark ? '#f1f5f9' : '#0f172a';
   const textMuted = isDark ? '#94a3b8' : '#6b7280';
-  const borderColor = isDark ? '#334155' : '#e5e7eb';
+  const borderColor = isDark ? '#475569' : '#cbd5e1';
+  const inputBorderColor = isDark ? '#475569' : '#9ca3af';
   const cardBg = isDark ? '#1e293b' : '#ffffff';
   const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
   const rawBgImage = settings?.template_bg_image || '';
@@ -404,7 +405,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                 </div>
             )}
             {showTrustBanner ? (
-            <div className="flex overflow-x-auto py-4 px-6 gap-4 no-scrollbar" style={{ backgroundColor: surfaceMuted }}>
+            <div className="flex overflow-x-auto py-4 px-6 gap-4 no-scrollbar justify-center">
             {[
               { icon: <Truck size={16}/>, text: "توصيل 58 ولاية" },
               { icon: <ShieldCheck size={16}/>, text: "الدفع عند الاستلام" },
@@ -417,7 +418,7 @@ const parseVideoEmbed = (videoUrl: string) => {
             ))}
             </div>
             ) : canManage ? (
-                <div className="py-4 px-6" style={{ backgroundColor: surfaceMuted }}><span className="text-[10px]" style={{ color: textMuted }}>🛡️ Trust banner hidden</span></div>
+                <div className="py-4 px-6" style={{ backgroundColor: bgImageCss ? 'transparent' : surfaceMuted }}><span className="text-[10px]" style={{ color: textMuted }}>🛡️ Trust banner hidden</span></div>
             ) : null}
           </div>
           )}
@@ -654,7 +655,7 @@ const parseVideoEmbed = (videoUrl: string) => {
             </div>
 
             {/* Product Info */}
-            <div className="p-6 space-y-4 border-b" style={{ borderColor }}>
+            <div className="px-4 py-6 space-y-4 border-b" style={{ backgroundColor: cardBg, borderColor }}>
               <div className="flex justify-between items-start">
                 <h1 className="text-2xl font-bold leading-tight w-2/3" style={{ color: textColor }}>{product.name}</h1>
                 <div className="text-right">
@@ -674,9 +675,13 @@ const parseVideoEmbed = (videoUrl: string) => {
               </div>
             </div>
 
+            <div className="h-6" />
+
             {/* Order Form - Inline */}
-            <div className="px-6 py-6 space-y-6">
-              <h3 className="font-black text-lg text-center" style={{ color: textColor }}>أكمل طلبك الآن</h3>
+            <div className="px-[5px] pb-24">
+              <div className="rounded-2xl px-4 py-5 shadow-sm" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}` }}>
+
+              <h3 className="font-black text-lg text-center mb-4" style={{ color: textColor }}>أكمل طلبك الآن</h3>
 
               {orderStatus === 'success' ? (
                 <div className="py-8 text-center space-y-6">
@@ -688,7 +693,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                     <p className="mt-2" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
                   </div>
                   <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={submittedPhone} />
-                  <div className="text-right rounded-xl p-4 space-y-2 border" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
+                  <div className="text-right rounded-xl p-4 space-y-2 border" style={{ backgroundColor: surfaceMuted, borderColor: inputBorderColor }}>
                     <div className="flex justify-between text-sm">
                       <span>{product.name} × {selectedOffer?.quantity || quantity}</span>
                       <span className="font-bold">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
@@ -697,7 +702,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                       <span style={{ color: textMuted }}>التوصيل</span>
                       <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
                     </div>
-                    <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
+                    <div className="h-px my-1" style={{ backgroundColor: inputBorderColor }} />
                     <div className="flex justify-between font-black">
                       <span>المجموع</span>
                       <span style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
@@ -731,8 +736,8 @@ const parseVideoEmbed = (videoUrl: string) => {
                       onSelect={handleOfferSelect}
                       accentColor={accentColor}
                       textColor={textColor}
-                      borderColor={borderColor}
-                      bgColor={cardBg}
+                      borderColor={inputBorderColor}
+                      bgColor={'#ffffff'}
                     />
                   )}
 
@@ -740,13 +745,13 @@ const parseVideoEmbed = (videoUrl: string) => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>الاسم واللقب</label>
-                        <input required name="name" type="text" placeholder="مثال: محمد علامي" className="w-full px-4 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                        <input required name="name" type="text" placeholder="مثال: محمد علامي" className="w-full px-4 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: '#ffffff', color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>رقم الهاتف</label>
                         <div className="relative">
                           <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: textMuted }} />
-                          <input required name="phone" type="tel" maxLength={10} placeholder="05 / 06 / 07 XX XX XX XX" className="w-full pl-12 pr-5 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                          <input required name="phone" type="tel" maxLength={10} placeholder="05 / 06 / 07 XX XX XX XX" className="w-full pl-12 pr-5 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: '#ffffff', color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                         </div>
                       </div>
                     </div>
@@ -754,7 +759,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>الولاية</label>
-                        <select name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm font-medium" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
+                        <select name="wilaya" value={selectedWilayaId ?? ''} onChange={(e) => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full px-4 py-3 rounded-xl outline-none transition-all" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: '#ffffff', color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>
                           <option value="">اختر...</option>
                           {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
                         </select>
@@ -763,7 +768,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                         <div className="space-y-1.5">
                           <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>البلدية</label>
                           <div className="relative">
-                            <select name="commune" required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm appearance-none disabled:opacity-50" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor}>
+                            <select name="commune" required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all disabled:opacity-50" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: '#ffffff', color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}>
                               <option value="">{selectedWilayaId ? 'اختر...' : 'اختر الولاية أولاً'}</option>
                               {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                             </select>
@@ -776,14 +781,14 @@ const parseVideoEmbed = (videoUrl: string) => {
                     {showAddress && (
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>العنوان</label>
-                        <input name="address" type="text" placeholder="أدخل عنوانك" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
+                        <input name="address" type="text" placeholder="أدخل عنوانك" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: '#ffffff', color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} />
                       </div>
                     )}
 
                     {showNotes && (
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-black uppercase tracking-wider" style={{ color: textMuted }}>ملاحظات</label>
-                        <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm resize-none" style={{ border: `1px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = borderColor} rows={2} />
+                        <textarea name="notes" placeholder="ملاحظات إضافية" value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} className="w-full px-4 py-3 rounded-xl outline-none transition-all text-sm resize-none" style={{ border: `1px solid ${inputBorderColor}`, backgroundColor: '#ffffff', color: textColor }} onFocus={e => e.currentTarget.style.borderColor = accentColor} onBlur={e => e.currentTarget.style.borderColor = inputBorderColor} rows={2} />
                       </div>
                     )}
                   </div>
@@ -791,10 +796,10 @@ const parseVideoEmbed = (videoUrl: string) => {
                   {/* Quantity */}
                   <div className="pt-2">
                     <label className="text-[11px] font-black uppercase mb-2 block" style={{ color: textMuted }}>الكمية</label>
-                    <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
-                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>−</button>
-                      <span className="font-black text-lg">{quantity}</span>
-                      <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textColor }}>+</button>
+                    <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `1px solid ${inputBorderColor}` }}>
+                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: '#ffffff', border: `1px solid ${inputBorderColor}`, color: textMuted }}>−</button>
+                      <span className="font-black text-lg" style={{ color: textColor }}>{quantity}</span>
+                      <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: '#ffffff', border: `1px solid ${inputBorderColor}`, color: textMuted }}>+</button>
                     </div>
                   </div>
 
@@ -804,13 +809,13 @@ const parseVideoEmbed = (videoUrl: string) => {
                       <label className="text-[11px] font-black uppercase mb-2 block" style={{ color: textMuted }}>نوع التوصيل</label>
                       <div className="grid grid-cols-2 gap-3">
                         {showHomeDelivery && (
-                          <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
+                          <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : inputBorderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#ffffff', color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
                             <Home size={16} />
                             <span>التوصيل للمنزل</span>
                           </button>
                         )}
                         {showDeskDelivery && (
-                          <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
+                          <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : inputBorderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#ffffff', color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
                             <Building2 size={16} />
                             <span>الاستلام من المكتب</span>
                           </button>
@@ -821,7 +826,7 @@ const parseVideoEmbed = (videoUrl: string) => {
 
                   {/* Price Breakdown */}
                   {selectedWilayaId && (
-                    <div className="p-4 rounded-2xl space-y-2 border" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
+                    <div className="p-4 rounded-2xl space-y-2 border" style={{ backgroundColor: surfaceMuted, borderColor: inputBorderColor }}>
                       <div className="flex justify-between text-sm">
                         <span className="font-bold" style={{ color: textColor }}>سعر المنتج{selectedOffer ? ` (${selectedOffer.quantity} قطعة)` : ` (${quantity})`}</span>
                         <span className="font-black">{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
@@ -830,7 +835,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                         <span className="font-bold" style={{ color: textColor }}>التوصيل</span>
                         <span className="font-black">{deliveryFee === 0 ? 'مجاني ✅' : `${deliveryFee} ${settings?.currency_code || 'دج'}`}</span>
                       </div>
-                      <div className="h-px" style={{ backgroundColor: borderColor }} />
+                      <div className="h-px" style={{ backgroundColor: inputBorderColor }} />
                       <div className="flex justify-between">
                         <span className="font-black text-lg">المجموع</span>
                         <span className="font-black text-lg" style={{ color: accentColor }}>{Math.round(Number(selectedOffer?.bundle_price || (product?.price || 0) * quantity) + Number(deliveryFee || 0)).toLocaleString()} {settings?.currency_code || 'دج'}</span>
@@ -859,7 +864,8 @@ const parseVideoEmbed = (videoUrl: string) => {
               )}
             </div>
           </div>
-          );
+          </div>
+        );
         })()}
 
         </main>

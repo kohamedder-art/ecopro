@@ -181,6 +181,12 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const accentColor = settings?.template_accent_color || propPrimaryColor || '#f59e0b'; // amber-500
   const themeColor = settings?.boutique_theme_color || settings?.primary_color || '#0f172a'; // slate-900
   const bgColor = settings?.template_bg_color || '#ffffff';
+  const rawBgImage = settings?.template_bg_image || '';
+  const bgImageCss = rawBgImage
+    ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
+      ? rawBgImage
+      : `url(${rawBgImage})`)
+    : '';
   const isDark = useMemo(() => {
     const hex = bgColor.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
@@ -374,7 +380,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   // Order success screen
   if (orderSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor }} dir="rtl">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center' }} dir="rtl">
         <div className="max-w-md mx-auto rounded-2xl p-8 text-center w-full" style={{ backgroundColor: surfaceColor }}>
           <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: accentColor + '20' }}>
             <CheckCircle2 size={36} style={{ color: accentColor }} />
@@ -399,7 +405,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   }
 
   return (
-    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, color: textColor }} dir="rtl">
+    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor }} dir="rtl">
 
       {/* HERO SECTION - full width */}
       {heroProduct && (

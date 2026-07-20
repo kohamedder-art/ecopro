@@ -50,6 +50,12 @@ export default function IycoTemplate({
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#16a34a';
   const bgColor = settings?.template_bg_color || settings?.iyco_bg_color || '#ffffff';
   const primaryColor = settings?.primary_color || '#0f172a';
+  const rawBgImage = settings?.template_bg_image || '';
+  const bgImageCss = rawBgImage
+    ? (rawBgImage.startsWith('linear') || rawBgImage.startsWith('radial') || rawBgImage.startsWith('url(')
+      ? rawBgImage
+      : `url(${rawBgImage})`)
+    : '';
   const currency = settings?.currency_code || 'د.ج';
 
   const heroTitle = settings?.template_hero_heading || 'أحسن جودة في السوق مع ضمان بعد الشراء';
@@ -400,7 +406,7 @@ export default function IycoTemplate({
   // ══════════════════════════════════════
   if (orderSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
         <div className="text-center p-8 max-w-md">
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <Check size={32} style={{ color: accentColor }} />
@@ -440,10 +446,10 @@ export default function IycoTemplate({
   // MAIN TEMPLATE RENDER
   // ══════════════════════════════════════
   return (
-    <div className="min-h-screen" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+    <div className="min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
 
       {/* ── TOP NAVIGATION ── */}
-      <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: surfaceColor, borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
+      <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: bgImageCss ? 'transparent' : surfaceColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
 {settings?.store_logo ? (
