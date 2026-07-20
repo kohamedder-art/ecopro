@@ -140,7 +140,7 @@ const server = http.createServer(async (req, res) => {
         console.log(`[Bridge] Created session ${sessionId} for client ${body.client_id}`);
 
         // Give it a brief context about who they are
-        const contextMsg = body.store_context || body.system_prompt || `أنت مساعد متجر على Sahla4Eco. معرف المتجر: ${body.client_id}. أنت خبير تجارة إلكترونية في السوق الجزائري. جاوب باختصار وبالدارجة أو العربية.`;
+        const contextMsg = body.store_context || body.system_prompt || `أنت مساعد متجر على Sahla4Eco. معرف المتجر: ${body.client_id}. أنت خبير تجارة إلكترونية في السوق الجزائري. جاوب بالعربية الفصحى فقط.`;
         await ocFetch('POST', `/session/${sessionId}/message`, {
           parts: [{ type: 'text', text: contextMsg }],
           agent: DEFAULT_AGENT,

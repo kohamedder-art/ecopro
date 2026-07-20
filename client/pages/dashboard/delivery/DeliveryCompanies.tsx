@@ -1019,7 +1019,7 @@ export default function DeliveryCompanies() {
                 </div>
                 <div>
                   <p className="text-sm font-black text-blue-900 dark:text-blue-100">تتبع تلقائي</p>
-                  <p className="text-[11px] text-blue-600/70 dark:text-blue-400/50 mt-0.5">ال追踪 يتم عبر Polling كل 3 دقائق.</p>
+                  <p className="text-[11px] text-blue-600/70 dark:text-blue-400/50 mt-0.5">التتبع يتم عبر Polling كل 3 دقائق.</p>
                 </div>
               </div>
             )}

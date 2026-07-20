@@ -233,7 +233,6 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const [gridHeaderVisible, setGridHeaderVisible] = useState(true);
 
   useEffect(() => {
-    if (!showStoreGrid) return;
     let ticking = false;
     const onScroll = () => {
       if (!ticking) {
@@ -254,7 +253,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [showStoreGrid]);
+  }, []);
 
   // Order success screen
   if (orderSuccess) {
@@ -403,7 +402,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
       <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-3xl mx-auto'} min-h-screen relative shadow-2xl`}>
 
         {/* ── STICKY HEADER ── */}
-        <div className="sticky top-0 z-50 backdrop-blur-md px-3 py-2.5 flex items-center justify-between" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}` }}>
+        <div className="sticky top-0 z-50 backdrop-blur-md px-3 py-2.5 flex items-center justify-between transition-transform duration-300" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}`, transform: gridHeaderVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
           <button onClick={goToStore} className="flex items-center gap-1.5">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-10 h-10 rounded-full object-cover" />}
             <div
@@ -646,7 +645,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <span className="font-black text-lg" style={{ color: textColor }}>{quantity}</span>
                   <button
                     type="button"
-                    onClick={() => setQuantity(Math.min(safeProduct?.stock_quantity ?? 999, quantity + 1))}
+                    onClick={() => setQuantity(Math.min((safeProduct?.stock_quantity != null && safeProduct.stock_quantity > 0) ? safeProduct.stock_quantity : 999, quantity + 1))}
                     className="w-10 h-10 border rounded-md font-bold text-xl flex items-center justify-center"
                     style={{ backgroundColor: cardBg, borderColor: inputBorderColor, color: textMuted }}
                   >+</button>
