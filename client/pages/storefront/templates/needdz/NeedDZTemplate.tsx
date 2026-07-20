@@ -116,7 +116,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   useEffect(() => {
     if (!initialProductSlug) { setSelectedProduct(null); setView('feed'); return; }
     if (products?.length) {
-      const match = products.find((p: any) => p.slug === initialProductSlug);
+      const match = products.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug);
       if (match) { setSelectedProduct(match); setView('product'); }
     }
   }, [initialProductSlug, products]);

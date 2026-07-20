@@ -100,7 +100,7 @@ export default function SpiriluxeTemplate({
   const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   // ─── Product Selection ───
-  const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug) : null) || (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
+  const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug) : null) || (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
 
   useEffect(() => { if (mainProduct && onProductView) onProductView(mainProduct); }, [mainProduct?.id]);
 
@@ -340,7 +340,7 @@ export default function SpiriluxeTemplate({
         const globalIndex = startIndex + i;
         return (
           <div key={url + globalIndex} className="relative group">
-            <img src={url} alt="" className="w-full block" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
+            <img src={url} alt="" className="w-full block" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" style={{ contentVisibility: 'auto' }} />
             {canManage && (
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                 {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}

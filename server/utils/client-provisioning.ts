@@ -314,10 +314,16 @@ export async function ensureSampleProducts(clientId: number): Promise<void> {
     );
     if (Number(existing.rows[0]?.cnt || 0) > 0) return;
     for (const p of SAMPLE_PRODUCTS) {
+      const slug = p.title
+        .replace(/[^\w\s\u0600-\u06FF]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .toLowerCase()
+        .slice(0, 80) + '-' + Date.now();
       await pool.query(
-        `INSERT INTO client_store_products (client_id, title, description, price, images, category, stock_quantity, status, is_featured)
-         VALUES ($1, $2, $3, $4, $5, $6, 15, 'active', true)`,
-        [clientId, p.title, p.description, p.price, p.images, p.category]
+        `INSERT INTO client_store_products (client_id, title, description, price, images, category, stock_quantity, status, is_featured, slug)
+         VALUES ($1, $2, $3, $4, $5, $6, 15, 'active', true, $7)`,
+        [clientId, p.title, p.description, p.price, p.images, p.category, slug]
       );
     }
     console.log(`[Provisioning] Created ${SAMPLE_PRODUCTS.length} sample products for client ${clientId}`);

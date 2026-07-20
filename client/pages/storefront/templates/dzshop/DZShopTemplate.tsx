@@ -165,10 +165,10 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             script.src = 'https://unpkg.com/@phosphor-icons/web';
             doc.head.appendChild(script);
         }
-        if (!doc.getElementById('cairo-font')) {
+        if (!doc.getElementById('inter-font')) {
             const link = doc.createElement('link');
-            link.id = 'cairo-font';
-            link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Inter:wght@400;600;700&display=swap';
+            link.id = 'inter-font';
+            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap';
             link.rel = 'stylesheet';
             doc.head.appendChild(link);
         }

@@ -58,7 +58,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const mainProduct = useMemo(() => {
     // 1. If URL has a product slug, find it
     if (currentSlug) {
-      const found = products?.find((p: any) => p.slug === currentSlug);
+      const found = products?.find((p: any) => p.slug === currentSlug || String(p.id) === currentSlug);
       if (found) return found;
     }
     // 2. If settings has a main product ID, find it
@@ -77,6 +77,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const goToProduct = useCallback((product: any) => {
     if (product?.slug && navigate) {
       navigate(buildStoreUrl(storeSlug, product.slug));
+    } else if (product?.id) {
+      setCurrentSlug(String(product.id));
     }
   }, [storeSlug, navigate]);
 
@@ -312,7 +314,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
         {/* Product Grid — Leroi style */}
         <div className="max-w-7xl mx-auto px-2 py-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
             {products?.map((product: any, index: number) => {
               const thumb = product.images?.[gridImageIndex[product.id] || 0] || product.images?.[0] || '';
               const price = product.price || 0;
@@ -456,6 +458,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                 alt={`Landing slice ${index + 1}`}
                 className="w-full h-auto block"
                 loading={index === 0 ? 'eager' : 'lazy'}
+                fetchpriority={index === 0 ? 'high' : 'low'}
               />
             ))
           ) : (

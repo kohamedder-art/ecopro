@@ -103,7 +103,7 @@ export default function LeRoiShopTemplate({
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   useEffect(() => {
     if (!initialProductSlug) { setView('catalog'); setSelectedProduct(null); return; }
-    if (products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) { setSelectedProduct(p); setView('product'); } }
+    if (products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug || String(x.id) === initialProductSlug); if (p) { setSelectedProduct(p); setView('product'); } }
   }, [initialProductSlug, products]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -257,17 +257,6 @@ export default function LeRoiShopTemplate({
 
   useEffect(() => { if (activeProduct && onProductView) onProductView(activeProduct); }, [activeProduct?.id]);
 
-  /* ── Font ─────────────────────────────────────────────── */
-  useEffect(() => {
-    if (!document.getElementById('cairo-font')) {
-      const link = document.createElement('link');
-      link.id = 'cairo-font';
-      link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap';
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
-    }
-  }, []);
-
   /* ── Handlers ─────────────────────────────────────────── */
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
     e.currentTarget.setAttribute('data-setting-key', key);
@@ -316,7 +305,7 @@ export default function LeRoiShopTemplate({
     setDescExpanded(false);
     setOrderSuccess(false);
     setSelectedWilayaId(null);
-    if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug));
+    if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id)));
   };
 
   const goToCatalog = () => {
@@ -511,7 +500,7 @@ export default function LeRoiShopTemplate({
             )}
 
             {/* Product Grid - Temu Style */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {(products || []).map((product) => {
                 const discount = product.original_price 
                   ? Math.round(((product.original_price - product.price) / product.original_price) * 100)

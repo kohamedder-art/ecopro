@@ -45,6 +45,7 @@ export default defineConfig({
         "ws",
         "googleapis",
         "google-auth-library",
+        "sharp",
       ],
     },
     minify: false, // Keep readable for debugging

@@ -35,7 +35,7 @@ export function useTemplateSkeleton(props: TemplateProps) {
   // ── Product Resolution ──
   const mainProduct = useMemo<StoreProduct | null>(() => {
     if (initialProductSlug) {
-      const found = products.find(p => p.slug === initialProductSlug);
+      const found = products.find(p => p.slug === initialProductSlug || String(p.id) === initialProductSlug);
       if (found) return found;
     }
     if ((settings as any)?.dzp_main_product_id) {
@@ -99,7 +99,7 @@ export function useTemplateSkeleton(props: TemplateProps) {
 
   // ── Navigation ──
   const goToProduct = useCallback((product: StoreProduct) => {
-    navigate?.(buildStoreUrl(storeSlug, product.slug));
+    navigate?.(buildStoreUrl(storeSlug, product.slug || String(product.id)));
   }, [navigate, storeSlug]);
 
   const goToStore = useCallback(() => {

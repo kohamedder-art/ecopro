@@ -281,8 +281,8 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
             blockAllMixedContent: [],
             upgradeInsecureRequests: [],
             // NOTE: Some UI libs inject inline styles; keep this while blocking inline JS.
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            fontSrc: ["'self'"],
             scriptSrc: [
               "'self'",
               (req) => `'nonce-${(req as any).cspNonce}'`,
@@ -1941,6 +1941,12 @@ ${urls}
       });
     });
 
+    // Serve fonts with long-term caching (immutable — content never changes)
+    app.use('/fonts', express.static(path.join(spaBuildPath, 'fonts'), {
+      immutable: true,
+      maxAge: '365d',
+    }));
+
     // Serve other static files (icons, manifest, etc). Do NOT serve index.html here;
     // we want all HTML to go through the nonce-injection handler below.
     app.use(
@@ -2071,6 +2077,13 @@ ${urls}
                     })));
                     const nonceAttr3 = nonce ? ` nonce="${nonce}"` : '';
                     withMeta = withMeta.replace('</head>', `<script${nonceAttr3}>window.__STORE_PRODUCTS=${productsPayload}</script></head>`);
+                    // Preload first product image for instant hero rendering
+                    const firstProductImg = productsRes.rows[0]?.images?.[0];
+                    if (firstProductImg && typeof firstProductImg === 'string' && (firstProductImg.startsWith('http') || firstProductImg.startsWith('/'))) {
+                      withMeta = withMeta.replace('</head>',
+                        `<link rel="preload" as="image" href="${firstProductImg.replace(/"/g, '&quot;')}" fetchpriority="high" crossorigin="anonymous"></head>`
+                      );
+                    }
                   }
                 } catch { /* ignore — client will fetch products normally */ }
               } catch { /* ignore — client will fetch normally */ }
@@ -2123,6 +2136,22 @@ src="https://www.facebook.com/tr?id=${encodeURIComponent(pid)}&ev=PageView&noscr
                 withPixel = withPixel.replace('</head>', pixelCode + '</head>');
               }
             } catch { /* don't break page rendering */ }
+
+            // On storefront pages: defer main CSS and preload fonts
+            if (targetSlug) {
+              withPixel = withPixel.replace(
+                /<link rel="stylesheet" crossorigin href="([^"]+\.css)">/,
+                (_, href) =>
+                  `<link rel="preload" as="style" href="${href}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="${href}"></noscript>`
+              );
+              withPixel = withPixel.replace('</head>',
+                `<link rel="preload" as="font" href="/fonts/cairo/cairo-latin.woff2" crossorigin>
+<link rel="preload" as="font" href="/fonts/cairo/cairo-latin-ext.woff2" crossorigin>
+<link rel="preload" as="font" href="/fonts/cairo/cairo-arabic.woff2" crossorigin>
+<style>body{margin:0;background:hsl(0 0% 100%);color:hsl(222 47% 5%)}[dir=rtl]{font-family:"Cairo",system-ui,-apple-system,sans-serif}</style>
+</head>`
+              );
+            }
 
             res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
             res.setHeader('Vary', 'Accept-Encoding');

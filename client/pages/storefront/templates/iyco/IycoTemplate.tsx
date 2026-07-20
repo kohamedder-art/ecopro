@@ -107,7 +107,7 @@ export default function IycoTemplate({
   const [activeMainProduct, setActiveMainProduct] = useState<any>(null);
   const baseMainProduct = useMemo(() => {
     if (initialProductSlug) {
-      const bySlug = products?.find((p: any) => p.slug === initialProductSlug);
+      const bySlug = products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug);
       if (bySlug) return bySlug;
     }
     const mainId = settings?.dzp_main_product_id;
@@ -377,17 +377,6 @@ export default function IycoTemplate({
     }
   };
 
-  // ── Google Font ──
-  useEffect(() => {
-    if (!document.getElementById('cairo-font')) {
-      const link = document.createElement('link');
-      link.id = 'cairo-font';
-      link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap';
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
-    }
-  }, []);
-
   // ── FAQ Data ──
   const faqs = [
     { q: settings?.iyco_faq1_q || 'هل مقاسات مضبوطة (صحيحة)؟', a: settings?.iyco_faq1_a || 'نعم، مقاساتنا قياسية وتتوافق مع المقاسات العالمية.' },
@@ -518,6 +507,7 @@ export default function IycoTemplate({
                     <img key={i} src={img} alt={mainProduct.title}
                       className="w-full h-full object-contain shrink-0 cursor-pointer"
                       loading={i === 0 ? 'eager' : 'lazy'}
+                      fetchpriority={i === 0 ? 'high' : 'low'}
                       style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
@@ -833,12 +823,12 @@ export default function IycoTemplate({
               <span className="text-sm font-bold whitespace-nowrap" style={{ color: textMuted }}>{otherProducts.length} منتجات</span>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {otherProducts.map(prod => (
                 <button
                   key={prod.id}
                   className="group block text-right"
-                  onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (prod?.slug && navigate) navigate(buildStoreUrl(storeSlug, prod.slug)); }}
+                  onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
                 >
                   <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3" style={{ backgroundColor: surfaceMuted }}>
                     {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)

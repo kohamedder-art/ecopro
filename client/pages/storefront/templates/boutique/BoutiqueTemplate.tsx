@@ -174,7 +174,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const [orderQty, setOrderQty] = useState(1);
   useEffect(() => {
     if (!initialProductSlug) { setDetailProduct(null); return; }
-    if (products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug); if (p) setDetailProduct(p); }
+    if (products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug || String(x.id) === initialProductSlug); if (p) setDetailProduct(p); }
   }, [initialProductSlug, products]);
 
   const currency = settings?.currency_code || 'د.ج';
@@ -227,7 +227,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   // Hero product = first product (or dzp_main_product_id)
   const heroProduct = useMemo(() => {
     if (initialProductSlug) {
-      const bySlug = products?.find((p: any) => p.slug === initialProductSlug);
+      const bySlug = products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug);
       if (bySlug) return bySlug;
     }
     const mainId = settings?.dzp_main_product_id;
@@ -414,6 +414,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             src={heroProduct.images?.[0] || ''}
             alt={heroProduct.title}
             loading="eager"
+            fetchpriority="high"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent, transparent)' }} />
@@ -473,9 +474,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               </h3>
               <span className="text-xs font-bold" style={{ color: textMuted }}>{collectionProducts.length} منتج</span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {collectionProducts.map(product => (
-                <div key={product.id} className="group cursor-pointer rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor }} onClick={() => { setDetailProduct(product); onProductView?.(product); if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug)); }}>
+                <div key={product.id} className="group cursor-pointer rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor }} onClick={() => { setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}>
                   <div className="relative aspect-[4/5] overflow-hidden">
                     {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                       ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || ''}
@@ -497,7 +498,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                       </div>
                     )}
                     <button
-                      onClick={(e) => { e.stopPropagation(); setDetailProduct(product); onProductView?.(product); if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug)); }}
+                      onClick={(e) => { e.stopPropagation(); setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}
                       className="absolute bottom-2 left-2 right-2 backdrop-blur text-xs font-bold py-2 rounded-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all"
                       style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: surfaceTextColor }}
                     >

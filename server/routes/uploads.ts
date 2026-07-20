@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import multer from 'multer';
 import { fileTypeFromFile } from 'file-type';
+import sharp from 'sharp';
 import { scanFileForMalware } from '../utils/malware-scan';
 import { isSafeUploadName, signUploadPath, verifyUploadSignature } from '../utils/upload-signing';
 import { isR2Configured, uploadToR2, deleteFromR2 } from '../utils/r2-storage';
@@ -91,6 +92,23 @@ export const uploadImage: RequestHandler = async (req, res) => {
     if (scan.ok === false) {
       await fs.unlink(req.file.path).catch(() => null);
       return res.status(400).json({ error: scan.reason });
+    }
+
+    // Optimize images with Sharp (resize + WebP)
+    if (detected.mime.startsWith('image/') && detected.mime !== 'image/gif') {
+      try {
+        const sharpedPath = req.file.path + '_sharp.webp';
+        await sharp(req.file.path)
+          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toFile(sharpedPath);
+        await fs.unlink(req.file.path).catch(() => null);
+        await fs.rename(sharpedPath, req.file.path);
+        detected.mime = 'image/webp';
+        detected.ext = 'webp';
+      } catch (sharpErr) {
+        console.error('[uploadImage] Sharp processing failed, using original:', sharpErr);
+      }
     }
 
     // If R2 storage is configured, upload there (persistent storage on Render)

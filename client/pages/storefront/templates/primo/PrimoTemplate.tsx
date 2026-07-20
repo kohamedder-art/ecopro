@@ -104,7 +104,7 @@ export default function PrimoTemplate({
   const [cardSwipeDir, setCardSwipeDir] = useState<Record<number, string>>({});
   const baseMainProduct = useMemo(() => {
     if (initialProductSlug) {
-      const bySlug = products?.find((p: any) => p.slug === initialProductSlug);
+      const bySlug = products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug);
       if (bySlug) return bySlug;
     }
     const mainId = settings?.dzp_main_product_id;
@@ -132,7 +132,7 @@ const openProduct = (product: any) => {
   setSelectedMainImage(0);
   onProductView?.(product);
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug));
+  if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id)));
 };
 
 const goBackToCatalog = () => {
@@ -293,17 +293,6 @@ const goBackToCatalog = () => {
       setIsSubmitting(false);
     }
   };
-  // ── Google Font ──
-  useEffect(() => {
-    if (!document.getElementById('cairo-font')) {
-      const link = document.createElement('link');
-      link.id = 'cairo-font';
-      link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap';
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
-    }
-  }, []);
-
   // ══════════════════════════════════════
   // ORDER SUCCESS SCREEN
   // ══════════════════════════════════════
@@ -463,7 +452,7 @@ const goBackToCatalog = () => {
           )}
 
           {/* Product Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
             {products.map(product => {
               const discount = product.original_price ? Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
               const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
@@ -601,6 +590,7 @@ const goBackToCatalog = () => {
                     <img key={i} src={img} alt={mainProduct.title}
                       className="h-full object-contain shrink-0 cursor-pointer"
                       loading={i === 0 ? 'eager' : 'lazy'}
+                      fetchpriority={i === 0 ? 'high' : 'low'}
                       style={{ width: `${100 / totalSlides}%` }}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
@@ -781,9 +771,9 @@ const goBackToCatalog = () => {
           {otherProducts.length > 0 && (
             <section className="mt-16">
               <h3 className="text-2xl font-black mb-8" style={{ color: textColor }}>{otherProducts.length} منتجات أخرى</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
                 {otherProducts.map(product => {
-                  const swapProduct = () => { setActiveMainProduct(product); setSelectedMainImage(0); setViewMode('product'); onProductView?.(product); window.scrollTo({ top: 0, behavior: 'smooth' }); if (product?.slug && navigate) navigate(buildStoreUrl(storeSlug, product.slug)); };
+                  const swapProduct = () => { setActiveMainProduct(product); setSelectedMainImage(0); setViewMode('product'); onProductView?.(product); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); };
                   return (
                   <div key={product.id} className="rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
                     {(() => {
