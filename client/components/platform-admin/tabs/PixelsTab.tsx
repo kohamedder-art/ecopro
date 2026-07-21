@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Trash2, CheckCircle, AlertCircle, Send } from 'lucide-react';
 
 interface PixelEntry {
   platform: 'facebook' | 'tiktok';
   pixel_id: string;
   enabled: boolean;
-  access_token?: string;
 }
 
 export default function PixelsTab() {
@@ -14,6 +13,8 @@ export default function PixelsTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/platform-admin/pixels', { credentials: 'include' })
@@ -27,7 +28,7 @@ export default function PixelsTab() {
   }, []);
 
   const addPixel = () => {
-    setPixels(prev => [...prev, { platform: 'facebook', pixel_id: '', enabled: true, access_token: '' }]);
+    setPixels(prev => [...prev, { platform: 'facebook', pixel_id: '', enabled: true }]);
   };
 
   const removePixel = (idx: number) => {
@@ -55,6 +56,33 @@ export default function PixelsTab() {
       setMessage({ type: 'error', text: 'Failed to save pixel config' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestEvent = async () => {
+    const fbPixel = pixels.find(p => p.platform === 'facebook' && p.enabled && p.pixel_id.trim());
+    if (!fbPixel) {
+      setTestResult('No enabled Facebook pixel found');
+      return;
+    }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/pixels/relay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: [fbPixel.pixel_id.trim()],
+          event: 'TestEvent',
+          params: { test_source: 'platform_admin' },
+        }),
+      });
+      const data = await res.json();
+      setTestResult(data.ok ? 'Event sent successfully!' : 'Relay returned error');
+    } catch {
+      setTestResult('Network error — is the server running?');
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -106,15 +134,6 @@ export default function PixelsTab() {
                 onChange={e => updatePixel(idx, 'pixel_id', e.target.value)}
                 className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white placeholder-gray-400"
               />
-              {pixel.platform === 'facebook' && (
-                <input
-                  type="text"
-                  placeholder="Access Token (for Conversions API)"
-                  value={pixel.access_token || ''}
-                  onChange={e => updatePixel(idx, 'access_token', e.target.value)}
-                  className="w-72 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 font-mono text-xs"
-                />
-              )}
               <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer shrink-0">
                 <input
                   type="checkbox"
@@ -135,10 +154,14 @@ export default function PixelsTab() {
         </div>
       )}
 
-      <div className="mt-6 flex items-center gap-3">
+      <div className="mt-6 flex items-center gap-3 flex-wrap">
         <Button onClick={handleSave} disabled={saving} className="gap-2">
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           {saving ? 'Saving...' : 'Save Config'}
+        </Button>
+        <Button onClick={handleTestEvent} disabled={testing} variant="secondary" className="gap-2">
+          {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          {testing ? 'Sending...' : 'Test Event'}
         </Button>
         {message && (
           <span className={`flex items-center gap-1.5 text-sm ${
@@ -146,6 +169,13 @@ export default function PixelsTab() {
           }`}>
             {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
             {message.text}
+          </span>
+        )}
+        {testResult && (
+          <span className={`flex items-center gap-1.5 text-sm ${
+            testResult.includes('success') ? 'text-emerald-500' : 'text-amber-500'
+          }`}>
+            {testResult}
           </span>
         )}
       </div>

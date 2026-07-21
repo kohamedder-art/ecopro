@@ -1416,31 +1416,8 @@ export const pixelDiagnosticHandler: RequestHandler = async (req, res) => {
 // =====================================================================
 // Pixel relay — client sends a POST to OUR domain (never blocked by
 // mobile tracking protection) and the server forwards the event to
-// Facebook via the Conversions API (Graph API POST) when an access
-// token is configured, falling back to the /tr GET endpoint.
+// Facebook by POSTing to facebook.com/tr (same as fbq('track') does).
 // =====================================================================
-let cachedPlatformPixelConfig: Array<{ platform: string; pixel_id: string; access_token?: string }> | null = null;
-let platformConfigCacheTime = 0;
-
-async function getPlatformPixelConfig(pool: any): Promise<Array<{ platform: string; pixel_id: string; access_token?: string }>> {
-  const now = Date.now();
-  if (cachedPlatformPixelConfig && now - platformConfigCacheTime < 30000) {
-    return cachedPlatformPixelConfig;
-  }
-  try {
-    const result = await pool.query(
-      `SELECT setting_value FROM platform_settings WHERE setting_key = 'pixel_config'`
-    );
-    const rows = result.rows;
-    if (rows.length === 0) return [];
-    const parsed = JSON.parse(rows[0].setting_value);
-    cachedPlatformPixelConfig = Array.isArray(parsed) ? parsed : [];
-    platformConfigCacheTime = now;
-    return cachedPlatformPixelConfig!;
-  } catch {
-    return [];
-  }
-}
 
 export const pixelRelayHandler: RequestHandler = async (req, res) => {
   const { ids, event, params, url } = req.body;
@@ -1453,115 +1430,46 @@ export const pixelRelayHandler: RequestHandler = async (req, res) => {
     || req.socket.remoteAddress || '';
   const userAgent = req.headers['user-agent'] || 'Mozilla/5.0';
   const eventTime = Math.floor(Date.now() / 1000);
-  const pool = await getPool();
-
-  // Build a map of pixel_id -> access_token from platform config
-  const platformPixels = await getPlatformPixelConfig(pool);
-  const tokenMap: Record<string, string> = {};
-  for (const p of platformPixels) {
-    if (p.pixel_id && p.access_token) {
-      tokenMap[p.pixel_id] = p.access_token;
-    }
-  }
-
-  // Also check client_pixel_settings for storefront tokens (cached in memory per request)
-  const storefrontResult = await pool.query(
-    `SELECT facebook_pixel_id, facebook_access_token FROM client_pixel_settings
-     WHERE facebook_pixel_id = ANY($1) AND facebook_access_token IS NOT NULL`,
-    [ids]
-  );
-  for (const row of storefrontResult.rows) {
-    if (row.facebook_pixel_id && row.facebook_access_token) {
-      tokenMap[row.facebook_pixel_id] = row.facebook_access_token;
-    }
-  }
-
-  // Build user_data from request
-  const userData: Record<string, string> = {};
-  if (clientIp) userData.client_ip_address = clientIp;
-  if (userAgent) userData.client_user_agent = userAgent;
-
-  // Extract common event params
-  const value = params?.value;
-  const currency = params?.currency;
-  const contentIds = params?.content_ids;
-  const contentType = params?.content_type;
-  const orderId = params?.order_id;
 
   for (const pixelId of ids) {
-    const token = tokenMap[pixelId];
+    const body = new URLSearchParams();
+    body.set('id', pixelId);
+    body.set('ev', event);
+    body.set('dl', url || req.headers.referer || '');
+    body.set('rl', req.headers.referer || '');
+    body.set('ts', String(eventTime));
+    body.set('v', '2.0');
 
-    if (token) {
-      // ---- Conversions API (Graph API POST) ----
-      const data: any = {
-        event_name: event,
-        event_time: eventTime,
-        user_data: userData,
-        action_source: 'website',
-        event_source_url: url || req.headers.referer || '',
-      };
+    // fbq sends POST with these — they help Facebook match the event
+    body.set('sw', '1920');
+    body.set('sh', '1080');
+    body.set('fbp', `fb.1.${eventTime}.${Math.random().toString(36).slice(2)}`);
 
-      if (value != null || currency || contentIds || contentType || orderId) {
-        data.custom_data = {};
-        if (value != null) data.custom_data.value = Number(value);
-        if (currency) data.custom_data.currency = currency;
-        if (contentIds) data.custom_data.content_ids = Array.isArray(contentIds) ? contentIds : [contentIds];
-        if (contentType) data.custom_data.content_type = contentType;
-        if (orderId) data.custom_data.order_id = orderId;
-      }
-
-      // CAPI events deduplicate with browser events via event_id
-      const eventId = `${event}_${eventTime}_${pixelId}`;
-      data.event_id = eventId;
-
-      const graphUrl = `https://graph.facebook.com/v18.0/${pixelId}/events`;
-      fetch(graphUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: [data], access_token: token }),
-      }).then((graphRes) => {
-        if (!graphRes.ok) {
-          graphRes.text().then((t) => console.error(`[pixel-relay] CAPI error for ${pixelId}/${event}:`, t));
+    if (params && typeof params === 'object') {
+      for (const [key, val] of Object.entries(params)) {
+        if (val === undefined || val === null) continue;
+        if (typeof val === 'object') {
+          body.set(`cd[${key}]`, JSON.stringify(val));
         } else {
-          console.log(`[pixel-relay] CAPI ok: id=${pixelId} ev=${event}`);
-        }
-      }).catch((err: any) => {
-        console.error(`[pixel-relay] CAPI fetch failed: id=${pixelId} ev=${event}`, err?.message || err);
-      });
-
-    } else {
-      // ---- Fallback: GET to /tr (legacy proxy) ----
-      const q = new URLSearchParams();
-      q.set('id', pixelId);
-      q.set('ev', event);
-      q.set('noscript', '1');
-      q.set('dl', url || req.headers.referer || '');
-      q.set('rl', req.headers.referer || '');
-      q.set('ts', String(eventTime));
-      q.set('v', '2.0');
-
-      if (params && typeof params === 'object') {
-        for (const [key, val] of Object.entries(params)) {
-          if (val === undefined || val === null) continue;
-          if (typeof val === 'object') {
-            q.set(`cd[${key}]`, JSON.stringify(val));
-          } else {
-            q.set(`cd[${key}]`, String(val));
-          }
+          body.set(`cd[${key}]`, String(val));
         }
       }
-
-      const target = `https://www.facebook.com/tr?${q.toString()}`;
-      fetch(target, {
-        method: 'GET',
-        headers: {
-          'User-Agent': userAgent,
-          'X-Forwarded-For': clientIp,
-        },
-      }).catch((err: any) => {
-        console.error(`[pixel-relay] GET fallback failed: id=${pixelId} ev=${event}`, err?.message || err);
-      });
     }
+
+    fetch('https://www.facebook.com/tr', {
+      method: 'POST',
+      headers: {
+        'User-Agent': userAgent,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    }).then((fbRes) => {
+      if (!fbRes.ok) {
+        console.error(`[pixel-relay] POST /tr failed ${pixelId}/${event}: ${fbRes.status}`);
+      }
+    }).catch((err: any) => {
+      console.error(`[pixel-relay] POST /tr error ${pixelId}/${event}:`, err?.message || err);
+    });
   }
 
   res.json({ ok: true });
