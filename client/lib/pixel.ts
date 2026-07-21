@@ -96,6 +96,11 @@ export async function initTikTokPixels(ids: string[]): Promise<void> {
   }
 }
 
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function fireProxyBeacon(platform: 'fb' | 'tt', event: string, ids: string[], params?: Record<string, any>) {
   if (!ids.length) return;
   try {
@@ -129,7 +134,7 @@ export function trackFacebookEvent(event: string, params: Record<string, any> = 
       fetch('/api/pixels/relay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, event, params, url: window.location.href }),
+        body: JSON.stringify({ ids, event, params, url: window.location.href, fbc: getCookie('_fbc'), fbp: getCookie('_fbp') }),
         keepalive: true,
       }).then(r => r.json()).then(d => console.log('[pixel] relay response:', d)).catch(e => console.error('[pixel] relay error:', e));
     } catch (e) {

@@ -1446,7 +1446,7 @@ async function getPlatformPixelConfig(pool: any): Promise<Array<{ platform: stri
 }
 
 export const pixelRelayHandler: RequestHandler = async (req, res) => {
-  const { ids, event, params, url } = req.body;
+  const { ids, event, params, url, fbc, fbp } = req.body;
   console.log(`[pixel-relay] received: event=${event} ids=${JSON.stringify(ids)}`);
   if (!Array.isArray(ids) || ids.length === 0 || !event) {
     res.status(400).json({ error: 'Missing ids or event' });
@@ -1495,6 +1495,8 @@ export const pixelRelayHandler: RequestHandler = async (req, res) => {
         user_data: {
           client_ip_address: clientIp,
           client_user_agent: userAgent,
+          ...(fbc ? { fbc } : {}),
+          ...(fbp ? { fbp } : {}),
         },
         action_source: 'website',
         event_source_url: url || req.headers.referer || '',
@@ -1517,11 +1519,12 @@ export const pixelRelayHandler: RequestHandler = async (req, res) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: [data], access_token: token }),
-      }).then((graphRes) => {
+      }).then(async (graphRes) => {
+        const bodyText = await graphRes.text();
         if (!graphRes.ok) {
-          graphRes.text().then((t) => console.error(`[pixel-relay] CAPI error ${pixelId}/${event}:`, t));
+          console.error(`[pixel-relay] CAPI error ${pixelId}/${event} status=${graphRes.status}:`, bodyText);
         } else {
-          console.log(`[pixel-relay] CAPI ok: ${pixelId}/${event}`);
+          console.log(`[pixel-relay] CAPI ok ${pixelId}/${event} body:`, bodyText);
         }
       }).catch((err: any) => {
         console.error(`[pixel-relay] CAPI fetch failed ${pixelId}/${event}:`, err?.message || err);
