@@ -1801,7 +1801,12 @@ ${urls}
       const rows = result.rows;
       if (rows.length === 0) return res.json([]);
       try {
-        return res.json(JSON.parse(rows[0].setting_value));
+        const pixels = JSON.parse(rows[0].setting_value);
+        const masked = (Array.isArray(pixels) ? pixels : []).map((p: any) => ({
+          ...p,
+          access_token: p.access_token ? '***configured***' : undefined,
+        }));
+        return res.json(masked);
       } catch {
         return res.json([]);
       }
@@ -1818,11 +1823,39 @@ ${urls}
         return res.status(400).json({ error: 'pixels must be an array' });
       }
 
+      // Preserve existing tokens when sentinel "***configured***" is sent back
+      let existingTokens: Record<string, string> = {};
+      try {
+        const existingRes = await pool.query(
+          `SELECT setting_value FROM platform_settings WHERE setting_key = 'pixel_config'`
+        );
+        if (existingRes.rows.length > 0) {
+          const existing = JSON.parse(existingRes.rows[0].setting_value);
+          if (Array.isArray(existing)) {
+            for (const p of existing) {
+              if (p.pixel_id && p.access_token) existingTokens[p.pixel_id] = p.access_token;
+            }
+          }
+        }
+      } catch { /* ignore */ }
+
+      const cleaned = pixels.map((p: any) => {
+        const token = p.access_token === '***configured***'
+          ? (existingTokens[p.pixel_id] || '')
+          : (p.access_token || '');
+        return {
+          platform: p.platform,
+          pixel_id: typeof p.pixel_id === 'string' ? p.pixel_id.trim() : p.pixel_id,
+          enabled: Boolean(p.enabled),
+          ...(token ? { access_token: token } : {}),
+        };
+      });
+
       const adminId = (req.user as any)?.id;
       await pool.query(
         `UPDATE platform_settings SET setting_value = $1, updated_by = $2, updated_at = NOW()
          WHERE setting_key = 'pixel_config'`,
-        [JSON.stringify(pixels), adminId]
+        [JSON.stringify(cleaned), adminId]
       );
       res.json({ message: 'Pixel config updated' });
     } catch (err) {
