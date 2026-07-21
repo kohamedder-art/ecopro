@@ -1747,31 +1747,15 @@ export default function PlatformAdmin() {
                 );
               };
 
-              const ArcGauge = ({ pct, size = 80, stroke = 8, color = '#22c55e' }: { pct: number | null; size?: number; stroke?: number; color?: string }) => {
-                const r = (size - stroke) / 2;
-                const circ = 2 * Math.PI * r;
-                const dash = pct != null ? (pct / 100) * circ * 0.75 : 0;
-                return (
-                  <svg width={size} height={size * 0.55} viewBox={`0 0 ${size} ${size * 0.55}`}>
-                    <path d={`M ${stroke / 2} ${size * 0.55 - stroke / 2} A ${r} ${r} 0 0 1 ${size - stroke / 2} ${size * 0.55 - stroke / 2}`} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth={stroke} strokeLinecap="round" />
-                    <path d={`M ${stroke / 2} ${size * 0.55 - stroke / 2} A ${r} ${r} 0 0 1 ${size - stroke / 2} ${size * 0.55 - stroke / 2}`} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${dash} ${circ * 0.75}`} strokeDashoffset={circ * 0.75 * 0.25} style={{ filter: `drop-shadow(0 0 4px ${color})`, transition: 'stroke-dasharray 0.6s ease' }} />
-                  </svg>
-                );
-              };
-
-              const MetricCard = ({ label, value, unit, pct, color, sub, spark }: { label: string; value: string; unit?: string; pct?: number | null; color: string; sub?: string; spark?: React.ReactNode }) => (
+              const MetricCard = ({ label, value, unit, color, sub, spark }: { label: string; value: string; unit?: string; color: string; sub?: string; spark?: React.ReactNode }) => (
                 <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-xl border border-gray-200 dark:border-slate-700/60 p-3 hover:border-gray-300 dark:hover:border-slate-600/80 transition-all group" style={{ boxShadow: `inset 0 1px 0 rgba(255,255,255,0.03)` }}>
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-[72px]">
-                      <ArcGauge pct={pct} color={color} />
-                    </div>
-                    <div className="flex-1 min-w-0 pt-1">
-                      <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-500">{label}</div>
-                      <div className="text-lg font-bold text-gray-900 dark:text-white font-mono mt-0.5 leading-tight">{value}<span className="text-xs text-gray-400 dark:text-slate-400 font-normal ml-0.5">{unit}</span></div>
-                      {sub && <div className="text-[10px] text-gray-500 dark:text-slate-500 mt-0.5 truncate">{sub}</div>}
-                      {spark && <div className="mt-1 h-8 -mx-1">{spark}</div>}
-                    </div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-500">{label}</div>
                   </div>
+                  <div className="text-lg font-bold text-gray-900 dark:text-white font-mono leading-tight">{value}<span className="text-xs text-gray-400 dark:text-slate-400 font-normal ml-0.5">{unit}</span></div>
+                  {sub && <div className="text-[10px] text-gray-500 dark:text-slate-500 mt-0.5 truncate">{sub}</div>}
+                  {spark && <div className="mt-1 h-8 -mx-1">{spark}</div>}
                 </div>
               );
 
@@ -1826,28 +1810,30 @@ export default function PlatformAdmin() {
                         <span className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">DATABASE</span>
                         {serverHealth.db.render?.pgVersion && <span className="text-[10px] text-gray-500 dark:text-slate-500 font-mono">PG {serverHealth.db.render.pgVersion}</span>}
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
-                          <div className="flex items-center gap-2 text-slate-400 mb-2">
-                            <Cpu className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-semibold uppercase tracking-wider">CPU</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-xl border border-gray-200 dark:border-slate-700/60 p-3">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: serverHealth.db.render?.cpuPercentage != null && serverHealth.db.render.cpuPercentage > 80 ? '#ef4444' : serverHealth.db.render?.cpuPercentage != null && serverHealth.db.render.cpuPercentage > 50 ? '#f59e0b' : '#22c55e' }} />
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-500">CPU</span>
+                            <Cpu className="w-3 h-3 text-slate-400 ml-auto" />
                           </div>
-                          <div className="text-2xl font-bold font-mono text-white">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white font-mono leading-tight">
                             {serverHealth.db.render?.cpuPercentage != null ? `${serverHealth.db.render.cpuPercentage.toFixed(1)}` : '-'}
-                            <span className="text-sm text-slate-500 font-normal ml-0.5">%</span>
+                            <span className="text-xs text-gray-400 dark:text-slate-400 font-normal ml-0.5">%</span>
                           </div>
                         </div>
-                        <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
-                          <div className="flex items-center gap-2 text-slate-400 mb-2">
-                            <MemoryStick className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-semibold uppercase tracking-wider">RAM</span>
+                        <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-xl border border-gray-200 dark:border-slate-700/60 p-3">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: serverHealth.db.render?.memoryPct != null && serverHealth.db.render.memoryPct > 80 ? '#ef4444' : serverHealth.db.render?.memoryPct != null && serverHealth.db.render.memoryPct > 50 ? '#f59e0b' : '#22c55e' }} />
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-500">RAM</span>
+                            <MemoryStick className="w-3 h-3 text-slate-400 ml-auto" />
                           </div>
-                          <div className="text-2xl font-bold font-mono text-white">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white font-mono leading-tight">
                             {serverHealth.db.render?.memoryPct != null ? `${serverHealth.db.render.memoryPct.toFixed(1)}` : '-'}
-                            <span className="text-sm text-slate-500 font-normal ml-0.5">%</span>
+                            <span className="text-xs text-gray-400 dark:text-slate-400 font-normal ml-0.5">%</span>
                           </div>
                           {serverHealth.db.render?.memoryMB != null && (
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            <div className="text-[10px] text-gray-500 dark:text-slate-500 mt-0.5 truncate">
                               {serverHealth.db.render.memoryMB.toFixed(0)} MB used
                             </div>
                           )}
@@ -1868,34 +1854,36 @@ export default function PlatformAdmin() {
                     </div>
 
                     {/* ─── WEB SERVICE ─── */}
-                    <div className="bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-700/60 p-4">
+                    <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-gray-200 dark:border-slate-700/60 p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <Activity className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm font-bold text-white tracking-tight">WEB SERVICE</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">WEB SERVICE</span>
                         {serverHealth.service?.serviceName && <span className="text-[10px] text-slate-500 font-mono truncate max-w-[200px]" title={serverHealth.service.serviceName}>{serverHealth.service.serviceName}</span>}
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
-                          <div className="flex items-center gap-2 text-slate-400 mb-2">
-                            <Cpu className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-semibold uppercase tracking-wider">CPU</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-xl border border-gray-200 dark:border-slate-700/60 p-3">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: serverHealth.service?.cpuPct != null && serverHealth.service.cpuPct > 80 ? '#ef4444' : serverHealth.service?.cpuPct != null && serverHealth.service.cpuPct > 50 ? '#f59e0b' : '#22c55e' }} />
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-500">CPU</span>
+                            <Cpu className="w-3 h-3 text-slate-400 ml-auto" />
                           </div>
-                          <div className="text-2xl font-bold font-mono text-white">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white font-mono leading-tight">
                             {serverHealth.service?.cpuPct != null ? `${serverHealth.service.cpuPct.toFixed(1)}` : '-'}
-                            <span className="text-sm text-slate-500 font-normal ml-0.5">%</span>
+                            <span className="text-xs text-gray-400 dark:text-slate-400 font-normal ml-0.5">%</span>
                           </div>
                         </div>
-                        <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
-                          <div className="flex items-center gap-2 text-slate-400 mb-2">
-                            <MemoryStick className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-semibold uppercase tracking-wider">RAM</span>
+                        <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-xl border border-gray-200 dark:border-slate-700/60 p-3">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: serverHealth.service?.memoryPct != null && serverHealth.service.memoryPct > 80 ? '#ef4444' : serverHealth.service?.memoryPct != null && serverHealth.service.memoryPct > 50 ? '#f59e0b' : '#22c55e' }} />
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-slate-500">RAM</span>
+                            <MemoryStick className="w-3 h-3 text-slate-400 ml-auto" />
                           </div>
-                          <div className="text-2xl font-bold font-mono text-white">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white font-mono leading-tight">
                             {serverHealth.service?.memoryPct != null ? `${serverHealth.service.memoryPct.toFixed(1)}` : '-'}
-                            <span className="text-sm text-slate-500 font-normal ml-0.5">%</span>
+                            <span className="text-xs text-gray-400 dark:text-slate-400 font-normal ml-0.5">%</span>
                           </div>
                           {serverHealth.service?.memoryMb != null && (
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            <div className="text-[10px] text-gray-500 dark:text-slate-500 mt-0.5 truncate">
                               {serverHealth.service.memoryMb.toFixed(0)} MB used
                             </div>
                           )}
@@ -1917,14 +1905,14 @@ export default function PlatformAdmin() {
 
                   {/* 8 Metric Cards Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                    <MetricCard label="CPU" value={cpuPct != null ? cpuPct.toFixed(1) : '-'} unit="%" pct={cpuPct} color={cpuPct != null && cpuPct > 80 ? '#ef4444' : cpuPct != null && cpuPct > 50 ? '#f59e0b' : '#22c55e'} sub={`${serverHealth.os.cpuModel?.split(' ')[0] ?? ''} ×${cpuCount ?? '?'} · load ${load1 != null ? load1.toFixed(2) : '-'}`} spark={makeSpark(trend?.map(s => s.load1PerCpu != null ? s.load1PerCpu! * 100 : null) as any, '#3b82f6')} />
-                    <MetricCard label="MEMORY" value={rssPct != null ? rssPct.toFixed(1) : '-'} unit="%" pct={rssPct} color={rssPct != null && rssPct > 80 ? '#ef4444' : rssPct != null && rssPct > 50 ? '#f59e0b' : '#22c55e'} sub={`${formatBytes(serverHealth.process.memory.rss)} / ${formatBytes(serverHealth.derived?.memoryLimitBytes ?? serverHealth.os.totalmem)}`} spark={makeSpark(trend?.map(s => s.rssPct) as any, '#22c55e')} />
-                    <MetricCard label="DATABASE" value={dbMs != null ? dbMs.toFixed(0) : '-'} unit="ms" pct={dbMs != null ? Math.min(100, (dbMs / 10)) : null} color={dbMs != null && dbMs > 500 ? '#ef4444' : dbMs != null && dbMs > 200 ? '#f59e0b' : '#a855f7'} sub={`pool ${serverHealth.db.pool?.totalCount ?? '-'} · wait ${serverHealth.db.pool?.waitingCount ?? '-'}`} spark={makeSpark(trend?.map(s => s.dbLatencyMs) as any, '#a855f7')} />
-                    <MetricCard label="DISK" value={uploadsUsedPct != null ? uploadsUsedPct.toFixed(1) : '-'} unit="%" pct={uploadsUsedPct} color={uploadsUsedPct != null && uploadsUsedPct > 85 ? '#ef4444' : uploadsUsedPct != null && uploadsUsedPct > 70 ? '#f59e0b' : '#06b6d4'} sub={`${formatBytes(serverHealth.disk?.uploads?.available)} free`} />
-                    <MetricCard label="EVENT LOOP" value={eluPct != null ? eluPct.toFixed(1) : '-'} unit="%" pct={eluPct} color={eluPct != null && eluPct > 80 ? '#ef4444' : eluPct != null && eluPct > 48 ? '#f59e0b' : '#22c55e'} sub={`active ${serverHealth.eventLoop?.active != null ? `${(serverHealth.eventLoop.active / 1000).toFixed(1)}s` : '-'}`} spark={makeSpark(trend?.map(s => s.elu != null ? s.elu * 100 : null) as any, '#22c55e')} />
-                    <MetricCard label="HEAP" value={serverHealth.derived?.heapPctOfHeapTotal != null ? serverHealth.derived.heapPctOfHeapTotal.toFixed(1) : '-'} unit="%" pct={serverHealth.derived?.heapPctOfHeapTotal ?? null} color={serverHealth.derived?.heapPctOfHeapTotal != null && serverHealth.derived.heapPctOfHeapTotal > 90 ? '#ef4444' : serverHealth.derived?.heapPctOfHeapTotal != null && serverHealth.derived.heapPctOfHeapTotal > 70 ? '#f59e0b' : '#22c55e'} sub={`${formatBytes(serverHealth.process.memory.heapUsed)} / ${formatBytes(serverHealth.process.memory.heapTotal)}`} spark={makeSpark(trend?.map(s => s.heapPct) as any, '#f59e0b')} />
-                    <MetricCard label="NETWORK" value={totalMbps != null ? totalMbps.toFixed(1) : '-'} unit="Mbps" pct={totalMbps != null ? Math.min(100, totalMbps / 2) : null} color="#6366f1" sub={`RX ${formatBps(rxBps)} / TX ${formatBps(txBps)}`} />
-                    <MetricCard label="USERS" value={activeNow != null ? `${activeNow}` : '-'} unit="" pct={activeNow != null ? Math.min(100, activeNow * 5) : null} color="#ec4899" sub={`${serverHealth.users?.total ?? 0} registered · ${serverHealth.users?.recent15m ?? 0} active`} />
+                    <MetricCard label="CPU" value={cpuPct != null ? cpuPct.toFixed(1) : '-'} unit="%" color={cpuPct != null && cpuPct > 80 ? '#ef4444' : cpuPct != null && cpuPct > 50 ? '#f59e0b' : '#22c55e'} sub={`${serverHealth.os.cpuModel?.split(' ')[0] ?? ''} ×${cpuCount ?? '?'} · load ${load1 != null ? load1.toFixed(2) : '-'}`} spark={makeSpark(trend?.map(s => s.load1PerCpu != null ? s.load1PerCpu! * 100 : null) as any, '#3b82f6')} />
+                    <MetricCard label="MEMORY" value={rssPct != null ? rssPct.toFixed(1) : '-'} unit="%" color={rssPct != null && rssPct > 80 ? '#ef4444' : rssPct != null && rssPct > 50 ? '#f59e0b' : '#22c55e'} sub={`${formatBytes(serverHealth.process.memory.rss)} / ${formatBytes(serverHealth.derived?.memoryLimitBytes ?? serverHealth.os.totalmem)}`} spark={makeSpark(trend?.map(s => s.rssPct) as any, '#22c55e')} />
+                    <MetricCard label="DATABASE" value={dbMs != null ? dbMs.toFixed(0) : '-'} unit="ms" color={dbMs != null && dbMs > 500 ? '#ef4444' : dbMs != null && dbMs > 200 ? '#f59e0b' : '#a855f7'} sub={`pool ${serverHealth.db.pool?.totalCount ?? '-'} · wait ${serverHealth.db.pool?.waitingCount ?? '-'}`} spark={makeSpark(trend?.map(s => s.dbLatencyMs) as any, '#a855f7')} />
+                    <MetricCard label="DISK" value={uploadsUsedPct != null ? uploadsUsedPct.toFixed(1) : '-'} unit="%" color={uploadsUsedPct != null && uploadsUsedPct > 85 ? '#ef4444' : uploadsUsedPct != null && uploadsUsedPct > 70 ? '#f59e0b' : '#06b6d4'} sub={`${formatBytes(serverHealth.disk?.uploads?.available)} free`} />
+                    <MetricCard label="EVENT LOOP" value={eluPct != null ? eluPct.toFixed(1) : '-'} unit="%" color={eluPct != null && eluPct > 80 ? '#ef4444' : eluPct != null && eluPct > 48 ? '#f59e0b' : '#22c55e'} sub={`active ${serverHealth.eventLoop?.active != null ? `${(serverHealth.eventLoop.active / 1000).toFixed(1)}s` : '-'}`} spark={makeSpark(trend?.map(s => s.elu != null ? s.elu * 100 : null) as any, '#22c55e')} />
+                    <MetricCard label="HEAP" value={serverHealth.derived?.heapPctOfHeapTotal != null ? serverHealth.derived.heapPctOfHeapTotal.toFixed(1) : '-'} unit="%" color={serverHealth.derived?.heapPctOfHeapTotal != null && serverHealth.derived.heapPctOfHeapTotal > 90 ? '#ef4444' : serverHealth.derived?.heapPctOfHeapTotal != null && serverHealth.derived.heapPctOfHeapTotal > 70 ? '#f59e0b' : '#22c55e'} sub={`${formatBytes(serverHealth.process.memory.heapUsed)} / ${formatBytes(serverHealth.process.memory.heapTotal)}`} spark={makeSpark(trend?.map(s => s.heapPct) as any, '#f59e0b')} />
+                    <MetricCard label="NETWORK" value={totalMbps != null ? totalMbps.toFixed(1) : '-'} unit="Mbps" color="#6366f1" sub={`RX ${formatBps(rxBps)} / TX ${formatBps(txBps)}`} />
+                    <MetricCard label="USERS" value={activeNow != null ? `${activeNow}` : '-'} unit="" color="#ec4899" sub={`${serverHealth.users?.total ?? 0} registered · ${serverHealth.users?.recent15m ?? 0} active`} />
                   </div>
 
                   {/* Alerts + Trends row */}
