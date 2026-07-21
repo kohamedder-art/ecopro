@@ -170,8 +170,8 @@ function AISuggestTitles({
         AI Suggest
       </button>
       {open && suggestions.length > 0 && (
-        <div className="absolute left-0 top-full mt-1 z-[200] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-2 w-[260px]">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider px-2 pb-1">Pick a title</p>
+        <div className="absolute left-0 top-full mt-1 z-[200] bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl shadow-2xl p-2 w-[260px]">
+          <p className="text-[10px] text-black dark:text-white font-bold uppercase tracking-wider px-2 pb-1">Pick a title</p>
           {suggestions.map((s, i) => (
             <button
               key={i}
@@ -1028,35 +1028,35 @@ export default function StockManagement() {
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-          <span className="text-sm text-muted-foreground">{t('stock.title')}…</span>
+          <span className="text-sm text-black dark:text-white">{t('stock.title')}…</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-    <div className="max-w-screen-xl mx-auto px-3 sm:px-5 lg:px-6 py-4 space-y-3">
+    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <div className="max-w-screen-xl mx-auto px-3 sm:px-5 lg:px-6 py-4 space-y-2">
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-black tracking-tight flex items-center gap-2 text-slate-900 dark:text-white">
+          <h1 className="text-lg font-black tracking-tight flex items-center gap-2 text-black dark:text-white">
             <span className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/30 shrink-0">
               <Package className="w-4 h-4 text-white" />
             </span>
             {t('stock.title')}
           </h1>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 mr-9 hidden sm:block">{t('stock.subtitle')}</p>
+          <p className="text-xs text-black dark:text-white mt-0.5 mr-9 hidden sm:block">{t('stock.subtitle')}</p>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Button variant="outline" size="sm" onClick={loadStock} className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700">
+          <Button variant="outline" size="sm" onClick={loadStock} className="h-8 w-8 p-0 rounded-lg border-black dark:border-white">
             <RefreshCw className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded-lg border-slate-200 dark:border-slate-700">
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded-lg border-black dark:border-white">
             <Download className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('stock.export')}</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowCategoryModal(true)} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded-lg border-slate-200 dark:border-slate-700">
+          <Button variant="outline" size="sm" onClick={() => setShowCategoryModal(true)} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded-lg border-black dark:border-white">
             <Tag className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('stock.categories')}</span>
           </Button>
@@ -1080,59 +1080,59 @@ export default function StockManagement() {
 
       {/* ── Stats Row ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-        <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
-          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center shrink-0">
-            <Package className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl px-2.5 py-2 flex items-center gap-2.5 shadow-sm">
+          <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center shrink-0">
+            <Package className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{t('stock.items')}</p>
-            <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">{stock.length}</p>
+            <p className="text-[10px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.items')}</p>
+            <p className="text-xl font-black text-black dark:text-white leading-tight">{stock.length}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
-          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl px-2.5 py-2 flex items-center gap-2.5 shadow-sm">
+          <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{t('stock.totalValue')}</p>
-            <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">{Math.round(totalValue).toLocaleString()} <span className="text-xs font-normal text-slate-400">DA</span></p>
+            <p className="text-[10px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.totalValue')}</p>
+            <p className="text-xl font-black text-black dark:text-white leading-tight">{Math.round(totalValue).toLocaleString()} <span className="text-xs font-bold text-black dark:text-white">DA</span></p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
-          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0">
-            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+        <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl px-2.5 py-2 flex items-center gap-2.5 shadow-sm">
+          <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{t('stock.lowStock')}</p>
+            <p className="text-[10px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.lowStock')}</p>
             <p className="text-xl font-black text-amber-600 dark:text-amber-400 leading-tight">{lowStockCount}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
-          <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
-            <PackageX className="w-4 h-4 text-red-600 dark:text-red-400" />
+        <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl px-2.5 py-2 flex items-center gap-2.5 shadow-sm">
+          <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
+            <PackageX className="w-4.5 h-4.5 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{t('stock.outOfStock')}</p>
+            <p className="text-[10px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.outOfStock')}</p>
             <p className="text-xl font-black text-red-600 dark:text-red-400 leading-tight">{outOfStockCount}</p>
           </div>
         </div>
       </div>
 
       {/* ── Table Card ── */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl overflow-hidden shadow-sm">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+        <div className="flex flex-wrap items-center gap-2 px-2.5 py-2 border-b border-black dark:border-white bg-white dark:bg-slate-900/50">
           <div className="relative flex-1 min-w-[120px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-black dark:text-white pointer-events-none" />
             <Input
               placeholder={t('stock.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-7 text-xs border-border bg-background focus-visible:ring-1"
+              className="pl-8 h-7 text-xs border-black dark:border-white bg-background focus-visible:ring-1"
             />
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[110px] h-7 text-xs border-border bg-background">
+            <SelectTrigger className="w-[110px] h-7 text-xs border-black dark:border-white bg-background">
               <SelectValue placeholder={t('stock.allCategories')} />
             </SelectTrigger>
             <SelectContent>
@@ -1147,7 +1147,7 @@ export default function StockManagement() {
             className={`inline-flex items-center gap-1 h-7 px-2 rounded text-xs font-medium border transition-colors ${
               showLowStock
                 ? 'bg-amber-500 border-amber-500 text-white'
-                : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-amber-500/50'
+                : 'border-black dark:border-white bg-background text-black dark:text-white hover:text-foreground hover:border-amber-500/50'
             }`}
           >
             <AlertTriangle className="w-3 h-3" />
@@ -1158,15 +1158,15 @@ export default function StockManagement() {
               </span>
             )}
           </button>
-          <div className="ml-auto text-[11px] text-muted-foreground whitespace-nowrap">
+          <div className="ml-auto text-[11px] text-black dark:text-white whitespace-nowrap">
             {filteredStock.length}/{stock.length}
           </div>
         </div>
 
         {/* ── Mobile card list (hidden on md+) ── */}
-        <div className="md:hidden divide-y divide-border/60">
+        <div className="md:hidden divide-y divide-black dark:divide-slate-700">
           {filteredStock.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="text-center py-12 text-black dark:text-white">
               <PackageX className="w-8 h-8 mx-auto opacity-30 mb-2" />
               <p className="text-sm font-medium">
                 {searchQuery || categoryFilter !== 'all' || showLowStock
@@ -1180,44 +1180,44 @@ export default function StockManagement() {
               const barColor = item.status === 'out_of_stock' ? 'bg-red-500' : item.is_low_stock ? 'bg-amber-500' : 'bg-emerald-500';
               const statusColor = item.status === 'out_of_stock' ? 'text-red-600 dark:text-red-400' : item.is_low_stock ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
               return (
-                <div key={item.id} className="px-3 py-3 active:bg-muted/50 transition-colors">
+                <div key={item.id} className="px-2.5 py-2.5 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors">
                   <div className="flex items-center gap-3">
                     {/* Thumbnail */}
-                    <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-700">
                       {item.images?.[0]
                         ? <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center text-muted-foreground/30"><Package className="w-5 h-5" /></div>
+                        : <div className="w-full h-full flex items-center justify-center text-black dark:text-white"><Package className="w-5 h-5" /></div>
                       }
                     </div>
                     {/* Main info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
-                        <p className="font-semibold text-sm leading-tight truncate">{item.name}</p>
-                        <span className={`text-sm font-bold tabular-nums flex-shrink-0 ml-1 ${statusColor}`}>{item.quantity}</span>
+                        <p className="font-bold text-sm leading-tight truncate text-black dark:text-white">{item.name}</p>
+                        <span className={`text-sm font-black tabular-nums flex-shrink-0 ml-1 ${statusColor}`}>{item.quantity}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         {item.category && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{item.category}</span>
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/30">{item.category}</span>
                         )}
-                        <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${statusColor}`}>
+                        <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold ${statusColor}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'out_of_stock' ? 'bg-red-500' : item.is_low_stock ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                           {item.status === 'out_of_stock' ? t('stock.outStock') : item.is_low_stock ? t('stock.low') : t('stock.active')}
                         </span>
                         {item.unit_price && (
-                          <span className="text-[10px] text-muted-foreground ml-auto tabular-nums">{Math.round(Number(item.unit_price)).toLocaleString()} DA</span>
+                          <span className="text-[10px] font-semibold text-black dark:text-white ml-auto tabular-nums">{Math.round(Number(item.unit_price)).toLocaleString()} DA</span>
                         )}
                       </div>
                       {/* Stock bar */}
                       <div className="flex items-center gap-1.5 mt-1.5">
-                        <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                        <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                           <div className={`h-full rounded-full ${barColor}`} style={{ width: `${stockPct}%` }} />
                         </div>
-                        <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">min {item.reorder_level}</span>
+                        <span className="text-[10px] font-semibold text-black dark:text-white flex-shrink-0">min {item.reorder_level}</span>
                       </div>
                     </div>
                   </div>
                   {/* Action row */}
-                  <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-border/40">
+                  <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-black dark:border-white">
                     <button
                       onClick={() => openAdjustModal(item)}
                       className="flex-1 h-8 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-medium active:bg-emerald-500/20 transition-colors"
@@ -1227,13 +1227,13 @@ export default function StockManagement() {
                     </button>
                     <button
                       onClick={() => openHistoryModal(item)}
-                      className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-muted text-muted-foreground active:bg-muted/80 transition-colors"
+                      className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-muted text-black dark:text-white active:bg-muted/80 transition-colors"
                     >
                       <History className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => openEditModal(item)}
-                      className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-muted text-muted-foreground active:bg-muted/80 transition-colors"
+                      className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-muted text-black dark:text-white active:bg-muted/80 transition-colors"
                     >
                       <Edit className="w-3.5 h-3.5" />
                     </button>
@@ -1252,21 +1252,29 @@ export default function StockManagement() {
 
         {/* ── Desktop table (hidden on mobile) ── */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col className="w-[35%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[10%]" />
+            </colgroup>
             <thead>
-              <tr className="border-b border-border">
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t('stock.product')}</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[100px]">{t('stock.category')}</th>
-                <th className="text-center px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[100px]">{t('stock.qty')}</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[90px]">{t('stock.status')}</th>
-                <th className="text-right px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[90px]">{t('stock.price')}</th>
-                <th className="text-right px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-[120px]">{t('stock.actions')}</th>
+              <tr className="border-b border-black dark:border-white">
+                <th className="text-left px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.product')}</th>
+                <th className="text-left px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.category')}</th>
+                <th className="text-center px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.qty')}</th>
+                <th className="text-left px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.status')}</th>
+                <th className="text-right px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.price')}</th>
+                <th className="text-right px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-black dark:divide-slate-700">
               {filteredStock.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-muted-foreground">
+                  <td colSpan={6} className="text-center py-12 text-black dark:text-white">
                     <PackageX className="w-8 h-8 mx-auto opacity-30 mb-2" />
                     <p className="text-sm font-medium">
                       {searchQuery || categoryFilter !== 'all' || showLowStock
@@ -1280,52 +1288,52 @@ export default function StockManagement() {
                   const stockPct = item.reorder_level > 0 ? Math.min(100, Math.round((item.quantity / (item.reorder_level * 3)) * 100)) : 100;
                   const barColor = item.status === 'out_of_stock' ? 'bg-red-500' : item.is_low_stock ? 'bg-amber-500' : 'bg-emerald-500';
                   return (
-                    <tr key={item.id} className="hover:bg-muted/40 transition-colors group">
-                      <td className="px-3 py-2.5">
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                      <td className="px-2.5 py-2 min-w-0">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-700">
                             {item.images?.[0]
                               ? <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
-                              : <div className="w-full h-full flex items-center justify-center text-muted-foreground/40"><Package className="w-4 h-4" /></div>
+                              : <div className="w-full h-full flex items-center justify-center text-black dark:text-white"><Package className="w-4 h-4" /></div>
                             }
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium text-sm truncate leading-tight">{item.name}</p>
+                            <p className="font-bold text-sm truncate leading-tight text-black dark:text-white">{item.name}</p>
                             {item.description && (
-                              <p className="text-[11px] text-muted-foreground truncate max-w-[170px] leading-tight">{item.description}</p>
+                              <p className="text-[11px] font-medium text-black dark:text-white truncate max-w-[170px] leading-tight">{item.description}</p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-2.5 py-2">
                         {item.category
-                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-medium border border-primary/20">{item.category}</span>
-                          : <span className="text-[11px] text-muted-foreground/50">—</span>
+                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-semibold border border-primary/30">{item.category}</span>
+                          : <span className="text-[11px] text-black dark:text-white/70">—</span>
                         }
                       </td>
-                      <td className="px-3 py-2.5 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className={`tabular-nums font-bold text-sm ${
-                            item.status === 'out_of_stock' ? 'text-red-600 dark:text-red-400'
-                            : item.is_low_stock ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-foreground'
-                          }`}>{item.quantity}</span>
-                          <div className="w-12 h-1 rounded-full bg-muted overflow-hidden">
-                            <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${stockPct}%` }} />
-                          </div>
-                          <span className="text-[10px] text-muted-foreground/60">min {item.reorder_level}</span>
+                      <td className="px-2.5 py-2 text-center">
+                        <span className={`tabular-nums font-black text-sm block ${
+                          item.status === 'out_of_stock' ? 'text-red-600 dark:text-red-400'
+                          : item.is_low_stock ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-black dark:text-white'
+                        }`}>{item.quantity}</span>
+                        <div className="text-center mt-1">
+                          <span className="inline-block w-16 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden align-middle">
+                            <span className={`h-full rounded-full transition-all block ${barColor}`} style={{ width: `${stockPct}%` }} />
+                          </span>
                         </div>
+                        <span className="text-[10px] font-semibold text-black dark:text-white block mt-1">min {item.reorder_level}</span>
                       </td>
-                      <td className="px-3 py-2.5">
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                          item.status === 'out_of_stock' ? 'bg-red-500/10 text-red-600 dark:text-red-400'
-                          : item.status === 'discontinued' ? 'bg-muted text-muted-foreground'
-                          : item.is_low_stock ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                          : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                      <td className="px-2.5 py-2">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          item.status === 'out_of_stock' ? 'bg-red-500/15 text-red-600 dark:text-red-400'
+                          : item.status === 'discontinued' ? 'bg-slate-100 dark:bg-slate-700 text-black dark:text-white'
+                          : item.is_low_stock ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                          : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${
                             item.status === 'out_of_stock' ? 'bg-red-500'
-                            : item.status === 'discontinued' ? 'bg-muted-foreground'
+                            : item.status === 'discontinued' ? 'bg-slate-400'
                             : item.is_low_stock ? 'bg-amber-500'
                             : 'bg-emerald-500'
                           }`} />
@@ -1335,24 +1343,24 @@ export default function StockManagement() {
                             : t('stock.active')}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">
+                      <td className="px-2.5 py-2 text-right tabular-nums">
                         {item.unit_price
-                          ? <span className="font-semibold text-sm">{Math.round(Number(item.unit_price)).toLocaleString()} <span className="text-[10px] font-normal text-muted-foreground">DA</span></span>
-                          : <span className="text-muted-foreground/50 text-xs">—</span>
+                          ? <span className="font-bold text-sm text-black dark:text-white">{Math.round(Number(item.unit_price)).toLocaleString()} <span className="text-[10px] font-semibold text-black dark:text-white">DA</span></span>
+                          : <span className="text-black dark:text-white/70 text-xs">—</span>
                         }
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-2.5 py-2">
                         <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => openAdjustModal(item)} title={t('stock.adjustQuantity')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/30 text-muted-foreground transition-colors">
+                          <button onClick={() => openAdjustModal(item)} title={t('stock.adjustQuantity')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/30 text-black dark:text-white hover:text-emerald-600 transition-colors">
                             <TrendingUp className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => openHistoryModal(item)} title={t('stock.history')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/30 text-muted-foreground transition-colors">
+                          <button onClick={() => openHistoryModal(item)} title={t('stock.history')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/30 text-black dark:text-white hover:text-blue-600 transition-colors">
                             <History className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => openEditModal(item)} title={t('stock.editProduct')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors">
+                          <button onClick={() => openEditModal(item)} title={t('stock.editProduct')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-indigo-100 hover:text-indigo-700 dark:hover:bg-indigo-900/30 text-black dark:text-white hover:text-indigo-600 transition-colors">
                             <Edit className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => openDeleteDialog(item)} title={t('stock.deleteProduct')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 text-muted-foreground transition-colors">
+                          <button onClick={() => openDeleteDialog(item)} title={t('stock.deleteProduct')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 text-black dark:text-white hover:text-red-600 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -1367,7 +1375,7 @@ export default function StockManagement() {
 
         {/* Footer */}
         {filteredStock.length > 0 && (
-          <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 flex items-center gap-4 text-[11px] text-slate-400">
+          <div className="px-3 py-2 border-t border-black dark:border-white bg-slate-50/50 dark:bg-slate-900/20 flex items-center gap-4 text-[11px] text-black dark:text-white">
             <span><span className="font-semibold text-foreground">{inStockCount}</span> {t('stock.active')}</span>
             <span><span className="font-semibold text-amber-600">{lowStockCount}</span> {t('stock.low')}</span>
             <span><span className="font-semibold text-red-600">{outOfStockCount}</span> {t('stock.outOfStock')}</span>
@@ -1394,7 +1402,7 @@ export default function StockManagement() {
         }
       }}>
         <DialogContent className="max-w-2xl bg-gradient-to-br from-background via-background to-primary/5 dark:from-slate-950 dark:to-slate-900/30 p-3 md:p-4">
-          <DialogHeader className="space-y-1 pb-2 md:pb-3 border-b border-border/50">
+          <DialogHeader className="space-y-1 pb-2 md:pb-3 border-b border-black dark:border-white/50">
             <DialogTitle className="text-lg md:text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
               {showAddModal ? t('stock.addNewProduct') : t('stock.editProduct')}
             </DialogTitle>
@@ -1585,8 +1593,8 @@ export default function StockManagement() {
                     <Layers className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('stock.form.sections.variants')}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('stock.hints.variants')}</p>
+                    <h3 className="text-lg font-bold text-black dark:text-white">{t('stock.form.sections.variants')}</h3>
+                    <p className="text-xs text-black dark:text-white">{t('stock.hints.variants')}</p>
                   </div>
                 </div>
 
@@ -1598,14 +1606,14 @@ export default function StockManagement() {
 
                 {!loadingVariants && (<>
                 {/* Step 1: Colors */}
-                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-black dark:border-white overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-black dark:border-white flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
                       <Palette className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <span className="text-sm font-bold text-slate-800 dark:text-white">① اختر الألوان المتوفرة</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 block">اضغط على كل لون متوفر لديك</span>
+                      <span className="text-sm font-bold text-black dark:text-white">① اختر الألوان المتوفرة</span>
+                      <span className="text-xs text-black dark:text-white block">اضغط على كل لون متوفر لديك</span>
                     </div>
                     {existingColors.length > 0 && (
                       <span className="text-xs font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-2.5 py-1 rounded-full">
@@ -1622,10 +1630,10 @@ export default function StockManagement() {
                             className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                               selected
                                 ? 'bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-500 dark:border-indigo-400 shadow-md shadow-indigo-500/10'
-                                : 'bg-slate-50 dark:bg-slate-700/50 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-sm'
+                                : 'bg-slate-50 dark:bg-slate-700/50 border-2 border-transparent hover:border-black dark:hover:border-white hover:shadow-sm'
                             }`}>
                             <span className={`w-5 h-5 rounded-full ${c.tw} flex-shrink-0 ${selected ? `ring-2 ${c.ring} ring-offset-2` : ''}`} />
-                            <span className="text-slate-700 dark:text-slate-200">{c.name}</span>
+                            <span className="text-black dark:text-white">{c.name}</span>
                             {selected && (
                               <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center shadow-sm">
                                 <Check className="h-3 w-3 text-white" />
@@ -1651,8 +1659,8 @@ export default function StockManagement() {
                           </button>
                         </button>
                       ))}
-                      <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5">
-                        <Plus className="h-4 w-4 text-slate-400" />
+                      <div className="flex items-center gap-1.5 border-2 border-dashed border-black dark:border-white rounded-xl px-3 py-1.5">
+                        <Plus className="h-4 w-4 text-black dark:text-white" />
                         <Input
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
@@ -1670,14 +1678,14 @@ export default function StockManagement() {
                 </div>
 
                 {/* Step 2: Sizes */}
-                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-black dark:border-white overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-black dark:border-white flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
                       <Ruler className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <span className="text-sm font-bold text-slate-800 dark:text-white">② اختر المقاسات المتوفرة</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 block">اضغط على كل مقاس متوفر لديك</span>
+                      <span className="text-sm font-bold text-black dark:text-white">② اختر المقاسات المتوفرة</span>
+                      <span className="text-xs text-black dark:text-white block">اضغط على كل مقاس متوفر لديك</span>
                     </div>
                     {existingSizes.length > 0 && (
                       <span className="text-xs font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-300 px-2.5 py-1 rounded-full">
@@ -1688,8 +1696,8 @@ export default function StockManagement() {
                   <div className="p-4 space-y-3">
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
-                        <Shirt className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ملابس</span>
+                        <Shirt className="h-3.5 w-3.5 text-black dark:text-white" />
+                        <span className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider">ملابس</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {CLOTHING.map((s) => {
@@ -1697,7 +1705,7 @@ export default function StockManagement() {
                           return (
                             <button key={s} type="button" onClick={() => toggleSize(s)}
                               className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                                selected ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105' : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                selected ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105' : 'bg-slate-100 dark:bg-slate-700/60 text-black dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600'
                               }`}>{s}</button>
                           );
                         })}
@@ -1705,8 +1713,8 @@ export default function StockManagement() {
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
-                        <Footprints className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">أحذية</span>
+                        <Footprints className="h-3.5 w-3.5 text-black dark:text-white" />
+                        <span className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider">أحذية</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {SHOES.map((s) => {
@@ -1714,14 +1722,14 @@ export default function StockManagement() {
                           return (
                             <button key={s} type="button" onClick={() => toggleSize(s)}
                               className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                                selected ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105' : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                selected ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105' : 'bg-slate-100 dark:bg-slate-700/60 text-black dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600'
                               }`}>{s}</button>
                           );
                         })}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 w-fit">
-                      <Plus className="h-4 w-4 text-slate-400" />
+                    <div className="flex items-center gap-1.5 border-2 border-dashed border-black dark:border-white rounded-xl px-3 py-1.5 w-fit">
+                      <Plus className="h-4 w-4 text-black dark:text-white" />
                       <Input
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -1739,14 +1747,14 @@ export default function StockManagement() {
 
                 {/* Step 3: Variants table */}
                 {variantsDraft.length > 0 && (
-                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
+                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-black dark:border-white overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-black dark:border-white flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                       <Package className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <span className="text-sm font-bold text-slate-800 dark:text-white">③ المخزون لكل نوع</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 block">أدخل الكمية المتوفرة لكل نوع</span>
+                      <span className="text-sm font-bold text-black dark:text-white">③ المخزون لكل نوع</span>
+                      <span className="text-xs text-black dark:text-white block">أدخل الكمية المتوفرة لكل نوع</span>
                     </div>
                     <span className="text-xs font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2.5 py-1 rounded-full">
                       {variantsDraft.length} نوع
@@ -1765,29 +1773,29 @@ export default function StockManagement() {
                                     {names.map((n, i) => {
                                       const def = COLORS.find(c => c.name === n);
                                       return (
-                                        <span key={i} className={`w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 ${def?.tw || 'bg-slate-300'}`} />
+                                        <span key={i} className={`w-4 h-4 rounded-full border-2 border-white dark:border-black ${def?.tw || 'bg-slate-300'}`} />
                                       );
                                     })}
                                   </div>
                                 );
                               }
                               const cd = COLORS.find(c => c.name === color);
-                              return cd ? <span className={`w-4 h-4 rounded-full ${cd.tw}`} /> : <Palette className="h-4 w-4 text-slate-400" />;
+                              return cd ? <span className={`w-4 h-4 rounded-full ${cd.tw}`} /> : <Palette className="h-4 w-4 text-black dark:text-white" />;
                             })()}
-                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{color}</span>
-                            <span className="text-[10px] text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">{variants.length}</span>
+                            <span className="text-sm font-bold text-black dark:text-white">{color}</span>
+                            <span className="text-[10px] text-black dark:text-white bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">{variants.length}</span>
                           </div>
                         )}
                         {variants.map((v) => (
                           <div key={v.originalIndex} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
-                            <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${v.size ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                            <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${v.size ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-700 text-black dark:text-white'}`}>
                               {v.size || '—'}
                             </span>
-                            <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${v.size2 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                            <span className={`min-w-[42px] text-center px-2 py-1 rounded-lg text-xs font-bold ${v.size2 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 text-black dark:text-white'}`}>
                               {v.size2 || '—'}
                             </span>
                             <div className="flex items-center gap-1.5 flex-1">
-                              <span className="text-xs text-slate-400">الكمية:</span>
+                              <span className="text-xs text-black dark:text-white">الكمية:</span>
                               <Input
                                 type="number" min={0}
                                 value={v.stock_quantity ?? ''}
@@ -1814,7 +1822,7 @@ export default function StockManagement() {
                                 }}
                                 placeholder="السعر" className="h-8 w-20 text-sm text-center"
                               />
-                              <span className="text-[10px] text-slate-400">دج</span>
+                              <span className="text-[10px] text-black dark:text-white">دج</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <span dir="ltr">
@@ -1838,7 +1846,7 @@ export default function StockManagement() {
                       </div>
                     ))}
                   </div>
-                  <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                  <div className="px-4 py-3 border-t border-black dark:border-white bg-slate-50/50 dark:bg-slate-800/50">
                     <Button type="button" size="sm" variant="outline"
                       onClick={() => {
                         setVariantsDraft(prev => [...prev, { color: '', size: '', variant_name: '', price: undefined, stock_quantity: 0, is_active: true, sort_order: prev.length }]);
@@ -1861,8 +1869,8 @@ export default function StockManagement() {
                     <TicketPercent className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('stock.offersTitle')}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('stock.offersDesc')}</p>
+                    <h3 className="text-lg font-bold text-black dark:text-white">{t('stock.offersTitle')}</h3>
+                    <p className="text-xs text-black dark:text-white">{t('stock.offersDesc')}</p>
                   </div>
                   <Button
                     type="button"
@@ -1894,12 +1902,12 @@ export default function StockManagement() {
                 )}
 
                 {!loadingOffers && (offersDraft.length === 0) && (
-                  <div className="text-center py-8 bg-white dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                  <div className="text-center py-8 bg-white dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-black dark:border-white">
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 flex items-center justify-center mx-auto mb-3">
                       <Gift className="h-7 w-7 text-orange-400 dark:text-orange-500" />
                     </div>
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">لا يوجد عروض بعد</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[280px] mx-auto leading-relaxed">
+                    <p className="text-sm font-semibold text-black dark:text-white mb-1">لا يوجد عروض بعد</p>
+                    <p className="text-xs text-black dark:text-white max-w-[280px] mx-auto leading-relaxed">
                       أنشئ عروض خاصة مثل: اشترِ 2 بسعر 2700 دج بدل 3000 دج
                     </p>
                     {showAddModal && (
@@ -1911,7 +1919,7 @@ export default function StockManagement() {
                 )}
 
                 {!loadingOffers && offersDraft.length > 0 && (
-                  <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                  <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-black dark:border-white overflow-hidden shadow-sm">
                     <div className="divide-y divide-slate-100 dark:divide-slate-700">
                     {offersDraft.map((o, idx) => {
                       const unitPrice = Number(formData.unit_price) ?? 0;
@@ -1939,15 +1947,15 @@ export default function StockManagement() {
                               }}
                             />
                             {o.image_url ? (
-                              <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
+                              <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-black dark:border-white">
                                 <img src={o.image_url} alt="" className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                                   <Edit className="h-3 w-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
                               </div>
                             ) : (
-                              <div className="w-10 h-10 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center group-hover:border-orange-400 transition-colors">
-                                <ImageIcon className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-orange-400 transition-colors" />
+                              <div className="w-10 h-10 rounded-lg border-2 border-dashed border-black dark:border-white flex items-center justify-center group-hover:border-orange-400 transition-colors">
+                                <ImageIcon className="h-4 w-4 text-black dark:text-white group-hover:text-orange-400 transition-colors" />
                               </div>
                             )}
                           </label>
@@ -1975,7 +1983,7 @@ export default function StockManagement() {
                               onChange={(e) => { setOffersDraft((prev) => prev.map((row, i) => (i === idx ? { ...row, quantity: Number(e.target.value) } : row))); setOffersDirty(true); }}
                               className="h-8 w-14 text-sm text-center"
                             />
-                            <span className="text-xs text-slate-400">×</span>
+                            <span className="text-xs text-black dark:text-white">×</span>
                             <Input
                               type="number" min={0} step="0.01"
                               value={formatPriceForInput(o.bundle_price)}
@@ -1989,7 +1997,7 @@ export default function StockManagement() {
                             className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
                               o.free_delivery
                                 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300'
-                                : 'bg-slate-100 dark:bg-slate-700 text-slate-400 border border-transparent hover:border-slate-300'
+                                : 'bg-slate-100 dark:bg-slate-700 text-black dark:text-white border border-transparent hover:border-black'
                             }`}>
                             <Truck className="h-3 w-3" />
                             {o.free_delivery ? '✓' : 'مجاني'}
@@ -2092,7 +2100,7 @@ export default function StockManagement() {
                     min="0"
                     className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
                   />
-                  <p className="text-xs text-muted-foreground">{t('stock.hints.quantity')}</p>
+                  <p className="text-xs text-black dark:text-white">{t('stock.hints.quantity')}</p>
                 </div>
 
               </div>
@@ -2176,7 +2184,7 @@ export default function StockManagement() {
                   />
                   {uploading && (
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-black dark:text-white">
                         <span className="truncate max-w-[200px]">{uploadFileName}</span>
                         <span dir="ltr">{uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
                       </div>
@@ -2188,7 +2196,7 @@ export default function StockManagement() {
                       </div>
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-black dark:text-white">
                     Upload up to 10 images. Each image must be &lt; 10MB.
                   </p>
                 </div>
@@ -2199,7 +2207,7 @@ export default function StockManagement() {
               <div className="space-y-3 bg-rose-500/5 dark:bg-rose-900/10 p-2 md:p-3 rounded border border-rose-500/20">
                 <div>
                   <h3 className="text-lg font-bold text-rose-600 dark:text-rose-400">🎬 فيديو المنتج</h3>
-                  <p className="text-sm text-muted-foreground">الفيديو يظهر أولاً في معرض الصور — العميل يرى الفيديو ثم يتنقل للصور</p>
+                  <p className="text-sm text-black dark:text-white">الفيديو يظهر أولاً في معرض الصور — العميل يرى الفيديو ثم يتنقل للصور</p>
                 </div>
                 {/* Upload video file directly */}
                 <div className="flex items-center gap-2">
@@ -2241,7 +2249,7 @@ export default function StockManagement() {
                   </label>
                   {uploadingVideo && (
                     <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-black dark:text-white">
                         <span className="truncate max-w-[200px]">{uploadFileName}</span>
                         <span dir="ltr">{uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
                       </div>
@@ -2253,7 +2261,7 @@ export default function StockManagement() {
                       </div>
                     </div>
                   )}
-                  <span className="text-xs text-muted-foreground">أو الصق رابطاً أدناه</span>
+                  <span className="text-xs text-black dark:text-white">أو الصق رابطاً أدناه</span>
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="video_url" className="text-base font-bold">رابط الفيديو</Label>
@@ -2264,7 +2272,7 @@ export default function StockManagement() {
                     placeholder="https://youtube.com/... أو رابط مباشر"
                     className="border-rose-500/30 focus:border-rose-500/60 transition-colors h-10 text-base"
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-black dark:text-white">
                     يدعم YouTube، Vimeo، أو رابط فيديو مباشر (MP4)
                   </p>
                 </div>
@@ -2283,8 +2291,8 @@ export default function StockManagement() {
             )}
 
             {activeFormSection === 'notes' && (
-              <div className="space-y-2 bg-slate-500/5 dark:bg-slate-900/10 p-2 md:p-3 rounded border border-slate-500/20">
-                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">Notes</h3>
+              <div className="space-y-2 bg-slate-500/5 dark:bg-slate-900/10 p-2 md:p-3 rounded border border-black dark:border-white">
+                <h3 className="text-lg font-bold text-black dark:text-white">Notes</h3>
                 <div className="space-y-1">
                   <Label htmlFor="notes" className="text-base font-bold">{t('stock.additionalNotes')}</Label>
                   <Textarea
@@ -2293,14 +2301,14 @@ export default function StockManagement() {
                     onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                     placeholder={t('stock.additionalNotes')}
                     rows={4}
-                    className="border-slate-500/30 focus:border-slate-500/60 transition-colors resize-none text-base"
+                    className="border-black dark:border-white focus:border-black dark:focus:border-white transition-colors resize-none text-base"
                   />
                 </div>
               </div>
             )}
           </div>
 
-          <DialogFooter className="border-t border-border/50 pt-2 md:pt-3 mt-2 gap-2 flex flex-row-reverse">
+          <DialogFooter className="border-t border-black dark:border-white/50 pt-2 md:pt-3 mt-2 gap-2 flex flex-row-reverse">
             <Button 
               onClick={showAddModal ? handleCreateStock : handleUpdateStock}
               className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700 text-white shadow hover:shadow-md transition-all text-base font-bold h-10"
@@ -2336,14 +2344,14 @@ export default function StockManagement() {
       }}>
         <DialogContent className="max-w-sm p-0 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-black dark:border-white">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-sm font-semibold leading-tight">{t('stock.adjustQuantity')}</DialogTitle>
               {selectedItem && (
-                <p className="text-[11px] text-muted-foreground truncate mt-0.5">{selectedItem.name}</p>
+                <p className="text-[11px] text-black dark:text-white truncate mt-0.5">{selectedItem.name}</p>
               )}
             </div>
           </div>
@@ -2352,19 +2360,19 @@ export default function StockManagement() {
           <div className="px-4 py-3 space-y-3">
             {/* Current → New qty display */}
             {selectedItem && (
-              <div className="flex items-center justify-between rounded-lg bg-muted/40 border border-border px-3 py-2">
+              <div className="flex items-center justify-between rounded-lg bg-muted/40 border border-black dark:border-white px-3 py-2">
                 <div className="text-center">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.currentQuantity')}</p>
+                  <p className="text-[10px] font-medium text-black dark:text-white uppercase tracking-wide">{t('stock.currentQuantity')}</p>
                   <p className="text-2xl font-bold tabular-nums leading-tight">{selectedItem.quantity}</p>
                 </div>
                 <div className="flex flex-col items-center gap-0.5">
-                  <div className={`text-xs font-bold px-2 py-0.5 rounded ${adjustData.adjustment > 0 ? 'text-emerald-600' : adjustData.adjustment < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  <div className={`text-xs font-bold px-2 py-0.5 rounded ${adjustData.adjustment > 0 ? 'text-emerald-600' : adjustData.adjustment < 0 ? 'text-red-500' : 'text-black dark:text-white'}`}>
                     {adjustData.adjustment > 0 ? `+${adjustData.adjustment}` : adjustData.adjustment || '±0'}
                   </div>
                   <div className="w-8 h-px bg-border" />
                 </div>
                 <div className="text-center">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t('stock.newQuantity')}</p>
+                  <p className="text-[10px] font-medium text-black dark:text-white uppercase tracking-wide">{t('stock.newQuantity')}</p>
                   <p className={`text-2xl font-bold tabular-nums leading-tight ${
                     selectedItem.quantity + adjustData.adjustment < 0 ? 'text-red-500' : 'text-foreground'
                   }`}>
@@ -2376,12 +2384,12 @@ export default function StockManagement() {
 
             {/* Adjustment input with ± buttons */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-muted-foreground">{t('stock.adjustment')}</Label>
+              <Label className="text-xs font-medium text-black dark:text-white">{t('stock.adjustment')}</Label>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setAdjustData(d => ({ ...d, adjustment: d.adjustment - 1 }))}
-                  className="h-8 w-8 rounded border border-border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors font-bold text-base flex-shrink-0"
+                  className="h-8 w-8 rounded border border-black dark:border-white bg-background hover:bg-muted flex items-center justify-center text-black dark:text-white hover:text-foreground transition-colors font-bold text-base flex-shrink-0"
                 >−</button>
                 <Input
                   type="number"
@@ -2397,7 +2405,7 @@ export default function StockManagement() {
                 <button
                   type="button"
                   onClick={() => setAdjustData(d => ({ ...d, adjustment: d.adjustment + 1 }))}
-                  className="h-8 w-8 rounded border border-border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors font-bold text-base flex-shrink-0"
+                  className="h-8 w-8 rounded border border-black dark:border-white bg-background hover:bg-muted flex items-center justify-center text-black dark:text-white hover:text-foreground transition-colors font-bold text-base flex-shrink-0"
                 >+</button>
               </div>
             </div>
@@ -2422,7 +2430,7 @@ export default function StockManagement() {
 
             {/* Reason */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-muted-foreground">{t('stock.reason')}</Label>
+              <Label className="text-xs font-medium text-black dark:text-white">{t('stock.reason')}</Label>
               <Select value={adjustData.reason} onValueChange={(value) => setAdjustData({ ...adjustData, reason: value })}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
@@ -2440,7 +2448,7 @@ export default function StockManagement() {
 
             {/* Notes */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-muted-foreground">{t('stock.notes')}</Label>
+              <Label className="text-xs font-medium text-black dark:text-white">{t('stock.notes')}</Label>
               <Textarea
                 value={adjustData.notes}
                 onChange={(e) => setAdjustData({ ...adjustData, notes: e.target.value })}
@@ -2452,7 +2460,7 @@ export default function StockManagement() {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center gap-2 px-4 py-3 border-t border-border bg-muted/20">
+          <div className="flex items-center gap-2 px-4 py-3 border-t border-black dark:border-white bg-muted/20">
             <Button variant="outline" size="sm" className="h-8 text-xs flex-1" onClick={() => setShowAdjustModal(false)}>
               {t('cancel')}
             </Button>
@@ -2481,7 +2489,7 @@ export default function StockManagement() {
 
           <div className="overflow-y-auto max-h-96">
             {stockHistory.length === 0 ? (
-              <p className="text-center py-4 md:py-6 text-muted-foreground">{t('stock.noHistory')}</p>
+              <p className="text-center py-4 md:py-6 text-black dark:text-white">{t('stock.noHistory')}</p>
             ) : (
               <div className="space-y-4">
                 {stockHistory.map((record) => (
@@ -2489,7 +2497,7 @@ export default function StockManagement() {
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <Badge variant="outline">{record.reason.replace('_', ' ')}</Badge>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-black dark:text-white mt-1">
                           {new Date(record.created_at).toLocaleString()}
                         </p>
                       </div>
@@ -2497,16 +2505,16 @@ export default function StockManagement() {
                         <p className={`text-lg font-bold ${record.adjustment >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {record.adjustment >= 0 ? '+' : ''}{record.adjustment}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-black dark:text-white">
                           {record.quantity_before} → {record.quantity_after}
                         </p>
                       </div>
                     </div>
                     {record.notes && (
-                      <p className="text-sm mt-2 text-muted-foreground">{record.notes}</p>
+                      <p className="text-sm mt-2 text-black dark:text-white">{record.notes}</p>
                     )}
                     {record.adjusted_by_name && (
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-black dark:text-white mt-1">
                         By: {record.adjusted_by_name}
                       </p>
                     )}
@@ -2581,7 +2589,7 @@ export default function StockManagement() {
               <Label className="font-bold">{t('stock.categories')} ({allCategories.length})</Label>
               <div className="max-h-[300px] overflow-y-auto space-y-2">
                 {allCategories.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
+                  <p className="text-sm text-black dark:text-white text-center py-4">
                     {t('stock.noCategories')}
                   </p>
                 ) : (
@@ -2602,7 +2610,7 @@ export default function StockManagement() {
                         )}
                         <div>
                           <p className="font-medium">{cat.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-black dark:text-white">
                             {cat.product_count} product{cat.product_count !== 1 ? 's' : ''}
                           </p>
                         </div>

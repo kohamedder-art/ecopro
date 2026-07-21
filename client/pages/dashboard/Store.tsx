@@ -101,6 +101,7 @@ const DEFAULT_PRODUCT_FORM: StoreProductFormData = {
   shipping_flat_fee: null,
   notes: '',
   video_url: '',
+  description: '',
 };
 
 // ─── AI Helper Components (store owner only, never shown to customers) ───────

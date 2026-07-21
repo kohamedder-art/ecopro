@@ -19,7 +19,6 @@ import {
   Database,
   DollarSign,
   Eye,
-  Gauge,
   Gift,
   HeartPulse,
   Loader2,
@@ -50,7 +49,6 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
 import { Badge } from '@/components/ui/badge';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { Button } from '@/components/ui/button';
-import BigCarGauge from '@/components/platform-admin/BigCarGauge';
 import GlobalAnnouncementsManager from '@/components/platform-admin/GlobalAnnouncementsManager';
 import AdminAffiliatesPage from '@/pages/platform-admin/AdminAffiliatesPage';
 import Header from '@/components/layout/Header';
@@ -1829,27 +1827,31 @@ export default function PlatformAdmin() {
                         {serverHealth.db.render?.pgVersion && <span className="text-[10px] text-gray-500 dark:text-slate-500 font-mono">PG {serverHealth.db.render.pgVersion}</span>}
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        <BigCarGauge
-                          title="CPU"
-                          mainValue={serverHealth.db.render?.cpuPercentage ?? null}
-                          mainLabel="Database CPU"
-                          mainUnit="%"
-                          icon={<Cpu className="w-4 h-4" />}
-                          goodThreshold={50}
-                          warnThreshold={80}
-                        />
-                        <BigCarGauge
-                          title="RAM"
-                          mainValue={serverHealth.db.render?.memoryPct ?? null}
-                          mainLabel="Database RAM"
-                          mainUnit="%"
-                          secondaryValue={serverHealth.db.render?.memoryMB ?? null}
-                          secondaryLabel="Used"
-                          secondaryUnit=" MB"
-                          icon={<MemoryStick className="w-4 h-4" />}
-                          goodThreshold={50}
-                          warnThreshold={80}
-                        />
+                        <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
+                          <div className="flex items-center gap-2 text-slate-400 mb-2">
+                            <Cpu className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-semibold uppercase tracking-wider">CPU</span>
+                          </div>
+                          <div className="text-2xl font-bold font-mono text-white">
+                            {serverHealth.db.render?.cpuPercentage != null ? `${serverHealth.db.render.cpuPercentage.toFixed(1)}` : '-'}
+                            <span className="text-sm text-slate-500 font-normal ml-0.5">%</span>
+                          </div>
+                        </div>
+                        <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
+                          <div className="flex items-center gap-2 text-slate-400 mb-2">
+                            <MemoryStick className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-semibold uppercase tracking-wider">RAM</span>
+                          </div>
+                          <div className="text-2xl font-bold font-mono text-white">
+                            {serverHealth.db.render?.memoryPct != null ? `${serverHealth.db.render.memoryPct.toFixed(1)}` : '-'}
+                            <span className="text-sm text-slate-500 font-normal ml-0.5">%</span>
+                          </div>
+                          {serverHealth.db.render?.memoryMB != null && (
+                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                              {serverHealth.db.render.memoryMB.toFixed(0)} MB used
+                            </div>
+                          )}
+                        </div>
                       </div>
                       {serverHealth.db.render ? (
                         <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-slate-400 mt-3 pt-3 border-t border-slate-700/40">
@@ -1873,27 +1875,31 @@ export default function PlatformAdmin() {
                         {serverHealth.service?.serviceName && <span className="text-[10px] text-slate-500 font-mono truncate max-w-[200px]" title={serverHealth.service.serviceName}>{serverHealth.service.serviceName}</span>}
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        <BigCarGauge
-                          title="CPU"
-                          mainValue={serverHealth.service?.cpuPct ?? null}
-                          mainLabel="Web CPU"
-                          mainUnit="%"
-                          icon={<Cpu className="w-4 h-4" />}
-                          goodThreshold={50}
-                          warnThreshold={80}
-                        />
-                        <BigCarGauge
-                          title="RAM"
-                          mainValue={serverHealth.service?.memoryPct ?? null}
-                          mainLabel="Web RAM"
-                          mainUnit="%"
-                          secondaryValue={serverHealth.service?.memoryMb ?? null}
-                          secondaryLabel="Used"
-                          secondaryUnit=" MB"
-                          icon={<MemoryStick className="w-4 h-4" />}
-                          goodThreshold={50}
-                          warnThreshold={80}
-                        />
+                        <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
+                          <div className="flex items-center gap-2 text-slate-400 mb-2">
+                            <Cpu className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-semibold uppercase tracking-wider">CPU</span>
+                          </div>
+                          <div className="text-2xl font-bold font-mono text-white">
+                            {serverHealth.service?.cpuPct != null ? `${serverHealth.service.cpuPct.toFixed(1)}` : '-'}
+                            <span className="text-sm text-slate-500 font-normal ml-0.5">%</span>
+                          </div>
+                        </div>
+                        <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
+                          <div className="flex items-center gap-2 text-slate-400 mb-2">
+                            <MemoryStick className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-semibold uppercase tracking-wider">RAM</span>
+                          </div>
+                          <div className="text-2xl font-bold font-mono text-white">
+                            {serverHealth.service?.memoryPct != null ? `${serverHealth.service.memoryPct.toFixed(1)}` : '-'}
+                            <span className="text-sm text-slate-500 font-normal ml-0.5">%</span>
+                          </div>
+                          {serverHealth.service?.memoryMb != null && (
+                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                              {serverHealth.service.memoryMb.toFixed(0)} MB used
+                            </div>
+                          )}
+                        </div>
                       </div>
                       {serverHealth.service ? (
                         <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-slate-400 mt-3 pt-3 border-t border-slate-700/40">

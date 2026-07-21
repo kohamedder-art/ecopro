@@ -142,7 +142,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   );
 }
 
-export default function BoutiqueTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView, initialProductSlug, navigate }: TemplateProps) {
+export default function BoutiqueTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView, initialProductSlug, navigate, bannerUrl: propBannerUrl }: TemplateProps) {
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
@@ -224,28 +224,33 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const categoryName = settings?.boutique_category_name || settings?.template_featured_title || 'مجموعة المنتجات';
   const footerText = settings?.boutique_footer_text || settings?.store_description || 'صنع بشغف لزبائننا في الجزائر';
 
-  // Hero product = first product (or dzp_main_product_id)
-  const heroProduct = useMemo(() => {
-    if (initialProductSlug) {
-      const bySlug = products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug);
-      if (bySlug) return bySlug;
-    }
-    const mainId = settings?.dzp_main_product_id;
-    const found = mainId ? products?.find((p: any) => String(p.id) === String(mainId)) : null;
-    return found || products?.[0] || null;
-  }, [products, settings?.dzp_main_product_id, initialProductSlug]);
+   // Hero product = first product (or dzp_main_product_id)
+   const heroProduct = useMemo(() => {
+     if (initialProductSlug) {
+       const bySlug = products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug);
+       if (bySlug) return bySlug;
+     }
+     const mainId = settings?.dzp_main_product_id;
+     const found = mainId ? products?.find((p: any) => String(p.id) === String(mainId)) : null;
+     return found || products?.[0] || null;
+   }, [products, settings?.dzp_main_product_id, initialProductSlug]);
 
-  // Offers system
-  const { offers, loading: offersLoading } = useProductOffers(storeSlug, heroProduct?.id);
-  const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
-  const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
-  const deliveryFee = resolveDeliveryFee(orderProduct, selectedOffer, baseDeliveryFee);
+   // Optional custom hero banner (set via store settings banner_url) — replaces the product hero
+   const heroBannerUrl = propBannerUrl || settings?.banner_url || null;
+   const hasHeroBanner = !!heroBannerUrl;
 
-  // Collection = rest of products (excluding the hero)
-  const collectionProducts = useMemo(() => {
-    if (!products || products.length <= 1) return [];
-    return products.filter(p => p.id !== heroProduct?.id);
-  }, [products, heroProduct?.id]);
+   // Offers system
+   const { offers, loading: offersLoading } = useProductOffers(storeSlug, heroProduct?.id);
+   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
+   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
+   const deliveryFee = resolveDeliveryFee(orderProduct, selectedOffer, baseDeliveryFee);
+
+   // Collection = all products when a custom banner is used, otherwise all except the hero product
+   const collectionProducts = useMemo(() => {
+     if (!products || products.length === 0) return [];
+     if (hasHeroBanner) return products;
+     return products.filter(p => p.id !== heroProduct?.id);
+   }, [products, heroProduct?.id, hasHeroBanner]);
 
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
     e.currentTarget.setAttribute('data-setting-key', key);
@@ -408,49 +413,55 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
     <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor }} dir="rtl">
 
       {/* HERO SECTION - full width */}
-      {heroProduct && (
+      {(hasHeroBanner || heroProduct) && (
         <section className="relative overflow-hidden h-[55dvh] md:h-[420px]">
           <img
-            src={heroProduct.images?.[0] || ''}
-            alt={heroProduct.title}
+            src={heroBannerUrl || heroProduct?.images?.[0] || ''}
+            alt={hasHeroBanner ? (settings?.store_name || brandName) : heroProduct?.title}
             loading="eager"
             fetchpriority="high"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent, transparent)' }} />
-          <div className="absolute bottom-0 p-6 text-white max-w-6xl mx-auto w-full left-0 right-0">
-              <span
-                className="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest text-white"
-                style={{ backgroundColor: accentColor }}
-              >
-                الأكثر طلباً
-              </span>
-              <h2 className="text-3xl font-black mt-2">{heroProduct.title}</h2>
-              {heroProduct.description && (
-                <p className="text-sm mt-2 line-clamp-2" style={{ color: 'rgba(255,255,255,0.7)' }}>{heroProduct.description}</p>
-              )}
-              <div className="flex items-center gap-3 mt-4">
-                <span className="text-2xl font-black" style={{ color: accentColor }}>
-                  {Math.round(heroProduct.price ?? 0).toLocaleString()} {currency}
-                </span>
-                {(heroProduct as any).original_price && (heroProduct as any).original_price > heroProduct.price && (
-                  <span className="text-sm line-through" style={{ color: 'rgba(255,255,255,0.5)' }} dir="ltr">
-                    {Math.round(((heroProduct as any).original_price) ?? 0).toLocaleString()} {currency}
-                  </span>
-                )}
-                <button
-                  onClick={() => { setDetailProduct(heroProduct); onProductView?.(heroProduct); if (heroProduct?.slug && navigate) navigate(buildStoreUrl(storeSlug, heroProduct.slug)); }}
-                  className="font-bold px-6 py-2 rounded-full text-sm hover:opacity-90 transition-colors active:scale-95"
-                  style={{ backgroundColor: surfaceColor, color: surfaceTextColor }}
+          <div className="absolute bottom-0 p-6 text-white max-w-7xl mx-auto w-full left-0 right-0">
+            {hasHeroBanner ? (
+              <h2 className="text-3xl font-black mt-2">{settings?.store_name || brandName}</h2>
+            ) : (
+              <>
+                <span
+                  className="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest text-white"
+                  style={{ backgroundColor: accentColor }}
                 >
-                  اطلب الآن
-                </button>
-              </div>
+                  الأكثر طلباً
+                </span>
+                <h2 className="text-3xl font-black mt-2">{heroProduct?.title}</h2>
+                {heroProduct?.description && (
+                  <p className="text-sm mt-2 line-clamp-2" style={{ color: 'rgba(255,255,255,0.7)' }}>{heroProduct.description?.replace(/<[^>]*>/g, '').trim()}</p>
+                )}
+                <div className="flex items-center gap-3 mt-4">
+                  <span className="text-2xl font-black" style={{ color: accentColor }}>
+                    {Math.round(heroProduct?.price ?? 0).toLocaleString()} {currency}
+                  </span>
+                  {(heroProduct as any)?.original_price && (heroProduct as any).original_price > heroProduct?.price && (
+                    <span className="text-sm line-through" style={{ color: 'rgba(255,255,255,0.5)' }} dir="ltr">
+                      {Math.round(((heroProduct as any).original_price) ?? 0).toLocaleString()} {currency}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => { if (!heroProduct) return; setDetailProduct(heroProduct); onProductView?.(heroProduct); if (heroProduct?.slug && navigate) navigate(buildStoreUrl(storeSlug, heroProduct.slug)); }}
+                    className="font-bold px-6 py-2 rounded-full text-sm hover:opacity-90 transition-colors active:scale-95"
+                    style={{ backgroundColor: surfaceColor, color: surfaceTextColor }}
+                  >
+                    اطلب الآن
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </section>
       )}
 
-      <div className="max-w-6xl mx-auto pb-20 md:pb-0">
+      <div className="max-w-7xl mx-auto px-4 pb-20 md:pb-0">
 
         {/* TRUST MINI-BAR */}
         <div className="flex justify-around py-4 border-b text-[10px] font-bold" style={{ borderColor, backgroundColor: surfaceMuted, color: textMuted }}>
@@ -474,10 +485,10 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               </h3>
               <span className="text-xs font-bold" style={{ color: textMuted }}>{collectionProducts.length} منتج</span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-6" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {collectionProducts.map(product => (
-                <div key={product.id} className="group cursor-pointer rounded-2xl overflow-hidden" style={{ backgroundColor: surfaceColor }} onClick={() => { setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}>
-                  <div className="relative aspect-[4/5] overflow-hidden">
+                <div key={product.id} className="group cursor-pointer" onClick={() => { setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}>
+                  <div className="relative aspect-[3/4] overflow-hidden mb-2" style={{ backgroundColor: surfaceColor }}>
                     {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                       ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || ''}
                           onMouseEnter={e => (e.target as HTMLVideoElement).play()}
@@ -488,29 +499,29 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                         : <img
                             src={product.images?.[0] || ''}
                             alt={product.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            className="w-full h-full object-cover"
                             loading="lazy"
                           />
                     }
-                    {(product as any).original_price && (product as any).original_price > product.price && (
-                      <div className="absolute top-2 right-2 text-white text-[9px] font-black px-2 py-0.5 rounded-full" style={{ backgroundColor: accentColor }}>
-                        -{Math.round((1 - product.price / (product as any).original_price) * 100)}%
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm leading-tight" style={{ color: textColor }}>{product.title}</h4>
+                    {(product as any).description && (
+                      <p className="text-xs mt-0.5 line-clamp-1" style={{ color: textMuted }}>{(product as any).description.replace(/<[^>]*>/g, '').trim()}</p>
+                    )}
+                    {(product as any).rating != null && (product as any).rating > 0 && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className="flex items-center">
+                          {[1,2,3,4,5].map(star => (
+                            <svg key={star} className={`w-3 h-3 ${star <= Math.round((product as any).rating) ? '' : 'opacity-30'}`} style={{ color: star <= Math.round((product as any).rating) ? '#f59e0b' : '#9ca3af' }} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                          ))}
+                        </div>
                       </div>
                     )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}
-                      className="absolute bottom-2 left-2 right-2 backdrop-blur text-xs font-bold py-2 rounded-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: surfaceTextColor }}
-                    >
-                      اطلب الآن
-                    </button>
-                  </div>
-                  <div className="p-2">
-                    <h4 className="font-bold text-sm line-clamp-1" style={{ color: textColor }}>{product.title}</h4>
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="font-black text-sm" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="font-black text-sm" style={{ color: textColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
                       {(product as any).original_price && (product as any).original_price > product.price && (
-                        <p className="text-[10px] line-through" style={{ color: textMuted }}>{Math.round((product as any).original_price ?? 0).toLocaleString()}</p>
+                        <p className="text-xs line-through" style={{ color: textMuted }}>{Math.round((product as any).original_price ?? 0).toLocaleString()}</p>
                       )}
                     </div>
                   </div>
@@ -788,7 +799,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                   <h3 className="text-xl font-black leading-tight" style={{ color: surfaceTextColor }}>{detailProduct.title}</h3>
                   <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{Math.round(detailProduct.price ?? 0).toLocaleString()} {currency}</p>
                 </div>
-                {detailProduct.description && <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: surfaceTextMuted }}>{detailProduct.description}</p>}
+                {detailProduct.description && <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: surfaceTextMuted }}>{detailProduct.description?.replace(/<[^>]*>/g, '').trim()}</p>}
                 {detailProduct.category && <span className="inline-block text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border" style={{ borderColor: surfaceBorderColor, color: surfaceTextMuted }}>{detailProduct.category}</span>}
               </div>
               <div className="shrink-0 px-6 pb-6 pt-3 space-y-3" style={{ borderTop: `1px solid ${surfaceBorderColor}` }}>

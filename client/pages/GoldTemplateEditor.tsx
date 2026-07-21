@@ -1800,6 +1800,68 @@ export default function GoldTemplateEditor() {
                       </div>
                     </div>
 
+                    {/* Background Image */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><ImageIcon className="w-3 h-3 text-indigo-500"/> صورة الخلفية</h4>
+                      <div className="bg-slate-100 dark:bg-[#131825] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { label: 'مودرن', gradient: 'url(/store-backgrounds/mitchell-luo-_A1pTfsMNY4-unsplash.jpg)', thumb: 'url(/store-backgrounds/thumbs/mitchell-luo-_A1pTfsMNY4-unsplash.jpg)' },
+                            { label: 'زهور', gradient: 'url(/store-backgrounds/patrick-tomasso-QMDap1TAu0g-unsplash.jpg)', thumb: 'url(/store-backgrounds/thumbs/patrick-tomasso-QMDap1TAu0g-unsplash.jpg)' },
+                            { label: 'موجات', gradient: 'url(/store-backgrounds/white-wave-background-free-vector.webp)', thumb: 'url(/store-backgrounds/thumbs/white-wave-background-free-vector.webp)' },
+                            { label: 'أبيض', gradient: 'url(/store-backgrounds/white-colored-background-free-vector.webp)', thumb: 'url(/store-backgrounds/thumbs/white-colored-background-free-vector.webp)' },
+                            { label: 'مبسط', gradient: 'url(/store-backgrounds/1085722-simple-backgrounds-2560x1440-xiaomi.webp)', thumb: 'url(/store-backgrounds/thumbs/1085722-simple-backgrounds-2560x1440-xiaomi.webp)' },
+                            { label: 'بёبل', gradient: 'url(/store-backgrounds/simple-zoom-background-xo95fqa3fnc1box0.webp)', thumb: 'url(/store-backgrounds/thumbs/simple-zoom-background-xo95fqa3fnc1box0.webp)' },
+                            { label: 'وردي', gradient: 'url(/store-backgrounds/60916c2a-b285-4348-b785-df50555a1f58.webp)', thumb: 'url(/store-backgrounds/thumbs/60916c2a-b285-4348-b785-df50555a1f58.webp)' },
+                            { label: 'ناعم', gradient: 'url(/store-backgrounds/pexels-photo-13551576.webp)', thumb: 'url(/store-backgrounds/thumbs/pexels-photo-13551576.webp)' },
+                            { label: 'رمادي', gradient: 'url(/store-backgrounds/ai-generated-plain-grey-empty-background-photo.webp)', thumb: 'url(/store-backgrounds/thumbs/ai-generated-plain-grey-empty-background-photo.webp)' },
+                            { label: 'هادئ', gradient: 'url(/store-backgrounds/pexels-photo-4252525.webp)', thumb: 'url(/store-backgrounds/thumbs/pexels-photo-4252525.webp)' },
+                            { label: 'أنيق', gradient: 'url(/store-backgrounds/premium_photo-1699282283231-18de6494873d.webp)', thumb: 'url(/store-backgrounds/thumbs/premium_photo-1699282283231-18de6494873d.webp)' },
+                            { label: 'فاتح', gradient: 'url(/store-backgrounds/premium_photo-1699851157839-5a1773bc27e1.webp)', thumb: 'url(/store-backgrounds/thumbs/premium_photo-1699851157839-5a1773bc27e1.webp)' },
+                            { label: 'داكن', gradient: 'url(/store-backgrounds/smooth-elegant-abstract-curves-of-light-in-blue-and-purple-on-a-dark-background-flowing.webp)', thumb: 'url(/store-backgrounds/thumbs/smooth-elegant-abstract-curves-of-light-in-blue-and-purple-on-a-dark-background-flowing.webp)' },
+                            { label: 'منصة', gradient: 'url(/store-backgrounds/white-product-display-podium-stand-background-geometric-display-presentation-concept-display-scene-stage-platform-showcase-product-sale-banner-cosmetic-3d-rendering-photo.webp)', thumb: 'url(/store-backgrounds/thumbs/white-product-display-podium-stand-background-geometric-display-presentation-concept-display-scene-stage-platform-showcase-product-sale-banner-cosmetic-3d-rendering-photo.webp)' },
+                            { label: 'دائري', gradient: 'url(/store-backgrounds/9.webp)', thumb: 'url(/store-backgrounds/thumbs/9.webp)' },
+                            { label: 'حلقي', gradient: 'url(/store-backgrounds/360_F_644654023_cZMVl6feXmUMSNi9CPb9qygWkl64gtMl.webp)', thumb: 'url(/store-backgrounds/thumbs/360_F_644654023_cZMVl6feXmUMSNi9CPb9qygWkl64gtMl.webp)' },
+                          ].map((preset) => (
+                            <button
+                              key={preset.label}
+                              onClick={() => handleSettingChange('template_bg_image', preset.gradient)}
+                              className="relative w-full aspect-square rounded-xl border-2 overflow-hidden transition-all duration-200 hover:scale-105"
+                              style={{
+                                backgroundImage: preset.thumb,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                borderColor: settings.template_bg_image === preset.gradient ? '#6366f1' : 'transparent',
+                                boxShadow: settings.template_bg_image === preset.gradient ? '0 0 0 2px #6366f1' : '0 1px 3px rgba(0,0,0,0.1)',
+                              }}
+                              title={preset.label}
+                            >
+                              {settings.template_bg_image === preset.gradient && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="أو الصق رابط صورة..."
+                          value={settings.template_bg_image?.startsWith('linear') || settings.template_bg_image?.startsWith('radial') ? '' : (settings.template_bg_image || '')}
+                          onChange={(e) => handleSettingChange('template_bg_image', e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                        />
+                        {settings.template_bg_image && (
+                          <button
+                            onClick={() => handleSettingChange('template_bg_image', '')}
+                            className="w-full px-3 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+                          >
+                            مسح الصورة
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Typography & Copy */}
                     <div className="space-y-3">
                       <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Type className="w-3 h-3 text-indigo-500"/> Typography</h4>
@@ -2027,6 +2089,7 @@ export default function GoldTemplateEditor() {
                         </label>
                       )}
                     </div>
+
                   </div>
                 )}
 
