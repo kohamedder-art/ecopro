@@ -1409,6 +1409,62 @@ export const pixelDiagnosticHandler: RequestHandler = async (req, res) => {
   }
 };
 
+// =====================================================================
+// Pixel relay — client sends a POST to OUR domain (never blocked by
+// mobile tracking protection) and the server forwards the event to
+// Facebook's /tr endpoint (server-to-server, no browser restrictions).
+// =====================================================================
+export const pixelRelayHandler: RequestHandler = async (req, res) => {
+  const { ids, event, params, url } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0 || !event) {
+    res.status(400).json({ error: 'Missing ids or event' });
+    return;
+  }
+
+  const clientIp = req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim()
+    || req.socket.remoteAddress || '';
+
+  // Build the same params fbq would send, plus custom data
+  for (const pixelId of ids) {
+    const q = new URLSearchParams();
+    q.set('id', pixelId);
+    q.set('ev', event);
+    q.set('noscript', '1');
+    q.set('dl', url || req.headers.referer || '');
+    q.set('rl', req.headers.referer || '');
+    q.set('ts', String(Math.floor(Date.now() / 1000)));
+    q.set('v', '2.0');
+
+    // Forward custom event data as cd[key]
+    if (params && typeof params === 'object') {
+      for (const [key, val] of Object.entries(params)) {
+        if (val === undefined || val === null) continue;
+        if (typeof val === 'object') {
+          q.set(`cd[${key}]`, JSON.stringify(val));
+        } else {
+          q.set(`cd[${key}]`, String(val));
+        }
+      }
+    }
+
+    const target = `https://www.facebook.com/tr?${q.toString()}`;
+
+    // Fire-and-forget — don't block the response
+    fetch(target, {
+      method: 'GET',
+      headers: {
+        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+        'X-Forwarded-For': clientIp,
+      },
+    }).catch((err: any) => {
+      console.error(`[pixel-relay] Forward to fb failed: id=${pixelId} ev=${event}`, err?.message || err);
+    });
+  }
+
+  res.json({ ok: true });
+};
+
+router.post('/relay', pixelRelayHandler);
 router.get('/diagnose', authenticate, requireClient, pixelDiagnosticHandler);
 
 export default router;
