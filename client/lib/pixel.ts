@@ -19,9 +19,10 @@ type PixelConfig = {
 
 const FB_INIT: Set<string> = new Set();
 const TT_INIT: Set<string> = new Set();
-// Pre-seeded to dedup against the inline fbq('track','PageView') in index.html
-let lastPageViewPath = typeof window !== 'undefined' ? window.location.pathname + window.location.search : '';
-let lastPageViewTs = typeof window !== 'undefined' ? Date.now() : 0;
+// Empty so the first trackPageView() call always fires the relay.
+// Subsequent calls within 3s on the same path are still deduped.
+let lastPageViewPath = '';
+let lastPageViewTs = 0;
 
 const FB_LIB =
   'https://connect.facebook.net/en_US/fbevents.js';
