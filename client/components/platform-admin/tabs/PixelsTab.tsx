@@ -6,6 +6,7 @@ interface PixelEntry {
   platform: 'facebook' | 'tiktok';
   pixel_id: string;
   enabled: boolean;
+  access_token?: string;
 }
 
 export default function PixelsTab() {
@@ -26,7 +27,7 @@ export default function PixelsTab() {
   }, []);
 
   const addPixel = () => {
-    setPixels(prev => [...prev, { platform: 'facebook', pixel_id: '', enabled: true }]);
+    setPixels(prev => [...prev, { platform: 'facebook', pixel_id: '', enabled: true, access_token: '' }]);
   };
 
   const removePixel = (idx: number) => {
@@ -105,6 +106,15 @@ export default function PixelsTab() {
                 onChange={e => updatePixel(idx, 'pixel_id', e.target.value)}
                 className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white placeholder-gray-400"
               />
+              {pixel.platform === 'facebook' && (
+                <input
+                  type="text"
+                  placeholder="Access Token (for Conversions API)"
+                  value={pixel.access_token || ''}
+                  onChange={e => updatePixel(idx, 'access_token', e.target.value)}
+                  className="w-72 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 font-mono text-xs"
+                />
+              )}
               <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer shrink-0">
                 <input
                   type="checkbox"

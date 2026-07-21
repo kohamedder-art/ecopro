@@ -1803,7 +1803,11 @@ ${urls}
       try {
         const pixels = JSON.parse(rows[0].setting_value);
         // Mask tokens on read so they are never leaked to the client
-        return res.json(Array.isArray(pixels) ? pixels : []);
+        const masked = (Array.isArray(pixels) ? pixels : []).map((p: any) => ({
+          ...p,
+          access_token: p.access_token ? '***configured***' : undefined,
+        }));
+        return res.json(masked);
       } catch {
         return res.json([]);
       }
@@ -1820,11 +1824,33 @@ ${urls}
         return res.status(400).json({ error: 'pixels must be an array' });
       }
 
-      const cleaned = pixels.map((p: any) => ({
-        platform: p.platform,
-        pixel_id: typeof p.pixel_id === 'string' ? p.pixel_id.trim() : p.pixel_id,
-        enabled: Boolean(p.enabled),
-      }));
+      // Read existing config to preserve tokens when sentinel is used
+      let existingTokens: Record<string, string> = {};
+      try {
+        const existingRes = await pool.query(
+          `SELECT setting_value FROM platform_settings WHERE setting_key = 'pixel_config'`
+        );
+        if (existingRes.rows.length > 0) {
+          const existing = JSON.parse(existingRes.rows[0].setting_value);
+          if (Array.isArray(existing)) {
+            for (const p of existing) {
+              if (p.pixel_id && p.access_token) existingTokens[p.pixel_id] = p.access_token;
+            }
+          }
+        }
+      } catch { /* ignore */ }
+
+      const cleaned = pixels.map((p: any) => {
+        const token = p.access_token === '***configured***'
+          ? (existingTokens[p.pixel_id] || '')
+          : (p.access_token || '');
+        return {
+          platform: p.platform,
+          pixel_id: typeof p.pixel_id === 'string' ? p.pixel_id.trim() : p.pixel_id,
+          enabled: Boolean(p.enabled),
+          ...(token ? { access_token: token } : {}),
+        };
+      });
 
       const adminId = (req.user as any)?.id;
       await pool.query(
