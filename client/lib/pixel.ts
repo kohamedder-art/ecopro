@@ -129,12 +129,15 @@ export function trackFacebookEvent(event: string, params: Record<string, any> = 
   //    server forwards to Facebook server-to-server via CAPI.
   const ids = Array.from(FB_INIT).length ? Array.from(FB_INIT) : (window.__META_PIXEL_IDS__ ?? []);
   console.log(`[pixel] trackFacebookEvent ${event}`, { ids, params });
+
+  const eventId = `${event}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
   if (ids.length > 0) {
     try {
       fetch('/api/pixels/relay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, event, params, url: window.location.href, fbc: getCookie('_fbc'), fbp: getCookie('_fbp') }),
+        body: JSON.stringify({ ids, event, params, url: window.location.href, fbc: getCookie('_fbc'), fbp: getCookie('_fbp'), event_id: eventId }),
         keepalive: true,
       }).then(r => r.json()).then(d => console.log('[pixel] relay response:', d)).catch(e => console.error('[pixel] relay error:', e));
     } catch (e) {
@@ -145,7 +148,7 @@ export function trackFacebookEvent(event: string, params: Record<string, any> = 
   // 2. Direct fbq — works on desktop where facebook.com is accessible;
   //    silently no-ops on mobile when browser tracking protection blocks the request.
   if (window.fbq) {
-    window.fbq('track', event, params);
+    window.fbq('track', event, { ...params, eventID: eventId });
   }
 
   // 3. Legacy proxy beacon (GET image fallback to /api/pixels/proxy/fb)
