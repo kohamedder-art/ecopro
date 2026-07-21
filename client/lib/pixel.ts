@@ -121,8 +121,9 @@ function fireProxyBeacon(platform: 'fb' | 'tt', event: string, ids: string[], pa
 
 export function trackFacebookEvent(event: string, params: Record<string, any> = {}): void {
   // 1. Server relay — POST to our domain (never blocked by mobile tracking protection),
-  //    server forwards to Facebook server-to-server.
+  //    server forwards to Facebook server-to-server via CAPI.
   const ids = Array.from(FB_INIT).length ? Array.from(FB_INIT) : (window.__META_PIXEL_IDS__ ?? []);
+  console.log(`[pixel] trackFacebookEvent ${event}`, { ids, params });
   if (ids.length > 0) {
     try {
       fetch('/api/pixels/relay', {
@@ -130,9 +131,9 @@ export function trackFacebookEvent(event: string, params: Record<string, any> = 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids, event, params, url: window.location.href }),
         keepalive: true,
-      }).catch(() => {});
-    } catch {
-      /* never break the page */
+      }).then(r => r.json()).then(d => console.log('[pixel] relay response:', d)).catch(e => console.error('[pixel] relay error:', e));
+    } catch (e) {
+      console.error('[pixel] relay fetch failed:', e);
     }
   }
 
@@ -163,7 +164,11 @@ export function trackPixelEvent(event: string, params: Record<string, any> = {})
  */
 export function trackPageView(path: string = window.location.pathname): void {
   const now = Date.now();
-  if (path === lastPageViewPath && now - lastPageViewTs < 3000) return;
+  console.log(`[pixel] trackPageView called`, { path, lastPageViewPath, elapsed: now - lastPageViewTs });
+  if (path === lastPageViewPath && now - lastPageViewTs < 3000) {
+    console.log(`[pixel] trackPageView deduped`);
+    return;
+  }
   lastPageViewPath = path;
   lastPageViewTs = now;
 

@@ -1447,6 +1447,7 @@ async function getPlatformPixelConfig(pool: any): Promise<Array<{ platform: stri
 
 export const pixelRelayHandler: RequestHandler = async (req, res) => {
   const { ids, event, params, url } = req.body;
+  console.log(`[pixel-relay] received: event=${event} ids=${JSON.stringify(ids)}`);
   if (!Array.isArray(ids) || ids.length === 0 || !event) {
     res.status(400).json({ error: 'Missing ids or event' });
     return;
