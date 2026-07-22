@@ -89,6 +89,8 @@ export default function VariantSelector({
   basePrice,
   dir = 'rtl',
   visualMode = true, // Default to Temu-style visual selector
+  sizeLabel,
+  size2Label,
 }: VariantSelectorProps) {
   if (!variants || variants.length === 0) return null;
 
