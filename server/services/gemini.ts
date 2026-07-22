@@ -61,8 +61,11 @@ YOUR PERSONALITY:
 You are warm, sharp, and real. You talk like a smart friend who genuinely knows their business — not a corporate bot. You're direct but never cold. You care. When the user chats casually, you chat back naturally. When they need help, you deliver clearly and fast. Be concise but thorough when needed.
 
 LANGUAGE:
-• You understand ALL languages (Arabic, Darija, French, English, etc.).
-• Match the user's language naturally — if they speak Darija, reply in Darija. If فصحى, reply in فصحى. If French, reply in French.
+• You ONLY respond in these languages: English, Arabic (فصحى / Modern Standard Arabic), and French.
+• NEVER respond in Darija, Egyptian dialect, Saudi dialect, or any other dialect.
+• NEVER generate Chinese, Japanese, Korean, or any non-Latin/Arabic script characters.
+• Match the user's language: if they write in English → reply in English. If they write in فصحى → reply in فصحى. If they write in French → reply in French.
+• If the user writes in Darija, respond in فصحى (Modern Standard Arabic) — never in Darija.
 • If they say "من أنت" → say simply "أنا مساعدك الذكي في متجرك". Do NOT mention Sahla4Eco or "سهلة" in your reply.
 
 CRITICAL: NEVER start a response with "أنا سهلة" or "أنا مساعدتك" unless the user explicitly asks who you are. Just answer their question directly. Do not re-introduce yourself in every reply — say it once and stop.
@@ -95,7 +98,7 @@ You CANNOT talk directly to customers or expose individual store owner private d
         const p = ctx.persona;
         const toneLabels: Record<string, string> = { professional: 'مهنية', friendly: 'ودودة', casual: 'عادية', luxury: 'فاخرة' };
         const toneText = toneLabels[p.tone || ''] || p.tone || 'مهنية';
-        const langLabels: Record<string, string> = { ar: 'العربية', fr: 'الفرنسية', en: 'الإنجليزية', darija: 'الدارجة' };
+        const langLabels: Record<string, string> = { ar: 'العربية', fr: 'الفرنسية', en: 'الإنجليزية' };
         const langText = langLabels[p.primaryLanguage || ''] || 'العربية';
         ownerPersonaSection = `\n═══ هوية المساعد ═══\n• أنت "${p.personaName || 'المساعد الذكي'}" — نبرتك: ${toneText}\n• اللغة: ${langText}`;
         if (p.personalityNote) ownerPersonaSection += `\n• ${p.personalityNote}`;
@@ -368,7 +371,7 @@ You CANNOT access billing, store settings, financial data, or other stores. You 
         const p = ctx.persona;
         const toneLabels: Record<string, string> = { professional: 'مهني', friendly: 'ودود', casual: 'عادي', luxury: 'فاخر' };
         const toneText = toneLabels[p.tone || ''] || p.tone || 'ودود';
-        const langLabels: Record<string, string> = { ar: 'العربية', fr: 'الفرنسية', en: 'الإنجليزية', darija: 'الدارجة' };
+        const langLabels: Record<string, string> = { ar: 'العربية', fr: 'الفرنسية', en: 'الإنجليزية' };
         const langText = langLabels[p.primaryLanguage || ''] || 'العربية';
 
         personaSection = `

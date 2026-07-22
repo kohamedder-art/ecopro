@@ -263,7 +263,7 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
             [clientId]
           );
           const storeName = storeRes.rows[0]?.store_name || 'متجرنا';
-          const prompt = `Write a compelling product description (2-3 sentences, max 150 words) for "${title}"${category ? ` in category "${category}"` : ''} for an Algerian online store called "${storeName}". Write in Arabic (Darija/Modern Standard Arabic mix). Focus on quality, value, and local appeal. Do NOT include prices or specific numbers.`;
+          const prompt = `Write a compelling product description (2-3 sentences, max 150 words) for "${title}"${category ? ` in category "${category}"` : ''} for an Algerian online store called "${storeName}". Write in Arabic (Modern Standard Arabic / فصحى). Focus on quality, value, and local appeal. Do NOT include prices or specific numbers.`;
           const generatedDesc = await generateText('store_owner', prompt, { storeName });
           if (generatedDesc && generatedDesc.length > 10) {
             finalDescription = generatedDesc;

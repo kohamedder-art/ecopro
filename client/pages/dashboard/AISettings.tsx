@@ -573,7 +573,6 @@ export default function AISettingsPage() {
                           <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="ar">العربية</SelectItem>
-                            <SelectItem value="darija">الدارجة</SelectItem>
                             <SelectItem value="fr">Français</SelectItem>
                             <SelectItem value="en">English</SelectItem>
                           </SelectContent>
