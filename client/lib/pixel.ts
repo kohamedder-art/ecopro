@@ -96,69 +96,17 @@ export async function initTikTokPixels(ids: string[]): Promise<void> {
   }
 }
 
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-  return match ? decodeURIComponent(match[1]) : null;
-}
 
-function fireProxyBeacon(platform: 'fb' | 'tt', event: string, ids: string[], params?: Record<string, any>) {
-  if (!ids.length) return;
-  try {
-    const q = new URLSearchParams();
-    q.set('ev', event);
-    q.set('noscript', '1');
-    if (params && typeof params === 'object') {
-      for (const key of ['value', 'currency', 'content_name', 'content_category', 'order_id', 'content_ids']) {
-        const v = params[key];
-        if (v !== undefined && v !== null) {
-          q.set('cd[' + key + ']', Array.isArray(v) ? v.join(',') : String(v));
-        }
-      }
-    }
-    for (const id of ids) {
-      q.set('id', id);
-      new Image().src = `/api/pixels/proxy/${platform}?${q.toString()}`;
-    }
-  } catch {
-    /* never break the page */
-  }
-}
 
 export function trackFacebookEvent(event: string, params: Record<string, any> = {}): void {
-  // 1. Server relay — POST to our domain (never blocked by mobile tracking protection),
-  //    server forwards to Facebook server-to-server via CAPI.
-  const ids = Array.from(FB_INIT).length ? Array.from(FB_INIT) : (window.__META_PIXEL_IDS__ ?? []);
-  console.log(`[pixel] trackFacebookEvent ${event}`, { ids, params });
-
-  const eventId = `${event}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-  if (ids.length > 0) {
-    try {
-      fetch('/api/pixels/relay', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, event, params, url: window.location.href, fbc: getCookie('_fbc'), fbp: getCookie('_fbp'), event_id: eventId }),
-        keepalive: true,
-      }).then(r => r.json()).then(d => console.log('[pixel] relay response:', d)).catch(e => console.error('[pixel] relay error:', e));
-    } catch (e) {
-      console.error('[pixel] relay fetch failed:', e);
-    }
-  }
-
-  // 2. Direct fbq — works on desktop where facebook.com is accessible;
-  //    silently no-ops on mobile when browser tracking protection blocks the request.
   if (window.fbq) {
-    window.fbq('track', event, { ...params, eventID: eventId });
+    window.fbq('track', event, params);
   }
-
-  // 3. Legacy proxy beacon (GET image fallback to /api/pixels/proxy/fb)
-  fireProxyBeacon('fb', event, ids, params);
 }
 
 export function trackTikTokEvent(event: string, params: Record<string, any> = {}): void {
   if (!window.ttq) return;
   window.ttq.track(event, params);
-  fireProxyBeacon('tt', event, Array.from(TT_INIT), params);
 }
 
 export function trackPixelEvent(event: string, params: Record<string, any> = {}): void {
@@ -172,11 +120,7 @@ export function trackPixelEvent(event: string, params: Record<string, any> = {})
  */
 export function trackPageView(path: string = window.location.pathname): void {
   const now = Date.now();
-  console.log(`[pixel] trackPageView called`, { path, lastPageViewPath, elapsed: now - lastPageViewTs });
-  if (path === lastPageViewPath && now - lastPageViewTs < 3000) {
-    console.log(`[pixel] trackPageView deduped`);
-    return;
-  }
+  if (path === lastPageViewPath && now - lastPageViewTs < 3000) return;
   lastPageViewPath = path;
   lastPageViewTs = now;
 
