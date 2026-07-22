@@ -3,7 +3,7 @@
  * Clean, dedicated chat interface for admin
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Search, Send, AlertCircle, Plus, UserPlus, X, Tag, Percent, DollarSign, Gift, CheckCircle, Sparkles, Loader2, Paperclip } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import Header from '@/components/layout/Header';
@@ -11,6 +11,7 @@ import { useAI } from '@/hooks/useAI';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useToast } from '@/components/ui/use-toast';
 import { FileUploadUI } from '../../components/chat/FileUploadUI';
+import { showBrowserNotification } from '@/utils/browserNotifications';
 
 declare global {
   interface Window {
@@ -72,6 +73,8 @@ export default function AdminChat() {
   const { toast } = useToast();
   const { data: aiSettings } = useAISettings();
   const [chats, setChats] = useState<Chat[]>([]);
+  const prevUnreadRef = useRef<Record<number, number>>({});
+  const initialLoadDoneRef = useRef(false);
   const [selectedChatId, setSelectedChatId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -131,7 +134,32 @@ export default function AdminChat() {
     try {
       const response = await apiFetch<any>('/api/chat/admin/all-chats');
       if (response.chats) {
-        setChats(response.chats);
+        const newChats = response.chats;
+        // Detect new unread messages from store owners
+        if (initialLoadDoneRef.current) {
+          for (const chat of newChats) {
+            const prevUnread = prevUnreadRef.current[chat.id] || 0;
+            if (chat.unread_count > prevUnread && chat.unread_count > 0) {
+              const delta = chat.unread_count - prevUnread;
+              showBrowserNotification(
+                `💬 ${chat.client_name || 'عميل'}`,
+                {
+                  body: `${delta} رسالة جديدة`,
+                  tag: `chat-${chat.id}`,
+                  onClick: () => {},
+                },
+              );
+            }
+          }
+        }
+        // Store current unread counts
+        const unreadMap: Record<number, number> = {};
+        for (const chat of newChats) {
+          unreadMap[chat.id] = chat.unread_count || 0;
+        }
+        prevUnreadRef.current = unreadMap;
+        initialLoadDoneRef.current = true;
+        setChats(newChats);
         setError(null);
       }
     } catch (err) {
@@ -145,7 +173,23 @@ export default function AdminChat() {
     try {
       const response = await apiFetch<any>(`/api/chat/${selectedChatId}/messages`);
       if (response.items) {
-        setMessages(response.items);
+        const newMessages = response.items;
+        // Check if there are new messages from client (not admin)
+        if (messages.length > 0 && newMessages.length > messages.length) {
+          const latestMsg = newMessages[0]; // messages are ordered newest first
+          if (latestMsg.sender_type === 'client' && latestMsg.id !== messages[0]?.id) {
+            const chat = chats.find(c => Number(c.id) === selectedChatId);
+            showBrowserNotification(
+              `💬 ${chat?.client_name || 'عميل'}`,
+              {
+                body: latestMsg.message_content?.substring(0, 100) || 'رسالة جديدة',
+                tag: `chat-msg-${latestMsg.id}`,
+                onClick: () => {},
+              },
+            );
+          }
+        }
+        setMessages(newMessages);
       }
     } catch (err) {
       console.error('Failed to load messages:', err);
