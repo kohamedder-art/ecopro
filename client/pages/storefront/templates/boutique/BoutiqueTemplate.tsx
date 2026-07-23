@@ -488,7 +488,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 md:gap-2" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {collectionProducts.map(product => (
                 <div key={product.id} className="group cursor-pointer" onClick={() => { setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}>
-                  <div className="relative aspect-[3/4] overflow-hidden mb-2" style={{ backgroundColor: surfaceColor }}>
+                  <div className="relative aspect-square overflow-hidden mb-2" style={{ backgroundColor: surfaceColor }}>
                     {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                       ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || ''}
                           onMouseEnter={e => (e.target as HTMLVideoElement).play()}
