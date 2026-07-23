@@ -1933,14 +1933,16 @@ export const listAllProducts: RequestHandler = async (req, res) => {
 
     const result = await pool.query(
       `SELECT 
-        p.id, p.title, p.price, p.status,
+        p.id, p.title, p.price, p.status, p.slug as product_slug,
         COALESCE(c.name, c.email) as seller_name,
         c.email as seller_email,
         COALESCE(p.views, 0) as views, p.created_at,
         p.images,
-        COALESCE(oc.order_count, 0) as order_count
+        COALESCE(oc.order_count, 0) as order_count,
+        css.store_slug
       FROM client_store_products p
       JOIN clients c ON p.client_id = c.id
+      LEFT JOIN client_store_settings css ON css.client_id = p.client_id
       ${orderJoin}
       ORDER BY ${orderClause}
       LIMIT $1 OFFSET $2`,

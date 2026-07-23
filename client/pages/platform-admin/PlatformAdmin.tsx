@@ -1679,20 +1679,6 @@ export default function PlatformAdmin() {
             sort={productSort}
             onPageChange={setProductPage}
             onSortChange={(sort) => { setProductSort(sort); setProductPage(1); }}
-            onFlag={(id) => { setFlaggedProductId(id); setShowFlagModal(true); }}
-            onDelete={async (id) => {
-              if (!confirm(t('platformAdmin.alerts.confirmDeleteProduct'))) return;
-              try {
-                const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE', credentials: 'include' });
-                if (res.ok) { setProducts(products.filter(p => p.id !== id)); }
-              } catch (e) { console.error(e); }
-            }}
-            onUnflag={async (id) => {
-              try {
-                const res = await fetch(`/api/admin/unflag-product/${id}`, { method: 'POST', credentials: 'include' });
-                if (res.ok) { setProducts(products.map(p => p.id === id ? { ...p, flagged: false, flag_reason: null } : p)); }
-              } catch (e) { console.error(e); }
-            }}
           />
         )}
 

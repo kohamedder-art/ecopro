@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Package, Search, Flag, Eye, ShoppingCart, Trash2, Grid, List, Loader2, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, EyeOff } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Package, Search, Eye, ShoppingCart, Grid, List, Loader2, ChevronLeft, ChevronRight, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n';
 
@@ -19,6 +18,8 @@ interface Product {
   images?: string[];
   flagged?: boolean;
   flag_reason?: string;
+  store_slug?: string;
+  product_slug?: string;
 }
 
 interface Props {
@@ -29,14 +30,11 @@ interface Props {
   sort: string;
   onPageChange: (page: number) => void;
   onSortChange: (sort: string) => void;
-  onFlag: (productId: number) => void;
-  onDelete: (productId: number) => void;
-  onUnflag: (productId: number) => void;
 }
 
 const PAGE_SIZE = 50;
 
-export default function ProductsTab({ products, loading, total, page, sort, onPageChange, onSortChange, onFlag, onDelete, onUnflag }: Props) {
+export default function ProductsTab({ products, loading, total, page, sort, onPageChange, onSortChange }: Props) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'flagged' | 'active'>('all');
@@ -162,18 +160,14 @@ export default function ProductsTab({ products, loading, total, page, sort, onPa
                 )}
                 {/* Hover actions */}
                 <div className="absolute inset-0 bg-black/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                  {p.flagged ? (
-                    <Button size="sm" onClick={() => onUnflag(p.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] h-7 px-2">
-                      <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> {t('platformAdmin.products.unflag')}
-                    </Button>
-                  ) : (
-                    <Button size="sm" onClick={() => onFlag(p.id)} className="bg-orange-600 hover:bg-orange-700 text-white text-[10px] h-7 px-2">
-                      <Flag className="w-2.5 h-2.5 mr-0.5" /> {t('platformAdmin.products.flag')}
-                    </Button>
-                  )}
-                  <Button size="sm" onClick={() => onDelete(p.id)} variant="destructive" className="text-[10px] h-7 px-2">
-                    <Trash2 className="w-2.5 h-2.5" />
-                  </Button>
+                  <a
+                    href={p.store_slug && p.product_slug ? `/store/${p.store_slug}/${p.product_slug}` : '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] h-7 px-2 rounded-md font-medium transition-colors"
+                  >
+                    <Eye className="w-2.5 h-2.5" /> زيارة المنتج
+                  </a>
                 </div>
               </div>
 
@@ -217,18 +211,14 @@ export default function ProductsTab({ products, loading, total, page, sort, onPa
                 <span className="text-xs font-bold text-emerald-400">{Number(p.price).toLocaleString()} دج</span>
                 {p.flagged && <Badge className="bg-red-500/20 text-red-300 text-[10px]">{t('platformAdmin.products.flagged')}</Badge>}
                 <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                  {p.flagged ? (
-                    <button onClick={() => onUnflag(p.id)} className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-gray-500 dark:text-slate-400 hover:text-emerald-300">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                    </button>
-                  ) : (
-                    <button onClick={() => onFlag(p.id)} className="p-1.5 rounded-lg hover:bg-orange-500/20 text-gray-500 dark:text-slate-400 hover:text-orange-300">
-                      <Flag className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  <button onClick={() => onDelete(p.id)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-500 dark:text-slate-400 hover:text-red-300">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <a
+                    href={p.store_slug && p.product_slug ? `/store/${p.store_slug}/${p.product_slug}` : '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-lg hover:bg-blue-500/20 text-gray-500 dark:text-slate-400 hover:text-blue-300"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </a>
                 </div>
               </div>
             ))}
