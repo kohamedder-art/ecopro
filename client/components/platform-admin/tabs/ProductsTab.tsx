@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Package, Search, Flag, Eye, ShoppingCart, Trash2, Grid, List, Loader2, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, Search, Flag, Eye, ShoppingCart, Trash2, Grid, List, Loader2, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n';
+
+const TEST_PRODUCT_TITLES = ['ساعة رجالية فاخرة', 'عطر فرنسي أصلي', 'حقيبة يد نسائية', 'طقم رياضي رجالي'];
 
 interface Product {
   id: number;
@@ -39,11 +41,13 @@ export default function ProductsTab({ products, loading, total, page, sort, onPa
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'flagged' | 'active'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [hideTest, setHideTest] = useState(true);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const filtered = useMemo(() => {
     let result = products;
+    if (hideTest) result = result.filter(p => !TEST_PRODUCT_TITLES.includes(p.title));
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(p => p.title?.toLowerCase().includes(q) || p.seller_name?.toLowerCase().includes(q));
@@ -116,6 +120,15 @@ export default function ProductsTab({ products, loading, total, page, sort, onPa
             <List className="w-3.5 h-3.5" />
           </button>
         </div>
+        <button
+          onClick={() => setHideTest(!hideTest)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            hideTest ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'bg-white/60 dark:bg-slate-800/60 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          {hideTest ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          {hideTest ? 'إخفاء التجربي' : 'إظهار الكل'}
+        </button>
       </div>
 
       {/* Products */}
