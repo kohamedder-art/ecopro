@@ -114,6 +114,10 @@ Statuses: pending, confirmed, processing, shipped, delivered, cancelled, returne
 ═══ الموظفين ═══
 - ECOPRO_ACTION:{"type":"list_staff"}
 
+═══ الاشتراك والفواتير ═══
+- ECOPRO_ACTION:{"type":"get_subscription"}
+- ECOPRO_ACTION:{"type":"get_payment_history"}
+
 ═══ البث ═══
 - ECOPRO_ACTION:{"type":"send_broadcast","message":"<نص>","segment":"all|completed|pending","channel":"telegram|whatsapp|messenger"}
 
@@ -544,6 +548,33 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         return { success: true, message: `**الموظفين:**\n${list}`, data: res.rows };
       }
 
+      // ═══ SUBSCRIPTION & BILLING ═══
+      case 'get_subscription': {
+        const res = await p.query(`SELECT tier, status, trial_started_at, trial_ends_at, current_period_start, current_period_end, auto_renew, cancelled_at, next_auto_renewal_at FROM subscriptions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [clientId]);
+        if (!res.rows.length) return { success: true, message: 'لا يوجد اشتراك مسجل.', data: null };
+        const r = res.rows[0];
+        const now = new Date();
+        const trialEnd = r.trial_ends_at ? new Date(r.trial_ends_at) : null;
+        const periodEnd = r.current_period_end ? new Date(r.current_period_end) : null;
+        let urgency = '';
+        if (trialEnd && trialEnd > now) {
+          const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          urgency = daysLeft <= 7 ? `\n⚠️ تنتهي التجربة بعد ${daysLeft} يوم` : '';
+        } else if (trialEnd && trialEnd <= now && r.status === 'trial') {
+          urgency = '\n🔴 انتهت التجربة! يرجى تجديد الاشتراك';
+        }
+        if (periodEnd && periodEnd <= now && r.status === 'active') {
+          urgency = '\n⚠️ انتهت فترة الاشتراك الحالية';
+        }
+        return { success: true, message: `**الاشتراك:**\n- الخطة: ${r.tier}\n- الحالة: ${r.status}\n- التجربة: ${r.trial_started_at ? new Date(r.trial_started_at).toLocaleDateString('ar-DZ') : '-'} → ${trialEnd ? trialEnd.toLocaleDateString('ar-DZ') : '-'}\n- الفترة: ${periodEnd ? periodEnd.toLocaleDateString('ar-DZ') : '-'}\n- التجديد التلقائي: ${r.auto_renew ? 'نعم' : 'لا'}\n-(${r.next_auto_renewal_at ? 'تجديد: ' + new Date(r.next_auto_renewal_at).toLocaleDateString('ar-DZ') : ''})${urgency}`, data: r };
+      }
+      case 'get_payment_history': {
+        const res = await p.query(`SELECT id, amount, currency, status, payment_method, paid_at, created_at FROM payments WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10`, [clientId]);
+        if (!res.rows.length) return { success: true, message: 'لا توجد سجلات دفع.', data: [] };
+        const list = res.rows.map((r: any) => `- #${r.id} | ${Number(r.amount).toLocaleString('ar-DZ')} ${r.currency} | ${r.status} | ${r.payment_method || 'غير محدد'} | ${r.paid_at ? new Date(r.paid_at).toLocaleDateString('ar-DZ') : new Date(r.created_at).toLocaleDateString('ar-DZ')}`).join('\n');
+        return { success: true, message: `**سجل الدفع:**\n${list}`, data: res.rows };
+      }
+
       // ═══ BROADCAST ═══
       case 'send_broadcast': {
         const { message, segment, channel } = action;
@@ -919,61 +950,120 @@ function pool() { return ensureConnection(); }
 
 interface SlimContext {
   storeName: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  storePhone: string;
+  storeWilaya: string;
+  storeDescription: string;
   totalOrders: number;
   pendingOrders: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
   totalRevenue: number;
   totalProducts: number;
   lowStockProducts: string[];
   topProducts: string[];
+  subscriptionTier: string;
   subscriptionStatus: string;
+  trialEndsAt: string | null;
   template: string;
   primaryColor: string;
   secondaryColor: string;
+  storeSlug: string;
+  isPublic: boolean;
+  totalCustomers: number;
+  deliveryPricesCount: number;
+  integrationsCount: number;
+  couponsCount: number;
+  staffCount: number;
 }
 
 async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
   const p = await pool();
 
-  const storeRes = await p.query(`SELECT store_name, template, primary_color, secondary_color FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+  const storeRes = await p.query(`SELECT store_name, store_description, store_phone, store_wilaya, template, primary_color, secondary_color, store_slug, is_public FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
   if (!storeRes.rows.length) return null;
-  const storeName = storeRes.rows[0].store_name || 'المتجر';
-  const template = storeRes.rows[0].template || 'books';
-  const primaryColor = storeRes.rows[0].primary_color || '#f97316';
-  const secondaryColor = storeRes.rows[0].secondary_color || '#8B7355';
+  const s = storeRes.rows[0];
+  const storeName = s.store_name || 'المتجر';
 
-  // Key metrics only — not everything
-  const [ordersRes, revenueRes, productsRes, lowStockRes, topRes, subRes] = await Promise.all([
-    p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'pending') as pending FROM store_orders WHERE client_id = $1`, [clientId]),
+  const ownerRes = await p.query(`SELECT name, email, phone FROM clients WHERE id = $1 LIMIT 1`, [clientId]).catch(() => ({ rows: [] }));
+  const owner = ownerRes.rows[0] || {};
+
+  const subRes = await p.query(`SELECT tier, status, trial_ends_at, current_period_end FROM subscriptions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [clientId]).catch(() => ({ rows: [] }));
+  const sub = subRes.rows[0] || {};
+
+  // Key metrics
+  const [ordersRes, revenueRes, productsRes, lowStockRes, topRes, customersRes, deliveryRes, integrationsRes, couponsRes, staffRes] = await Promise.all([
+    p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'pending') as pending, COUNT(*) FILTER (WHERE status = 'delivered') as delivered, COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL`, [clientId]),
     p.query(`SELECT COALESCE(SUM(total_price), 0) as revenue FROM store_orders WHERE client_id = $1 AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '30 days'`, [clientId]),
-    p.query(`SELECT COUNT(*) as total FROM client_store_products WHERE client_id = $1 AND status = 'active'`, [clientId]),
-    p.query(`SELECT title, stock_quantity FROM client_store_products WHERE client_id = $1 AND status = 'active' AND stock_quantity <= 5 AND stock_quantity > 0 ORDER BY stock_quantity ASC LIMIT 5`, [clientId]),
+    p.query(`SELECT COUNT(*) as total FROM client_store_products WHERE client_id = $1 AND status = 'active' AND deleted_at IS NULL`, [clientId]),
+    p.query(`SELECT title, stock_quantity FROM client_store_products WHERE client_id = $1 AND status = 'active' AND stock_quantity <= 5 AND stock_quantity > 0 AND deleted_at IS NULL ORDER BY stock_quantity ASC LIMIT 5`, [clientId]),
     p.query(`SELECT p.title, COUNT(o.id) as sales FROM client_store_products p JOIN store_orders o ON o.product_id = p.id WHERE p.client_id = $1 AND o.created_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY p.title ORDER BY sales DESC LIMIT 5`, [clientId]),
-    p.query(`SELECT subscription_status FROM subscriptions WHERE client_id = $1 ORDER BY created_at DESC LIMIT 1`, [clientId]).catch(() => ({ rows: [] })),
+    p.query(`SELECT COUNT(DISTINCT customer_phone) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND customer_phone IS NOT NULL`, [clientId]),
+    p.query(`SELECT COUNT(*) as total FROM delivery_prices WHERE client_id = $1`, [clientId]),
+    p.query(`SELECT COUNT(*) as total FROM delivery_integrations WHERE client_id = $1`, [clientId]),
+    p.query(`SELECT COUNT(*) as total FROM client_store_coupons WHERE client_id = $1`, [clientId]),
+    p.query(`SELECT COUNT(*) as total FROM client_staff WHERE client_id = $1`, [clientId]),
   ]);
 
   const or = ordersRes.rows[0];
   return {
     storeName,
+    ownerName: owner.name || '',
+    ownerEmail: owner.email || '',
+    ownerPhone: owner.phone || '',
+    storePhone: s.store_phone || '',
+    storeWilaya: s.store_wilaya || '',
+    storeDescription: s.store_description || '',
     totalOrders: Number(or.total) || 0,
     pendingOrders: Number(or.pending) || 0,
+    deliveredOrders: Number(or.delivered) || 0,
+    cancelledOrders: Number(or.cancelled) || 0,
     totalRevenue: Number(revenueRes.rows[0]?.revenue) || 0,
     totalProducts: Number(productsRes.rows[0]?.total) || 0,
     lowStockProducts: lowStockRes.rows.map((r: any) => `${r.title} (${r.stock_quantity})`),
     topProducts: topRes.rows.map((r: any) => `${r.title} (${r.sales} مبيعات)`),
-    subscriptionStatus: subRes.rows[0]?.subscription_status || 'unknown',
-    template,
-    primaryColor,
-    secondaryColor,
+    subscriptionTier: sub.tier || 'free',
+    subscriptionStatus: sub.status || 'unknown',
+    trialEndsAt: sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString('ar-DZ') : null,
+    template: s.template || 'books',
+    primaryColor: s.primary_color || '#f97316',
+    secondaryColor: s.secondary_color || '#8B7355',
+    storeSlug: s.store_slug || '',
+    isPublic: s.is_public || false,
+    totalCustomers: Number(customersRes.rows[0]?.total) || 0,
+    deliveryPricesCount: Number(deliveryRes.rows[0]?.total) || 0,
+    integrationsCount: Number(integrationsRes.rows[0]?.total) || 0,
+    couponsCount: Number(couponsRes.rows[0]?.total) || 0,
+    staffCount: Number(staffRes.rows[0]?.total) || 0,
   };
 }
 
 function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: string): string {
-  let p = `=== بيانات المتجر ===\n`;
+  let p = `=== بيانات الصاحب ===\n`;
+  p += `الاسم: ${ctx.ownerName || 'غير محدد'}\n`;
+  p += `الإيميل: ${ctx.ownerEmail || 'غير محدد'}\n`;
+  p += `الهاتف: ${ctx.ownerPhone || 'غير محدد'}\n\n`;
+
+  p += `=== بيانات المتجر ===\n`;
   p += `المتجر: ${ctx.storeName}\n`;
+  p += `الوصف: ${ctx.storeDescription || 'بدون'}\n`;
   p += `القالب: ${ctx.template} | ألوان: ${ctx.primaryColor} / ${ctx.secondaryColor}\n`;
-  p += `الطلبات: ${ctx.totalOrders} (${ctx.pendingOrders} معلقة)\n`;
-  p += `الدخل: ${ctx.totalRevenue.toLocaleString('ar-DZ')} دج\n`;
-  p += `المنتجات: ${ctx.totalProducts} نشط`;
+  p += `الرابط: sahla4eco.com/store/${ctx.storeSlug} | عام: ${ctx.isPublic ? 'نعم' : 'لا'}\n\n`;
+
+  p += `=== الاشتراك ===\n`;
+  p += `الخطة: ${ctx.subscriptionTier} | الحالة: ${ctx.subscriptionStatus}`;
+  if (ctx.trialEndsAt) p += ` | تنتهي التجربة: ${ctx.trialEndsAt}`;
+  p += `\n\n`;
+
+  p += `=== الإحصائيات ===\n`;
+  p += `الطلبات: ${ctx.totalOrders} (${ctx.pendingOrders} معلقة, ${ctx.deliveredOrders} مسلّمة, ${ctx.cancelledOrders} ملغاة)\n`;
+  p += `الدخل (30 يوم): ${ctx.totalRevenue.toLocaleString('ar-DZ')} دج\n`;
+  p += `المنتجات: ${ctx.totalProducts} نشط\n`;
+  p += `الزبائن: ${ctx.totalCustomers}\n`;
+  p += `الكوبونات: ${ctx.couponsCount} | الموظفين: ${ctx.staffCount}\n`;
+  p += `شركات التوصيل: ${ctx.integrationsCount} | أسعار التوصيل: ${ctx.deliveryPricesCount} ولاية`;
   if (ctx.lowStockProducts?.length) p += `\nمخزون منخفض: ${ctx.lowStockProducts.join('، ')}`;
   if (ctx.topProducts?.length) p += `\nالأكثر مبيعاً: ${ctx.topProducts.join('، ')}`;
 
