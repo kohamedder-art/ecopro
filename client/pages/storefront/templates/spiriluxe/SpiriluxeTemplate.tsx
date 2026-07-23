@@ -340,7 +340,7 @@ export default function SpiriluxeTemplate({
         const globalIndex = startIndex + i;
         return (
           <div key={url + globalIndex} className="relative group">
-            <img src={url} alt="" className="w-full block" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" style={{ contentVisibility: 'auto' }} />
+            <img src={url} alt="" className="w-full block object-contain" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" style={{ contentVisibility: 'auto' }} />
             {canManage && (
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                 {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}
@@ -611,11 +611,13 @@ export default function SpiriluxeTemplate({
 
                 {/* Quantity */}
                 <div className="pt-2">
-                  <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>الكمية</label>
                   <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `2px solid ${borderColor}` }}>
-                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>−</button>
-                    <span className="font-black text-lg" style={{ color: textColor }}>{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(Math.min((mainProduct?.stock_quantity != null && mainProduct.stock_quantity > 0) ? mainProduct.stock_quantity : 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>+</button>
+                    <label className="text-sm font-semibold pl-3" style={{ color: textColor }}>الكمية</label>
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>−</button>
+                      <span className="font-black text-lg min-w-[2rem] text-center" style={{ color: textColor }}>{quantity}</span>
+                      <button type="button" onClick={() => setQuantity(Math.min((mainProduct?.stock_quantity != null && mainProduct.stock_quantity > 0) ? mainProduct.stock_quantity : 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>+</button>
+                    </div>
                   </div>
                 </div>
 

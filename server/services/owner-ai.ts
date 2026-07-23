@@ -982,7 +982,7 @@ interface SlimContext {
 async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
   const p = await pool();
 
-  const storeRes = await p.query(`SELECT store_name, store_description, store_phone, store_wilaya, template, primary_color, secondary_color, store_slug, is_public FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+  const storeRes = await p.query(`SELECT store_name, store_description, store_wilaya, template, primary_color, secondary_color, store_slug, is_public FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
   if (!storeRes.rows.length) return null;
   const s = storeRes.rows[0];
   const storeName = s.store_name || 'المتجر';
@@ -1013,7 +1013,7 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
     ownerName: owner.name || '',
     ownerEmail: owner.email || '',
     ownerPhone: owner.phone || '',
-    storePhone: s.store_phone || '',
+    storePhone: owner.phone || '',
     storeWilaya: s.store_wilaya || '',
     storeDescription: s.store_description || '',
     totalOrders: Number(or.total) || 0,

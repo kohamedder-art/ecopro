@@ -676,11 +676,13 @@ export default function Store() {
 
   // Sync editor content when formData.description changes externally (e.g. AI generate)
   useEffect(() => {
-    if (descEditor && formData.description !== undefined) {
-      const currentContent = descEditor.getHTML();
-      if (formData.description !== currentContent) {
-        descEditor.commands.setContent(formData.description || '', false);
-      }
+    if (descEditor && descEditor.isEditable && formData.description !== undefined) {
+      try {
+        const currentContent = descEditor.getHTML();
+        if (formData.description !== currentContent) {
+          descEditor.commands.setContent(formData.description || '', false);
+        }
+      } catch {}
     }
   }, [formData.description]);
   // Handler for saving store settings
@@ -2489,6 +2491,7 @@ export default function Store() {
                       <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5">
                         <Plus className="h-4 w-4 text-slate-400" />
                         <Input
+                          id="customColorInput"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
@@ -2499,9 +2502,21 @@ export default function Store() {
                               }
                             }
                           }}
-                          placeholder="لون آخر + Enter"
+                          placeholder="لون آخر"
                           className="h-7 w-24 border-0 p-0 text-sm bg-transparent focus-visible:ring-0 shadow-none"
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const input = document.getElementById('customColorInput') as HTMLInputElement;
+                            const val = input?.value.trim();
+                            if (val && !existingColors.includes(val)) {
+                              toggleColor(val);
+                              input.value = '';
+                            }
+                          }}
+                          className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 px-1.5 py-0.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                        >+</button>
                       </div>
                     </div>
                   </div>
@@ -2554,6 +2569,7 @@ export default function Store() {
                     <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 w-fit">
                       <Plus className="h-4 w-4 text-slate-400" />
                       <Input
+                        id="customSizeInput"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -2564,9 +2580,21 @@ export default function Store() {
                             }
                           }
                         }}
-                        placeholder="مقاس آخر + Enter"
+                        placeholder="مقاس آخر"
                         className="h-7 w-28 border-0 p-0 text-sm bg-transparent focus-visible:ring-0 shadow-none"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = document.getElementById('customSizeInput') as HTMLInputElement;
+                          const val = input?.value.trim();
+                          if (val && !existingSizes.includes(val)) {
+                            toggleSize(val);
+                            input.value = '';
+                          }
+                        }}
+                        className="text-xs font-bold text-violet-600 dark:text-violet-400 hover:text-violet-800 px-1.5 py-0.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors"
+                      >+</button>
                     </div>
                   </div>
                 </div>
@@ -2618,6 +2646,7 @@ export default function Store() {
                     <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 w-fit">
                       <Plus className="h-4 w-4 text-slate-400" />
                       <Input
+                        id="customSize2Input"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -2628,9 +2657,21 @@ export default function Store() {
                             }
                           }
                         }}
-                        placeholder="مقاس رقمي آخر + Enter"
+                        placeholder="مقاس رقمي آخر"
                         className="h-7 w-28 border-0 p-0 text-sm bg-transparent focus-visible:ring-0 shadow-none"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = document.getElementById('customSize2Input') as HTMLInputElement;
+                          const val = input?.value.trim();
+                          if (val && !existingSizes2.includes(val)) {
+                            toggleSize2(val);
+                            input.value = '';
+                          }
+                        }}
+                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 px-1.5 py-0.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
+                      >+</button>
                     </div>
                   </div>
                 </div>
@@ -2686,7 +2727,7 @@ export default function Store() {
                         )}
                         {/* Individual variants */}
                         {variants.map((v) => (
-                          <div key={v.originalIndex} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                          <div key={v.originalIndex} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors min-w-0 overflow-hidden">
                             {/* Image thumbnail + upload for this color */}
                             <div className="relative group flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700">
                               {v.images?.[0] ? (
@@ -2756,8 +2797,8 @@ export default function Store() {
                             </span>
 
                             {/* Stock input */}
-                            <div className="flex items-center gap-1.5 flex-1">
-                              <span className="text-xs text-slate-400">الكمية:</span>
+                            <div className="flex flex-col items-center gap-0.5 flex-1">
+                              <span className="text-[10px] text-slate-400">الكمية</span>
                               <Input
                                 type="number"
                                 min={0}
