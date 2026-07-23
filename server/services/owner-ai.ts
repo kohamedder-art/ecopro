@@ -242,7 +242,7 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       // ═══ PRODUCTS ═══
       case 'search_products': {
         const q = `%${action.query || ''}%`;
-        const res = await p.query(`SELECT id, title, price, stock_quantity, category, status FROM client_store_products WHERE client_id = $1 AND deleted_at IS NULL AND (title ILIKE $2 OR category ILIKE $2) ORDER BY created_at DESC LIMIT 10`, [clientId, q]);
+        const res = await p.query(`SELECT id, title, price, stock_quantity, category, status FROM client_store_products WHERE client_id = $1 AND (title ILIKE $2 OR category ILIKE $2) ORDER BY created_at DESC LIMIT 10`, [clientId, q]);
         if (!res.rows.length) return { success: true, message: 'لا توجد منتجات تطابق البحث.', data: [] };
         const list = res.rows.map((r: any) => `#${r.id} | ${r.title} | ${r.price} دج | مخزون: ${r.stock_quantity ?? 'N/A'} | ${r.status}`).join('\n');
         return { success: true, message: `نتائج البحث:\n${list}`, data: res.rows };
@@ -273,7 +273,7 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'delete_product': {
         const { productId } = action;
         if (!productId) return { success: false, message: 'معرف المنتج مطلوب' };
-        await p.query(`UPDATE client_store_products SET deleted_at = NOW(), status = 'archived' WHERE id = $1 AND client_id = $2`, [productId, clientId]);
+        await p.query(`UPDATE client_store_products SET status = 'archived' WHERE id = $1 AND client_id = $2`, [productId, clientId]);
         return { success: true, message: `تم حذف المنتج #${productId}` };
       }
       case 'archive_product': {
@@ -997,8 +997,8 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
   const [ordersRes, revenueRes, productsRes, lowStockRes, topRes, customersRes, deliveryRes, integrationsRes, couponsRes, staffRes] = await Promise.all([
     p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'pending') as pending, COUNT(*) FILTER (WHERE status = 'delivered') as delivered, COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL`, [clientId]),
     p.query(`SELECT COALESCE(SUM(total_price), 0) as revenue FROM store_orders WHERE client_id = $1 AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '30 days'`, [clientId]),
-    p.query(`SELECT COUNT(*) as total FROM client_store_products WHERE client_id = $1 AND status = 'active' AND deleted_at IS NULL`, [clientId]),
-    p.query(`SELECT title, stock_quantity FROM client_store_products WHERE client_id = $1 AND status = 'active' AND stock_quantity <= 5 AND stock_quantity > 0 AND deleted_at IS NULL ORDER BY stock_quantity ASC LIMIT 5`, [clientId]),
+    p.query(`SELECT COUNT(*) as total FROM client_store_products WHERE client_id = $1 AND status = 'active'`, [clientId]),
+    p.query(`SELECT title, stock_quantity FROM client_store_products WHERE client_id = $1 AND status = 'active' AND stock_quantity <= 5 AND stock_quantity > 0 ORDER BY stock_quantity ASC LIMIT 5`, [clientId]),
     p.query(`SELECT p.title, COUNT(o.id) as sales FROM client_store_products p JOIN store_orders o ON o.product_id = p.id WHERE p.client_id = $1 AND o.created_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY p.title ORDER BY sales DESC LIMIT 5`, [clientId]),
     p.query(`SELECT COUNT(DISTINCT customer_phone) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND customer_phone IS NOT NULL`, [clientId]),
     p.query(`SELECT COUNT(*) as total FROM delivery_prices WHERE client_id = $1`, [clientId]),
