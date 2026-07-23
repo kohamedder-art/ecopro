@@ -461,7 +461,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
         </section>
       )}
 
-      <div className="max-w-7xl mx-auto px-2 md:px-4 pb-20 md:pb-0">
+      <div className="max-w-[1600px] mx-auto px-2 md:px-4 pb-20 md:pb-0">
 
         {/* TRUST MINI-BAR */}
         <div className="flex justify-around py-4 border-b text-[10px] font-bold" style={{ borderColor, backgroundColor: surfaceMuted, color: textMuted }}>
@@ -485,7 +485,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               </h3>
               <span className="text-xs font-bold" style={{ color: textMuted }}>{collectionProducts.length} منتج</span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-2 md:gap-x-3 gap-y-4 md:gap-y-6" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 md:gap-2" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {collectionProducts.map(product => (
                 <div key={product.id} className="group cursor-pointer" onClick={() => { setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}>
                   <div className="relative aspect-[3/4] overflow-hidden mb-2" style={{ backgroundColor: surfaceColor }}>
