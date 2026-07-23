@@ -79,7 +79,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
           )}
           {imgs.length > 0 ? imgs.map((img, i) => (
             <img key={i} src={img} alt=""
-              className="w-full h-full object-cover shrink-0 cursor-pointer"
+              className="w-full h-full object-contain shrink-0 cursor-pointer"
               loading={i === 0 ? 'eager' : 'lazy'}
               style={{ flex: '0 0 100%' }}
               onClick={() => onZoom(img)}
@@ -461,7 +461,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
         </section>
       )}
 
-      <div className="max-w-[1600px] mx-auto px-2 md:px-4 pb-20 md:pb-0">
+      <div className="max-w-[1600px] mx-auto px-1 md:px-2 pb-20 md:pb-0">
 
         {/* TRUST MINI-BAR */}
         <div className="flex justify-around py-4 border-b text-[10px] font-bold" style={{ borderColor, backgroundColor: surfaceMuted, color: textMuted }}>
@@ -488,7 +488,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 md:gap-2" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {collectionProducts.map(product => (
                 <div key={product.id} className="group cursor-pointer" onClick={() => { setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}>
-                  <div className="relative aspect-square overflow-hidden mb-2" style={{ backgroundColor: surfaceColor }}>
+                  <div className="relative aspect-[5/7] overflow-hidden mb-2" style={{ backgroundColor: surfaceColor }}>
                     {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                       ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || ''}
                           onMouseEnter={e => (e.target as HTMLVideoElement).play()}
@@ -779,7 +779,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           .boutique-gallery-fill video { object-fit: contain !important; }
         }
         @media (min-width: 768px) {
-          .boutique-modal-card { height: 85vh !important; max-height: 85vh !important; }
+          .boutique-modal-card { height: 92vh !important; max-height: 92vh !important; }
           .boutique-gallery-fill { aspect-ratio: unset !important; flex: 1; min-height: 0; }
         }
       `}} />
@@ -794,7 +794,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               <BoutiqueImageGallery product={detailProduct} surfaceMuted={surfaceMuted} accentColor={accentColor} surfaceTextMuted={surfaceTextMuted} surfaceBorderColor={surfaceBorderColor} onZoom={(src) => { const imgs = detailProduct?.images?.filter(Boolean) || []; const idx = imgs.indexOf(src); setZoomState({ images: imgs.length ? imgs : [src], idx: idx >= 0 ? idx : 0 }); }} />
             </div>
             <div className="w-full md:flex-1 md:flex md:flex-col md:overflow-hidden" dir="rtl">
-              <div className="px-6 py-5 space-y-4 md:flex-1 md:overflow-y-auto">
+              <div className="px-6 pt-8 pb-4 space-y-4 md:flex-1 md:overflow-y-auto">
                 <div className="flex justify-between items-start gap-4">
                   <h3 className="text-xl font-black leading-tight" style={{ color: surfaceTextColor }}>{detailProduct.title}</h3>
                   <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{Math.round(detailProduct.price ?? 0).toLocaleString()} {currency}</p>
@@ -842,7 +842,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   key={zoomState.idx} 
   src={zoomState.images[zoomState.idx]} 
   alt="Preview" 
-  className="max-w-full max-h-[75vh] object-contain rounded-2xl" 
+  className="max-w-full max-h-[95vh] object-contain rounded-2xl" 
   decoding="async"
   style={{ contentVisibility: 'auto' }}
 />

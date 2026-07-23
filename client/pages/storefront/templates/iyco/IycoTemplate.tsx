@@ -99,7 +99,7 @@ export default function IycoTemplate({
   const textMuted = isDark ? (isLight(primaryColor) ? primaryColor + 'aa' : '#94a3b8') : '#64748b';
   const surfaceColor = headerColor;
   const surfaceMuted = isDark ? '#0f172a' : '#f1f5f9';
-  const borderColor = isDark ? '#334155' : '#e2e8f0';
+  const borderColor = isDark ? '#475569' : '#94a3b8';
   const surfaceTextColor = isHeaderDark ? (isLight(primaryColor) ? primaryColor : '#f1f5f9') : primaryColor;
   const surfaceTextMuted = isHeaderDark ? (isLight(primaryColor) ? primaryColor + 'aa' : '#94a3b8') : '#64748b';
 
@@ -445,7 +445,7 @@ export default function IycoTemplate({
   <img 
     src={settings.store_logo} 
     alt={storeName} 
-    className="w-8 h-8 rounded-full object-cover"
+    className="w-12 h-12 rounded-full object-cover"
     loading="lazy"
     decoding="async"
     width="32"
@@ -458,8 +458,8 @@ export default function IycoTemplate({
               </div>
             )}
             <span
-              className="text-2xl font-black tracking-tighter"
-              style={{ color: surfaceTextColor }}
+              className="font-black tracking-tighter"
+              style={{ color: surfaceTextColor, fontSize: '25px' }}
               contentEditable={canManage}
               suppressContentEditableWarning
               onBlur={handleTextEdit('store_name')}
@@ -490,7 +490,7 @@ export default function IycoTemplate({
 
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4">
-              <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[70vh]" style={{ backgroundColor: surfaceMuted }}>
+              <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[95vh]" style={{ backgroundColor: surfaceMuted }}>
                 <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory' }} onScroll={handleScroll}>
                   {videoEmbed && (
                     <div key="video" className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}>
@@ -636,13 +636,13 @@ export default function IycoTemplate({
                       <input
                         required
                         type="text"
-                        placeholder="أدخل الإسم الكامل"
-                        className="w-full pl-4 pr-11 py-3 text-base md:text-sm rounded-xl outline-none transition-all"
+                        placeholder="الاسم الكامل"
+                        className="w-full pl-4 pr-4 md:pr-11 py-3 text-base md:text-sm rounded-xl outline-none transition-all"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerName ? accentColor : borderColor}` }}
                         value={customerName}
                         onChange={e => setCustomerName(e.target.value)}
                       />
-                      <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-xl" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
+                      <div className="hidden md:flex absolute right-0 top-0 h-full w-10 items-center justify-center rounded-r-xl" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
                         <User size={16} />
                       </div>
                     </div>
@@ -650,14 +650,14 @@ export default function IycoTemplate({
                       <input
                         required
                         type="tel"
-                        placeholder="أدخل رقم الهاتف..."
+                        placeholder="رقم الهاتف"
                         maxLength={10}
-                        className="w-full pl-4 pr-11 py-3 text-base md:text-sm rounded-xl outline-none transition-all text-right"
+                        className="w-full pl-4 pr-4 md:pr-11 py-3 text-base md:text-sm rounded-xl outline-none transition-all text-right"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${customerPhone ? accentColor : borderColor}` }}
                         value={customerPhone}
                         onChange={e => setCustomerPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
                       />
-                      <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-xl" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
+                      <div className="hidden md:flex absolute right-0 top-0 h-full w-10 items-center justify-center rounded-r-xl" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
                         <Phone size={16} />
                       </div>
                     </div>
@@ -668,7 +668,7 @@ export default function IycoTemplate({
                     <div className="relative">
                       <select
                         required
-                        className="w-full pl-4 pr-11 md:pr-10 py-3 text-base md:text-sm rounded-xl outline-none transition-all appearance-none cursor-pointer"
+                        className="w-full pl-4 pr-4 md:pr-10 py-3 text-base md:text-sm rounded-xl outline-none transition-all appearance-none cursor-pointer"
                         style={{ backgroundColor: surfaceColor, color: surfaceTextColor, border: `1px solid ${selectedWilayaId ? accentColor : borderColor}` }}
                         value={selectedWilayaId ?? ''}
                         onChange={e => setSelectedWilayaId(Number(e.target.value) || null)}
@@ -678,7 +678,7 @@ export default function IycoTemplate({
                           <option key={w.id} value={w.id}>{w.labelAR}</option>
                         ))}
                       </select>
-                      <div className="absolute right-0 top-0 h-full w-11 md:w-10 flex items-center justify-center rounded-r-xl pointer-events-none" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
+                      <div className="hidden md:flex absolute right-0 top-0 h-full w-10 items-center justify-center rounded-r-xl pointer-events-none" style={{ backgroundColor: surfaceMuted, borderLeft: `1px solid ${borderColor}`, color: surfaceTextMuted }}>
                         <MapPin size={16} />
                       </div>
                     </div>
@@ -830,7 +830,7 @@ export default function IycoTemplate({
                   className="group block text-right"
                   onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
                 >
-                  <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3" style={{ backgroundColor: surfaceMuted }}>
+                  <div className="relative aspect-[5/7] rounded-xl overflow-hidden mb-3" style={{ backgroundColor: surfaceMuted }}>
                     {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                       ? <LazyVideo src={(prod as any).metadata.video_url} poster={prod.images?.[0] || '/placeholder.png'}
                           onMouseEnter={e => (e.target as HTMLVideoElement).play()}
@@ -842,7 +842,7 @@ export default function IycoTemplate({
                             src={prod.images?.[0] || '/placeholder.png'}
                             alt={prod.title}
                             loading="lazy"
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
                           />
                     }
                     {prod.original_price && (
@@ -948,7 +948,7 @@ export default function IycoTemplate({
   key={zoomState.idx} 
   src={zoomState.images[zoomState.idx]} 
   alt="Preview" 
-  className="max-w-full max-h-[75vh] object-contain rounded-2xl" 
+  className="max-w-full max-h-[95vh] object-contain rounded-2xl" 
   decoding="async"
   style={{ contentVisibility: 'auto' }}
 />
