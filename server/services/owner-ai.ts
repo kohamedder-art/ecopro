@@ -71,11 +71,6 @@ Statuses: pending, confirmed, processing, shipped, delivered, cancelled, returne
 - ECOPRO_ACTION:{"type":"search_customers","query":"<بحث>"}
 - ECOPRO_ACTION:{"type":"get_customer","customerPhone":"<رقم>"}
 
-═══ الكوبونات ═══
-- ECOPRO_ACTION:{"type":"list_coupons"}
-- ECOPRO_ACTION:{"type":"create_coupon","code":"<كود>","type":"percentage|fixed","value":<قيمة>,"minOrder":<حد_أدنى>,"maxUses":<حد_أقصى>,"expiryDate":"<تاريخ>"}
-- ECOPRO_ACTION:{"type":"delete_coupon","couponId":<ن>}
-
 ═══ المتجر ═══
 - ECOPRO_ACTION:{"type":"get_store_settings"}
 - ECOPRO_ACTION:{"type":"update_store_settings","field":"store_name|description|currency|language","value":"<قيمة>"}
@@ -89,19 +84,8 @@ Statuses: pending, confirmed, processing, shipped, delivered, cancelled, returne
 - ECOPRO_ACTION:{"type":"switch_template","template":"<اسم_القالب>"}
 
 القالب المتاحة: books, minimal, mega, grocery, pro, tech, modern
-الحقول المتاحة للتصميم:
-  الهوية: store_name, store_description, store_logo, primary_color, secondary_color, owner_name, owner_email, currency_code
-  الصور: banner_url, hero_main_url, hero_tile1_url, hero_tile2_url, hero_video_url, template_bg_image, store_images
-  النص: template_hero_heading, template_hero_subtitle, template_button_text, template_hero_kicker, template_hero_badge_title, template_hero_badge_subtitle, template_featured_title, template_featured_subtitle, template_copyright, template_footer_text, template_add_to_cart_label
-  الألوان: template_accent_color, template_bg_color, template_text_color, template_muted_color, template_header_bg, template_header_text, template_hero_title_color, template_hero_subtitle_color, template_hero_kicker_color, template_footer_bg, template_footer_text, template_footer_link_color, template_card_bg, template_product_title_color, template_product_price_color, template_section_title_color, template_section_subtitle_color, template_category_pill_bg, template_category_pill_text, template_category_pill_active_bg, template_category_pill_active_text
-  الطباعة: template_font_family, template_font_weight, template_heading_font_weight
-  الأحجام: template_border_radius, template_card_border_radius, template_button_border_radius, template_section_title_size, template_hero_title_size, template_hero_subtitle_size, template_category_pill_border_radius
-  المسافات: template_spacing, template_section_spacing, template_grid_gap
-  الشبكة: template_grid_columns, template_grid_title
-  الحركة: template_animation_speed, template_hover_scale
-  الأزرار: template_button2_text, template_button2_border
-  مخصص: template_custom_css, template_social_links, template_nav_links
-  الرابط: store_slug, subdomain, custom_domain, is_public
+الحقول المباشرة (عمود DB): store_name, store_description, store_logo, primary_color, secondary_color, banner_url, hero_main_url, hero_tile1_url, hero_tile2_url, template_bg_image, template_bg_color, template_accent_color, template_hero_heading, template_hero_subtitle, template_button_text, template_hero_kicker, template_hero_title_color, template_hero_subtitle_color, template_featured_title, template_featured_subtitle, template_button2_text, template_font_family, template_border_radius, template_card_border_radius, template_button_border_radius, template_copyright, template_footer_text, template_footer_bg, template_text_color, template_muted_color, template_header_bg, template_header_text, template_add_to_cart_label, template_custom_css, template_section_title_color, template_section_subtitle_color, template_card_bg, template_product_title_color, template_product_price_color, store_slug, subdomain, is_public, owner_name, owner_email, currency_code
+أي حقل آخر يُخزّن في template_settings JSONB
 
 ═══ البوت ═══
 - ECOPRO_ACTION:{"type":"get_bot_settings"}
@@ -141,13 +125,6 @@ Statuses: pending, confirmed, processing, shipped, delivered, cancelled, returne
 - ECOPRO_ACTION:{"type":"adjust_stock","stockId":<ن>,"adjustment":<+-كمية>,"reason":"<سبب>"}
 - ECOPRO_ACTION:{"type":"delete_stock","stockId":<ن>}
 - ECOPRO_ACTION:{"type":"get_low_stock_alerts"}
-
-═══ حالات الطلب المخصصة ═══
-- ECOPRO_ACTION:{"type":"list_order_statuses"}
-- ECOPRO_ACTION:{"type":"create_order_status","name":"<اسم>","color":"<لون>","icon":"<رمز>","countsAsRevenue":true|false}
-- ECOPRO_ACTION:{"type":"update_order_status_def","statusId":<ن>,"name":"<اسم>","color":"<لون>","icon":"<رمز>"}
-- ECOPRO_ACTION:{"type":"delete_order_status","statusId":<ن>}
-- ECOPRO_ACTION:{"type":"restore_preset_status","key":"cancelled|failed|delivered|declined|delivery_failed|returned|didnt_pickup|no_answer_1|no_answer_2|no_answer_3|waiting_callback|postponed|fake|duplicate"}
 
 ═══ المتغيرات (الألوان/المقاسات) ═══
 - ECOPRO_ACTION:{"type":"get_product_variants","productId":<ن>}
@@ -338,26 +315,6 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         return { success: true, message: `**${r.customer_name || 'N/A'}** (${r.customer_phone})\n- الطلبات: ${r.order_count}\n- الإجمالي: ${Number(r.total_spent).toLocaleString('ar-DZ')} دج\n- آخر 5 طلبات:\n${orderList}`, data: r };
       }
 
-      // ═══ COUPONS ═══
-      case 'list_coupons': {
-        const res = await p.query(`SELECT id, code, type, value, min_order_amount, max_uses, used_count, expiry_date, is_active FROM client_store_coupons WHERE client_id = $1 ORDER BY created_at DESC`, [clientId]);
-        if (!res.rows.length) return { success: true, message: 'لا توجد كوبونات.', data: [] };
-        const list = res.rows.map((c: any) => `- #${c.id} | ${c.code} | ${c.type === 'percentage' ? c.value + '%' : c.value + ' دج'} | الحد الأدنى: ${c.min_order_amount || 0} دج | الاستخدام: ${c.used_count || 0}/${c.max_uses || '∞'} | ${c.is_active ? 'نشط' : 'معطل'}`).join('\n');
-        return { success: true, message: `**الكوبونات:**\n${list}`, data: res.rows };
-      }
-      case 'create_coupon': {
-        const { code, type, value, minOrder, maxUses, expiryDate } = action;
-        if (!code || !type || !value) return { success: false, message: 'الكود والنوع والقيمة مطلوبة' };
-        const res = await p.query(`INSERT INTO client_store_coupons (client_id, code, type, value, min_order_amount, max_uses, expiry_date, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, true) RETURNING id`, [clientId, code, type, value, minOrder || 0, maxUses || null, expiryDate || null]);
-        return { success: true, message: `تم إنشاء الكوبون "${code}" (ID: ${res.rows[0].id})`, data: { couponId: res.rows[0].id } };
-      }
-      case 'delete_coupon': {
-        const { couponId } = action;
-        if (!couponId) return { success: false, message: 'معرف الكوبون مطلوب' };
-        await p.query(`DELETE FROM client_store_coupons WHERE id = $1 AND client_id = $2`, [couponId, clientId]);
-        return { success: true, message: `تم حذف الكوبون #${couponId}` };
-      }
-
       // ═══ STORE SETTINGS ═══
       case 'get_store_settings': {
         const res = await p.query(`SELECT store_name, store_description, currency_code, owner_name, owner_email, is_public, template, store_slug, primary_color, secondary_color FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
@@ -376,103 +333,92 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
 
       // ═══ STORE DESIGN ═══
       case 'get_store_design': {
-        const res = await p.query(`SELECT template, primary_color, secondary_color, store_name, store_description, store_logo, banner_url, hero_main_url, hero_tile1_url, hero_tile2_url, hero_video_url, template_bg_image, template_bg_color, template_text_color, template_muted_color, template_accent_color, template_header_bg, template_header_text, template_footer_bg, template_footer_text, template_footer_link_color, template_card_bg, template_product_title_color, template_product_price_color, template_section_title_color, template_section_subtitle_color, template_hero_heading, template_hero_subtitle, template_button_text, template_hero_kicker, template_hero_kicker_color, template_hero_title_color, template_hero_title_size, template_hero_subtitle_color, template_hero_subtitle_size, template_font_family, template_font_weight, template_heading_font_weight, template_border_radius, template_card_border_radius, template_button_border_radius, template_spacing, template_section_spacing, template_grid_columns, template_grid_gap, template_animation_speed, template_hover_scale, template_category_pill_bg, template_category_pill_text, template_category_pill_active_bg, template_category_pill_active_text, template_category_pill_border_radius, template_hero_badge_title, template_hero_badge_subtitle, template_featured_title, template_featured_subtitle, template_button2_text, template_button2_border, template_copyright, template_footer_text, template_add_to_cart_label, template_custom_css, template_social_links, template_nav_links, store_slug, subdomain, is_public FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+        const res = await p.query(`SELECT template, primary_color, secondary_color, store_name, store_description, store_logo, banner_url, hero_main_url, hero_tile1_url, hero_tile2_url, template_bg_image, template_bg_color, template_accent_color, template_hero_heading, template_hero_subtitle, template_button_text, template_font_family, template_border_radius, store_slug, subdomain, is_public, template_settings FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
         if (!res.rows.length) return { success: false, message: 'إعدادات المتجر غير موجودة' };
         const r = res.rows[0];
+        const ts = r.template_settings && typeof r.template_settings === 'object' ? r.template_settings : {};
         const sections = [
           `**القالب:** ${r.template || 'books'}`,
           `**الهوية:** ${r.store_name || '-'} | ${r.store_description || '-'}`,
-          `**الألوان الأساسية:** أساسي: ${r.primary_color || '-'} | ثانوي: ${r.secondary_color || '-'} | تمييز: ${r.template_accent_color || '-'}`,
+          `**الألوان:** أساسي: ${r.primary_color || '-'} | ثانوي: ${r.secondary_color || '-'} | تمييز: ${r.template_accent_color || '-'}`,
           `**الخلفية:** لون: ${r.template_bg_color || '-'} | صورة: ${r.template_bg_image ? 'موجودة' : 'بدون'}`,
-          `**الهيدر:** خلفية: ${r.template_header_bg || '-'} | نص: ${r.template_header_text || '-'}`,
-          `**الفوتر:** خلفية: ${r.template_footer_bg || '-'} | نص: ${r.template_footer_text || '-'} | روابط: ${r.template_footer_link_color || '-'}`,
-          `**البطاقات:** خلفية: ${r.template_card_bg || '-'} | عنوان: ${r.template_product_title_color || '-'} | سعر: ${r.template_product_price_color || '-'}`,
           `**الهIRO:** عنوان: ${r.template_hero_heading || '-'} | عنوان فرعي: ${r.template_hero_subtitle || '-'} | زر: ${r.template_button_text || '-'}`,
-          `**الطباعة:** عائلة: ${r.template_font_family || '-'} | وزن: ${r.template_font_weight || '-'} | عناوين: ${r.template_heading_font_weight || '-'}`,
-          `**الأحجام:** عام: ${r.template_border_radius || '-'} | بطاقة: ${r.template_card_border_radius || '-'} | زر: ${r.template_button_border_radius || '-'}`,
-          `**الشبكة:** أعمدة: ${r.template_grid_columns || '-'} | فجوة: ${r.template_grid_gap || '-'}`,
+          `**الطباعة:** عائلة: ${r.template_font_family || '-'}`,
+          `**الأحجام:** عام: ${r.template_border_radius || '-'}`,
           `**الرابط:** ${r.store_slug || '-'} | عام: ${r.is_public ? 'نعم' : 'لا'}`,
         ];
+        const advancedKeys = Object.keys(ts).filter(k => ts[k] !== null && ts[k] !== undefined && ts[k] !== '');
+        if (advancedKeys.length) {
+          sections.push(`**إعدادات إضافية (JSON):** ${advancedKeys.map(k => `${k}=${ts[k]}`).join(' | ')}`);
+        }
         return { success: true, message: sections.join('\n'), data: r };
       }
       case 'update_store_design': {
         const { field, value } = action;
         if (!field || value === undefined) return { success: false, message: 'الحقل والقيمة مطلوبان' };
-        const allowedDesignCols = [
+        const directCols = new Set([
           'store_name', 'store_description', 'store_logo', 'primary_color', 'secondary_color',
-          'banner_url', 'hero_main_url', 'hero_tile1_url', 'hero_tile2_url', 'hero_video_url',
-          'template_bg_image', 'template_bg_color', 'template_text_color', 'template_muted_color',
-          'template_accent_color', 'template_header_bg', 'template_header_text',
-          'template_footer_bg', 'template_footer_text', 'template_footer_link_color',
-          'template_card_bg', 'template_product_title_color', 'template_product_price_color',
-          'template_section_title_color', 'template_section_subtitle_color',
+          'banner_url', 'hero_main_url', 'hero_tile1_url', 'hero_tile2_url',
+          'template_bg_image', 'template_bg_color', 'template_accent_color',
           'template_hero_heading', 'template_hero_subtitle', 'template_button_text',
-          'template_hero_kicker', 'template_hero_kicker_color',
-          'template_hero_title_color', 'template_hero_title_size',
-          'template_hero_subtitle_color', 'template_hero_subtitle_size',
-          'template_hero_badge_title', 'template_hero_badge_subtitle',
+          'template_hero_kicker', 'template_hero_title_color', 'template_hero_subtitle_color',
           'template_featured_title', 'template_featured_subtitle',
-          'template_button2_text', 'template_button2_border',
-          'template_font_family', 'template_font_weight', 'template_heading_font_weight',
+          'template_button2_text', 'template_font_family',
           'template_border_radius', 'template_card_border_radius', 'template_button_border_radius',
-          'template_section_title_size', 'template_category_pill_border_radius',
-          'template_spacing', 'template_section_spacing', 'template_grid_gap', 'template_grid_columns', 'template_grid_title',
-          'template_animation_speed', 'template_hover_scale',
-          'template_category_pill_bg', 'template_category_pill_text',
-          'template_category_pill_active_bg', 'template_category_pill_active_text',
-          'template_copyright', 'template_footer_text', 'template_add_to_cart_label',
-          'template_custom_css', 'template_social_links', 'template_nav_links',
-          'store_slug', 'subdomain', 'is_public',
-          'owner_name', 'owner_email', 'currency_code',
-        ];
-        if (!allowedDesignCols.includes(field)) return { success: false, message: `الحقل "${field}" غير مدعوم. اكتب "عرض التصميم" لرؤية كل الحقول المتاحة.` };
-        await p.query(`UPDATE client_store_settings SET ${field} = $1, updated_at = NOW() WHERE client_id = $2`, [value, clientId]);
+          'template_copyright', 'template_footer_text', 'template_footer_bg',
+          'template_text_color', 'template_muted_color', 'template_header_bg', 'template_header_text',
+          'template_add_to_cart_label', 'template_custom_css',
+          'template_section_title_color', 'template_section_subtitle_color',
+          'template_card_bg', 'template_product_title_color', 'template_product_price_color',
+          'store_slug', 'subdomain', 'is_public', 'owner_name', 'owner_email', 'currency_code',
+        ]);
+        if (directCols.has(field)) {
+          await p.query(`UPDATE client_store_settings SET ${field} = $1, updated_at = NOW() WHERE client_id = $2`, [String(value).slice(0, 500), clientId]);
+        } else {
+          await p.query(`UPDATE client_store_settings SET template_settings = COALESCE(template_settings, '{}'::jsonb) || $1::jsonb, updated_at = NOW() WHERE client_id = $2`, [JSON.stringify({ [field]: value }), clientId]);
+        }
         return { success: true, message: `تم تحديث ${field} ✅` };
       }
       case 'batch_update_store_design': {
         const { updates } = action;
         if (!updates || typeof updates !== 'object' || Object.keys(updates).length === 0) return { success: false, message: 'البيانات مطلوبة' };
-        const allowedDesignCols = new Set([
+        const directCols = new Set([
           'store_name', 'store_description', 'store_logo', 'primary_color', 'secondary_color',
-          'banner_url', 'hero_main_url', 'hero_tile1_url', 'hero_tile2_url', 'hero_video_url',
-          'template_bg_image', 'template_bg_color', 'template_text_color', 'template_muted_color',
-          'template_accent_color', 'template_header_bg', 'template_header_text',
-          'template_footer_bg', 'template_footer_text', 'template_footer_link_color',
-          'template_card_bg', 'template_product_title_color', 'template_product_price_color',
-          'template_section_title_color', 'template_section_subtitle_color',
+          'banner_url', 'hero_main_url', 'hero_tile1_url', 'hero_tile2_url',
+          'template_bg_image', 'template_bg_color', 'template_accent_color',
           'template_hero_heading', 'template_hero_subtitle', 'template_button_text',
-          'template_hero_kicker', 'template_hero_kicker_color',
-          'template_hero_title_color', 'template_hero_title_size',
-          'template_hero_subtitle_color', 'template_hero_subtitle_size',
-          'template_hero_badge_title', 'template_hero_badge_subtitle',
+          'template_hero_kicker', 'template_hero_title_color', 'template_hero_subtitle_color',
           'template_featured_title', 'template_featured_subtitle',
-          'template_button2_text', 'template_button2_border',
-          'template_font_family', 'template_font_weight', 'template_heading_font_weight',
+          'template_button2_text', 'template_font_family',
           'template_border_radius', 'template_card_border_radius', 'template_button_border_radius',
-          'template_section_title_size', 'template_category_pill_border_radius',
-          'template_spacing', 'template_section_spacing', 'template_grid_gap', 'template_grid_columns', 'template_grid_title',
-          'template_animation_speed', 'template_hover_scale',
-          'template_category_pill_bg', 'template_category_pill_text',
-          'template_category_pill_active_bg', 'template_category_pill_active_text',
-          'template_copyright', 'template_footer_text', 'template_add_to_cart_label',
-          'template_custom_css', 'template_social_links', 'template_nav_links',
-          'store_slug', 'subdomain', 'is_public',
-          'owner_name', 'owner_email', 'currency_code',
+          'template_copyright', 'template_footer_text', 'template_footer_bg',
+          'template_text_color', 'template_muted_color', 'template_header_bg', 'template_header_text',
+          'template_add_to_cart_label', 'template_custom_css',
+          'template_section_title_color', 'template_section_subtitle_color',
+          'template_card_bg', 'template_product_title_color', 'template_product_price_color',
+          'store_slug', 'subdomain', 'is_public', 'owner_name', 'owner_email', 'currency_code',
         ]);
         const fields: string[] = [];
         const values: any[] = [];
         let paramIdx = 1;
+        const jsonbObj: Record<string, any> = {};
         const changed: string[] = [];
         for (const [k, v] of Object.entries(updates)) {
-          if (!allowedDesignCols.has(k)) continue;
-          fields.push(`${k} = $${paramIdx}`);
-          values.push(v);
-          paramIdx++;
+          if (directCols.has(k)) {
+            fields.push(`${k} = $${paramIdx}`);
+            values.push(String(v).slice(0, 500));
+            paramIdx++;
+          } else {
+            jsonbObj[k] = v;
+          }
           changed.push(k);
         }
-        if (fields.length === 0) return { success: false, message: 'لا توجد حقول صالحة للتحديث' };
+        if (fields.length === 0 && Object.keys(jsonbObj).length === 0) return { success: false, message: 'لا توجد حقول صالحة للتحديث' };
         values.push(clientId);
-        await p.query(`UPDATE client_store_settings SET ${fields.join(', ')}, updated_at = NOW() WHERE client_id = $${paramIdx}`, values);
+        const jsonbParam = paramIdx;
+        values.push(JSON.stringify(jsonbObj));
+        const sql = `UPDATE client_store_settings SET ${fields.length ? fields.map((f, i) => f).join(', ') + ', ' : ''}template_settings = COALESCE(template_settings, '{}'::jsonb) || $${jsonbParam}::jsonb, updated_at = NOW() WHERE client_id = $${jsonbParam + 1}`;
+        await p.query(sql, values);
         return { success: true, message: `تم تحديث ${changed.length} حقل: ${changed.join(', ')} ✅`, data: { updated: changed } };
       }
       case 'switch_template': {
@@ -542,9 +488,9 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
 
       // ═══ STAFF ═══
       case 'list_staff': {
-        const res = await p.query(`SELECT id, name, email, role, is_active FROM client_staff WHERE client_id = $1 ORDER BY created_at DESC`, [clientId]);
+        const res = await p.query(`SELECT id, full_name, email, role, status FROM staff WHERE client_id = $1 ORDER BY created_at DESC`, [clientId]);
         if (!res.rows.length) return { success: true, message: 'لا يوجد موظفين مُضافين.', data: [] };
-        const list = res.rows.map((s: any) => `- ${s.name} (${s.email || 'بدون إيميل'}) | ${s.role} | ${s.is_active ? 'نشط' : 'معطّل'}`).join('\n');
+        const list = res.rows.map((s: any) => `- ${s.full_name || 'بدون اسم'} (${s.email || 'بدون إيميل'}) | ${s.role} | ${s.status === 'active' ? 'نشط' : 'معطّل'}`).join('\n');
         return { success: true, message: `**الموظفين:**\n${list}`, data: res.rows };
       }
 
@@ -718,74 +664,6 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         if (!res.rows.length) return { success: true, message: 'لا توجد منتجات بمخزون منخفض 🎉', data: [] };
         const list = res.rows.map((r: any) => `- **${r.name}** (${r.category || '-'}) | المخزون: ${r.quantity} | الحد الأدنى: ${r.reorder_level}`).join('\n');
         return { success: true, message: `**⚠️ مخزون منخفض (${res.rows.length}):**\n${list}`, data: res.rows };
-      }
-
-      // ═══ ORDER STATUSES ═══
-      case 'list_order_statuses': {
-        const res = await p.query(`SELECT id, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue FROM order_statuses WHERE client_id = $1 ORDER BY sort_order, name`, [clientId]);
-        if (!res.rows.length) return { success: true, message: 'لا توجد حالات مخصصة.', data: [] };
-        const list = res.rows.map((r: any) => `- ${r.icon} ${r.name} (${r.key || '-'}) | ${r.color} | ${r.is_system ? '🔒' : '✏️'} ${r.counts_as_revenue ? '💰' : ''}`).join('\n');
-        return { success: true, message: `**حالات الطلب:**\n${list}`, data: res.rows };
-      }
-      case 'create_order_status': {
-        const { name, color, icon, countsAsRevenue } = action;
-        if (!name) return { success: false, message: 'اسم الحالة مطلوب' };
-        const key = name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
-        const maxSort = await p.query(`SELECT COALESCE(MAX(sort_order), 0) + 1 as next FROM order_statuses WHERE client_id = $1`, [clientId]);
-        const res = await p.query(`INSERT INTO order_statuses (client_id, name, key, color, icon, sort_order, counts_as_revenue) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`, [clientId, name, key, color || '#6b7280', icon || '●', maxSort.rows[0].next, countsAsRevenue || false]);
-        return { success: true, message: `تم إنشاء حالة "${name}" (ID: ${res.rows[0].id}) ✅` };
-      }
-      case 'update_order_status_def': {
-        const { statusId, name, color, icon, countsAsRevenue, sortOrder } = action;
-        if (!statusId) return { success: false, message: 'معرف الحالة مطلوب' };
-        const fields: string[] = [];
-        const values: any[] = [];
-        let idx = 1;
-        if (name !== undefined) { fields.push(`name = $${idx}`); values.push(name); idx++; }
-        if (color !== undefined) { fields.push(`color = $${idx}`); values.push(color); idx++; }
-        if (icon !== undefined) { fields.push(`icon = $${idx}`); values.push(icon); idx++; }
-        if (countsAsRevenue !== undefined) { fields.push(`counts_as_revenue = $${idx}`); values.push(countsAsRevenue); idx++; }
-        if (sortOrder !== undefined) { fields.push(`sort_order = $${idx}`); values.push(sortOrder); idx++; }
-        if (fields.length === 0) return { success: false, message: 'لا توجد حقول للتحديث' };
-        values.push(statusId, clientId);
-        await p.query(`UPDATE order_statuses SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} AND client_id = $${idx + 1}`, values);
-        return { success: true, message: `تم تحديث الحالة #${statusId} ✅` };
-      }
-      case 'delete_order_status': {
-        const { statusId } = action;
-        if (!statusId) return { success: false, message: 'معرف الحالة مطلوب' };
-        const check = await p.query(`SELECT is_system, is_default FROM order_statuses WHERE id = $1 AND client_id = $2`, [statusId, clientId]);
-        if (!check.rows.length) return { success: false, message: 'الحالة غير موجودة' };
-        if (check.rows[0].is_system) return { success: false, message: 'لا يمكن حذف حالة نظام 🔒' };
-        await p.query(`DELETE FROM order_statuses WHERE id = $1 AND client_id = $2`, [statusId, clientId]);
-        return { success: true, message: `تم حذف الحالة #${statusId}` };
-      }
-      case 'restore_preset_status': {
-        const { key } = action;
-        if (!key) return { success: false, message: 'مفتاح الحالة مطلوب' };
-        const presets: Record<string, { name: string; color: string; icon: string }> = {
-          cancelled: { name: 'ملغي', color: '#ef4444', icon: '❌' },
-          failed: { name: 'فشل', color: '#dc2626', icon: '⚠️' },
-          delivered: { name: 'تم التوصيل', color: '#22c55e', icon: '✅' },
-          declined: { name: 'مرفوض', color: '#f97316', icon: '🚫' },
-          delivery_failed: { name: 'فشل التوصيل', color: '#ef4444', icon: '📦❌' },
-          returned: { name: 'مرجوع', color: '#eab308', icon: '↩️' },
-          didnt_pickup: { name: 'لم يسلّم', color: '#f97316', icon: '📭' },
-          no_answer_1: { name: 'لم يُجيب - 1', color: '#6b7280', icon: '📞' },
-          no_answer_2: { name: 'لم يُجيب - 2', color: '#6b7280', icon: '📞📞' },
-          no_answer_3: { name: 'لم يُجيب - 3', color: '#6b7280', icon: '📞📞📞' },
-          waiting_callback: { name: 'بانتظار الاتصال', color: '#3b82f6', icon: '🕐' },
-          postponed: { name: 'مؤجّل', color: '#8b5cf6', icon: '⏳' },
-          fake: { name: 'طلب وهمي', color: '#ef4444', icon: '🎭' },
-          duplicate: { name: 'مكرر', color: '#f97316', icon: '📋' },
-        };
-        const preset = presets[key];
-        if (!preset) return { success: false, message: `مفتاح "${key}" غير صالح. المتاح: ${Object.keys(presets).join(', ')}` };
-        const existing = await p.query(`SELECT id FROM order_statuses WHERE client_id = $1 AND key = $2`, [clientId, key]);
-        if (existing.rows.length) return { success: true, message: `الحالة "${preset.name}" موجودة مسبقاً` };
-        const maxSort = await p.query(`SELECT COALESCE(MAX(sort_order), 0) + 1 as next FROM order_statuses WHERE client_id = $1`, [clientId]);
-        await p.query(`INSERT INTO order_statuses (client_id, name, key, color, icon, sort_order, is_system) VALUES ($1, $2, $3, $4, $5, $6, true)`, [clientId, preset.name, key, preset.color, preset.icon, maxSort.rows[0].next]);
-        return { success: true, message: `تمت إضافة حالة "${preset.name}" ${preset.icon} ✅` };
       }
 
       // ═══ PRODUCT VARIANTS ═══
@@ -975,7 +853,6 @@ interface SlimContext {
   totalCustomers: number;
   deliveryPricesCount: number;
   integrationsCount: number;
-  couponsCount: number;
   staffCount: number;
 }
 
@@ -994,7 +871,7 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
   const sub = subRes.rows[0] || {};
 
   // Key metrics
-  const [ordersRes, revenueRes, productsRes, lowStockRes, topRes, customersRes, deliveryRes, integrationsRes, couponsRes, staffRes] = await Promise.all([
+  const [ordersRes, revenueRes, productsRes, lowStockRes, topRes, customersRes, deliveryRes, integrationsRes, staffRes] = await Promise.all([
     p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'pending') as pending, COUNT(*) FILTER (WHERE status = 'delivered') as delivered, COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL`, [clientId]),
     p.query(`SELECT COALESCE(SUM(total_price), 0) as revenue FROM store_orders WHERE client_id = $1 AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '30 days'`, [clientId]),
     p.query(`SELECT COUNT(*) as total FROM client_store_products WHERE client_id = $1 AND status = 'active'`, [clientId]),
@@ -1003,8 +880,7 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
     p.query(`SELECT COUNT(DISTINCT customer_phone) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND customer_phone IS NOT NULL`, [clientId]),
     p.query(`SELECT COUNT(*) as total FROM delivery_prices WHERE client_id = $1`, [clientId]),
     p.query(`SELECT COUNT(*) as total FROM delivery_integrations WHERE client_id = $1`, [clientId]),
-    p.query(`SELECT COUNT(*) as total FROM client_store_coupons WHERE client_id = $1`, [clientId]),
-    p.query(`SELECT COUNT(*) as total FROM client_staff WHERE client_id = $1`, [clientId]),
+    p.query(`SELECT COUNT(*) as total FROM staff WHERE client_id = $1`, [clientId]),
   ]);
 
   const or = ordersRes.rows[0];
@@ -1035,7 +911,6 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
     totalCustomers: Number(customersRes.rows[0]?.total) || 0,
     deliveryPricesCount: Number(deliveryRes.rows[0]?.total) || 0,
     integrationsCount: Number(integrationsRes.rows[0]?.total) || 0,
-    couponsCount: Number(couponsRes.rows[0]?.total) || 0,
     staffCount: Number(staffRes.rows[0]?.total) || 0,
   };
 }
@@ -1062,8 +937,7 @@ function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: s
   p += `الدخل (30 يوم): ${ctx.totalRevenue.toLocaleString('ar-DZ')} دج\n`;
   p += `المنتجات: ${ctx.totalProducts} نشط\n`;
   p += `الزبائن: ${ctx.totalCustomers}\n`;
-  p += `الكوبونات: ${ctx.couponsCount} | الموظفين: ${ctx.staffCount}\n`;
-  p += `شركات التوصيل: ${ctx.integrationsCount} | أسعار التوصيل: ${ctx.deliveryPricesCount} ولاية`;
+  p += `شركات التوصيل: ${ctx.integrationsCount} | أسعار التوصيل: ${ctx.deliveryPricesCount} ولاية | الموظفين: ${ctx.staffCount}`;
   if (ctx.lowStockProducts?.length) p += `\nمخزون منخفض: ${ctx.lowStockProducts.join('، ')}`;
   if (ctx.topProducts?.length) p += `\nالأكثر مبيعاً: ${ctx.topProducts.join('، ')}`;
 
