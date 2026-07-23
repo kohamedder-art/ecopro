@@ -1930,9 +1930,10 @@ export const listAllProducts: RequestHandler = async (req, res) => {
     }
 
     const whereClause = hideTest ? `WHERE p.title NOT IN (${testTitles.map((_, i) => `$${i + 3}`).join(',')})` : '';
+    const countWhereClause = hideTest ? `WHERE p.title NOT IN (${testTitles.map((_, i) => `$${i + 1}`).join(',')})` : '';
 
     const countResult = await pool.query(
-      `SELECT COUNT(*)::int as total FROM client_store_products p ${whereClause}`,
+      `SELECT COUNT(*)::int as total FROM client_store_products p ${countWhereClause}`,
       hideTest ? testTitles : []
     );
     const total = countResult.rows[0]?.total || 0;
