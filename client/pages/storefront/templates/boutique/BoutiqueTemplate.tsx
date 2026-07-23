@@ -499,7 +499,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                         : <img
                             src={product.images?.[0] || ''}
                             alt={product.title}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
                             loading="lazy"
                           />
                     }
