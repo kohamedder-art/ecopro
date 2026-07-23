@@ -3,8 +3,6 @@ import { Package, Search, Eye, ShoppingCart, Grid, List, Loader2, ChevronLeft, C
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n';
 
-const TEST_PRODUCT_TITLES = ['ساعة رجالية فاخرة', 'عطر فرنسي أصلي', 'حقيبة يد نسائية', 'طقم رياضي رجالي'];
-
 interface Product {
   id: number;
   title: string;
@@ -28,24 +26,24 @@ interface Props {
   total: number;
   page: number;
   sort: string;
+  hideTest: boolean;
   onPageChange: (page: number) => void;
   onSortChange: (sort: string) => void;
+  onHideTestChange: (hide: boolean) => void;
 }
 
 const PAGE_SIZE = 50;
 
-export default function ProductsTab({ products, loading, total, page, sort, onPageChange, onSortChange }: Props) {
+export default function ProductsTab({ products, loading, total, page, sort, hideTest, onPageChange, onSortChange, onHideTestChange }: Props) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'flagged' | 'active'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [hideTest, setHideTest] = useState(true);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const filtered = useMemo(() => {
     let result = products;
-    if (hideTest) result = result.filter(p => !TEST_PRODUCT_TITLES.includes(p.title));
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(p => p.title?.toLowerCase().includes(q) || p.seller_name?.toLowerCase().includes(q));
@@ -119,7 +117,7 @@ export default function ProductsTab({ products, loading, total, page, sort, onPa
           </button>
         </div>
         <button
-          onClick={() => setHideTest(!hideTest)}
+          onClick={() => onHideTestChange(!hideTest)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
             hideTest ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'bg-white/60 dark:bg-slate-800/60 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
           }`}

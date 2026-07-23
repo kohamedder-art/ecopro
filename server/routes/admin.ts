@@ -1903,7 +1903,10 @@ export const listAllProducts: RequestHandler = async (req, res) => {
     const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
     const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
     const sort = String(req.query.sort || 'newest');
+    const hideTest = req.query.hideTest === 'true';
     const offset = (page - 1) * limit;
+
+    const testTitles = ['ساعة رجالية فاخرة', 'عطر فرنسي أصلي', 'حقيبة يد نسائية', 'طقم رياضي رجالي'];
 
     const orderJoin = `LEFT JOIN (
       SELECT product_id, COUNT(*)::int as order_count
@@ -1926,11 +1929,15 @@ export const listAllProducts: RequestHandler = async (req, res) => {
         break;
     }
 
+    const whereClause = hideTest ? `WHERE p.title NOT IN (${testTitles.map((_, i) => `$${i + 3}`).join(',')})` : '';
+
     const countResult = await pool.query(
-      `SELECT COUNT(*)::int as total FROM client_store_products p`
+      `SELECT COUNT(*)::int as total FROM client_store_products p ${whereClause}`,
+      hideTest ? testTitles : []
     );
     const total = countResult.rows[0]?.total || 0;
 
+    const params = hideTest ? [limit, offset, ...testTitles] : [limit, offset];
     const result = await pool.query(
       `SELECT 
         p.id, p.title, p.price, p.status, p.slug as product_slug,
@@ -1944,9 +1951,10 @@ export const listAllProducts: RequestHandler = async (req, res) => {
       JOIN clients c ON p.client_id = c.id
       LEFT JOIN client_store_settings css ON css.client_id = p.client_id
       ${orderJoin}
+      ${whereClause}
       ORDER BY ${orderClause}
       LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      params
     );
 
     res.json({ products: result.rows, total, page, limit });

@@ -391,6 +391,7 @@ export default function PlatformAdmin() {
   const [productPage, setProductPage] = useState(1);
   const [productSort, setProductSort] = useState('newest');
   const [productTotal, setProductTotal] = useState(0);
+  const [hideTestProducts, setHideTestProducts] = useState(true);
   const [stores, setStores] = useState<Store[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -681,7 +682,7 @@ export default function PlatformAdmin() {
     try {
       const [usersRes, productsRes, statsRes, storesRes, activityRes, staffRes] = await Promise.all([
         fetch('/api/admin/users'),
-        fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}`).catch(() => null),
+        fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}&hideTest=${hideTestProducts}`).catch(() => null),
         fetch('/api/admin/stats').catch(() => null),
         fetch('/api/admin/stores').catch(() => null),
         fetch('/api/admin/activity-logs').catch(() => null),
@@ -756,7 +757,7 @@ export default function PlatformAdmin() {
   // Separate product fetch for pagination/sort changes (avoids re-fetching everything)
   const loadProducts = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}`);
+      const res = await fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}&hideTest=${hideTestProducts}`);
       if (res.ok) {
         const data = await res.json();
         const items = Array.isArray(data) ? data : (data.products || []);
@@ -766,7 +767,7 @@ export default function PlatformAdmin() {
     } catch (e) {
       console.error('Failed to load products:', e);
     }
-  }, [productPage, productSort]);
+  }, [productPage, productSort, hideTestProducts]);
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
@@ -1677,8 +1678,10 @@ export default function PlatformAdmin() {
             total={productTotal}
             page={productPage}
             sort={productSort}
+            hideTest={hideTestProducts}
             onPageChange={setProductPage}
             onSortChange={(sort) => { setProductSort(sort); setProductPage(1); }}
+            onHideTestChange={(v) => { setHideTestProducts(v); setProductPage(1); }}
           />
         )}
 
