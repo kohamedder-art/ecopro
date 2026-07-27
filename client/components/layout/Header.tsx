@@ -278,36 +278,42 @@ export default function Header() {
   if (isDashboardPage) {
     return (
       <>
-        {/* Thin trigger bar — always visible on dashboard */}
+        {/* Triangle trigger — always visible on dashboard */}
         <div
           ref={triggerRef}
           onClick={() => setHeaderOpen(prev => !prev)}
-          className="fixed top-0 left-0 right-0 z-[101] flex items-center justify-center cursor-pointer group"
-          style={{ height: 6 }}
+          className="fixed top-0 left-1/2 -translate-x-1/2 z-[101] flex items-center justify-center cursor-pointer group"
         >
-          {/* Bar background */}
+          {/* Triangle shape */}
           <div
-            className="absolute inset-0 transition-all duration-300"
+            className="flex items-center justify-center px-3 transition-all duration-300"
             style={{
+              clipPath: 'polygon(0 0, 100% 0, 50% 100%)',
+              paddingTop: 2,
+              paddingBottom: 0,
+              height: 14,
+              minWidth: 36,
               background: isDark
-                ? 'linear-gradient(90deg, rgba(99,102,241,0.3), rgba(99,102,241,0.5), rgba(99,102,241,0.3))'
-                : 'linear-gradient(90deg, rgba(148,163,184,0.3), rgba(148,163,184,0.5), rgba(148,163,184,0.3))',
+                ? 'linear-gradient(180deg, rgba(99,102,241,0.5), rgba(99,102,241,0.2))'
+                : 'linear-gradient(180deg, rgba(148,163,184,0.5), rgba(148,163,184,0.2))',
             }}
-          />
-          {/* Handle pill */}
-          <div
-            className="relative w-8 h-[3px] rounded-full transition-all duration-300 group-hover:w-12"
-            style={{
-              backgroundColor: isDark ? 'rgba(148,163,184,0.6)' : 'rgba(100,116,139,0.5)',
-            }}
-          />
+          >
+            <ChevronDown
+              size={10}
+              className="transition-all duration-300"
+              style={{
+                color: isDark ? 'rgba(148,163,184,0.8)' : 'rgba(100,116,139,0.7)',
+                transform: headerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}
+            />
+          </div>
         </div>
 
         {/* Slide-down header */}
         <nav
           ref={headerNavRef}
           dir={locale === 'ar' ? 'rtl' : 'ltr'}
-          className="fixed top-[6px] left-0 right-0 z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-all duration-300 ease-in-out"
+          className="fixed top-[14px] left-0 right-0 z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-all duration-300 ease-in-out"
           style={{
             transform: headerOpen ? 'translateY(0)' : 'translateY(calc(-100% - 6px))',
             pointerEvents: headerOpen ? 'auto' : 'none',
