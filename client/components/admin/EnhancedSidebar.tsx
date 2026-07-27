@@ -158,6 +158,7 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
   
   const location = useLocation();
   const { newOrdersCount, totalAlerts } = useNotifications();
+  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/platform-admin');
 
   // Swipe to close mobile sidebar
   const touchStartX = useRef(0);
@@ -501,11 +502,13 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
     <>
       {/* Desktop Sidebar */}
       <aside className={cn(
-        "hidden lg:block fixed top-[64px] h-[calc(100vh-64px)] transition-all duration-300 z-40 desktop-sidebar",
+        "hidden lg:block fixed transition-all duration-300 z-40 desktop-sidebar",
         isRTL ? "right-0 border-l shadow-2xl" : "left-0 border-r shadow-2xl",
         collapsed ? "w-20" : "w-[270px]"
       )}
       style={{
+        top: isDashboardPage ? '6px' : '64px',
+        height: isDashboardPage ? 'calc(100vh - 6px)' : 'calc(100vh - 64px)',
         backgroundColor: SIDEBAR_THEMES[activeTheme].bg,
         borderColor: SIDEBAR_THEMES[activeTheme].border,
         boxShadow: isRTL 
