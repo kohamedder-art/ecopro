@@ -114,8 +114,8 @@ export default function OfferSelector({
             })}
             className="flex items-center justify-between w-full px-3 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-sm"
             style={{
-              border: `1.5px solid ${active ? accentColor : '#e5e7eb'}`,
-              backgroundColor: active ? accentColor + '08' : '#fff',
+              border: `1.5px solid ${active ? accentColor : borderColor}`,
+              backgroundColor: active ? accentColor + '08' : bgColor,
               boxShadow: active ? `0 0 0 1px ${accentColor}20` : 'none',
             }}
           >
@@ -124,7 +124,7 @@ export default function OfferSelector({
               <div
                 className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200"
                 style={{
-                  borderColor: active ? accentColor : '#d1d5db',
+                  borderColor: active ? accentColor : (borderColor || '#d1d5db'),
                   backgroundColor: active ? accentColor : 'transparent',
                 }}
               >
@@ -139,7 +139,7 @@ export default function OfferSelector({
                   src={offer.image_url}
                   alt=""
                   className="w-11 h-11 rounded-lg object-cover flex-shrink-0"
-                  style={{ border: `1px solid #f3f4f6` }}
+                  style={{ border: `1px solid ${borderColor || '#f3f4f6'}` }}
                 />
               )}
               <div className="flex flex-col">
@@ -147,7 +147,7 @@ export default function OfferSelector({
                   {displayLabel}
                 </span>
                 {offer.compare_price != null && offer.compare_price > offer.bundle_price && (
-                  <span className="line-through text-[11px] mt-0.5" style={{ color: '#9ca3af' }}>
+                  <span className="line-through text-[11px] mt-0.5" style={{ color: borderColor || '#9ca3af' }}>
                     {Math.round(offer.compare_price).toLocaleString()} {currency}
                   </span>
                 )}

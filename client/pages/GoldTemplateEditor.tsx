@@ -262,6 +262,20 @@ export default function GoldTemplateEditor() {
     // Match RTL/LTR directionality.
     doc.documentElement.lang = document.documentElement.lang || 'en';
     doc.documentElement.dir = document.documentElement.dir || 'ltr';
+
+    // Thin scrollbar inside the preview iframe
+    if (!doc.querySelector('style[data-ecopro-scrollbar]')) {
+      const sbStyle = doc.createElement('style');
+      sbStyle.setAttribute('data-ecopro-scrollbar', '1');
+      sbStyle.textContent = `
+        html, body { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.15) transparent; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.15); border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(0,0,0,0.3); }
+      `;
+      head.appendChild(sbStyle);
+    }
   }, []);
 
   // Reset iframe state when switching preview mode.
@@ -320,6 +334,9 @@ export default function GoldTemplateEditor() {
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const activeTemplateId = previewTemplateId ? normalizeTemplateId(previewTemplateId) : effectiveTemplateId;
   const isPreviewingDifferentTemplate = Boolean(previewTemplateId && normalizeTemplateId(previewTemplateId) !== effectiveTemplateId);
+
+  // Product navigation inside the editor canvas
+  const [previewProductSlug, setPreviewProductSlug] = useState<string | undefined>(undefined);
 
   // If an old/removed template is present in settings, switch locally to a valid one.
   useEffect(() => {
@@ -826,12 +843,23 @@ export default function GoldTemplateEditor() {
       primaryColor: debouncedSettings.template_accent_color || debouncedSettings.primary_color || '#1E90FF',
       secondaryColor: debouncedSettings.secondary_color || '#6B7280',
       bannerUrl: debouncedSettings.banner_url || null,
-      navigate: (to: string | number) => { if (typeof to === 'string') navigate(to); },
+      navigate: (to: string | number) => {
+        if (typeof to === 'string') {
+          // Extract product slug from store URL like /store/slug/product-slug
+          const match = to.match(/\/store\/[^/]+\/(.+)/);
+          if (match) {
+            setPreviewProductSlug(match[1]);
+          } else {
+            setPreviewProductSlug(undefined);
+          }
+        }
+      },
       canManage: true,
       forcedBreakpoint: previewDevice,
       onSelect: handleSelectEditPath,
+      initialProductSlug: previewProductSlug,
     }),
-    [debouncedSettings, effectiveProducts, formatPrice, navigate, previewDevice, activeTemplateId, isPreviewingDifferentTemplate, handleSelectEditPath]
+    [debouncedSettings, effectiveProducts, formatPrice, navigate, previewDevice, activeTemplateId, isPreviewingDifferentTemplate, handleSelectEditPath, previewProductSlug]
   );
 
   const selectedTemplateId = useMemo(() => normalizeTemplateId(String(activeTemplateId)), [activeTemplateId]);
@@ -2659,7 +2687,7 @@ export default function GoldTemplateEditor() {
 
           <div
             ref={canvasContainerRef}
-            className="flex-1 w-full z-10 flex items-center justify-center overflow-auto"
+            className="flex-1 w-full z-10 flex items-center justify-center overflow-auto canvas-scrollbar"
           >
             {previewDevice !== 'desktop' ? (
               /* Compensating wrapper: layout footprint = visual (scaled) size */

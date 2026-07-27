@@ -61,7 +61,16 @@ function resolveColor(color: string | null): string | null {
   if (/^#[0-9a-fA-F]{3,8}$/.test(trimmed)) return trimmed;
   // Check map (case-insensitive, then try normalized Arabic)
   const lower = trimmed.toLowerCase();
-  return COLOR_MAP[lower] || COLOR_MAP[normalizeArabic(lower)] || null;
+  const direct = COLOR_MAP[lower] || COLOR_MAP[normalizeArabic(lower)];
+  if (direct) return direct;
+  // Try each word in compound names like "رمادي غامق" → match "رمادي"
+  const words = trimmed.split(/\s+/);
+  for (const w of words) {
+    const wl = w.toLowerCase();
+    const match = COLOR_MAP[wl] || COLOR_MAP[normalizeArabic(wl)];
+    if (match) return match;
+  }
+  return null;
 }
 
 /** Split comma-separated multi-color string into individual color names */
@@ -276,7 +285,45 @@ export default function VariantSelector({
               const colorVariant = variants.find(v => v.color === c.name);
               const variantImage = colorVariant?.images?.[0];
               const outOfStock = isColorOutOfStock(c.name);
-              
+
+              // No image → circular color swatch
+              if (!variantImage) {
+                return (
+                  <div key={c.name} className="flex flex-col items-center gap-1.5">
+                    <button
+                      type="button"
+                      title={c.name}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleColorClick(c.name); }}
+                      className="relative rounded-full transition-all duration-200"
+                      style={{
+                        width: isActive ? 44 : 38,
+                        height: isActive ? 44 : 38,
+                        backgroundColor: c.hex || '#ccc',
+                        backgroundImage: !c.hex && c.name.includes(',') ? multiColorGradient(c.name) : undefined,
+                        border: isActive ? `2.5px solid ${accentColor}` : '2px solid rgba(0,0,0,0.08)',
+                        opacity: outOfStock ? 0.3 : 1,
+                        transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                        cursor: outOfStock ? 'not-allowed' : 'pointer',
+                        boxShadow: isActive ? `0 3px 10px ${accentColor}35` : '0 1px 3px rgba(0,0,0,0.1)',
+                      }}
+                    >
+                      {!c.hex && !c.name.includes(',') && (
+                        <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white drop-shadow-sm">
+                          {c.name.slice(0, 2)}
+                        </span>
+                      )}
+                      {isActive && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                      )}
+                    </button>
+                    {outOfStock && <span className="text-[8px] text-red-500 font-bold">نفد</span>}
+                  </div>
+                );
+              }
+
+              // Has image → visual thumbnail
               return (
                 <button
                   key={c.name}

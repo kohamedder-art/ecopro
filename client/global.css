@@ -91,6 +91,15 @@
     scrollbar-width: none;  /* Firefox */
   }
 
+  /* Thin subtle scrollbar for canvas/preview areas — hidden but still scrollable */
+  .canvas-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .canvas-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Smooth performance optimizations */
   .gpu-accelerated {
     transform: translateZ(0);

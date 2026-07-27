@@ -9,7 +9,7 @@ import { buildStoreUrl } from '@/lib/resolvedStore';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
-import { Truck, Shield, Trash2, Plus, Home, Building2, ChevronDown } from 'lucide-react';
+import { Truck, Shield, Trash2, Plus, Home, Building2, ChevronDown, User, Phone, MapPin, ShoppingBag } from 'lucide-react';
 import { uploadImage } from '@/lib/api';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 
@@ -41,7 +41,7 @@ export default function SpiriluxeTemplate({
   }, [bgColor]);
   const textColor = isDark ? '#f1f5f9' : '#1f2937';
   const textMuted = isDark ? '#94a3b8' : '#6b7280';
-  const borderColor = isDark ? '#334155' : '#e5e7eb';
+  const borderColor = isDark ? '#9ca3af' : '#94a3b8';
   const cardBg = isDark ? '#1e293b' : '#ffffff';
   const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
   const currency = settings?.currency_code || 'د.ج';
@@ -56,22 +56,6 @@ export default function SpiriluxeTemplate({
   const [quantity, setQuantity] = useState(1);
   const [customerCommune, setCustomerCommune] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
-  const [showHeader, setShowHeader] = useState(true);
-  const lastScrollY = useRef(0);
-
-  // ── Scroll-to-hide Header ──
-  useEffect(() => {
-    const handleScroll = () => {
-      const sy = window.scrollY;
-      const dy = sy - lastScrollY.current;
-      if (Math.abs(dy) > 10) {
-        setShowHeader(dy < 0);
-        lastScrollY.current = sy;
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // ── Product Images State ──
   const [productImages, setProductImages] = useState<string[]>([]);
@@ -99,6 +83,7 @@ export default function SpiriluxeTemplate({
   const selectedWilaya = wilayas.find(w => w.id === selectedWilayaId);
   const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
+  const [videoFailed, setVideoFailed] = useState(false);
   // ─── Product Selection ───
   const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug) : null) || (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
 
@@ -130,14 +115,14 @@ export default function SpiriluxeTemplate({
   // When saved aboveCount setting arrives: apply it without resetting images
   useEffect(() => {
     if (!mainProduct?.id) return;
-    const savedCount = settings?.[`spiriluxe_above_count_${mainProduct.id}`];
     const localCount = (() => { try { const v = localStorage.getItem(`spiriluxe_above_count_${mainProduct.id}`); return v != null ? Number(v) : null; } catch { return null; } })();
-    const count = savedCount != null ? Number(savedCount) : localCount;
+    const savedCount = settings?.[`spiriluxe_above_count_${mainProduct.id}`];
+    const count = localCount != null ? localCount : (savedCount != null ? Number(savedCount) : null);
     if (count != null && !isNaN(count)) {
       aboveCountRef.current = count;
       setAboveCount(count);
     }
-  }, [mainProduct?.id, settings?.[`spiriluxe_above_count_${mainProduct?.id}`]]);
+  }, [mainProduct?.id]);
   
 
   const deliveryFee = resolveDeliveryFee(mainProduct, selectedOffer, baseDeliveryFee);
@@ -268,16 +253,25 @@ export default function SpiriluxeTemplate({
     setUploading(true);
     try {
       const result = await uploadImage(file);
-      const currentAboveCount = aboveCount ?? productImages.length;
       let nextImages: string[];
       if (position === 'above') {
-        // Insert at end of above section
+        const currentAboveCount = aboveCount ?? productImages.length;
         const above = productImages.slice(0, currentAboveCount);
         const below = productImages.slice(currentAboveCount);
         nextImages = [...above, result.url, ...below];
-        setAboveCount(currentAboveCount + 1);
+        const newCount = currentAboveCount + 1;
+        aboveCountRef.current = newCount;
+        setAboveCount(newCount);
+        await saveAboveCount(newCount);
       } else {
         nextImages = [...productImages, result.url];
+        // If aboveCount was never set, lock it to current image count so the new image shows below
+        if (aboveCount == null) {
+          const newCount = productImages.length;
+          aboveCountRef.current = newCount;
+          setAboveCount(newCount);
+          await saveAboveCount(newCount);
+        }
       }
       setProductImages(nextImages);
       await saveProductImages(nextImages);
@@ -381,25 +375,20 @@ export default function SpiriluxeTemplate({
 
   // ─── Render ───
   return (
-    <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', color: textColor }}>
-      {/* Store Header */}
-      <div className="sticky top-0 z-50 px-3 py-3 transition-transform duration-300" style={{ backgroundColor: bgImageCss ? 'transparent' : bgColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
-        <div className="max-w-3xl mx-auto flex items-center justify-center gap-2">
-          {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" width="40" height="40" style={{ contentVisibility: 'auto' }} />}
-          <span className="font-bold text-2xl">{settings?.store_name || 'المتجر'}</span>
-        </div>
-      </div>
-      <div className="max-w-3xl mx-auto pt-2">
+    <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', color: textColor }}>
+      <div className="max-w-3xl mx-auto">
 
         {/* Video Embed (above images) */}
-        {videoEmbed && (
+        {videoEmbed && !videoFailed && (
           <div className="relative">
             {videoEmbed.type === 'youtube' ? (
               <div className="aspect-video w-full">
                 <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
               </div>
             ) : videoEmbed.type === 'video' ? (
-              <video className="w-full block" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" />
+              <div className="w-full overflow-hidden" style={{ maxHeight: '50vh' }}>
+                <video className="w-full h-full object-cover block" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" onError={() => setVideoFailed(true)} />
+              </div>
             ) : (
               <div className="aspect-video w-full">
                 <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
@@ -438,16 +427,16 @@ export default function SpiriluxeTemplate({
           onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload('below', f); e.target.value=''; }} />
 
         {/* Order Form */}
-        <div className="px-2 py-4">
-          <div className="rounded-2xl shadow-xl px-4 py-6" style={{ backgroundColor: cardBg }}>
+        <div className="px-2 py-2">
+          <div className="rounded-2xl shadow-sm px-4 py-5" style={{ backgroundColor: cardBg }}>
             
             {orderSuccess ? (
-              <div className="text-center py-8">
-                <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-10 h-10 text-white" />
+              <div className="text-center py-6">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: accentColor + '15' }}>
+                  <Shield className="w-8 h-8" style={{ color: accentColor }} />
                 </div>
-                <h3 className="text-2xl font-bold mb-2 text-green-600">تم تسجيل طلبك بنجاح! 🎉</h3>
-                <p className="mb-4" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
+                <h3 className="text-xl font-bold mb-1" style={{ color: accentColor }}>تم تسجيل طلبك بنجاح!</h3>
+                <p className="mb-4 text-sm" style={{ color: textMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
                 <OrderSuccessConnect 
                   storeSlug={storeSlug} 
                   accentColor={accentColor} 
@@ -455,28 +444,27 @@ export default function SpiriluxeTemplate({
                   telegramStartUrl={lastTelegramUrl} 
                   customerPhone={lastCustomerPhone || undefined} 
                 />
-                <div className="text-right rounded-xl p-4 mb-4 space-y-2" style={{ backgroundColor: surfaceMuted }}>
-                  <div className="flex justify-between text-sm">
-                    <span>{mainProduct?.title || 'المنتج'} × {selectedOffer?.quantity ?? quantity}</span>
+                <div className=" rounded-xl p-3 mb-4 space-y-2 text-sm" style={{ backgroundColor: surfaceMuted, border: `1px solid ${borderColor}` }}>
+                  <div className="flex justify-between">
+                    <span style={{ color: textMuted }}>{mainProduct?.title || 'المنتج'} × {selectedOffer?.quantity ?? quantity}</span>
                     <span className="font-bold">{Math.round(selectedOffer ? selectedOffer.bundle_price : (variantPrice ?? mainProduct?.price ?? 0) * (selectedOffer?.quantity ?? quantity)).toLocaleString()} {currency}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between">
                     <span style={{ color: textMuted }}>التوصيل</span>
-                    <span className="font-bold">{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
+                    <span className="font-bold">{deliveryFee === 0 ? 'مجاني' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
                   </div>
-                  <div className="h-px my-1" style={{ backgroundColor: borderColor }} />
-                  <div className="flex justify-between font-black">
+                  <div className="h-px" style={{ backgroundColor: borderColor }} />
+                  <div className="flex justify-between font-bold">
                     <span>المجموع</span>
-                    <span className="text-base" style={{ color: accentColor }}>{Math.round(grandTotal).toLocaleString()} {currency}</span>
+                    <span style={{ color: accentColor }}>{Math.round(grandTotal).toLocaleString()} {currency}</span>
                   </div>
                 </div>
-                <button onClick={() => setOrderSuccess(false)} className="px-6 py-2 rounded-lg text-white font-bold" style={{ backgroundColor: accentColor }}>
+                <button onClick={() => setOrderSuccess(false)} className="w-full py-3 rounded-xl font-bold text-sm" style={{ backgroundColor: accentColor, color: '#fff' }}>
                   تسوق مرة أخرى
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleOrder} className="space-y-5">
-                 <h3 className="text-xl font-extrabold text-center mb-1" style={{ color: textColor }}>اطلب الان</h3>
+              <form onSubmit={handleOrder} className="space-y-3">
                  {orderError && (
                   <div className="text-sm font-semibold rounded-xl px-4 py-3 whitespace-pre-line text-start" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
                       {orderError}
@@ -505,174 +493,183 @@ export default function SpiriluxeTemplate({
                     bgColor={cardBg}
                   />
                 )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>الاسم الكامل *</label>
-                    <input 
-                      name="name" 
-                      type="text" 
-                      required 
-                      className="w-full px-4 py-3 rounded-xl transition-all"
-                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
-                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
-                      placeholder="أدخل اسمك الكامل"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>رقم الهاتف *</label>
-                    <input 
-                      name="phone" 
-                      type="tel" 
-                      required 
-                      maxLength={10}
-                      className="w-full px-4 py-3 rounded-xl transition-all"
-                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
-                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                      onBlur={e => e.currentTarget.style.borderColor = borderColor}
-                      placeholder="رقم الواتساب الخاص بك"
-                    />
+
+                {/* Name input with icon */}
+                <div className="relative">
+                  <input 
+                    name="name" 
+                    type="text" 
+                    required 
+                    className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all "
+                    style={{ border: `1.5px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                    onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                    onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                    placeholder="الاسم الكامل"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                    <User size={20} />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>ولاية التوصيل *</label>
+                {/* Phone input with icon */}
+                <div className="relative">
+                  <input 
+                    name="phone" 
+                    type="tel" 
+                    required 
+                    maxLength={10}
+                    className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all "
+                    style={{ border: `1.5px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                    onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                    onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                    placeholder="رقم الهاتف"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                    <Phone size={20} />
+                  </div>
+                </div>
+
+                {/* Wilaya select with icon */}
+                <div className="relative">
+                  <select 
+                    value={selectedWilayaId || ''} 
+                    onChange={e => setSelectedWilayaId(Number(e.target.value))}
+                    required
+                    className="w-full pl-10 pr-12 py-3.5 rounded-xl transition-all appearance-none "
+                    style={{ border: `1.5px solid ${borderColor}`, backgroundColor: cardBg, color: selectedWilayaId ? textColor : textColor + '99' }}
+                    onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                    onBlur={e => e.currentTarget.style.borderColor = borderColor}
+                  >
+                    <option value="">اختر الولاية</option>
+                    {wilayas.map(w => (
+                      <option key={w.id} value={w.id}>{w.labelAR}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                    <MapPin size={20} />
+                  </div>
+                  <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textColor, opacity: 0.4 }} />
+                </div>
+
+                {showCommune && (
+                  <div className="relative">
                     <select 
-                      value={selectedWilayaId || ''} 
-                      onChange={e => setSelectedWilayaId(Number(e.target.value))}
-                      required
-                      className="w-full px-4 py-3 rounded-xl transition-all"
-                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                      name="commune"
+                      required 
+                      disabled={!selectedWilayaId}
+                      value={customerCommune}
+                      onChange={e => setCustomerCommune(e.target.value)}
+                      className="w-full pl-10 pr-12 py-3.5 rounded-xl transition-all appearance-none disabled:opacity-50 "
+                      style={{ border: `1.5px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
                       onFocus={e => e.currentTarget.style.borderColor = accentColor}
                       onBlur={e => e.currentTarget.style.borderColor = borderColor}
                     >
-                      <option value="">اختر ولايتك</option>
-                      {wilayas.map(w => (
-                        <option key={w.id} value={w.id}>{w.labelAR}</option>
-                      ))}
+                      <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                      {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                     </select>
-                  </div>
-                  {showCommune && (
-                    <div>
-                      <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>البلدية</label>
-                      <div className="relative">
-                        <select 
-                          name="commune"
-                          required 
-                          disabled={!selectedWilayaId}
-                          value={customerCommune}
-                          onChange={e => setCustomerCommune(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl transition-all appearance-none disabled:opacity-50"
-                          style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
-                          onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                          onBlur={e => e.currentTarget.style.borderColor = borderColor}
-                        >
-                          <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
-                          {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
-                        </select>
-                        <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textColor, opacity: 0.5 }} />
-                      </div>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                      <Building2 size={20} />
                     </div>
-                  )}
-                </div>
+                    <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textColor, opacity: 0.4 }} />
+                  </div>
+                )}
 
                 {showAddress && (
-                  <div>
-                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>عنوان التوصيل</label>
+                  <div className="relative">
                     <input 
                       name="address" 
                       type="text" 
-                      className="w-full px-4 py-3 rounded-xl transition-all"
-                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                      className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
+                      style={{ border: `1.5px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
                       onFocus={e => e.currentTarget.style.borderColor = accentColor}
                       onBlur={e => e.currentTarget.style.borderColor = borderColor}
-                      placeholder="عنوان الشارع، المبنى، إلخ"
+                      placeholder="عنوان التوصيل"
                     />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                      <Building2 size={20} />
+                    </div>
                   </div>
                 )}
 
                 {showNotes && (
                   <div>
-                    <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>ملاحظات إضافية</label>
                     <textarea 
                       name="notes" 
-                      rows={3}
+                      rows={2}
                       value={customerNotes}
                       onChange={e => setCustomerNotes(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl transition-all resize-none"
-                      style={{ border: `2px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
+                      className="w-full px-4 py-3.5 rounded-xl transition-all resize-none"
+                      style={{ border: `1.5px solid ${borderColor}`, backgroundColor: cardBg, color: textColor }}
                       onFocus={e => e.currentTarget.style.borderColor = accentColor}
                       onBlur={e => e.currentTarget.style.borderColor = borderColor}
-                      placeholder="أي طلبات خاصة أو ملاحظات (اختياري)"
+                      placeholder="ملاحظات إضافية (اختياري)"
                     />
                   </div>
                 )}
 
-                {/* Quantity */}
-                <div className="pt-2">
-                  <div className="flex items-center justify-between rounded-xl p-1" style={{ backgroundColor: surfaceMuted, border: `2px solid ${borderColor}` }}>
-                    <label className="text-sm font-semibold pl-3" style={{ color: textColor }}>الكمية</label>
-                    <div className="flex items-center gap-1">
-                      <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>−</button>
-                      <span className="font-black text-lg min-w-[2rem] text-center" style={{ color: textColor }}>{quantity}</span>
-                      <button type="button" onClick={() => setQuantity(Math.min((mainProduct?.stock_quantity != null && mainProduct.stock_quantity > 0) ? mainProduct.stock_quantity : 999, quantity + 1))} className="w-10 h-10 rounded-lg font-bold text-xl flex items-center justify-center" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>+</button>
-                    </div>
-                  </div>
-                </div>
-
                 {(showHomeDelivery || showDeskDelivery) && (
-                  <div>
-                    <label className="block text-sm font-semibold mb-3" style={{ color: textColor }}>طريقة التوصيل *</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {showHomeDelivery && (
-                        <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
-                          <Truck size={16} />
-                          <span>توصيل للمنزل</span>
-                        </button>
-                      )}
-                      {showDeskDelivery && (
-                        <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
-                          <Building2 size={16} />
-                          <span>استلام من المكتب</span>
-                        </button>
-                      )}
-                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {showHomeDelivery && (
+                      <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
+                        <Truck size={16} />
+                        <span>توصيل للمنزل</span>
+                      </button>
+                    )}
+                    {showDeskDelivery && (
+                      <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
+                        <Building2 size={16} />
+                        <span>استلام من المكتب</span>
+                      </button>
+                    )}
                   </div>
                 )}
 
-                {/* Order Summary — always visible */}
-                <div className="p-3 rounded-xl text-sm space-y-2" style={{ backgroundColor: accentColor + '10', border: `1px solid ${accentColor}30` }}>
-                  <div className="flex justify-between">
-                    <span style={{ color: textMuted }}>سعر المنتجات</span>
-                    <span className="font-bold">{Math.round(productTotal).toLocaleString()} {currency}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span style={{ color: textMuted }}>سعر التوصيل</span>
-                    {selectedWilayaId
-                      ? <span className="font-bold" style={{ color: accentColor }}>{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
-                      : <span style={{ color: textMuted }}>يُحدد عند اختيار الولاية</span>
-                    }
-                  </div>
-                  <div className="flex justify-between pt-2" style={{ borderTop: `1px solid ${accentColor}40` }}>
-                    <span className="font-bold">التكلفة الإجمالية</span>
-                    <span className="font-black text-base" style={{ color: accentColor }}>{Math.round(selectedWilayaId ? grandTotal : productTotal).toLocaleString()} {currency}</span>
+                {/* Quantity */}
+                <div className="flex items-center justify-between rounded-xl px-4 py-2.5" style={{ backgroundColor: cardBg, border: `1.5px solid ${borderColor}` }}>
+                  <span className="text-sm font-semibold" style={{ color: textColor }}>الكمية</span>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-9 h-9 rounded-full font-bold text-xl flex items-center justify-center transition-all" style={{ backgroundColor: surfaceMuted, color: accentColor }}>−</button>
+                    <span className="font-bold text-lg min-w-[2rem] text-center" style={{ color: textColor }}>{String(quantity).padStart(2, '0')}</span>
+                    <button type="button" onClick={() => setQuantity(Math.min((mainProduct?.stock_quantity != null && mainProduct.stock_quantity > 0) ? mainProduct.stock_quantity : 999, quantity + 1))} className="w-9 h-9 rounded-full font-bold text-xl flex items-center justify-center transition-all" style={{ backgroundColor: surfaceMuted, color: accentColor }}>+</button>
                   </div>
                 </div>
 
+                {/* Order Summary */}
+                <div className="p-3.5 rounded-xl text-sm space-y-2" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}>
+                  <div className="flex justify-between">
+                    <span style={{ color: textMuted }}>سعر المنتج</span>
+                    <span className="font-bold">{Math.round(productTotal).toLocaleString()} {currency}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: textMuted }}>اجمالى التوصيل</span>
+                    {selectedWilayaId
+                      ? <span className="font-bold" style={{ color: accentColor }}>{deliveryFee === 0 ? 'مجاني' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
+                      : <span className="font-bold" style={{ color: accentColor }}>{deliveryFee === 0 ? 'مجاني' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
+                    }
+                  </div>
+                  <div className="flex justify-between pt-2 font-bold" style={{ borderTop: `1px solid ${borderColor}` }}>
+                    <span>المجموع</span>
+                    <span className="text-base" style={{ color: accentColor }}>{Math.round(selectedWilayaId ? grandTotal : productTotal).toLocaleString()} {currency}</span>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:transform-none shadow-lg"
-                  style={{ backgroundColor: String(accentColor), color: '#ffffff' }}
+                  className="w-full py-4 rounded-xl font-bold text-base transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: String(accentColor), color: '#ffffff', boxShadow: `0 4px 14px ${accentColor}40` }}
                 >
                   {isSubmitting ? (
-                    <span className="flex items-center justify-center gap-2">
+                    <>
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       جاري المعالجة...
-                    </span>
+                    </>
                   ) : (
-                    'أكمل الطلب 🚀'
+                    <>
+                      <ShoppingBag size={20} />
+                      <span>{(settings as any)?.order_button_text || 'تأكيد الشراء'}</span>
+                    </>
                   )}
                 </button>
               </form>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { ChevronDown, Phone, ShoppingCart, ShieldCheck } from 'lucide-react';
+import { ChevronDown, Phone, ShieldCheck, User, MapPin, Truck, ShoppingBag, Building2 } from 'lucide-react';
 import LazyVideo from '@/components/storefront/LazyVideo';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
@@ -484,7 +484,13 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               {formTitle}
             </h2>
 
-            <form onSubmit={handleOrder} noValidate className="space-y-4">
+            <form onSubmit={handleOrder} noValidate className="space-y-3">
+              {orderError && (
+                <div className="text-sm font-semibold rounded-xl px-4 py-3 whitespace-pre-line text-start" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
+                    {orderError}
+                  </div>
+              )}
+
               {/* Variants */}
               {safeProduct.variants && safeProduct.variants.length > 0 && (
                 <VariantSelector 
@@ -507,253 +513,212 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   onSelect={handleOfferSelect} 
                   accentColor={accentColor} 
                   textColor={textColor} 
-                  borderColor={borderColor} 
+                  borderColor={inputBorderColor} 
                   bgColor={cardBg}
                 />
               )}
 
-              {/* 2-Column: Name | Phone */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Name */}
-                <div>
-                  <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>الاسم واللقب</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="أدخل اسمك الكامل"
-                    className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all shadow-sm"
-                    style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
+              {/* Name input with icon */}
+              <div className="relative">
+                <input 
+                  name="name" 
+                  type="text" 
+                  required 
+                  className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
+                  style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
+                  onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                  onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
+                  placeholder="الاسم الكامل"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                  <User size={20} />
+                </div>
+              </div>
+
+              {/* Phone input with icon */}
+              <div className="relative">
+                <input 
+                  name="phone" 
+                  type="tel" 
+                  required 
+                  dir="ltr"
+                  maxLength={10}
+                  className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
+                  style={{ border: `1.5px solid ${phoneError ? '#ef4444' : inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
+                  onFocus={e => e.currentTarget.style.borderColor = phoneError ? '#ef4444' : accentColor}
+                  onBlur={e => e.currentTarget.style.borderColor = phoneError ? '#ef4444' : inputBorderColor}
+                  placeholder="رقم الهاتف"
+                  value={customerPhone}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                    setCustomerPhone(val);
+                    if (val.length === 10) {
+                      setPhoneError(isValidAlgerianPhone(val) ? '' : 'رقم الهاتف غير صحيح');
+                    } else {
+                      setPhoneError('');
+                    }
+                  }}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                  <Phone size={20} />
+                </div>
+                {phoneError && <p className="text-xs font-bold mt-1" style={{ color: '#ef4444' }}>{phoneError}</p>}
+              </div>
+
+              {/* Wilaya select with icon */}
+              <div className="relative">
+                <select 
+                  value={selectedWilayaId || ''} 
+                  onChange={e => setSelectedWilayaId(Number(e.target.value))}
+                  required
+                  className="w-full pl-10 pr-12 py-3.5 rounded-xl transition-all appearance-none"
+                  style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: selectedWilayaId ? textColor : textColor + '99' }}
+                  onFocus={e => e.currentTarget.style.borderColor = accentColor}
+                  onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
+                >
+                  <option value="">اختر الولاية</option>
+                  {wilayas.map(w => (
+                    <option key={w.id} value={w.id}>{w.labelAR}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                  <MapPin size={20} />
+                </div>
+                <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textColor, opacity: 0.4 }} />
+              </div>
+
+              {/* Commune select with icon */}
+              {showCommune && (
+                <div className="relative">
+                  <select 
+                    name="commune"
+                    required 
+                    disabled={!selectedWilayaId}
+                    value={communeId}
+                    onChange={e => setCommuneId(e.target.value)}
+                    className="w-full pl-10 pr-12 py-3.5 rounded-xl transition-all appearance-none disabled:opacity-50"
+                    style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
                     onFocus={e => e.currentTarget.style.borderColor = accentColor}
                     onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
-                  />
-                </div>
-
-                {/* Phone */}
-                <div>
-                  <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>رقم الهاتف</label>
-                  <div className="relative">
-                    <input
-                      type="tel"
-                      required
-                      dir="ltr"
-                      placeholder="05 55 55 55 55"
-                      maxLength={10}
-                      className="w-full border rounded-lg px-4 pl-10 py-3 text-right text-sm focus:ring-2 outline-none transition-all shadow-sm"
-                      style={{
-                        backgroundColor: '#ffffff',
-                        borderColor: phoneError ? '#ef4444' : inputBorderColor,
-                        color: textColor,
-                      }}
-                      value={customerPhone}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
-                        setCustomerPhone(val);
-                        if (val.length === 10) {
-                          setPhoneError(isValidAlgerianPhone(val) ? '' : 'رقم الهاتف غير صحيح');
-                        } else {
-                          setPhoneError('');
-                        }
-                      }}
-                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                      onBlur={e => e.currentTarget.style.borderColor = phoneError ? '#ef4444' : inputBorderColor}
-                    />
-                    <Phone size={18} className="absolute left-3 top-3.5" style={{ color: textMuted }} />
+                  >
+                    <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                    {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                    <Building2 size={20} />
                   </div>
-                  {phoneError && <p className="text-xs text-red-500 mt-1 font-bold">{phoneError}</p>}
+                  <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textColor, opacity: 0.4 }} />
                 </div>
-              </div>
+              )}
 
-              {/* 2-Column: Wilaya | Commune */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Wilaya */}
-                <div>
-                  <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>الولاية</label>
-                  <div className="relative">
-                    <select
-                      required
-                      className="w-full border rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 outline-none transition-all shadow-sm"
-                      style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
-                      value={selectedWilayaId ?? ''}
-                      onChange={(e) => setSelectedWilayaId(e.target.value ? Number(e.target.value) : null)}
-                      onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                      onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
-                    >
-                      <option value="">اختر الولاية</option>
-                      {wilayas.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.labelAR}
-                          {w.homePrice ? ` (${displayPrice(w.homePrice)} ${currency})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={18} className="absolute left-3 top-3.5 pointer-events-none" style={{ color: textMuted }} />
-                  </div>
-                </div>
-
-                {/* Commune (when enabled) */}
-                {showCommune && (
-                  <div>
-                    <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>البلدية</label>
-                    <div className="relative">
-                      <select
-                        required
-                        disabled={!selectedWilayaId}
-                        className="w-full border rounded-lg px-4 py-3 text-sm appearance-none focus:ring-2 outline-none transition-all shadow-sm disabled:opacity-50"
-                        style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
-                        value={communeId}
-                        onChange={(e) => setCommuneId(e.target.value)}
-                        onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                        onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
-                      >
-                        <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
-                        {communes.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {communeDisplayName(c)}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={18} className="absolute left-3 top-3.5 pointer-events-none" style={{ color: textMuted }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Address (when enabled) */}
+              {/* Address input with icon */}
               {showAddress && (
-                <div>
-                  <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>العنوان</label>
-                  <input
-                    type="text"
-                    placeholder="أدخل عنوانك"
-                    className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 outline-none transition-all shadow-sm"
-                    style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
-                    value={customerAddress}
-                    onChange={(e) => setCustomerAddress(e.target.value)}
+                <div className="relative">
+                  <input 
+                    name="address" 
+                    type="text" 
+                    className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
+                    style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
                     onFocus={e => e.currentTarget.style.borderColor = accentColor}
                     onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
+                    placeholder="عنوان التوصيل"
+                    value={customerAddress}
+                    onChange={e => setCustomerAddress(e.target.value)}
                   />
-                </div>
-              )}
-              <div className="pt-2">
-                <label className="block text-sm font-bold mb-1.5" style={{ color: textColor }}>الكمية</label>
-                <div className="flex items-center justify-between border rounded-lg p-1 shadow-sm" style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor }}>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-10 h-10 border rounded-md font-bold text-xl flex items-center justify-center"
-                    style={{ backgroundColor: cardBg, borderColor: inputBorderColor, color: textMuted }}
-                  >-</button>
-                  <span className="font-black text-lg" style={{ color: textColor }}>{quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(Math.min((safeProduct?.stock_quantity != null && safeProduct.stock_quantity > 0) ? safeProduct.stock_quantity : 999, quantity + 1))}
-                    className="w-10 h-10 border rounded-md font-bold text-xl flex items-center justify-center"
-                    style={{ backgroundColor: cardBg, borderColor: inputBorderColor, color: textMuted }}
-                  >+</button>
-                </div>
-              </div>
-
-              {/* Delivery Type Buttons */}
-              {(showHomeDelivery || showDeskDelivery) && (
-                <div>
-                  <label className="block text-sm font-bold mb-2" style={{ color: textColor }}>نوع التوصيل</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {showHomeDelivery && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDeliveryType('home')}
-                        className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
-                        style={{
-                          borderColor: selectedDeliveryType === 'home' ? accentColor : borderColor,
-                          backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg,
-                          color: selectedDeliveryType === 'home' ? accentColor : textColor,
-                        }}
-                      >
-                        <span className="text-sm font-bold">التوصيل للمنزل</span>
-                      </button>
-                    )}
-                    {showDeskDelivery && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDeliveryType('desk')}
-                        className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all"
-                        style={{
-                          borderColor: selectedDeliveryType === 'desk' ? accentColor : borderColor,
-                          backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg,
-                          color: selectedDeliveryType === 'desk' ? accentColor : textColor,
-                        }}
-                      >
-                        <span className="text-sm font-bold">الاستلام من المكتب</span>
-                      </button>
-                    )}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
+                    <Building2 size={20} />
                   </div>
                 </div>
               )}
 
-              {/* Notes (when enabled) */}
+              {/* Notes */}
               {showNotes && (
                 <div>
-                  <label className="block text-sm font-bold mb-1" style={{ color: textColor }}>ملاحظات</label>
-                  <textarea
-                    placeholder="ملاحظات إضافية"
+                  <textarea 
+                    name="notes" 
+                    rows={2}
                     value={customerNotes}
-                    onChange={(e) => setCustomerNotes(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition-all text-sm shadow-sm"
-                    style={{ backgroundColor: '#ffffff', borderColor: inputBorderColor, color: textColor }}
-                    rows={3}
+                    onChange={e => setCustomerNotes(e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-xl transition-all resize-none"
+                    style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
                     onFocus={e => e.currentTarget.style.borderColor = accentColor}
                     onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
+                    placeholder="ملاحظات إضافية (اختياري)"
                   />
                 </div>
               )}
 
-              {/* Order Summary */}
-              <div className="mt-6 border rounded-xl p-4" style={{ backgroundColor: surfaceMuted, borderColor: borderColor }}>
-                <div className="flex justify-between text-sm mb-2" style={{ color: textColor }}>
-                  <span>سعر المنتج ({quantity})</span>
-                  <span className="font-bold" dir="ltr">{displayPrice(productPrice * quantity)} {currency}</span>
-                </div>
-                <div className="flex justify-between text-sm mb-3" style={{ color: textColor }}>
-                  <span>سعر التوصيل</span>
-                  <span className="font-bold" dir="ltr">{displayPrice(deliveryFee)} {currency}</span>
-                </div>
-                <div className="h-px w-full mb-3" style={{ backgroundColor: borderColor }} />
-                <div className="flex justify-between items-center">
-                  <span className="font-black text-lg" style={{ color: textColor }}>المجموع:</span>
-                  <span className="font-black text-xl" dir="ltr" style={{ color: textColor }}>
-                    {displayPrice(totalCost)} {currency}
-                  </span>
-                </div>
-              </div>
-
-              {orderError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start">
-                  {orderError}
+              {/* Delivery Type Toggle */}
+              {(showHomeDelivery || showDeskDelivery) && (
+                <div className="grid grid-cols-2 gap-2">
+                  {showHomeDelivery && (
+                    <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : inputBorderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
+                      <Truck size={16} />
+                      <span>توصيل للمنزل</span>
+                    </button>
+                  )}
+                  {showDeskDelivery && (
+                    <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : inputBorderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
+                      <Building2 size={16} />
+                      <span>استلام من المكتب</span>
+                    </button>
+                  )}
                 </div>
               )}
 
-              {/* Submit */}
-              <button
-                type="submit"
+              {/* Quantity */}
+              <div className="flex items-center justify-between rounded-xl px-4 py-2.5" style={{ backgroundColor: cardBg, border: `1.5px solid ${inputBorderColor}` }}>
+                <span className="text-sm font-semibold" style={{ color: textColor }}>الكمية</span>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-9 h-9 rounded-full font-bold text-xl flex items-center justify-center transition-all" style={{ backgroundColor: surfaceMuted, color: accentColor }}>−</button>
+                  <span className="font-bold text-lg min-w-[2rem] text-center" style={{ color: textColor }}>{String(quantity).padStart(2, '0')}</span>
+                  <button type="button" onClick={() => setQuantity(Math.min((safeProduct?.stock_quantity != null && safeProduct.stock_quantity > 0) ? safeProduct.stock_quantity : 999, quantity + 1))} className="w-9 h-9 rounded-full font-bold text-xl flex items-center justify-center transition-all" style={{ backgroundColor: surfaceMuted, color: accentColor }}>+</button>
+                </div>
+              </div>
+
+              {/* Order Summary */}
+              <div className="p-3.5 rounded-xl text-sm space-y-2" style={{ backgroundColor: cardBg, border: `1px solid ${inputBorderColor}` }}>
+                <div className="flex justify-between">
+                  <span style={{ color: textMuted }}>سعر المنتج</span>
+                  <span className="font-bold">{displayPrice(productPrice * quantity)} {currency}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span style={{ color: textMuted }}>اجمالى التوصيل</span>
+                  <span className="font-bold" style={{ color: accentColor }}>{deliveryFee === 0 ? 'مجاني' : `${displayPrice(deliveryFee)} ${currency}`}</span>
+                </div>
+                <div className="flex justify-between pt-2 font-bold" style={{ borderTop: `1px solid ${inputBorderColor}` }}>
+                  <span>المجموع</span>
+                  <span className="text-base" style={{ color: accentColor }}>{displayPrice(totalCost)} {currency}</span>
+                </div>
+              </div>
+
+              {/* CTA Button */}
+              <button 
+                type="submit" 
                 disabled={isSubmitting}
-                className="w-full mt-2 text-white text-lg font-black py-4 rounded-xl shadow-lg active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-60"
-                style={{ backgroundColor: accentColor }}
+                className="w-full py-4 rounded-xl font-bold text-base transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ backgroundColor: accentColor, color: '#ffffff', boxShadow: `0 4px 14px ${accentColor}40` }}
               >
-                {isSubmitting ? 'جاري الإرسال...' : (
+                {isSubmitting ? (
                   <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    جاري المعالجة...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag size={20} />
                     <span
                       contentEditable={canManage}
                       suppressContentEditableWarning
                       onBlur={handleTextEdit('zenith_submit_text')}
                     >{submitText}</span>
-                    <ShoppingCart size={20} />
                   </>
                 )}
               </button>
 
-              <div className="flex items-center justify-center gap-1 mt-3 text-xs font-bold" style={{ color: textMuted }}>
+              <div className="flex items-center justify-center gap-1 mt-2 text-xs font-bold" style={{ color: textMuted }}>
                 <ShieldCheck size={14} className="text-green-600" />
                 الدفع يكون بعد استلام المنتج
               </div>
