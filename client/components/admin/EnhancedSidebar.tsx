@@ -507,8 +507,8 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
         collapsed ? "w-20" : "w-[270px]"
       )}
       style={{
-        top: isDashboardPage ? '14px' : '64px',
-        height: isDashboardPage ? 'calc(100vh - 14px)' : 'calc(100vh - 64px)',
+        top: '0',
+        height: '100vh',
         backgroundColor: SIDEBAR_THEMES[activeTheme].bg,
         borderColor: SIDEBAR_THEMES[activeTheme].border,
         boxShadow: isRTL 

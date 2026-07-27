@@ -284,34 +284,33 @@ export default function Header() {
           onClick={() => setHeaderOpen(prev => !prev)}
           className="fixed top-0 left-1/2 -translate-x-1/2 z-[101] flex items-center justify-center cursor-pointer group"
         >
-          {/* Triangle shape */}
-          <div
-            className="flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-            style={{
-              clipPath: 'polygon(0 0, 100% 0, 50% 100%)',
-              height: 16,
-              minWidth: 40,
-              background: '#6366f1',
-            }}
+          {/* Rounded-bottom triangle shape */}
+          <svg width="60" height="20" viewBox="0 0 40 16" fill="none" xmlns="http://www.w3.org/2000/svg"
+            className="transition-all duration-300 group-hover:scale-110"
           >
-            <ChevronDown
-              size={11}
-              className="transition-all duration-300"
-              style={{
-                color: '#ffffff',
-                transform: headerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}
+            <path
+              d="M0 0 H40 L25 11 Q20 15 15 11 L0 0Z"
+              fill="#6366f1"
             />
-          </div>
+          </svg>
+          <ChevronDown
+            size={14}
+            className="absolute transition-all duration-300"
+            style={{
+              color: '#ffffff',
+              top: 3,
+              transform: headerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}
+          />
         </div>
 
         {/* Slide-down header */}
         <nav
           ref={headerNavRef}
           dir={locale === 'ar' ? 'rtl' : 'ltr'}
-          className="fixed top-[14px] left-0 right-0 z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-all duration-300 ease-in-out"
+          className="fixed top-[20px] left-0 right-0 z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-all duration-300 ease-in-out"
           style={{
-            transform: headerOpen ? 'translateY(0)' : 'translateY(calc(-100% - 14px))',
+            transform: headerOpen ? 'translateY(0)' : 'translateY(calc(-100% - 20px))',
             pointerEvents: headerOpen ? 'auto' : 'none',
           }}
         >

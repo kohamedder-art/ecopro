@@ -99,7 +99,7 @@ export default function AdminLayout() {
             </Button>
           </div>
         )}
-        <div className="px-4 md:px-6 pt-4 pb-20 lg:pb-6">
+        <div className="px-2 md:px-3 pt-2 pb-20 lg:pb-6">
           {/* Wrap outlet with PermissionGate - auto-detects permission from route */}
           <PermissionGate>
             <ErrorBoundary fallback={

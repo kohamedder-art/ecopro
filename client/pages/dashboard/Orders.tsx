@@ -923,7 +923,7 @@ export default function OrdersAdmin() {
           </div>
           <div>
             <div className="text-xl font-black tabular-nums leading-none">{orders.length}</div>
-            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('orders.totalOrders')}</div>
+            <div className="text-[11px] text-foreground/70 font-medium mt-0.5">{t('orders.totalOrders')}</div>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-emerald-500/50 transition-all duration-200 shadow-sm">
@@ -932,7 +932,7 @@ export default function OrdersAdmin() {
           </div>
           <div>
             <div className="text-xl font-black tabular-nums leading-none text-emerald-500">{orders.filter(o => o.status === 'confirmed').length}</div>
-            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('orders.confirmedOrders')}</div>
+            <div className="text-[11px] text-foreground/70 font-medium mt-0.5">{t('orders.confirmedOrders')}</div>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-amber-500/50 transition-all duration-200 shadow-sm">
@@ -952,7 +952,7 @@ export default function OrdersAdmin() {
                     if (!Number.isFinite(unit) || !Number.isFinite(qty)) return sum;
                     return sum + (unit * qty);
                   }, 0)).toLocaleString()}</div>
-            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('orders.revenue')} · DZD</div>
+            <div className="text-[11px] text-foreground/70 font-medium mt-0.5">{t('orders.revenue')} · DZD</div>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-3 py-2.5 hover:border-red-500/50 transition-all duration-200 shadow-sm">
@@ -961,15 +961,15 @@ export default function OrdersAdmin() {
           </div>
           <div>
             <div className="text-xl font-black tabular-nums leading-none text-red-500">{orders.filter(o => getOrderRisk(o).level !== 'safe').length}</div>
-            <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t('orders.atRisk')}</div>
+            <div className="text-[11px] text-foreground/70 font-medium mt-0.5">{t('orders.atRisk')}</div>
           </div>
         </div>
       </div>
 
       {/* Orders Table */}
-      <div className="rounded-2xl border border-border/60 bg-card shadow-md overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card shadow-md overflow-hidden">
         {/* Toolbar */}
-        <div className="p-3 border-b border-border/40 bg-gradient-to-r from-muted/20 to-transparent">
+        <div className="p-3 border-b border-border bg-gradient-to-r from-muted/20 to-transparent">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base md:text-lg font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent flex items-center gap-2">
               <span className="inline-block w-1 h-5 rounded-full bg-gradient-to-b from-primary to-accent"></span>
@@ -1013,7 +1013,7 @@ export default function OrdersAdmin() {
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 placeholder={t('orders.searchPlaceholder')}
-                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border/60 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 focus:bg-background transition-all duration-200"
+                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 focus:bg-background transition-all duration-200"
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground w-5 h-5 flex items-center justify-center rounded-full hover:bg-muted transition-colors">
@@ -1021,7 +1021,7 @@ export default function OrdersAdmin() {
                 </button>
               )}
             </div>
-            <div className="flex gap-1 bg-muted/40 p-1 rounded-lg border border-border/40">
+            <div className="flex gap-1 bg-muted/40 p-1 rounded-lg border border-border">
               {(['all','today','week','month'] as const).map(r => (
                 <button
                   key={r}
@@ -1036,7 +1036,7 @@ export default function OrdersAdmin() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="border-b border-border/40 bg-muted/10 px-3 py-2">
+        <div className="border-b border-border bg-muted/10 px-3 py-2">
           <div className="flex gap-1.5 flex-wrap">
           <button
             onClick={() => setFilterTab('all')}
@@ -1072,7 +1072,7 @@ export default function OrdersAdmin() {
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${
               filterTab === 'archived'
                 ? 'bg-gray-500 text-white border-gray-500 shadow-md shadow-gray-500/30'
-                : 'bg-gray-500/10 text-foreground/50 border-gray-500/30 hover:bg-gray-500/20 hover:text-foreground'
+                : 'bg-gray-500/10 text-foreground/70 border-gray-500/30 hover:bg-gray-500/20 hover:text-foreground'
             }`}
           >
             🗃️ {t('orders.status.archived')} ({orders.filter(o => o.status === 'failed' || o.status === 'cancelled' || o.status === 'fake' || o.status === 'duplicate').length})
@@ -1090,7 +1090,7 @@ export default function OrdersAdmin() {
             <div className="flex items-center gap-2 ml-auto">
               <button
                 onClick={clearSelection}
-                className="px-3 py-1.5 rounded text-sm font-bold border border-gray-300 bg-background hover:bg-gray-100 transition-colors"
+                className="px-3 py-1.5 rounded text-sm font-bold border border-border bg-background hover:bg-muted transition-colors"
               >
                 {t('orders.clear')}
               </button>
@@ -1127,7 +1127,7 @@ export default function OrdersAdmin() {
               {/* Mobile skeleton cards */}
               <div className="md:hidden space-y-2">
                 {[1,2,3].map(i => (
-                  <div key={i} className="bg-card rounded-2xl border border-border/40 p-3 space-y-2 animate-pulse">
+                  <div key={i} className="bg-card rounded-2xl border border-border p-3 space-y-2 animate-pulse">
                     <div className="flex items-start gap-3">
                       <div className="w-14 h-14 bg-muted rounded-xl shrink-0" />
                       <div className="flex-1 space-y-1.5">
@@ -1199,8 +1199,8 @@ export default function OrdersAdmin() {
           {!isLoading && !error && orders.length > 0 && getFilteredOrders().length > 0 && (
           <table className="w-full text-sm font-semibold md:table hidden border-separate border-spacing-0">
             <thead className="hidden md:table-header-group sticky top-0 z-10">
-              <tr className="border-b-2 border-border bg-muted/50 dark:bg-muted/20">
-                <th className="px-3 py-3 text-center font-bold text-xs text-foreground/60 uppercase tracking-wider w-10">
+              <tr className="bg-muted/50 dark:bg-muted/20">
+                <th className="px-3 py-3 text-center font-bold text-xs text-foreground/80 uppercase tracking-wider w-10 border-b-2 border-border">
                   <button 
                     onClick={selectAllFiltered}
                     className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -1213,14 +1213,14 @@ export default function OrdersAdmin() {
                     )}
                   </button>
                 </th>
-                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.image')}</th>
-                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.orderNumber')}</th>
-                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.product')}</th>
-                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.customer')}</th>
-                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.amount')}</th>
-                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.status')}</th>
-                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider">{t('orders.time')}</th>
-                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/60 uppercase tracking-wider w-8"></th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/80 uppercase tracking-wider border-b-2 border-border">{t('orders.image')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/80 uppercase tracking-wider border-b-2 border-border">{t('orders.orderNumber')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/80 uppercase tracking-wider border-b-2 border-border">{t('orders.product')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/80 uppercase tracking-wider border-b-2 border-border">{t('orders.customer')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/80 uppercase tracking-wider border-b-2 border-border">{t('orders.amount')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/80 uppercase tracking-wider border-b-2 border-border">{t('orders.status')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/80 uppercase tracking-wider border-b-2 border-border">{t('orders.time')}</th>
+                <th className="px-3 py-3 text-right font-bold text-xs text-foreground/80 uppercase tracking-wider w-8 border-b-2 border-border"></th>
               </tr>
             </thead>
             <tbody>
@@ -1244,7 +1244,7 @@ export default function OrdersAdmin() {
                     </td>
                     <td className="px-3 py-3 text-right border-b border-border">
                       {o.product_image ? (
-                        <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-border/40 ml-auto shadow-sm group-hover:border-primary/30 transition-all duration-200">
+                        <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-border ml-auto shadow-sm group-hover:border-primary/30 transition-all duration-200">
                           <img 
                             src={o.product_image} 
                             alt={o.product_title || 'Product'} 
@@ -1252,7 +1252,7 @@ export default function OrdersAdmin() {
                           />
                         </div>
                       ) : (
-                        <div className="w-11 h-11 rounded-xl bg-muted/80 flex items-center justify-center border-2 border-border/30 ml-auto">
+                        <div className="w-11 h-11 rounded-xl bg-muted/80 flex items-center justify-center border-2 border-border ml-auto">
                           <ShoppingBag className="w-4 h-4 text-muted-foreground/50" />
                         </div>
                       )}
@@ -1311,7 +1311,7 @@ export default function OrdersAdmin() {
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-right border-b border-border">
                       <span className="font-black text-sm tabular-nums text-amber-500 dark:text-amber-400">
-                        {Math.round(Number(o.total) || 0).toLocaleString()} <span className="text-muted-foreground/70 font-medium text-xs">DZD</span>
+                        {Math.round(Number(o.total) || 0).toLocaleString()} <span className="text-foreground/70 font-medium text-xs">DZD</span>
                       </span>
                     </td>
                     <td className="px-3 py-3 text-right border-b border-border">
@@ -1344,7 +1344,7 @@ export default function OrdersAdmin() {
                           );
                         })()}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right text-foreground/50 text-xs font-medium border-b border-border" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-right text-foreground/70 text-xs font-medium border-b border-border" key={`time-${o.id}-${timeUpdate}`}>{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</td>
                     <td className="px-3 py-3 text-right border-b border-border">
                       <ChevronRight className={`h-4 w-4 text-muted-foreground/40 ml-auto transition-all duration-200 ${expandedOrderId === o.id ? 'rotate-90 text-primary' : 'group-hover:translate-x-0.5 group-hover:text-muted-foreground'}`} />
                     </td>
@@ -1358,32 +1358,32 @@ export default function OrdersAdmin() {
                         <div className="space-y-2">
                           {/* Order Details Grid - Compact */}
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="text-xs font-semibold text-foreground/60">{t('orders.orderNumber')}</div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                              <div className="text-xs font-semibold text-foreground/70">{t('orders.orderNumber')}</div>
                               <div className="font-bold text-sm">{o.id}</div>
                             </div>
-                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="text-xs font-semibold text-foreground/60">{t('orders.customerName')}</div>
+                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                              <div className="text-xs font-semibold text-foreground/70">{t('orders.customerName')}</div>
                               <div className="font-bold text-sm truncate" title={o.customer}>{o.customer}</div>
                             </div>
-                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="text-xs font-semibold text-foreground/60">{t('orders.phoneNumber')}</div>
+                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                              <div className="text-xs font-semibold text-foreground/70">{t('orders.phoneNumber')}</div>
                               <div className="font-bold text-sm">{o.phone || t('orders.notAvailable')}</div>
                             </div>
-                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="text-xs font-semibold text-foreground/60">{t('orders.address')}</div>
+                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                              <div className="text-xs font-semibold text-foreground/70">{t('orders.address')}</div>
                               <div className="font-bold text-sm truncate">{o.address || t('orders.notAvailable')}</div>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="text-xs font-semibold text-foreground/60">{t('orders.deliveryType')}</div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                              <div className="text-xs font-semibold text-foreground/70">{t('orders.deliveryType')}</div>
                               <div className="font-bold text-sm">
                                 {o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}
                               </div>
                             </div>
-                    <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                      <div className="text-xs font-semibold text-foreground/60">{t('orders.product')}</div>
+                    <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                      <div className="text-xs font-semibold text-foreground/70">{t('orders.product')}</div>
                       <div className="flex items-center gap-2">
                         {(() => {
                           const risk = getOrderRisk(o);
@@ -1405,36 +1405,36 @@ export default function OrdersAdmin() {
                           <img 
                             src={o.product_image} 
                             alt={o.product_title || 'Product'} 
-                                    className="w-8 h-8 rounded object-cover border border-border/50"
+                                    className="w-8 h-8 rounded object-cover border border-border"
                                   />
                                 ) : (
-                                  <div className="w-8 h-8 rounded bg-muted flex items-center justify-center border border-border/50">
+                                  <div className="w-8 h-8 rounded bg-muted flex items-center justify-center border border-border">
                                     <ShoppingBag className="w-4 h-4 text-muted-foreground" />
                                   </div>
                                 )}
                                 <div className="font-bold text-sm truncate">{o.product_title || t('orders.notAvailable')}</div>
                               </div>
                             </div>
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="text-xs font-semibold text-foreground/60">{t('orders.variant')}</div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                              <div className="text-xs font-semibold text-foreground/70">{t('orders.variant')}</div>
                               <div className="font-bold text-sm">
                                 {o.variant_name || [o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ') || '—'}
                               </div>
                             </div>
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="text-xs font-semibold text-foreground/60">{t('orders.quantity')}</div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                              <div className="text-xs font-semibold text-foreground/70">{t('orders.quantity')}</div>
                               <div className="font-bold text-sm">{Number(o.quantity || 0)}</div>
                             </div>
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="text-xs font-semibold text-foreground/60">{t('orders.unitPrice')}</div>
+                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                              <div className="text-xs font-semibold text-foreground/70">{t('orders.unitPrice')}</div>
                               <div className="font-bold text-sm">{Math.round(Number(o.unit_price || 0))} DZD</div>
                             </div>
                           </div>
 
                           {/* Notes + Edit inline */}
                           <div className="flex items-start gap-2">
-                            <div className="flex-1 bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border/60">
-                              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/60 mb-1">
+                            <div className="flex-1 bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/70 mb-1">
                                 <StickyNote className="h-3 w-3" /> {t('orders.internalNote')}
                               </div>
                               <textarea
@@ -1509,7 +1509,7 @@ export default function OrdersAdmin() {
         </div>
 
         {/* Mobile cards list - outside table */}
-        <div className="md:hidden divide-y divide-border/40 px-3 py-2 space-y-2">
+        <div className="md:hidden divide-y divide-border px-3 py-2 space-y-2">
           {isLoading ? (
             <div className="py-8 text-center text-sm text-muted-foreground">...</div>
           ) : getPaginatedOrders().length === 0 ? (
@@ -1518,7 +1518,7 @@ export default function OrdersAdmin() {
             const s = getStatusDisplay(o.status);
             return (
               <div key={o.id}>
-                <div className="rounded-2xl bg-card border border-border/60 shadow-sm overflow-hidden">
+                <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
                   <div className="flex items-center gap-3 p-3">
                     <div onClick={e => e.stopPropagation()}>
                       <button onClick={() => toggleOrderSelection(o.raw_id)}>
@@ -1538,16 +1538,16 @@ export default function OrdersAdmin() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{o.product_title || t('orders.noProduct')}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      <p className="text-xs text-foreground/70 mt-0.5 truncate">
                         {o.customer}{duplicatePhones.has(o.phone) && <AlertTriangle className="h-3 w-3 text-red-500 inline ml-1" />}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-black">{Math.round(Number(o.total) || 0)}</div>
-                      <div className="text-xs text-muted-foreground">DZD</div>
+                      <div className="text-xs text-foreground/70">DZD</div>
                     </div>
                   </div>
-                  <div className="h-px bg-border/50 mx-3" />
+                  <div className="h-px bg-border mx-3" />
                   <div className="flex flex-col items-start px-3 py-2 gap-1">
                     <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
                           style={{ backgroundColor: `${s.color}25`, borderColor: `${s.color}60`, color: s.color }}>
@@ -1561,7 +1561,7 @@ export default function OrdersAdmin() {
                       </span>
                     )}
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground/50 mr-1">{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</span>
+                      <span className="text-xs text-muted-foreground mr-1">{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</span>
                       {o.phone && (
                         <a href={`tel:${o.phone}`}
                           className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors"
@@ -1580,36 +1580,36 @@ export default function OrdersAdmin() {
                   </div>
                 </div>
                 {expandedOrderId === o.id && (
-                  <div className="mt-1 rounded-2xl bg-muted/40 border border-border/40 p-3 space-y-3 text-sm">
+                  <div className="mt-1 rounded-2xl bg-muted/40 border border-border p-3 space-y-3 text-sm">
                     {/* Order info grid */}
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-card rounded-xl p-2 border border-border/50">
-                        <div className="text-xs text-muted-foreground">{t('orders.orderNumber')}</div>
+                      <div className="bg-card rounded-xl p-2 border border-border">
+                        <div className="text-xs text-foreground/70">{t('orders.orderNumber')}</div>
                         <div className="font-bold text-sm">{o.id}</div>
                       </div>
-                      <div className="bg-card rounded-xl p-2 border border-border/50">
-                        <div className="text-xs text-muted-foreground">{t('orders.phoneNumber')}</div>
+                      <div className="bg-card rounded-xl p-2 border border-border">
+                        <div className="text-xs text-foreground/70">{t('orders.phoneNumber')}</div>
                         <div className="font-bold text-sm">{o.phone || '-'}</div>
                       </div>
-                      <div className="bg-card rounded-xl p-2 border border-border/50">
-                        <div className="text-xs text-muted-foreground">{t('orders.deliveryType')}</div>
+                      <div className="bg-card rounded-xl p-2 border border-border">
+                        <div className="text-xs text-foreground/70">{t('orders.deliveryType')}</div>
                         <div className="font-bold text-sm">
                           {o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}
                         </div>
                       </div>
-                      <div className="bg-card rounded-xl p-2 border border-border/50">
-                        <div className="text-xs text-muted-foreground">{t('orders.amount')}</div>
+                      <div className="bg-card rounded-xl p-2 border border-border">
+                        <div className="text-xs text-foreground/70">{t('orders.amount')}</div>
                         <div className="font-bold text-sm">{Math.round(Number(o.total) || 0)} DZD</div>
                       </div>
                     </div>
-                    <div className="bg-card rounded-xl p-2 border border-border/50">
-                      <div className="text-xs text-muted-foreground">{t('orders.address')}</div>
+                    <div className="bg-card rounded-xl p-2 border border-border">
+                      <div className="text-xs text-foreground/70">{t('orders.address')}</div>
                       <div className="font-bold text-sm truncate">{o.address || '-'}</div>
                     </div>
 
                     {/* Status actions */}
                     <div>
-                      <div className="text-xs font-semibold text-foreground/60 mb-2">{t('orders.changeStatus')}</div>
+                      <div className="text-xs font-semibold text-foreground/70 mb-2">{t('orders.changeStatus')}</div>
                       <div className="flex flex-wrap gap-1.5">
                         {customStatuses.map(status => {
                           const translatedName = t(`orders.status.${status.key}`) || status.name;
@@ -1635,7 +1635,7 @@ export default function OrdersAdmin() {
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex flex-wrap gap-2 pt-1 border-t border-border/40">
+                    <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
                       <button
                         onClick={() => { setDeliveryOrder(o); }}
                         className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-indigo-500 text-white flex-1 justify-center"
@@ -1663,19 +1663,19 @@ export default function OrdersAdmin() {
         </div>
 
         {/* Pagination */}
-        <div className="p-3 border-t border-border/40 flex items-center justify-between bg-muted/10">
-          <div className="text-xs text-muted-foreground">
+        <div className="p-3 border-t border-border flex items-center justify-between bg-muted/10">
+          <div className="text-xs text-foreground/70">
             {totalFilteredOrders === 0 ? t('orders.showingZero') : t('orders.showing').replace('{start}', startOrder.toString()).replace('{end}', endOrder.toString()).replace('{total}', totalFilteredOrders.toString())}
           </div>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              className="w-8 h-8 rounded-xl border border-border/60 flex items-center justify-center text-sm font-bold hover:bg-muted hover:border-primary/30 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-8 h-8 rounded-xl border border-border flex items-center justify-center text-sm font-bold hover:bg-muted hover:border-primary/30 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
               disabled={currentPage === 1}
             >
               ‹
             </button>
-            <span className="text-xs font-bold px-2 py-1 bg-muted/60 rounded-lg border border-border/40">{currentPage} / {Math.max(totalPages, 1)}</span>
+            <span className="text-xs font-bold px-2 py-1 bg-muted/60 rounded-lg border border-border">{currentPage} / {Math.max(totalPages, 1)}</span>
             <button 
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-bold hover:bg-primary/90 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-md shadow-primary/25"
@@ -1998,7 +1998,7 @@ export default function OrdersAdmin() {
                             className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-muted/50 transition-colors ${selected ? 'bg-green-500/10 font-bold' : ''}`}
                           >
                             {p.images?.[0] ? (
-                              <img src={p.images[0]} alt="" className="w-8 h-8 rounded object-cover border border-border/40" />
+                              <img src={p.images[0]} alt="" className="w-8 h-8 rounded object-cover border border-border" />
                             ) : (
                               <div className="w-8 h-8 rounded bg-muted flex items-center justify-center"><ShoppingBag className="h-4 w-4 text-muted-foreground/50" /></div>
                             )}
@@ -2209,7 +2209,7 @@ export default function OrdersAdmin() {
           <div className="bg-card rounded-[24px] border border-primary/20 shadow-xl max-w-md w-full flex flex-col max-h-[88vh]">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border/40 shrink-0">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border shrink-0">
               <h2 className="text-base font-bold">{t('orders.statusManager')}</h2>
               <button onClick={() => setShowStatusManager(false)} className="p-1 rounded hover:bg-muted">
                 <X className="h-4 w-4" />
@@ -2262,7 +2262,7 @@ export default function OrdersAdmin() {
 
                 const CORE_LOCKED_KEYS = new Set(['pending','confirmed','in_delivery','at_delivery','completed','fake','duplicate']);
                 const StatusRow = ({ status, onDelete }: { status: any; onDelete?: () => void }) => (
-                  <div className="flex items-center justify-between p-2 rounded-xl border border-border/50 bg-background">
+                  <div className="flex items-center justify-between p-2 rounded-xl border border-border bg-background">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shrink-0" style={{ backgroundColor: status.color }}>
                         {status.icon}
@@ -2311,13 +2311,13 @@ export default function OrdersAdmin() {
                       const available = Object.entries(PRESET_CATALOG).filter(([k]) => !activeKeys.has(k));
                       if (!available.length) return null;
                       return (
-                        <div className="space-y-1.5 pt-1 border-t border-border/40">
+                        <div className="space-y-1.5 pt-1 border-t border-border">
                           <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">{t('orders.addPreset')}</p>
                           {available.map(([k, p]) => (
                             <button
                               key={k}
                               onClick={() => handleRestorePreset(k)}
-                              className="w-full flex items-center justify-between p-2 rounded-xl border border-dashed border-border/50 bg-background/50 hover:bg-muted/50 hover:border-primary/40 transition-colors group"
+                              className="w-full flex items-center justify-between p-2 rounded-xl border border-dashed border-border bg-background/50 hover:bg-muted/50 hover:border-primary/40 transition-colors group"
                             >
                               <div className="flex items-center gap-2">
                                 <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: p.color }}>
@@ -2337,26 +2337,26 @@ export default function OrdersAdmin() {
             </div>
 
             {/* Add custom status — footer */}
-            <div className="px-4 pb-4 pt-3 border-t border-border/40 space-y-2 shrink-0">
+            <div className="px-4 pb-4 pt-3 border-t border-border space-y-2 shrink-0">
               <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">{t('orders.addNewStatus')}</p>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={newStatusName}
                   onChange={(e) => setNewStatusName(e.target.value)}
-                  className="flex-1 px-3 h-9 rounded-xl border border-border/50 bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                  className="flex-1 px-3 h-9 rounded-xl border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm"
                   placeholder={t('orders.statusNamePlaceholder')}
                 />
                 <input
                   type="color"
                   value={newStatusColor}
                   onChange={(e) => setNewStatusColor(e.target.value)}
-                  className="w-9 h-9 rounded-xl border border-border/50 cursor-pointer p-0.5"
+                  className="w-9 h-9 rounded-xl border border-border cursor-pointer p-0.5"
                 />
                 <select
                   value={newStatusIcon}
                   onChange={(e) => setNewStatusIcon(e.target.value)}
-                  className="px-2 h-9 rounded-xl border border-border/50 bg-background text-sm"
+                  className="px-2 h-9 rounded-xl border border-border bg-background text-sm"
                 >
                   <option value="●">●</option>
                   <option value="✓">✓</option>

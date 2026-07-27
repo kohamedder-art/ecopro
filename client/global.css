@@ -175,8 +175,8 @@
     --destructive: 0 84% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 40% 85%; /* darker borders */
-    --input: 210 40% 90%;
+    --border: 210 40% 75%; /* darker borders */
+    --input: 210 40% 80%;
     --ring: 210 100% 50%;
 
     --radius: 0.8rem;
@@ -185,7 +185,7 @@
     --bg-app: 0 0% 100%;
     --bg-panel: 210 40% 99%;
     --bg-card: var(--card);
-    --border-subtle: 210 30% 88%;
+    --border-subtle: 210 30% 82%;
     --text-muted-soft: 220 15% 40%;
 
     /* Header theming */

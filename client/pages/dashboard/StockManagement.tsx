@@ -1049,14 +1049,14 @@ export default function StockManagement() {
           <p className="text-xs text-black dark:text-white mt-0.5 mr-9 hidden sm:block">{t('stock.subtitle')}</p>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Button variant="outline" size="sm" onClick={loadStock} className="h-8 w-8 p-0 rounded-lg border-black dark:border-white">
+          <Button variant="outline" size="sm" onClick={loadStock} className="h-8 w-8 p-0 rounded border-gray-300 dark:border-slate-600">
             <RefreshCw className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded-lg border-black dark:border-white">
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded border-gray-300 dark:border-slate-600">
             <Download className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('stock.export')}</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowCategoryModal(true)} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded-lg border-black dark:border-white">
+          <Button variant="outline" size="sm" onClick={() => setShowCategoryModal(true)} className="h-8 w-8 p-0 sm:w-auto sm:px-3 sm:gap-1.5 text-xs font-medium rounded border-gray-300 dark:border-slate-600">
             <Tag className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('stock.categories')}</span>
           </Button>
@@ -1070,7 +1070,7 @@ export default function StockManagement() {
               setVariantsDirty(false);
               setShowAddModal(true);
             }}
-            className="h-8 gap-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 sm:px-3 rounded-lg shadow-sm shadow-indigo-500/30"
+            className="h-8 gap-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 sm:px-3 rounded shadow-sm shadow-indigo-500/30"
           >
             <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('stock.addNewProduct')}</span>
@@ -1079,60 +1079,60 @@ export default function StockManagement() {
       </div>
 
       {/* ── Stats Row ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-        <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl px-2.5 py-2 flex items-center gap-2.5 shadow-sm">
-          <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center shrink-0">
-            <Package className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+        <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-300 dark:border-slate-600 px-2.5 py-2 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center shrink-0">
+            <Package className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.items')}</p>
-            <p className="text-xl font-black text-black dark:text-white leading-tight">{stock.length}</p>
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('stock.items')}</p>
+            <p className="text-lg font-black text-black dark:text-white leading-tight">{stock.length}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl px-2.5 py-2 flex items-center gap-2.5 shadow-sm">
-          <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
+        <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-300 dark:border-slate-600 px-2.5 py-2 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.totalValue')}</p>
-            <p className="text-xl font-black text-black dark:text-white leading-tight">{Math.round(totalValue).toLocaleString()} <span className="text-xs font-bold text-black dark:text-white">DA</span></p>
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('stock.totalValue')}</p>
+            <p className="text-lg font-black text-black dark:text-white leading-tight">{Math.round(totalValue).toLocaleString()} <span className="text-xs font-bold text-gray-500 dark:text-gray-400">DA</span></p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl px-2.5 py-2 flex items-center gap-2.5 shadow-sm">
-          <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0">
-            <AlertTriangle className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
+        <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-300 dark:border-slate-600 px-2.5 py-2 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.lowStock')}</p>
-            <p className="text-xl font-black text-amber-600 dark:text-amber-400 leading-tight">{lowStockCount}</p>
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('stock.lowStock')}</p>
+            <p className="text-lg font-black text-amber-600 dark:text-amber-400 leading-tight">{lowStockCount}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl px-2.5 py-2 flex items-center gap-2.5 shadow-sm">
-          <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
-            <PackageX className="w-4.5 h-4.5 text-red-600 dark:text-red-400" />
+        <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-300 dark:border-slate-600 px-2.5 py-2 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
+            <PackageX className="w-4 h-4 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.outOfStock')}</p>
-            <p className="text-xl font-black text-red-600 dark:text-red-400 leading-tight">{outOfStockCount}</p>
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('stock.outOfStock')}</p>
+            <p className="text-lg font-black text-red-600 dark:text-red-400 leading-tight">{outOfStockCount}</p>
           </div>
         </div>
       </div>
 
       {/* ── Table Card ── */}
-      <div className="bg-white dark:bg-slate-800 border border-black dark:border-white rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 overflow-hidden shadow-sm">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 px-2.5 py-2 border-b border-black dark:border-white bg-white dark:bg-slate-900/50">
+        <div className="flex flex-wrap items-center gap-2 px-2.5 py-1.5 border-b border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/50">
           <div className="relative flex-1 min-w-[120px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-black dark:text-white pointer-events-none" />
             <Input
               placeholder={t('stock.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-7 text-xs border-black dark:border-white bg-background focus-visible:ring-1"
+              className="pl-8 h-7 text-xs border-gray-300 dark:border-slate-600 bg-background focus-visible:ring-1"
             />
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[110px] h-7 text-xs border-black dark:border-white bg-background">
+            <SelectTrigger className="w-[110px] h-7 text-xs border-gray-300 dark:border-slate-600 bg-background">
               <SelectValue placeholder={t('stock.allCategories')} />
             </SelectTrigger>
             <SelectContent>
@@ -1147,7 +1147,7 @@ export default function StockManagement() {
             className={`inline-flex items-center gap-1 h-7 px-2 rounded text-xs font-medium border transition-colors ${
               showLowStock
                 ? 'bg-amber-500 border-amber-500 text-white'
-                : 'border-black dark:border-white bg-background text-black dark:text-white hover:text-foreground hover:border-amber-500/50'
+                : 'border-gray-300 dark:border-slate-600 bg-background text-gray-700 dark:text-gray-300 hover:text-foreground hover:border-amber-500/50'
             }`}
           >
             <AlertTriangle className="w-3 h-3" />
@@ -1250,31 +1250,33 @@ export default function StockManagement() {
           )}
         </div>
 
-        {/* ── Desktop table (hidden on mobile) ── */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
+        {/* ── Desktop table (Excel-like grid) ── */}
+        <div className="hidden md:block overflow-auto max-h-[calc(100vh-280px)]">
+          <table className="w-full text-xs border-collapse" style={{ tableLayout: 'fixed' }}>
             <colgroup>
-              <col className="w-[35%]" />
-              <col className="w-[12%]" />
-              <col className="w-[12%]" />
-              <col className="w-[12%]" />
+              <col className="w-[5%]" />
+              <col className="w-[30%]" />
               <col className="w-[12%]" />
               <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[13%]" />
             </colgroup>
-            <thead>
-              <tr className="border-b border-black dark:border-white">
-                <th className="text-left px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.product')}</th>
-                <th className="text-left px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.category')}</th>
-                <th className="text-center px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.qty')}</th>
-                <th className="text-left px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.status')}</th>
-                <th className="text-right px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.price')}</th>
-                <th className="text-right px-2.5 py-1.5 text-[11px] font-bold text-black dark:text-white uppercase tracking-wide">{t('stock.actions')}</th>
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gray-100 dark:bg-slate-800">
+                <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">#</th>
+                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.product')}</th>
+                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.category')}</th>
+                <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.qty')}</th>
+                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.status')}</th>
+                <th className="px-3 py-2 text-right text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.price')}</th>
+                <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-black dark:divide-slate-700">
+            <tbody>
               {filteredStock.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-black dark:text-white">
+                  <td colSpan={7} className="text-center py-12 text-black dark:text-white border border-gray-300 dark:border-slate-600">
                     <PackageX className="w-8 h-8 mx-auto opacity-30 mb-2" />
                     <p className="text-sm font-medium">
                       {searchQuery || categoryFilter !== 'all' || showLowStock
@@ -1284,56 +1286,58 @@ export default function StockManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredStock.map((item) => {
+                filteredStock.map((item, idx) => {
                   const stockPct = item.reorder_level > 0 ? Math.min(100, Math.round((item.quantity / (item.reorder_level * 3)) * 100)) : 100;
                   const barColor = item.status === 'out_of_stock' ? 'bg-red-500' : item.is_low_stock ? 'bg-amber-500' : 'bg-emerald-500';
+                  const isEven = idx % 2 === 0;
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                      <td className="px-2.5 py-2 min-w-0">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-700">
+                    <tr key={item.id} className={`transition-colors group ${isEven ? 'bg-white dark:bg-slate-900/50' : 'bg-gray-50/50 dark:bg-slate-800/30'} hover:bg-blue-50 dark:hover:bg-slate-800/60`}>
+                      <td className="px-3 py-2 text-center font-bold text-xs text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-slate-600">{idx + 1}</td>
+                      <td className="px-3 py-2 min-w-0 border border-gray-300 dark:border-slate-600">
+                        <div className="flex items-center gap-2">
+                          <div className="w-9 h-9 rounded flex-shrink-0 bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 overflow-hidden">
                             {item.images?.[0]
                               ? <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
-                              : <div className="w-full h-full flex items-center justify-center text-black dark:text-white"><Package className="w-4 h-4" /></div>
+                              : <div className="w-full h-full flex items-center justify-center text-gray-400"><Package className="w-3.5 h-3.5" /></div>
                             }
                           </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-sm truncate leading-tight text-black dark:text-white">{item.name}</p>
+                            <p className="font-semibold text-xs truncate leading-tight text-black dark:text-white">{item.name}</p>
                             {item.description && (
-                              <p className="text-[11px] font-medium text-black dark:text-white truncate max-w-[170px] leading-tight">{item.description}</p>
+                              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[170px] leading-tight">{item.description}</p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-2.5 py-2">
+                      <td className="px-3 py-2 border border-gray-300 dark:border-slate-600">
                         {item.category
-                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-semibold border border-primary/30">{item.category}</span>
-                          : <span className="text-[11px] text-black dark:text-white/70">—</span>
+                          ? <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400 text-[10px] font-semibold border border-blue-200 dark:border-blue-500/30">{item.category}</span>
+                          : <span className="text-gray-400 dark:text-gray-500">—</span>
                         }
                       </td>
-                      <td className="px-2.5 py-2 text-center">
-                        <span className={`tabular-nums font-black text-sm block ${
+                      <td className="px-3 py-2 text-center border border-gray-300 dark:border-slate-600">
+                        <span className={`tabular-nums font-bold text-xs block ${
                           item.status === 'out_of_stock' ? 'text-red-600 dark:text-red-400'
                           : item.is_low_stock ? 'text-amber-600 dark:text-amber-400'
                           : 'text-black dark:text-white'
                         }`}>{item.quantity}</span>
-                        <div className="text-center mt-1">
-                          <span className="inline-block w-16 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden align-middle">
-                            <span className={`h-full rounded-full transition-all block ${barColor}`} style={{ width: `${stockPct}%` }} />
+                        <div className="flex items-center justify-center gap-1 mt-0.5">
+                          <span className="inline-block w-12 h-1 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
+                            <span className={`h-full rounded-full block ${barColor}`} style={{ width: `${stockPct}%` }} />
                           </span>
+                          <span className="text-[9px] text-gray-500 dark:text-gray-400 tabular-nums">min {item.reorder_level}</span>
                         </div>
-                        <span className="text-[10px] font-semibold text-black dark:text-white block mt-1">min {item.reorder_level}</span>
                       </td>
-                      <td className="px-2.5 py-2">
+                      <td className="px-3 py-2 border border-gray-300 dark:border-slate-600">
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                          item.status === 'out_of_stock' ? 'bg-red-500/15 text-red-600 dark:text-red-400'
-                          : item.status === 'discontinued' ? 'bg-slate-100 dark:bg-slate-700 text-black dark:text-white'
-                          : item.is_low_stock ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                          : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                          item.status === 'out_of_stock' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30'
+                          : item.status === 'discontinued' ? 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-slate-600'
+                          : item.is_low_stock ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30'
+                          : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30'
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${
                             item.status === 'out_of_stock' ? 'bg-red-500'
-                            : item.status === 'discontinued' ? 'bg-slate-400'
+                            : item.status === 'discontinued' ? 'bg-gray-400'
                             : item.is_low_stock ? 'bg-amber-500'
                             : 'bg-emerald-500'
                           }`} />
@@ -1343,24 +1347,24 @@ export default function StockManagement() {
                             : t('stock.active')}
                         </span>
                       </td>
-                      <td className="px-2.5 py-2 text-right tabular-nums">
+                      <td className="px-3 py-2 text-right tabular-nums border border-gray-300 dark:border-slate-600">
                         {item.unit_price
-                          ? <span className="font-bold text-sm text-black dark:text-white">{Math.round(Number(item.unit_price)).toLocaleString()} <span className="text-[10px] font-semibold text-black dark:text-white">DA</span></span>
-                          : <span className="text-black dark:text-white/70 text-xs">—</span>
+                          ? <span className="font-bold text-xs text-black dark:text-white">{Math.round(Number(item.unit_price)).toLocaleString()} <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">DA</span></span>
+                          : <span className="text-gray-400 dark:text-gray-500 text-xs">—</span>
                         }
                       </td>
-                      <td className="px-2.5 py-2">
-                        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => openAdjustModal(item)} title={t('stock.adjustQuantity')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/30 text-black dark:text-white hover:text-emerald-600 transition-colors">
+                      <td className="px-2 py-2 border border-gray-300 dark:border-slate-600">
+                        <div className="flex items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openAdjustModal(item)} title={t('stock.adjustQuantity')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors">
                             <TrendingUp className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => openHistoryModal(item)} title={t('stock.history')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/30 text-black dark:text-white hover:text-blue-600 transition-colors">
+                          <button onClick={() => openHistoryModal(item)} title={t('stock.history')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 text-gray-500 dark:text-gray-400 hover:text-blue-600 transition-colors">
                             <History className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => openEditModal(item)} title={t('stock.editProduct')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-indigo-100 hover:text-indigo-700 dark:hover:bg-indigo-900/30 text-black dark:text-white hover:text-indigo-600 transition-colors">
+                          <button onClick={() => openEditModal(item)} title={t('stock.editProduct')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-gray-500 dark:text-gray-400 hover:text-indigo-600 transition-colors">
                             <Edit className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => openDeleteDialog(item)} title={t('stock.deleteProduct')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 text-black dark:text-white hover:text-red-600 transition-colors">
+                          <button onClick={() => openDeleteDialog(item)} title={t('stock.deleteProduct')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-500 dark:text-gray-400 hover:text-red-600 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -1375,11 +1379,12 @@ export default function StockManagement() {
 
         {/* Footer */}
         {filteredStock.length > 0 && (
-          <div className="px-3 py-2 border-t border-black dark:border-white bg-slate-50/50 dark:bg-slate-900/20 flex items-center gap-4 text-[11px] text-black dark:text-white">
-            <span><span className="font-semibold text-foreground">{inStockCount}</span> {t('stock.active')}</span>
-            <span><span className="font-semibold text-amber-600">{lowStockCount}</span> {t('stock.low')}</span>
-            <span><span className="font-semibold text-red-600">{outOfStockCount}</span> {t('stock.outOfStock')}</span>
-            <span className="ml-auto">{t('stock.totalValue')}: <span className="font-semibold text-foreground">{Math.round(totalValue).toLocaleString()} DA</span></span>
+          <div className="px-3 py-1.5 border-t border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/50 flex items-center gap-4 text-[10px] font-semibold text-gray-600 dark:text-gray-400">
+            <span>{filteredStock.length}/{stock.length} {t('stock.items')}</span>
+            <span className="text-emerald-600 dark:text-emerald-400">{inStockCount} {t('stock.active')}</span>
+            <span className="text-amber-600 dark:text-amber-400">{lowStockCount} {t('stock.low')}</span>
+            <span className="text-red-600 dark:text-red-400">{outOfStockCount} {t('stock.outOfStock')}</span>
+            <span className="ml-auto">{t('stock.totalValue')}: <span className="font-bold text-black dark:text-white">{Math.round(totalValue).toLocaleString()} DA</span></span>
           </div>
         )}
       </div>
