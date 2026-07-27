@@ -315,7 +315,7 @@ export default function Header() {
           dir={locale === 'ar' ? 'rtl' : 'ltr'}
           className="fixed top-[14px] left-0 right-0 z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-all duration-300 ease-in-out"
           style={{
-            transform: headerOpen ? 'translateY(0)' : 'translateY(calc(-100% - 6px))',
+            transform: headerOpen ? 'translateY(0)' : 'translateY(calc(-100% - 14px))',
             pointerEvents: headerOpen ? 'auto' : 'none',
           }}
         >
