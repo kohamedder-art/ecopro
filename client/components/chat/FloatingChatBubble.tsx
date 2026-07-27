@@ -420,7 +420,7 @@ export default function FloatingChatBubble() {
           <div
             className={'fixed z-[10000] bottom-0 border border-white/20 dark:border-white/10 flex flex-col overflow-hidden transition-all duration-300 ease-out ' + (isEditorPage ? 'left-0' : 'right-0') + ' ' + (expanded ? '!z-[99999] bg-white dark:bg-slate-900 backdrop-blur-2xl shadow-2xl w-full sm:!w-[576px] sm:!rounded-[24px] sm:!bottom-[88px] sm:!right-6 !rounded-t-[20px]' : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl shadow-2xl w-full sm:w-96 sm:rounded-[24px] rounded-t-[20px] sm:right-6 sm:bottom-[88px]') + ' ' + (open ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0')}
             style={{
-              ...(expanded ? { top: 'calc(64px + 8px)', maxHeight: '840px' } : { height: 'min(560px, calc(100dvh - 32px))' }),
+              ...(expanded ? { top: '72px', bottom: '88px', maxHeight: 'calc(100dvh - 160px)' } : { height: 'min(560px, calc(100dvh - 100px))' }),
               animation: 'fcb-slide-up 180ms ease',
             }}
             onWheel={(e) => e.stopPropagation()}
