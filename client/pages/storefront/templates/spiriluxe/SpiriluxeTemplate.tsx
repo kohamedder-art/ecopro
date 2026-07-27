@@ -428,7 +428,11 @@ export default function SpiriluxeTemplate({
 
         {/* Order Form */}
         <div className="px-2 py-2">
-          <div className="rounded-2xl shadow-sm px-4 py-5" style={{ backgroundColor: cardBg }}>
+          <div className="rounded-2xl shadow-sm px-4 py-5 relative" style={{ backgroundColor: cardBg }}>
+            <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
+              أكمل البيانات للطلب
+            </div>
+            <h2 className="text-xl font-black text-center mb-5 mt-2" style={{ color: textColor }}>اطلب الآن</h2>
             
             {orderSuccess ? (
               <div className="text-center py-6">
