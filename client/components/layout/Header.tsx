@@ -21,7 +21,7 @@ import {
   CreditCard,
   Bell,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { authApi } from "@/lib/auth";
 import { safeJsonParse } from "@/utils/safeJson";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
@@ -88,10 +88,50 @@ export default function Header() {
     setLangMenuOpen(false);
   };
 
-  // Ensure menu closes when clicking outside could be added here later if needed
-  
-  return (
-    <nav dir={locale === 'ar' ? 'rtl' : 'ltr'} className="sticky top-0 w-full z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-colors duration-300">
+  // --- Garage-door collapsible header for dashboard pages ---
+  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/platform-admin');
+  const headerNavRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [headerOpen, setHeaderOpen] = useState(false);
+
+  // Collapse on route change
+  useEffect(() => {
+    setHeaderOpen(false);
+    setMobileMenuOpen(false);
+    setUserMenuOpen(false);
+    setLangMenuOpen(false);
+  }, [location.pathname]);
+
+  // Click outside to close
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (!headerOpen) return;
+    const navEl = headerNavRef.current;
+    const triggerEl = triggerRef.current;
+    if (!navEl) return;
+    if (navEl.contains(e.target as Node)) return;
+    if (triggerEl?.contains(e.target as Node)) return;
+    setHeaderOpen(false);
+  }, [headerOpen]);
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [handleClickOutside]);
+
+  // Escape key to close
+  useEffect(() => {
+    if (!headerOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setHeaderOpen(false);
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [headerOpen]);
+
+  // --- End garage-door logic ---
+
+  const navContent = (
+    <>
       <div className="w-full max-w-7xl mx-auto flex items-center justify-between">
         
         {/* Right side: Logo */}
@@ -231,6 +271,66 @@ export default function Header() {
           )}
         </div>
       )}
+    </>
+  );
+
+  // --- Dashboard mode: thin trigger bar + slide-down header ---
+  if (isDashboardPage) {
+    return (
+      <>
+        {/* Thin trigger bar — always visible on dashboard */}
+        <div
+          ref={triggerRef}
+          onClick={() => setHeaderOpen(prev => !prev)}
+          className="fixed top-0 left-0 right-0 z-[101] flex items-center justify-center cursor-pointer group"
+          style={{ height: 6 }}
+        >
+          {/* Bar background */}
+          <div
+            className="absolute inset-0 transition-all duration-300"
+            style={{
+              background: isDark
+                ? 'linear-gradient(90deg, rgba(99,102,241,0.3), rgba(99,102,241,0.5), rgba(99,102,241,0.3))'
+                : 'linear-gradient(90deg, rgba(148,163,184,0.3), rgba(148,163,184,0.5), rgba(148,163,184,0.3))',
+            }}
+          />
+          {/* Handle pill */}
+          <div
+            className="relative w-8 h-[3px] rounded-full transition-all duration-300 group-hover:w-12"
+            style={{
+              backgroundColor: isDark ? 'rgba(148,163,184,0.6)' : 'rgba(100,116,139,0.5)',
+            }}
+          />
+        </div>
+
+        {/* Slide-down header */}
+        <nav
+          ref={headerNavRef}
+          dir={locale === 'ar' ? 'rtl' : 'ltr'}
+          className="fixed top-[6px] left-0 right-0 z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-all duration-300 ease-in-out"
+          style={{
+            transform: headerOpen ? 'translateY(0)' : 'translateY(calc(-100% - 6px))',
+            pointerEvents: headerOpen ? 'auto' : 'none',
+          }}
+        >
+          {navContent}
+        </nav>
+
+        {/* Backdrop overlay when header is open */}
+        {headerOpen && (
+          <div
+            className="fixed inset-0 z-[99] bg-black/20 backdrop-blur-[2px] transition-opacity duration-300"
+            onClick={() => setHeaderOpen(false)}
+          />
+        )}
+      </>
+    );
+  }
+
+  // --- Public mode: normal sticky header ---
+  return (
+    <nav dir={locale === 'ar' ? 'rtl' : 'ltr'} className="sticky top-0 w-full z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-colors duration-300">
+      {navContent}
     </nav>
   );
 }
