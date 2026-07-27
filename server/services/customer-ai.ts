@@ -55,12 +55,27 @@ const SYSTEM_PROMPT = `اسم المتجر وكل ما هو متاح موجود 
 • لا تولّدي أحرف صينية أو يابانية أو كورية أو أي أحرف غير عربية أو إنجليزية أو فرنسية أبداً.
 • إذا كتب الزبون بالدارجة، ردّي عليه بالفصحى.
 
+ما عندك من بيانات:
+• "المنتجات المطابقة" أو "قائمة بمنتجات المتجر": منتجات المتجر مع أسعارها وحالتها. إذا سأل عن منتج، أعطيه المعلومة من هنا مباشرة.
+• "طلبات الزبون": طلباته مسجلة برقم هاتفه. اقرأها وأخبره بحالة كل طلب. إذا قلت "ليس لديه طلبات سابقة"، فهذا يعني أن الرقم مسجل لكن ما فيه طلبات — ليس أنك لا تستطيعين البحث.
+• رابط المتجر: موجود في السياق. أعطيه للزبون إذا سأل.
+• معلومات التوصيل: الأسعار والمدة متاحة في السياق.
+• اسم الزبون ورقم هاتفه وولايته: إذا وجدت هذه المعلومات مسجلة، استخدميها. إذا لم تجدها، اسألي الزبون عنها عند الحاجة.
+
 طبيعة عملك:
-إذا سأل عن منتج - أعطيه المعلومات المتوفرة عنه وانصحيه.
-إذا سأل عن طلبه - اطلعي على طلباته في السياق وأخبريه.
-إذا أراد أن يطلب - اجمعي المعلومات وسجلي الطلب.
+إذا سأل عن منتج - أعطيه المعلومات المتوفرة عنه من "المنتجات المطابقة" وانصحيه.
+إذا سأل عن حالة طلب - اطلعي على "طلبات الزبون" في السياق وأخبره بالتفصيل (رقم الطلب، المنتج، الحالة، تاريخ التسجيل).
+إذا قال "لقد طلبت" أو "أريد معرفة طلبيتي" أو ما يشبهها - اقرأ طلباته في السياق. إذا لم تجد طلبات، اسأل عن رقم هاتفه أو اسمه للبحث.
+إذا أراد أن يطلب - اجمعي المعلومات تدريجياً: المنتج أولاً، ثم الاسم، ثم الهاتف، ثم العنوان والولاية.
 إذا عنده مشكلة أو شكوى - استمعي له ووجهيه لخدمة الزبائن.
 إذا بدأ المحادثة بدون طلب محدد - رحبي به واسأليه ماذا يحتاج.
+
+قواعد مهمة:
+• لا تقولي "لا أستطيع الاطلاع على الطلبات" أبداً — الطلبات موجودة أمامك في السياق. إذا لم تجد طلبات للزبون، قولي "لم أجد طلبات مسجلة برقم هذا الهاتف" واسأليه عن رقم آخر.
+• لا تختاري أرقام هواتف أو عناوين من فراغ — إذا لم تجد معلومة، اسألي عنها.
+• لا تكرري نفس السؤال أكثر من مرة. إذا جاوب الزبون، انتقل.
+• لا تقولي "تواصل مع خدمة الزبائن" إلا إذا كان السؤال خارج اختصاصك (مثل شكوى معقدة أو طلب استبدال).
+• إذا كان الزبون يسأل بسرعة أو يقول كلمات قصيرة، لا تطولي الكلام.
 
 إذا جمعت المعلومات الخمسة (المنتج، الكمية، الاسم، الهاتف، الولاية)، أكدي الطلب للزبون وأضيفي هذا الكود في آخر الرد:
 ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"[اسم المنتج الدقيق]","customerName":"[اسم الزبون]","customerPhone":"[رقم الهاتف]","shippingAddress":"[العنوان]","wilayaName":"[الولاية]","quantity":عدد,"variantColor":"[اللون أو null]"}
@@ -308,6 +323,7 @@ export async function handleCustomerMessage(
     if (extracted) {
       const lookup = await loadOrders(clientId, extracted);
       if (lookup) { orderText = lookup; phone = extracted; phoneFromMsg = true; }
+      else if (!phone) { phone = extracted; } // set phone even if no orders found
     }
   }
 
@@ -391,8 +407,23 @@ export async function handleCustomerMessage(
   // Daily token budget
   if (await isOverDailyBudget(clientId)) return 'عذراً، تم تجاوز الحد اليومي. يرجى التواصل مع المتجر مباشرة.';
 
-    try {
-    const response = await generateText('customer', prompt, { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'customer', platformChatId }, history, undefined, SYSTEM_PROMPT);
+  try {
+    // Retry on transient errors (timeout, connection refused)
+    let lastErr: any = null;
+    let response = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        response = await generateText('customer', prompt, { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'customer', platformChatId }, history, undefined, SYSTEM_PROMPT);
+        lastErr = null;
+        break;
+      } catch (retryErr: any) {
+        lastErr = retryErr;
+        const isTransient = retryErr?.message?.includes('timeout') || retryErr?.message?.includes('ECONNREFUSED') || retryErr?.message?.includes('fetch');
+        if (!isTransient || attempt === 2) throw retryErr;
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    }
+    if (lastErr) throw lastErr;
     let clean = response;
 
     // Dedup: strip consecutive identical ECOPRO_ACTION (prevents repeating same search/action)
@@ -634,7 +665,9 @@ function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, ph
     if (chatOrders) {
       p += `\n${chatOrders}\n`;
     } else if (phone) {
-      p += `\nالزبون مسجل برقم ${phone} وليس لديه طلبات سابقة.\n`;
+      p += `\nلم نجد طلبات مسجلة برقم الهاتف ${phone}. اسأل الزبون عن رقم هاتف آخر أو عن اسمه للبحث.\n`;
+    } else {
+      p += `\nرقم هاتف الزبون غير معروف حالياً. إذا سأل عن طلبه، اسأل عن رقم هاتفه أولاً.\n`;
     }
   }
 
