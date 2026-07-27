@@ -286,23 +286,19 @@ export default function Header() {
         >
           {/* Triangle shape */}
           <div
-            className="flex items-center justify-center px-3 transition-all duration-300"
+            className="flex items-center justify-center transition-all duration-300 group-hover:scale-110"
             style={{
               clipPath: 'polygon(0 0, 100% 0, 50% 100%)',
-              paddingTop: 2,
-              paddingBottom: 0,
-              height: 14,
-              minWidth: 36,
-              background: isDark
-                ? 'linear-gradient(180deg, rgba(99,102,241,0.5), rgba(99,102,241,0.2))'
-                : 'linear-gradient(180deg, rgba(148,163,184,0.5), rgba(148,163,184,0.2))',
+              height: 16,
+              minWidth: 40,
+              background: '#6366f1',
             }}
           >
             <ChevronDown
-              size={10}
+              size={11}
               className="transition-all duration-300"
               style={{
-                color: isDark ? 'rgba(148,163,184,0.8)' : 'rgba(100,116,139,0.7)',
+                color: '#ffffff',
                 transform: headerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
               }}
             />
