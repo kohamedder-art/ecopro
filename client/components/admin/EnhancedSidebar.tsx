@@ -442,14 +442,13 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
       </nav>
 
       {/* Color Picker and User Section */}
-      {!collapsed && (
+      {!collapsed && themeCustomizationEnabled && (
         <div className="p-4 border-t space-y-3 transition-all duration-300"
           style={{
             borderColor: SIDEBAR_THEMES[activeTheme].border,
           }}>
           
-          {/* Color Picker Button - Only visible when enabled */}
-          {themeCustomizationEnabled && (
+          {/* Color Picker Button */}
             <div className="relative">
               <button
                 onClick={() => setColorPickerOpen(!colorPickerOpen)}
@@ -492,7 +491,6 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
                 </div>
               )}
             </div>
-          )}
         </div>
       )}
     </div>
@@ -504,7 +502,7 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
       <aside className={cn(
         "hidden lg:block fixed transition-all duration-300 z-40 desktop-sidebar",
         isRTL ? "right-0 border-l shadow-2xl" : "left-0 border-r shadow-2xl",
-        collapsed ? "w-20" : "w-[270px]"
+        collapsed ? "w-20" : "w-[250px]"
       )}
       style={{
         top: '0',
@@ -529,7 +527,7 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
             className={cn(
-            "lg:hidden fixed top-0 h-screen w-[270px] max-w-[85vw] z-[110] border-r transition-all duration-300 overflow-x-hidden",
+            "lg:hidden fixed top-0 h-screen w-[250px] max-w-[85vw] z-[110] border-r transition-all duration-300 overflow-x-hidden",
             isRTL ? "right-0" : "left-0"
           )}
           style={{

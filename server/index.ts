@@ -293,7 +293,7 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'", 'https:'],
             frameSrc: ["'self'", 'https://www.youtube.com', 'https://youtube.com', 'https://player.vimeo.com'],
-            mediaSrc: ["'self'", 'https://res.cloudinary.com', 'blob:'],
+            mediaSrc: ["'self'", 'https://res.cloudinary.com', process.env.R2_PUBLIC_URL || '', 'blob:'],
           },
         },
       })

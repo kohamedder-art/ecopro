@@ -75,8 +75,8 @@ export default function AdminLayout() {
             isDark ? "bg-black" : "bg-gray-200",
             // Add left/right margin on large screens to account for fixed sidebar
             isRTL 
-              ? (sidebarCollapsed ? 'lg:mr-20' : 'lg:mr-[270px]')
-              : (sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-[270px]')
+              ? (sidebarCollapsed ? 'lg:mr-20' : 'lg:mr-[250px]')
+              : (sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-[250px]')
           )}
         >
         {/* Staff indicator banner */}
