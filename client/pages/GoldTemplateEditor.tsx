@@ -272,9 +272,10 @@ export default function GoldTemplateEditor() {
 
   // Reset iframe state when switching preview mode.
   // Must reset for ALL modes — switching devices unmounts the old iframe,
-  // so the old React root becomes stale. Always create a fresh root.
+  // so the old React root becomes stale. Always unmount first, then create fresh.
   useEffect(() => {
     setIframeReady(false);
+    previewIframeRootRef.current?.unmount();
     previewIframeRootRef.current = null;
   }, [previewDevice]);
 
