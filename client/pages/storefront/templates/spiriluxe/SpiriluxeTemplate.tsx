@@ -336,7 +336,7 @@ export default function SpiriluxeTemplate({
           <div key={url + globalIndex} className="relative group">
             <img src={url} alt="" className="w-full block object-contain" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" style={{ contentVisibility: 'auto' }} />
             {canManage && (
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+              <div className="absolute top-2 right-2 flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}
                 {(globalIndex > 0 || (position === 'below' && globalIndex === (aboveCount ?? productImages.length))) && (
                   <button

@@ -281,8 +281,8 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
             blockAllMixedContent: [],
             upgradeInsecureRequests: [],
             // NOTE: Some UI libs inject inline styles; keep this while blocking inline JS.
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            fontSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
             scriptSrc: [
               "'self'",
               (req) => `'nonce-${(req as any).cspNonce}'`,
@@ -506,6 +506,12 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
     // Important: sendBeacon cannot attach custom headers, so CSRF would block reports
     // whenever a user has an auth cookie.
     if (p === '/api/telemetry/client-error') return next();
+
+    // Pixel tracking endpoints are called from storefront pages and the template editor
+    // iframe. These run on the same domain where auth cookies are present, but the
+    // tracking code does not (and should not) send X-CSRF-Token.
+    if (p === '/api/pixels/session') return next();
+    if (p === '/api/pixels/track') return next();
 
     // Mobile API routes use Bearer token (not cookie) auth, so they're not susceptible to CSRF.
     // The mobile app doesn't send X-CSRF-Token, but React Native stores cookies set during
