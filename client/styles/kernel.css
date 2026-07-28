@@ -1,0 +1,78 @@
+/* ─── Kernel Security Portal — Readable Dark Theme ─── */
+
+/* Backgrounds — dark gray, not near-black */
+.k-bg    { background-color: #111827; color: #f9fafb; }
+.k-bg2   { background-color: #1f2937; }
+.k-card  { background-color: #1f2937; border: 1px solid #374151; }
+.k-elev  { background-color: #374151; border: 1px solid #4b5563; }
+.k-bdr   { border-color: #374151; }
+.k-bdrl  { border-color: #4b5563; }
+
+/* Text — high contrast against dark backgrounds */
+.k-text   { color: #f9fafb; }
+.k-muted  { color: #d1d5db; }
+.k-dim    { color: #9ca3af; }
+
+/* Accent fills — solid, visible backgrounds */
+.k-a-green  { color: #34d399; background-color: #064e3b; border-color: #065f46; }
+.k-a-red    { color: #f87171; background-color: #7f1d1d; border-color: #991b1b; }
+.k-a-amber  { color: #fbbf24; background-color: #78350f; border-color: #92400e; }
+.k-a-blue   { color: #60a5fa; background-color: #1e3a5f; border-color: #1e40af; }
+.k-a-purple { color: #c084fc; background-color: #4c1d95; border-color: #5b21b6; }
+.k-a-cyan   { color: #22d3ee; background-color: #164e63; border-color: #155e75; }
+
+/* Severity dots — brighter, more visible */
+.k-dot-critical { background-color: #ef4444; box-shadow: 0 0 10px #ef444480; }
+.k-dot-error    { background-color: #f97316; }
+.k-dot-warn     { background-color: #f59e0b; }
+.k-dot-info     { background-color: #3b82f6; }
+
+/* Glows */
+.k-glow-green { box-shadow: 0 0 16px #34d39930; }
+.k-glow-red   { box-shadow: 0 0 16px #ef444430; }
+.k-card-glow  { box-shadow: 0 1px 3px #00000040, 0 1px 2px #00000060; }
+
+/* Tab active */
+.k-tab-active { color: #34d399; border-bottom-color: #34d399; }
+.k-tab-inactive { color: #6b7280; border-bottom-color: transparent; }
+.k-tab-inactive:hover { color: #d1d5db; }
+
+/* Inputs */
+.k-input {
+  background-color: #111827; border: 1px solid #4b5563; color: #f9fafb;
+  outline: none;
+}
+.k-input:focus { border-color: #34d399; box-shadow: 0 0 0 3px #34d39930; }
+.k-input::placeholder { color: #6b7280; }
+
+/* Select */
+.k-select {
+  background-color: #111827; border: 1px solid #4b5563; color: #f9fafb;
+}
+
+/* Buttons */
+.k-btn {
+  font-size: 0.75rem; font-weight: 500; border-radius: 0.5rem;
+  transition: all 0.15s;
+}
+.k-btn-primary { background-color: #34d399; color: #111827; }
+.k-btn-primary:hover { background-color: #6ee7b7; }
+.k-btn-danger { background-color: #ef4444; color: #fff; }
+.k-btn-danger:hover { background-color: #f87171; }
+.k-btn-ghost { color: #9ca3af; }
+.k-btn-ghost:hover { color: #f9fafb; background-color: #ffffff0a; }
+
+/* Scrollbar */
+.k-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.k-scroll::-webkit-scrollbar-track { background: #1f2937; }
+.k-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+.k-scroll::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+/* Code / monospace */
+.k-mono { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 0.75rem; }
+
+/* Table */
+.k-th { color: #9ca3af; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.625rem 1rem; text-align: left; }
+.k-td { padding: 0.5rem 1rem; font-size: 0.8125rem; color: #d1d5db; }
+.k-tr { border-bottom: 1px solid #374151; }
+.k-tr:hover { background-color: #ffffff08; }

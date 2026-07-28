@@ -12,77 +12,68 @@ export default function KernelLogin({ onLogin }: { onLogin: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
-    setLoading(true)
+    setError(""); setLoading(true)
     try {
       const res = await fetch("/api/kernel/login", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
         body: JSON.stringify({ username, password }),
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        setError(data.error || "Login failed")
-        return
-      }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error || "Login failed"); return }
       onLogin()
-    } catch {
-      setError("Network error")
-    } finally {
-      setLoading(false)
-    }
+    } catch { setError("Network error") } finally { setLoading(false) }
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-black dark:via-zinc-950 dark:to-black flex items-center justify-center z-50">
-      <div className="w-full max-w-sm px-6">
+    <div className="fixed inset-0 flex items-center justify-center z-50 k-bg">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-10" style={{ background: '#34d399', filter: 'blur(80px)' }} />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-10" style={{ background: '#3b82f6', filter: 'blur(80px)' }} />
+      </div>
+      <div className="w-full max-w-sm px-6 relative">
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/20 mb-5">
-            <Shield className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5" style={{ background: '#34d399', boxShadow: '0 0 30px #34d39940' }}>
+            <Shield className="w-8 h-8" style={{ color: '#111827' }} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Kernel Security</h1>
-          <p className="text-sm text-gray-500 dark:text-zinc-500 mt-1.5">Enter root credentials to access the security dashboard</p>
+          <h1 className="text-2xl font-bold tracking-tight k-text">Kernel Security</h1>
+          <p className="text-sm mt-1.5 k-dim">Root access required</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs text-gray-500 dark:text-zinc-500 font-semibold uppercase tracking-wider">Username</label>
+            <label className="text-xs font-semibold uppercase tracking-wider k-dim">Username</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-600" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 k-dim" />
               <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="pl-9 bg-white dark:bg-zinc-900/80 border-gray-300 dark:border-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 focus:border-green-500 dark:focus:border-green-700/50 focus:ring-green-500/30 h-11 text-sm"
+                value={username} onChange={(e) => setUsername(e.target.value)}
+                className="pl-9 h-11 text-sm k-input"
                 placeholder="root"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-xs text-gray-500 dark:text-zinc-500 font-semibold uppercase tracking-wider">Password</label>
+            <label className="text-xs font-semibold uppercase tracking-wider k-dim">Password</label>
             <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-600" />
+              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 k-dim" />
               <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-9 bg-white dark:bg-zinc-900/80 border-gray-300 dark:border-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 focus:border-green-500 dark:focus:border-green-700/50 focus:ring-green-500/30 h-11 text-sm"
+                type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                className="pl-9 h-11 text-sm k-input"
                 placeholder="••••••••"
               />
             </div>
           </div>
           {error && (
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 px-3 py-2.5 rounded-lg">
+            <div className="flex items-center gap-2 text-sm px-3 py-2.5 rounded-lg k-a-red">
               <XCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>
           )}
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 dark:from-green-700 dark:to-emerald-700 dark:hover:from-green-600 dark:hover:to-emerald-600 text-white h-11 font-medium text-sm rounded-xl shadow-lg shadow-green-600/20"
+          <button type="submit" disabled={loading}
+            className="w-full h-11 font-medium text-sm rounded-xl flex items-center justify-center gap-2 transition-all k-btn-primary"
+            style={loading ? { opacity: 0.7 } : {}}
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {loading ? "Authenticating..." : "Authenticate"}
-          </Button>
+          </button>
         </form>
       </div>
     </div>

@@ -26,18 +26,19 @@ function fmt(iso: string): string {
   return new Date(iso).toLocaleString()
 }
 
-const SEVERITY_COLORS: Record<string, string> = {
-  critical: "bg-red-100 text-red-700 border-red-300 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/40",
-  error: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/40",
-  warn: "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/40",
-  info: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/40",
+/* ── Severity / Event / Tool colors for SOC theme ── */
+const SEVERITY_STYLES: Record<string, string> = {
+  critical: "k-a-red",
+  error: "k-a-red",
+  warn: "k-a-amber",
+  info: "k-a-blue",
 }
 
 const SEVERITY_DOT: Record<string, string> = {
-  critical: "bg-red-500",
-  error: "bg-orange-500",
-  warn: "bg-yellow-500",
-  info: "bg-blue-500",
+  critical: "k-dot-critical",
+  error: "k-dot-error",
+  warn: "k-dot-warn",
+  info: "k-dot-info",
 }
 
 const EVENT_LABELS: Record<string, string> = {
@@ -59,23 +60,13 @@ const EVENT_LABELS: Record<string, string> = {
 
 const EVENT_TYPES = Object.keys(EVENT_LABELS)
 
-const TOOL_COLORS: Record<string, string> = {
-  nmap: "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/40",
-  sqlmap: "bg-red-100 text-red-700 border-red-300 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/40",
-  ffuf: "bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-500/20 dark:text-pink-400 dark:border-pink-500/40",
-  gobuster: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/40",
-  nuclei: "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/40",
-  masscan: "bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/40",
-  nikto: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/40",
-  metasploit: "bg-red-100 text-red-700 border-red-300 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/40",
-  burp: "bg-indigo-100 text-indigo-700 border-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/40",
-  zap: "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-500/20 dark:text-slate-400 dark:border-slate-500/40",
-  curl: "bg-green-100 text-green-700 border-green-300 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/40",
-  wget: "bg-teal-100 text-teal-700 border-teal-300 dark:bg-teal-500/20 dark:text-teal-400 dark:border-teal-500/40",
-  python: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/40",
-  "go-http": "bg-cyan-100 text-cyan-700 border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-400 dark:border-cyan-500/40",
-  java: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/40",
-  "linux-scanner": "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/40",
+const TOOL_STYLES: Record<string, string> = {
+  nmap: "k-a-purple", sqlmap: "k-a-red", ffuf: "k-a-red",
+  gobuster: "k-a-amber", nuclei: "k-a-amber", masscan: "k-a-purple",
+  nikto: "k-a-red", metasploit: "k-a-red", burp: "k-a-cyan",
+  zap: "k-a-blue", curl: "k-a-green", wget: "k-a-green",
+  python: "k-a-blue", "go-http": "k-a-cyan", java: "k-a-amber",
+  "linux-scanner": "k-muted",
 }
 
 function getToolFromUA(ua: string | null): string | null {
@@ -88,15 +79,40 @@ function getToolFromUA(ua: string | null): string | null {
     [/metasploit|msf/i, "metasploit"], [/burp/i, "burp"], [/ZAP/i, "zap"],
     [/Postman/i, "postman"], [/HTTPie/i, "httpie"], [/^Mozilla.*Googlebot/i, "googlebot"],
     [/facebookexternalhit/i, "facebook"], [/Twitterbot/i, "twitter"],
+    [/^Mozilla.*AhrefsBot|semrush|majestic|rogerbot/i, "seo-bot"],
+    [/masscan/i, "masscan"], [/HTTP request|networking|node|axios/i, "http-lib"],
   ]
   for (const [re, name] of patterns) if (re.test(ua)) return name
   if (/Linux/i.test(ua) && !/Android/i.test(ua) && !/Mozilla/i.test(ua)) return "linux-scanner"
+  if (/bot|crawl|spider|scrape/i.test(ua)) return "bot"
   return null
 }
 
-type TimelineEvent = { created_at: string }
+/* ── Threat classification ── */
+function classifyThreat(eventType: string, path: string, ua: string, metadata: any): string {
+  if (eventType === 'geo_block' || eventType === 'rate_limit_hit') return 'noise'
+  if (eventType === 'auth_failure' || eventType === 'auth_login_failed' || eventType === 'brute_force_attack') return 'attack'
+  if (eventType === 'sql_injection' || eventType === 'prompt_injection') return 'attack'
+  if (eventType === 'honeypot_trap' || eventType === 'trap_hit') {
+    if (/wp-|wp-content|wp-admin|wp-includes|wp-login|xmlrpc/i.test(path)) return 'attack'
+    if (/\.env|\.git|config|backup|dump|sql|admin/i.test(path)) return 'attack'
+    if (/shell|cmd|exec|eval|phpmyadmin/i.test(path)) return 'attack'
+    return 'probe'
+  }
+  if (eventType === 'ip_block') return 'attack'
+  if (eventType === 'suspicious_path') {
+    if (/sql|select|union|drop|insert|--|'/i.test(path)) return 'attack'
+    if (/fuzz|\.php|\.asp|\.jsp|\.cfm/i.test(path)) return 'probe'
+    if (/\.env|\.git|config\.php|wp-config/i.test(path)) return 'attack'
+    if (/\.bak|\.old|\.zip|\.tar|dump/i.test(path)) return 'probe'
+    return 'probe'
+  }
+  if (/nmap|sqlmap|masscan|gobuster|nikto|metasploit|burp|ffuf|nuclei/i.test(ua)) return 'attack'
+  if (/curl|wget|python/i.test(ua) && !/Mozilla/i.test(ua)) return 'probe'
+  return 'noise'
+}
 
-function computeTimeline(events: TimelineEvent[]): { hour: string; count: number }[] {
+function computeTimeline(events: { created_at: string }[]): { hour: string; count: number }[] {
   const buckets = new Map<string, number>()
   const now = Date.now()
   for (let i = 23; i >= 0; i--) {
@@ -114,6 +130,6 @@ function computeTimeline(events: TimelineEvent[]): { hour: string; count: number
 
 export {
   getCsrfToken, timeAgo, countryFlag, fmt,
-  SEVERITY_COLORS, SEVERITY_DOT, EVENT_LABELS, EVENT_TYPES, TOOL_COLORS,
-  getToolFromUA, computeTimeline,
+  SEVERITY_STYLES, SEVERITY_DOT, EVENT_LABELS, EVENT_TYPES, TOOL_STYLES,
+  getToolFromUA, classifyThreat, computeTimeline,
 }
