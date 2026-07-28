@@ -1251,7 +1251,7 @@ export default function StockManagement() {
         </div>
 
         {/* ── Desktop table (Excel-like grid) ── */}
-        <div className="hidden md:block overflow-auto max-h-[calc(100vh-280px)]">
+        <div className="hidden md:block overflow-auto">
           <table className="w-full text-xs border-collapse" style={{ tableLayout: 'fixed' }}>
             <colgroup>
               <col className="w-[5%]" />
