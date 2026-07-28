@@ -872,8 +872,9 @@ export default function GoldTemplateEditor() {
     const mount = doc.getElementById('ecopro-iframe-root');
     if (!mount) return;
 
-    previewIframeRootRef.current?.unmount();
-    previewIframeRootRef.current = createRoot(mount);
+    if (!previewIframeRootRef.current) {
+      previewIframeRootRef.current = createRoot(mount);
+    }
 
     previewIframeRootRef.current.render(
       <MemoryRouter>
