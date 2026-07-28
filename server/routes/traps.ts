@@ -41,7 +41,8 @@ async function autoBlockIp(ip: string, reason: string, fingerprint: string | nul
   }
 }
 
-// Flag/ban a user account - they're a confirmed attacker
+// Block a user account - they're a confirmed attacker
+// Uses is_blocked (security block) NOT is_locked (subscription/trial lock)
 async function flagHackerAccount(userId: number, reason: string, path: string): Promise<void> {
   if (!userId) return;
   
@@ -50,36 +51,31 @@ async function flagHackerAccount(userId: number, reason: string, path: string): 
     
     // Get user details for logging
     const userResult = await pool.query(
-      `SELECT id, email, full_name, name, phone, user_type, role, is_locked FROM users WHERE id = $1`,
+      `SELECT id, email, full_name, name, phone, user_type, role FROM users WHERE id = $1`,
       [userId]
     );
     const user = userResult.rows[0];
     
     if (user) {
-      // Lock the account immediately in users table
-      // Try to set locked_reason and locked_at if columns exist
+      // Block in admins table first, fall back to clients
+      let blocked = false;
       try {
-        await pool.query(
-          `UPDATE users SET is_locked = true, locked_reason = $2, locked_at = NOW(), locked_by = 'auto_honeypot', updated_at = NOW() WHERE id = $1`,
-          [userId, `🚨 HONEYPOT TRAP: ${reason}`]
+        const r = await pool.query(
+          `UPDATE admins SET is_blocked = true, blocked_reason = $2, blocked_at = NOW(), blocked_by_admin_id = -1 WHERE id = $1 AND is_blocked = false`,
+          [userId, `HONEYPOT TRAP: ${reason}`]
         );
-      } catch {
-        // Fallback if locked_reason/locked_at don't exist yet
-        await pool.query(
-          `UPDATE users SET is_locked = true, updated_at = NOW() WHERE id = $1`,
-          [userId]
-        );
-      }
+        if (r.rowCount && r.rowCount > 0) blocked = true;
+      } catch { /* column may not exist */ }
 
-      // If user is a client, also lock in clients table (for admin panel visibility)
-      if (user.user_type === 'client') {
+      if (!blocked && user.user_type === 'client') {
         try {
-          await pool.query(
-            `UPDATE clients SET is_locked = true, locked_reason = $2, locked_at = NOW() WHERE id = $1`,
-            [userId, `🚨 HONEYPOT TRAP: ${reason}`]
+          const r = await pool.query(
+            `UPDATE clients SET is_blocked = true, blocked_reason = $2, blocked_at = NOW(), blocked_by_admin_id = -1 WHERE id = $1 AND is_blocked = false`,
+            [userId, `HONEYPOT TRAP: ${reason}`]
           );
+          if (r.rowCount && r.rowCount > 0) blocked = true;
         } catch (e) {
-          console.warn('[HONEYPOT] Could not update clients table:', (e as any)?.message);
+          console.warn('[HONEYPOT] Could not block in clients table:', (e as any)?.message);
         }
       }
       
@@ -92,20 +88,21 @@ async function flagHackerAccount(userId: number, reason: string, path: string): 
           path,
           JSON.stringify({
             reason,
-            account_locked: true,
+            account_blocked: blocked,
             user_details: {
               email: user.email,
               full_name: user.full_name || user.name,
               phone: user.phone,
               user_type: user.user_type,
               role: user.role,
-              was_already_locked: user.is_locked,
             }
           })
         ]
       );
       
-      console.log(`[HONEYPOT] 🚨 LOCKED HACKER ACCOUNT: User #${userId} (${user.email}) - Reason: ${reason}`);
+      if (blocked) {
+        console.log(`[HONEYPOT] 🚨 BLOCKED HACKER ACCOUNT: User #${userId} (${user.email}) - Reason: ${reason}`);
+      }
     }
   } catch (e) {
     console.warn('[HONEYPOT] Failed to flag account:', (e as any)?.message);
