@@ -135,12 +135,20 @@ export async function loadPlatformPixelConfig(): Promise<PixelConfig> {
     const data = await res.json();
     const config: PixelConfig = { facebook: [], tiktok: [] };
     const arr = Array.isArray(data) ? data : data?.pixels ?? [];
+    const seenFb = new Set<string>();
+    const seenTt = new Set<string>();
     for (const p of arr) {
       if (!p?.enabled || !p?.pixel_id) continue;
       const id = String(p.pixel_id).trim();
       if (!id) continue;
-      if (p.platform === 'facebook' || p.platform === 'meta') config.facebook.push(id);
-      if (p.platform === 'tiktok') config.tiktok.push(id);
+      if ((p.platform === 'facebook' || p.platform === 'meta') && !seenFb.has(id)) {
+        seenFb.add(id);
+        config.facebook.push(id);
+      }
+      if (p.platform === 'tiktok' && !seenTt.has(id)) {
+        seenTt.add(id);
+        config.tiktok.push(id);
+      }
     }
     return config;
   } catch {

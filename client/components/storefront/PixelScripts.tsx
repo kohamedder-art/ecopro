@@ -202,6 +202,10 @@ function trackToBackend(storeSlug: string, eventName: string, params?: Record<st
   const ttclid = url?.searchParams.get('ttclid') || '';
   const gclid = url?.searchParams.get('gclid') || '';
 
+  // Read Facebook _fbc / _fbp cookies for server-side CAPI matching
+  const fbc = readCookie('_fbc') || (fbclid ? `fb.1.${Date.now()}.${fbclid}` : '');
+  const fbp = readCookie('_fbp') || '';
+
   const referrer = typeof document !== 'undefined' ? document.referrer || '' : '';
   const refLower = (referrer || '').toLowerCase();
   const derivedSource =
@@ -228,6 +232,8 @@ function trackToBackend(storeSlug: string, eventName: string, params?: Record<st
         fbclid,
         ttclid,
         gclid,
+        fbc,
+        fbp,
         source: derivedSource,
         locale: document.documentElement.lang || navigator.language || 'en',
       },
@@ -276,6 +282,13 @@ function safeLocalGet(key: string): string | null {
 }
 function safeLocalSet(key: string, value: string) {
   try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+}
+
+function readCookie(name: string): string {
+  try {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : '';
+  } catch { return ''; }
 }
 
 function getSessionId(): string {

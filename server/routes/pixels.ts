@@ -2,6 +2,233 @@ import { Router, RequestHandler } from "express";
 import { ensureConnection } from "../utils/database";
 import { authenticate, requireClient } from "../middleware/auth";
 import { z } from 'zod';
+
+// ─────────────────────────────────────────────────────────────────────
+// Server-side CAPI forwarding: when /api/pixels/track receives an
+// event, we also forward it to Facebook/TikTok Conversions API
+// directly from the server. This bypasses mobile ITP / content
+// blockers that prevent the browser SDK from reaching Facebook.
+// ─────────────────────────────────────────────────────────────────────
+
+const FB_CAPI_URL = 'https://graph.facebook.com/v18.0';
+const TT_CAPI_URL = 'https://business-api.tiktok.com/open_api/v1.3/event/track/';
+
+function forwardToFacebookCAPI(opts: {
+  pixelId: string;
+  accessToken: string;
+  eventName: string;
+  eventData: Record<string, any>;
+  pageUrl: string;
+  ip: string;
+  userAgent: string;
+  fbc?: string;
+  fbp?: string;
+}) {
+  const eventTime = Math.floor(Date.now() / 1000);
+  const data: any = {
+    event_name: opts.eventName,
+    event_time: eventTime,
+    user_data: {
+      client_ip_address: opts.ip,
+      client_user_agent: opts.userAgent,
+      ...(opts.fbc ? { fbc: opts.fbc } : {}),
+      ...(opts.fbp ? { fbp: opts.fbp } : {}),
+    },
+    action_source: 'website',
+    event_source_url: opts.pageUrl,
+  };
+
+  const ed = opts.eventData;
+  if (ed && typeof ed === 'object' && Object.keys(ed).length > 0) {
+    const custom: Record<string, any> = {};
+    if (ed.value != null) custom.value = Number(ed.value);
+    if (ed.currency) custom.currency = String(ed.currency);
+    if (ed.content_ids) custom.content_ids = Array.isArray(ed.content_ids) ? ed.content_ids : [ed.content_ids];
+    if (ed.content_type) custom.content_type = String(ed.content_type);
+    if (ed.order_id) custom.order_id = String(ed.order_id);
+    if (ed.content_name) custom.content_name = String(ed.content_name);
+    if (Object.keys(custom).length > 0) data.custom_data = custom;
+  }
+
+  fetch(`${FB_CAPI_URL}/${opts.pixelId}/events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: [data], access_token: opts.accessToken }),
+  }).then(async (r) => {
+    if (!r.ok) console.error(`[pixel-capi] FB error ${opts.pixelId}/${opts.eventName}: ${r.status} ${await r.text()}`);
+  }).catch((e) => console.error(`[pixel-capi] FB fetch failed ${opts.pixelId}/${opts.eventName}:`, e?.message));
+}
+
+function forwardToTikTokCAPI(opts: {
+  pixelCode: string;
+  accessToken: string;
+  eventName: string;
+  eventData: Record<string, any>;
+  pageUrl: string;
+  ip: string;
+  userAgent: string;
+}) {
+  const now = new Date();
+  const timestamp = now.toISOString().replace('Z', '').split('.')[0]; // TikTok expects no millis
+
+  const props: Record<string, any> = {};
+  const ed = opts.eventData;
+  if (ed) {
+    if (ed.content_ids) props.content_ids = Array.isArray(ed.content_ids) ? ed.content_ids : [ed.content_ids];
+    if (ed.content_type) props.content_type = String(ed.content_type);
+    if (ed.content_name) props.content_name = String(ed.content_name);
+    if (ed.value != null) props.value = Number(ed.value);
+    if (ed.currency) props.currency = String(ed.currency);
+    if (ed.order_id) props.order_id = String(ed.order_id);
+    if (ed.description) props.description = String(ed.description);
+    if (ed.quantity != null) props.quantity = Number(ed.quantity);
+  }
+  props.page_url = opts.pageUrl;
+
+  fetch(TT_CAPI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      pixel_code: opts.pixelCode,
+      event: opts.eventName,
+      timestamp,
+      context: {
+        user_agent: opts.userAgent,
+        ip: opts.ip,
+      },
+      properties: props,
+      access_token: opts.accessToken,
+    }),
+  }).then(async (r) => {
+    if (!r.ok) console.error(`[pixel-capi] TT error ${opts.pixelCode}/${opts.eventName}: ${r.status} ${await r.text()}`);
+  }).catch((e) => console.error(`[pixel-capi] TT fetch failed ${opts.pixelCode}/${opts.eventName}:`, e?.message));
+}
+
+/**
+ * Fire-and-forget: forward a pixel event to Facebook/TikTok CAPI.
+ * Only forwards for 'facebook' or 'tiktok' pixel_type events.
+ * Looks up the access token from client_pixel_settings.
+ */
+async function forwardEventToCAPI(pool: any, opts: {
+  clientId: number;
+  pixelType: string;
+  eventName: string;
+  eventData: Record<string, any>;
+  pageUrl: string;
+  ip: string;
+  userAgent: string;
+  fbc?: string;
+  fbp?: string;
+}) {
+  try {
+    if (opts.pixelType === 'facebook') {
+      const result = await pool.query(
+        `SELECT facebook_pixel_id, facebook_access_token FROM client_pixel_settings
+         WHERE client_id = $1 AND is_facebook_enabled = true
+         AND facebook_pixel_id IS NOT NULL AND facebook_pixel_id != ''`,
+        [opts.clientId]
+      );
+      if (result.rows.length > 0) {
+        const { facebook_pixel_id, facebook_access_token } = result.rows[0];
+        const ids = String(facebook_pixel_id).split(',').map((s: string) => s.trim()).filter(Boolean);
+        for (const pixelId of ids) {
+          if (facebook_access_token) {
+            // CAPI (Graph API) — best accuracy
+            forwardToFacebookCAPI({
+              pixelId,
+              accessToken: facebook_access_token,
+              eventName: opts.eventName,
+              eventData: opts.eventData,
+              pageUrl: opts.pageUrl,
+              ip: opts.ip,
+              userAgent: opts.userAgent,
+              fbc: opts.fbc,
+              fbp: opts.fbp,
+            });
+          } else {
+            // Fallback: POST to /tr (no token, still server-side)
+            const body = new URLSearchParams();
+            body.set('id', pixelId);
+            body.set('ev', opts.eventName);
+            body.set('dl', opts.pageUrl);
+            body.set('ts', String(Math.floor(Date.now() / 1000)));
+            body.set('v', '2.0');
+            body.set('noscript', '1');
+            if (opts.fbc) body.set('cd[fbc]', opts.fbc);
+            if (opts.fbp) body.set('cd[fbp]', opts.fbp);
+            if (opts.eventData?.content_ids) {
+              const ids = Array.isArray(opts.eventData.content_ids) ? opts.eventData.content_ids : [opts.eventData.content_ids];
+              body.set('cd[content_ids]', JSON.stringify(ids));
+            }
+            if (opts.eventData?.value) body.set('cd[value]', String(opts.eventData.value));
+            if (opts.eventData?.currency) body.set('cd[currency]', opts.eventData.currency);
+            if (opts.eventData?.content_name) body.set('cd[content_name]', opts.eventData.content_name);
+            if (opts.eventData?.order_id) body.set('cd[order_id]', opts.eventData.order_id);
+
+            fetch('https://www.facebook.com/tr', {
+              method: 'POST',
+              headers: { 'User-Agent': opts.userAgent, 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: body.toString(),
+            }).then((r) => {
+              if (!r.ok) console.error(`[pixel-capi] /tr fallback failed ${pixelId}/${opts.eventName}: ${r.status}`);
+            }).catch((e) => console.error(`[pixel-capi] /tr fallback error ${pixelId}/${opts.eventName}:`, e?.message));
+          }
+        }
+      }
+    } else if (opts.pixelType === 'tiktok') {
+      const result = await pool.query(
+        `SELECT tiktok_pixel_id, tiktok_access_token FROM client_pixel_settings
+         WHERE client_id = $1 AND is_tiktok_enabled = true
+         AND tiktok_pixel_id IS NOT NULL AND tiktok_pixel_id != ''`,
+        [opts.clientId]
+      );
+      if (result.rows.length > 0) {
+        const { tiktok_pixel_id, tiktok_access_token } = result.rows[0];
+        const codes = String(tiktok_pixel_id).split(',').map((s: string) => s.trim()).filter(Boolean);
+        for (const pixelCode of codes) {
+          if (tiktok_access_token) {
+            // CAPI (Business API) — best accuracy
+            forwardToTikTokCAPI({
+              pixelCode,
+              accessToken: tiktok_access_token,
+              eventName: opts.eventName,
+              eventData: opts.eventData,
+              pageUrl: opts.pageUrl,
+              ip: opts.ip,
+              userAgent: opts.userAgent,
+            });
+          } else {
+            // Fallback: GET beacon to TikTok pixel endpoint (no token, server-side)
+            const params = new URLSearchParams({
+              pixel_code: pixelCode,
+              event_name: opts.eventName,
+              event_id: String(Date.now()),
+              timestamp: new Date().toISOString(),
+              url: opts.pageUrl,
+              user_agent: opts.userAgent,
+            });
+            if (opts.eventData?.content_ids) {
+              const cids = Array.isArray(opts.eventData.content_ids) ? opts.eventData.content_ids : [opts.eventData.content_ids];
+              params.set('content_ids', JSON.stringify(cids));
+            }
+            if (opts.eventData?.value) params.set('value', String(opts.eventData.value));
+            if (opts.eventData?.currency) params.set('currency', opts.eventData.currency);
+            if (opts.eventData?.content_name) params.set('content_name', opts.eventData.content_name);
+
+            fetch(`https://analytics.tiktok.com/i18n/pixel/?${params.toString()}`, {
+              method: 'GET',
+              headers: { 'User-Agent': opts.userAgent, 'Accept': '*/*' },
+            }).then((r) => {
+              if (!r.ok) console.error(`[pixel-capi] TikTok /i18n fallback failed ${pixelCode}/${opts.eventName}: ${r.status}`);
+            }).catch((e) => console.error(`[pixel-capi] TikTok /i18n fallback error ${pixelCode}/${opts.eventName}:`, e?.message));
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[pixel-capi] forwardEventToCAPI error:', e);
+  }
+}
 import {
   backfillHistoricalSessions,
   deleteCreativeCatalogEntry,
@@ -388,6 +615,23 @@ export const trackPixelEvent: RequestHandler = async (req, res) => {
         `UPDATE client_store_products SET views = views + 1 WHERE id = $1 AND client_id = $2`,
         [product_id, clientId]
       ).catch(() => {});
+    }
+
+    // Server-side CAPI forwarding: send event to Facebook/TikTok directly
+    // from our server, bypassing mobile ITP/content-blocker restrictions.
+    // Fire-and-forget — does not slow down the response to the client.
+    if (pixel_type === 'facebook' || pixel_type === 'tiktok') {
+      forwardEventToCAPI(pool, {
+        clientId,
+        pixelType: pixel_type,
+        eventName: event_name,
+        eventData: mergedEventData,
+        pageUrl: page_url || '',
+        ip: ip ? String(ip).split(',')[0].trim() : '0.0.0.0',
+        userAgent: userAgent || 'Mozilla/5.0',
+        fbc: mergedEventData.fbc,
+        fbp: mergedEventData.fbp,
+      }).catch(() => {});
     }
 
     try {
