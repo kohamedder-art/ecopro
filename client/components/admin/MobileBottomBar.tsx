@@ -3,26 +3,39 @@ import { Home, ShoppingCart, Bot, Store, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface MobileBottomBarProps {
   onMenuClick: () => void;
 }
 
-const ITEM_COLORS = {
-  home: { active: "#2563eb", bg: "#dbeafe", glow: "#2563eb30" },
-  orders: { active: "#16a34a", bg: "#dcfce7", glow: "#16a34a30" },
-  store: { active: "#9333ea", bg: "#f3e8ff", glow: "#9333ea30" },
-  bot: { active: "#ea580c", bg: "#fff7ed", glow: "#ea580c30" },
-  menu: { active: "#64748b", bg: "#f1f5f9", glow: "#64748b30" },
+const ITEM_COLORS_LIGHT = {
+  home: { active: "#2563eb", glow: "#2563eb25" },
+  orders: { active: "#16a34a", glow: "#16a34a25" },
+  store: { active: "#9333ea", glow: "#9333ea25" },
+  bot: { active: "#ea580c", glow: "#ea580c25" },
+  menu: { active: "#64748b", glow: "#64748b25" },
+};
+
+const ITEM_COLORS_DARK = {
+  home: { active: "#60a5fa", glow: "#60a5fa30" },
+  orders: { active: "#4ade80", glow: "#4ade8030" },
+  store: { active: "#c084fc", glow: "#c084fc30" },
+  bot: { active: "#fb923c", glow: "#fb923c30" },
+  menu: { active: "#94a3b8", glow: "#94a3b830" },
 };
 
 const ITEM_KEYS = ["home", "orders", "store", "bot", "menu"] as const;
 
 export function MobileBottomBar({ onMenuClick }: MobileBottomBarProps) {
   const { t, locale } = useTranslation();
+  const { theme } = useTheme();
   const location = useLocation();
   const { newOrdersCount } = useNotifications();
   const isRTL = locale === "ar";
+  const isDark = theme === "dark";
+
+  const colors = isDark ? ITEM_COLORS_DARK : ITEM_COLORS_LIGHT;
 
   const items = [
     { icon: Home, label: t("sidebar.home"), path: "/dashboard" },
@@ -47,11 +60,20 @@ export function MobileBottomBar({ onMenuClick }: MobileBottomBarProps) {
     >
       <div
         className="mx-2 mb-2 rounded-2xl overflow-hidden"
-        style={{
-          background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
-          boxShadow:
-            "0 -2px 20px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)",
-        }}
+        style={
+          isDark
+            ? {
+                background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
+                boxShadow:
+                  "0 -2px 20px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)",
+              }
+            : {
+                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                boxShadow:
+                  "0 -2px 16px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)",
+                border: "1px solid #e2e8f0",
+              }
+        }
       >
         <div className="flex items-center justify-around h-16 px-1">
           {items.map((item, i) => {
@@ -59,7 +81,7 @@ export function MobileBottomBar({ onMenuClick }: MobileBottomBarProps) {
               "path" in item && location.pathname.startsWith(item.path);
             const Icon = item.icon;
             const colorKey = ITEM_KEYS[i];
-            const colors = ITEM_COLORS[colorKey];
+            const itemColor = colors[colorKey];
 
             const content = (
               <div
@@ -74,8 +96,8 @@ export function MobileBottomBar({ onMenuClick }: MobileBottomBarProps) {
                   <div
                     className="absolute top-1 left-1/2 -translate-x-1/2 w-12 h-8 rounded-xl transition-all duration-300"
                     style={{
-                      background: `linear-gradient(135deg, ${colors.active}, ${colors.active}cc)`,
-                      boxShadow: `0 2px 8px ${colors.glow}, 0 0 16px ${colors.glow}`,
+                      background: `linear-gradient(135deg, ${itemColor.active}, ${itemColor.active}cc)`,
+                      boxShadow: `0 2px 8px ${itemColor.glow}, 0 0 16px ${itemColor.glow}`,
                     }}
                   />
                 )}
@@ -89,8 +111,8 @@ export function MobileBottomBar({ onMenuClick }: MobileBottomBarProps) {
                     style={
                       isActive
                         ? {
-                            background: `linear-gradient(135deg, ${colors.active}, ${colors.active}bb)`,
-                            boxShadow: `0 2px 6px ${colors.glow}`,
+                            background: `linear-gradient(135deg, ${itemColor.active}, ${itemColor.active}bb)`,
+                            boxShadow: `0 2px 6px ${itemColor.glow}`,
                           }
                         : {}
                     }
@@ -98,7 +120,11 @@ export function MobileBottomBar({ onMenuClick }: MobileBottomBarProps) {
                     <Icon
                       className="w-4.5 h-4.5 transition-colors duration-200"
                       style={{
-                        color: isActive ? "#ffffff" : "#94a3b8",
+                        color: isActive
+                          ? "#ffffff"
+                          : isDark
+                            ? "#94a3b8"
+                            : "#64748b",
                         filter: isActive
                           ? "drop-shadow(0 1px 2px rgba(0,0,0,0.3))"
                           : "none",
@@ -121,11 +147,15 @@ export function MobileBottomBar({ onMenuClick }: MobileBottomBarProps) {
                 <span
                   className={cn(
                     "text-[9px] font-semibold truncate max-w-full relative z-10 transition-colors duration-200",
-                    isActive ? "text-white" : "text-slate-500"
+                    isActive
+                      ? "text-white"
+                      : isDark
+                        ? "text-slate-500"
+                        : "text-slate-400"
                   )}
                   style={
                     isActive
-                      ? { textShadow: `0 1px 4px ${colors.glow}` }
+                      ? { textShadow: `0 1px 4px ${itemColor.glow}` }
                       : {}
                   }
                 >
