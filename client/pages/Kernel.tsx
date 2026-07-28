@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Shield, Activity, Terminal, User, Store, Ban, BrainCircuit, RefreshCw, LogOut, Loader2 } from "lucide-react"
+import { Shield, Activity, Terminal, User, Store, Ban, BrainCircuit, RefreshCw, LogOut, Loader2, Sliders } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import KernelLogin from "@/components/kernel/KernelLogin"
@@ -13,10 +13,11 @@ import KernelTopOrigins from "@/components/kernel/KernelTopOrigins"
 import KernelStoreThreats from "@/components/kernel/KernelStoreThreats"
 import KernelAccounts from "@/components/kernel/KernelAccounts"
 import KernelIntelligence from "@/components/kernel/KernelIntelligence"
+import KernelSettings from "@/components/kernel/KernelSettings"
 import { getToolFromUA } from "@/components/kernel/utils"
 import type { SecurityEvent, SummaryData, BlockEntry } from "@/components/kernel/types"
 
-type Tab = "overview" | "feed" | "accounts" | "store-threats" | "blocks" | "intelligence"
+type Tab = "overview" | "feed" | "accounts" | "store-threats" | "blocks" | "intelligence" | "settings"
 
 const TABS: { key: Tab; label: string; icon: typeof Activity }[] = [
   { key: "overview", label: "Overview", icon: Activity },
@@ -25,6 +26,7 @@ const TABS: { key: Tab; label: string; icon: typeof Activity }[] = [
   { key: "store-threats", label: "Store Threats", icon: Store },
   { key: "blocks", label: "IP Blocks", icon: Ban },
   { key: "intelligence", label: "Intelligence", icon: BrainCircuit },
+  { key: "settings", label: "Settings", icon: Sliders },
 ]
 
 function KernelDashboard() {
@@ -205,8 +207,9 @@ function KernelDashboard() {
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
+                title={`${t.label} tab`}
                 className={cn(
-                  "flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-medium border-b-2 transition-all whitespace-nowrap -mb-[1px]",
+                  "flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 text-xs font-medium border-b-2 transition-all whitespace-nowrap -mb-[1px]",
                   isActive
                     ? "border-green-600 text-green-700 dark:border-green-500 dark:text-green-400"
                     : "border-transparent text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300 hover:border-gray-300 dark:hover:border-zinc-700"
@@ -259,6 +262,8 @@ function KernelDashboard() {
         )}
 
         {tab === "intelligence" && <KernelIntelligence />}
+
+        {tab === "settings" && <KernelSettings />}
       </div>
 
       {/* Event Detail Overlay */}

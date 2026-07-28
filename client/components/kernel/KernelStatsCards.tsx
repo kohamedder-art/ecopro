@@ -30,19 +30,28 @@ export default function KernelStatsCards({ summary }: { summary: SummaryData | n
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      {STATS.map((s) => (
-        <Card key={s.key} className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800 hover:shadow-md transition-shadow">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className={cn("p-2.5 rounded-xl", s.bg)}>
-              <s.icon className={cn("w-4 h-4", s.color)} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums tracking-tight">{values[s.key]}</p>
-              <p className="text-[11px] text-gray-500 dark:text-zinc-500 leading-tight mt-0.5">{s.label}</p>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      {STATS.map((s) => {
+        const desc: Record<string, string> = {
+          total: "All security events recorded in the last 24 hours",
+          threats: "Confirmed malicious traffic requiring attention",
+          probes: "Reconnaissance attempts scanning for vulnerabilities",
+          noise: "Low-risk scanner traffic from bots and crawlers",
+          blocked: "IPs currently blocked from accessing the platform",
+        }
+        return (
+          <Card key={s.key} className="bg-white border-gray-200 dark:bg-zinc-900/60 dark:border-zinc-800 hover:shadow-md transition-shadow" title={desc[s.key]}>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className={cn("p-2.5 rounded-xl", s.bg)}>
+                <s.icon className={cn("w-4 h-4", s.color)} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums tracking-tight">{values[s.key]}</p>
+                <p className="text-[11px] text-gray-500 dark:text-zinc-500 leading-tight mt-0.5">{s.label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }

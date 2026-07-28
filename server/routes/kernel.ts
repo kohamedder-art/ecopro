@@ -7,6 +7,7 @@ import { randomBytes } from 'crypto';
 import os from 'os';
 import { getTrafficRecent, getTrafficSummary } from '../utils/traffic';
 import { onSecurityEvent } from '../utils/eventBus';
+import { getAllSettings, setSetting, invalidateCache } from '../utils/securitySettings';
 
 const router = Router();
 
@@ -1274,6 +1275,35 @@ router.delete('/security/events/localhost', requireRoot, async (_req, res) => {
   } catch (e: any) {
     console.error('Error clearing localhost events:', e);
     res.status(500).json({ error: 'Failed to clear localhost events' });
+  }
+});
+
+// Security settings (requires root auth)
+router.get('/settings', requireRoot, async (_req, res) => {
+  try {
+    const settings = await getAllSettings();
+    res.json(settings);
+  } catch (e: any) {
+    res.status(500).json({ error: String(e?.message || e) });
+  }
+});
+
+router.put('/settings', requireRoot, async (req: any, res) => {
+  try {
+    const { key, value } = req.body || {};
+    if (!key || typeof key !== 'string' || value === undefined) {
+      return res.status(400).json({ error: 'key (string) and value required' });
+    }
+    const allowed = ['auto_block_enabled', 'admin_probe_threshold', 'suspicious_probe_threshold', 'probe_window_minutes', 'event_retention_days'];
+    if (!allowed.includes(key)) {
+      return res.status(400).json({ error: `Unknown setting: ${key}. Allowed: ${allowed.join(', ')}` });
+    }
+    await setSetting(key, String(value));
+    invalidateCache();
+    const settings = await getAllSettings();
+    res.json(settings);
+  } catch (e: any) {
+    res.status(500).json({ error: String(e?.message || e) });
   }
 });
 

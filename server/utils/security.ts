@@ -4,6 +4,7 @@ import geoip from 'geoip-lite';
 import os from 'os';
 import { ensureConnection } from './database';
 import { emitSecurityEvent } from './eventBus';
+import { getSettingBool } from './securitySettings';
 
 export type SecurityEventType =
   | 'geo_block'
@@ -499,7 +500,9 @@ export function securityMiddleware(options: {
         const n = bumpCounter(adminProbeCounters, ip, now, windowMs);
         // Threshold: 12 failed hits within 10 minutes => block
         if (n >= 12) {
-          void autoBlockIp(ip, 'AUTO:admin_kernel_probe');
+          getSettingBool('auto_block_enabled', true).then(enabled => {
+            if (enabled) autoBlockIp(ip, 'AUTO:admin_kernel_probe');
+          });
           void logSecurityEvent({
             event_type: 'ip_block',
             severity: 'error',
@@ -548,7 +551,9 @@ export function securityMiddleware(options: {
           const instant = linuxUa && !isLikelyBrowserUserAgent(userAgent);
           const threshold = instant ? 1 : 3;
           if (n >= threshold) {
-            void autoBlockIp(ip, 'AUTO:suspicious_probe');
+            getSettingBool('auto_block_enabled', true).then(enabled => {
+              if (enabled) autoBlockIp(ip, 'AUTO:suspicious_probe');
+            });
             void logSecurityEvent({
               event_type: 'ip_block',
               severity: 'error',
