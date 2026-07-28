@@ -857,17 +857,53 @@ export default function GoldTemplateEditor() {
 
   const selectedTemplateId = useMemo(() => normalizeTemplateId(String(activeTemplateId)), [activeTemplateId]);
 
-  // Render storefront into an iframe for all device modes so CSS breakpoints match the simulated device.
+  // Sync iframe head only when the iframe is first created or device switches.
+  // This copies stylesheets into the iframe once — running it on every edit is expensive.
+  useEffect(() => {
+    const iframe = previewIframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!iframe || !doc || !iframeReady) return;
+    try { syncIframeHead(doc); } catch { /* ignore */ }
+  }, [iframeReady, previewDevice, syncIframeHead]);
+
+  // Track previous font family to avoid re-injecting on every edit.
+  const prevFontFamilyRef = useRef<string | null>(null);
+
+  // Inject font-family override into iframe head when the font changes.
   useEffect(() => {
     const iframe = previewIframeRef.current;
     const doc = iframe?.contentDocument;
     if (!iframe || !doc || !iframeReady) return;
 
-    try {
-      syncIframeHead(doc);
-    } catch {
-      // ignore
-    }
+    const fontFamily = (templateProps.settings as any)?.template_font_family;
+    if (fontFamily === prevFontFamilyRef.current) return;
+    prevFontFamilyRef.current = fontFamily || null;
+
+    doc.querySelectorAll('[data-font-inject]').forEach(n => n.remove());
+    if (!fontFamily || fontFamily === 'cairo') return;
+
+    const fontMap: Record<string, { url: string; name: string }> = {
+      tajawal: { url: 'https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap', name: 'Tajawal' },
+      almarai: { url: 'https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap', name: 'Almarai' },
+      'ibm-plex-arabic': { url: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Arabic:wght@300;400;500;700&display=swap', name: 'IBM Plex Arabic' },
+    };
+    const fontInfo = fontMap[fontFamily];
+    if (!fontInfo) return;
+    const link = doc.createElement('link');
+    link.rel = 'stylesheet'; link.href = fontInfo.url;
+    link.setAttribute('data-font-inject', '1');
+    doc.head.appendChild(link);
+    const style = doc.createElement('style');
+    style.setAttribute('data-font-inject', '1');
+    style.textContent = `*{font-family:'${fontInfo.name}',sans-serif!important}`;
+    doc.head.appendChild(style);
+  }, [iframeReady, templateProps, previewDevice]);
+
+  // Render storefront into the iframe — only calls root.render() (React diff), no DOM surgery.
+  useEffect(() => {
+    const iframe = previewIframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!iframe || !doc || !iframeReady) return;
 
     const mount = doc.getElementById('ecopro-iframe-root');
     if (!mount) return;
@@ -884,29 +920,7 @@ export default function GoldTemplateEditor() {
         </div>
       </MemoryRouter>
     );
-
-    // Inject font-family override into iframe head if a custom font is selected
-    const fontFamily = (templateProps.settings as any)?.template_font_family;
-    if (fontFamily && fontFamily !== 'cairo') {
-      const fontMap: Record<string, { url: string; name: string }> = {
-        tajawal: { url: 'https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap', name: 'Tajawal' },
-        almarai: { url: 'https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap', name: 'Almarai' },
-        'ibm-plex-arabic': { url: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Arabic:wght@300;400;500;700&display=swap', name: 'IBM Plex Arabic' },
-      };
-      const fontInfo = fontMap[fontFamily];
-      if (fontInfo) {
-        doc.querySelectorAll('[data-font-inject]').forEach(n => n.remove());
-        const link = doc.createElement('link');
-        link.rel = 'stylesheet'; link.href = fontInfo.url;
-        link.setAttribute('data-font-inject', '1');
-        doc.head.appendChild(link);
-        const style = doc.createElement('style');
-        style.setAttribute('data-font-inject', '1');
-        style.textContent = `*{font-family:'${fontInfo.name}',sans-serif!important}`;
-        doc.head.appendChild(style);
-      }
-    }
-  }, [iframeReady, previewDevice, selectedTemplateId, templateProps, syncIframeHead]);
+  }, [iframeReady, previewDevice, selectedTemplateId, templateProps]);
 
   // Click-to-edit inside iframe (capture phase) so templates don't need special wiring.
   // Also handle touch events for mobile devices
