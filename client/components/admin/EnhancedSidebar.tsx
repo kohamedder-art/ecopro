@@ -110,12 +110,6 @@ const buildMenuItems = (storeSlug: string | null, subdomain: string | null): Men
       permission: "view_settings"
     },
     {
-      titleKey: "sidebar.abTesting",
-      path: "/dashboard/ab-tests",
-      icon: <FlaskConical className="w-[18px] h-[18px]" />,
-      permission: "view_settings"
-    },
-    {
       titleKey: "sidebar.bot",
       path: "/dashboard/bot-settings",
       icon: <Bot className="w-[18px] h-[18px]" />,
@@ -245,7 +239,6 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
         case '/dashboard/marketing-analytics': import('@/pages/dashboard/MarketingAnalytics'); break;
         case '/dashboard/marketing/pricing': import('@/pages/dashboard/CODPricingCalculator'); break;
         case '/dashboard/pixel-settings': import('@/pages/dashboard/PixelSettings'); break;
-        case '/dashboard/ab-tests': import('@/pages/dashboard/ABTests'); break;
         case '/dashboard/billing': import('@/pages/dashboard/Billing'); break;
         case '/template-editor': import('@/pages/GoldTemplateEditor'); break;
       }
