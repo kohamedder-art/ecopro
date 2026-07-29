@@ -736,9 +736,11 @@ export default function DeliveryCompanies() {
                 {/* Logo + name row */}
                 <div className="flex items-center gap-2.5">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden border flex-shrink-0 transition-colors ${
-                    isConnected
-                      ? 'border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 group-hover:border-primary/30'
+                    company.id === 'hhd-express'
+                      ? 'border-gray-600 dark:border-gray-500 bg-gray-800 dark:bg-gray-900'
+                      : isConnected
+                        ? 'border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50'
+                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 group-hover:border-primary/30'
                   }`}>
                     {company.logo.startsWith('/') ? (
                       <DeliveryCompanyLogo name={company.name} alt={company.name} className="w-full h-full object-contain p-1" />
