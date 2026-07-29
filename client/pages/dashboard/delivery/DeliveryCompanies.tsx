@@ -77,7 +77,7 @@ export default function DeliveryCompanies() {
   // ========================================
   // List of company IDs that should appear first (working ones)
   // Order here is authoritative for the UI — keeps MDM before Maystro.
-  const workingCompanyOrder = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'hhd-express', 'ecotrack', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro'];
+  const workingCompanyOrder = ['hhd-express', 'dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'ecotrack', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro'];
 
   const [companies, setCompanies] = useState<DeliveryCompany[]>(() => [
     // ⭐ TIER 1: Best API - Yalidine (Most documented, npm packages available)
