@@ -274,6 +274,18 @@ export default function IycoTemplate({
     if (carouselRef.current) carouselRef.current.scrollLeft = 0;
   }, [mainProduct?.id]);
 
+  // Inject Google Fonts (Tajawal)
+  useEffect(() => {
+    const doc = document;
+    if (!doc.getElementById('tajawal-font')) {
+      const link = doc.createElement('link');
+      link.id = 'tajawal-font';
+      link.href = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap';
+      link.rel = 'stylesheet';
+      doc.head.appendChild(link);
+    }
+  }, []);
+
   // Auto-add main product to cart when form submitted if cart is empty
   const ensureMainProductInCart = () => {
     if (cart.length === 0 && mainProduct) {
@@ -395,7 +407,7 @@ export default function IycoTemplate({
   // ══════════════════════════════════════
   if (orderSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Tajawal', sans-serif" }} dir="rtl">
         <div className="text-center p-8 max-w-md">
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <Check size={32} style={{ color: accentColor }} />
@@ -435,7 +447,7 @@ export default function IycoTemplate({
   // MAIN TEMPLATE RENDER
   // ══════════════════════════════════════
   return (
-    <div className="min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+    <div className="min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Tajawal', sans-serif" }} dir="rtl">
 
       {/* ── TOP NAVIGATION ── */}
       <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: bgImageCss ? 'transparent' : surfaceColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
@@ -491,7 +503,7 @@ export default function IycoTemplate({
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4">
               <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[95vh]" style={{ backgroundColor: surfaceMuted }}>
-                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory' }} onScroll={handleScroll}>
+                <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', direction: 'ltr' }} onScroll={handleScroll}>
                   {videoEmbed && (
                     <div key="video" className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}>
                       {videoEmbed.type === 'youtube' ? (
@@ -521,10 +533,10 @@ export default function IycoTemplate({
                   <>
                     <button onClick={e => { e.stopPropagation(); goToSlide(activeSlide - 1); }}
                       className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
+                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
                     <button onClick={e => { e.stopPropagation(); goToSlide(activeSlide + 1); }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+                      style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
                   </>
                 )}
               </div>
@@ -927,9 +939,9 @@ export default function IycoTemplate({
           {zoomState.images.length > 1 && (
             <>
               <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx - 1 + zoomState.images.length) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">‹</button>
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">›</button>
               <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx + 1) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">›</button>
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">‹</button>
             </>
           )}
           <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}

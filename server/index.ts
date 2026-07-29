@@ -79,6 +79,7 @@ import * as platformBillsRoutes from "./routes/platform-bills";
 import deliveryPricesRouter, { getStorefrontDeliveryPrices } from "./routes/delivery-prices";
 import mobileRouter, { getDownloadUrl } from "./routes/mobile";
 import notificationsRouter from "./routes/notifications";
+import * as abTestRoutes from "./routes/ab-tests";
 import {
   validate,
   registerValidation,
@@ -1426,6 +1427,83 @@ ${urls}
     authenticate,
     requireClient,
     stockRoutes.deleteStock
+  );
+
+  // ── A/B Test Routes ──
+  app.post(
+    "/api/client/ab-tests",
+    authenticate,
+    requireClient,
+    apiLimiter,
+    abTestRoutes.createTest
+  );
+  app.get(
+    "/api/client/ab-tests",
+    authenticate,
+    requireClient,
+    abTestRoutes.listTests
+  );
+  app.get(
+    "/api/client/ab-tests/:id",
+    authenticate,
+    requireClient,
+    abTestRoutes.getTest
+  );
+  app.put(
+    "/api/client/ab-tests/:id",
+    authenticate,
+    requireClient,
+    apiLimiter,
+    abTestRoutes.updateTest
+  );
+  app.delete(
+    "/api/client/ab-tests/:id",
+    authenticate,
+    requireClient,
+    abTestRoutes.deleteTest
+  );
+  app.post(
+    "/api/client/ab-tests/:id/variants",
+    authenticate,
+    requireClient,
+    apiLimiter,
+    abTestRoutes.addVariant
+  );
+  app.put(
+    "/api/client/ab-tests/:id/variants/:vid",
+    authenticate,
+    requireClient,
+    apiLimiter,
+    abTestRoutes.updateVariant
+  );
+  app.delete(
+    "/api/client/ab-tests/:id/variants/:vid",
+    authenticate,
+    requireClient,
+    abTestRoutes.deleteVariant
+  );
+  app.get(
+    "/api/client/ab-tests/:id/results",
+    authenticate,
+    requireClient,
+    abTestRoutes.getResults
+  );
+
+  // Public A/B test endpoints (no auth)
+  app.get(
+    "/r/:code",
+    apiLimiter,
+    abTestRoutes.redirectTrack
+  );
+  app.get(
+    "/api/ab/redirect/:code",
+    apiLimiter,
+    abTestRoutes.apiRedirect
+  );
+  app.post(
+    "/api/ab/track",
+    apiLimiter,
+    abTestRoutes.trackEvent
   );
 
   // Client Store routes (private store for clients)

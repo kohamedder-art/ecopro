@@ -156,6 +156,18 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     return () => observer.disconnect();
   }, [storeSlug, products]);
 
+  // Inject Google Fonts (Tajawal)
+  useEffect(() => {
+    const doc = document;
+    if (!doc.getElementById('tajawal-font')) {
+      const link = doc.createElement('link');
+      link.id = 'tajawal-font';
+      link.href = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap';
+      link.rel = 'stylesheet';
+      doc.head.appendChild(link);
+    }
+  }, []);
+
   // Update URL when product is selected
   const handleSelectProduct = (product: any) => {
     setSelectedProduct(product);
@@ -327,7 +339,7 @@ const parseVideoEmbed = (videoUrl: string) => {
   };
 
   return (
-    <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: bgColor }} dir="rtl">
+    <div className="min-h-screen flex justify-center" style={{ fontFamily: "'Tajawal', sans-serif", backgroundColor: bgColor }} dir="rtl">
       <div className="w-full max-w-[480px] relative flex flex-col shadow-xl min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
         
         {/* Urgent Header */}
@@ -524,7 +536,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                   </div>
 
                   <div>
-                    <div className={`text-base leading-relaxed ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
+                    <div className={`dz-description ${expandedDescs[product.id] ? '' : 'line-clamp-2'}`} style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
                     {product.description.length > 100 && (
                       <button onClick={() => setExpandedDescs(prev => ({ ...prev, [product.id]: !prev[product.id] }))} className="text-[11px] font-bold mt-1" style={{ color: accentColor }}>
                         {expandedDescs[product.id] ? 'إخفاء' : 'قراءة المزيد'}
@@ -666,7 +678,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                 </div>
               </div>
               <div>
-                <div className="text-base leading-relaxed" style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
+                <div className="dz-description" style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: product.description }} />
               </div>
               <div className="flex flex-wrap gap-2">
                 {(product.features || []).map((f: string) => (
@@ -898,6 +910,9 @@ const parseVideoEmbed = (videoUrl: string) => {
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
+        .dz-description { font-size: 1.125rem; line-height: 1.8; }
+        .dz-description * { font-family: inherit; }
+        .dz-description img { max-width: 100%; height: auto; border-radius: 0.75rem; }
       `}} />
 
       {/* Image Preview Lightbox */}

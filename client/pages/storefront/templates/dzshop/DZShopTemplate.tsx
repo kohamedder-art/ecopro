@@ -136,6 +136,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(0,0,0,0.04); }
                 .dz-checkout-card input, .dz-checkout-card select, .dz-checkout-card textarea { transition: all 0.2s ease; }
                 .dz-checkout-card input:hover, .dz-checkout-card select:hover { border-color: #d1d5db; }
+                .dz-description { font-size: 1.125rem; line-height: 1.8; }
+                .dz-description * { font-family: inherit; }
+                .dz-description img { max-width: 100%; height: auto; border-radius: 0.75rem; }
             `;
     // Smart image classification: routes square images to gallery, wide/tall to banner
     const { slots: imageSlots, loading: classifyingImages } = useImageClassifier(product?.images, 'dzshop');
@@ -703,13 +706,13 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 )}
 
                     {/* Product Description */}
-                    <div className="mt-8 space-y-6 text-gray-700 leading-relaxed text-base md:text-lg">
+                    <div className="mt-8 space-y-6 text-gray-700">
                         <h3 className="text-2xl font-bold border-b-2 inline-block pb-1" style={{ borderColor: 'var(--dz-primary)' }}>وصف المنتج</h3>
                         
                         {product?.description ? (
-                            <div className="prose max-w-none text-base md:text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: product.description }} />
+                            <div className="dz-description" dangerouslySetInnerHTML={{ __html: product.description }} />
                         ) : (
-                            <div contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_description_text" className="prose max-w-none text-base md:text-lg leading-relaxed" onBlur={handleTextEdit('template_description_text')}>
+                            <div contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_description_text" className="dz-description" onBlur={handleTextEdit('template_description_text')}>
                                 {settings?.template_description_text ? (
                                     <div dangerouslySetInnerHTML={{ __html: settings.template_description_text }} />
                                 ) : (

@@ -29,6 +29,10 @@ export default defineConfig(({ mode }) => ({
           });
         },
       },
+      '/r': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
       '/robots.txt': {
         target: 'http://localhost:8080',
         changeOrigin: true,

@@ -270,6 +270,18 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
     return () => { document.body.style.overflow = ''; };
   }, [orderProduct, detailProduct, zoomState]);
 
+  // Inject Google Fonts (Tajawal)
+  useEffect(() => {
+    const doc = document;
+    if (!doc.getElementById('tajawal-font')) {
+      const link = doc.createElement('link');
+      link.id = 'tajawal-font';
+      link.href = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap';
+      link.rel = 'stylesheet';
+      doc.head.appendChild(link);
+    }
+  }, []);
+
   // Cart logic
   const addToCart = (product: { id: number; title?: string; name?: string; price: number; images?: string[] }, variant?: SelectedVariant | null) => {
     onProductView?.(product as any);
@@ -410,7 +422,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   }
 
   return (
-    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor }} dir="rtl">
+    <div className="min-h-screen" style={{ fontFamily: "'Tajawal', sans-serif", backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor }} dir="rtl">
 
       {/* HERO SECTION - full width */}
       {(hasHeroBanner || heroProduct) && (
@@ -436,7 +448,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                 </span>
                 <h2 className="text-3xl font-black mt-2">{heroProduct?.title}</h2>
                 {heroProduct?.description && (
-                  <p className="text-sm mt-2 line-clamp-2" style={{ color: 'rgba(255,255,255,0.7)' }}>{heroProduct.description?.replace(/<[^>]*>/g, '').trim()}</p>
+                  <p className="dz-description mt-2 line-clamp-2" style={{ color: 'rgba(255,255,255,0.7)' }}>{heroProduct.description?.replace(/<[^>]*>/g, '').trim()}</p>
                 )}
                 <div className="flex items-center gap-3 mt-4">
                   <span className="text-2xl font-black" style={{ color: accentColor }}>
@@ -507,7 +519,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                   <div>
                     <h4 className="font-bold text-sm leading-tight" style={{ color: textColor }}>{product.title}</h4>
                     {(product as any).description && (
-                      <p className="text-xs mt-0.5 line-clamp-1" style={{ color: textMuted }}>{(product as any).description.replace(/<[^>]*>/g, '').trim()}</p>
+                      <p className="dz-description mt-0.5 line-clamp-1" style={{ color: textMuted }}>{(product as any).description.replace(/<[^>]*>/g, '').trim()}</p>
                     )}
                     {(product as any).rating != null && (product as any).rating > 0 && (
                       <div className="flex items-center gap-1 mt-1">
@@ -807,6 +819,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
 
       <style dangerouslySetInnerHTML={{ __html: `
+        .dz-description { font-size: 1.125rem; line-height: 1.8; }
+        .dz-description * { font-family: inherit; }
+        .dz-description img { max-width: 100%; height: auto; border-radius: 0.75rem; }
         @media (max-width: 767px) {
           .boutique-gallery-img { max-height: 50dvh !important; }
           .boutique-gallery-fill { aspect-ratio: unset !important; height: 70dvh !important; }
@@ -834,7 +849,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                   <h3 className="text-xl font-black leading-tight" style={{ color: surfaceTextColor }}>{detailProduct.title}</h3>
                   <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{Math.round(detailProduct.price ?? 0).toLocaleString()} {currency}</p>
                 </div>
-                {detailProduct.description && <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: surfaceTextMuted }}>{detailProduct.description?.replace(/<[^>]*>/g, '').trim()}</p>}
+                {detailProduct.description && <p className="dz-description whitespace-pre-line" style={{ color: surfaceTextMuted }}>{detailProduct.description?.replace(/<[^>]*>/g, '').trim()}</p>}
                 {detailProduct.category && <span className="inline-block text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border" style={{ borderColor: surfaceBorderColor, color: surfaceTextMuted }}>{detailProduct.category}</span>}
               </div>
               <div className="shrink-0 px-6 pb-6 pt-3 space-y-3" style={{ borderTop: `1px solid ${surfaceBorderColor}` }}>

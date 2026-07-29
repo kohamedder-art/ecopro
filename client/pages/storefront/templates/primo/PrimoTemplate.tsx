@@ -225,6 +225,18 @@ const goBackToCatalog = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Inject Google Fonts (Tajawal)
+  useEffect(() => {
+    const doc = document;
+    if (!doc.getElementById('tajawal-font')) {
+      const link = doc.createElement('link');
+      link.id = 'tajawal-font';
+      link.href = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap';
+      link.rel = 'stylesheet';
+      doc.head.appendChild(link);
+    }
+  }, []);
+
   const handleOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId || !mainProduct) {
@@ -298,7 +310,7 @@ const goBackToCatalog = () => {
   // ══════════════════════════════════════
   if (orderSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: bgColor, color: textColor, fontFamily: "'Tajawal', sans-serif" }} dir="rtl">
         <div className="text-center p-8 max-w-md">
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <Check size={32} style={{ color: accentColor }} />
@@ -337,7 +349,7 @@ const goBackToCatalog = () => {
   // MAIN TEMPLATE RENDER
   // ══════════════════════════════════════
   return (
-    <div className="min-h-screen relative" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+    <div className="min-h-screen relative" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Tajawal', sans-serif" }} dir="rtl">
 
       {/* ── TOP BANNER ── */}
       <div className="py-2 text-center text-xs font-bold tracking-widest" style={{ backgroundColor: isDark ? '#000000' : '#111111', color: '#ffffff' }}>
@@ -647,7 +659,7 @@ const goBackToCatalog = () => {
                   <span className="text-3xl font-black" style={{ color: accentColor }}>{Math.round(productPrice ?? 0).toLocaleString()} {currency}</span>
                   {(mainProduct as any).original_price && <span className="text-base line-through font-bold" style={{ color: textMuted }}>{Math.round((mainProduct as any).original_price ?? 0).toLocaleString()} {currency}</span>}
                 </div>
-                {mainProduct.description && <p className="text-sm leading-relaxed" style={{ color: textMuted }} dangerouslySetInnerHTML={{ __html: mainProduct.description }} />}
+                {mainProduct.description && <p className="dz-description" style={{ color: textMuted }} dangerouslySetInnerHTML={{ __html: mainProduct.description }} />}
               </div>
 
               {/* Benefits */}
@@ -921,9 +933,12 @@ const goBackToCatalog = () => {
         </div>
       )}
 
-      {zoomState && (
-        <style>{`[data-storefront-contact="true"] { display: none !important; }`}</style>
-      )}
+      <style>{`
+        .dz-description { font-size: 1.125rem; line-height: 1.8; }
+        .dz-description * { font-family: inherit; }
+        .dz-description img { max-width: 100%; height: auto; border-radius: 0.75rem; }
+        [data-storefront-contact="true"] { display: none !important; }
+      `}</style>
     </div>
   );
 }

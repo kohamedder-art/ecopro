@@ -52,6 +52,9 @@ const CustomerBot = lazy(() => import("./pages/dashboard/CustomerBot"));
 const MarketingAnalytics = lazy(() => import("./pages/dashboard/MarketingAnalytics"));
 const CODPricingCalculator = lazy(() => import("./pages/dashboard/CODPricingCalculator"));
 const PixelSettings = lazy(() => import("./pages/dashboard/PixelSettings"));
+const ABTests = lazy(() => import("./pages/dashboard/ABTests"));
+const ABTestDetail = lazy(() => import("./pages/dashboard/ABTestDetail"));
+const ABTestRedirect = lazy(() => import("./pages/ABTestRedirect"));
 const StockManagement = lazy(() => import("./pages/dashboard/StockManagement"));
 const Store = lazy(() => import("./pages/dashboard/Store"));
 const ImageManager = lazy(() => import("./pages/dashboard/ImageManager"));
@@ -555,6 +558,8 @@ const App = () => (
                     <Route path="marketing-analytics" element={<MarketingAnalytics />} />
                     <Route path="marketing/pricing" element={<CODPricingCalculator />} />
                     <Route path="pixel-settings" element={<PixelSettings />} />
+                    <Route path="ab-tests" element={<ABTests />} />
+                    <Route path="ab-tests/:id" element={<ABTestDetail />} />
                     <Route path="pixel-statistics" element={<Navigate to="/dashboard/marketing-analytics" replace />} />
                     <Route path="billing" element={<Billing />} />
                   </Route>
@@ -606,6 +611,7 @@ const App = () => (
                   {/* <Route path="/product/:id" element={<ProductDetail />} /> */}
                   {/* <Route path="/cart" element={<Cart />} /> */}
                   <Route path="/checkout/:productId" element={<ProductCheckout />} />
+                  <Route path="/r/:code" element={<ABTestRedirect />} />
                   {/* <Route path="/chat/:conversationId" element={<Chat />} /> */}
                   {/* <Route path="/seller" element={<SellerDashboard />} /> */}
                   {/* <Route path="/buyer-info" element={<BuyerInfo />} /> */}

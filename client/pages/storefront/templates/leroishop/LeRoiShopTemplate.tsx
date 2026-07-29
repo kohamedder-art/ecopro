@@ -257,6 +257,18 @@ export default function LeRoiShopTemplate({
 
   useEffect(() => { if (activeProduct && onProductView) onProductView(activeProduct); }, [activeProduct?.id]);
 
+  // Inject Google Fonts (Tajawal)
+  useEffect(() => {
+    const doc = document;
+    if (!doc.getElementById('tajawal-font')) {
+      const link = doc.createElement('link');
+      link.id = 'tajawal-font';
+      link.href = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap';
+      link.rel = 'stylesheet';
+      doc.head.appendChild(link);
+    }
+  }, []);
+
   /* ── Handlers ─────────────────────────────────────────── */
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {
     e.currentTarget.setAttribute('data-setting-key', key);
@@ -429,7 +441,7 @@ export default function LeRoiShopTemplate({
      RENDER
      ══════════════════════════════════════════════════════ */
   return (
-    <div style={{ fontFamily: "'Cairo', sans-serif", backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, minHeight: '100dvh' }} dir="rtl">
+    <div style={{ fontFamily: "'Tajawal', sans-serif", backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, minHeight: '100dvh' }} dir="rtl">
       <style>{`
         [contenteditable="true"]:focus { outline: 2px solid ${accentColor}; border-radius: 4px; }
         .lrs-card { transition: all 0.3s ease; }
@@ -438,6 +450,9 @@ export default function LeRoiShopTemplate({
         .lrs-offer-row input[type="radio"] { accent-color: ${accentColor}; width: 16px; height: 16px; }
         .lrs-fullbleed { width: 100vw; margin-inline: calc(-50vw + 50%); }
         @media (min-width: 768px) { .lrs-fullbleed { width: 100%; margin-inline: 0; } }
+        .dz-description { font-size: 1.125rem; line-height: 1.8; }
+        .dz-description * { font-family: inherit; }
+        .dz-description img { max-width: 100%; height: auto; border-radius: 0.75rem; }
       `}</style>
 
       {/* ── ANNOUNCEMENT BAR + HEADER (hide on scroll down) ── */}
@@ -717,7 +732,7 @@ export default function LeRoiShopTemplate({
                 {activeProduct.description && (
                   <div className="relative mb-4">
                     <div
-                      className="text-sm leading-loose overflow-hidden transition-all duration-300 text-left"
+                      className="dz-description overflow-hidden transition-all duration-300 text-left"
                       style={{
                         color: textColor,
                         display: '-webkit-box',

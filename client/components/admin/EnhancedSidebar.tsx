@@ -5,7 +5,7 @@ import {
   Users, Shield, Ban, Puzzle, CreditCard, Settings,
   ChevronDown, ChevronRight, Menu, X, Package, Bot,
     Divide, Palette, User, Lock, Image, Brain, MapPin, MessageSquare,
-  Receipt, Bell, DollarSign
+  Receipt, Bell, DollarSign, FlaskConical
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
 import { cn } from "@/lib/utils";
@@ -107,6 +107,12 @@ const buildMenuItems = (storeSlug: string | null, subdomain: string | null): Men
       titleKey: "sidebar.pixels",
       path: "/dashboard/pixel-settings",
       icon: <Settings className="w-[18px] h-[18px]" />,
+      permission: "view_settings"
+    },
+    {
+      titleKey: "sidebar.abTesting",
+      path: "/dashboard/ab-tests",
+      icon: <FlaskConical className="w-[18px] h-[18px]" />,
       permission: "view_settings"
     },
     {
@@ -239,6 +245,7 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
         case '/dashboard/marketing-analytics': import('@/pages/dashboard/MarketingAnalytics'); break;
         case '/dashboard/marketing/pricing': import('@/pages/dashboard/CODPricingCalculator'); break;
         case '/dashboard/pixel-settings': import('@/pages/dashboard/PixelSettings'); break;
+        case '/dashboard/ab-tests': import('@/pages/dashboard/ABTests'); break;
         case '/dashboard/billing': import('@/pages/dashboard/Billing'); break;
         case '/template-editor': import('@/pages/GoldTemplateEditor'); break;
       }

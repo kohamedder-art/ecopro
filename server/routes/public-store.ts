@@ -934,6 +934,8 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       insertVals.push(val);
     };
 
+    const abVariantId = req.cookies?.eco_ab_v ? Number(req.cookies.eco_ab_v) : null;
+
     addCol('product_id', product_id);
     addCol('client_id', clientId);
     addCol('quantity', quantity);
@@ -959,6 +961,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     addCol('customer_ip', getClientIpXs(req));
     addCol('browser_fingerprint', (req.body?.browser_fingerprint || '').trim().slice(0, 255) || null);
     addCol('form_fill_time_ms', req.body?.form_fill_time_ms != null ? Number(req.body.form_fill_time_ms) : null);
+    addCol('ab_test_variant_id', abVariantId);
 
     // --- Fraud & duplicate detection ---
     let initialStatus = 'pending';
@@ -1104,6 +1107,15 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
 
     await client.query('COMMIT');
     inTransaction = false;
+
+    // A/B test attribution — update variant counters
+    if (abVariantId) {
+      pool.query(
+        `UPDATE ab_test_variants SET orders = orders + 1, revenue = revenue + $1 WHERE id = $2`,
+        [expectedTotalPrice, abVariantId]
+      ).catch(() => {});
+    }
+
     // Audit log
     try {
       await pool.query(

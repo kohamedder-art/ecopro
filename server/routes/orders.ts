@@ -346,6 +346,8 @@ export const createOrder: RequestHandler = async (req, res) => {
       insertVals.push(val);
     };
 
+    const abVariantId = req.cookies?.eco_ab_v ? Number(req.cookies.eco_ab_v) : null;
+
     addCol('product_id', product_id || null);
     addCol('client_id', resolvedClientId);
     addCol('quantity', quantity);
@@ -372,6 +374,7 @@ export const createOrder: RequestHandler = async (req, res) => {
     addCol('customer_ip', getClientIp(req));
     addCol('browser_fingerprint', browser_fingerprint || null);
     addCol('form_fill_time_ms', form_fill_time_ms != null ? Number(form_fill_time_ms) : null);
+    addCol('ab_test_variant_id', abVariantId);
 
     // --- Fraud & duplicate detection ---
     let initialStatus = 'pending';
@@ -476,6 +479,14 @@ export const createOrder: RequestHandler = async (req, res) => {
 
     await client.query('COMMIT');
     inTransaction = false;
+
+    // A/B test attribution
+    if (abVariantId) {
+      pool.query(
+        `UPDATE ab_test_variants SET orders = orders + 1, revenue = revenue + $1 WHERE id = $2`,
+        [expectedTotalPrice, abVariantId]
+      ).catch(() => {});
+    }
 
     // Create Telegram deep-link for this order (optional for the customer)
     const telegram = await createOrderTelegramLink({
@@ -744,6 +755,8 @@ export const createClientOrder: RequestHandler = async (req, res) => {
       insertVals.push(val);
     };
 
+    const abVariantId = req.cookies?.eco_ab_v ? Number(req.cookies.eco_ab_v) : null;
+
     let unitPrice = 0;
     let resolvedProductId: number | null = product_id ? Number(product_id) : null;
     let resolvedVariantId: number | null = variant_id ? Number(variant_id) : null;
@@ -832,6 +845,7 @@ export const createClientOrder: RequestHandler = async (req, res) => {
     addCol('delivery_type', resolvedDeliveryType);
     addCol('order_source', order_source || 'manual');
     addCol('source_platform', source_platform || null);
+    addCol('ab_test_variant_id', abVariantId);
     addCol('created_at', new Date());
 
     const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(',');
@@ -839,6 +853,14 @@ export const createClientOrder: RequestHandler = async (req, res) => {
       `INSERT INTO store_orders (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
       insertVals
     );
+    // A/B test attribution
+    if (abVariantId) {
+      pool.query(
+        `UPDATE ab_test_variants SET orders = orders + 1, revenue = revenue + $1 WHERE id = $2`,
+        [orderTotal, abVariantId]
+      ).catch(() => {});
+    }
+
     clearOrdersCache(Number(clientId));
     notifyOrderCreated(Number(clientId), Number(result.rows[0].id), trimName);
     return res.status(201).json({ success: true, order: result.rows[0] });

@@ -257,10 +257,22 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Inject Google Fonts (Tajawal)
+  useEffect(() => {
+    const doc = document;
+    if (!doc.getElementById('tajawal-font')) {
+      const link = doc.createElement('link');
+      link.id = 'tajawal-font';
+      link.href = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap';
+      link.rel = 'stylesheet';
+      doc.head.appendChild(link);
+    }
+  }, []);
+
   // Order success screen
   if (orderSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor, fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor, fontFamily: "'Tajawal', sans-serif" }} dir="rtl">
         <div className="max-w-md mx-auto rounded-2xl p-8 shadow-xl text-center w-full" style={{ backgroundColor: cardBg }}>
           <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: accentColor + '20' }}>
             <ShieldCheck size={36} style={{ color: accentColor }} />
@@ -285,7 +297,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   if (showStoreGrid) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      <div className="min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', fontFamily: "'Tajawal', sans-serif" }} dir="rtl">
         {/* Header */}
         <div
           className="sticky top-0 z-50 px-6 py-2 flex items-center justify-between gap-4"
@@ -398,7 +410,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   }
 
   return (
-    <div className="min-h-screen font-sans" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor }} dir="rtl">
+    <div className="min-h-screen" style={{ fontFamily: "'Tajawal', sans-serif", backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: textColor }} dir="rtl">
 
       {/* Mobile Container */}
       <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-3xl mx-auto'} min-h-screen relative shadow-2xl`}>

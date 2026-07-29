@@ -448,6 +448,16 @@ export default function DeliveryCompanies() {
     })();
   }, []);
 
+  // Sync selectedCompany with latest companies state (fixes stale reference
+  // when data loads asynchronously after dialog is already open).
+  useEffect(() => {
+    if (!selectedCompany) return;
+    const updated = companies.find(c => c.id === selectedCompany.id);
+    if (updated && updated !== selectedCompany) {
+      setSelectedCompany(updated);
+    }
+  }, [companies]);
+
   const isPrimaryCredentialField = (company: DeliveryCompany | null, fieldName: string) => {
     if (!company) return false;
 
