@@ -735,7 +735,7 @@ export default function DeliveryCompanies() {
               <div className="p-3.5 space-y-2.5">
                 {/* Logo + name row */}
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden border flex-shrink-0 transition-colors ${
+                  <div className={`w-14 h-10 rounded-lg flex items-center justify-center overflow-hidden border flex-shrink-0 transition-colors ${
                     company.id === 'hhd-express'
                       ? 'border-gray-600 dark:border-gray-500 bg-gray-800 dark:bg-gray-900'
                       : isConnected
