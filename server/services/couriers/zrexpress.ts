@@ -267,12 +267,22 @@ export class ZRExpressOfficialService implements CourierService {
       const customerId = crypto.randomUUID();
 
       // Parse phone number to international format
-      let phone = shipment.customer_phone || '';
-      if (phone.startsWith('0')) {
+      let phone = String(shipment.customer_phone || '').replace(/[\s\-().]/g, '');
+      if (phone.startsWith('00')) {
+        phone = '+' + phone.slice(2);
+      } else if (phone.startsWith('0')) {
         phone = '+213' + phone.slice(1);
+      } else if (/^213\d/.test(phone)) {
+        phone = '+' + phone;
       } else if (!phone.startsWith('+')) {
         phone = '+213' + phone;
       }
+      // Strip any remaining non-digit chars, keep leading +
+      const digits = phone.replace(/[^\d]/g, '');
+      if (!digits) {
+        return { success: false, tracking_number: '', error: 'Invalid phone number' };
+      }
+      phone = '+' + digits;
 
       const payload = {
         customer: {
