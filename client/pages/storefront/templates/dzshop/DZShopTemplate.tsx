@@ -168,7 +168,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         if (!doc.getElementById('inter-font')) {
             const link = doc.createElement('link');
             link.id = 'inter-font';
-            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap';
+            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Tajawal:wght@400;500;700;800;900&display=swap';
             link.rel = 'stylesheet';
             doc.head.appendChild(link);
         }
@@ -296,7 +296,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     }, [activeImageIndex, allMedia.length, loopedMedia.length]);
 
     return (
-        <div ref={rootRef} className="text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Cairo', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || '#f3f4f6', backgroundImage: settings?.template_bg_image ? (settings.template_bg_image.startsWith('linear') || settings.template_bg_image.startsWith('radial') || settings.template_bg_image.startsWith('url(') ? settings.template_bg_image : `url(${settings.template_bg_image})`) : undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', backgroundRepeat: 'no-repeat' }} dir="rtl">
+        <div ref={rootRef} className="text-gray-900 min-h-screen relative pb-20 md:pb-0" style={{ fontFamily: "'Tajawal', sans-serif", isolation: 'isolate', backgroundColor: settings?.template_bg_color || '#f3f4f6', backgroundImage: settings?.template_bg_image ? (settings.template_bg_image.startsWith('linear') || settings.template_bg_image.startsWith('radial') || settings.template_bg_image.startsWith('url(') ? settings.template_bg_image : `url(${settings.template_bg_image})`) : undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', backgroundRepeat: 'no-repeat' }} dir="rtl">
             <PixelScripts storeSlug={storeSlug} />
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
@@ -703,13 +703,13 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 )}
 
                     {/* Product Description */}
-                    <div className="mt-8 space-y-6 text-gray-700 leading-relaxed">
-                        <h3 className="text-xl font-bold border-b-2 inline-block pb-1" style={{ borderColor: 'var(--dz-primary)' }}>وصف المنتج</h3>
+                    <div className="mt-8 space-y-6 text-gray-700 leading-relaxed text-base md:text-lg">
+                        <h3 className="text-2xl font-bold border-b-2 inline-block pb-1" style={{ borderColor: 'var(--dz-primary)' }}>وصف المنتج</h3>
                         
                         {product?.description ? (
-                            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: product.description }} />
+                            <div className="prose max-w-none text-base md:text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: product.description }} />
                         ) : (
-                            <div contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_description_text" className="prose max-w-none" onBlur={handleTextEdit('template_description_text')}>
+                            <div contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_description_text" className="prose max-w-none text-base md:text-lg leading-relaxed" onBlur={handleTextEdit('template_description_text')}>
                                 {settings?.template_description_text ? (
                                     <div dangerouslySetInnerHTML={{ __html: settings.template_description_text }} />
                                 ) : (
