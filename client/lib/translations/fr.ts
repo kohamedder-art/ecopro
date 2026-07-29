@@ -1089,6 +1089,7 @@ export const fr = {
   "delivery.desc.yalitec": "Intégration Yalitec (assignation manuelle).",
   "delivery.desc.mylerz": "Intégration Mylerz Algérie (assignation manuelle).",
   "delivery.desc.flash": "Intégration Flash Delivery (assignation manuelle).",
+  "delivery.desc.hhd": "HHD Express — Livraison via Ecotrack. COD, suivi en temps réel.",
   "admin.delivery.saveSettings": "Enregistrer les paramètres",
 
   // Common UI Elements
@@ -1219,6 +1220,7 @@ export const fr = {
   "sidebar.orders": "Commandes Boutique",
   "sidebar.delivery": "Livraison",
   "sidebar.pixels": "Statistiques Pixel",
+  "sidebar.abTesting": "Test A/B",
   "sidebar.marketing": "Marketing & Analytique",
   "sidebar.marketingAnalytics": "Analytique",
   "sidebar.pricingCalculator": "Calculateur de Prix",

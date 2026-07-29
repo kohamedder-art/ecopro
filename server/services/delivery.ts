@@ -69,6 +69,7 @@ import { DhdService } from './couriers/dhd';
 import { EcomDeliveryService } from './couriers/ecom-delivery';
 import { ElogistiaService } from './couriers/elogistia';
 import { MdmService } from './couriers/mdm';
+import { HhdService } from './couriers/hhd';
 
 // ========================================
 // REGISTER REAL ALGERIAN DELIVERY PROVIDERS
@@ -109,6 +110,10 @@ registerCourierService('elogistia', ElogistiaService);
 registerCourierService('mdm', MdmService);
 registerCourierService('mdm express', MdmService);
 registerCourierService('mdm-express', MdmService);
+// HHD Express - Ecotrack-powered
+registerCourierService('hhd', HhdService);
+registerCourierService('hhd express', HhdService);
+registerCourierService('hhd-express', HhdService);
 
 export class DeliveryService {
   /**

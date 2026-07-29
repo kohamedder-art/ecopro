@@ -44,6 +44,7 @@ export function getDeliveryCompanyLogoCandidates(companyName?: string | null): s
   if (key.includes('zimou')) pinned.push('/delivery-logos/zimou-express.svg');
   if (key === 'ems' || key.includes('express mail')) pinned.push('/delivery-logos/EMS.png');
   if (key === 'dhd' || key.includes('dhd')) pinned.push('/delivery-logos/Dhd.png');
+  if (key.includes('hhd')) pinned.push('/delivery-logos/hhd.png');
   if (key.includes('ecom')) pinned.push('/delivery-logos/ecom.png');
   if (key.includes('elogistia')) pinned.push('/delivery-logos/elogistia-logo.png');
 

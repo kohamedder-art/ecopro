@@ -67,7 +67,7 @@ export default function DeliveryCompanies() {
 
   // Only allow providers with working integrations to be configured.
   const isComingSoon = (company: DeliveryCompany) => {
-    const openIds = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'ecotrack', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro'];
+    const openIds = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'hhd-express', 'ecotrack', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro'];
     return !openIds.includes(company.id);
   };
   
@@ -77,7 +77,7 @@ export default function DeliveryCompanies() {
   // ========================================
   // List of company IDs that should appear first (working ones)
   // Order here is authoritative for the UI — keeps MDM before Maystro.
-  const workingCompanyOrder = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'ecotrack', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro'];
+  const workingCompanyOrder = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'hhd-express', 'ecotrack', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro'];
 
   const [companies, setCompanies] = useState<DeliveryCompany[]>(() => [
     // ⭐ TIER 1: Best API - Yalidine (Most documented, npm packages available)
@@ -250,6 +250,21 @@ export default function DeliveryCompanies() {
       hasApi: true,
       features: { createShipment: true, tracking: true, labels: true, cod: true, webhooks: false },
       docsUrl: "https://dhd-dz.com",
+      apiRating: 3,
+    },
+    {
+      id: "hhd-express",
+      name: "HHD Express",
+      logo: getDeliveryCompanyLogoSrc("HHD Express"),
+      description: "HHD Express — Ecotrack-powered delivery across Algeria. COD, tracking & labels.",
+      descriptionKey: "delivery.desc.hhd",
+      apiFields: [
+        { label: "API Token", placeholder: "Your HHD Express API Token (Bearer)", field: "apiToken" },
+      ],
+      enabled: false,
+      hasApi: true,
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
+      docsUrl: "https://hhdexpress.ecotrack.dz",
       apiRating: 3,
     },
     {
@@ -447,6 +462,7 @@ export default function DeliveryCompanies() {
       'zimou-express': 'apiToken',
       anderson: 'apiToken',
       dhd: 'apiToken',
+      'hhd-express': 'apiToken',
       'mdm-express': 'apiToken',
     };
 
@@ -483,6 +499,7 @@ export default function DeliveryCompanies() {
         if (id === 'zimou-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: undefined };
         if (id === 'anderson') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.accountId || '').trim() || undefined };
         if (id === 'dhd') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
+        if (id === 'hhd-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: undefined };
         if (id === 'ecom-delivery') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.apiToken || '').trim() || undefined };
         if (id === 'mdm-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.productId || '').trim() || undefined, merchantId: (credentials.storeId || '').trim() || undefined };
         return { apiKey: (credentials.apiToken || credentials.apiKey || '').trim(), apiSecret: undefined };
@@ -533,6 +550,7 @@ export default function DeliveryCompanies() {
         if (id === 'zimou-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: undefined };
         if (id === 'anderson') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.accountId || '').trim() || undefined };
         if (id === 'dhd') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.apiKey || '').trim() || undefined };
+        if (id === 'hhd-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: undefined };
         if (id === 'ecom-delivery') return { apiKey: (credentials.apiKey || '').trim(), apiSecret: (credentials.apiToken || '').trim() || undefined };
         if (id === 'mdm-express') return { apiKey: (credentials.apiToken || '').trim(), apiSecret: (credentials.productId || '').trim() || undefined, merchantId: (credentials.storeId || '').trim() || undefined };
         const primary = (credentials.apiToken || credentials.apiKey || '').trim();
