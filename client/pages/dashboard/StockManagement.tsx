@@ -1035,8 +1035,8 @@ export default function StockManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
-    <div className="max-w-screen-xl mx-auto px-3 sm:px-5 lg:px-6 py-4 space-y-2">
+    <div className="min-h-screen bg-white dark:bg-slate-950 font-[Tajawal]">
+    <div className="max-w-[1600px] mx-auto px-3 sm:px-5 lg:px-6 py-4 space-y-2">
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-2">
         <div>
@@ -1292,7 +1292,7 @@ export default function StockManagement() {
                   const isEven = idx % 2 === 0;
                   return (
                     <tr key={item.id} className={`transition-colors group ${isEven ? 'bg-white dark:bg-slate-900/50' : 'bg-gray-50/50 dark:bg-slate-800/30'} hover:bg-blue-50 dark:hover:bg-slate-800/60`}>
-                      <td className="px-3 py-2 text-center font-bold text-xs text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-slate-600">{idx + 1}</td>
+                      <td className="px-3 py-3 text-center font-black text-base text-slate-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600">{idx + 1}</td>
                       <td className="px-3 py-2 min-w-0 border border-gray-300 dark:border-slate-600">
                         <div className="flex items-center gap-2">
                           <div className="w-9 h-9 rounded flex-shrink-0 bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 overflow-hidden">
