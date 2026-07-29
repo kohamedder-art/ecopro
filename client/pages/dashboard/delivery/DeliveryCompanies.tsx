@@ -395,11 +395,13 @@ export default function DeliveryCompanies() {
   ];
 
   useEffect(() => {
-    // Fetch DB-backed delivery company IDs so we can save integrations.
     (async () => {
       try {
         const res = await fetch('/api/delivery/companies');
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.warn('[DeliveryCompanies] GET /api/delivery/companies failed:', res.status, res.statusText);
+          return;
+        }
         const data = await res.json();
         const map: Record<string, number> = {};
         for (const c of Array.isArray(data) ? data : []) {
@@ -409,9 +411,10 @@ export default function DeliveryCompanies() {
         }
         setCompanyIdByName(map);
 
-        // Load configured integrations (no secrets) so enabled state persists after refresh.
         const integRes = await fetch('/api/delivery/integrations');
-        if (integRes.ok) {
+        if (!integRes.ok) {
+          console.warn('[DeliveryCompanies] GET /api/delivery/integrations failed:', integRes.status, integRes.statusText);
+        } else {
           const integrations = await integRes.json().catch(() => []);
           const enabledIds = new Set<number>();
           const meta: Record<
@@ -442,8 +445,8 @@ export default function DeliveryCompanies() {
             })
           );
         }
-      } catch {
-        // Silent; page can still render, but saving integrations may fail.
+      } catch (e) {
+        console.error('[DeliveryCompanies] Failed to load company data:', e);
       }
     })();
   }, []);
@@ -457,6 +460,34 @@ export default function DeliveryCompanies() {
       setSelectedCompany(updated);
     }
   }, [companies]);
+
+  // Re-fetch integration metadata when dialog opens so saved/hidden state
+  // is always correct regardless of when the initial load completed.
+  useEffect(() => {
+    if (!showConfigDialog) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/delivery/integrations');
+        if (!res.ok) return;
+        const integrations = await res.json().catch(() => []);
+        setIntegrationMetaByCompanyId((prev) => {
+          const updated = { ...prev };
+          for (const row of Array.isArray(integrations) ? integrations : []) {
+            const idNum = Number(row?.delivery_company_id);
+            if (!Number.isFinite(idNum)) continue;
+            updated[idNum] = {
+              is_enabled: Boolean(row?.is_enabled),
+              has_api_key: Boolean(row?.has_api_key),
+              has_api_secret: Boolean(row?.has_api_secret),
+              updated_at: row?.updated_at,
+              configured_at: row?.configured_at,
+            };
+          }
+          return updated;
+        });
+      } catch {}
+    })();
+  }, [showConfigDialog]);
 
   const isPrimaryCredentialField = (company: DeliveryCompany | null, fieldName: string) => {
     if (!company) return false;
