@@ -912,8 +912,7 @@ export default function DeliveryCompanies() {
             {canConnectSelectedCompany && selectedCompany?.apiFields.map((field) => {
               const isPrimaryField = isPrimaryCredentialField(selectedCompany, field.field);
               const isSavedHidden =
-                Boolean(selectedCompany?.enabled) &&
-                Boolean(selectedIntegrationMeta) &&
+                Boolean(selectedIntegrationMeta?.is_enabled) &&
                 (isPrimaryField ? Boolean(selectedIntegrationMeta?.has_api_key) : Boolean(selectedIntegrationMeta?.has_api_secret));
               const currentValue = credentials[field.field] || '';
               const placeholder = isSavedHidden && !currentValue ? t('delivery.savedHidden') : field.placeholder;
