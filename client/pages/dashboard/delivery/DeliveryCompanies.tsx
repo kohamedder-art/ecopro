@@ -403,12 +403,14 @@ export default function DeliveryCompanies() {
           return;
         }
         const data = await res.json();
+        console.log('[DeliveryCompanies] GET /api/delivery/companies response:', JSON.stringify(data));
         const map: Record<string, number> = {};
         for (const c of Array.isArray(data) ? data : []) {
           const key = toCompanyLookupKey(String(c?.name || ''));
           const id = Number(c?.id);
           if (key && Number.isFinite(id)) map[key] = id;
         }
+        console.log('[DeliveryCompanies] companyIdByName map:', map);
         setCompanyIdByName(map);
 
         const integRes = await fetch('/api/delivery/integrations');
@@ -416,6 +418,7 @@ export default function DeliveryCompanies() {
           console.warn('[DeliveryCompanies] GET /api/delivery/integrations failed:', integRes.status, integRes.statusText);
         } else {
           const integrations = await integRes.json().catch(() => []);
+          console.log('[DeliveryCompanies] GET /api/delivery/integrations response:', JSON.stringify(integrations));
           const enabledIds = new Set<number>();
           const meta: Record<
             number,
@@ -434,14 +437,21 @@ export default function DeliveryCompanies() {
               configured_at: row?.configured_at,
             };
           }
+          console.log('[DeliveryCompanies] enabledIds:', [...enabledIds]);
 
           setIntegrationMetaByCompanyId(meta);
 
           setCompanies((prev) =>
             prev.map((company) => {
-              const dbId = map[toCompanyLookupKey(String(company.name || ''))];
-              if (!dbId) return company;
-              return enabledIds.has(dbId) ? { ...company, enabled: true } : { ...company, enabled: false };
+              const lookupKey = toCompanyLookupKey(String(company.name || ''));
+              const dbId = map[lookupKey];
+              if (!dbId) {
+                console.log('[DeliveryCompanies] No DB match for', company.name, 'lookupKey:', lookupKey);
+                return company;
+              }
+              const enabled = enabledIds.has(dbId);
+              console.log('[DeliveryCompanies] Company', company.name, 'dbId:', dbId, 'enabled:', enabled);
+              return enabled ? { ...company, enabled: true } : { ...company, enabled: false };
             })
           );
         }
