@@ -84,8 +84,8 @@ export const configureDeliveryIntegration: RequestHandler = async (req, res) => 
 
     const result = await pool.query(
       `INSERT INTO delivery_integrations
-       (client_id, delivery_company_id, api_key_encrypted, api_secret_encrypted, account_number, merchant_id, webhook_secret_encrypted, configured_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       (client_id, delivery_company_id, api_key_encrypted, api_secret_encrypted, account_number, merchant_id, webhook_secret_encrypted, configured_at, is_enabled)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), true)
        ON CONFLICT (client_id, delivery_company_id)
        DO UPDATE SET
          api_key_encrypted = $3,
@@ -93,6 +93,7 @@ export const configureDeliveryIntegration: RequestHandler = async (req, res) => 
          account_number = $5,
          merchant_id = $6,
          webhook_secret_encrypted = $7,
+         is_enabled = true,
          updated_at = NOW()
        RETURNING id`,
       [clientId, delivery_company_id, encryptedKey, encryptedSecret, account_number, merchant_id, encryptedWebhookSecret]
