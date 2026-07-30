@@ -417,7 +417,7 @@ export default function ProductDetail() {
               {/* Description */}
               <div className="space-y-2">
                 <h3 className="font-semibold text-lg">{t('productDetail.descriptionTitle')}</h3>
-                <p className="text-gray-600 leading-relaxed">{productDesc}</p>
+                <div className="text-gray-600 leading-relaxed dz-description" dangerouslySetInnerHTML={{ __html: productDesc }} />
               </div>
 
               {/* Stock Status */}

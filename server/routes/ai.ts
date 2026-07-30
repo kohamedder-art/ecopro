@@ -152,10 +152,17 @@ ${storeName ? `Store: ${storeName}` : ''}
 IMPORTANT: Reply ONLY in ${langName}. No other language.
 
 Requirements:
-- 2–4 sentences, marketing-focused
+- 3–5 sentences, marketing-focused, persuasive
 - Highlight key benefits and appeal to Algerian buyers
 - Do not add a price
-- Do not include HTML tags`;
+- Use rich HTML formatting to make the description visually appealing:
+  - Use <strong> for important words/phrases
+  - Use <br> for line breaks between sections
+  - Use bullet points with • character for features
+  - Add relevant emojis (🔥 ✅ 🎁 💯 🚀 ⭐ etc.) naturally in the text
+  - Wrap the entire description in a single paragraph or logical sections
+- Do NOT use <html>, <head>, <body>, or <p> tags
+- Return ONLY the inner HTML content, no code fences`;
 
     const description = await generateText('store_owner', prompt, { storeId: user.id, storeName, clientId: user.id, userType: 'owner' });
     return res.json({ description });

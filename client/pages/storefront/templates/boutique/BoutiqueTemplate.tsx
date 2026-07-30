@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ShoppingCart, Plus, Minus, X, Truck, ShieldCheck, Star,
   Phone, Trash2, CheckCircle2, ArrowRight, ShoppingBag,
-  Building2, ChevronDown, User, MapPin
+  Building2, ChevronDown, User, MapPin, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import LazyVideo from '@/components/storefront/LazyVideo';
 import { TemplateProps } from '../types';
@@ -56,7 +56,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="relative w-full overflow-hidden shrink-0 boutique-gallery-fill" style={{ backgroundColor: surfaceMuted, aspectRatio: '1/1' }}>
-        <div ref={galleryRef} className="flex h-full transition-transform duration-300 ease-out" style={{ transform: `translateX(-${currentIdx * 100}%)` }}
+        <div ref={galleryRef} className="flex h-full will-change-transform" style={{ transform: `translateX(-${currentIdx * 100}%)`, transition: 'transform 0.25s ease-out' }}
           onTouchStart={e => { touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
           onTouchEnd={e => {
             const dx = touchStartRef.current.x - e.changedTouches[0].clientX;
@@ -81,7 +81,8 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
             <img key={i} src={img} alt=""
               className="w-full h-full object-contain shrink-0 cursor-pointer"
               loading={i === 0 ? 'eager' : 'lazy'}
-              style={{ flex: '0 0 100%' }}
+              decoding="async"
+              style={{ flex: '0 0 100%', contentVisibility: i === 0 ? 'visible' : 'auto' }}
               onClick={() => onZoom(img)}
             />
           )) : (
@@ -93,11 +94,11 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
         {total > 1 && (
           <>
             <button onClick={e => { e.stopPropagation(); goTo(currentIdx - 1); }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-              style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>‹</button>
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
+              style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronLeft size={18} /></button>
             <button onClick={e => { e.stopPropagation(); goTo(currentIdx + 1); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold z-10 opacity-70 hover:opacity-100 transition-opacity"
-              style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}>›</button>
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center z-10 opacity-70 hover:opacity-100 transition-opacity"
+              style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}><ChevronRight size={18} /></button>
             <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
               {[...Array(total)].map((_, i) => (
                 <button key={i} onClick={() => goTo(i)}
@@ -829,7 +830,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           .boutique-gallery-fill video { object-fit: contain !important; }
         }
         @media (min-width: 768px) {
-          .boutique-modal-card { height: 92vh !important; max-height: 92vh !important; }
+          .boutique-modal-card { height: 98vh !important; max-height: 98vh !important; contain: layout style; }
           .boutique-gallery-fill { aspect-ratio: unset !important; flex: 1; min-height: 0; }
         }
       `}} />
@@ -837,19 +838,19 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       {/* Product Detail Modal */}
       {detailProduct && (
         <div className="fixed inset-0 z-[90] flex items-end md:items-center md:justify-center md:p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} />
+          <div className="absolute inset-0 bg-black/60" onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} />
           <div className="boutique-modal-card relative z-10 w-full md:max-w-4xl md:mx-auto md:rounded-[32px] overflow-y-auto md:overflow-hidden flex flex-col md:flex-row" dir="ltr" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, height: '100dvh', maxHeight: '100dvh' }}>
-            <button onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} className="fixed top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md md:absolute" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }}><X size={18} /></button>
+            <button onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} className="fixed top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center md:absolute" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }}><X size={18} /></button>
             <div className="w-full md:w-[55%] md:shrink-0 md:h-full">
               <BoutiqueImageGallery product={detailProduct} surfaceMuted={surfaceMuted} accentColor={accentColor} surfaceTextMuted={surfaceTextMuted} surfaceBorderColor={surfaceBorderColor} onZoom={(src) => { const imgs = detailProduct?.images?.filter(Boolean) || []; const idx = imgs.indexOf(src); setZoomState({ images: imgs.length ? imgs : [src], idx: idx >= 0 ? idx : 0 }); }} />
             </div>
             <div className="w-full md:flex-1 md:flex md:flex-col md:overflow-hidden" dir="rtl">
-              <div className="px-6 pt-8 pb-4 space-y-4 md:flex-1 md:overflow-y-auto">
+              <div className="px-6 pt-8 pb-4 space-y-4 md:flex-1 md:overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                 <div className="flex justify-between items-start gap-4">
                   <h3 className="text-xl font-black leading-tight" style={{ color: surfaceTextColor }}>{detailProduct.title}</h3>
                   <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{Math.round(detailProduct.price ?? 0).toLocaleString()} {currency}</p>
                 </div>
-                {detailProduct.description && <p className="dz-description whitespace-pre-line" style={{ color: surfaceTextMuted }}>{detailProduct.description?.replace(/<[^>]*>/g, '').trim()}</p>}
+                {detailProduct.description && <div className="dz-description whitespace-pre-line" style={{ color: surfaceTextMuted }} dangerouslySetInnerHTML={{ __html: detailProduct.description }} />}
                 {detailProduct.category && <span className="inline-block text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border" style={{ borderColor: surfaceBorderColor, color: surfaceTextMuted }}>{detailProduct.category}</span>}
               </div>
               <div className="shrink-0 px-6 pb-6 pt-3 space-y-3" style={{ borderTop: `1px solid ${surfaceBorderColor}` }}>
@@ -871,9 +872,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
           {zoomState.images.length > 1 && (
             <>
               <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx - 1 + zoomState.images.length) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">‹</button>
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center"><ChevronLeft size={24} /></button>
               <button onClick={e => { e.stopPropagation(); const n = (zoomState.idx + 1) % zoomState.images.length; setZoomState({ ...zoomState, idx: n }); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-2xl font-bold">›</button>
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/70 hover:text-white w-11 h-11 rounded-full bg-white/10 backdrop-blur flex items-center justify-center"><ChevronRight size={24} /></button>
             </>
           )}
           <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}
