@@ -121,27 +121,21 @@ async function clearPaymentLockIfAny(userId: number, unlockReason: string): Prom
  * Called during registration to ensure all new users get their trial
  */
 export async function createTrialSubscription(userId: number): Promise<void> {
-  try {
-    const trialDays = await getTrialDaysFromSettings();
-    // Check if subscription already exists
-    const existing = await pool.query(
-      `SELECT id FROM subscriptions WHERE user_id = $1`,
-      [userId]
+  const trialDays = await getTrialDaysFromSettings();
+  const existing = await pool.query(
+    `SELECT id FROM subscriptions WHERE user_id = $1`,
+    [userId]
+  );
+
+  if (existing.rows.length === 0) {
+    await pool.query(
+      `INSERT INTO subscriptions (user_id, status, trial_started_at, trial_ends_at, current_period_start)
+       VALUES ($1, 'trial', NOW(), NOW() + ($2::text || ' days')::interval, NOW())`,
+      [userId, trialDays]
     );
-    
-    if (existing.rows.length === 0) {
-      await pool.query(
-        `INSERT INTO subscriptions (user_id, status, trial_started_at, trial_ends_at, current_period_start)
-         VALUES ($1, 'trial', NOW(), NOW() + ($2::text || ' days')::interval, NOW())`,
-        [userId, trialDays]
-      );
-      if (!isProduction) {
-        console.log(`[Billing] Created ${trialDays}-day trial subscription for user ${userId}`);
-      }
+    if (!isProduction) {
+      console.log(`[Billing] Created ${trialDays}-day trial subscription for user ${userId}`);
     }
-  } catch (error) {
-    console.error('[Billing] Failed to create trial subscription:', error);
-    // Non-critical - don't throw, the user can still use the platform
   }
 }
 
@@ -511,12 +505,12 @@ export const createCheckout: RequestHandler = async (req, res) => {
     let subscriptionId: number;
 
     if (subResult.rows.length === 0) {
-      // Create new subscription
+      const trialDays = await getTrialDaysFromSettings();
       const newSub = await pool.query(
         `INSERT INTO subscriptions (user_id, status, trial_started_at, trial_ends_at)
-         VALUES ($1, $2, NOW(), NOW() + INTERVAL '30 days')
+         VALUES ($1, $2, NOW(), NOW() + ($3::text || ' days')::interval)
          RETURNING id`,
-        [userId, 'trial']
+        [userId, 'trial', trialDays]
       );
       subscriptionId = newSub.rows[0].id;
     } else {

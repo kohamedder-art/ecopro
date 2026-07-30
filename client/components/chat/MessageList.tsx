@@ -92,9 +92,9 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
   });
 
   const getSenderLabel = (senderType: string) => {
-    if (senderType === 'admin') return '👨‍💼 Admin';
-    if (senderType === 'seller') return '🏪 Seller';
-    return '👤 You';
+    if (senderType === 'admin') return 'Admin';
+    if (senderType === 'seller') return 'Seller';
+    return 'You';
   };
 
   return (
@@ -128,13 +128,13 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                   <div className={`max-w-[75%] lg:max-w-[65%] ${isOwnMessage ? 'items-end' : 'items-start'} flex flex-col`}>
                     {/* Sender Label */}
                     {showSenderLabel && !isOwnMessage && (
-                      <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mb-1 ml-2">{getSenderLabel(message.sender_type)}</p>
+                      <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1 ml-2">{getSenderLabel(message.sender_type)}</p>
                     )}
 
                     {/* Reply Preview */}
                     {message.reply_to_id && (
                       <div className={`text-[11px] mb-1 mx-1 px-3 py-1.5 rounded-lg border-l-2 ${
-                        isOwnMessage ? 'bg-white/10 border-white/30' : 'bg-slate-100 dark:bg-slate-800 border-emerald-400'
+                        isOwnMessage ? 'bg-white/10 border-white/30' : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600'
                       }`}>
                         <div className="flex items-center gap-1 text-slate-400 dark:text-slate-500">
                           <CornerUpLeft className="w-3 h-3" />
@@ -191,7 +191,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                                   setEditingId(message.id);
                                   setEditContent(message.message_content);
                                 }}
-                                className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-violet-600 transition"
+                                className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition"
                                 title="Edit"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
@@ -235,16 +235,16 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                       </>
                     ) : (
                       <div
-                        className={`px-3.5 py-2 transition-all shadow-sm ${
+                        className={`px-4 py-2.5 text-[13px] leading-relaxed ${
                           isOwnMessage
-                            ? `bg-violet-600 text-white ${isLastInGroup ? 'rounded-2xl rounded-br-sm' : 'rounded-2xl'}`
-                            : `bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 ${isLastInGroup ? 'rounded-2xl rounded-bl-sm' : 'rounded-2xl'}`
+                            ? `bg-slate-900 dark:bg-slate-700 text-white ${isLastInGroup ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl'}`
+                            : `bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 ${isLastInGroup ? 'rounded-2xl rounded-tl-sm' : 'rounded-2xl'}`
                         }`}
                       >
                         {/* System Message */}
                         {message.message_type === 'system' && (
                           <p className={`text-xs italic text-center ${
-                            isOwnMessage ? 'text-violet-100' : 'text-slate-400 dark:text-slate-500'
+                            isOwnMessage ? 'text-white/60' : 'text-slate-400 dark:text-slate-500'
                           }`}>
                             {message.message_content}
                           </p>
@@ -257,7 +257,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                               <textarea
                                 value={editContent}
                                 onChange={(e) => setEditContent(e.target.value)}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-xs text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
+                                className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-xs text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 resize-none"
                                 rows={3}
                                 autoFocus
                               />
@@ -302,12 +302,12 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                         {/* Code Request Message */}
                         {message.message_type === 'code_request' && (
-                          <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                          <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-white/80' : 'text-slate-600 dark:text-slate-300'}`}>
                             <div className="flex items-center gap-2 font-bold">
                               <span className="text-lg">📋</span>
                               <span>Code Request</span>
                             </div>
-                            <div className={`space-y-1 text-xs ${isOwnMessage ? 'text-blue-50' : 'text-gray-400'}`}>
+                            <div className={`space-y-1 text-xs ${isOwnMessage ? 'text-white/60' : 'text-slate-400'}`}>
                               <p><strong>Type:</strong> {message.metadata?.code_type || 'General'}</p>
                               {message.metadata?.description && (
                                 <p className="italic">{message.metadata.description}</p>
@@ -322,15 +322,15 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                         {/* Code Response Message */}
                         {message.message_type === 'code_response' && (
-                          <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
-                            <div className="flex items-center gap-2 font-bold text-emerald-500 dark:text-emerald-400">
+                          <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-white/80' : 'text-slate-600 dark:text-slate-300'}`}>
+                            <div className="flex items-center gap-2 font-bold text-green-600 dark:text-green-400">
                               <span className="text-lg">✅</span>
                               <span>Code Issued!</span>
                             </div>
                             {message.metadata?.code && (
                               <div className={`mt-2 p-3 rounded-lg font-mono text-center text-xs font-bold tracking-wider ${
                                 isOwnMessage 
-                                  ? 'bg-violet-400/30 text-violet-50' 
+                                  ? 'bg-white/10 text-white' 
                                   : 'bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-100'
                               }`}>
                                 {message.metadata.code}
@@ -346,14 +346,14 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                         {/* File Attachment Message (non-image) */}
                         {message.message_type === 'file_attachment' && !message.metadata?.isImage && (
-                          <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                          <div className={`text-xs space-y-2 ${isOwnMessage ? 'text-white/80' : 'text-slate-600 dark:text-slate-300'}`}>
                             <div className="flex items-center gap-2 font-bold mb-2">
                               <File className="w-5 h-5" />
                               <span>File Shared</span>
                             </div>
                             <div className={`p-2.5 rounded-lg flex items-center gap-2 ${
                               isOwnMessage 
-                                ? 'bg-violet-400/30' 
+                                ? 'bg-white/10' 
                                 : 'bg-slate-50 dark:bg-slate-700'
                             }`}>
                               <File className="w-8 h-8 flex-shrink-0" />
@@ -377,7 +377,7 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
 
                         {/* Voice Message */}
                         {message.message_type === 'voice' && (
-                          <div className={`text-xs ${isOwnMessage ? 'text-violet-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                          <div className={`text-xs ${isOwnMessage ? 'text-white/80' : 'text-slate-600 dark:text-slate-300'}`}>
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-lg">🎤</span>
                               <span className="font-medium">Voice Message</span>
@@ -404,9 +404,9 @@ export function MessageList({ messages, userRole, userId, chatId, onMessageEdit,
                           <button
                             key={emoji}
                             onClick={() => handleReaction(message.id, emoji)}
-                            className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] transition shadow-sm ${
+                            className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] transition ${
                               userIds.includes(userId)
-                                ? 'bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 text-violet-700 dark:text-violet-300'
+                                ? 'bg-slate-200 dark:bg-slate-600 border border-slate-300 dark:border-slate-500 text-slate-700 dark:text-slate-200'
                                 : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                             }`}
                           >

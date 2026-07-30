@@ -16,11 +16,13 @@ export async function enforceSubscriptionLocksOnce(): Promise<{ locked: number; 
        LEFT JOIN subscriptions s ON s.user_id = c.id
        WHERE (c.is_blocked IS DISTINCT FROM true)
          AND (c.is_locked IS DISTINCT FROM true)
-         AND s.user_id IS NOT NULL
-         AND NOT (
-           (c.subscription_extended_until IS NOT NULL AND c.subscription_extended_until > NOW())
-           OR (s.status = 'trial' AND s.trial_ends_at IS NOT NULL AND s.trial_ends_at > NOW())
-           OR (s.status = 'active' AND (s.current_period_end IS NULL OR s.current_period_end > NOW()))
+         AND (
+           s.user_id IS NULL
+           OR NOT (
+             (c.subscription_extended_until IS NOT NULL AND c.subscription_extended_until > NOW())
+             OR (s.status = 'trial' AND s.trial_ends_at IS NOT NULL AND s.trial_ends_at > NOW())
+             OR (s.status = 'active' AND (s.current_period_end IS NULL OR s.current_period_end > NOW()))
+           )
          )
        LIMIT 500`
     );

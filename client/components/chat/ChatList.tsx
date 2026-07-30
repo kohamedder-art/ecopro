@@ -129,7 +129,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
           {userRole === 'client' && onCreateChat && (
             <button
               onClick={onCreateChat}
-              className="w-8 h-8 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center transition shadow-sm"
+              className="w-8 h-8 rounded-full bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white flex items-center justify-center transition"
               title={t('chatList.newChat')}
             >
               <Plus className="w-4 h-4" />
@@ -147,7 +147,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
                 placeholder={t('chatList.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-muted text-foreground placeholder-slate-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 border-0"
+                className="w-full pl-10 pr-4 py-2.5 bg-muted text-foreground placeholder-slate-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 border-0"
               />
             </div>
 
@@ -156,7 +156,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
                 onClick={() => setSortBy('recent')}
                 className={`text-xs font-medium py-1.5 px-3.5 rounded-full transition ${
                   sortBy === 'recent'
-                    ? 'bg-violet-600 text-white shadow-sm'
+                    ? 'bg-slate-900 dark:bg-slate-700 text-white'
                     : 'bg-muted text-muted-foreground hover:bg-muted'
                 }`}
               >
@@ -230,15 +230,15 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
                   onClick={() => onSelectChat(chat.id)}
                   className={`w-full px-4 py-3.5 text-left flex items-center gap-3 transition-colors ${
                     isSelected
-                      ? 'bg-violet-50 dark:bg-violet-500/10'
-                      : 'hover:bg-muted'
+                      ? 'bg-slate-100 dark:bg-slate-800'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                   }`}
                 >
                   {/* Avatar */}
                   <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${
                     (userRole === 'admin' || userRole === 'seller')
-                      ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white'
-                      : 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white'
+                      ? 'bg-slate-900 dark:bg-slate-700 text-white'
+                      : 'bg-slate-900 dark:bg-slate-700 text-white'
                   }`}>
                     {(userRole === 'admin' || userRole === 'seller') ? initials : '🛟'}
                   </div>
@@ -249,7 +249,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
                       <p className={`truncate text-sm ${hasUnread ? 'font-bold text-card-foreground' : 'font-medium text-foreground'}`}>
                         {displayName}
                       </p>
-                      <span className={`text-[11px] flex-shrink-0 ${hasUnread ? 'text-violet-600 dark:text-violet-400 font-semibold' : 'text-muted-foreground'}`}>
+                      <span className={`text-[11px] flex-shrink-0 ${hasUnread ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
                         {formatTime(chat.last_message_at)}
                       </span>
                     </div>
@@ -264,7 +264,7 @@ export function ChatList({ userRole, selectedChatId, onSelectChat, onCreateChat 
                           </span>
                         )}
                         {hasUnread && (
-                          <span className="w-5 h-5 rounded-full bg-violet-600 text-white text-[10px] font-bold flex items-center justify-center">
+                          <span className="w-5 h-5 rounded-full bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-bold flex items-center justify-center">
                             {Math.min(chat.unread_count || 0, 9)}
                           </span>
                         )}

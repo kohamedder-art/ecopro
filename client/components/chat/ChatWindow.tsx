@@ -520,18 +520,10 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
 
   return (
     <div className="flex flex-col h-full bg-card">
-      {/* Header */}
+      {/* Header — hidden when inside FloatingChatBubble (onClose provided) */}
+      {!onClose && (
       <div className="flex items-center gap-2 px-3 py-2 bg-card border-border flex-shrink-0">
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="md:hidden p-1 -ml-1 rounded-lg hover:bg-muted text-muted-foreground transition"
-            aria-label={t('chatWindow.back')}
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-        )}
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+        <div className="w-7 h-7 rounded-full bg-slate-900 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
           <span className="text-white text-[10px]">🛟</span>
         </div>
         <div className="flex-1 min-w-0">
@@ -539,7 +531,7 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
             {t(userRole === 'admin' ? 'chatWindow.title.admin' : 'chatWindow.title.client')}
           </p>
           <div className="flex items-center gap-1">
-            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isConnected ? 'bg-emerald-400' : 'bg-muted-foreground'}`} />
+            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isConnected ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
             <span className="text-[10px] text-muted-foreground">
               {t(isConnected ? 'chatWindow.online' : 'chatWindow.connecting')}
             </span>
@@ -547,12 +539,13 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
         </div>
         <button
           onClick={() => setShowSearch(!showSearch)}
-          className={`p-2 rounded-lg transition ${showSearch ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+          className={`p-2 rounded-lg transition ${showSearch ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
           title={t('chatWindow.searchMessages')}
         >
           <Search className="w-4 h-4" />
         </button>
       </div>
+      )}
 
       {/* Search Bar */}
       {showSearch && (
@@ -564,7 +557,7 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('chatWindow.searchPlaceholder')}
-              className="w-full pl-10 pr-4 py-2 bg-muted text-foreground placeholder-muted-foreground rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 border-0"
+              className="w-full pl-10 pr-4 py-2 bg-muted text-foreground placeholder-muted-foreground rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 border-0"
               autoFocus
             />
           </div>
@@ -583,8 +576,7 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 space-y-1 scroll-smooth bg-muted"
-        style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0)', backgroundSize: '24px 24px' }}>
+        className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 space-y-1 scroll-smooth bg-white dark:bg-slate-900">
         {error && (
           <div className="mb-3 p-2.5 bg-destructive/10 border border-destructive/20 rounded-xl text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
             <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
@@ -627,11 +619,11 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
         {/* Typing Indicator */}
         {typingUsers.size > 0 && (
           <div className="flex items-start gap-2 px-1">
-            <div className="bg-card rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm flex items-center gap-2">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl rounded-bl-sm px-4 py-2.5 border border-slate-100 dark:border-slate-700 flex items-center gap-2">
               <div className="flex gap-1">
-                <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                <span className="w-1.5 h-1.5 bg-slate-300 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                <span className="w-1.5 h-1.5 bg-slate-300 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                <span className="w-1.5 h-1.5 bg-slate-300 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
               </div>
               <span className="text-xs text-muted-foreground">
                 {t('chatWindow.typing', { name: Array.from(typingUsers.values()).map(u => u.userName || t('chatWindow.agent')).join(', ') })}
@@ -659,10 +651,10 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
       <div className="bg-card border-border flex-shrink-0">
         {/* Reply Preview */}
         {replyingTo && (
-          <div className="flex items-center gap-3 px-4 py-2 bg-muted/50 border-b border-border">
-            <div className="w-1 h-8 bg-violet-500 rounded-full flex-shrink-0" />
+          <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700">
+            <div className="w-1 h-8 bg-slate-300 dark:bg-slate-600 rounded-full flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-medium text-violet-600 dark:text-violet-400">{t('chatWindow.replyingTo', { type: t('chatWindow.role.' + replyingTo.sender_type) })}</p>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{t('chatWindow.replyingTo', { type: t('chatWindow.role.' + replyingTo.sender_type) })}</p>
               <p className="text-xs text-muted-foreground truncate">{replyingTo.message_content}</p>
             </div>
             <button
@@ -707,29 +699,17 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
           </div>
         )}
 
-        <form onSubmit={handleSendMessage} className="flex items-end gap-2 px-4 py-3">
-          <div className="flex items-center gap-1">
-            {(userRole === 'client' || userRole === 'admin') && (
-              <button
-                type="button"
-                onClick={() => setShowFileUpload(!showFileUpload)}
-                className="p-2 rounded-lg text-muted-foreground hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors"
-                title={t('chatWindow.uploadFile')}
-              >
-                <Paperclip className="w-5 h-5" />
-              </button>
-            )}
+        <div className="px-4 pb-3 pt-1 flex-shrink-0 bg-white dark:bg-slate-900">
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-1.5">
             <button
               type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className={`p-2 rounded-lg transition-colors ${showEmojiPicker ? 'text-violet-600 bg-violet-50 dark:bg-violet-500/10' : 'text-muted-foreground hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10'}`}
-              title={t('chatWindow.emoji')}
+              onClick={() => setShowVoiceRecorder(true)}
+              className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0"
+              title={t('chatWindow.voiceMessage')}
             >
-              <Smile className="w-5 h-5" />
+              <Mic className="w-4 h-4" />
             </button>
-          </div>
 
-          <div className="flex-1 relative">
             <textarea
               ref={inputRef}
               value={messageInput}
@@ -739,33 +719,51 @@ export function ChatWindow({ chatId, userRole, userId, onClose }: ChatWindowProp
               placeholder={t('chatWindow.typeMessage')}
               disabled={sending}
               rows={1}
-              className="w-full text-sm rounded-2xl bg-muted px-4 py-2.5 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50 resize-none overflow-hidden border-0"
+              className="flex-1 text-[13px] bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none resize-none overflow-hidden min-h-[36px] py-1.5"
             />
-          </div>
 
-          {messageInput.trim() ? (
-            <button
-              type="submit"
-              disabled={sending}
-              className="w-10 h-10 flex items-center justify-center bg-violet-600 hover:bg-violet-700 text-white rounded-full transition shadow-sm disabled:opacity-50"
-            >
-              {sending ? (
-                <Loader className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </button>
-          ) : (
             <button
               type="button"
-              onClick={() => setShowVoiceRecorder(true)}
-              className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full transition"
-              title={t('chatWindow.voiceMessage')}
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className={`p-1.5 rounded-md transition-colors flex-shrink-0 ${showEmojiPicker ? 'text-slate-600 dark:text-slate-300 bg-slate-200 dark:bg-slate-700' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              title={t('chatWindow.emoji')}
             >
-              <Mic className="w-5 h-5" />
+              <Smile className="w-4 h-4" />
             </button>
-          )}
-        </form>
+
+            {(userRole === 'client' || userRole === 'admin') && (
+              <button
+                type="button"
+                onClick={() => setShowFileUpload(!showFileUpload)}
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0"
+                title={t('chatWindow.uploadFile')}
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleSendMessage}
+              disabled={sending || !messageInput.trim()}
+              className={`p-1.5 rounded-md transition-all flex-shrink-0 ${messageInput.trim() ? 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300' : 'text-slate-300 dark:text-slate-600'}`}
+            >
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${messageInput.trim() ? 'bg-slate-200 dark:bg-slate-600' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                {sending ? (
+                  <Loader className="w-3 h-3 animate-spin" />
+                ) : (
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5" />
+                    <polyline points="5,12 12,5 19,12" />
+                  </svg>
+                )}
+              </div>
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-300 dark:text-slate-600 text-center mt-2">
+            AI responses may be inaccurate. Verify important information.
+          </p>
+        </div>
       </div>
     </div>
   );

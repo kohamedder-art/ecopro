@@ -179,8 +179,8 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   }, [initialProductSlug, products]);
 
   const currency = settings?.currency_code || 'د.ج';
-  const accentColor = settings?.template_accent_color || propPrimaryColor || '#f59e0b'; // amber-500
-  const themeColor = settings?.boutique_theme_color || settings?.primary_color || '#0f172a'; // slate-900
+  const accentColor = settings?.template_accent_color || '#f59e0b'; // amber-500 — buttons, prices, highlights
+  const themeColor = settings?.primary_color || '#0f172a'; // slate-900 — hero, headers, section accents
   const bgColor = settings?.template_bg_color || '#ffffff';
   const rawBgImage = settings?.template_bg_image || '';
   const bgImageCss = rawBgImage
@@ -435,7 +435,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             fetchpriority="high"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent, transparent)' }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${themeColor}ee, transparent, transparent)` }} />
           <div className="absolute bottom-0 p-6 text-white max-w-7xl mx-auto w-full left-0 right-0">
             {hasHeroBanner ? (
               <h2 className="text-3xl font-black mt-2">{settings?.store_name || brandName}</h2>
@@ -443,7 +443,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               <>
                 <span
                   className="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest text-white"
-                  style={{ backgroundColor: accentColor }}
+                  style={{ backgroundColor: themeColor }}
                 >
                   الأكثر طلباً
                 </span>
@@ -489,7 +489,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             <div className="flex items-center justify-between mb-4">
               <h3
                 className="text-lg font-black pr-3"
-                style={{ borderRight: `4px solid ${accentColor}` }}
+                style={{ borderRight: `4px solid ${themeColor}` }}
                 contentEditable={canManage}
                 suppressContentEditableWarning
                 onBlur={handleTextEdit('boutique_category_name')}
@@ -532,7 +532,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                       </div>
                     )}
                     <div className="flex items-center gap-2 mt-1">
-                      <p className="font-black text-sm" style={{ color: textColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
+                      <p className="font-black text-sm" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
                       {(product as any).original_price && (product as any).original_price > product.price && (
                         <p className="text-xs line-through" style={{ color: textMuted }}>{Math.round((product as any).original_price ?? 0).toLocaleString()}</p>
                       )}

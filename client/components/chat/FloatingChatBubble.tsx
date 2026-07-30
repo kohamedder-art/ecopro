@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { X, Zap, Sparkles, Send, Loader2, Check, AlertTriangle, Copy, ChevronRight, ImagePlus, ExternalLink } from 'lucide-react';
+import { X, Zap, Sparkles, Send, Loader2, Check, AlertTriangle, Copy, ChevronRight, ExternalLink, Paperclip } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useTranslation } from '@/lib/i18n';
@@ -10,8 +10,6 @@ import { ChatList } from './ChatList';
 import { ChatWindow } from './ChatWindow';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-
-// AI chat history is persisted server-side at /api/ai/chat-history
 
 export default function FloatingChatBubble() {
   const location = useLocation();
@@ -41,7 +39,6 @@ export default function FloatingChatBubble() {
   const [bootingChat, setBootingChat] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  // AI mode for client users
   type ChatMode = 'admin' | 'ai';
   const [chatMode, setChatMode] = useState<ChatMode>('admin');
   type AIMsg = { role: 'user' | 'assistant'; content: string; imageUrl?: string; sources?: { title: string; uri: string }[]; createdAt?: number };
@@ -84,7 +81,6 @@ export default function FloatingChatBubble() {
     }
   }, [aiMessages, chatMode]);
 
-  // Load proactive alerts when entering AI mode (once per session)
   useEffect(() => {
     if (chatMode !== 'ai' || alertsLoaded || isAdmin) return;
     setAlertsLoaded(true);
@@ -109,7 +105,6 @@ export default function FloatingChatBubble() {
       .catch(() => {});
   }, [chatMode, alertsLoaded, isAdmin]);
 
-  // Load chat history from DB when first entering AI mode
   useEffect(() => {
     if (chatMode !== 'ai' || historyLoaded) return;
     setHistoryLoaded(true);
@@ -289,7 +284,6 @@ export default function FloatingChatBubble() {
         const data = await res.json();
         setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ ${data.message}` : `Could not complete: ${data.error}`, createdAt: Date.now() }]);
         if (res.ok) {
-          // Refresh template editor preview if it's open
           queryClient.invalidateQueries({ queryKey: ['storeSettings'] });
         }
         setPendingAction(null);
@@ -320,7 +314,6 @@ export default function FloatingChatBubble() {
     }).catch(() => {});
   };
 
-  // Ensure the client has an admin chat when opening
   useEffect(() => {
     const ensureChat = async () => {
       if (!open || !user || !userId) return;
@@ -336,7 +329,6 @@ export default function FloatingChatBubble() {
         const id = Number(resp?.chat?.id ?? resp?.chat_id ?? resp?.chatId ?? resp?.id);
         if (Number.isFinite(id) && id > 0) setChatId(id);
       } catch {
-        // ignore
       } finally {
         setBootingChat(false);
       }
@@ -344,7 +336,6 @@ export default function FloatingChatBubble() {
     void ensureChat();
   }, [open, user, userId, isAdmin, chatId]);
 
-  // Mark support chat messages as read when bubble opens
   useEffect(() => {
     if (!open || !userId) return;
     const markRead = async () => {
@@ -364,7 +355,6 @@ export default function FloatingChatBubble() {
     void markRead();
   }, [open, userId]);
 
-  // Allow quick hide via Escape
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
@@ -380,7 +370,7 @@ export default function FloatingChatBubble() {
 
   return (
     <>
-      {/* ── Floating trigger button ── */}
+      {/* Floating trigger button */}
       <div className={`fixed bottom-20 sm:bottom-4 z-[9999] ${isEditorPage ? 'left-4' : 'right-4'}`}>
         <div className="relative">
           {unreadMessagesCount > 0 && (
@@ -389,16 +379,15 @@ export default function FloatingChatBubble() {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="relative w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-fuchsia-500 flex items-center justify-center text-white border border-white/20 transition-all duration-300 hover:scale-105 active:scale-95"
+            className="relative w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-slate-900 dark:bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95"
             style={{
               boxShadow: unreadMessagesCount > 0
-                ? '0 0 0 4px rgba(99,102,241,0.25), 0 8px 32px rgba(99,102,241,0.55)'
-                : '0 8px 24px rgba(99,102,241,0.4)',
+                ? '0 0 0 4px rgba(99,102,241,0.15), 0 8px 32px rgba(0,0,0,0.12)'
+                : '0 8px 24px rgba(0,0,0,0.1)',
             }}
             aria-label={t('chat.openAssistant')}
           >
-            <Sparkles className="w-6 h-6" />
-            <div className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white" />
+            <MessageBubbleIcon />
           </button>
           {unreadMessagesCount > 0 && (
             <div
@@ -411,94 +400,90 @@ export default function FloatingChatBubble() {
         </div>
       </div>
 
-      {/* ── Chat panel ── */}
+      {/* Chat panel */}
       {open && (
         <>
-          {/* Scrim (mobile tap-to-close) */}
           <div className="fixed inset-0 z-[9999] bg-black/20 backdrop-blur-[2px] sm:hidden" onClick={closeMessenger} />
 
           <div
-            className={'fixed z-[10000] bottom-0 border border-white/20 dark:border-white/10 flex flex-col overflow-hidden transition-all duration-300 ease-out ' + (isEditorPage ? 'left-0' : 'right-0') + ' ' + (expanded ? '!z-[99999] bg-white dark:bg-slate-900 backdrop-blur-2xl shadow-2xl w-full sm:!w-[576px] sm:!rounded-[24px] sm:!bottom-[88px] sm:!right-6 !rounded-t-[20px]' : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl shadow-2xl w-full sm:w-96 sm:rounded-[24px] rounded-t-[20px] sm:right-6 sm:bottom-[88px]') + ' ' + (open ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0')}
+            className={
+              'fixed z-[10000] bottom-0 flex flex-col overflow-hidden bg-white dark:bg-slate-900 transition-all duration-300 ease-out '
+              + (isEditorPage ? 'left-0' : 'right-0')
+              + ' '
+              + (expanded
+                ? '!z-[99999] shadow-2xl w-full sm:!w-[576px] sm:!rounded-2xl sm:!bottom-[88px] sm:!right-6 !rounded-t-2xl'
+                : 'shadow-2xl w-full sm:w-[400px] sm:rounded-2xl rounded-t-2xl sm:right-6 sm:bottom-[88px]'
+              )
+              + ' '
+              + (open ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0')
+            }
             style={{
-              ...(expanded ? { top: '72px', bottom: '88px', maxHeight: 'calc(100dvh - 160px)' } : { height: 'min(560px, calc(100dvh - 100px))' }),
+              ...(expanded ? { top: '72px', bottom: '88px', maxHeight: 'calc(100dvh - 160px)' } : { height: 'min(650px, calc(100dvh - 120px))' }),
               animation: 'fcb-slide-up 180ms ease',
             }}
             onWheel={(e) => e.stopPropagation()}
           >
-            {/* ─ Header ─ */}
-            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 dark:bg-slate-800 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                  {!isAdmin ? (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setChatMode('admin')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${chatMode === 'admin' ? 'bg-emerald-500 text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                      >
-                        <Zap className="w-3.5 h-3.5" />
-                        <span>{t('chat.support')}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setChatMode('ai')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${chatMode === 'ai' ? 'bg-violet-500 text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>{t('chat.ai')}</span>
-                      </button>
-                    </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {activeChatId && (
-                      <button
-                        type="button"
-                        onClick={() => setAdminSelectedChatId(null)}
-                        className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-                        aria-label="Back to chat list"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="15,18 9,12 15,6" />
-                        </svg>
-                      </button>
-                    )}
-                    <Sparkles className="w-4 h-4 text-white" />
-                    <span className="text-sm font-bold text-white">{t('chat.support')}</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                {chatMode === 'ai' && aiMessages.length > 0 && (
+            {/* ── Header (Render-style) ── */}
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-800 flex-shrink-0 bg-slate-900 dark:bg-black">
+              <div className="flex items-center gap-2.5">
+                {/* Back arrow (only in AI mode when admin is viewing or on support sub-view) */}
+                {!isAdmin && chatMode === 'admin' && (
                   <button
-                    onClick={() => {
-                      setAiMessages([]);
-                      setPendingAction(null);
-                      const csrfMatch = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
-                      const csrf = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
-                      fetch('/api/ai/chat-history', { method: 'DELETE', credentials: 'include', headers: { 'X-CSRF-Token': csrf } }).catch(() => {});
-                    }}
-                    className="text-white/70 hover:text-white text-xs px-2 py-0.5 rounded-lg hover:bg-white/10 transition-colors"
+                    type="button"
+                    onClick={() => setChatMode('ai')}
+                    className="p-1 -ml-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                    aria-label="Back"
                   >
-                    {t('chat.clear')}
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15,18 9,12 15,6" />
+                    </svg>
                   </button>
                 )}
+                {isAdmin && activeChatId && (
+                  <button
+                    type="button"
+                    onClick={() => setAdminSelectedChatId(null)}
+                    className="p-1 -ml-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                    aria-label="Back to chat list"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15,18 9,12 15,6" />
+                    </svg>
+                  </button>
+                )}
+                {/* Logo */}
+                <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-100 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-3.5 h-3.5 text-slate-900" />
+                </div>
+                {/* Title + subtitle */}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[13px] font-semibold text-white leading-tight truncate">
+                    Sahla4Eco
+                  </span>
+                  <span className="text-[11px] text-slate-400 leading-tight truncate">
+                    The team can also help
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-0.5">
+                {/* More options (three dots) */}
                 <button
                   type="button"
                   onClick={() => setExpanded(v => !v)}
-                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-                  aria-label={expanded ? t('chat.minimize') : t('chat.expand')}
-                  title={expanded ? t('chat.minimize') : t('chat.expand')}
+                  className="p-2 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                  aria-label="More options"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    {expanded
-                      ? <><polyline points="4,14 10,14 10,20" /><polyline points="20,10 14,10 14,4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" /></>
-                      : <><polyline points="15,3 21,3 21,9" /><polyline points="9,21 3,21 3,15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></>
-                    }
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="5" cy="12" r="1.5" />
+                    <circle cx="12" cy="12" r="1.5" />
+                    <circle cx="19" cy="12" r="1.5" />
                   </svg>
                 </button>
+                {/* Close */}
                 <button
                   type="button"
                   onClick={closeMessenger}
-                  className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                  className="p-2 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                   aria-label={t('chat.close')}
                 >
                   <X className="w-4 h-4" />
@@ -506,66 +491,102 @@ export default function FloatingChatBubble() {
               </div>
             </div>
 
-            {/* ─ Body ─ */}
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {/* ── Mode tabs (subtle, below header) ── */}
+            {!isAdmin && (
+              <div className="flex border-b border-slate-800 flex-shrink-0 bg-slate-900 dark:bg-black">
+                <button
+                  type="button"
+                  onClick={() => setChatMode('admin')}
+                  className={`flex-1 py-2 text-[12px] font-medium relative transition-colors ${
+                    chatMode === 'admin'
+                      ? 'text-white'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {t('chat.support')}
+                  {chatMode === 'admin' && (
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-white rounded-full" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChatMode('ai')}
+                  className={`flex-1 py-2 text-[12px] font-medium relative transition-colors ${
+                    chatMode === 'ai'
+                      ? 'text-white'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {t('chat.ai')}
+                  {chatMode === 'ai' && (
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-slate-900 dark:bg-white rounded-full" />
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* ── Body ── */}
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
               {(!isAdmin && chatMode === 'ai') ? (
                 <div className="flex-1 flex flex-col min-h-0">
                   {/* Messages area */}
-                  <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3 scroll-smooth">
+                  <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-0 scroll-smooth">
                     {aiMessages.length === 0 && (
                       <div className="space-y-4 pt-6">
-                        <div className="text-center space-y-1.5">
-                          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto shadow-lg shadow-purple-500/20">
-                            <Sparkles className="w-5 h-5 text-white" />
+                        {/* Wave emoji greeting */}
+                        <div className="flex justify-start">
+                          <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] leading-relaxed text-slate-700 dark:text-slate-300">
+                            👋 How can we help you today?
                           </div>
-                          <p className="text-[15px] font-semibold text-slate-800 dark:text-white">{t('chat.aiAssistant')}</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500">{t('chat.aiGreeting')}</p>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="flex justify-start">
+                          <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] leading-relaxed text-slate-700 dark:text-slate-300">
+                            To help us assist you more efficiently, please describe your issue in detail.
+                          </div>
+                        </div>
+
+                        {/* Bold details */}
+                        <div className="flex justify-start">
+                          <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] leading-relaxed text-slate-700 dark:text-slate-300">
+                            <p className="font-semibold text-slate-900 dark:text-white">Make sure to include details about what you're seeing, any service-specific details, serviceIDs, custom domains, log output etc.</p>
+                          </div>
+                        </div>
+
+                        {/* Info message */}
+                        <div className="flex justify-start">
+                          <div className="space-y-1.5 max-w-[85%]">
+                            <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] leading-relaxed text-slate-700 dark:text-slate-300">
+                              As a <span className="font-semibold">Hobby</span> workspace customer, you will receive responses from an AI agent and can talk to the team if needed.
+                            </div>
+                            <div className="flex items-center gap-1.5 px-1">
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500">Sahla4Eco</span>
+                              <span className="text-[10px] text-slate-300 dark:text-slate-600">•</span>
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500">AI Assistant</span>
+                              <span className="text-[10px] text-slate-300 dark:text-slate-600">•</span>
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500">Just now</span>
+                            </div>
+                          </div>
                         </div>
 
                         {alerts.length > 0 && (
-                          <div className="space-y-2">
-                            <div className="flex justify-end">
-                              <button
-                                onClick={() => {
-                                  const csrfM = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
-                                  const csrf = csrfM ? decodeURIComponent(csrfM[1]) : '';
-                                  fetch('/api/ai/alerts/dismiss-all', {
-                                    method: 'POST',
-                                    credentials: 'include',
-                                    headers: { 'X-CSRF-Token': csrf },
-                                  }).catch(() => {});
-                                  setAlerts([]);
-                                }}
-                                className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                              >
-                                {t('chat.dismissAll')}
-                              </button>
-                            </div>
+                          <div className="space-y-2 pt-2">
                             {alerts.map((alert, ai) => (
                               <div
                                 key={ai}
                                 className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-medium ${
                                   alert.type === 'urgent'
-                                    ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
+                                    ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20'
                                     : alert.type === 'warning'
-                                    ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                                    : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                    ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20'
+                                    : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20'
                                 }`}
                               >
                                 <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
                                 <button
                                   className="flex-1 text-left hover:opacity-70 transition-opacity"
                                   onClick={() => {
-                                    const csrfM = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
-                                    const csrf = csrfM ? decodeURIComponent(csrfM[1]) : '';
-                                    if (alert.id) {
-                                      fetch(`/api/ai/alerts/${alert.id}/follow`, {
-                                        method: 'POST',
-                                        credentials: 'include',
-                                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-                                        body: JSON.stringify({ actionTaken: 'clicked' }),
-                                      }).catch(() => {});
-                                    }
                                     navigate(alert.link);
                                     closeMessenger();
                                   }}
@@ -577,19 +598,7 @@ export default function FloatingChatBubble() {
                                 </button>
                                 <button
                                   className="flex-shrink-0 opacity-40 hover:opacity-100 transition-opacity"
-                                  title={t('chat.dismiss')}
-                                  onClick={() => {
-                                    const csrfM = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
-                                    const csrf = csrfM ? decodeURIComponent(csrfM[1]) : '';
-                                    if (alert.id) {
-                                      fetch(`/api/ai/alerts/${alert.id}/dismiss`, {
-                                        method: 'POST',
-                                        credentials: 'include',
-                                        headers: { 'X-CSRF-Token': csrf },
-                                      }).catch(() => {});
-                                    }
-                                    setAlerts(prev => prev.filter((_, idx) => idx !== ai));
-                                  }}
+                                  onClick={() => setAlerts(prev => prev.filter((_, idx) => idx !== ai))}
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
@@ -598,13 +607,13 @@ export default function FloatingChatBubble() {
                           </div>
                         )}
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-2 pt-2">
                           {SUGGESTED_QUESTIONS.map((sq, si) => (
                             <button
                               key={si}
                               onClick={() => void sendAI(sq)}
                               disabled={aiLoading}
-                              className="w-full text-left text-[11px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 truncate overflow-hidden whitespace-nowrap"
+                              className="w-full text-left text-[13px] px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all disabled:opacity-40 truncate overflow-hidden whitespace-nowrap"
                             >
                               {sq}
                             </button>
@@ -613,34 +622,41 @@ export default function FloatingChatBubble() {
                       </div>
                     )}
 
-                    {aiMessages.map((m, i) => (
-                      <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'} ${i > 0 ? 'mt-2.5' : ''}`}>
-                        {m.role === 'assistant' && (
-                          <div className="w-6 h-6 mt-0.5 rounded-full bg-slate-700 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
-                            <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-                          </div>
-                        )}
-                        <div className={`max-w-[80%] group relative ${m.role === 'user' ? 'order-first' : ''}`}>
+                    {aiMessages.map((m, i) => {
+                      const showTimestamp = m.createdAt && (i === aiMessages.length - 1 || aiMessages[i + 1]?.role !== m.role);
+                      return (
+                        <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} ${i > 0 ? 'mt-2' : ''}`}>
                           {m.role === 'assistant' ? (
-                            <div className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-2xl rounded-bl-sm px-3 py-2 text-xs leading-relaxed">
-                              <div className="chat-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div>
+                            <div className="space-y-1 max-w-[85%]">
+                              <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] leading-relaxed text-slate-700 dark:text-slate-300">
+                                {m.imageUrl && (
+                                  <img src={m.imageUrl} alt={t('chat.imageAttached')} className="max-w-full max-h-32 rounded-lg mb-2 object-cover" />
+                                )}
+                                <div className="chat-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div>
+                              </div>
+                              {showTimestamp && (
+                                <div className="flex items-center gap-1.5 px-1">
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">Sahla4Eco</span>
+                                  <span className="text-[10px] text-slate-300 dark:text-slate-600">•</span>
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">AI Assistant</span>
+                                  <span className="text-[10px] text-slate-300 dark:text-slate-600">•</span>
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">Just now</span>
+                                </div>
+                              )}
                             </div>
                           ) : (
-                            <div className="bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-2xl rounded-br-sm px-3 py-2 text-xs leading-relaxed">
-                              {m.imageUrl && (
-                                <img src={m.imageUrl} alt={t('chat.imageAttached')} className="max-w-full max-h-32 rounded-lg mb-2 object-cover" />
-                              )}
-                              {m.content !== '(image attached)' && <div className="chat-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div>}
+                            <div className="space-y-1 max-w-[85%]">
+                              <div className="bg-slate-900 dark:bg-slate-700 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-[13px] leading-relaxed">
+                                {m.imageUrl && (
+                                  <img src={m.imageUrl} alt={t('chat.imageAttached')} className="max-w-full max-h-32 rounded-lg mb-2 object-cover" />
+                                )}
+                                {m.content !== '(image attached)' && <div className="chat-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div>}
+                              </div>
                             </div>
                           )}
-                          {m.createdAt && (
-                            <p className={`text-[9px] text-slate-400 dark:text-slate-500 mt-0.5 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                              {new Date(m.createdAt).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          )}
                           {m.sources && m.sources.length > 0 && (
-                            <div className="mt-1 px-1 space-y-0.5">
-                              <p className="text-[9px] font-semibold text-violet-500 dark:text-violet-400 flex items-center gap-0.5">
+                            <div className="mt-1.5 px-1 space-y-0.5 max-w-[85%]">
+                              <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
                                 <ExternalLink className="w-2.5 h-2.5" />
                                 {t('chat.sources', { count: m.sources.length })}
                               </p>
@@ -650,7 +666,7 @@ export default function FloatingChatBubble() {
                                   href={src.uri}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="block text-[9px] text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 truncate transition-colors"
+                                  className="block text-[10px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 truncate transition-colors"
                                   title={src.uri}
                                 >
                                   {src.title}
@@ -658,22 +674,20 @@ export default function FloatingChatBubble() {
                               ))}
                             </div>
                           )}
-                          <button
-                            onClick={() => copyAIMessage(m.content, i)}
-                            className="absolute -top-1 -right-1 w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                            title={t('chat.copy')}
-                          >
-                            {copiedIdx === i ? <Check className="w-2.5 h-2.5 text-green-500" /> : <Copy className="w-2.5 h-2.5" />}
-                          </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {aiLoading && (
-                      <div className="flex justify-start">
-                        <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-sm px-3 py-2 flex items-center gap-1.5">
-                          <Loader2 className="w-3 h-3 animate-spin text-purple-500" />
-                          <span className="text-xs text-slate-500 dark:text-slate-400">{t('chat.thinking')}</span>
+                      <div className="flex justify-start mt-2">
+                        <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -681,8 +695,8 @@ export default function FloatingChatBubble() {
                   </div>
 
                   {pendingAction && (
-                    <div className="mx-3 mb-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 flex items-center gap-2 flex-shrink-0">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                    <div className="mx-4 mb-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 flex items-center gap-2.5 flex-shrink-0">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
                       <span className="text-[12px] text-amber-700 dark:text-amber-300 flex-1 leading-snug">
                         {pendingAction.type === 'create_product'
                           ? t('chat.confirmCreateProduct', { title: pendingAction.title, price: pendingAction.price })
@@ -697,57 +711,69 @@ export default function FloatingChatBubble() {
                           : t('chat.confirmUpdateOrder', { orderId: pendingAction.orderId, newStatus: pendingAction.newStatus })
                         }
                       </span>
-                      <button onClick={() => void confirmOrderAction()} disabled={actionLoading} className="w-6 h-6 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition-colors disabled:opacity-50 flex-shrink-0">
-                        {actionLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                      <button onClick={() => void confirmOrderAction()} disabled={actionLoading} className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white flex items-center justify-center transition-colors disabled:opacity-50 flex-shrink-0">
+                        {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                       </button>
-                      <button onClick={() => setPendingAction(null)} disabled={actionLoading} className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors flex-shrink-0 hover:bg-slate-300 dark:hover:bg-white/20">
-                        <X className="w-3 h-3" />
+                      <button onClick={() => setPendingAction(null)} disabled={actionLoading} className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors flex-shrink-0 hover:bg-slate-300 dark:hover:bg-white/20">
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   )}
 
                   {aiAttachedImage && (
-                    <div className="mx-4 mb-1 flex items-center gap-2.5">
+                    <div className="mx-4 mb-2 flex items-center gap-2.5">
                       <div className="relative">
-                        <img src={aiAttachedImage} alt={t('chat.imageAttached')} className="w-12 h-12 rounded-xl object-cover border border-slate-200 dark:border-white/10" />
+                        <img src={aiAttachedImage} alt={t('chat.imageAttached')} className="w-14 h-14 rounded-xl object-cover border border-slate-200 dark:border-slate-700" />
                         <button
                           onClick={() => setAiAttachedImage(null)}
-                          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-800 dark:bg-slate-600 text-white flex items-center justify-center shadow-sm"
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-900 dark:bg-slate-600 text-white flex items-center justify-center shadow-sm"
                         >
-                          <X className="w-2.5 h-2.5" />
+                          <X className="w-3 h-3" />
                         </button>
                       </div>
-                      <span className="text-[11px] text-slate-400">{t('chat.imageAttached')}</span>
+                      <span className="text-[12px] text-slate-400">{t('chat.imageAttached')}</span>
                     </div>
                   )}
 
-                  {/* Input bar */}
-                  <div className="p-3 border-t border-slate-200 dark:border-slate-700 flex gap-2 flex-shrink-0">
-                    <input type="file" ref={aiImageInputRef} accept="image/*" className="hidden" onChange={handleAiImageAttach} />
-                    <button
-                      onClick={() => aiImageInputRef.current?.click()}
-                      disabled={aiLoading}
-                      className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-colors disabled:opacity-40"
-                      title={t('chat.attachImage')}
-                    >
-                      <ImagePlus className="w-3.5 h-3.5" />
-                    </button>
-                    <textarea
-                      value={aiInput}
-                      onChange={(e) => setAiInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendAI(); } }}
-                      placeholder={aiAttachedImage ? t('chat.askAboutImage') : t('chat.askQuestion')}
-                      disabled={aiLoading}
-                      rows={1}
-                      className="flex-1 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 resize-none overflow-y-auto min-h-[34px] max-h-[100px]"
-                    />
-                    <button
-                      onClick={() => void sendAI()}
-                      disabled={aiLoading || (!aiInput.trim() && !aiAttachedImage)}
-                      className="p-2 bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                    </button>
+                  {/* ── Input bar (Render-style) ── */}
+                  <div className="px-3 pb-3 pt-1 flex-shrink-0 bg-white dark:bg-slate-900">
+                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-1.5">
+                      <button
+                        onClick={() => aiImageInputRef.current?.click()}
+                        disabled={aiLoading}
+                        className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 flex-shrink-0"
+                        title={t('chat.attachImage')}
+                      >
+                        <Paperclip className="w-4 h-4" />
+                      </button>
+                      <input type="file" ref={aiImageInputRef} accept="image/*" className="hidden" onChange={handleAiImageAttach} />
+
+                      <textarea
+                        value={aiInput}
+                        onChange={(e) => setAiInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendAI(); } }}
+                        placeholder="Ask a question..."
+                        disabled={aiLoading}
+                        rows={1}
+                        className="flex-1 text-[13px] bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none resize-none overflow-hidden min-h-[36px] py-1.5"
+                      />
+
+                      <button
+                        onClick={() => void sendAI()}
+                        disabled={aiLoading || (!aiInput.trim() && !aiAttachedImage)}
+                        className={`p-1.5 rounded-md transition-all flex-shrink-0 ${(aiInput.trim() || aiAttachedImage) ? 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300' : 'text-slate-300 dark:text-slate-600'}`}
+                      >
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${(aiInput.trim() || aiAttachedImage) ? 'bg-slate-200 dark:bg-slate-600' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="19" x2="12" y2="5" />
+                            <polyline points="5,12 12,5 19,12" />
+                          </svg>
+                        </div>
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-300 dark:text-slate-600 text-center mt-2">
+                      AI responses may be inaccurate. Verify important information.
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -762,10 +788,10 @@ export default function FloatingChatBubble() {
                   ) : bootingChat || !activeChatId ? (
                     <div className="h-full flex items-center justify-center">
                       <div className="text-center">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center mx-auto mb-2">
-                          <Zap className="w-4 h-4 text-white animate-pulse" />
+                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                          <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
                         </div>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm">{t('chat.connecting')}</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-[13px]">{t('chat.connecting')}</p>
                       </div>
                     </div>
                   ) : (
@@ -785,5 +811,13 @@ export default function FloatingChatBubble() {
         }
       `}</style>
     </>
+  );
+}
+
+function MessageBubbleIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
   );
 }

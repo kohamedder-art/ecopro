@@ -75,13 +75,8 @@ async function getCredentials(clientId: number, companyName: string): Promise<{ 
     const secondary = row.account_number || row.merchant_id || (row.api_secret_encrypted ? decryptData(row.api_secret_encrypted) : undefined);
     return { apiKey, secondary };
   } catch (err: any) {
-    // Disable broken integrations so we don't retry every 3 minutes
-    await pool.query(
-      `UPDATE delivery_integrations SET is_enabled = false, updated_at = NOW()
-       WHERE client_id = $1 AND delivery_company_id = (SELECT id FROM delivery_companies WHERE name = $2) AND is_enabled = true`,
-      [clientId, companyName]
-    );
-    console.warn(`[TrackingPoll] Disabled broken ${companyName} integration for client ${clientId}:`, err?.message || err);
+    // Don't disable — likely a temporary ENCRYPTION_KEY mismatch. Just skip this cycle.
+    console.warn(`[TrackingPoll] Skipping ${companyName} for client ${clientId} — decrypt failed:`, err?.message || err);
     return null;
   }
 }
