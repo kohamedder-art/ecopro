@@ -25,6 +25,7 @@ import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
+import LazyVideo from '@/components/storefront/LazyVideo';
 import { isValidAlgerianPhone } from '@/lib/utils';
 import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
@@ -477,7 +478,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                               {item.ve.type === 'youtube' ? (
                                 <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${item.ve.id}?autoplay=1&mute=1&loop=1&playlist=${item.ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                               ) : item.ve.type === 'video' ? (
-                                <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" />
+                                <LazyVideo src={item.ve.url} poster={item.src || ''} className="w-full h-full" />
                               ) : (
                                 <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
                               )}
@@ -485,7 +486,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                           ) : (
                             <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
                               onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
-                              decoding="async" width="600" height="600" />
+                              loading="lazy" decoding="async" width="600" height="600" />
                           )}
                         </div>
                       ))}
@@ -622,7 +623,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                         {item.ve.type === 'youtube' ? (
                           <iframe className="w-full h-full relative" src={`https://www.youtube.com/embed/${item.ve.id}?autoplay=1&mute=1&loop=1&playlist=${item.ve.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                         ) : item.ve.type === 'video' ? (
-                          <video className="w-full h-full object-cover relative" src={item.ve.url} autoPlay muted loop playsInline preload="metadata" />
+                          <LazyVideo src={item.ve.url} poster={item.src || ''} className="w-full h-full" />
                         ) : (
                           <iframe className="w-full h-full relative" src={item.ve.url} allowFullScreen />
                         )}
@@ -630,7 +631,7 @@ const parseVideoEmbed = (videoUrl: string) => {
                     ) : (
                       <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
                         onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
-                        decoding="async" width="600" height="600" />
+                        loading="lazy" decoding="async" width="600" height="600" />
                     )}
                   </div>
                 ))}

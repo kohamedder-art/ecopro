@@ -223,6 +223,9 @@ export default function FloatingChatBubble() {
       } else if (typeof result.action?.type === 'string' &&
           ['create_product', 'edit_product', 'delete_product', 'update_store_settings', 'update_store_design'].includes(result.action.type)) {
         setPendingAction(result.action as AIAction);
+      } else if (typeof result.action?.type === 'string' &&
+          (result.action.type.startsWith('get_') || result.action.type.startsWith('search_') || result.action.type.startsWith('list_'))) {
+        void executeReadOnlyAction(result.action as AIAction);
       }
     } catch {
       setAiMessages([...next, { role: 'assistant', content: 'Could not reach the AI service. Please check your connection and try again.', createdAt: Date.now() }]);
@@ -250,6 +253,27 @@ export default function FloatingChatBubble() {
       }
     } catch {
         setAiMessages(prev => [...prev, { role: 'assistant', content: 'Failed to apply bot action. Please check your connection.', createdAt: Date.now() }]);
+    }
+  };
+
+  const executeReadOnlyAction = async (action: AIAction) => {
+    const csrfMatch = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
+    const csrf = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
+    try {
+      const res = await fetch('/api/ai/exec-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        credentials: 'include',
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (res.ok && data.message) {
+        setAiMessages(prev => [...prev, { role: 'assistant', content: data.message, createdAt: Date.now() }]);
+      } else if (!res.ok) {
+        setAiMessages(prev => [...prev, { role: 'assistant', content: `Could not fetch data: ${data.error || 'Unknown error'}`, createdAt: Date.now() }]);
+      }
+    } catch {
+      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Failed to fetch data. Please check your connection.', createdAt: Date.now() }]);
     }
   };
 

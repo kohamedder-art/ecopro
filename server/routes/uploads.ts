@@ -32,6 +32,7 @@ const ALLOWED_MIME = new Set([
   'image/png',
   'image/webp',
   'image/gif',
+  'image/avif',
   'video/mp4',
   'video/webm',
 ]);
@@ -94,20 +95,33 @@ export const uploadImage: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: scan.reason });
     }
 
-    // Optimize images with Sharp (resize + WebP)
+    // Optimize images with Sharp (resize + AVIF for best compression)
     if (detected.mime.startsWith('image/') && detected.mime !== 'image/gif') {
       try {
-        const sharpedPath = req.file.path + '_sharp.webp';
+        const sharpedPath = req.file.path + '_sharp.avif';
         await sharp(req.file.path)
           .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 80 })
+          .avif({ quality: 65, effort: 6 })
           .toFile(sharpedPath);
         await fs.unlink(req.file.path).catch(() => null);
         await fs.rename(sharpedPath, req.file.path);
-        detected.mime = 'image/webp';
-        detected.ext = 'webp';
+        detected.mime = 'image/avif';
+        detected.ext = 'avif';
       } catch (sharpErr) {
-        console.error('[uploadImage] Sharp processing failed, using original:', sharpErr);
+        console.error('[uploadImage] Sharp AVIF conversion failed, trying WebP fallback:', sharpErr);
+        try {
+          const fallbackPath = req.file.path + '_sharp.webp';
+          await sharp(req.file.path)
+            .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toFile(fallbackPath);
+          await fs.unlink(req.file.path).catch(() => null);
+          await fs.rename(fallbackPath, req.file.path);
+          detected.mime = 'image/webp';
+          detected.ext = 'webp';
+        } catch {
+          console.error('[uploadImage] Sharp processing failed entirely, using original');
+        }
       }
     }
 

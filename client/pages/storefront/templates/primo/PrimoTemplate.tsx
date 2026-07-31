@@ -491,7 +491,7 @@ const goBackToCatalog = () => {
                           <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', width: `${imgCount * 100}%`, transition: 'transform 0.4s ease', transform: `translateX(-${(currentIdx / imgCount) * 100}%)` }}>
                             {product.images.map((img: string, i: number) => (
                               <div key={i} style={{ width: `${100 / imgCount}%`, flexShrink: 0, height: '100%' }}>
-                                <img src={img} alt={product.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff' }} />
+                                <img src={img} alt={product.title} loading="lazy" decoding="async" width="600" height="600" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff' }} />
                               </div>
                             ))}
                           </div>
@@ -603,6 +603,9 @@ const goBackToCatalog = () => {
                       className="h-full object-contain shrink-0 cursor-pointer"
                       loading={i === 0 ? 'eager' : 'lazy'}
                       fetchpriority={i === 0 ? 'high' : 'low'}
+                      decoding="async"
+                      width="600"
+                      height="600"
                       style={{ width: `${100 / totalSlides}%` }}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
@@ -797,7 +800,7 @@ const goBackToCatalog = () => {
                         <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', width: `${otherImgCount * 100}%`, transition: 'transform 0.4s ease', transform: `translateX(-${(otherIdx / otherImgCount) * 100}%)` }}>
                           {product.images.map((img: string, i: number) => (
                             <div key={i} style={{ width: `${100 / otherImgCount}%`, flexShrink: 0, height: '100%' }}>
-                              <img src={img} alt={product.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff' }} />
+                              <img src={img} alt={product.title} loading="lazy" decoding="async" width="600" height="600" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff' }} />
                             </div>
                           ))}
                         </div>

@@ -358,6 +358,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                         alt={product.title || ''}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
+                        decoding="async"
+                        width="600"
+                        height="600"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: surfaceMuted }}>
@@ -452,14 +455,10 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         {/* ── LONG IMAGE STACK ── */}
         <div className="w-full flex flex-col pt-1.5">
           {videoUrl && (
-            <video
+            <LazyVideo
               src={videoUrl}
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="w-full h-auto block"
-              poster={landingImages[0]}
+              poster={landingImages[0] || ''}
+              className="w-full h-auto"
             />
           )}
           {landingImages.length > 0 ? (
@@ -471,6 +470,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                 className="w-full h-auto block"
                 loading={index === 0 ? 'eager' : 'lazy'}
                 fetchpriority={index === 0 ? 'high' : 'low'}
+                decoding="async"
+                width="1200"
+                height="675"
               />
             ))
           ) : (

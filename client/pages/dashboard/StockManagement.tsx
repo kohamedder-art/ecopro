@@ -1936,7 +1936,7 @@ export default function StockManagement() {
                       <div key={o.id ?? idx} className="px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors">
                         <div className="flex items-center gap-3">
                           <label className="flex-shrink-0 cursor-pointer group">
-                            <input type="file" accept="image/*" className="hidden"
+                            <input type="file" accept="image/*,.avif" className="hidden"
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
@@ -2181,7 +2181,7 @@ export default function StockManagement() {
                 <div className="flex flex-col gap-2">
                   <Input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.avif"
                     multiple
                     onChange={handleImageUpload}
                     disabled={uploading || ((formData.images?.length || 0) >= 10)}

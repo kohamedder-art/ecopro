@@ -253,7 +253,7 @@ export default function ABTestDetail() {
         <span className="text-sm font-black text-black dark:text-white">{variants.length} variant{variants.length !== 1 ? "s" : ""}</span>
         {isDraft && (
           <label className="cursor-pointer">
-            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            <input type="file" accept="image/*,.avif" onChange={handleImageUpload} className="hidden" />
             <span className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs font-medium active:bg-blue-500/20 transition-colors">
               {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
               {uploading ? "Uploading..." : "Add Image"}

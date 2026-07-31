@@ -279,7 +279,7 @@ export class ZRExpressOfficialService implements CourierService {
       }
       // Strip any remaining non-digit chars, keep leading +
       const digits = phone.replace(/[^\d]/g, '');
-      if (!digits) {
+      if (!digits || digits.length < 9) {
         return { success: false, tracking_number: '', error: 'Invalid phone number' };
       }
       phone = '+' + digits;
@@ -290,7 +290,6 @@ export class ZRExpressOfficialService implements CourierService {
           name: shipment.customer_name || 'Customer',
           phone: {
             number1: phone,
-            number2: '',
           },
         },
         deliveryAddress: {

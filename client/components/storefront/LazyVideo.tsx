@@ -9,50 +9,65 @@ interface LazyVideoProps {
 }
 
 export default function LazyVideo({ src, poster, className, onMouseEnter, onMouseLeave }: LazyVideoProps) {
-  const [showVideo, setShowVideo] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!containerRef.current) return;
 
-    function startLoad() {
-      const video = document.createElement('video');
-      video.preload = 'auto';
-      video.src = src;
-      video.muted = true;
-      video.loop = true;
-      video.playsInline = true;
-
-      video.addEventListener('canplaythrough', () => {
-        if (!cancelled) setShowVideo(true);
-      }, { once: true });
-
-      video.load();
-    }
-
-    if (document.readyState === 'complete') {
-      startLoad();
-    } else {
-      window.addEventListener('load', startLoad, { once: true });
-      return () => { cancelled = true; window.removeEventListener('load', startLoad); };
-    }
-  }, [src]);
-
-  if (showVideo) {
-    return (
-      <video
-        ref={videoRef}
-        src={src}
-        muted
-        loop
-        playsInline
-        autoPlay
-        className={className}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      />
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
     );
-  }
 
-  return <img src={poster} alt="" loading="lazy" className={className} />;
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!shouldLoad || !src) return;
+
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.src = src;
+    video.muted = true;
+
+    const onReady = () => {
+      setIsReady(true);
+      video.removeEventListener('canplaythrough', onReady);
+    };
+
+    video.addEventListener('canplaythrough', onReady, { once: true });
+    video.load();
+
+    return () => {
+      video.removeEventListener('canplaythrough', onReady);
+      video.src = '';
+    };
+  }, [shouldLoad, src]);
+
+  return (
+    <div ref={containerRef} className={className} style={{ position: 'relative', overflow: 'hidden' }}>
+      {isReady ? (
+        <video
+          src={src}
+          muted
+          loop
+          playsInline
+          autoPlay
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+        />
+      ) : (
+        <img src={poster} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      )}
+    </div>
+  );
 }

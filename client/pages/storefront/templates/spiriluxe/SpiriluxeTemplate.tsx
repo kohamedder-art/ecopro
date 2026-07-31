@@ -3,6 +3,7 @@ import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
+import LazyVideo from '@/components/storefront/LazyVideo';
 import { isValidAlgerianPhone } from '@/lib/utils';
 import { getFraudData } from '@/lib/fingerprint';
 import { buildStoreUrl } from '@/lib/resolvedStore';
@@ -334,7 +335,7 @@ export default function SpiriluxeTemplate({
         const globalIndex = startIndex + i;
         return (
           <div key={url + globalIndex} className="relative group">
-            <img src={url} alt="" className="w-full block object-contain" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" style={{ contentVisibility: 'auto' }} />
+            <img src={url} alt="" className="w-full block object-contain" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" width="1200" height="675" style={{ contentVisibility: 'auto' }} />
             {canManage && (
               <div className="absolute top-2 right-2 flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}
@@ -387,7 +388,7 @@ export default function SpiriluxeTemplate({
               </div>
             ) : videoEmbed.type === 'video' ? (
               <div className="w-full overflow-hidden" style={{ maxHeight: '50vh' }}>
-                <video className="w-full h-full object-cover block" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" onError={() => setVideoFailed(true)} />
+                <LazyVideo src={videoEmbed.url} poster={aboveImages[0] || ''} className="w-full h-full" />
               </div>
             ) : (
               <div className="aspect-video w-full">

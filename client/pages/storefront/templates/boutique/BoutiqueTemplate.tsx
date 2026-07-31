@@ -433,7 +433,10 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             alt={hasHeroBanner ? (settings?.store_name || brandName) : heroProduct?.title}
             loading="eager"
             fetchpriority="high"
+            decoding="async"
             className="w-full h-full object-cover"
+            width="1200"
+            height="675"
           />
           <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${themeColor}ee, transparent, transparent)` }} />
           <div className="absolute bottom-0 p-6 text-white max-w-7xl mx-auto w-full left-0 right-0">
@@ -514,6 +517,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             alt={product.title}
                             className="w-full h-full object-contain"
                             loading="lazy"
+                            decoding="async"
+                            width="600"
+                            height="600"
                           />
                     }
                   </div>

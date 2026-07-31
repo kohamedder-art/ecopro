@@ -542,6 +542,9 @@ export default function LeRoiShopTemplate({
                             src={product.images?.[0] || '/placeholder.png'}
                             alt={product.title}
                             loading="lazy"
+                            decoding="async"
+                            width="600"
+                            height="600"
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           />
                       }
@@ -966,6 +969,10 @@ export default function LeRoiShopTemplate({
                             : <img
                                 src={product.images?.[0] || '/placeholder.png'}
                                 alt={product.title}
+                                loading="lazy"
+                                decoding="async"
+                                width="600"
+                                height="600"
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                               />
                           }

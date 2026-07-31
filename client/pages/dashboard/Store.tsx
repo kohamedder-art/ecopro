@@ -238,6 +238,7 @@ export default function Store() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFileName, setUploadFileName] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState('');
   const [creatingSampleProducts, setCreatingSampleProducts] = useState(false);
 
   type ProductVariantDraft = {
@@ -1120,6 +1121,16 @@ export default function Store() {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
+
+  const addImageUrl = () => {
+    const url = imageUrlInput.trim();
+    if (!url) return;
+    const existing = Array.isArray(formData.images) ? formData.images : [];
+    if (existing.length >= 10) return;
+    if (existing.includes(url)) return;
+    setFormData((prev) => ({ ...prev, images: [...existing, url] }));
+    setImageUrlInput('');
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -2755,7 +2766,7 @@ export default function Store() {
                                 </>
                               ) : (
                                 <label className="cursor-pointer w-full h-full flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
-                                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                  <input type="file" accept="image/*,.avif" className="hidden" onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (!file) return;
                                     const upload = async () => {
@@ -2982,7 +2993,7 @@ export default function Store() {
                           <label className="flex-shrink-0 cursor-pointer group">
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/*,.avif"
                               className="hidden"
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
@@ -3269,7 +3280,7 @@ export default function Store() {
                       <Input
                         id="image-upload"
                         type="file"
-                        accept="image/*"
+                        accept="image/*,.avif"
                         multiple
                         onChange={handleImageUpload}
                         disabled={uploading || ((formData.images?.length || 0) >= 10)}
@@ -3306,19 +3317,29 @@ export default function Store() {
                     <p className="text-xs text-muted-foreground">
                       Upload up to 10 images. Each image must be &lt; 10MB.
                     </p>
-                    <Input
-                      id="images"
-                      value={formData.images?.[0] || ''}
-                      onChange={(e) =>
-                        setFormData((prev) => {
-                          const nextFirst = e.target.value;
-                          const rest = Array.isArray(prev.images) ? prev.images.slice(1) : [];
-                          const next = nextFirst ? [nextFirst, ...rest] : rest;
-                          return { ...prev, images: next };
-                        })
-                      }
-                      placeholder="https://example.com/image.jpg"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="imageUrlInput"
+                        value={imageUrlInput}
+                        onChange={(e) => setImageUrlInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addImageUrl();
+                          }
+                        }}
+                        placeholder="https://example.com/image.jpg"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addImageUrl}
+                        disabled={!imageUrlInput.trim()}
+                        className="shrink-0"
+                      >
+                        Add
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

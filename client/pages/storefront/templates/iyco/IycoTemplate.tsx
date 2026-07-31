@@ -520,6 +520,9 @@ export default function IycoTemplate({
                       className="w-full h-full object-contain shrink-0 cursor-pointer"
                       loading={i === 0 ? 'eager' : 'lazy'}
                       fetchpriority={i === 0 ? 'high' : 'low'}
+                      decoding="async"
+                      width="600"
+                      height="600"
                       style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
@@ -854,6 +857,9 @@ export default function IycoTemplate({
                             src={prod.images?.[0] || '/placeholder.png'}
                             alt={prod.title}
                             loading="lazy"
+                            decoding="async"
+                            width="600"
+                            height="600"
                             className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
                           />
                     }

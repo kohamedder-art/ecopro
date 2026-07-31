@@ -1524,6 +1524,37 @@ router.post('/store-action', authAiLimiter, async (req: Request, res: Response) 
 });
 
 // ════════════════════════════════════════════════════════════
+// GENERIC READ-ONLY ACTION EXECUTOR — POST /api/ai/exec-action
+// ════════════════════════════════════════════════════════════
+
+router.post('/exec-action', authAiLimiter, async (req: Request, res: Response) => {
+  try {
+    const user = extractAiUser(req);
+    if (!user || !(user.role === 'user' || user.role === 'seller' || user.role === 'client' || user.user_type === 'client')) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
+    const clientId = user.id || user.clientId;
+    const { action } = req.body;
+    if (!action || !action.type) {
+      return res.status(400).json({ error: 'Missing action type.' });
+    }
+
+    // Only allow read-only actions
+    const readOnlyPrefixes = ['get_', 'search_', 'list_'];
+    const isReadOnly = readOnlyPrefixes.some(p => action.type.startsWith(p));
+    if (!isReadOnly) {
+      return res.status(403).json({ error: 'Only read-only actions are allowed via this endpoint.' });
+    }
+
+    const { executeAction } = await import('../services/owner-ai');
+    const result = await executeAction(clientId, action);
+    return res.json(result);
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════
 // AI GUARDIAN ALERTS — GET /api/ai/alerts + mark endpoints
 // ════════════════════════════════════════════════════════════
 
