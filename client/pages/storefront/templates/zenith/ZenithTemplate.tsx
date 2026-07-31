@@ -146,6 +146,18 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const productTotal = selectedOffer ? selectedOffer.bundle_price * quantity : productPrice * quantity;
   const totalCost = productTotal + deliveryFee;
 
+  // Preload first landing image to cut LCP resource load delay
+  useEffect(() => {
+    const url = landingImages[0];
+    if (!url) return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = url;
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, [landingImages[0]]);
+
   const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: 'smooth' });
 
   const handleTextEdit = (key: string) => (e: React.FocusEvent<HTMLElement>) => {

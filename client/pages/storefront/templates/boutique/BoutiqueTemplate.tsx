@@ -240,6 +240,18 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
    const heroBannerUrl = propBannerUrl || settings?.banner_url || null;
    const hasHeroBanner = !!heroBannerUrl;
 
+   // Preload hero image to cut LCP resource load delay
+   useEffect(() => {
+     const url = heroBannerUrl || heroProduct?.images?.[0];
+     if (!url) return;
+     const link = document.createElement('link');
+     link.rel = 'preload';
+     link.as = 'image';
+     link.href = url;
+     document.head.appendChild(link);
+     return () => { document.head.removeChild(link); };
+   }, [heroBannerUrl, heroProduct?.images?.[0]]);
+
    // Offers system
    const { offers, loading: offersLoading } = useProductOffers(storeSlug, heroProduct?.id);
    const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
