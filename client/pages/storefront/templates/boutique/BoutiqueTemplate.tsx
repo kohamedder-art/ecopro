@@ -491,73 +491,129 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
 
       <div className="max-w-[1600px] mx-auto px-1 md:px-2 pb-20 md:pb-0">
 
-        {/* TRUST MINI-BAR */}
-        <div className="flex justify-around py-4 border-b text-[10px] font-bold" style={{ borderColor, backgroundColor: surfaceMuted, color: textMuted }}>
-          <div className="flex items-center gap-1"><Truck size={14} /> توصيل 58 ولاية</div>
-          <div className="flex items-center gap-1"><ShieldCheck size={14} /> الدفع عند الاستلام</div>
-          <div className="flex items-center gap-1"><Star size={14} fill="currentColor" /> جودة مضمونة</div>
+        {/* TRUST MINI-BAR — Temu Style */}
+        <div className="flex justify-around py-2.5 text-[10px] font-bold" style={{ backgroundColor: '#fff8e1', color: '#e65100' }}>
+          <div className="flex items-center gap-1"><Truck size={13} /> توصيل لـ 58 ولاية</div>
+          <div className="flex items-center gap-1"><ShieldCheck size={13} /> الدفع عند الاستلام</div>
+          <div className="flex items-center gap-1"><Star size={13} fill="currentColor" /> جودة مضمونة</div>
         </div>
 
-        {/* COLLECTION GRID */}
+        {/* COLLECTION GRID — Temu Style */}
         {collectionProducts.length > 0 && (
-          <section className="p-2 md:p-4">
-            <div className="flex items-center justify-between mb-4">
+          <section className="px-1 md:px-2 pt-3">
+            <div className="flex items-center justify-between mb-3 px-1">
               <h3
-                className="text-lg font-black pr-3"
-                style={{ borderRight: `4px solid ${themeColor}` }}
+                className="text-base font-black"
                 contentEditable={canManage}
                 suppressContentEditableWarning
                 onBlur={handleTextEdit('boutique_category_name')}
               >
                 {categoryName}
               </h3>
-              <span className="text-xs font-bold" style={{ color: textMuted }}>{collectionProducts.length} منتج</span>
+              <span className="text-[11px] font-bold" style={{ color: textMuted }}>{collectionProducts.length} منتج</span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 md:gap-2" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
-              {collectionProducts.map(product => (
-                <div key={product.id} className="group cursor-pointer" onClick={() => { setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}>
-                  <div className="relative aspect-[5/7] overflow-hidden mb-2" style={{ backgroundColor: surfaceColor }}>
-                    {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                      ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || ''}
-                          onMouseEnter={e => (e.target as HTMLVideoElement).play()}
-                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                          className="w-full h-full object-cover" />
-                      : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
-                        ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
-                        : <img
-                            src={product.images?.[0] || ''}
-                            alt={product.title}
-                            className="w-full h-full object-contain"
-                            loading="lazy"
-                            decoding="async"
-                            width="600"
-                            height="600"
-                          />
-                    }
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm leading-tight" style={{ color: textColor }}>{product.title}</h4>
-                    {(product as any).description && (
-                      <p className="dz-description mt-0.5 line-clamp-1" style={{ color: textMuted }}>{(product as any).description.replace(/<[^>]*>/g, '').trim()}</p>
-                    )}
-                    {(product as any).rating != null && (product as any).rating > 0 && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <div className="flex items-center">
-                          {[1,2,3,4,5].map(star => (
-                            <svg key={star} className={`w-3 h-3 ${star <= Math.round((product as any).rating) ? '' : 'opacity-30'}`} style={{ color: star <= Math.round((product as any).rating) ? '#f59e0b' : '#9ca3af' }} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                          ))}
-                        </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-[6px]" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
+              {collectionProducts.map(product => {
+                const p = product as any;
+                const stock = p.stock_quantity ?? null;
+                const isOnlyLeft = stock !== null && stock > 0 && stock <= 5;
+                const discount = p.original_price && p.original_price > p.price
+                  ? Math.round(((p.original_price - p.price) / p.original_price) * 100)
+                  : 0;
+                const ratingVal = p.rating != null && p.rating > 0 ? p.rating : null;
+                const reviewCount = p.review_count ?? p.rating_count ?? null;
+                const category = p.category || '';
+                const isBestSeller = p.is_featured || discount > 20;
+                const soldCount = p.sold_count ?? p.sales_count ?? null;
+
+                return (
+                  <div key={product.id} className="group cursor-pointer bg-white" onClick={() => { setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}>
+                    {/* Image */}
+                    <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 4', backgroundColor: '#f5f5f5' }}>
+                      {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
+                        ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[0] || ''}
+                            onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                            onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                            className="w-full h-full" />
+                        : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+                          ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                          : <img
+                              src={product.images?.[0] || ''}
+                              alt={product.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                              width="600"
+                              height="800"
+                            />
+                      }
+                      {/* Category badge */}
+                      {category && (
+                        <span className="absolute bottom-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-sm text-white" style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
+                          {category}
+                        </span>
+                      )}
+                      {/* Urgency badge */}
+                      {isOnlyLeft && (
+                        <span className="absolute top-2 left-2 text-[9px] font-black px-1.5 py-0.5 rounded-sm bg-orange-500 text-white uppercase tracking-wide">
+                          ONLY {stock} LEFT 🔥
+                        </span>
+                      )}
+                      {isBestSeller && !isOnlyLeft && (
+                        <span className="absolute top-2 left-2 text-[9px] font-black px-1.5 py-0.5 rounded-sm text-white" style={{ backgroundColor: '#e11d48' }}>
+                          #1 Best-Selling
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="px-2 py-2 space-y-1">
+                      {/* Title */}
+                      <h4 className="text-xs font-bold leading-snug line-clamp-2" style={{ color: '#222' }}>{product.title}</h4>
+
+                      {/* Price row */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-black" style={{ color: '#222' }}>
+                          {Math.round(product.price ?? 0).toLocaleString()} {currency}
+                        </span>
+                        {discount > 0 && (
+                          <span className="text-[10px] font-bold px-1 py-0 rounded" style={{ backgroundColor: '#fff0f0', color: '#e11d48' }}>
+                            -{discount}%
+                          </span>
+                        )}
                       </div>
-                    )}
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="font-black text-sm" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
-                      {(product as any).original_price && (product as any).original_price > product.price && (
-                        <p className="text-xs line-through" style={{ color: textMuted }}>{Math.round((product as any).original_price ?? 0).toLocaleString()}</p>
+
+                      {/* Original price + sold */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {p.original_price && p.original_price > product.price && (
+                          <span className="text-[10px] line-through" style={{ color: '#999' }}>
+                            {Math.round(p.original_price ?? 0).toLocaleString()} {currency}
+                          </span>
+                        )}
+                        {soldCount !== null && (
+                          <span className="text-[10px]" style={{ color: '#999' }}>
+                            🔥 {soldCount >= 1000 ? `${(soldCount / 1000).toFixed(1)}K+` : `${soldCount}+`} sold
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Rating */}
+                      {ratingVal != null && (
+                        <div className="flex items-center gap-1">
+                          <div className="flex items-center">
+                            {[1,2,3,4,5].map(star => (
+                              <svg key={star} className="w-2.5 h-2.5" style={{ color: star <= Math.round(ratingVal) ? '#f59e0b' : '#ddd' }} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                            ))}
+                          </div>
+                          {reviewCount != null && (
+                            <span className="text-[10px]" style={{ color: '#999' }}>{reviewCount.toLocaleString()}</span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}
