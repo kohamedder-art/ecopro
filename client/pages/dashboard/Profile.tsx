@@ -38,13 +38,13 @@ function formatDate(input?: string | null): string {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-medium text-muted-foreground">{label}</label>
+      <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">{label}</label>
       {children}
     </div>
   );
 }
 
-const inputCls = "w-full h-9 bg-background border border-border rounded-lg px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all";
+const inputCls = "w-full h-9 bg-white dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm font-bold text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all";
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -230,32 +230,27 @@ export default function Profile() {
     : 'bg-muted text-muted-foreground border-border';
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto">
+    <div className="space-y-3 max-w-5xl mx-auto">
 
       {/* ── Hero card ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-slate-900/45 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/70 ring-1 ring-black/5 dark:ring-white/10 shadow-lg shadow-slate-200/60 dark:shadow-black/40 p-4">
-        <div className="relative flex items-center justify-between gap-4">
-          {/* Left section - Avatar + Info */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            {/* Avatar */}
-            <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-purple-500 to-violet-600 border border-white/50 dark:border-white/10 flex items-center justify-center shrink-0 text-lg font-bold text-white shadow-md">
+      <div className="rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+        <div className="bg-gradient-to-r from-blue-600 to-slate-700 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-lg font-bold text-white">
               {loading ? <Loader className="w-5 h-5 animate-spin opacity-70" /> : initials}
             </div>
-            
-            <div className="flex-1 min-w-0">
-              <h1 className="text-sm font-semibold text-slate-900 dark:text-white truncate">{loading ? '—' : (form.name || t('profile.yourAccount'))}</h1>
-              <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{form.email}</p>
+            <div>
+              <h1 className="text-base font-black text-white">{loading ? '—' : (form.name || t('profile.yourAccount'))}</h1>
+              <p className="text-xs font-bold text-white/80">{form.email}</p>
             </div>
           </div>
-
-          {/* Right section - Status badge */}
-          <div className="shrink-0 text-end">
-            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm ${statusColor}`}>
+          <div className="text-end">
+            <span className={`inline-flex items-center gap-1.5 text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${statusColor}`}>
               {subStatus === 'active' && <BadgeCheck className="w-3 h-3" />}
-              <span>{subStatus.toUpperCase()}</span>
+              {subStatus.toUpperCase()}
             </span>
             {(trialEnds || periodEnds) && (
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+              <p className="text-[10px] text-white/50 mt-1">
                 {subStatus === 'active' && periodEnds
                   ? `${t('profile.renews')} ${formatDate(periodEnds)}`
                   : trialEnds ? `${t('profile.trialEnds')} ${formatDate(trialEnds)}`
@@ -264,96 +259,54 @@ export default function Profile() {
             )}
           </div>
         </div>
-        </div>
+      </div>
 
-        {/* ── Three columns ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+      {/* ── 2-Column: Account + Security ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
 
-        {/* COL 1 — Account info */}
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          {/* Card header */}
-          <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-blue-50/50 dark:bg-blue-950/20">
-            <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
-              <User className="w-4 h-4 text-blue-500" />
-            </div>
-            <span className="text-sm font-bold">{t('profile.accountInfo')}</span>
+        {/* Account Info — wider */}
+        <div className="lg:col-span-3 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+          <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2.5 flex items-center gap-2">
+            <User className="w-4 h-4 text-white" />
+            <span className="text-xs font-black text-white uppercase tracking-widest">{t('profile.accountInfo')}</span>
           </div>
-
-          <div className="p-5 space-y-3">
-            {/* Name */}
-            <Field label={t('profile.fullName')}>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+          <div className="bg-white dark:bg-[#111] p-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label={t('profile.fullName')}>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                  className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.fullName')} />
-              </div>
-            </Field>
-
-            {/* Email */}
-            <Field label={t('profile.emailAddress')}>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                  className={inputCls} placeholder={t('profile.placeholder.fullName')} />
+              </Field>
+              <Field label={t('profile.emailAddress')}>
                 <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-                  className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.email')} />
-              </div>
-            </Field>
-
-            {/* Phone + Store side by side */}
-            <div className="grid grid-cols-2 gap-3">
+                  className={inputCls} placeholder={t('profile.placeholder.email')} />
+              </Field>
               <Field label={t('profile.phoneNumber')}>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
-                  <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
-                    className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.phone')} />
-                </div>
+                <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
+                  className={inputCls} placeholder={t('profile.placeholder.phone')} />
               </Field>
               <Field label={t('profile.storeName')}>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
-                  <input type="text" value={form.business_name} onChange={e => setForm({ ...form, business_name: e.target.value })}
-                    className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.storeName')} />
-                </div>
+                <input type="text" value={form.business_name} onChange={e => setForm({ ...form, business_name: e.target.value })}
+                  className={inputCls} placeholder={t('profile.placeholder.storeName')} />
               </Field>
             </div>
-
             <Field label={t('profile.subdomain')}>
-              <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
-                <input type="text" value={form.subdomain} onChange={e => setForm({ ...form, subdomain: e.target.value })}
-                  className={`${inputCls} pl-8`} placeholder="mtjr-ibdaa" />
-              </div>
-              <p className="text-[11px] text-muted-foreground/60 mt-1">{form.subdomain ? `${form.subdomain}.sahla4eco.com` : t('profile.subdomainHint')}</p>
-              <p className="text-[11px] text-muted-foreground/50 mt-1">{t('profile.subdomainDesc')}</p>
+              <input type="text" value={form.subdomain} onChange={e => setForm({ ...form, subdomain: e.target.value })}
+                className={inputCls} placeholder="mtjr-ibdaa" />
+              <p className="text-[11px] text-slate-400 mt-1">{form.subdomain ? `${form.subdomain}.sahla4eco.com` : t('profile.subdomainHint')}</p>
             </Field>
-
-            {/* City + Country side by side */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label={t('profile.cityWilaya')}>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
-                  <input type="text" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })}
-                    className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.city')} />
-                </div>
+                <input type="text" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })}
+                  className={inputCls} placeholder={t('profile.placeholder.city')} />
               </Field>
               <Field label={t('profile.country')}>
-                <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
-                  {form.country ? (
-                    <div className={`${inputCls} pl-8 flex items-center opacity-60 cursor-not-allowed`}>
-                      <span className="text-sm">{form.country}</span>
-                    </div>
-                  ) : (
-                    <input type="text" value="" readOnly
-                      className={`${inputCls} pl-8 opacity-50 cursor-not-allowed`} placeholder={t('profile.placeholder.country')} />
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground/50 mt-1">{t('profile.countryDesc')}</p>
+                <input type="text" value={form.country || ''} readOnly
+                  className={`${inputCls} opacity-60 cursor-not-allowed`} placeholder={t('profile.placeholder.country')} />
               </Field>
             </div>
-
             <div className="flex justify-end pt-1">
               <button onClick={onSave} disabled={saving}
-                className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-blue-600/20">
+                className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-black uppercase tracking-wider flex items-center gap-2 disabled:opacity-50 transition-all shadow-md">
                 {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {t('profile.saveChanges')}
               </button>
@@ -361,18 +314,15 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* COL 2 — Security */}
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-orange-50/50 dark:bg-orange-950/20">
-            <div className="w-7 h-7 rounded-lg bg-orange-500/15 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-orange-500" />
-            </div>
-            <span className="text-sm font-bold">{t('profile.security')}</span>
+        {/* Security — narrower */}
+        <div className="lg:col-span-2 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+          <div className="bg-gradient-to-r from-orange-500 to-red-600 px-4 py-2.5 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-white" />
+            <span className="text-xs font-black text-white uppercase tracking-widest">{t('profile.security')}</span>
           </div>
-
-          <form onSubmit={handleChangePassword} className="p-5 space-y-3">
+          <form onSubmit={handleChangePassword} className="bg-white dark:bg-[#111] p-4 space-y-3">
             {weakPassword && (
-              <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 px-3.5 py-3">
+              <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2.5">
                 <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-xs font-bold text-amber-800 dark:text-amber-300">{t('profile.weakPasswordTitle')}</p>
@@ -382,30 +332,25 @@ export default function Profile() {
             )}
             <Field label={t('profile.currentPassword')}>
               <div className="relative">
-                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
                 <input type={showCurrentPassword ? 'text' : 'password'} value={passwordForm.currentPassword}
                   onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                  className={`${inputCls} pl-8 pr-9`} placeholder={t('profile.placeholder.currentPassword')} />
+                  className={`${inputCls} pr-9`} placeholder={t('profile.placeholder.currentPassword')} />
                 <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors">
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
                   {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </Field>
-
             <Field label={t('profile.newPassword')}>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
                 <input type={showNewPassword ? 'text' : 'password'} value={passwordForm.newPassword}
                   onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                  className={`${inputCls} pl-8 pr-9`} placeholder={t('profile.placeholder.minChars')} />
+                  className={`${inputCls} pr-9`} placeholder={t('profile.placeholder.minChars')} />
                 <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors">
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-[11px] text-muted-foreground/50 mt-1">{t('profile.passwordHint')}</p>
-              {/* Password strength bar */}
               {passwordForm.newPassword.length > 0 && (() => {
                 const p = passwordForm.newPassword;
                 const score = [p.length >= 8, /[A-Z]/.test(p), /[0-9]/.test(p), /[^A-Za-z0-9]/.test(p)].filter(Boolean).length;
@@ -416,21 +361,19 @@ export default function Profile() {
                   <div className="mt-1.5 space-y-1">
                     <div className="flex gap-1">
                       {[1,2,3,4].map(i => (
-                        <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= score ? colors[score] : 'bg-muted'}`} />
+                        <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= score ? colors[score] : 'bg-slate-200 dark:bg-slate-700'}`} />
                       ))}
                     </div>
-                    <p className={`text-[10px] font-semibold ${textColors[score]}`}>{labels[score]}</p>
+                    <p className={`text-[10px] font-bold ${textColors[score]}`}>{labels[score]}</p>
                   </div>
                 );
               })()}
             </Field>
-
             <Field label={t('profile.confirmNewPassword')}>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
                 <input type="password" value={passwordForm.confirmPassword}
                   onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                  className={`${inputCls} pl-8`} placeholder={t('profile.placeholder.repeatPassword')} />
+                  className={`${inputCls} pr-9`} placeholder={t('profile.placeholder.repeatPassword')} />
                 {passwordForm.confirmPassword.length > 0 && (
                   <span className="absolute inset-y-0 right-3 flex items-center">
                     {passwordForm.confirmPassword === passwordForm.newPassword
@@ -440,166 +383,112 @@ export default function Profile() {
                 )}
               </div>
             </Field>
-
             {passwordError && (
-              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg px-3 py-2">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />{passwordError}
               </div>
             )}
             {passwordSuccess && (
-              <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2">
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{t('profile.passwordUpdated')}
               </div>
             )}
-
             <div className="flex justify-end pt-1">
               <button type="submit"
                 disabled={passwordLoading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
-                className="h-9 px-5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-orange-600/20">
+                className="h-10 px-6 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-black uppercase tracking-wider flex items-center gap-2 disabled:opacity-50 transition-all shadow-md">
                 {passwordLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
                 {t('profile.updatePassword')}
               </button>
             </div>
           </form>
         </div>
+      </div>
 
-        {/* COL 3 — Voucher + Referral */}
-        <div className="space-y-4">
+      {/* ── Voucher + Referral (compact row) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Voucher */}
+        <div className="rounded-xl overflow-hidden shadow-sm border border-blue-200 dark:border-blue-900/40">
+          <div className="bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2.5 flex items-center gap-2">
+            <Ticket className="w-4 h-4 text-white" />
+            <span className="text-xs font-black text-white uppercase tracking-widest">{t('profile.redeemCode')}</span>
+          </div>
+          <div className="bg-white dark:bg-[#111] p-4 space-y-3">
+            <input type="text" value={voucherCode}
+              onChange={e => handleFormatVoucherCode(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800/50 text-center font-mono text-lg font-bold tracking-[0.2em] text-blue-700 dark:text-blue-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/30"
+              placeholder="XXXX-XXXX-XXXX-XXXX" />
+            <button onClick={handleRedeemVoucher} disabled={voucherLoading || !voucherCode}
+              className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-md">
+              {voucherLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {t('profile.apply')}
+            </button>
+            {voucherError && <p className="text-[11px] text-red-500 font-semibold">{voucherError}</p>}
+            {voucherSuccess && <p className="text-[11px] text-emerald-600 font-semibold">{t('profile.redeemed')}</p>}
+          </div>
+        </div>
 
-          {/* Redeem voucher — ticket style */}
-          <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800/50 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 dark:from-indigo-950/30 dark:to-violet-950/20 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-indigo-200/60 dark:border-indigo-800/40">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-                <Ticket className="w-4 h-4 text-indigo-500" />
-              </div>
-              <span className="text-sm font-bold">{t('profile.redeemCode')}</span>
-            </div>
-
-            <div className="p-5 space-y-3">
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{t('profile.redeemCodeDesc')}</p>
-              {/* Dashed ticket input area */}
-              <div className="rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700/60 bg-white/60 dark:bg-black/20 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 dark:text-indigo-500 mb-2 text-center">
-                  {t('profile.redeemCode')}
+        {/* Referral */}
+        <div className="rounded-xl overflow-hidden shadow-sm border border-emerald-200 dark:border-emerald-900/40">
+          <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-2.5 flex items-center gap-2">
+            <Gift className="w-4 h-4 text-white" />
+            <span className="text-xs font-black text-white uppercase tracking-widest">{t('profile.referral')}</span>
+          </div>
+          <div className="bg-white dark:bg-[#111] p-4 space-y-3">
+            {affiliateInfo?.has_referral ? (
+              <div className="text-center space-y-2">
+                <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                  {affiliateInfo.earn_per_referral?.toFixed(0) || '0'} دج
                 </p>
-                <input
-                  type="text" value={voucherCode}
-                  onChange={e => handleFormatVoucherCode(e.target.value)}
-                  className="w-full bg-transparent text-center font-mono text-lg font-bold tracking-[0.25em] text-indigo-700 dark:text-indigo-300 placeholder:text-indigo-300 dark:placeholder:text-indigo-700 border-none outline-none"
-                  placeholder={t('profile.placeholder.voucherCode')}
-                />
+                <p className="text-[11px] text-slate-400">{t('profile.perReferral')}</p>
+                <p className="text-xs font-mono text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-1.5">{affiliateInfo.voucher_code}</p>
               </div>
-
-              <form onSubmit={handleRedeemVoucher}>
-                <button type="submit" disabled={voucherLoading || !voucherCode}
-                  className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-indigo-600/20">
-                  {voucherLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            ) : (
+              <form onSubmit={handleApplyAffiliateCode} className="space-y-2">
+                <input type="text" value={affiliateCode} onChange={e => setAffiliateCode(e.target.value)}
+                  className={`${inputCls} uppercase tracking-widest text-center font-mono`}
+                  placeholder={t('profile.placeholder.partnerCode')} />
+                <button type="submit" disabled={affiliateLoading || !affiliateCode}
+                  className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-md">
+                  {affiliateLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
                   {t('profile.apply')}
                 </button>
               </form>
-
-              {voucherError && (
-                <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />{voucherError}
-                </div>
-              )}
-              {voucherSuccess && (
-                <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />{t('profile.redeemed')}
-                </div>
-              )}
-            </div>
+            )}
+            {affiliateError && <p className="text-[11px] text-red-500 font-semibold">{affiliateError}</p>}
           </div>
-
-          {/* Referral */}
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 bg-emerald-50/50 dark:bg-emerald-950/20">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-                <Gift className="w-4 h-4 text-emerald-500" />
-              </div>
-              <span className="text-sm font-bold">{t('profile.referral')}</span>
-            </div>
-
-            <div className="p-5 space-y-3">
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{t('profile.referralDesc')}</p>
-              {affiliateInfo?.has_referral ? (
-                <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800/50 p-4 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
-                    <Percent className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <p className="text-lg font-extrabold text-emerald-700 dark:text-emerald-300">
-                    {affiliateInfo.earn_per_referral?.toFixed(0) || '0'} دج <span className="text-sm font-semibold">{t('profile.perReferral')}</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground font-mono">{affiliateInfo.voucher_code}</p>
-                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                    <BadgeCheck className="w-3.5 h-3.5" /> {t('profile.referredBy', { name: affiliateInfo.affiliate_name })}
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleApplyAffiliateCode} className="space-y-2">
-                  <div className="relative">
-                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
-                    <input type="text" value={affiliateCode} onChange={e => setAffiliateCode(e.target.value)}
-                      className={`${inputCls} pl-8 uppercase tracking-widest text-center font-mono`}
-                      placeholder={t('profile.placeholder.partnerCode')} />
-                  </div>
-                  <button type="submit" disabled={affiliateLoading || !affiliateCode}
-                    className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-emerald-600/20">
-                    {affiliateLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
-                    {t('profile.apply')}
-                  </button>
-                </form>
-              )}
-              {affiliateError && (
-                <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />{affiliateError}
-                </div>
-              )}
-            </div>
-          </div>
-
         </div>
       </div>
 
-      {/* ── Mobile App (full width) ── */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden mt-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-5 sm:p-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-sky-500/20">
-            <Smartphone className="w-7 h-7 text-white" />
-          </div>
+      {/* ── Mobile App ── */}
+      <div className="rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+        <div className="bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2.5 flex items-center gap-2">
+          <Smartphone className="w-4 h-4 text-white" />
+          <span className="text-xs font-black text-white uppercase tracking-widest">{t('admin.enhanced.ourApps')}</span>
+        </div>
+        <div className="bg-white dark:bg-[#111] px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-extrabold text-foreground">{t('admin.enhanced.ourApps')}</h3>
-            <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed max-w-xl">
-              {t('profile.mobileDesc')}
-            </p>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5">
+            <p className="text-xs text-slate-500 leading-relaxed">{t('profile.mobileDesc')}</p>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
               {[t('profile.mobileFeature1'), t('profile.mobileFeature2'), t('profile.mobileFeature3'), t('profile.mobileFeature4')].map((f, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <div key={i} className="flex items-center gap-1 text-[10px] text-slate-400">
                   <div className="w-1 h-1 rounded-full bg-sky-500" />
                   {f}
                 </div>
               ))}
             </div>
           </div>
-          <div className="shrink-0 w-full sm:w-auto">
-            {appDownloadLoading ? (
-              <div className="flex items-center justify-center h-10 px-6">
-                <Loader className="w-4 h-4 animate-spin text-muted-foreground/50" />
-              </div>
-            ) : appDownload?.download_url ? (
-              <a href={appDownload.download_url} download
-                className="flex items-center justify-center gap-2 h-10 px-6 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-sky-600/20 whitespace-nowrap">
-                <Download className="w-4 h-4" />
-                {t('admin.enhanced.downloadApp')}
-                {appDownload.version && <span className="text-[10px] opacity-70 font-mono">v{appDownload.version}</span>}
-              </a>
-            ) : (
-              <div className="flex items-center gap-2 h-10 px-5 rounded-xl bg-muted/50 border border-dashed border-border text-xs text-muted-foreground/60 whitespace-nowrap">
-                <Smartphone className="w-3.5 h-3.5" />
-                {t('profile.comingSoon')}
-              </div>
-            )}
-          </div>
+          {appDownloadLoading ? (
+            <Loader className="w-4 h-4 animate-spin text-slate-400" />
+          ) : appDownload?.download_url ? (
+            <a href={appDownload.download_url} download
+              className="shrink-0 flex items-center gap-1.5 h-8 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-bold transition-all">
+              <Download className="w-3.5 h-3.5" />
+              {t('admin.enhanced.downloadApp')}
+            </a>
+          ) : (
+            <span className="shrink-0 text-[10px] text-slate-400 font-semibold">{t('profile.comingSoon')}</span>
+          )}
         </div>
       </div>
 
