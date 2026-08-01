@@ -711,18 +711,18 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
         <div className="fixed inset-0 z-50 overflow-hidden">
           <div className="absolute inset-0 backdrop-blur-sm" style={{ backgroundColor: 'rgba(15,23,42,0.6)' }} onClick={() => { setOrderProduct(null); setOrderQty(1); }} />
           <div className="absolute inset-y-0 right-0 max-w-full flex">
-            <div className="w-screen max-w-md shadow-2xl flex flex-col" style={{ backgroundColor: surfaceColor }}>
+            <div className="w-screen max-w-md shadow-2xl flex flex-col" style={{ backgroundColor: '#ffffff' }}>
 
               {/* Drawer Header */}
-              <div className="px-3 py-3 border-b flex justify-between items-center" style={{ borderColor: surfaceBorderColor }}>
-                <button onClick={() => { setOrderProduct(null); setOrderQty(1); }} className="p-1.5" style={{ color: surfaceTextColor }}><X size={20} /></button>
-                <h2 className="text-sm font-black" style={{ color: surfaceTextColor }}>تأكيد الطلب</h2>
+              <div className="px-3 py-3 border-b flex justify-between items-center" style={{ borderColor: '#e5e7eb' }}>
+                <button onClick={() => { setOrderProduct(null); setOrderQty(1); }} className="p-1.5" style={{ color: '#111' }}><X size={20} /></button>
+                <h2 className="text-sm font-black" style={{ color: '#111' }}>تأكيد الطلب</h2>
                 <span className="w-8" />
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 space-y-3" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                   {/* Product Summary */}
-                  <div className="flex gap-2.5 p-2.5 rounded-xl border" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
+                  <div className="flex gap-2.5 p-2.5 rounded-xl border" style={{ backgroundColor: '#f9fafb', borderColor: '#e5e7eb' }}>
                     {orderProduct.images?.[0] && (
   <img 
     src={orderProduct.images[0]} 
@@ -736,12 +736,12 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
   />
 )}
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-xs truncate" style={{ color: surfaceTextColor }}>{orderProduct.title}</h4>
-                      {orderVariant?.variant_name && <p className="text-[10px] mt-0.5" style={{ color: surfaceTextMuted }}>{orderVariant.variant_name}</p>}
+                      <h4 className="font-bold text-xs truncate" style={{ color: '#111' }}>{orderProduct.title}</h4>
+                      {orderVariant?.variant_name && <p className="text-[10px] mt-0.5" style={{ color: '#666' }}>{orderVariant.variant_name}</p>}
                       <div className="flex items-center justify-between mt-1.5">
-                        <div className="flex items-center border rounded-lg overflow-hidden" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
-                          <button type="button" onClick={() => setOrderQty(q => Math.max(1, q - 1))} className="w-7 h-7 flex items-center justify-center active:scale-90 transition-transform" style={{ color: surfaceTextMuted }}><Minus size={12} /></button>
-                          <span className="w-8 text-center font-black text-xs tabular-nums" style={{ color: surfaceTextColor }}>{orderQty}</span>
+                        <div className="flex items-center border rounded-lg overflow-hidden" style={{ backgroundColor: '#fff', borderColor: '#e5e7eb' }}>
+                          <button type="button" onClick={() => setOrderQty(q => Math.max(1, q - 1))} className="w-7 h-7 flex items-center justify-center active:scale-90 transition-transform" style={{ color: '#666' }}><Minus size={12} /></button>
+                          <span className="w-8 text-center font-black text-xs tabular-nums" style={{ color: '#111' }}>{orderQty}</span>
                           <button type="button" onClick={() => setOrderQty(q => Math.min(99, q + 1))} className="w-7 h-7 flex items-center justify-center active:scale-90 transition-transform" style={{ color: accentColor }}><Plus size={12} /></button>
                         </div>
                         <p className="font-black text-sm" style={{ color: accentColor }}>
@@ -752,7 +752,7 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                   </div>
 
                   {/* COD FORM */}
-                  <div className="border-t pt-3" style={{ borderColor: surfaceBorderColor }}>
+                  <div className="border-t pt-3" style={{ borderColor: '#e5e7eb' }}>
                       {orderProduct.variants && orderProduct.variants.length > 0 && (
                         <div className="mb-3">
                           <VariantSelector variants={orderProduct.variants} selected={orderVariant} onSelect={setOrderVariant} accentColor={accentColor} currency={currency} basePrice={orderProduct.price} />
@@ -767,9 +767,9 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                             selectedOfferId={selectedOffer?.offer_id ?? null}
                             onSelect={handleOfferSelect}
                             accentColor={accentColor}
-                            textColor={surfaceTextColor}
-                            borderColor={surfaceBorderColor}
-                            bgColor={surfaceMuted}
+                            textColor="#111"
+                            borderColor="#e5e7eb"
+                            bgColor="#f9fafb"
                           />
                           </div>
                         )}
@@ -781,9 +781,9 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                               type="text" 
                               required 
                               className="w-full pl-4 pr-10 py-2.5 rounded-lg transition-all text-sm"
-                              style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
+                              style={{ border: '1.5px solid #e5e7eb', backgroundColor: '#fff', color: '#111' }}
                               onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                              onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                              onBlur={e => e.currentTarget.style.borderColor = '#e5e7eb'}
                               placeholder="الاسم الكامل"
                               value={customerName}
                               onChange={(e) => setCustomerName(e.target.value)}
@@ -802,9 +802,9 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                               dir="ltr"
                               maxLength={10}
                               className="w-full pl-4 pr-10 py-2.5 rounded-lg transition-all text-sm"
-                              style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
+                              style={{ border: '1.5px solid #e5e7eb', backgroundColor: '#fff', color: '#111' }}
                               onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                              onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                              onBlur={e => e.currentTarget.style.borderColor = '#e5e7eb'}
                               placeholder="رقم الهاتف"
                               value={customerPhone}
                               onChange={(e) => setCustomerPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
@@ -821,9 +821,9 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                               onChange={e => setSelectedWilayaId(Number(e.target.value))}
                               required
                               className="w-full pl-10 pr-10 py-2.5 rounded-lg transition-all appearance-none text-sm"
-                              style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
+                              style={{ border: '1.5px solid #e5e7eb', backgroundColor: '#fff', color: '#111' }}
                               onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                              onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                              onBlur={e => e.currentTarget.style.borderColor = '#e5e7eb'}
                             >
                               <option value="">اختر الولاية</option>
                               {wilayas.map(w => (
@@ -833,7 +833,7 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                             <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
                               <MapPin size={20} />
                             </div>
-                            <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextColor, opacity: 0.4 }} />
+                            <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#111', opacity: 0.4 }} />
                           </div>
 
                            {/* Commune select with icon */}
@@ -846,9 +846,9 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                                 value={communeId}
                                 onChange={e => setCommuneId(e.target.value)}
                                 className="w-full pl-10 pr-10 py-2.5 rounded-lg transition-all appearance-none disabled:opacity-50 text-sm"
-                                style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
+                                style={{ border: '1.5px solid #e5e7eb', backgroundColor: '#fff', color: '#111' }}
                                 onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                                onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                                onBlur={e => e.currentTarget.style.borderColor = '#e5e7eb'}
                               >
                                 <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
                                 {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
@@ -856,7 +856,7 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                               <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
                                 <Building2 size={16} />
                               </div>
-                              <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextColor, opacity: 0.4 }} />
+                              <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#111', opacity: 0.4 }} />
                             </div>
                           )}
 
@@ -867,9 +867,9 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                                 name="address" 
                                 type="text" 
                                 className="w-full pl-4 pr-10 py-2.5 rounded-lg transition-all text-sm"
-                                style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
+                                style={{ border: '1.5px solid #e5e7eb', backgroundColor: '#fff', color: '#111' }}
                                 onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                                onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                                onBlur={e => e.currentTarget.style.borderColor = '#e5e7eb'}
                                 placeholder="عنوان التوصيل"
                                 value={customerAddress}
                                 onChange={e => setCustomerAddress(e.target.value)}
@@ -889,9 +889,9 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                                 value={customerNotes}
                                 onChange={e => setCustomerNotes(e.target.value)}
                                 className="w-full px-4 py-2.5 rounded-lg transition-all resize-none text-sm"
-                                style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
+                                style={{ border: '1.5px solid #e5e7eb', backgroundColor: '#fff', color: '#111' }}
                                 onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                                onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
+                                onBlur={e => e.currentTarget.style.borderColor = '#e5e7eb'}
                                 placeholder="ملاحظات إضافية (اختياري)"
                               />
                             </div>
@@ -901,13 +901,13 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                           {(showHomeDelivery || showDeskDelivery) && (
                             <div className="grid grid-cols-2 gap-2">
                               {showHomeDelivery && (
-                                <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border-2 transition-all text-xs font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : surfaceBorderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : inputBg, color: selectedDeliveryType === 'home' ? accentColor : surfaceTextColor }}>
+                                <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border-2 transition-all text-xs font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'home' ? accentColor : '#111' }}>
                                   <Truck size={14} />
                                   <span>توصيل للمنزل</span>
                                 </button>
                               )}
                               {showDeskDelivery && (
-                                <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border-2 transition-all text-xs font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : surfaceBorderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : inputBg, color: selectedDeliveryType === 'desk' ? accentColor : surfaceTextColor }}>
+                                <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border-2 transition-all text-xs font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : '#e5e7eb', backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : '#fff', color: selectedDeliveryType === 'desk' ? accentColor : '#111' }}>
                                   <Building2 size={14} />
                                   <span>استلام من المكتب</span>
                                 </button>
@@ -918,18 +918,18 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                   </div>
 
                   {/* Order Summary — scrolls with content */}
-                  <div className="border-t pt-3 space-y-2" style={{ borderColor: surfaceBorderColor }}>
-                    <div className="space-y-1.5 text-sm" style={{ color: surfaceTextMuted }}>
+                  <div className="border-t pt-3 space-y-2" style={{ borderColor: '#e5e7eb' }}>
+                    <div className="space-y-1.5 text-sm" style={{ color: '#666' }}>
                       <div className="flex justify-between">
                         <span>{Math.round(orderVariant?.price ?? orderProduct.price ?? 0).toLocaleString()} {currency} × {orderQty}</span>
-                        <span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round((orderVariant?.price ?? orderProduct.price ?? 0) * orderQty).toLocaleString()} {currency}</span>
+                        <span className="font-bold" style={{ color: '#111' }}>{Math.round((orderVariant?.price ?? orderProduct.price ?? 0) * orderQty).toLocaleString()} {currency}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>التوصيل</span>
-                        <span className="font-bold" style={{ color: surfaceTextColor }}>{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
+                        <span className="font-bold" style={{ color: '#111' }}>{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
                       </div>
-                      <div className="h-px" style={{ backgroundColor: surfaceBorderColor }} />
-                      <div className="flex justify-between font-black text-base" style={{ color: surfaceTextColor }}>
+                      <div className="h-px" style={{ backgroundColor: '#e5e7eb' }} />
+                      <div className="flex justify-between font-black text-base" style={{ color: '#111' }}>
                         <span>المجموع</span>
                         <span style={{ color: accentColor }}>{Math.round(((orderVariant?.price ?? orderProduct.price ?? 0) * orderQty) + deliveryFee).toLocaleString()} {currency}</span>
                       </div>
