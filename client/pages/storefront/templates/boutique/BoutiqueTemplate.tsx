@@ -440,9 +440,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       {/* HERO SECTION — Split Layout */}
       {(hasHeroBanner || heroProduct) && (
         <section className="px-3 pt-3">
-          <div className="flex flex-col md:flex-row overflow-hidden rounded-2xl" style={{ backgroundColor: surfaceColor, minHeight: 'clamp(160px, 25dvh, 260px)' }}>
+          <div className="flex flex-col md:flex-row overflow-hidden rounded-2xl" style={{ backgroundColor: surfaceColor, height: 'clamp(160px, 25dvh, 260px)' }}>
             {/* Image — left on desktop, top on mobile */}
-            <div className="relative w-full md:w-[55%] shrink-0 overflow-hidden" style={{ minHeight: 'clamp(120px, 20dvh, 220px)' }}>
+            <div className="relative w-full md:w-[55%] shrink-0 overflow-hidden h-full">
               <img
                 src={heroBannerUrl || heroProduct?.images?.[0] || ''}
                 alt={hasHeroBanner ? (settings?.store_name || brandName) : heroProduct?.title}
