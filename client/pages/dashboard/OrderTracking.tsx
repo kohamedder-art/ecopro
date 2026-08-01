@@ -36,13 +36,13 @@ const STATUS_GROUP: Record<string, string> = {
   cancelled: "bad", returned: "bad", failed: "bad", fake: "bad", duplicate: "bad",
 };
 
-const GROUP_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  pending: { label: "قيد الانتظار", color: "#0d6efd", bg: "#e7f1ff", border: "#b6d4fe" },
-  transit: { label: "في الطريق",    color: "#fd7e14", bg: "#fff4e6", border: "#ffec99" },
-  hub:     { label: "في المحطة",    color: "#6f42c1", bg: "#f3f0ff", border: "#d0bfff" },
-  ofd:     { label: "قيد التوصيل",  color: "#dc3545", bg: "#fff5f5", border: "#ffc9c9" },
-  done:    { label: "تم التسليم",   color: "#198754", bg: "#d1e7dd", border: "#badbcc" },
-  bad:     { label: "مشكلة",        color: "#dc3545", bg: "#fff5f5", border: "#ffc9c9" },
+const GROUP_META: Record<string, { label: string; color: string }> = {
+  pending: { label: "قيد الانتظار", color: "#0d9488" },
+  transit: { label: "في الطريق",    color: "#d97706" },
+  hub:     { label: "في المحطة",    color: "#7c3aed" },
+  ofd:     { label: "قيد التوصيل",  color: "#e11d48" },
+  done:    { label: "تم التسليم",   color: "#059669" },
+  bad:     { label: "مشكلة",        color: "#dc2626" },
 };
 
 interface TrackingOrder {
@@ -67,11 +67,11 @@ function timeAgo(iso: string, locale: string): string {
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return locale === "ar" ? "الآن" : "now";
-    if (mins < 60) return locale === "ar" ? `منذ ${mins} دقيقة` : `${mins}m ago`;
+    if (mins < 60) return locale === "ar" ? `منذ ${mins} د` : `${mins}m`;
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return locale === "ar" ? `منذ ${hrs} ساعة` : `${hrs}h ago`;
+    if (hrs < 24) return locale === "ar" ? `منذ ${hrs} س` : `${hrs}h`;
     const days = Math.floor(hrs / 24);
-    if (days < 7) return locale === "ar" ? `منذ ${days} يوم` : `${days}d ago`;
+    if (days < 7) return locale === "ar" ? `منذ ${days} ي` : `${days}d`;
     return new Date(iso).toLocaleDateString(locale === "ar" ? "ar-DZ" : "en-US", { day: "2-digit", month: "2-digit" });
   } catch { return ""; }
 }
@@ -84,65 +84,86 @@ function getEffectiveStatus(order: TrackingOrder): string {
   return (order.tracking_number && order.delivery_status) ? order.delivery_status : order.status;
 }
 
-// ─── 2010-style Step bar ─────────────────────────────────────
+// ─── Step bar — RTL-aware with labels always under circles ───
 function StepBar({ status, t, locale }: { status: string; t: (key: string) => string; locale: string }) {
   const rawStep = STATUS_TO_STEP[status] ?? 0;
   const isBad = rawStep === -1;
   const currentStep = isBad ? 0 : rawStep;
-  const isCancelled = ["cancelled","returned","fake","duplicate","failed"].includes(status);
+  const isRTL = locale === "ar";
+
+  // In RTL, we reverse the visual order but keep logic the same
+  const steps = isRTL ? [...TRACKING_STEPS].reverse() : TRACKING_STEPS;
+  const logicalCurrentStep = isBad ? 0 : (TRACKING_STEPS.length - 1 - currentStep);
+
   const pct = (currentStep / (TRACKING_STEPS.length - 1)) * 100;
 
   return (
-    <div style={{ width: '100%' }}>
-      {/* Progress bar — Web 2.0 gradient style */}
-      <div style={{
-        width: '100%', height: '22px', borderRadius: '11px',
-        background: '#e9ecef', border: '1px solid #adb5bd',
-        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.15)',
-        overflow: 'hidden', position: 'relative',
-      }}>
-        <div style={{
-          height: '100%', borderRadius: '10px', transition: 'width 0.8s ease',
-          width: `${pct}%`,
-          background: isCancelled
-            ? 'linear-gradient(180deg, #f87171, #dc2626)'
-            : 'linear-gradient(180deg, #4ade80, #16a34a)',
-          boxShadow: isCancelled
-            ? 'inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 3px rgba(220,38,38,0.3)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 3px rgba(22,163,74,0.3)',
-          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px',
-        }}>
-          {pct > 15 && (
-            <span style={{ color: '#fff', fontSize: '10px', fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-              {Math.round(pct)}%
-            </span>
-          )}
-        </div>
+    <div className="w-full" dir="ltr">
+      {/* Progress bar — always LTR internally, steps rendered in RTL order */}
+      <div className="relative w-full h-[6px] bg-muted rounded-full overflow-hidden border border-border/50"
+        style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.08)' }}>
+        <div
+          className="absolute inset-y-0 rounded-full transition-all duration-700"
+          style={{
+            width: `${pct}%`,
+            [isRTL ? 'right' : 'left']: 0,
+            [isRTL ? 'left' : 'right']: 'auto',
+            background: "linear-gradient(90deg, #34d399, #6366f1, #f97316)",
+            boxShadow: "0 1px 4px rgba(99,102,241,0.3)",
+          }}
+        />
       </div>
 
-      {/* Step labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', padding: '0 2px' }}>
-        {TRACKING_STEPS.map((step, i) => {
-          const done = !isBad && i < currentStep;
-          const active = !isBad && i === currentStep;
+      {/* Step circles + labels — always arranged in display order */}
+      <div className="flex items-start justify-between mt-2" style={{ direction: 'ltr' }}>
+        {steps.map((step, displayIdx) => {
+          const logicalIdx = isRTL ? (TRACKING_STEPS.length - 1 - displayIdx) : displayIdx;
+          const done = !isBad && logicalIdx < currentStep;
+          const active = !isBad && logicalIdx === currentStep;
+          const isCurrentStep = active;
+
           return (
-            <div key={step.key} style={{
-              textAlign: 'center', flex: 1,
-              fontSize: '9px', fontWeight: active ? 800 : 600,
-              color: active ? step.color : done ? '#495057' : '#adb5bd',
-              lineHeight: 1.2,
-            }}>
-              <div style={{
-                width: '14px', height: '14px', borderRadius: '50%', margin: '0 auto 3px',
-                background: done ? step.color : active ? '#fff' : '#e9ecef',
-                border: active ? `3px solid ${step.color}` : done ? 'none' : '2px solid #dee2e6',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: active ? `0 0 8px ${step.color}40` : 'none',
-              }}>
-                {done && <span style={{ color: '#fff', fontSize: '8px', fontWeight: 900 }}>✓</span>}
-                {active && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: step.color }} />}
+            <div key={step.key} className="flex flex-col items-center" style={{ flex: 1, minWidth: 0 }}>
+              {/* Circle */}
+              <div className="relative">
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300"
+                  style={{
+                    background: done ? step.color : isCurrentStep ? "#fff" : "hsl(var(--muted))",
+                    border: isCurrentStep
+                      ? `3px solid ${step.color}`
+                      : done
+                        ? "none"
+                        : "2px solid hsl(var(--border))",
+                    boxShadow: isCurrentStep
+                      ? `0 0 0 4px ${step.color}20, 0 2px 8px ${step.color}30`
+                      : done
+                        ? `0 1px 4px ${step.color}25`
+                        : "0 1px 2px rgba(0,0,0,0.05)",
+                  }}
+                >
+                  {done && (
+                    <svg width="10" height="10" viewBox="0 0 13 13" fill="none">
+                      <path d="M4 6.5L5.5 8L9.5 4.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                  {isCurrentStep && (
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: step.color }} />
+                  )}
+                </div>
               </div>
-              {t(step.labelKey)}
+              {/* Label — always below the circle */}
+              <span
+                className="text-center mt-1 leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
+                style={{
+                  fontSize: '8px',
+                  fontWeight: isCurrentStep ? 800 : 600,
+                  color: isCurrentStep ? step.color : done ? '#495057' : 'hsl(var(--muted-foreground))',
+                  maxWidth: '70px',
+                }}
+              >
+                {t(step.labelKey)}
+              </span>
             </div>
           );
         })}
@@ -151,8 +172,8 @@ function StepBar({ status, t, locale }: { status: string; t: (key: string) => st
   );
 }
 
-// ─── 2010-style Order card ───────────────────────────────────
-function OrderCard({ order, events, t, locale, index }: { order: TrackingOrder; events?: TrackingEvent[]; t: (key: string) => string; locale: string; index: number }) {
+// ─── Order card — Web 2.0 + modern hybrid ────────────────────
+function OrderCard({ order, t, locale }: { order: TrackingOrder; t: (key: string) => string; locale: string }) {
   const [copied, setCopied] = useState<'none' | 'id' | 'trk'>('none');
   const effectiveStatus = getEffectiveStatus(order);
   const stepIdx = STATUS_TO_STEP[effectiveStatus] ?? 0;
@@ -163,97 +184,74 @@ function OrderCard({ order, events, t, locale, index }: { order: TrackingOrder; 
   const price = order.unit_price != null ? (order.unit_price * (order.quantity || 1)) : (order.total_price ?? 0);
 
   const handleCopy = async (text: string, type: 'id' | 'trk') => {
-    try { await navigator.clipboard.writeText(text); setCopied(type); setTimeout(() => setCopied('none'), 1500); } catch {}
+    try { await navigator.clipboard.writeText(text); setCopied(type); setTimeout(() => setCopied('none'), 1200); } catch {}
   };
 
   return (
-    <div style={{
-      background: '#fff',
-      border: `2px solid ${meta.border}`,
-      borderRadius: '8px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.8) inset',
-      overflow: 'hidden',
-      animation: `fadeIn 0.3s ease ${index * 0.05}s both`,
-    }}>
-      {/* Header bar */}
-      <div style={{
-        background: `linear-gradient(180deg, ${meta.bg}, ${meta.bg}dd)`,
-        borderBottom: `1px solid ${meta.border}`,
-        padding: '8px 14px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    <div className="rounded-2xl overflow-hidden transition-shadow hover:shadow-md"
+      style={{
+        background: 'hsl(var(--card))',
+        border: `2px solid hsl(var(--border))`,
+        borderRight: `4px solid ${meta.color}`,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{
-            background: meta.color, color: '#fff',
-            padding: '3px 10px', borderRadius: '4px',
-            fontSize: '11px', fontWeight: 800,
-            boxShadow: `0 1px 3px ${meta.color}40`,
+      {/* Header — Web 2.0 colored bar */}
+      <div className="flex items-center gap-3 px-4 py-2"
+        style={{
+          background: `linear-gradient(135deg, ${meta.color}12, ${meta.color}06)`,
+          borderBottom: `1px solid ${meta.color}20`,
+        }}>
+        <span className="text-sm font-black tabular-nums" style={{ color: meta.color }}>
+          #{order.reference_id || order.id}
+        </span>
+        <span className="text-sm font-bold text-foreground truncate">{order.customer_name}</span>
+        <span className="text-xs text-muted-foreground hidden sm:inline">{order.customer_phone}</span>
+        <div className="flex-1" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border"
+          style={{
+            backgroundColor: `${meta.color}15`,
+            borderColor: `${meta.color}40`,
+            color: meta.color,
           }}>
-            #{order.reference_id || order.id}
-          </span>
-          <span style={{ fontSize: '12px', fontWeight: 700, color: '#212529' }}>
-            {order.customer_name}
-          </span>
-          <span style={{ fontSize: '11px', color: '#6c757d' }}>
-            {order.customer_phone}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{
-            background: meta.color, color: '#fff',
-            padding: '2px 8px', borderRadius: '3px',
-            fontSize: '10px', fontWeight: 700,
-          }}>
-            {meta.label}
-          </span>
-          <span style={{
-            fontSize: '14px', fontWeight: 900,
-            color: isBad ? '#dc3545' : '#198754',
-          }}>
-            {formatPrice(price, locale)}
-          </span>
-        </div>
+          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: meta.color, boxShadow: `0 0 6px ${meta.color}60` }} />
+          {meta.label}
+        </span>
+        <span className="text-sm font-black tabular-nums" style={{ color: isBad ? "#ef4444" : "#22c55e" }}>
+          {formatPrice(price, locale)}
+        </span>
       </div>
 
       {/* Body */}
-      <div style={{ padding: '12px 14px' }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-          {/* Product image */}
-          <div style={{
-            width: '50px', height: '50px', borderRadius: '6px',
-            background: '#f8f9fa', border: '1px solid #dee2e6',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, overflow: 'hidden',
-          }}>
+      <div className="px-4 py-3">
+        {/* Info row */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-border"
+            style={{ background: `${meta.color}08` }}>
             {order.product_image ? (
-              <img src={order.product_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={order.product_image} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span style={{ fontSize: '20px' }}>📦</span>
+              <span className="text-lg">📦</span>
             )}
           </div>
-
-          {/* Info + step bar */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="flex-1 min-w-0">
             <StepBar status={effectiveStatus} t={t} locale={locale} />
           </div>
-
-          {/* Side info */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+          <div className="flex flex-col items-end gap-1 shrink-0">
             {hasCourier && (
               <button onClick={() => handleCopy(order.tracking_number!, 'trk')}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 border transition-colors"
                 style={{
-                  background: '#e7f1ff', border: '1px solid #b6d4fe',
-                  padding: '3px 8px', borderRadius: '4px',
-                  fontSize: '10px', fontWeight: 700, color: '#0d6efd',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-                }}>
+                  background: `hsl(var(--primary))10`,
+                  borderColor: `hsl(var(--primary))25`,
+                  color: 'hsl(var(--primary))',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = `hsl(var(--primary))20`}
+                onMouseLeave={e => e.currentTarget.style.background = `hsl(var(--primary))10`}>
                 🚚 {order.delivery_company}
-                {copied === 'trk' && <span style={{ color: '#198754' }}>✓</span>}
+                {copied === 'trk' && <span className="text-green-500">✓</span>}
               </button>
             )}
-            <span style={{ fontSize: '10px', color: '#adb5bd' }}>
-              {timeAgo(order.created_at, locale)}
-            </span>
+            <span className="text-[10px] text-muted-foreground">{timeAgo(order.created_at, locale)}</span>
           </div>
         </div>
       </div>
@@ -333,128 +331,91 @@ export default function OrderTracking() {
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(180deg, #e9ecef 0%, #dee2e6 50%, #ced4da 100%)',
-      fontFamily: 'Tahoma, Arial, Helvetica, sans-serif',
-      direction: isRTL ? 'rtl' : 'ltr',
-    }}>
-      {/* 2010-style top bar */}
-      <div style={{
-        background: 'linear-gradient(180deg, #4a90d9, #357abd)',
-        borderBottom: '2px solid #2a5f9e',
-        padding: '0',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-      }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '6px',
-              background: 'linear-gradient(180deg, #fff, #e9ecef)',
-              border: '2px solid #fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              fontSize: '18px',
-            }}>
-              🚚
+    <div dir={isRTL ? "rtl" : "ltr"}>
+      <div className="max-w-screen-xl mx-auto px-2 md:px-3 pt-4 pb-20 lg:pb-6 space-y-3">
+
+        {/* Toolbar — matches Orders page style */}
+        <div className="flex items-center justify-between bg-gradient-to-r from-muted/20 to-transparent rounded-xl border border-border px-4 py-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md shadow-primary/25">
+              <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                <rect x="1" y="4" width="10" height="10" rx="1.5" stroke="#fff" strokeWidth="1.5"/>
+                <path d="M11 8H15L17 10.5V15H11V8Z" stroke="#fff" strokeWidth="1.5"/>
+                <circle cx="5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/>
+                <circle cx="13.5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/>
+              </svg>
             </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-                {t("tracking.title")}
-              </h1>
-              <p style={{ margin: 0, fontSize: '10px', color: 'rgba(255,255,255,0.7)' }}>
-                {t("tracking.subtitle")}
-              </p>
-            </div>
+            <h1 className="text-lg font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {t("tracking.title")}
+            </h1>
+            <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
+              {t("tracking.subtitle")}
+            </span>
           </div>
-          <button onClick={load} disabled={loading} style={{
-            background: 'linear-gradient(180deg, #fff, #e9ecef)',
-            border: '1px solid #adb5bd',
-            borderRadius: '4px',
-            padding: '6px 14px',
-            fontSize: '11px', fontWeight: 700, color: '#495057',
-            cursor: loading ? 'wait' : 'pointer',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-          }}>
-            {loading ? '⏳' : '🔄'} {t("tracking.refresh")}
+          <button onClick={load} disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-border bg-background hover:bg-muted transition-colors disabled:opacity-40">
+            <svg className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} viewBox="0 0 14 14" fill="none">
+              <path d="M12 7A5 5 0 117 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            {t("tracking.refresh")}
           </button>
         </div>
-      </div>
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '16px 20px' }}>
-
-        {/* Pipeline counters — 2010 dashboard style */}
-        <div style={{
-          background: '#fff',
-          border: '2px solid #adb5bd',
-          borderRadius: '8px',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.1), inset 0 1px 0 #fff',
-          padding: '14px',
-          marginBottom: '14px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#198754', boxShadow: '0 0 6px #19875460', display: 'inline-block' }} />
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#495057', textTransform: 'uppercase', letterSpacing: '1px' }}>LIVE</span>
-            <span style={{ flex: 1, height: '1px', background: '#dee2e6' }} />
-            <span style={{ fontSize: '10px', color: '#adb5bd' }}>{orders.length} orders</span>
+        {/* Pipeline counters — Web 2.0 dashboard style */}
+        <div className="rounded-xl border-2 border-border overflow-hidden"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)' }}>
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" style={{ boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">LIVE</span>
+            <span className="flex-1 h-px bg-border" />
+            <span className="text-[10px] text-muted-foreground">{orders.length} orders</span>
           </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div className="grid grid-cols-6 divide-x divide-border">
             {(["pending","transit","hub","ofd","done","bad"] as const).map(g => {
               const meta = GROUP_META[g];
               const count = liveCounts[g] || 0;
               const active = groupFilter === g;
               return (
                 <button key={g} onClick={() => setGroupFilter(g)}
+                  className="p-3 text-center transition-all relative"
                   style={{
-                    flex: 1, padding: '8px 4px', borderRadius: '6px',
-                    background: active ? `linear-gradient(180deg, ${meta.color}, ${meta.color}cc)` : meta.bg,
-                    border: `2px solid ${active ? meta.color : meta.border}`,
-                    color: active ? '#fff' : meta.color,
-                    cursor: 'pointer', textAlign: 'center',
-                    boxShadow: active ? `0 2px 6px ${meta.color}30` : '0 1px 2px rgba(0,0,0,0.05)',
-                    transition: 'all 0.15s',
+                    background: active ? `linear-gradient(180deg, ${meta.color}15, ${meta.color}08)` : 'transparent',
                   }}>
-                  <div style={{ fontSize: '18px', fontWeight: 900, lineHeight: 1 }}>{count}</div>
-                  <div style={{ fontSize: '9px', fontWeight: 700, marginTop: '2px' }}>{meta.label}</div>
+                  <div className="text-2xl font-black tabular-nums" style={{ color: meta.color }}>{count}</div>
+                  <div className="text-[9px] font-bold text-muted-foreground mt-0.5">{meta.label}</div>
+                  {active && (
+                    <div className="absolute bottom-0 left-0 right-0 h-[3px]"
+                      style={{ background: `linear-gradient(90deg, ${meta.color}, ${meta.color}80)` }} />
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Search + filter pills */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-            <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: '#adb5bd' }}>🔍</span>
+        {/* Search + Filter pills */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
             <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
               placeholder={t("tracking.searchPlaceholder")}
-              style={{
-                width: '100%', padding: '8px 10px 8px 32px',
-                border: '2px solid #adb5bd', borderRadius: '6px',
-                fontSize: '12px', outline: 'none',
-                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)',
-                background: '#fff',
-              }}
-              onFocus={e => e.currentTarget.style.borderColor = '#4a90d9'}
-              onBlur={e => e.currentTarget.style.borderColor = '#adb5bd'}
-            />
+              className="w-full pl-9 pr-4 h-9 text-sm rounded-lg border border-border bg-muted/30 text-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none transition-all" />
           </div>
-          <div style={{ display: 'flex', gap: '4px', background: '#fff', border: '2px solid #dee2e6', borderRadius: '6px', padding: '4px', flexWrap: 'wrap' }}>
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide bg-muted/40 p-1 rounded-lg border border-border">
             {PIPELINE_GROUPS.map(g => {
               const meta = g === "all" ? null : GROUP_META[g];
               const active = groupFilter === g;
               const count = liveCounts[g] || 0;
               return (
                 <button key={g} onClick={() => { setGroupFilter(g); setPage(1); }}
-                  style={{
-                    padding: '4px 10px', borderRadius: '4px',
-                    border: `1px solid ${active ? (meta?.color || '#4a90d9') : '#dee2e6'}`,
-                    background: active ? (meta?.color || '#4a90d9') : '#fff',
-                    color: active ? '#fff' : '#495057',
-                    fontSize: '10px', fontWeight: 700, cursor: 'pointer',
-                    boxShadow: active ? `0 1px 3px ${meta?.color || '#4a90d9'}30` : 'none',
-                  }}>
-                  {g === "all" ? t("tracking.all") : meta!.label} ({count})
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all
+                    ${active ? 'text-white shadow-md' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}`}
+                  style={active && meta ? { background: meta.color, boxShadow: `0 2px 8px ${meta.color}30` } : active && g === "all" ? { background: 'hsl(var(--primary))', boxShadow: '0 2px 8px hsl(var(--primary) / 0.3)' } : undefined}>
+                  {g === "all" ? t("tracking.all") : meta!.label}
+                  <span className={active ? 'opacity-80' : 'opacity-50'}>{count}</span>
                 </button>
               );
             })}
@@ -463,84 +424,64 @@ export default function OrderTracking() {
 
         {/* Orders list */}
         {loading ? (
-          <div style={{
-            background: '#fff', border: '2px solid #dee2e6', borderRadius: '8px',
-            padding: '60px 20px', textAlign: 'center',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-          }}>
-            <div style={{ fontSize: '36px', marginBottom: '12px', animation: 'spin 1s linear infinite' }}>⏳</div>
-            <p style={{ fontSize: '13px', color: '#6c757d', margin: 0 }}>{t("tracking.loading")}</p>
+          <div className="space-y-3">
+            {[1,2,3].map(i => (
+              <div key={i} className="rounded-2xl bg-card border border-border p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-muted" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-muted rounded w-1/3" />
+                    <div className="h-2 bg-muted rounded w-1/2" />
+                  </div>
+                  <div className="w-16 h-6 bg-muted rounded-full" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
-          <div style={{
-            background: '#fff5f5', border: '2px solid #ffc9c9', borderRadius: '8px',
-            padding: '20px', display: 'flex', alignItems: 'center', gap: '12px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-          }}>
-            <span style={{ fontSize: '24px' }}>⚠️</span>
+          <div className="rounded-2xl bg-card border-2 border-red-200 dark:border-red-500/20 p-4 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-500/10 flex items-center justify-center shrink-0 border border-red-200 dark:border-red-500/10">
+              <span className="text-red-500 text-lg">⚠️</span>
+            </div>
             <div>
-              <p style={{ fontSize: '13px', fontWeight: 700, color: '#dc3545', margin: 0 }}>{t("tracking.loadFailed")}</p>
-              <p style={{ fontSize: '11px', color: '#dc3545aa', margin: '4px 0 0' }}>{error}</p>
+              <p className="text-sm font-bold text-red-700 dark:text-red-400">{t("tracking.loadFailed")}</p>
+              <p className="text-xs mt-1 text-red-500/70 dark:text-red-400/60">{error}</p>
             </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{
-            background: '#fff', border: '2px solid #dee2e6', borderRadius: '8px',
-            padding: '50px 20px', textAlign: 'center',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📭</div>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: '#495057', margin: 0 }}>{t("tracking.noOrders")}</p>
-            <p style={{ fontSize: '12px', color: '#adb5bd', margin: '6px 0 0' }}>{search ? t("tracking.noResults") : t("tracking.noFilterResults")}</p>
+          <div className="rounded-2xl bg-card border-2 border-border shadow-sm flex flex-col items-center justify-center py-16 text-center gap-3">
+            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center border border-border">
+              <span className="text-3xl">📭</span>
+            </div>
+            <p className="text-sm font-bold text-foreground">{t("tracking.noOrders")}</p>
+            <p className="text-xs text-muted-foreground">{search ? t("tracking.noResults") : t("tracking.noFilterResults")}</p>
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '11px', color: '#6c757d' }}>
-                {t("tracking.showing")} <strong>{paginated.length}</strong> {t("tracking.of")} <strong>{filtered.length}</strong> {t("tracking.orders")}
-              </span>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {t("tracking.showing")} <span className="font-bold text-foreground">{paginated.length}</span> {t("tracking.of")} <span className="font-bold text-foreground">{filtered.length}</span> {t("tracking.orders")}
+              </p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {paginated.map((order, i) => <OrderCard key={order.id} order={order} events={events[order.id]} t={t} locale={locale} index={i} />)}
+            <div className="space-y-2">
+              {paginated.map((order, i) => <OrderCard key={order.id} order={order} t={t} locale={locale} />)}
             </div>
             {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
+              <div className="flex items-center justify-center gap-3 pt-2">
                 <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                  style={{
-                    padding: '6px 16px', border: '2px solid #adb5bd', borderRadius: '4px',
-                    background: 'linear-gradient(180deg, #f8f9fa, #e9ecef)',
-                    fontSize: '11px', fontWeight: 700, color: '#495057',
-                    cursor: page <= 1 ? 'not-allowed' : 'pointer',
-                    opacity: page <= 1 ? 0.4 : 1,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                  }}>
-                  ← {t("tracking.prev")}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-border bg-background hover:bg-muted transition-colors disabled:opacity-20 disabled:pointer-events-none">
+                  {isRTL ? '→' : '←'} {t("tracking.prev")}
                 </button>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#6c757d', padding: '0 8px' }}>
-                  {page} / {totalPages}
-                </span>
+                <span className="text-sm font-bold text-muted-foreground px-2">{page} / {totalPages}</span>
                 <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-                  style={{
-                    padding: '6px 16px', border: '2px solid #adb5bd', borderRadius: '4px',
-                    background: 'linear-gradient(180deg, #f8f9fa, #e9ecef)',
-                    fontSize: '11px', fontWeight: 700, color: '#495057',
-                    cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-                    opacity: page >= totalPages ? 0.4 : 1,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                  }}>
-                  {t("tracking.next")} →
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-border bg-background hover:bg-muted transition-colors disabled:opacity-20 disabled:pointer-events-none">
+                  {t("tracking.next")} {isRTL ? '←' : '→'}
                 </button>
               </div>
             )}
           </>
         )}
       </div>
-
-      {/* Global CSS for animations */}
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }
