@@ -437,53 +437,48 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   return (
     <div className="min-h-screen" style={{ fontFamily: "'Tajawal', sans-serif", backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor }} dir="rtl">
 
-      {/* HERO SECTION — Split Layout */}
+      {/* HERO SECTION — Full-Bleed with Floating Card */}
       {(hasHeroBanner || heroProduct) && (
         <section className="px-3 pt-3">
-          <div className="flex flex-col md:flex-row overflow-hidden rounded-2xl" style={{ backgroundColor: surfaceColor, height: 'clamp(160px, 25dvh, 260px)' }}>
-            {/* Image — left on desktop, top on mobile */}
-            <div className="relative w-full md:w-[55%] shrink-0 overflow-hidden h-full">
-              <img
-                src={heroBannerUrl || heroProduct?.images?.[0] || ''}
-                alt={hasHeroBanner ? (settings?.store_name || brandName) : heroProduct?.title}
-                loading="eager"
-                fetchpriority="high"
-                decoding="async"
-                className="w-full h-full object-cover"
-                width="1200"
-                height="675"
-              />
-            </div>
-            {/* Content — right on desktop, bottom on mobile */}
-            <div className="flex-1 flex flex-col justify-center px-5 py-5 md:py-0" dir="rtl">
-              {hasHeroBanner ? (
-                <h2 className="text-xl md:text-2xl font-black" style={{ color: surfaceTextColor }}>{settings?.store_name || brandName}</h2>
-              ) : (
-                <>
-                  <h2 className="text-base md:text-xl font-black leading-snug line-clamp-2" style={{ color: surfaceTextColor }}>{heroProduct?.title}</h2>
-                  {heroProduct?.description && (
-                    <p className="text-xs mt-1.5 line-clamp-2" style={{ color: surfaceTextMuted }}>{heroProduct.description?.replace(/<[^>]*>/g, '').trim()}</p>
-                  )}
-                  <div className="flex items-center gap-2 mt-3">
-                    <span className="text-xl md:text-2xl font-black" style={{ color: accentColor }}>
+          <div className="relative overflow-hidden rounded-2xl" style={{ height: 'clamp(220px, 30dvh, 320px)' }}>
+            <img
+              src={heroBannerUrl || heroProduct?.images?.[0] || ''}
+              alt={hasHeroBanner ? (settings?.store_name || brandName) : heroProduct?.title}
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+              className="w-full h-full object-cover"
+              width="1200"
+              height="675"
+            />
+            {hasHeroBanner ? (
+              <div className="absolute bottom-3 right-3 left-3 rounded-xl px-4 py-3 backdrop-blur-md" style={{ backgroundColor: 'rgba(255,255,255,0.92)' }}>
+                <h2 className="text-base md:text-lg font-black" style={{ color: '#222' }}>{settings?.store_name || brandName}</h2>
+              </div>
+            ) : (
+              <div className="absolute bottom-3 right-3 left-3 flex items-center justify-between gap-3 rounded-xl px-4 py-3 backdrop-blur-md" style={{ backgroundColor: 'rgba(255,255,255,0.92)' }}>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-black truncate" style={{ color: '#222' }}>{heroProduct?.title}</h2>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-lg font-black" style={{ color: accentColor }}>
                       {Math.round(heroProduct?.price ?? 0).toLocaleString()} {currency}
                     </span>
                     {(heroProduct as any)?.original_price && (heroProduct as any).original_price > heroProduct?.price && (
-                      <span className="text-xs line-through" style={{ color: surfaceTextMuted }} dir="ltr">
+                      <span className="text-[10px] line-through" style={{ color: '#999' }} dir="ltr">
                         {Math.round(((heroProduct as any).original_price) ?? 0).toLocaleString()} {currency}
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => { if (!heroProduct) return; setDetailProduct(heroProduct); onProductView?.(heroProduct); if (heroProduct?.slug && navigate) navigate(buildStoreUrl(storeSlug, heroProduct.slug)); }}
-                    className="mt-3 w-fit font-bold px-8 py-2.5 rounded-full text-sm hover:opacity-90 transition-colors active:scale-95"
-                    style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}
-                  >
-                    اطلب الآن
-                  </button>
-                </>
-              )}
-            </div>
+                </div>
+                <button
+                  onClick={() => { if (!heroProduct) return; setDetailProduct(heroProduct); onProductView?.(heroProduct); if (heroProduct?.slug && navigate) navigate(buildStoreUrl(storeSlug, heroProduct.slug)); }}
+                  className="shrink-0 font-bold px-5 py-2.5 rounded-full text-sm active:scale-95 transition-transform"
+                  style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}
+                >
+                  اطلب الآن
+                </button>
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -652,43 +647,47 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
             <div className="w-screen max-w-md shadow-2xl flex flex-col" style={{ backgroundColor: surfaceColor }}>
 
               {/* Drawer Header */}
-              <div className="px-4 py-6 border-b flex justify-between items-center" style={{ borderColor: surfaceBorderColor }}>
-                <button onClick={() => { setOrderProduct(null); setOrderQty(1); }} className="p-2" style={{ color: surfaceTextColor }}><X size={24} /></button>
-                <h2 className="text-lg font-black" style={{ color: surfaceTextColor }}>تأكيد الطلب</h2>
-                <span className="w-10" />
+              <div className="px-3 py-3 border-b flex justify-between items-center" style={{ borderColor: surfaceBorderColor }}>
+                <button onClick={() => { setOrderProduct(null); setOrderQty(1); }} className="p-1.5" style={{ color: surfaceTextColor }}><X size={20} /></button>
+                <h2 className="text-sm font-black" style={{ color: surfaceTextColor }}>تأكيد الطلب</h2>
+                <span className="w-8" />
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-3 space-y-3" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                   {/* Product Summary */}
-                  <div className="flex gap-3 p-3 rounded-2xl border" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
+                  <div className="flex gap-2.5 p-2.5 rounded-xl border" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
                     {orderProduct.images?.[0] && (
   <img 
     src={orderProduct.images[0]} 
-    className="w-20 h-20 object-cover rounded-xl shrink-0" 
+    className="w-16 h-16 object-cover rounded-lg shrink-0" 
     alt={orderProduct.title}
     loading="lazy"
     decoding="async"
-    width="80"
-    height="80"
+    width="64"
+    height="64"
     style={{ contentVisibility: 'auto' }}
   />
 )}
-                    <div className="flex-1">
-                      <h4 className="font-bold text-sm" style={{ color: surfaceTextColor }}>{orderProduct.title}</h4>
-                      {orderVariant?.variant_name && <p className="text-xs mt-0.5" style={{ color: surfaceTextMuted }}>{orderVariant.variant_name}</p>}
-                      <p className="font-black text-sm mt-1" style={{ color: accentColor }}>{Math.round(orderVariant?.price ?? orderProduct.price ?? 0).toLocaleString()} {currency}</p>
-                      <div className="flex items-center border rounded-lg mt-2 w-fit" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
-                        <button type="button" onClick={() => setOrderQty(q => Math.max(1, q - 1))} className="p-1.5" style={{ color: surfaceTextMuted }}><Minus size={14} /></button>
-                        <span className="px-3 font-bold text-sm" style={{ color: surfaceTextColor }}>{orderQty}</span>
-                        <button type="button" onClick={() => setOrderQty(q => q + 1)} className="p-1.5" style={{ color: surfaceTextMuted }}><Plus size={14} /></button>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-xs truncate" style={{ color: surfaceTextColor }}>{orderProduct.title}</h4>
+                      {orderVariant?.variant_name && <p className="text-[10px] mt-0.5" style={{ color: surfaceTextMuted }}>{orderVariant.variant_name}</p>}
+                      <div className="flex items-center justify-between mt-1.5">
+                        <div className="flex items-center border rounded-lg overflow-hidden" style={{ backgroundColor: inputBg, borderColor: surfaceBorderColor }}>
+                          <button type="button" onClick={() => setOrderQty(q => Math.max(1, q - 1))} className="w-7 h-7 flex items-center justify-center active:scale-90 transition-transform" style={{ color: surfaceTextMuted }}><Minus size={12} /></button>
+                          <span className="w-8 text-center font-black text-xs tabular-nums" style={{ color: surfaceTextColor }}>{orderQty}</span>
+                          <button type="button" onClick={() => setOrderQty(q => Math.min(99, q + 1))} className="w-7 h-7 flex items-center justify-center active:scale-90 transition-transform" style={{ color: accentColor }}><Plus size={12} /></button>
+                        </div>
+                        <p className="font-black text-sm" style={{ color: accentColor }}>
+                          {Math.round((orderVariant?.price ?? orderProduct.price ?? 0) * orderQty).toLocaleString()} {currency}
+                        </p>
                       </div>
                     </div>
                   </div>
 
                   {/* COD FORM */}
-                  <div className="border-t pt-4" style={{ borderColor: surfaceBorderColor }}>
+                  <div className="border-t pt-3" style={{ borderColor: surfaceBorderColor }}>
                       {orderProduct.variants && orderProduct.variants.length > 0 && (
-                        <div className="mb-4">
+                        <div className="mb-3">
                           <VariantSelector variants={orderProduct.variants} selected={orderVariant} onSelect={setOrderVariant} accentColor={accentColor} currency={currency} basePrice={orderProduct.price} />
                         </div>
                       )}
@@ -707,14 +706,14 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                           />
                           </div>
                         )}
-                        <form id="orderForm" onSubmit={handleOrder} noValidate className="space-y-3">
+                        <form id="orderForm" onSubmit={handleOrder} noValidate className="space-y-2.5">
                           {/* Name input with icon */}
                           <div className="relative">
                             <input 
                               name="name" 
                               type="text" 
                               required 
-                              className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
+                              className="w-full pl-4 pr-10 py-2.5 rounded-lg transition-all text-sm"
                               style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
                               onFocus={e => e.currentTarget.style.borderColor = accentColor}
                               onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
@@ -723,7 +722,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                               onChange={(e) => setCustomerName(e.target.value)}
                             />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
-                              <User size={20} />
+                              <User size={16} />
                             </div>
                           </div>
 
@@ -735,7 +734,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                               required 
                               dir="ltr"
                               maxLength={10}
-                              className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
+                              className="w-full pl-4 pr-10 py-2.5 rounded-lg transition-all text-sm"
                               style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
                               onFocus={e => e.currentTarget.style.borderColor = accentColor}
                               onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
@@ -744,7 +743,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                               onChange={(e) => setCustomerPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
                             />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
-                              <Phone size={20} />
+                              <Phone size={16} />
                             </div>
                           </div>
 
@@ -754,7 +753,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                               value={selectedWilayaId || ''} 
                               onChange={e => setSelectedWilayaId(Number(e.target.value))}
                               required
-                              className="w-full pl-10 pr-12 py-3.5 rounded-xl transition-all appearance-none"
+                              className="w-full pl-10 pr-10 py-2.5 rounded-lg transition-all appearance-none text-sm"
                               style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
                               onFocus={e => e.currentTarget.style.borderColor = accentColor}
                               onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
@@ -770,7 +769,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                             <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextColor, opacity: 0.4 }} />
                           </div>
 
-                          {/* Commune select with icon */}
+                           {/* Commune select with icon */}
                           {showCommune && (
                             <div className="relative">
                               <select 
@@ -779,7 +778,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                                 disabled={!selectedWilayaId}
                                 value={communeId}
                                 onChange={e => setCommuneId(e.target.value)}
-                                className="w-full pl-10 pr-12 py-3.5 rounded-xl transition-all appearance-none disabled:opacity-50"
+                                className="w-full pl-10 pr-10 py-2.5 rounded-lg transition-all appearance-none disabled:opacity-50 text-sm"
                                 style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
                                 onFocus={e => e.currentTarget.style.borderColor = accentColor}
                                 onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
@@ -788,9 +787,9 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                                 {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                               </select>
                               <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
-                                <Building2 size={20} />
+                                <Building2 size={16} />
                               </div>
-                              <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextColor, opacity: 0.4 }} />
+                              <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextColor, opacity: 0.4 }} />
                             </div>
                           )}
 
@@ -800,7 +799,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                               <input 
                                 name="address" 
                                 type="text" 
-                                className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
+                                className="w-full pl-4 pr-10 py-2.5 rounded-lg transition-all text-sm"
                                 style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
                                 onFocus={e => e.currentTarget.style.borderColor = accentColor}
                                 onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
@@ -809,7 +808,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                                 onChange={e => setCustomerAddress(e.target.value)}
                               />
                               <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
-                                <Building2 size={20} />
+                                <Building2 size={16} />
                               </div>
                             </div>
                           )}
@@ -822,7 +821,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                                 rows={2}
                                 value={customerNotes}
                                 onChange={e => setCustomerNotes(e.target.value)}
-                                className="w-full px-4 py-3.5 rounded-xl transition-all resize-none"
+                                className="w-full px-4 py-2.5 rounded-lg transition-all resize-none text-sm"
                                 style={{ border: `1.5px solid ${surfaceBorderColor}`, backgroundColor: inputBg, color: surfaceTextColor }}
                                 onFocus={e => e.currentTarget.style.borderColor = accentColor}
                                 onBlur={e => e.currentTarget.style.borderColor = surfaceBorderColor}
@@ -835,14 +834,14 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                           {(showHomeDelivery || showDeskDelivery) && (
                             <div className="grid grid-cols-2 gap-2">
                               {showHomeDelivery && (
-                                <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : surfaceBorderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : inputBg, color: selectedDeliveryType === 'home' ? accentColor : surfaceTextColor }}>
-                                  <Truck size={16} />
+                                <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border-2 transition-all text-xs font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : surfaceBorderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : inputBg, color: selectedDeliveryType === 'home' ? accentColor : surfaceTextColor }}>
+                                  <Truck size={14} />
                                   <span>توصيل للمنزل</span>
                                 </button>
                               )}
                               {showDeskDelivery && (
-                                <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : surfaceBorderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : inputBg, color: selectedDeliveryType === 'desk' ? accentColor : surfaceTextColor }}>
-                                  <Building2 size={16} />
+                                <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border-2 transition-all text-xs font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : surfaceBorderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : inputBg, color: selectedDeliveryType === 'desk' ? accentColor : surfaceTextColor }}>
+                                  <Building2 size={14} />
                                   <span>استلام من المكتب</span>
                                 </button>
                               )}
@@ -850,41 +849,41 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                           )}
                       </form>
                   </div>
-              </div>
 
-              {/* Drawer Footer */}
-              <div className="p-4 border-t space-y-3" style={{ backgroundColor: surfaceColor, borderColor: surfaceBorderColor }}>
-                <div className="space-y-1.5 text-sm" style={{ color: surfaceTextMuted }}>
-                  <div className="flex justify-between">
-                    <span>سعر المنتج ({orderQty})</span>
-                    <span className="font-bold" style={{ color: surfaceTextColor }} dir="ltr">{Math.round((orderVariant?.price ?? orderProduct.price) * orderQty).toLocaleString()} {currency}</span>
+                  {/* Order Summary — scrolls with content */}
+                  <div className="border-t pt-3 space-y-2" style={{ borderColor: surfaceBorderColor }}>
+                    <div className="space-y-1.5 text-sm" style={{ color: surfaceTextMuted }}>
+                      <div className="flex justify-between">
+                        <span>{Math.round(orderVariant?.price ?? orderProduct.price ?? 0).toLocaleString()} {currency} × {orderQty}</span>
+                        <span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round((orderVariant?.price ?? orderProduct.price ?? 0) * orderQty).toLocaleString()} {currency}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>التوصيل</span>
+                        <span className="font-bold" style={{ color: surfaceTextColor }}>{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
+                      </div>
+                      <div className="h-px" style={{ backgroundColor: surfaceBorderColor }} />
+                      <div className="flex justify-between font-black text-base" style={{ color: surfaceTextColor }}>
+                        <span>المجموع</span>
+                        <span style={{ color: accentColor }}>{Math.round(((orderVariant?.price ?? orderProduct.price ?? 0) * orderQty) + deliveryFee).toLocaleString()} {currency}</span>
+                      </div>
+                    </div>
+                    {orderError && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start">
+                        {orderError}
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      form="orderForm"
+                      disabled={isSubmitting}
+                      className="w-full text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-60 text-sm"
+                      style={{ backgroundColor: themeColor }}
+                    >
+                      {isSubmitting ? 'جاري الإرسال...' : (
+                        <><ShoppingBag size={20} /> تأكيد الطلب (الدفع عند الاستلام)</>
+                      )}
+                    </button>
                   </div>
-                  <div className="flex justify-between">
-                    <span>التوصيل</span>
-                    <span className="font-bold" style={{ color: surfaceTextColor }} dir="ltr">{deliveryFee === 0 ? 'مجاني ✅' : `${Math.round(deliveryFee).toLocaleString()} ${currency}`}</span>
-                  </div>
-                  <div className="h-px" style={{ backgroundColor: surfaceBorderColor }} />
-                  <div className="flex justify-between font-black text-base" style={{ color: surfaceTextColor }}>
-                    <span>المجموع</span>
-                    <span style={{ color: accentColor }}>{Math.round(((orderVariant?.price ?? orderProduct.price) * orderQty) + deliveryFee).toLocaleString()} {currency}</span>
-                  </div>
-                </div>
-                {orderError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-3 rounded-xl text-center whitespace-pre-line text-start">
-                    {orderError}
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  form="orderForm"
-                  disabled={isSubmitting}
-                  className="w-full text-white font-bold py-4 rounded-xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-60"
-                  style={{ backgroundColor: themeColor }}
-                >
-                  {isSubmitting ? 'جاري الإرسال...' : (
-                    <><ShoppingBag size={20} /> تأكيد الطلب (الدفع عند الاستلام)</>
-                  )}
-                </button>
               </div>
             </div>
           </div>
@@ -921,13 +920,24 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               <div className="px-6 pt-8 pb-4 space-y-4 md:flex-1 md:overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                 <div className="flex justify-between items-start gap-4">
                   <h3 className="text-xl font-black leading-tight" style={{ color: surfaceTextColor }}>{detailProduct.title}</h3>
-                  <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{Math.round(detailProduct.price ?? 0).toLocaleString()} {currency}</p>
+                  <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{Math.round(detailVariant?.price ?? detailProduct.price ?? 0).toLocaleString()} {currency}</p>
                 </div>
+                {/* Variants — Colors & Sizes */}
+                {detailProduct.variants && detailProduct.variants.length > 0 && (
+                  <VariantSelector
+                    variants={detailProduct.variants}
+                    selected={detailVariant}
+                    onSelect={setDetailVariant}
+                    accentColor={accentColor}
+                    currency={currency}
+                    basePrice={detailProduct.price}
+                  />
+                )}
                 {detailProduct.description && <div className="dz-description whitespace-pre-line" style={{ color: surfaceTextMuted }} dangerouslySetInnerHTML={{ __html: detailProduct.description }} />}
                 {detailProduct.category && <span className="inline-block text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border" style={{ borderColor: surfaceBorderColor, color: surfaceTextMuted }}>{detailProduct.category}</span>}
               </div>
               <div className="shrink-0 px-6 pb-6 pt-3 space-y-3" style={{ borderTop: `1px solid ${surfaceBorderColor}` }}>
-                <button onClick={() => { setOrderProduct(detailProduct); setDetailProduct(null); }} className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold tracking-wide transition-all active:scale-95 shadow-lg" style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}>
+                <button onClick={() => { setOrderProduct(detailProduct); setOrderVariant(detailVariant); setDetailProduct(null); }} className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold tracking-wide transition-all active:scale-95 shadow-lg" style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}>
                   اطلب الآن →
                 </button>
               </div>

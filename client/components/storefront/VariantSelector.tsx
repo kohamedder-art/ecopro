@@ -332,7 +332,7 @@ export default function VariantSelector({
                   className="relative flex flex-col items-center gap-1.5 transition-all duration-200"
                 >
                   <div 
-                    className="relative w-16 h-20 rounded-xl overflow-hidden transition-all duration-200"
+                    className="relative w-12 h-14 rounded-lg overflow-hidden transition-all duration-200"
                     style={{
                       border: `2px solid ${isActive ? accentColor : '#f3f4f6'}`,
                       boxShadow: isActive ? `0 4px 12px ${accentColor}25` : '0 1px 3px rgba(0,0,0,0.08)',
