@@ -43,7 +43,13 @@ const SYSTEM_PROMPT = `أنت مساعد ذكي لصاحب متجر على Sahla
 • لا تولّد أحرف صينية أو يابانية أو كورية أو أي أحرف غير عربية أو إنجليزية أو فرنسية أبداً.
 • استخدم **عناوين عريضة** و - قوائم نقطية باش تنظم الرد وتكون القراينة واضحة.
 
-أنت خبير في التجارة الإلكترونية في السوق الجزائري. استخدم خبرتك باش تفيد صاحب المتجر بنصيحة عملية يقدر يطبقها اليوم.`;
+أنت خبير في التجارة الإلكترونية في السوق الجزائري. عندك وصول لذاكرة المتجر — يمكنك معرفة اتجاهات المبيعات وسلوك الزبائن والتوصيات.
+
+عندك معرفة بسلوك كل زبون (المنتجات المفضلة، تكرار الطلبات، الولاية). استخدمها باش تعطي نصيحة مخصصة.
+
+إذا لاحظت اتجاه (مثلاً: مبيعات نقصت، زبون مهم توقف عن الطلب)، أخبر صاحب المتجر واقترح حل.
+
+لا تبدأ الرد بتحليلات معقدة — ابدأ بالنصيحة العملية. المزارع الجزائري يريد يعرف "شنو ندير دابا؟".`;
 
 // ═══════════════════════════════════════════════════════════════
 // ACTIONS — Simple, reliable JSON
@@ -144,7 +150,17 @@ Statuses: pending, confirmed, processing, shipped, delivered, cancelled, returne
 - ECOPRO_ACTION:{"type":"create_campaign","name":"<اسم>","message":"<رسالة>","targetCategory":"all|completed|pending|cancelled","channel":"telegram|whatsapp|messenger"}
 - ECOPRO_ACTION:{"type":"send_campaign","campaignId":<ن>}
 - ECOPRO_ACTION:{"type":"delete_campaign","campaignId":<ن>}
-- ECOPRO_ACTION:{"type":"get_campaign_logs","campaignId":<ن>}`;
+- ECOPRO_ACTION:{"type":"get_campaign_logs","campaignId":<ن>}
+
+═══ الذاكرة والرؤى ═══
+- ECOPRO_ACTION:{"type":"get_store_memory","category":"<فئة>"}
+- ECOPRO_ACTION:{"type":"get_store_trends"}
+- ECOPRO_ACTION:{"type":"get_customer_profiles","segment":"<segment>"}
+- ECOPRO_ACTION:{"type":"sync_customer_profiles"}
+- ECOPRO_ACTION:{"type":"get_pending_actions"}
+- ECOPRO_ACTION:{"type":"approve_action","actionId":<ن>}
+- ECOPRO_ACTION:{"type":"reject_action","actionId":<ن>}
+- ECOPRO_ACTION:{"type":"generate_weekly_report"}`;
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN HANDLER
@@ -779,6 +795,60 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         return { success: true, message: `**الحملة: ${c.name}**\n- الحالة: ${c.status} | المرسل: ${c.sent_count}/${c.recipients_count} | فشل: ${c.failed_count}\n\n**آخر 10 سجلات:**\n${logList || 'لا توجد سجلات'}`, data: c };
       }
 
+      // ═══ STORE MEMORY & INSIGHTS ═══
+      case 'get_store_memory': {
+        const { getMemory: getMem } = await import('../utils/store-memory');
+        const memories = await getMem(clientId, action.category);
+        if (!memories.length) return { success: true, message: 'لا توجد ذاكرة مسجلة بعد.', data: [] };
+        const list = memories.map((m: any) => `- **${m.key}**: ${m.value} (ثقة: ${Math.round(m.confidence * 100)}%)`).join('\n');
+        return { success: true, message: `**ذاكرة المتجر:**\n${list}`, data: memories };
+      }
+      case 'get_store_trends': {
+        const { getStoreTrends: getTrends } = await import('../utils/store-memory');
+        const trends = await getTrends(clientId);
+        if (!trends) return { success: true, message: 'لا توجد بيانات كافية للتحليل.', data: null };
+        const msg = `**اتجاهات هذا الأسبوع:**\n- الإيرادات: ${trends.revenueThisWeek.toLocaleString('ar-DZ')} دج (${trends.revenueChangePct > 0 ? '+' : ''}${trends.revenueChangePct}%)\n- الطلبات: ${trends.ordersThisWeek} (${trends.ordersChangePct > 0 ? '+' : ''}${trends.ordersChangePct}%)\n- متوسط الطلب: ${trends.avgOrderValue.toLocaleString('ar-DZ')} دج\n- الاتجاه: ${trends.conversionTrend === 'up' ? '📈 صاعد' : trends.conversionTrend === 'down' ? '📉 هابط' : '➡️ مستقر'}`;
+        return { success: true, message: msg, data: trends };
+      }
+      case 'get_customer_profiles': {
+        const segment = action.segment || null;
+        let sql = `SELECT customer_phone, customer_name, total_orders, total_spent, avg_order_value, segment, engagement_score, last_order_date, preferred_wilaya, preferred_categories FROM customer_profiles WHERE client_id = $1`;
+        const params: any[] = [clientId];
+        if (segment) { sql += ` AND segment = $2`; params.push(segment); }
+        sql += ` ORDER BY lifetime_value DESC LIMIT 15`;
+        const res = await p.query(sql, params);
+        if (!res.rows.length) return { success: true, message: 'لا توجد ملفات زبائن بعد. شغّل "sync_customer_profiles" أولاً.', data: [] };
+        const list = res.rows.map((c: any) => `- ${c.customer_name || c.customer_phone} | ${c.segment} | ${c.total_orders} طلبات | ${Number(c.total_spent).toLocaleString('ar-DZ')} دج | تقييم: ${c.engagement_score}/100`).join('\n');
+        return { success: true, message: `**الزبائن (${res.rows.length}):**\n${list}`, data: res.rows };
+      }
+      case 'sync_customer_profiles': {
+        const { syncCustomerProfiles: syncProfiles } = await import('../utils/store-memory');
+        const count = await syncProfiles(clientId);
+        return { success: true, message: `تم تحديث ملفات ${count} زبون ✅` };
+      }
+      case 'get_pending_actions': {
+        const { getPendingActions: getPending } = await import('../utils/autonomous-actions');
+        const actions = await getPending(clientId);
+        if (!actions.length) return { success: true, message: 'لا توجد إجراءات معلقة.', data: [] };
+        const list = actions.map((a: any) => `- #${a.id} | ${a.action_type} | ${a.ai_reasoning || 'بدون تفسير'} | ${new Date(a.created_at).toLocaleDateString('ar-DZ')}`).join('\n');
+        return { success: true, message: `**إجراءات معلقة (${actions.length}):**\n${list}`, data: actions };
+      }
+      case 'approve_action': {
+        const { approveAction: approve } = await import('../utils/autonomous-actions');
+        const result = await approve(action.actionId, clientId);
+        return { success: result.success, message: result.message };
+      }
+      case 'reject_action': {
+        const { rejectAction: reject } = await import('../utils/autonomous-actions');
+        const result = await reject(action.actionId, clientId);
+        return { success: result.success, message: result.message };
+      }
+      case 'generate_weekly_report': {
+        const { generateWeeklyReport: genReport } = await import('../utils/proactive-advisor');
+        await genReport(clientId);
+        return { success: true, message: 'تم إنشاء التقرير الأسبوعي ✅ أُرسل إشعاراً لك.' };
+      }
+
       default:
         return { success: false, message: `إجراء غير معروف: ${action.type}` };
     }
@@ -854,6 +924,8 @@ interface SlimContext {
   deliveryPricesCount: number;
   integrationsCount: number;
   staffCount: number;
+  segmentCounts: { vip: number; regular: number; at_risk: number; dormant: number; new: number };
+  weekTrend: { thisWeek: number; lastWeek: number; changePct: number };
 }
 
 async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
@@ -882,6 +954,29 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
     p.query(`SELECT COUNT(*) as total FROM delivery_integrations WHERE client_id = $1`, [clientId]),
     p.query(`SELECT COUNT(*) as total FROM staff WHERE client_id = $1`, [clientId]),
   ]);
+
+  // Customer segments (from customer_profiles if table exists)
+  let segmentCounts = { vip: 0, regular: 0, at_risk: 0, dormant: 0, new: 0 };
+  try {
+    const segRes = await p.query(`SELECT segment, COUNT(*) as count FROM customer_profiles WHERE client_id = $1 GROUP BY segment`, [clientId]);
+    for (const r of segRes.rows) {
+      segmentCounts[r.segment as keyof typeof segmentCounts] = Number(r.count);
+    }
+  } catch {}
+
+  // This week vs last week revenue
+  let weekTrend = { thisWeek: 0, lastWeek: 0, changePct: 0 };
+  try {
+    const twRes = await p.query(`
+      SELECT
+        COALESCE(SUM(total_price), 0) FILTER (WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as this_week,
+        COALESCE(SUM(total_price), 0) FILTER (WHERE created_at >= CURRENT_DATE - INTERVAL '14 days' AND created_at < CURRENT_DATE - INTERVAL '7 days') as last_week
+      FROM store_orders WHERE client_id = $1 AND status != 'cancelled' AND deleted_at IS NULL
+    `, [clientId]);
+    weekTrend.thisWeek = Number(twRes.rows[0]?.this_week) || 0;
+    weekTrend.lastWeek = Number(twRes.rows[0]?.last_week) || 0;
+    weekTrend.changePct = weekTrend.lastWeek > 0 ? Math.round(((weekTrend.thisWeek - weekTrend.lastWeek) / weekTrend.lastWeek) * 100) : 0;
+  } catch {}
 
   const or = ordersRes.rows[0];
   return {
@@ -912,6 +1007,8 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
     deliveryPricesCount: Number(deliveryRes.rows[0]?.total) || 0,
     integrationsCount: Number(integrationsRes.rows[0]?.total) || 0,
     staffCount: Number(staffRes.rows[0]?.total) || 0,
+    segmentCounts,
+    weekTrend,
   };
 }
 
@@ -937,6 +1034,19 @@ function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: s
   p += `الدخل (30 يوم): ${ctx.totalRevenue.toLocaleString('ar-DZ')} دج\n`;
   p += `المنتجات: ${ctx.totalProducts} نشط\n`;
   p += `الزبائن: ${ctx.totalCustomers}\n`;
+
+  // Week trend
+  if (ctx.weekTrend.lastWeek > 0) {
+    const arrow = ctx.weekTrend.changePct > 0 ? '📈' : ctx.weekTrend.changePct < 0 ? '📉' : '➡️';
+    p += `الأسبوع: ${ctx.weekTrend.thisWeek.toLocaleString('ar-DZ')} دج ${arrow} ${ctx.weekTrend.changePct > 0 ? '+' : ''}${ctx.weekTrend.changePct}%\n`;
+  }
+
+  // Customer segments
+  const segs = ctx.segmentCounts;
+  if (segs.vip + segs.regular + segs.at_risk + segs.dormant > 0) {
+    p += `أقسام الزبائن: VIP: ${segs.vip} | عاديين: ${segs.regular} | معرضين للخطر: ${segs.at_risk} | خاملين: ${segs.dormant} | جدد: ${segs.new}\n`;
+  }
+
   p += `شركات التوصيل: ${ctx.integrationsCount} | أسعار التوصيل: ${ctx.deliveryPricesCount} ولاية | الموظفين: ${ctx.staffCount}`;
   if (ctx.lowStockProducts?.length) p += `\nمخزون منخفض: ${ctx.lowStockProducts.join('، ')}`;
   if (ctx.topProducts?.length) p += `\nالأكثر مبيعاً: ${ctx.topProducts.join('، ')}`;

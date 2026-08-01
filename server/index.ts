@@ -70,6 +70,9 @@ import { startBotMessageWorker } from "./utils/bot-messaging";
 import { startTelegramUpdatePoller } from "./utils/telegram-poller";
 import { startGuardianWorker, stopGuardianWorker } from "./utils/guardian-worker";
 import { startTrackingPollWorker, stopTrackingPollWorker } from "./utils/tracking-poll-worker";
+import { startProactiveAdvisor, stopProactiveAdvisor } from "./utils/proactive-advisor";
+import { startAutonomousWorker, stopAutonomousWorker } from "./utils/autonomous-actions";
+import { runDailySnapshots } from "./utils/store-memory";
 import oauthRouter from "./routes/oauth";
 import messengerRouter from "./routes/messenger";
 import facebookOAuthRouter from "./routes/facebook-oauth";
@@ -170,6 +173,10 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
         startTelegramUpdatePoller({ intervalMs: 5 * 1000 });
         startGuardianWorker();
         startTrackingPollWorker({ intervalMs: 3 * 60 * 1000 });
+        startProactiveAdvisor();
+        startAutonomousWorker();
+        // Run daily snapshots once on startup (catch up if missed)
+        setTimeout(() => { void runDailySnapshots(); }, 30_000);
       })
       .catch((err) => {
         console.error('Failed to initialize database:', err);

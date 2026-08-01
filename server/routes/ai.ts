@@ -3523,4 +3523,124 @@ router.get('/landing/templates', authenticate, async (_req: Request, res: Respon
   ]);
 });
 
+// ═══════════════════════════════════════════════════════════════
+// PROACTIVE AI STORE MANAGER — Memory, Insights, Actions
+// ═══════════════════════════════════════════════════════════════
+
+import { getMemory, getStoreTrends, syncCustomerProfiles } from '../utils/store-memory';
+import { getPendingActions, approveAction, rejectAction } from '../utils/autonomous-actions';
+import { generateWeeklyReport } from '../utils/proactive-advisor';
+
+// Get AI store memory
+router.get('/memory', authenticate, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id || (req as any).clientId;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const category = req.query.category as string | undefined;
+    const memories = await getMemory(clientId, category);
+    res.json({ memories });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load memory' });
+  }
+});
+
+// Get store trends (week-over-week comparison)
+router.get('/trends', authenticate, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id || (req as any).clientId;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const trends = await getStoreTrends(clientId);
+    res.json({ trends });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load trends' });
+  }
+});
+
+// Get customer profiles
+router.get('/customers/profiles', authenticate, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id || (req as any).clientId;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const segment = req.query.segment as string | undefined;
+    const p = await pool;
+    let sql = `SELECT * FROM customer_profiles WHERE client_id = $1`;
+    const params: any[] = [clientId];
+    if (segment) { sql += ` AND segment = $2`; params.push(segment); }
+    sql += ` ORDER BY lifetime_value DESC LIMIT 50`;
+
+    const result = await p.query(sql, params);
+    res.json({ customers: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load customer profiles' });
+  }
+});
+
+// Force sync customer profiles
+router.post('/customers/sync', authenticate, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id || (req as any).clientId;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const count = await syncCustomerProfiles(clientId);
+    res.json({ synced: count });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to sync profiles' });
+  }
+});
+
+// Get pending proactive actions
+router.get('/actions/pending', authenticate, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id || (req as any).clientId;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const actions = await getPendingActions(clientId);
+    res.json({ actions });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load actions' });
+  }
+});
+
+// Approve a proactive action
+router.post('/actions/:id/approve', authenticate, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id || (req as any).clientId;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const result = await approveAction(Number(req.params.id), clientId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to approve action' });
+  }
+});
+
+// Reject a proactive action
+router.post('/actions/:id/reject', authenticate, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id || (req as any).clientId;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const result = await rejectAction(Number(req.params.id), clientId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reject action' });
+  }
+});
+
+// Generate weekly report on-demand
+router.post('/report/weekly', authenticate, async (req: Request, res: Response) => {
+  try {
+    const clientId = (req as any).user?.id || (req as any).clientId;
+    if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
+
+    await generateWeeklyReport(clientId);
+    res.json({ success: true, message: 'Weekly report generated' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to generate report' });
+  }
+});
+
 export default router;
