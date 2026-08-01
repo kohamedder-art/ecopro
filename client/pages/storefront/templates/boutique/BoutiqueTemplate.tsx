@@ -437,62 +437,55 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   return (
     <div className="min-h-screen" style={{ fontFamily: "'Tajawal', sans-serif", backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor }} dir="rtl">
 
-      {/* HERO SECTION - full width */}
+      {/* HERO SECTION — Slim Centered */}
       {(hasHeroBanner || heroProduct) && (
-        <section className="relative overflow-hidden h-[55dvh] md:h-[420px]">
-          <img
-            src={heroBannerUrl || heroProduct?.images?.[0] || ''}
-            alt={hasHeroBanner ? (settings?.store_name || brandName) : heroProduct?.title}
-            loading="eager"
-            fetchpriority="high"
-            decoding="async"
-            className="w-full h-full object-cover"
-            width="1200"
-            height="675"
-          />
-          <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${themeColor}ee, transparent, transparent)` }} />
-          <div className="absolute bottom-0 p-6 text-white max-w-7xl mx-auto w-full left-0 right-0">
-            {hasHeroBanner ? (
-              <h2 className="text-3xl font-black mt-2">{settings?.store_name || brandName}</h2>
-            ) : (
-              <>
-                <span
-                  className="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest text-white"
-                  style={{ backgroundColor: themeColor }}
-                >
-                  الأكثر طلباً
-                </span>
-                <h2 className="text-3xl font-black mt-2">{heroProduct?.title}</h2>
-                {heroProduct?.description && (
-                  <p className="dz-description mt-2 line-clamp-2" style={{ color: 'rgba(255,255,255,0.7)' }}>{heroProduct.description?.replace(/<[^>]*>/g, '').trim()}</p>
-                )}
-                <div className="flex items-center gap-3 mt-4">
-                  <span className="text-2xl font-black" style={{ color: accentColor }}>
-                    {Math.round(heroProduct?.price ?? 0).toLocaleString()} {currency}
-                  </span>
-                  {(heroProduct as any)?.original_price && (heroProduct as any).original_price > heroProduct?.price && (
-                    <span className="text-sm line-through" style={{ color: 'rgba(255,255,255,0.5)' }} dir="ltr">
-                      {Math.round(((heroProduct as any).original_price) ?? 0).toLocaleString()} {currency}
+        <section className="px-3 pt-3">
+          <div className="relative overflow-hidden rounded-2xl" style={{ height: 'clamp(200px, 35dvh, 340px)' }}>
+            <img
+              src={heroBannerUrl || heroProduct?.images?.[0] || ''}
+              alt={hasHeroBanner ? (settings?.store_name || brandName) : heroProduct?.title}
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+              className="w-full h-full object-cover"
+              width="1200"
+              height="675"
+            />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.1) 60%, transparent)' }} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-6">
+              {hasHeroBanner ? (
+                <h2 className="text-2xl md:text-3xl font-black drop-shadow-lg">{settings?.store_name || brandName}</h2>
+              ) : (
+                <>
+                  <h2 className="text-lg md:text-2xl font-black drop-shadow-lg line-clamp-2">{heroProduct?.title}</h2>
+                  <div className="flex items-center gap-3 mt-3">
+                    <span className="text-xl md:text-2xl font-black" style={{ color: accentColor }}>
+                      {Math.round(heroProduct?.price ?? 0).toLocaleString()} {currency}
                     </span>
-                  )}
+                    {(heroProduct as any)?.original_price && (heroProduct as any).original_price > heroProduct?.price && (
+                      <span className="text-sm line-through opacity-50" dir="ltr">
+                        {Math.round(((heroProduct as any).original_price) ?? 0).toLocaleString()} {currency}
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={() => { if (!heroProduct) return; setDetailProduct(heroProduct); onProductView?.(heroProduct); if (heroProduct?.slug && navigate) navigate(buildStoreUrl(storeSlug, heroProduct.slug)); }}
-                    className="font-bold px-6 py-2 rounded-full text-sm hover:opacity-90 transition-colors active:scale-95"
-                    style={{ backgroundColor: surfaceColor, color: surfaceTextColor }}
+                    className="mt-3 font-bold px-8 py-2.5 rounded-full text-sm hover:opacity-90 transition-colors active:scale-95"
+                    style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}
                   >
                     اطلب الآن
                   </button>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </section>
       )}
 
       <div className="max-w-[1600px] mx-auto px-1 md:px-2 pb-20 md:pb-0">
 
-        {/* TRUST MINI-BAR — Temu Style */}
-        <div className="flex justify-around py-2.5 text-[10px] font-bold" style={{ backgroundColor: '#fff8e1', color: '#e65100' }}>
+        {/* TRUST MINI-BAR */}
+        <div className="flex justify-around py-2.5 text-[10px] font-bold" style={{ backgroundColor: surfaceMuted, color: textMuted, borderBottom: `1px solid ${borderColor}` }}>
           <div className="flex items-center gap-1"><Truck size={13} /> توصيل لـ 58 ولاية</div>
           <div className="flex items-center gap-1"><ShieldCheck size={13} /> الدفع عند الاستلام</div>
           <div className="flex items-center gap-1"><Star size={13} fill="currentColor" /> جودة مضمونة</div>
