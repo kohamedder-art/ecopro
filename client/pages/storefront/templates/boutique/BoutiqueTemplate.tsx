@@ -423,19 +423,19 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
           <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: accentColor + '20' }}>
             <CheckCircle2 size={36} style={{ color: accentColor }} />
           </div>
-          <h2 className="text-2xl font-black mb-2" style={{ color: surfaceTextColor }}>تم تسجيل طلبك بنجاح! 🎉</h2>
-          <p className="text-sm mb-6" style={{ color: surfaceTextMuted }}>سنتصل بك قريباً لتأكيد الطلب</p>
+           <h2 className="text-2xl font-black mb-2" style={{ color: '#111' }}>تم تسجيل طلبك بنجاح! 🎉</h2>
+           <p className="text-sm mb-6" style={{ color: '#666' }}>سنتصل بك قريباً لتأكيد الطلب</p>
         <OrderSuccessConnect storeSlug={storeSlug} accentColor={accentColor} orderId={lastOrderId || undefined} telegramStartUrl={lastTelegramUrl} customerPhone={customerPhone} />
-          <div className="rounded-xl p-4 text-sm space-y-2 text-right" style={{ backgroundColor: surfaceMuted }}>
+          <div className="rounded-xl p-4 text-sm space-y-2 text-right" style={{ backgroundColor: '#f9fafb' }}>
             {orderProduct && (
               <div className="flex justify-between">
-                <span style={{ color: surfaceTextMuted }}>{orderProduct.title} × {orderQty}</span>
-                <span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round((orderVariant?.price ?? orderProduct.price) * orderQty).toLocaleString()} {currency}</span>
+                <span style={{ color: '#666' }}>{orderProduct.title} × {orderQty}</span>
+                <span className="font-bold" style={{ color: '#111' }}>{Math.round((orderVariant?.price ?? orderProduct.price) * orderQty).toLocaleString()} {currency}</span>
               </div>
             )}
-            <div className="h-px my-1" style={{ backgroundColor: surfaceBorderColor }} />
-            <div className="flex justify-between"><span style={{ color: surfaceTextMuted }}>التوصيل</span><span className="font-bold" style={{ color: surfaceTextColor }}>{Math.round(deliveryFee ?? 0).toLocaleString()} {currency}</span></div>
-            <div className="flex justify-between"><span className="font-black" style={{ color: surfaceTextColor }}>المجموع</span><span className="font-black text-lg" style={{ color: surfaceTextColor }}>{Math.round(orderProduct ? (orderVariant?.price ?? orderProduct.price) * orderQty + deliveryFee : 0).toLocaleString()} {currency}</span></div>
+            <div className="h-px my-1" style={{ backgroundColor: '#e5e7eb' }} />
+            <div className="flex justify-between"><span style={{ color: '#666' }}>التوصيل</span><span className="font-bold" style={{ color: '#111' }}>{Math.round(deliveryFee ?? 0).toLocaleString()} {currency}</span></div>
+            <div className="flex justify-between"><span className="font-black" style={{ color: '#111' }}>المجموع</span><span className="font-black text-lg" style={{ color: '#111' }}>{Math.round(orderProduct ? (orderVariant?.price ?? orderProduct.price) * orderQty + deliveryFee : 0).toLocaleString()} {currency}</span></div>
           </div>
         </div>
       </div>
@@ -1183,10 +1183,10 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
 
       {/* Sticky Mobile Checkout Bar */}
       {heroProduct && !orderProduct && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 p-3 border-t flex items-center gap-3" style={{ backgroundColor: surfaceColor, borderColor: surfaceBorderColor }}>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 p-3 border-t flex items-center gap-3" style={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb' }}>
           <div className="flex-1">
             <p className="font-black text-lg" style={{ color: accentColor }}>{Math.round(heroProduct.price ?? 0).toLocaleString()} {currency}</p>
-            <p className="text-[10px]" style={{ color: surfaceTextMuted }}>الدفع عند الاستلام</p>
+            <p className="text-[10px]" style={{ color: '#666' }}>الدفع عند الاستلام</p>
           </div>
           <button
             onClick={() => { setDetailProduct(heroProduct); onProductView?.(heroProduct); if (heroProduct?.slug && navigate) navigate(buildStoreUrl(storeSlug, heroProduct.slug)); }}
