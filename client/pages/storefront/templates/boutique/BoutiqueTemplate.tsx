@@ -482,7 +482,13 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
 
           {/* Center — tagline (desktop) */}
           <div className="hidden md:flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: themeColor }}>
+            <span
+              className="text-[10px] font-bold uppercase tracking-widest"
+              style={{ color: themeColor }}
+              contentEditable={canManage}
+              suppressContentEditableWarning
+              onBlur={handleTextEdit('store_description')}
+            >
               {settings?.store_description || 'تسوّق بأفضل الأسعار'}
             </span>
           </div>
