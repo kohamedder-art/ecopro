@@ -934,7 +934,13 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       insertVals.push(val);
     };
 
-    const abVariantId = req.cookies?.eco_ab_v ? Number(req.cookies.eco_ab_v) : null;
+    let abVariantId = req.cookies?.eco_ab_v ? Number(req.cookies.eco_ab_v) : null;
+    if (abVariantId) {
+      try {
+        const vCheck = await client.query('SELECT 1 FROM ab_test_variants WHERE id = $1', [abVariantId]);
+        if (vCheck.rows.length === 0) abVariantId = null;
+      } catch { abVariantId = null; }
+    }
 
     addCol('product_id', product_id);
     addCol('client_id', clientId);

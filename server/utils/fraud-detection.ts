@@ -118,7 +118,7 @@ export async function assessOrderRisk(
 
   // ── 4. Blacklist ──
   const blacklistRes = await q(`
-    SELECT 1 FROM customer_blacklist WHERE client_id = $1 AND phone LIKE '%' || $2 LIMIT 1
+    SELECT 1 FROM customer_blacklist WHERE client_id = $1 AND customer_phone LIKE '%' || $2 LIMIT 1
   `, [clientId, normalizedPhone]);
   if (blacklistRes.rows.length > 0) { score += 60; flags.push('🚫 الرقم في القائمة السوداء'); }
 

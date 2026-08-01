@@ -346,7 +346,14 @@ export const createOrder: RequestHandler = async (req, res) => {
       insertVals.push(val);
     };
 
-    const abVariantId = req.cookies?.eco_ab_v ? Number(req.cookies.eco_ab_v) : null;
+    let abVariantId = req.cookies?.eco_ab_v ? Number(req.cookies.eco_ab_v) : null;
+    // Validate the AB variant actually exists to avoid FK violation
+    if (abVariantId) {
+      try {
+        const vCheck = await client.query('SELECT 1 FROM ab_test_variants WHERE id = $1', [abVariantId]);
+        if (vCheck.rows.length === 0) abVariantId = null;
+      } catch { abVariantId = null; }
+    }
 
     addCol('product_id', product_id || null);
     addCol('client_id', resolvedClientId);
@@ -755,7 +762,13 @@ export const createClientOrder: RequestHandler = async (req, res) => {
       insertVals.push(val);
     };
 
-    const abVariantId = req.cookies?.eco_ab_v ? Number(req.cookies.eco_ab_v) : null;
+    let abVariantId = req.cookies?.eco_ab_v ? Number(req.cookies.eco_ab_v) : null;
+    if (abVariantId) {
+      try {
+        const vCheck = await pool.query('SELECT 1 FROM ab_test_variants WHERE id = $1', [abVariantId]);
+        if (vCheck.rows.length === 0) abVariantId = null;
+      } catch { abVariantId = null; }
+    }
 
     let unitPrice = 0;
     let resolvedProductId: number | null = product_id ? Number(product_id) : null;
