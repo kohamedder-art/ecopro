@@ -1353,88 +1353,90 @@ export default function OrdersAdmin() {
                   {/* Mobile card - rendered separately below table */}
 
                   {expandedOrderId === o.id && (
-                    <tr className="bg-gradient-to-r from-primary/5 to-transparent border-b border-border">
-                      <td colSpan={9} className="p-4">
-                        <div className="space-y-2">
-                          {/* Order Details Grid - Compact */}
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                              <div className="text-xs font-semibold text-foreground/70">{t('orders.orderNumber')}</div>
-                              <div className="font-bold text-sm">{o.id}</div>
+                    <tr className="border-b border-border">
+                      <td colSpan={9} className="p-0">
+                        {/* ── Temu/Shopify style card ── */}
+                        <div className="mx-1 mb-2 rounded-xl overflow-hidden border border-border shadow-lg" style={{ background: 'hsl(var(--card))' }}>
+                          {/* Dark header */}
+                          <div className="flex items-center justify-between px-4 py-2.5" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
+                            <div className="flex items-center gap-3">
+                              <span className="text-white font-black text-sm">#{o.id}</span>
+                              <span className="text-slate-300 text-xs font-medium">{o.customer}</span>
                             </div>
-                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                              <div className="text-xs font-semibold text-foreground/70">{t('orders.customerName')}</div>
-                              <div className="font-bold text-sm truncate" title={o.customer}>{o.customer}</div>
-                            </div>
-                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                              <div className="text-xs font-semibold text-foreground/70">{t('orders.phoneNumber')}</div>
-                              <div className="font-bold text-sm">{o.phone || t('orders.notAvailable')}</div>
-                            </div>
-                          <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                              <div className="text-xs font-semibold text-foreground/70">{t('orders.address')}</div>
-                              <div className="font-bold text-sm truncate">{o.address || t('orders.notAvailable')}</div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                              <div className="text-xs font-semibold text-foreground/70">{t('orders.deliveryType')}</div>
-                              <div className="font-bold text-sm">
-                                {o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}
-                              </div>
-                            </div>
-                    <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                      <div className="text-xs font-semibold text-foreground/70">{t('orders.product')}</div>
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const risk = getOrderRisk(o);
-                          if (risk.level !== 'safe') {
-                            return (
-                              <span title={risk.reason} className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border mr-1 ${
-                                risk.level === 'high' 
-                                  ? 'bg-red-500/15 text-red-500 border-red-500/30' 
-                                  : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
-                              }`}>
-                                <ShieldAlert className="h-3 w-3" />
-                                {risk.label}
-                              </span>
-                            );
-                          }
-                          return null;
-                        })()}
-                        {o.product_image ? (
-                          <img 
-                            src={o.product_image} 
-                            alt={o.product_title || 'Product'} 
-                                    className="w-8 h-8 rounded object-cover border border-border"
-                                  />
-                                ) : (
-                                  <div className="w-8 h-8 rounded bg-muted flex items-center justify-center border border-border">
-                                    <ShoppingBag className="w-4 h-4 text-muted-foreground" />
-                                  </div>
-                                )}
-                                <div className="font-bold text-sm truncate">{o.product_title || t('orders.notAvailable')}</div>
-                              </div>
-                            </div>
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                              <div className="text-xs font-semibold text-foreground/70">{t('orders.variant')}</div>
-                              <div className="font-bold text-sm">
-                                {o.variant_name || [o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ') || '—'}
-                              </div>
-                            </div>
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                              <div className="text-xs font-semibold text-foreground/70">{t('orders.quantity')}</div>
-                              <div className="font-bold text-sm">{Number(o.quantity || 0)}</div>
-                            </div>
-                            <div className="bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                              <div className="text-xs font-semibold text-foreground/70">{t('orders.unitPrice')}</div>
-                              <div className="font-bold text-sm">{Math.round(Number(o.unit_price || 0))} DZD</div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg font-black text-emerald-400 tabular-nums">{Math.round(Number(o.total) || 0)} DZD</span>
+                              {(() => {
+                                const risk = getOrderRisk(o);
+                                if (risk.level !== 'safe') {
+                                  return (
+                                    <span title={risk.reason} className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                      risk.level === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                                    }`}>
+                                      <ShieldAlert className="h-3 w-3" /> {risk.label}
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                              {(() => {
+                                const statusInfo = getStatusDisplay(o.status);
+                                return (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full"
+                                    style={{ backgroundColor: `${statusInfo.color}30`, color: statusInfo.color }}>
+                                    {statusInfo.icon} {statusInfo.name}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
 
-                          {/* Notes + Edit inline */}
-                          <div className="flex items-start gap-2">
-                            <div className="flex-1 bg-muted/30 dark:bg-muted/20 rounded p-2 border border-border">
-                              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/70 mb-1">
+                          {/* Product section */}
+                          <div className="flex gap-4 p-4 border-b border-border">
+                            {o.product_image ? (
+                              <img src={o.product_image} alt={o.product_title || 'Product'} className="w-20 h-20 rounded-lg object-cover border border-border shrink-0" />
+                            ) : (
+                              <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center border border-border shrink-0">
+                                <ShoppingBag className="w-8 h-8 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm truncate">{o.product_title || t('orders.notAvailable')}</p>
+                              <p className="text-xs text-foreground/60 mt-1">
+                                {o.variant_name || [o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ') || ''}
+                              </p>
+                              <div className="flex items-center gap-4 mt-2">
+                                <span className="text-xs text-foreground/60">{t('orders.quantity')}: <b className="text-foreground">{Number(o.quantity || 0)}</b></span>
+                                <span className="text-xs text-foreground/60">{t('orders.unitPrice')}: <b className="text-foreground">{Math.round(Number(o.unit_price || 0))} DZD</b></span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Customer info — compact rows */}
+                          <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-border">
+                            <div className="px-3 py-2">
+                              <div className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-0.5">{t('orders.customerName')}</div>
+                              <div className="text-sm font-bold truncate">{o.customer}</div>
+                            </div>
+                            <div className="px-3 py-2">
+                              <div className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-0.5">{t('orders.phoneNumber')}</div>
+                              <div className="text-sm font-bold">{o.phone || t('orders.notAvailable')}</div>
+                            </div>
+                            <div className="px-3 py-2">
+                              <div className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-0.5">{t('orders.address')}</div>
+                              <div className="text-sm font-bold truncate">{o.address || t('orders.notAvailable')}</div>
+                            </div>
+                            <div className="px-3 py-2">
+                              <div className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-0.5">{t('orders.deliveryType')}</div>
+                              <div className="text-sm font-bold">
+                                {o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Notes + Actions */}
+                          <div className="px-4 py-3 border-t border-border flex items-start gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-1">
                                 <StickyNote className="h-3 w-3" /> {t('orders.internalNote')}
                               </div>
                               <textarea
@@ -1443,58 +1445,40 @@ export default function OrdersAdmin() {
                                 onClick={e => e.stopPropagation()}
                                 placeholder={t('orders.addNotePlaceholder')}
                                 rows={1}
-                                className="w-full text-xs rounded border border-border bg-muted/30 px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
+                                className="w-full text-xs rounded-lg border border-border bg-muted/20 px-2.5 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
                               />
                             </div>
-                            {localStorage.getItem('isStaff') !== 'true' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditModal(o);
-                                }}
-                                className="inline-flex items-center rounded bg-primary/10 px-3 py-2 text-sm font-bold hover:bg-primary/20 transition-colors self-end"
-                              >
-                                {t('orders.editOrder')}
-                              </button>
-                            )}
                           </div>
-
-                          {/* Actions - Custom Statuses & Delete */}
-                          <div className="flex flex-wrap gap-2">
+                          <div className="px-4 pb-3 flex flex-wrap gap-1.5">
                             {customStatuses.map(status => {
                               const translatedName = t(`orders.status.${status.key}`) || status.name;
                               return (
-                                <button 
-                                  key={status.id}
-                                  onClick={() => setStatus(o.id, status.key)} 
+                                <button key={status.id} onClick={() => setStatus(o.id, status.key)}
                                   disabled={o.status === status.key}
-                                  className="inline-flex items-center rounded px-3 py-2 text-sm font-bold transition-colors shadow h-9 disabled:opacity-30"
-                                  style={{ 
-                                    backgroundColor: status.color,
-                                    color: 'white'
-                                  }}
-                                >
+                                  className="inline-flex items-center rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-colors h-8 disabled:opacity-30"
+                                  style={{ backgroundColor: status.color, color: 'white' }}>
                                   {status.icon} {translatedName}
                                 </button>
                               );
                             })}
-                            <button 
-                              onClick={() => setStatus(o.id, 'cancelled')} 
-                              className="inline-flex items-center rounded bg-gradient-to-r from-red-500 to-red-600 px-3 py-2 text-sm font-bold text-white hover:from-red-600 hover:to-red-700 transition-colors shadow h-9"
-                            >
+                            <button onClick={() => setStatus(o.id, 'cancelled')}
+                              className="inline-flex items-center rounded-lg bg-red-500 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-600 transition-colors h-8">
                               ✕ {t('orders.action.cancel')}
                             </button>
-                            <button
-                              onClick={() => handleDeleteOrder(o.raw_id)}
-                              className="inline-flex items-center rounded bg-gradient-to-r from-gray-700 to-red-700 px-3 py-2 text-sm font-bold text-white hover:from-red-800 hover:to-gray-800 transition-colors shadow h-9"
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" /> {t('orders.delete')}
+                            <span className="flex-1" />
+                            <button onClick={(e) => { e.stopPropagation(); setDeliveryOrder(o); }}
+                              className="inline-flex items-center gap-1 rounded-lg bg-indigo-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-indigo-600 transition-colors h-8">
+                              <Truck className="h-3.5 w-3.5" /> {t('orders.delivery')}
                             </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDeliveryOrder(o); }}
-                              className="inline-flex items-center rounded bg-gradient-to-r from-indigo-500 to-blue-600 px-3 py-2 text-sm font-bold text-white hover:from-indigo-600 hover:to-blue-700 transition-colors shadow h-9"
-                            >
-                              <Truck className="h-4 w-4 mr-1" /> {t('orders.delivery')}
+                            {localStorage.getItem('isStaff') !== 'true' && (
+                              <button onClick={(e) => { e.stopPropagation(); openEditModal(o); }}
+                                className="inline-flex items-center gap-1 rounded-lg bg-primary/10 text-primary px-3 py-1.5 text-[11px] font-bold hover:bg-primary/20 transition-colors h-8">
+                                ✎ {t('orders.editOrder')}
+                              </button>
+                            )}
+                            <button onClick={() => handleDeleteOrder(o.raw_id)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 text-red-500 px-3 py-1.5 text-[11px] font-bold hover:bg-red-500/20 transition-colors h-8">
+                              <Trash2 className="h-3.5 w-3.5" /> {t('orders.delete')}
                             </button>
                           </div>
                         </div>
@@ -1580,79 +1564,87 @@ export default function OrdersAdmin() {
                   </div>
                 </div>
                 {expandedOrderId === o.id && (
-                  <div className="mt-1 rounded-2xl bg-muted/40 border border-border p-3 space-y-3 text-sm">
-                    {/* Order info grid */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-card rounded-xl p-2 border border-border">
-                        <div className="text-xs text-foreground/70">{t('orders.orderNumber')}</div>
-                        <div className="font-bold text-sm">{o.id}</div>
+                  <div className="mt-1 rounded-xl overflow-hidden border border-border shadow-lg" style={{ background: 'hsl(var(--card))' }}>
+                    {/* Dark header */}
+                    <div className="flex items-center justify-between px-3 py-2" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-black text-xs">#{o.id}</span>
+                        <span className="text-slate-300 text-[11px]">{o.customer}</span>
                       </div>
-                      <div className="bg-card rounded-xl p-2 border border-border">
-                        <div className="text-xs text-foreground/70">{t('orders.phoneNumber')}</div>
-                        <div className="font-bold text-sm">{o.phone || '-'}</div>
-                      </div>
-                      <div className="bg-card rounded-xl p-2 border border-border">
-                        <div className="text-xs text-foreground/70">{t('orders.deliveryType')}</div>
-                        <div className="font-bold text-sm">
-                          {o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}
+                      <span className="text-base font-black text-emerald-400 tabular-nums">{Math.round(Number(o.total) || 0)} DZD</span>
+                    </div>
+
+                    {/* Product */}
+                    <div className="flex gap-3 p-3 border-b border-border">
+                      {o.product_image ? (
+                        <img src={o.product_image} alt={o.product_title || ''} className="w-16 h-16 rounded-lg object-cover border border-border shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center border border-border shrink-0">
+                          <ShoppingBag className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate">{o.product_title || t('orders.noProduct')}</p>
+                        <p className="text-[11px] text-foreground/60 mt-0.5">
+                          {o.variant_name || [o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ') || ''}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-[11px] text-foreground/60">×{Number(o.quantity || 0)}</span>
+                          <span className="text-[11px] font-bold">{Math.round(Number(o.unit_price || 0))} DZD</span>
                         </div>
                       </div>
-                      <div className="bg-card rounded-xl p-2 border border-border">
-                        <div className="text-xs text-foreground/70">{t('orders.amount')}</div>
-                        <div className="font-bold text-sm">{Math.round(Number(o.total) || 0)} DZD</div>
-                      </div>
                     </div>
-                    <div className="bg-card rounded-xl p-2 border border-border">
-                      <div className="text-xs text-foreground/70">{t('orders.address')}</div>
-                      <div className="font-bold text-sm truncate">{o.address || '-'}</div>
+
+                    {/* Customer info */}
+                    <div className="divide-y divide-border">
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold">{t('orders.phoneNumber')}</span>
+                        <span className="text-xs font-bold">{o.phone || '-'}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold">{t('orders.deliveryType')}</span>
+                        <span className="text-xs font-bold">{o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold">{t('orders.address')}</span>
+                        <span className="text-xs font-bold truncate max-w-[60%] text-right">{o.address || '-'}</span>
+                      </div>
                     </div>
 
                     {/* Status actions */}
-                    <div>
-                      <div className="text-xs font-semibold text-foreground/70 mb-2">{t('orders.changeStatus')}</div>
-                      <div className="flex flex-wrap gap-1.5">
+                    <div className="px-3 py-2 border-t border-border">
+                      <div className="flex flex-wrap gap-1">
                         {customStatuses.map(status => {
                           const translatedName = t(`orders.status.${status.key}`) || status.name;
                           return (
-                            <button
-                              key={status.id}
-                              onClick={() => setStatus(o.id, status.key)}
+                            <button key={status.id} onClick={() => setStatus(o.id, status.key)}
                               disabled={o.status === status.key}
-                              className="inline-flex items-center rounded-xl px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-30"
-                              style={{ backgroundColor: status.color, color: 'white' }}
-                            >
+                              className="inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold transition-all disabled:opacity-30"
+                              style={{ backgroundColor: status.color, color: 'white' }}>
                               {status.icon} {translatedName}
                             </button>
                           );
                         })}
-                        <button
-                          onClick={() => setStatus(o.id, 'cancelled')}
-                          className="inline-flex items-center rounded-xl px-3 py-1.5 text-xs font-bold bg-red-500 text-white"
-                        >
+                        <button onClick={() => setStatus(o.id, 'cancelled')}
+                          className="inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold bg-red-500 text-white">
                           ✕ {t('orders.action.cancel')}
                         </button>
                       </div>
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
-                      <button
-                        onClick={() => { setDeliveryOrder(o); }}
-                        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-indigo-500 text-white flex-1 justify-center"
-                      >
-                        <Truck className="h-3.5 w-3.5" /> {t('orders.delivery')}
+                    <div className="flex gap-1.5 px-3 pb-3 pt-1">
+                      <button onClick={() => setDeliveryOrder(o)}
+                        className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-bold bg-indigo-500 text-white flex-1 justify-center">
+                        <Truck className="h-3 w-3" /> {t('orders.delivery')}
                       </button>
-                      <button
-                        onClick={() => openEditModal(o)}
-                        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-primary/10 text-primary flex-1 justify-center"
-                      >
+                      <button onClick={() => openEditModal(o)}
+                        className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-bold bg-primary/10 text-primary flex-1 justify-center">
                         ✎ {t('orders.editOrder')}
                       </button>
-                      <button
-                        onClick={() => handleDeleteOrder(o.raw_id)}
-                        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-red-500/10 text-red-500 flex-1 justify-center"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> {t('orders.delete')}
+                      <button onClick={() => handleDeleteOrder(o.raw_id)}
+                        className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-bold bg-red-500/10 text-red-500 flex-1 justify-center">
+                        <Trash2 className="h-3 w-3" /> {t('orders.delete')}
                       </button>
                     </div>
                   </div>
