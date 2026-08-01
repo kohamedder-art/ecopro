@@ -3247,7 +3247,38 @@ export default function Store() {
                   )}
                 </div>
 
-                <div className="space-y-3">
+                <div
+                  className="space-y-3"
+                  tabIndex={0}
+                  onPaste={async (e) => {
+                    const items = Array.from(e.clipboardData?.items || []);
+                    const imageItem = items.find(item => item.type.startsWith('image/'));
+                    if (!imageItem) return;
+                    e.preventDefault();
+                    const file = imageItem.getAsFile();
+                    if (!file) return;
+                    const MAX_IMAGES = 10;
+                    const existing = Array.isArray(formData.images) ? formData.images : [];
+                    if (existing.length >= MAX_IMAGES) {
+                      toast({ variant: 'destructive', title: 'Max images reached', description: `You can upload up to ${MAX_IMAGES} images.` });
+                      return;
+                    }
+                    setUploading(true);
+                    setUploadFileName('Pasted image');
+                    setUploadProgress(0);
+                    try {
+                      const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct));
+                      const url = String((data as any)?.url || '').trim();
+                      if (!url) throw new Error('Upload failed');
+                      setFormData(prev => ({ ...prev, images: [...(Array.isArray(prev.images) ? prev.images : []), url].slice(0, MAX_IMAGES) }));
+                      toast({ title: 'Image pasted & uploaded ✓' });
+                    } catch {
+                      toast({ variant: 'destructive', title: 'Upload failed', description: 'Try again' });
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                >
                   {(formData.images?.length || 0) > 0 && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {(formData.images || []).slice(0, 10).map((url, idx) => (
@@ -3315,7 +3346,7 @@ export default function Store() {
                       {t('store.productForm.imageUrlHint')}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Upload up to 10 images. Each image must be &lt; 10MB.
+                      Upload up to 10 images. Each image must be &lt; 10MB. You can also paste an image from clipboard (Ctrl+V).
                     </p>
                     <div className="flex gap-2">
                       <Input
