@@ -294,13 +294,13 @@ export default function VariantSelector({
                       type="button"
                       title={c.name}
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleColorClick(c.name); }}
-                      className="relative rounded-full transition-all duration-200"
+                      className="relative transition-all duration-200"
                       style={{
-                        width: isActive ? 44 : 38,
-                        height: isActive ? 44 : 38,
+                        width: isActive ? 52 : 44,
+                        height: isActive ? 52 : 44,
                         backgroundColor: c.hex || '#ccc',
                         backgroundImage: !c.hex && c.name.includes(',') ? multiColorGradient(c.name) : undefined,
-                        border: isActive ? `2.5px solid ${accentColor}` : '2px solid rgba(0,0,0,0.08)',
+                        border: isActive ? `2.5px solid ${accentColor}` : '2px solid rgba(0,0,0,0.15)',
                         opacity: outOfStock ? 0.3 : 1,
                         transform: isActive ? 'scale(1.1)' : 'scale(1)',
                         cursor: outOfStock ? 'not-allowed' : 'pointer',
@@ -323,7 +323,7 @@ export default function VariantSelector({
                 );
               }
 
-              // Has image → visual thumbnail
+              // Has image → visual thumbnail (bigger, Temu style)
               return (
                 <button
                   key={c.name}
@@ -332,9 +332,9 @@ export default function VariantSelector({
                   className="relative flex flex-col items-center gap-1.5 transition-all duration-200"
                 >
                   <div 
-                    className="relative w-12 h-14 rounded-lg overflow-hidden transition-all duration-200"
+                    className="relative w-16 h-20 overflow-hidden transition-all duration-200"
                     style={{
-                      border: `2px solid ${isActive ? accentColor : '#f3f4f6'}`,
+                      border: `2px solid ${isActive ? accentColor : '#e5e7eb'}`,
                       boxShadow: isActive ? `0 4px 12px ${accentColor}25` : '0 1px 3px rgba(0,0,0,0.08)',
                       transform: isActive ? 'scale(1.08)' : 'scale(1)',
                     }}
@@ -418,8 +418,8 @@ export default function VariantSelector({
                           ? multiColorGradient(c.name)
                           : `linear-gradient(135deg, #f87171 25%, #facc15 25%, #facc15 50%, #34d399 50%, #34d399 75%, #60a5fa 75%)`
                         : undefined,
-                      border: isActive ? `2.5px solid ${accentColor}` : '2px solid rgba(0,0,0,0.1)',
-                      opacity: outOfStock ? 0.3 : (selectedColor && !isActive ? 0.4 : 1),
+                      border: isActive ? `2.5px solid ${accentColor}` : '2px solid rgba(0,0,0,0.15)',
+                      opacity: outOfStock ? 0.3 : 1,
                       transform: isActive ? 'scale(1.15)' : 'scale(1)',
                       cursor: outOfStock ? 'not-allowed' : 'pointer',
                       boxShadow: isActive ? `0 2px 8px ${accentColor}30` : '0 1px 2px rgba(0,0,0,0.08)',
@@ -460,7 +460,7 @@ export default function VariantSelector({
                   type="button"
                   disabled={!isAvailable}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSizeClick(size); }}
-                  className="min-w-[52px] h-12 px-5 rounded-2xl text-sm font-bold transition-all duration-200 border-2"
+                  className="min-w-[52px] h-12 px-5 text-sm font-bold transition-all duration-200 border-2"
                   style={{
                     backgroundColor: isActive ? accentColor : '#fff',
                     borderColor: isActive ? accentColor : '#e5e7eb',
@@ -495,7 +495,7 @@ export default function VariantSelector({
                   type="button"
                   disabled={!isAvailable}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSize2Click(size2); }}
-                  className="min-w-[52px] h-12 px-5 rounded-2xl text-sm font-bold transition-all duration-200 border-2"
+                  className="min-w-[52px] h-12 px-5 text-sm font-bold transition-all duration-200 border-2"
                   style={{
                     backgroundColor: isActive ? accentColor : '#fff',
                     borderColor: isActive ? accentColor : '#e5e7eb',

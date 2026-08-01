@@ -143,7 +143,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
   );
 }
 
-export default function BoutiqueTemplate({ settings, products, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView, initialProductSlug, navigate, bannerUrl: propBannerUrl }: TemplateProps) {
+export default function BoutiqueTemplate({ settings, products, categories, searchQuery, setSearchQuery, categoryFilter, setCategoryFilter, canManage, storeSlug, primaryColor: propPrimaryColor, onProductView, initialProductSlug, navigate, bannerUrl: propBannerUrl }: TemplateProps) {
   const { wilayas } = useStoreDeliveryPrices(storeSlug);
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<'home' | 'desk'>('home');
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
@@ -179,8 +179,8 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   }, [initialProductSlug, products]);
 
   const currency = settings?.currency_code || 'د.ج';
-  const accentColor = settings?.template_accent_color || '#f59e0b'; // amber-500 — buttons, prices, highlights
-  const themeColor = settings?.primary_color || '#0f172a'; // slate-900 — hero, headers, section accents
+  const accentColor = settings?.template_accent_color || '#f59e0b'; // Accent — prices, stars, badges, highlights
+  const themeColor = settings?.primary_color || '#0f172a'; // Primary — CTA buttons, submit button
   const bgColor = settings?.template_bg_color || '#ffffff';
   const rawBgImage = settings?.template_bg_image || '';
   const bgImageCss = rawBgImage
@@ -214,7 +214,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const textMuted = isDark ? '#94a3b8' : '#64748b';
   const borderColor = isDark ? '#334155' : '#e2e8f0';
   const surfaceMuted = isDark ? '#0f172a' : '#f1f5f9';
-  const surfaceColor = headerColor;
+  const surfaceColor = bgColor; // Use page background, not header
   const surfaceTextColor = isHeaderDark ? '#f1f5f9' : '#1e293b';
   const surfaceTextMuted = isHeaderDark ? '#94a3b8' : '#64748b';
   const surfaceBorderColor = isHeaderDark ? '#334155' : '#e2e8f0';
@@ -224,6 +224,14 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   const brandName = settings?.boutique_brand_name || settings?.store_name || 'BOUTIQUE';
   const categoryName = settings?.boutique_category_name || settings?.template_featured_title || 'مجموعة المنتجات';
   const footerText = settings?.boutique_footer_text || settings?.store_description || 'صنع بشغف لزبائننا في الجزائر';
+
+  // Configurable header colors — use existing dashboard settings
+  const promoBg = settings?.boutique_promo_bg || '#dc2626';
+  const promoTextColor = settings?.boutique_promo_text_color || '#ffffff';
+  const headerBg = headerColor; // from iyco_header_color in dashboard
+  const categoryBarBg = settings?.boutique_category_bg || headerBg;
+  const searchBarBg = settings?.boutique_search_bg || (isLight(headerBg) ? '#f5f5f5' : '#222222');
+  const headerTextColor = isHeaderDark ? '#ffffff' : '#111111';
 
    // Hero product = first product (or dzp_main_product_id)
    const heroProduct = useMemo(() => {
@@ -437,60 +445,106 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
   return (
     <div className="min-h-screen" style={{ fontFamily: "'Tajawal', sans-serif", backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor }} dir="rtl">
 
-      {/* HERO SECTION — Full-Bleed with Floating Card */}
-      {(hasHeroBanner || heroProduct) && (
-        <section className="px-3 pt-3">
-          <div className="relative overflow-hidden rounded-2xl" style={{ height: 'clamp(220px, 30dvh, 320px)' }}>
-            <img
-              src={heroBannerUrl || heroProduct?.images?.[0] || ''}
-              alt={hasHeroBanner ? (settings?.store_name || brandName) : heroProduct?.title}
-              loading="eager"
-              fetchpriority="high"
-              decoding="async"
-              className="w-full h-full object-cover"
-              width="1200"
-              height="675"
-            />
-            {hasHeroBanner ? (
-              <div className="absolute bottom-3 right-3 left-3 rounded-xl px-4 py-3 backdrop-blur-md" style={{ backgroundColor: 'rgba(255,255,255,0.92)' }}>
-                <h2 className="text-base md:text-lg font-black" style={{ color: '#222' }}>{settings?.store_name || brandName}</h2>
-              </div>
+      {/* ── PROMO BANNER — energy bar ── */}
+      <div className="overflow-hidden" style={{ backgroundColor: promoBg }}>
+        <div className="flex items-center justify-center gap-3 py-2 px-4">
+          <span className="font-black text-xs md:text-sm uppercase tracking-wider animate-pulse" style={{ color: promoTextColor }}>⚡</span>
+          <span
+            className="font-black text-xs md:text-sm uppercase tracking-wider"
+            style={{ color: promoTextColor }}
+            contentEditable={canManage}
+            suppressContentEditableWarning
+            onBlur={handleTextEdit('boutique_promo_text')}
+          >
+            {settings?.boutique_promo_text || 'عروض محدودة — خصم يصل إلى 50%'}
+          </span>
+          <span className="font-black text-xs md:text-sm uppercase tracking-wider animate-pulse" style={{ color: promoTextColor }}>⚡</span>
+        </div>
+      </div>
+
+      {/* ── MAIN HEADER — scrolls with content ── */}
+      <header style={{ backgroundColor: headerBg, borderBottom: `3px solid ${themeColor}` }}>
+        {/* Top row — logo + tagline + actions */}
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 py-2.5">
+          {/* Left — logo + store name */}
+          <div className="flex items-center gap-3">
+            {settings?.store_logo ? (
+              <img src={settings.store_logo} alt={brandName} className="h-8 md:h-9 object-contain" />
             ) : (
-              <div className="absolute bottom-3 right-3 left-3 flex items-center justify-between gap-3 rounded-xl px-4 py-3 backdrop-blur-md" style={{ backgroundColor: 'rgba(255,255,255,0.92)' }}>
-                <div className="min-w-0">
-                  <h2 className="text-sm font-black truncate" style={{ color: '#222' }}>{heroProduct?.title}</h2>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-lg font-black" style={{ color: accentColor }}>
-                      {Math.round(heroProduct?.price ?? 0).toLocaleString()} {currency}
-                    </span>
-                    {(heroProduct as any)?.original_price && (heroProduct as any).original_price > heroProduct?.price && (
-                      <span className="text-[10px] line-through" style={{ color: '#999' }} dir="ltr">
-                        {Math.round(((heroProduct as any).original_price) ?? 0).toLocaleString()} {currency}
-                      </span>
-                    )}
-                  </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 flex items-center justify-center font-black text-sm" style={{ backgroundColor: themeColor, color: isLight(themeColor) ? '#111' : '#fff' }}>
+                  {brandName.charAt(0)}
                 </div>
-                <button
-                  onClick={() => { if (!heroProduct) return; setDetailProduct(heroProduct); onProductView?.(heroProduct); if (heroProduct?.slug && navigate) navigate(buildStoreUrl(storeSlug, heroProduct.slug)); }}
-                  className="shrink-0 font-bold px-5 py-2.5 rounded-full text-sm active:scale-95 transition-transform"
-                  style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}
-                >
-                  اطلب الآن
-                </button>
+                <span className="text-sm md:text-base font-black uppercase tracking-wider" style={{ color: headerTextColor }}>{brandName}</span>
               </div>
             )}
           </div>
-        </section>
-      )}
 
-      <div className="max-w-[1600px] mx-auto px-1 md:px-2 pb-20 md:pb-0">
+          {/* Center — tagline (desktop) */}
+          <div className="hidden md:flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: themeColor }}>
+              {settings?.store_description || 'تسوّق بأفضل الأسعار'}
+            </span>
+          </div>
 
-        {/* TRUST MINI-BAR */}
-        <div className="flex justify-around py-2.5 text-[10px] font-bold" style={{ backgroundColor: surfaceMuted, color: textMuted, borderBottom: `1px solid ${borderColor}` }}>
-          <div className="flex items-center gap-1"><Truck size={13} /> توصيل لـ 58 ولاية</div>
-          <div className="flex items-center gap-1"><ShieldCheck size={13} /> الدفع عند الاستلام</div>
-          <div className="flex items-center gap-1"><Star size={13} fill="currentColor" /> جودة مضمونة</div>
+          {/* Right — actions */}
+          <div className="flex items-center gap-2">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors hover:bg-white/10" style={{ color: headerTextColor, border: `1px solid ${themeColor}` }}>
+              <User size={15} />
+              <span className="hidden md:inline">حسابي</span>
+            </button>
+            <button onClick={() => setIsCartOpen(true)} className="relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-colors hover:bg-white/10" style={{ color: headerTextColor, border: `1px solid ${themeColor}` }}>
+              <ShoppingCart size={15} />
+              <span className="hidden md:inline">السلة</span>
+              {cart.length > 0 && (
+                <span className="absolute -top-2 -left-2 min-w-[18px] h-[18px] flex items-center justify-center text-[9px] font-black text-white px-1" style={{ backgroundColor: '#e11d48' }}>
+                  {cart.reduce((s, i) => s + i.qty, 0)}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Search row */}
+        <div className="px-4 pb-2.5">
+          <div className="max-w-[1400px] mx-auto relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="ابحث عن منتج..."
+              className="w-full h-10 pr-10 pl-4 text-sm font-bold outline-none"
+              style={{ backgroundColor: searchBarBg, border: `2px solid ${isLight(searchBarBg) ? '#ccc' : '#444'}`, color: isLight(searchBarBg) ? '#111' : '#fff' }}
+            />
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isLight(searchBarBg) ? '#666' : '#888'} strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+        </div>
+
+        {/* Category nav */}
+        {categories.length > 0 && (
+          <div className="flex items-center overflow-x-auto scrollbar-hide" style={{ backgroundColor: categoryBarBg, borderTop: `1px solid ${isLight(categoryBarBg) ? '#ccc' : '#333'}` }}>
+            <button
+              onClick={() => setCategoryFilter('')}
+              className="shrink-0 px-5 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors"
+              style={{ backgroundColor: !categoryFilter ? themeColor : 'transparent', color: !categoryFilter ? (isLight(themeColor) ? '#111' : '#fff') : (isLight(categoryBarBg) ? '#666' : '#888'), borderBottom: !categoryFilter ? `3px solid ${headerTextColor}` : '3px solid transparent' }}
+            >
+              الكل
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className="shrink-0 px-5 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors"
+                style={{ backgroundColor: categoryFilter === cat ? themeColor : 'transparent', color: categoryFilter === cat ? (isLight(themeColor) ? '#111' : '#fff') : (isLight(categoryBarBg) ? '#666' : '#888'), borderBottom: categoryFilter === cat ? `3px solid ${headerTextColor}` : '3px solid transparent' }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
+
+      <div className="max-w-[1400px] mx-auto px-1 md:px-2 pb-20 md:pb-0">
 
         {/* COLLECTION GRID — Temu Style */}
         {collectionProducts.length > 0 && (
@@ -506,7 +560,7 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
               </h3>
               <span className="text-[11px] font-bold" style={{ color: textMuted }}>{collectionProducts.length} منتج</span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-[6px]" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {collectionProducts.map(product => {
                 const p = product as any;
                 const stock = p.stock_quantity ?? null;
@@ -519,6 +573,10 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                 const category = p.category || '';
                 const isBestSeller = p.is_featured || discount > 20;
                 const soldCount = p.sold_count ?? p.sales_count ?? null;
+
+                // Label logic — Temu style
+                const isNewArrival = p.is_new || (p.created_at && (Date.now() - new Date(p.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000);
+                const labelType = isBestSeller ? 'bestseller' : isNewArrival ? 'new' : ratingVal && ratingVal >= 4.5 ? 'toprated' : null;
 
                 return (
                   <div key={product.id} className="group cursor-pointer bg-white" onClick={() => { setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}>
@@ -541,67 +599,76 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
                               height="800"
                             />
                       }
-                      {/* Category badge */}
-                      {category && (
-                        <span className="absolute bottom-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-sm text-white" style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
-                          {category}
-                        </span>
-                      )}
-                      {/* Urgency badge */}
-                      {isOnlyLeft && (
-                        <span className="absolute top-2 left-2 text-[9px] font-black px-1.5 py-0.5 rounded-sm bg-orange-500 text-white uppercase tracking-wide">
-                          ONLY {stock} LEFT 🔥
-                        </span>
-                      )}
-                      {isBestSeller && !isOnlyLeft && (
-                        <span className="absolute top-2 left-2 text-[9px] font-black px-1.5 py-0.5 rounded-sm text-white" style={{ backgroundColor: '#e11d48' }}>
-                          #1 Best-Selling
-                        </span>
-                      )}
                     </div>
 
                     {/* Info */}
-                    <div className="px-2 py-2 space-y-1">
+                    <div className="px-2 py-2.5" style={{ color: '#1e293b' }}>
                       {/* Title */}
-                      <h4 className="text-xs font-bold leading-snug line-clamp-2" style={{ color: '#222' }}>{product.title}</h4>
+                      <h4 className="text-xs font-bold leading-snug line-clamp-1" style={{ color: '#1e293b' }}>{product.title}</h4>
 
-                      {/* Price row */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-black" style={{ color: '#222' }}>
-                          {Math.round(product.price ?? 0).toLocaleString()} {currency}
-                        </span>
-                        {discount > 0 && (
-                          <span className="text-[10px] font-bold px-1 py-0 rounded" style={{ backgroundColor: '#fff0f0', color: '#e11d48' }}>
-                            -{discount}%
+                      {/* Price + sold + cart row */}
+                      <div className="flex items-center justify-between mt-1.5">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-sm font-black" style={{ color: accentColor }} dir="ltr">
+                            {Math.round(product.price ?? 0).toLocaleString()}
                           </span>
-                        )}
+                          {p.original_price && p.original_price > product.price && (
+                            <span className="text-[10px] line-through" style={{ color: '#94a3b8' }} dir="ltr">
+                              {Math.round(p.original_price ?? 0).toLocaleString()}
+                            </span>
+                          )}
+                          {soldCount !== null && (
+                            <span className="text-[10px] font-bold" style={{ color: '#94a3b8' }}>
+                              🔥 {soldCount >= 1000 ? `${(soldCount / 1000).toFixed(1)}K+` : `${soldCount}+`} sold
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); setDetailProduct(product); onProductView?.(product); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); }}
+                          className="w-8 h-8 flex items-center justify-center shrink-0 transition-transform active:scale-90"
+                          style={{ border: `2px solid ${themeColor}`, color: themeColor, borderRadius: '50%' }}
+                        >
+                          <ShoppingCart size={14} strokeWidth={2.5} />
+                        </button>
                       </div>
 
-                      {/* Original price + sold */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {p.original_price && p.original_price > product.price && (
-                          <span className="text-[10px] line-through" style={{ color: '#999' }}>
-                            {Math.round(p.original_price ?? 0).toLocaleString()} {currency}
-                          </span>
-                        )}
-                        {soldCount !== null && (
-                          <span className="text-[10px]" style={{ color: '#999' }}>
-                            🔥 {soldCount >= 1000 ? `${(soldCount / 1000).toFixed(1)}K+` : `${soldCount}+`} sold
-                          </span>
-                        )}
-                      </div>
+                      {/* Badges row */}
+                      {(discount > 0 || isOnlyLeft) && (
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          {discount > 0 && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 text-white" style={{ backgroundColor: '#e11d48' }}>
+                              🔥 SAVINGS
+                            </span>
+                          )}
+                          {isOnlyLeft && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 bg-orange-500 text-white">
+                              Only {stock} left
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Rating */}
                       {ratingVal != null && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 mt-1.5">
                           <div className="flex items-center">
                             {[1,2,3,4,5].map(star => (
                               <svg key={star} className="w-2.5 h-2.5" style={{ color: star <= Math.round(ratingVal) ? '#f59e0b' : '#ddd' }} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
                             ))}
                           </div>
                           {reviewCount != null && (
-                            <span className="text-[10px]" style={{ color: '#999' }}>{reviewCount.toLocaleString()}</span>
+                            <span className="text-[10px]" style={{ color: '#94a3b8' }}>{reviewCount.toLocaleString()}</span>
                           )}
+                        </div>
+                      )}
+
+                      {/* Label */}
+                      {labelType && category && (
+                        <div className="text-[10px] font-bold mt-1.5" style={{ color: labelType === 'bestseller' ? '#e11d48' : labelType === 'new' ? '#16a34a' : '#7c3aed' }}>
+                          {labelType === 'bestseller' && '★ Best-Selling in '}
+                          {labelType === 'new' && '✦ New Arrival in '}
+                          {labelType === 'toprated' && '★ Top Rated in '}
+                          <span style={{ color: '#94a3b8' }}>{category}</span>
                         </div>
                       )}
                     </div>
@@ -911,34 +978,139 @@ export default function BoutiqueTemplate({ settings, products, canManage, storeS
       {detailProduct && (
         <div className="fixed inset-0 z-[90] flex items-end md:items-center md:justify-center md:p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} />
-          <div className="boutique-modal-card relative z-10 w-full md:max-w-4xl md:mx-auto md:rounded-[32px] overflow-y-auto md:overflow-hidden flex flex-col md:flex-row" dir="ltr" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, height: '100dvh', maxHeight: '100dvh' }}>
+          <div className="boutique-modal-card relative z-10 w-full md:max-w-4xl md:mx-auto overflow-y-auto md:overflow-hidden flex flex-col md:flex-row" dir="ltr" style={{ backgroundColor: '#ffffff', color: '#1e293b', height: '100dvh', maxHeight: '100dvh' }}>
             <button onClick={() => { setDetailProduct(null); if (navigate) navigate(buildStoreUrl(storeSlug, '/')); }} className="fixed top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center md:absolute" style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff' }}><X size={18} /></button>
+
+            {/* Left — Image gallery */}
             <div className="w-full md:w-[55%] md:shrink-0 md:h-full">
               <BoutiqueImageGallery product={detailProduct} surfaceMuted={surfaceMuted} accentColor={accentColor} surfaceTextMuted={surfaceTextMuted} surfaceBorderColor={surfaceBorderColor} onZoom={(src) => { const imgs = detailProduct?.images?.filter(Boolean) || []; const idx = imgs.indexOf(src); setZoomState({ images: imgs.length ? imgs : [src], idx: idx >= 0 ? idx : 0 }); }} />
             </div>
+
+            {/* Right — Product info (Temu style) */}
             <div className="w-full md:flex-1 md:flex md:flex-col md:overflow-hidden" dir="rtl">
-              <div className="px-6 pt-8 pb-4 space-y-4 md:flex-1 md:overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
-                <div className="flex justify-between items-start gap-4">
-                  <h3 className="text-xl font-black leading-tight" style={{ color: surfaceTextColor }}>{detailProduct.title}</h3>
-                  <p className="text-xl font-black shrink-0" style={{ color: accentColor }}>{Math.round(detailVariant?.price ?? detailProduct.price ?? 0).toLocaleString()} {currency}</p>
+              <div className="px-6 pt-8 pb-4 md:flex-1 md:overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+
+                {/* Title */}
+                <h3 className="text-lg font-bold leading-snug" style={{ color: '#111' }}>{detailProduct.title}</h3>
+
+                {/* Sold count + rating row */}
+                <div className="flex items-center gap-3 text-sm mt-2" style={{ color: '#666' }}>
+                  {((detailProduct as any).sold_count ?? (detailProduct as any)?.sales_count) && (
+                    <span>{(detailProduct as any).sold_count ?? (detailProduct as any).sales_count}+ sold</span>
+                  )}
+                  {detailProduct.rating > 0 && (
+                    <div className="flex items-center gap-1">
+                      <div className="flex items-center">
+                        {[1,2,3,4,5].map(s => (
+                          <Star key={s} size={12} fill={s <= Math.round(detailProduct.rating) ? '#f59e0b' : 'none'} stroke={s <= Math.round(detailProduct.rating) ? '#f59e0b' : '#ccc'} />
+                        ))}
+                      </div>
+                      <span>{detailProduct.rating.toFixed(1)}</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Best seller badge */}
+                {(detailProduct as any).is_featured && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="text-[11px] font-black px-2 py-1 text-white" style={{ backgroundColor: '#e11d48' }}>#1 Best-Selling</span>
+                    {detailProduct.category && <span className="text-[11px]" style={{ color: '#666' }}>in {detailProduct.category}</span>}
+                  </div>
+                )}
+
+                {/* Price row */}
+                <div className="flex items-baseline gap-3 mt-3">
+                  <span className="text-2xl font-black" style={{ color: '#111' }} dir="ltr">
+                    {Math.round(detailVariant?.price ?? detailProduct.price ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-base font-bold" style={{ color: '#666' }}>{currency}</span>
+                  {(detailProduct as any).original_price && (detailProduct as any).original_price > (detailVariant?.price ?? detailProduct.price) && (
+                    <>
+                      <span className="text-sm line-through" style={{ color: '#999' }} dir="ltr">
+                        {Math.round((detailProduct as any).original_price).toLocaleString()} {currency}
+                      </span>
+                      <span className="text-xs font-black px-2 py-0.5 text-white" style={{ backgroundColor: '#e11d48' }}>
+                        -{Math.round((((detailProduct as any).original_price - (detailVariant?.price ?? detailProduct.price)) / (detailProduct as any).original_price) * 100)}% OFF
+                      </span>
+                    </>
+                  )}
+                </div>
+
                 {/* Variants — Colors & Sizes */}
                 {detailProduct.variants && detailProduct.variants.length > 0 && (
-                  <VariantSelector
-                    variants={detailProduct.variants}
-                    selected={detailVariant}
-                    onSelect={setDetailVariant}
-                    accentColor={accentColor}
-                    currency={currency}
-                    basePrice={detailProduct.price}
-                  />
+                  <div className="mt-5">
+                    <VariantSelector
+                      variants={detailProduct.variants}
+                      selected={detailVariant}
+                      onSelect={setDetailVariant}
+                      accentColor={accentColor}
+                      currency={currency}
+                      basePrice={detailProduct.price}
+                    />
+                  </div>
                 )}
-                {detailProduct.description && <div className="dz-description whitespace-pre-line" style={{ color: surfaceTextMuted }} dangerouslySetInnerHTML={{ __html: detailProduct.description }} />}
-                {detailProduct.category && <span className="inline-block text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border" style={{ borderColor: surfaceBorderColor, color: surfaceTextMuted }}>{detailProduct.category}</span>}
+
+                {/* Service section */}
+                {settings?.free_delivery_threshold && (
+                  <div className="mt-5">
+                    <span className="text-sm font-semibold" style={{ color: '#111' }}>Service</span>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <span className="text-xs font-bold px-3 py-1.5 border" style={{ borderColor: '#16a34a', color: '#16a34a' }}>
+                        ✓ توصيل مجاني
+                      </span>
+                      <span className="text-xs font-bold px-3 py-1.5 border" style={{ borderColor: '#2563eb', color: '#2563eb' }}>
+                        ✓ الدفع عند الاستلام
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Qty selector */}
+                <div className="flex items-center justify-between mt-5">
+                  <span className="text-sm font-semibold" style={{ color: '#111' }}>Qty</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setOrderQty(Math.max(1, orderQty - 1))}
+                      className="w-8 h-8 flex items-center justify-center border text-lg font-bold"
+                      style={{ borderColor: '#ddd', color: '#111' }}
+                    >
+                      −
+                    </button>
+                    <span className="text-base font-bold min-w-[24px] text-center" style={{ color: '#111' }}>{orderQty}</span>
+                    <button
+                      onClick={() => setOrderQty(orderQty + 1)}
+                      className="w-8 h-8 flex items-center justify-center border text-lg font-bold"
+                      style={{ borderColor: '#ddd', color: '#111' }}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Description */}
+                {detailProduct.description && (
+                  <div className="mt-5 text-sm whitespace-pre-line" style={{ color: '#333' }} dangerouslySetInnerHTML={{ __html: detailProduct.description }} />
+                )}
+
+                {/* Category */}
+                {detailProduct.category && (
+                  <span className="inline-block text-[10px] uppercase tracking-widest px-3 py-1 border mt-5" style={{ borderColor: '#ddd', color: '#666' }}>
+                    {detailProduct.category}
+                  </span>
+                )}
               </div>
-              <div className="shrink-0 px-6 pb-6 pt-3 space-y-3" style={{ borderTop: `1px solid ${surfaceBorderColor}` }}>
-                <button onClick={() => { setOrderProduct(detailProduct); setOrderVariant(detailVariant); setDetailProduct(null); }} className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold tracking-wide transition-all active:scale-95 shadow-lg" style={{ backgroundColor: accentColor, color: isLight(accentColor) ? '#1e293b' : '#fff' }}>
-                  اطلب الآن →
+
+              {/* Bottom CTA */}
+              <div className="shrink-0 px-6 pb-6 pt-3" style={{ borderTop: '1px solid #eee' }}>
+                <button
+                  onClick={() => { setOrderProduct(detailProduct); setOrderVariant(detailVariant); setDetailProduct(null); }}
+                  className="w-full py-4 font-bold tracking-wide transition-all active:scale-95"
+                  style={{
+                    backgroundColor: detailVariant || (!detailProduct.variants || detailProduct.variants.length === 0) ? themeColor : '#e5e7eb',
+                    color: detailVariant || (!detailProduct.variants || detailProduct.variants.length === 0) ? (isLight(themeColor) ? '#1e293b' : '#fff') : '#9ca3af'
+                  }}
+                >
+                  {detailVariant || (!detailProduct.variants || detailProduct.variants.length === 0) ? 'اطلب الآن' : 'اختر المقاس أولاً'}
                 </button>
               </div>
             </div>
