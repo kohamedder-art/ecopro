@@ -213,7 +213,7 @@ export default function Dashboard() {
               <ChevronDown className="w-3 h-3" />
             </button>
             {showDayPicker && (
-              <div className="absolute right-0 mt-1 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-1.5 z-50 min-w-[100px]">
+              <div className="absolute end-0 mt-1 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-1.5 z-50 min-w-[100px]">
                 {dayOptions.map(d => (
                   <button key={d} onClick={() => { setDayRange(d); setShowDayPicker(false); }}
                     className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition-colors
@@ -236,7 +236,7 @@ export default function Dashboard() {
               )}
             </button>
             {showNotif && (
-              <div className="absolute right-0 mt-1 w-72 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+              <div className="absolute end-0 mt-1 w-72 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
                 <div className="p-2.5 border-b border-slate-100 dark:border-slate-800">
                   <p className="text-xs font-bold text-slate-800 dark:text-white">{t('dashboard.notifications')}</p>
                 </div>
