@@ -135,11 +135,7 @@ export default function Dashboard() {
   const dayOptions = [7, 14, 30, 60, 90];
 
   const getStatusDisplay = (statusKey: string) => {
-    // Check custom statuses first (user-defined, may already be translated)
-    const found = analytics?.customStatuses?.find(s => s.key === statusKey || s.name === statusKey);
-    if (found) return { name: found.name, color: found.color, icon: found.icon };
-
-    // Built-in status translations
+    // Built-in statuses — ALWAYS use translation (never DB name)
     const defaults: Record<string, { name: string; color: string; icon: string }> = {
       pending:            { name: t('orders.status.pending'),            color: '#f59e0b', icon: '⏳' },
       confirmed:          { name: t('orders.status.confirmed'),          color: '#3b82f6', icon: '✓' },
@@ -172,7 +168,13 @@ export default function Dashboard() {
       ready_for_pickup:   { name: t('orders.status.in_delivery'),        color: '#f97316', icon: '📦' },
       at_hub:             { name: t('orders.status.in_delivery'),        color: '#f97316', icon: '🏢' },
     };
-    return defaults[statusKey] || { name: statusKey.replace(/_/g, ' '), color: '#6b7280', icon: '•' };
+    if (defaults[statusKey]) return defaults[statusKey];
+
+    // Custom statuses — use DB name (user-defined, already translated by user)
+    const found = analytics?.customStatuses?.find(s => s.key === statusKey || s.name === statusKey);
+    if (found) return { name: found.name, color: found.color, icon: found.icon };
+
+    return { name: statusKey.replace(/_/g, ' '), color: '#6b7280', icon: '•' };
   };
 
   const getGreeting = () => {
