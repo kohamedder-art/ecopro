@@ -1,10 +1,7 @@
-import { useEffect } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { Chapter1 } from './sections/Chapter1';
 import { Chapter2 } from './sections/Chapter2';
 import { Chapter3 } from './sections/Chapter3';
-import { Chapter4 } from './sections/Chapter4';
-import { FinalCTA } from './sections/FinalCTA';
 
 export default function Index() {
   const { locale } = useTranslation();
@@ -18,8 +15,7 @@ export default function Index() {
       <Chapter1 />
       <Chapter2 />
       <Chapter3 />
-      <Chapter4 />
-      <FinalCTA />
+
     </div>
   );
 }
