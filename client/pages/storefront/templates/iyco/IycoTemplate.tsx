@@ -286,6 +286,18 @@ export default function IycoTemplate({
     }
   }, []);
 
+  // Preload first product image to cut LCP resource load delay
+  useEffect(() => {
+    const url = mainImages?.[0];
+    if (!url || url === '/placeholder.png') return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = url;
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, [mainImages?.[0]]);
+
   // Auto-add main product to cart when form submitted if cart is empty
   const ensureMainProductInCart = () => {
     if (cart.length === 0 && mainProduct) {

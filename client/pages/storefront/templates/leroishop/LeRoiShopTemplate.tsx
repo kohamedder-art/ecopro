@@ -257,6 +257,18 @@ export default function LeRoiShopTemplate({
 
   useEffect(() => { if (activeProduct && onProductView) onProductView(activeProduct); }, [activeProduct?.id]);
 
+  // Preload first product image to cut LCP resource load delay
+  useEffect(() => {
+    const url = products?.[0]?.images?.[0];
+    if (!url) return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = url;
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, [products?.[0]?.images?.[0]]);
+
   // Inject Google Fonts (Tajawal)
   useEffect(() => {
     const doc = document;
@@ -516,7 +528,7 @@ export default function LeRoiShopTemplate({
 
             {/* Product Grid - Temu Style */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
-              {(products || []).map((product) => {
+              {(products || []).map((product, idx) => {
                 const discount = product.original_price 
                   ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
                   : 0;
@@ -541,7 +553,8 @@ export default function LeRoiShopTemplate({
                         : <img
                             src={product.images?.[0] || '/placeholder.png'}
                             alt={product.title}
-                            loading="lazy"
+                            loading={idx === 0 ? 'eager' : 'lazy'}
+                            fetchpriority={idx === 0 ? 'high' : 'low'}
                             decoding="async"
                             width="600"
                             height="600"

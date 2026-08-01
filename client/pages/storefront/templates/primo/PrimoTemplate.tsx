@@ -237,6 +237,18 @@ const goBackToCatalog = () => {
     }
   }, []);
 
+  // Preload first product image to cut LCP resource load delay
+  useEffect(() => {
+    const url = mainImages?.[0];
+    if (!url || url === '/placeholder.png') return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = url;
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, [mainImages?.[0]]);
+
   const handleOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !customerPhone || !selectedWilayaId || !mainProduct) {

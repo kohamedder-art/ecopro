@@ -113,6 +113,18 @@ export default function SpiriluxeTemplate({
     setSelectedOffer(null);
   }, [mainProduct?.id]);
 
+  // Preload first above-form image to cut LCP resource load delay
+  useEffect(() => {
+    const url = productImages?.[0];
+    if (!url) return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = url;
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, [productImages?.[0]]);
+
   // When saved aboveCount setting arrives: apply it without resetting images
   useEffect(() => {
     if (!mainProduct?.id) return;

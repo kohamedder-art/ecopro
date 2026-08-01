@@ -157,6 +157,18 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     return () => observer.disconnect();
   }, [storeSlug, products]);
 
+  // Preload first product image to cut LCP resource load delay
+  useEffect(() => {
+    const url = displayProducts?.[0]?.images?.[0];
+    if (!url) return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = url;
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, [displayProducts?.[0]?.images?.[0]]);
+
   // Inject Google Fonts (Tajawal)
   useEffect(() => {
     const doc = document;
@@ -438,7 +450,7 @@ const parseVideoEmbed = (videoUrl: string) => {
 
           {/* Product Feed */}
           <div className="p-4 space-y-10 mt-2">
-            {displayProducts.map(product => (
+            {displayProducts.map((product, productIdx) => (
               <div key={product.id} data-view-product={product.slug} className="rounded-[32px] overflow-hidden border shadow-sm group" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
                 {/* Image Gallery */}
                 {(() => {
@@ -486,7 +498,9 @@ const parseVideoEmbed = (videoUrl: string) => {
                           ) : (
                             <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
                               onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
-                              loading="lazy" decoding="async" width="600" height="600" />
+                              loading={productIdx === 0 && i === 0 ? 'eager' : 'lazy'}
+                              fetchpriority={productIdx === 0 && i === 0 ? 'high' : 'low'}
+                              decoding="async" width="600" height="600" />
                           )}
                         </div>
                       ))}

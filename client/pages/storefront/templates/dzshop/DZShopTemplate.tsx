@@ -153,6 +153,18 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
         return { type: 'iframe' as const, url: rawVideoUrl };
     }, [rawVideoUrl]);
 
+    // Preload first gallery image to cut LCP resource load delay
+    useEffect(() => {
+        const url = galleryImages[0];
+        if (!url) return;
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.href = url;
+        document.head.appendChild(link);
+        return () => { document.head.removeChild(link); };
+    }, [galleryImages[0]]);
+
     useEffect(() => {
         if (settings?.primary_color) {
             setPrimaryColor(settings.primary_color);
@@ -400,9 +412,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                                 <img 
   src={item.src} 
   alt="" 
-  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', contentVisibility: 'auto', cursor: 'pointer' }} 
-  loading="lazy"
+  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', contentVisibility: i === 0 ? 'visible' : 'auto', cursor: 'pointer' }} 
+  loading={i === 0 ? 'eager' : 'lazy'}
+  fetchpriority={i === 0 ? 'high' : 'low'}
   decoding="async"
+  width="600"
+  height="600"
   onClick={() => setLightboxOpen(item.src)}
 />
                                             )}
