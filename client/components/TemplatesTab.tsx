@@ -46,6 +46,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 50%, #c4b5fd 100%)',
     accent: '#7c3aed',
     icon: <ShoppingBag className="w-4 h-4" />,
+    image: '/uploads/templates/dzshop.png',
     tags: ['شائع', 'متجر'],
   },
   {
@@ -58,6 +59,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #93c5fd 100%)',
     accent: '#2563eb',
     icon: <Smartphone className="w-4 h-4" />,
+    image: '/uploads/templates/needdz.png',
     tags: ['موبايل', 'شائع'],
   },
   {
@@ -70,6 +72,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #111827 0%, #374151 50%, #f9fafb 100%)',
     accent: '#111827',
     icon: <Star className="w-4 h-4" />,
+    image: '/uploads/templates/zinith.png',
     tags: ['هبوط', 'منتج واحد'],
   },
   {
@@ -82,6 +85,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #f59e0b 100%)',
     accent: '#f59e0b',
     icon: <ShoppingBag className="w-4 h-4" />,
+    image: '/uploads/templates/boutique.png',
     tags: ['متجر', 'مجموعات'],
   },
   {
@@ -94,6 +98,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #581c87 0%, #7c3aed 50%, #a78bfa 100%)',
     accent: '#7c3aed',
     icon: <Sparkles className="w-4 h-4" />,
+    image: '/uploads/templates/spirilux.png',
     tags: ['فاخر', 'عروض'],
   },
   {
@@ -106,6 +111,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)',
     accent: '#1e40af',
     icon: <Layout className="w-4 h-4" />,
+    image: '/uploads/templates/leroi.png',
     tags: ['تقليدي', 'شبكة'],
   },
   {
@@ -118,6 +124,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #0f172a 0%, #312e81 50%, #6366f1 100%)',
     accent: '#6366f1',
     icon: <Zap className="w-4 h-4" />,
+    image: '/uploads/templates/iyco.png',
     tags: ['هبوط', 'عصري'],
   },
   {
@@ -130,6 +137,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%)',
     accent: '#f59e0b',
     icon: <Star className="w-4 h-4" />,
+    image: '/uploads/templates/primo.png',
     tags: ['هبوط', 'أنيق'],
   },
 ];
