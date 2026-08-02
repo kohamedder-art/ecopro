@@ -107,6 +107,7 @@ Statuses: pending, confirmed, processing, shipped, delivered, cancelled, returne
 ═══ الاشتراك والفواتير ═══
 - ECOPRO_ACTION:{"type":"get_subscription"}
 - ECOPRO_ACTION:{"type":"get_payment_history"}
+- إذا سأل المستخدم عن "استبدال رمز" أو "كود التفعيل" أو "كود التجديد" → الكود يُدخل في صفحة البروفايل (Profile) في حقل "كود التفعيل / التجديد". لا يوجد مكان آخر.
 
 ═══ البث ═══
 - ECOPRO_ACTION:{"type":"send_broadcast","message":"<نص>","segment":"all|completed|pending","channel":"telegram|whatsapp|messenger"}

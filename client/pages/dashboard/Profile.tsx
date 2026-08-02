@@ -290,9 +290,17 @@ export default function Profile() {
               </Field>
             </div>
             <Field label={t('profile.subdomain')}>
-              <input type="text" value={form.subdomain} onChange={e => setForm({ ...form, subdomain: e.target.value })}
-                className={inputCls} placeholder="mtjr-ibdaa" />
-              <p className="text-[11px] text-slate-400 mt-1">{form.subdomain ? `${form.subdomain}.sahla4eco.com` : t('profile.subdomainHint')}</p>
+              <div className="flex items-center">
+                <div className="h-9 px-3 flex items-center bg-slate-100 dark:bg-slate-700/50 border-2 border-slate-200 dark:border-slate-700 rounded-s-lg rounded-e-none text-xs font-bold text-slate-500 shrink-0">
+                  .sahla4eco.com
+                </div>
+                <input type="text" value={form.subdomain} onChange={e => setForm({ ...form, subdomain: e.target.value })}
+                  className={`${inputCls} rounded-e-lg rounded-s-none border-s-0`} placeholder="fursa" dir="ltr" style={{ textAlign: 'left' }} />
+              </div>
+              <div className="flex items-center gap-2 mt-1.5 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40">
+                <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <p className="text-[11px] font-bold text-blue-700 dark:text-blue-300">{t('profile.subdomainDesc')}</p>
+              </div>
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label={t('profile.cityWilaya')}>

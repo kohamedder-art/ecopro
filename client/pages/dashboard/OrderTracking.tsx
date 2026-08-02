@@ -224,34 +224,36 @@ function OrderCard({ order, t, locale }: { order: TrackingOrder; t: (key: string
       {/* Body */}
       <div className="px-4 py-3">
         {/* Info row */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-border"
-            style={{ background: `${meta.color}08` }}>
-            {order.product_image ? (
-              <img src={order.product_image} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-lg">📦</span>
-            )}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-border"
+              style={{ background: `${meta.color}08` }}>
+              {order.product_image ? (
+                <img src={order.product_image} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-lg">📦</span>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              {hasCourier && (
+                <button onClick={() => handleCopy(order.tracking_number!, 'trk')}
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 border transition-colors"
+                  style={{
+                    background: `hsl(var(--primary))10`,
+                    borderColor: `hsl(var(--primary))25`,
+                    color: 'hsl(var(--primary))',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = `hsl(var(--primary))20`}
+                  onMouseLeave={e => e.currentTarget.style.background = `hsl(var(--primary))10`}>
+                  🚚 {order.delivery_company}
+                  {copied === 'trk' && <span className="text-green-500">✓</span>}
+                </button>
+              )}
+              <span className="text-[10px] text-muted-foreground">{timeAgo(order.created_at, locale)}</span>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="w-full">
             <StepBar status={effectiveStatus} t={t} locale={locale} />
-          </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            {hasCourier && (
-              <button onClick={() => handleCopy(order.tracking_number!, 'trk')}
-                className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 border transition-colors"
-                style={{
-                  background: `hsl(var(--primary))10`,
-                  borderColor: `hsl(var(--primary))25`,
-                  color: 'hsl(var(--primary))',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = `hsl(var(--primary))20`}
-                onMouseLeave={e => e.currentTarget.style.background = `hsl(var(--primary))10`}>
-                🚚 {order.delivery_company}
-                {copied === 'trk' && <span className="text-green-500">✓</span>}
-              </button>
-            )}
-            <span className="text-[10px] text-muted-foreground">{timeAgo(order.created_at, locale)}</span>
           </div>
         </div>
       </div>
