@@ -1960,6 +1960,8 @@ export const en = {
   "delivery.pricingTitle": "Delivery Pricing",
   "delivery.pricingDesc": "Set delivery prices for each wilaya. Customers will see these prices at checkout.",
   "delivery.defaultSettings": "Default Settings",
+  "delivery.home": "Home",
+  "delivery.desk": "Desk",
   "delivery.homePrice": "Home Delivery (DZD)",
   "delivery.deskPrice": "Stop-Desk (DZD)",
   "delivery.estimatedDays": "Estimated Days",

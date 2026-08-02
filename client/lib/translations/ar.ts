@@ -2545,6 +2545,8 @@ export const ar = {
   "delivery.pricingTitle": "أسعار التوصيل",
   "delivery.pricingDesc": "حدد أسعار التوصيل لكل ولاية. سيرى العملاء هذه الأسعار عند الدفع.",
   "delivery.defaultSettings": "الإعدادات الافتراضية",
+  "delivery.home": "منزل",
+  "delivery.desk": "مكتب",
   "delivery.homePrice": "التوصيل للمنزل (دج)",
   "delivery.deskPrice": "التوصيل للمكتب (دج)",
   "delivery.estimatedDays": "أيام التوصيل",
