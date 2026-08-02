@@ -153,16 +153,16 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
         `SELECT key, name, color, icon FROM order_statuses WHERE client_id = $1 ORDER BY sort_order`,
         [clientId]
       ),
-      // Daily orders & revenue for selected day range
+      // Daily orders & revenue for selected day range (Algeria timezone)
       pool.query(
         `SELECT 
-          DATE(created_at) as date,
+          (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date as date,
           COUNT(*)::int as orders,
           COALESCE(SUM(${revenueExpr}), 0)::float as total_value,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
          WHERE client_id = $1 ${dateFilter}
-         GROUP BY DATE(created_at)
+         GROUP BY (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date
          ORDER BY date ASC`,
         [clientId, revenueStatuses]
       ),
@@ -174,22 +174,22 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
          ORDER BY view_date ASC`,
         [clientId]
       ),
-      // Today
+      // Today — use Algeria timezone (UTC+1) since platform is DZD-focused
       pool.query(
         `SELECT 
           COUNT(*)::int as orders,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 AND DATE(created_at) = CURRENT_DATE`,
+         WHERE client_id = $1 AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date = (NOW() AT TIME ZONE 'Africa/Algiers')::date`,
         [clientId, revenueStatuses]
       ),
-      // Yesterday
+      // Yesterday — Algeria timezone
       pool.query(
         `SELECT 
           COUNT(*)::int as orders,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 AND DATE(created_at) = CURRENT_DATE - INTERVAL '1 day'`,
+         WHERE client_id = $1 AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date = ((NOW() AT TIME ZONE 'Africa/Algiers') - INTERVAL '1 day')::date`,
         [clientId, revenueStatuses]
       ),
       // This week
