@@ -266,13 +266,13 @@ export default function Dashboard() {
 
         {/* ═══ ROW 1: Today's Pulse ═══ */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {/* Today Revenue — green accent */}
-          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-emerald-200 dark:border-emerald-900/40">
-            <div className="bg-gradient-to-br from-emerald-500 to-green-600 px-3 py-2 flex items-center gap-2">
-              <span className="text-lg">💰</span>
-              <span className="text-[10px] font-black text-white/90 uppercase tracking-wider">{t('dashboard.todayRevenue')}</span>
-            </div>
-            <div className="bg-white dark:bg-[#111] px-3 py-2.5">
+          {/* Today Revenue */}
+          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-800 border-t-2 border-t-emerald-500">
+            <div className="bg-white dark:bg-[#111] px-3 py-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm">💰</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.todayRevenue')}</span>
+              </div>
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black text-slate-800 dark:text-white tabular-nums">
                   {(comparisons?.today?.revenue ?? 0).toLocaleString()} <span className="text-xs font-bold text-slate-400">DZD</span>
@@ -286,13 +286,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Today Orders — blue accent */}
-          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-blue-200 dark:border-blue-900/40">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 px-3 py-2 flex items-center gap-2">
-              <span className="text-lg">📦</span>
-              <span className="text-[10px] font-black text-white/90 uppercase tracking-wider">{t('dashboard.todayOrders')}</span>
-            </div>
-            <div className="bg-white dark:bg-[#111] px-3 py-2.5">
+          {/* Today Orders */}
+          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-800 border-t-2 border-t-blue-500">
+            <div className="bg-white dark:bg-[#111] px-3 py-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm">📦</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.todayOrders')}</span>
+              </div>
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black text-slate-800 dark:text-white tabular-nums">
                   {comparisons?.today?.orders ?? 0}
@@ -306,19 +306,19 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* This Week — purple accent */}
-          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-purple-200 dark:border-purple-900/40">
-            <div className="bg-gradient-to-br from-purple-500 to-pink-600 px-3 py-2 flex items-center gap-2">
-              <span className="text-lg">📈</span>
-              <span className="text-[10px] font-black text-white/90 uppercase tracking-wider">{t('dashboard.weekRevenue')}</span>
-            </div>
-            <div className="bg-white dark:bg-[#111] px-3 py-2.5">
+          {/* This Week */}
+          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-800 border-t-2 border-t-violet-500">
+            <div className="bg-white dark:bg-[#111] px-3 py-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm">📈</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.weekRevenue')}</span>
+              </div>
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black text-slate-800 dark:text-white tabular-nums">
                   {(comparisons?.thisWeek?.revenue ?? 0).toLocaleString()} <span className="text-xs font-bold text-slate-400">DZD</span>
                 </h3>
                 {(comparisons?.thisWeek?.revenueGrowth ?? 0) !== 0 && (
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${(comparisons?.thisWeek?.revenueGrowth ?? 0) >= 0 ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${(comparisons?.thisWeek?.revenueGrowth ?? 0) >= 0 ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
                     {(comparisons?.thisWeek?.revenueGrowth ?? 0) >= 0 ? '↑' : '↓'} {Math.abs(comparisons?.thisWeek?.revenueGrowth ?? 0)}%
                   </span>
                 )}
@@ -326,13 +326,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Pending Orders — amber accent */}
-          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-amber-200 dark:border-amber-900/40">
-            <div className="bg-gradient-to-br from-amber-500 to-orange-600 px-3 py-2 flex items-center gap-2">
-              <span className="text-lg">⏳</span>
-              <span className="text-[10px] font-black text-white/90 uppercase tracking-wider">{t('dashboard.pendingOrders')}</span>
-            </div>
-            <div className="bg-white dark:bg-[#111] px-3 py-2.5">
+          {/* Pending Orders */}
+          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-800 border-t-2 border-t-amber-500">
+            <div className="bg-white dark:bg-[#111] px-3 py-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm">⏳</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.pendingOrders')}</span>
+              </div>
               <h3 className="text-xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
                 {stats.pendingOrders}
               </h3>
@@ -344,8 +344,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
 
           {/* Action Required */}
-          <div className="lg:col-span-4 rounded-xl overflow-hidden shadow-sm border border-red-200 dark:border-red-900/30">
-            <div className="bg-gradient-to-r from-red-500 to-rose-600 px-3 py-2.5 flex items-center gap-2">
+          <div className="lg:col-span-4 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
               <Clock className="w-4 h-4 text-white" />
               <h3 className="text-xs font-black text-white uppercase tracking-wider">{t('dashboard.actionRequired')}</h3>
               {actionCount > 0 && (
@@ -354,7 +354,7 @@ export default function Dashboard() {
                 </span>
               )}
             </div>
-            <div className="bg-white dark:bg-[#111] divide-y divide-red-50 dark:divide-red-900/20 max-h-[220px] overflow-y-auto">
+            <div className="bg-white dark:bg-[#111] divide-y divide-slate-100 dark:divide-slate-800 max-h-[220px] overflow-y-auto">
               {recentOrders.filter(o => ['pending', 'processing', 'confirmed'].includes(o.status)).length === 0 ? (
                 <div className="p-6 text-center">
                   <span className="text-2xl">✅</span>
@@ -364,7 +364,7 @@ export default function Dashboard() {
                 recentOrders.filter(o => ['pending', 'processing', 'confirmed'].includes(o.status)).slice(0, 5).map((order, i) => {
                   const s = getStatusDisplay(order.status);
                   return (
-                    <div key={i} className="px-3 py-2 hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors">
+                    <div key={i} className="px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0"
@@ -392,7 +392,7 @@ export default function Dashboard() {
 
           {/* Revenue & Orders Chart */}
           <div className="lg:col-span-8 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-3 py-2.5 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-800 dark:to-black px-3 py-2.5 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-black text-white">{totalRevenuePeriod.toLocaleString()}</span>
@@ -466,7 +466,7 @@ export default function Dashboard() {
 
           {/* Pipeline */}
           <div className="lg:col-span-7 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="bg-gradient-to-r from-indigo-600 to-violet-700 px-3 py-2.5 flex items-center gap-2">
+            <div className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
               <Truck className="w-4 h-4 text-white" />
               <h3 className="text-xs font-black text-white uppercase tracking-wider">{t('dashboard.pipeline')}</h3>
             </div>
@@ -494,7 +494,7 @@ export default function Dashboard() {
 
           {/* Top Products */}
           <div className="lg:col-span-5 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="bg-gradient-to-r from-amber-500 to-orange-600 px-3 py-2.5 flex items-center gap-2">
+            <div className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
               <Star className="w-4 h-4 text-white" />
               <h3 className="text-xs font-black text-white uppercase tracking-wider">{t('dashboard.topSeller')}</h3>
             </div>
@@ -505,7 +505,7 @@ export default function Dashboard() {
                   <p className="text-xs font-bold text-slate-400 mt-2">{t('dashboard.noData')}</p>
                 </div>
               ) : topProducts.slice(0, 4).map((p, i) => (
-                <div key={i} className="px-3 py-2.5 flex items-center gap-2.5 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors">
+                <div key={i} className="px-3 py-2.5 flex items-center gap-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <div className="w-9 h-9 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700">
                     {p.image_url ? (
                       <img src={p.image_url} alt="" className="w-full h-full object-cover" />
