@@ -179,6 +179,26 @@ async function apiRequest<T>(
     credentials: 'include',
   });
 
+  if (response.status === 401) {
+    // Don't redirect on login/register/refresh endpoints
+    const skipRedirect = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/me'].some(p => endpoint.startsWith(p));
+    if (!skipRedirect) {
+      // Try refresh first
+      const refreshed = await refreshAuthToken();
+      if (refreshed) {
+        // Retry once
+        const retry = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers, credentials: 'include' });
+        if (retry.ok) return retry.json();
+      }
+      // Refresh failed — redirect to login
+      removeAuthToken();
+      window.location.href = '/login';
+      throw new Error('Session expired');
+    }
+    const error: ApiError = await response.json().catch(() => ({ error: "Session expired" }));
+    throw new Error(error.error || "Session expired");
+  }
+
   if (!response.ok) {
     const error: ApiError = await response.json().catch(() => ({
       error: "An error occurred",

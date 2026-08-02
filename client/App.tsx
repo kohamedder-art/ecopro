@@ -129,6 +129,24 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 // Initialize security probes (fingerprinting, WebRTC leak detection)
 initSecurityProbes({ autoSend: true });
 
+// Global 401 interceptor — redirect to login on any expired session
+if (typeof window !== 'undefined') {
+  const LOGIN_PATHS = ['/login', '/signup', '/auth/login', '/auth/register', '/auth/refresh'];
+  const originalFetch = window.fetch;
+  window.fetch = async (...args) => {
+    const response = await originalFetch.apply(window, args);
+    if (response.status === 401) {
+      const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+      const isLoginPath = LOGIN_PATHS.some(p => url.includes(p));
+      if (!isLoginPath && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/store') && !window.location.pathname.startsWith('/s/')) {
+        removeAuthToken();
+        window.location.href = '/login';
+      }
+    }
+    return response;
+  };
+}
+
 // Sync auth state on app load/HMR to keep localStorage in sync with server session
 // This prevents "logged out" state after hot module reload
 if (typeof window !== 'undefined') {
