@@ -345,7 +345,7 @@ export default function Dashboard() {
 
           {/* Action Required */}
           <div className="lg:col-span-4 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
+            <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-slate-800 dark:from-amber-700 dark:via-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
               <Clock className="w-4 h-4 text-white" />
               <h3 className="text-xs font-black text-white uppercase tracking-wider">{t('dashboard.actionRequired')}</h3>
               {actionCount > 0 && (
@@ -392,7 +392,7 @@ export default function Dashboard() {
 
           {/* Revenue & Orders Chart */}
           <div className="lg:col-span-8 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-800 dark:to-black px-3 py-2.5 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-slate-800 dark:from-blue-700 dark:via-slate-800 dark:to-black px-3 py-2.5 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-black text-white">{totalRevenuePeriod.toLocaleString()}</span>
@@ -466,7 +466,7 @@ export default function Dashboard() {
 
           {/* Pipeline */}
           <div className="lg:col-span-7 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
+            <div className="bg-gradient-to-r from-teal-600 via-teal-700 to-slate-800 dark:from-teal-700 dark:via-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
               <Truck className="w-4 h-4 text-white" />
               <h3 className="text-xs font-black text-white uppercase tracking-wider">{t('dashboard.pipeline')}</h3>
             </div>
@@ -494,7 +494,7 @@ export default function Dashboard() {
 
           {/* Top Products */}
           <div className="lg:col-span-5 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
+            <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-slate-800 dark:from-amber-600 dark:via-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
               <Star className="w-4 h-4 text-white" />
               <h3 className="text-xs font-black text-white uppercase tracking-wider">{t('dashboard.topSeller')}</h3>
             </div>
@@ -528,7 +528,7 @@ export default function Dashboard() {
 
         {/* ═══ ROW 4: Recent Orders ═══ */}
         <div className="rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-          <div className="bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
+          <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-slate-800 dark:from-indigo-700 dark:via-slate-800 dark:to-black px-3 py-2.5 flex items-center gap-2">
             <Package className="w-4 h-4 text-white" />
             <h3 className="text-xs font-black text-white uppercase tracking-wider">{t('dashboard.recentOrders')}</h3>
             <span className="text-[10px] font-bold text-white/50">{t('dashboard.lastNDays', { n: dayRange })}</span>
