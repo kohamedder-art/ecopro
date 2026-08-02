@@ -72,7 +72,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #111827 0%, #374151 50%, #f9fafb 100%)',
     accent: '#111827',
     icon: <Star className="w-4 h-4" />,
-    image: '/templates/zinith.png',
+    image: '/templates/zenith.png',
     tags: ['هبوط', 'منتج واحد'],
   },
   {
@@ -98,7 +98,7 @@ const REAL_TEMPLATES: RealTemplate[] = [
     gradient: 'linear-gradient(135deg, #581c87 0%, #7c3aed 50%, #a78bfa 100%)',
     accent: '#7c3aed',
     icon: <Sparkles className="w-4 h-4" />,
-    image: '/templates/spirilux.png',
+    image: '/templates/spiriluxe.png',
     tags: ['فاخر', 'عروض'],
   },
   {
