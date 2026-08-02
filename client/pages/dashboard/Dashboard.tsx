@@ -267,12 +267,12 @@ export default function Dashboard() {
         {/* ═══ ROW 1: Today's Pulse ═══ */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {/* Today Revenue */}
-          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-800 border-t-2 border-t-emerald-500">
-            <div className="bg-white dark:bg-[#111] px-3 py-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm">💰</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.todayRevenue')}</span>
-              </div>
+          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-emerald-200 dark:border-emerald-900/40">
+            <div className="bg-gradient-to-br from-emerald-500 to-green-600 px-3 py-2 flex items-center gap-2">
+              <span className="text-lg">💰</span>
+              <span className="text-[10px] font-black text-white/90 uppercase tracking-wider">{t('dashboard.todayRevenue')}</span>
+            </div>
+            <div className="bg-white dark:bg-[#111] px-3 py-2.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black text-slate-800 dark:text-white tabular-nums">
                   {(comparisons?.today?.revenue ?? 0).toLocaleString()} <span className="text-xs font-bold text-slate-400">DZD</span>
@@ -287,12 +287,12 @@ export default function Dashboard() {
           </div>
 
           {/* Today Orders */}
-          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-800 border-t-2 border-t-blue-500">
-            <div className="bg-white dark:bg-[#111] px-3 py-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm">📦</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.todayOrders')}</span>
-              </div>
+          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-blue-200 dark:border-blue-900/40">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 px-3 py-2 flex items-center gap-2">
+              <span className="text-lg">📦</span>
+              <span className="text-[10px] font-black text-white/90 uppercase tracking-wider">{t('dashboard.todayOrders')}</span>
+            </div>
+            <div className="bg-white dark:bg-[#111] px-3 py-2.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black text-slate-800 dark:text-white tabular-nums">
                   {comparisons?.today?.orders ?? 0}
@@ -307,12 +307,12 @@ export default function Dashboard() {
           </div>
 
           {/* This Week */}
-          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-800 border-t-2 border-t-violet-500">
-            <div className="bg-white dark:bg-[#111] px-3 py-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm">📈</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.weekRevenue')}</span>
-              </div>
+          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-violet-200 dark:border-violet-900/40">
+            <div className="bg-gradient-to-br from-violet-500 to-purple-600 px-3 py-2 flex items-center gap-2">
+              <span className="text-lg">📈</span>
+              <span className="text-[10px] font-black text-white/90 uppercase tracking-wider">{t('dashboard.weekRevenue')}</span>
+            </div>
+            <div className="bg-white dark:bg-[#111] px-3 py-2.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black text-slate-800 dark:text-white tabular-nums">
                   {(comparisons?.thisWeek?.revenue ?? 0).toLocaleString()} <span className="text-xs font-bold text-slate-400">DZD</span>
@@ -327,12 +327,12 @@ export default function Dashboard() {
           </div>
 
           {/* Pending Orders */}
-          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-800 border-t-2 border-t-amber-500">
-            <div className="bg-white dark:bg-[#111] px-3 py-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm">⏳</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.pendingOrders')}</span>
-              </div>
+          <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-amber-200 dark:border-amber-900/40">
+            <div className="bg-gradient-to-br from-amber-500 to-orange-600 px-3 py-2 flex items-center gap-2">
+              <span className="text-lg">⏳</span>
+              <span className="text-[10px] font-black text-white/90 uppercase tracking-wider">{t('dashboard.pendingOrders')}</span>
+            </div>
+            <div className="bg-white dark:bg-[#111] px-3 py-2.5">
               <h3 className="text-xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
                 {stats.pendingOrders}
               </h3>
