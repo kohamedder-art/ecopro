@@ -157,18 +157,6 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     return () => observer.disconnect();
   }, [storeSlug, products]);
 
-  // Preload first product image to cut LCP resource load delay
-  useEffect(() => {
-    const url = displayProducts?.[0]?.images?.[0];
-    if (!url) return;
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.as = 'image';
-    link.href = url;
-    document.head.appendChild(link);
-    return () => { document.head.removeChild(link); };
-  }, [displayProducts?.[0]?.images?.[0]]);
-
   // Inject Google Fonts (Tajawal)
   useEffect(() => {
     const doc = document;
@@ -248,6 +236,18 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
     features: ["جودة عالية", "توصيل سريع", "ضمان"],
     variants: p.variants || []
   })) : FALLBACK_PRODUCTS;
+
+  // Preload first product image to cut LCP resource load delay
+  useEffect(() => {
+    const url = displayProducts?.[0]?.images?.[0];
+    if (!url) return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = url;
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, [displayProducts?.[0]?.images?.[0]]);
 
 const parseVideoEmbed = (videoUrl: string) => {
   if (!videoUrl) return null;
