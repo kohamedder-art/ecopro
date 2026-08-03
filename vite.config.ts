@@ -81,10 +81,6 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('node_modules/@tanstack')) {
             return 'tanstack';
           }
-          // Algeria geodata — large, only needed for delivery/checkout
-          if (id.includes('algeriaGeo') || id.includes('algeria-geo') || id.includes('wilayas')) {
-            return 'algeria-geo';
-          }
         },
       },
     },
