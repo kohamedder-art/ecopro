@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Package, Search, Eye, ShoppingCart, Grid, List, Loader2, ChevronLeft, ChevronRight, EyeOff } from 'lucide-react';
+import { Package, Search, Eye, ShoppingCart, Grid, List, Loader2, ChevronLeft, ChevronRight, EyeOff, Radio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/lib/i18n';
 
@@ -11,6 +11,8 @@ interface Product {
   seller_email: string;
   status: string;
   views: number;
+  live_views: number;
+  is_live: boolean;
   order_count: number;
   created_at: string;
   images?: string[];
@@ -27,20 +29,29 @@ interface Props {
   page: number;
   sort: string;
   hideTest: boolean;
+  liveProducts: number;
+  liveStores: number;
   onPageChange: (page: number) => void;
   onSortChange: (sort: string) => void;
   onHideTestChange: (hide: boolean) => void;
+  onLiveFilterChange: (filter: string) => void;
 }
 
 const PAGE_SIZE = 50;
 
-export default function ProductsTab({ products, loading, total, page, sort, hideTest, onPageChange, onSortChange, onHideTestChange }: Props) {
+export default function ProductsTab({ products, loading, total, page, sort, hideTest, liveProducts, liveStores, onPageChange, onSortChange, onHideTestChange, onLiveFilterChange }: Props) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'flagged' | 'active'>('all');
+  const [liveFilter, setLiveFilter] = useState<'all' | 'live' | 'not_live'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const handleLiveFilter = (f: 'all' | 'live' | 'not_live') => {
+    setLiveFilter(f);
+    onLiveFilterChange(f);
+  };
 
   const filtered = useMemo(() => {
     let result = products;
@@ -58,10 +69,18 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
   return (
     <div className="space-y-4">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <div className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-700/40 p-4">
           <p className="text-xs text-gray-500 dark:text-slate-400">{t('platformAdmin.products.totalProducts')}</p>
           <p className="text-2xl font-black text-gray-900 dark:text-white mt-1">{total}</p>
+        </div>
+        <div className="bg-red-500/10 rounded-2xl border border-red-500/30 p-4 relative overflow-hidden">
+          <div className="absolute top-2 end-2">
+            <Radio className="w-4 h-4 text-red-400 animate-pulse" />
+          </div>
+          <p className="text-xs text-red-300">LIVE NOW</p>
+          <p className="text-2xl font-black text-red-400 mt-1">{liveProducts}</p>
+          <p className="text-[9px] text-red-300/60 mt-0.5">{liveStores} stores active</p>
         </div>
         <div className="bg-emerald-500/10 rounded-2xl border border-emerald-500/30 p-4">
           <p className="text-xs text-emerald-300">{t('platformAdmin.products.active')}</p>
@@ -94,6 +113,7 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
           <option value="newest">{t('platformAdmin.products.newest') || 'الأحدث'}</option>
           <option value="most_viewed">{t('platformAdmin.products.mostViewed') || 'الأكثر مشاهدة'}</option>
           <option value="most_ordered">{t('platformAdmin.products.mostOrdered') || 'الأكثر طلباً'}</option>
+          <option value="most_live">🔴 الأكثر نشاطاً الآن</option>
         </select>
         <div className="flex gap-1.5">
           {(['all', 'flagged', 'active'] as const).map(f => (
@@ -105,6 +125,25 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
               }`}
             >
               {f === 'all' ? t('platformAdmin.products.all') : f === 'flagged' ? `${t('platformAdmin.products.flagged')} (${flaggedCount})` : t('platformAdmin.products.active')}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1.5">
+          {([
+            { id: 'all' as const, label: 'الكل', color: '' },
+            { id: 'live' as const, label: '🔴 مباشر', color: 'bg-red-500/20 text-red-300 border-red-500/40' },
+            { id: 'not_live' as const, label: 'غير مباشر', color: '' },
+          ]).map(f => (
+            <button
+              key={f.id}
+              onClick={() => handleLiveFilter(f.id)}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                liveFilter === f.id
+                  ? f.id === 'live' ? 'bg-red-500/30 text-red-200 border-red-500/50 shadow-lg shadow-red-500/20' : 'bg-blue-600 text-white border-blue-600'
+                  : f.color || 'bg-white/60 dark:bg-slate-800/60 text-gray-500 dark:text-slate-400 border-transparent hover:bg-gray-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {f.label}
             </button>
           ))}
         </div>
@@ -148,10 +187,17 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
                     <Package className="w-6 h-6 text-slate-700" />
                   </div>
                 )}
-                {p.flagged && (
+                {p.is_live && (
                   <div className="absolute top-1 left-1">
+                    <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-lg shadow-red-500/50 animate-pulse">
+                      <Radio className="w-2.5 h-2.5" />
+                      LIVE
+                    </span>
+                  </div>
+                )}
+                {p.flagged && (
+                  <div className={`absolute ${p.is_live ? 'top-6' : 'top-1'} left-1`}>
                     <Badge className="bg-red-600 text-white text-[9px] px-1 py-0">
-                      <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
                       {t('platformAdmin.products.flagged')}
                     </Badge>
                   </div>
@@ -175,6 +221,12 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
                 <div className="flex items-center justify-between mt-0.5">
                   <span className="text-[11px] font-bold text-emerald-400">{Number(p.price).toLocaleString()} دج</span>
                   <div className="flex items-center gap-1.5 text-gray-500 dark:text-slate-500">
+                    {p.is_live && (
+                      <div className="flex items-center gap-0.5 text-red-400">
+                        <Radio className="w-2.5 h-2.5 animate-pulse" />
+                        <span className="text-[9px] font-bold">{p.live_views}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-0.5">
                       <Eye className="w-2.5 h-2.5" />
                       <span className="text-[9px]">{p.views}</span>
@@ -195,15 +247,28 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
           <div className="divide-y divide-gray-200 dark:divide-slate-700/30">
             {filtered.map(p => (
               <div key={p.id} className="group flex items-center gap-3 p-3 hover:bg-gray-50/30 dark:bg-slate-900/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-slate-900/60 overflow-hidden flex-shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-slate-900/60 overflow-hidden flex-shrink-0 relative">
                   {p.images?.[0] ? (
                     <img src={p.images[0]} alt="" className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"><Package className="w-4 h-4 text-slate-700" /></div>
                   )}
+                  {p.is_live && (
+                    <div className="absolute top-0.5 left-0.5">
+                      <Radio className="w-2.5 h-2.5 text-red-400 animate-pulse" />
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-white truncate">{p.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-gray-900 dark:text-white truncate">{p.title}</p>
+                    {p.is_live && (
+                      <span className="inline-flex items-center gap-0.5 bg-red-500/20 text-red-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-red-500/30 shrink-0">
+                        <Radio className="w-2 h-2 animate-pulse" />
+                        LIVE · {p.live_views}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-gray-500 dark:text-slate-500">{p.seller_name} · {p.views} views · {p.order_count} orders</p>
                 </div>
                 <span className="text-xs font-bold text-emerald-400">{Number(p.price).toLocaleString()} دج</span>

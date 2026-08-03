@@ -1904,6 +1904,7 @@ export const listAllProducts: RequestHandler = async (req, res) => {
     const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
     const sort = String(req.query.sort || 'newest');
     const hideTest = req.query.hideTest === 'true';
+    const liveFilter = String(req.query.live || ''); // 'live', 'not_live', or ''
     const offset = (page - 1) * limit;
 
     const testTitles = ['ساعة رجالية فاخرة', 'عطر فرنسي أصلي', 'حقيبة يد نسائية', 'طقم رياضي رجالي'];
@@ -1914,6 +1915,16 @@ export const listAllProducts: RequestHandler = async (req, res) => {
       GROUP BY product_id
     ) oc ON oc.product_id = p.id`;
 
+    // Live views: count ViewContent events in last 10 minutes per product
+    const liveViewsJoin = `LEFT JOIN (
+      SELECT product_id, COUNT(*)::int as live_views
+      FROM pixel_events
+      WHERE event_name = 'ViewContent'
+        AND product_id IS NOT NULL
+        AND created_at > NOW() - INTERVAL '10 minutes'
+      GROUP BY product_id
+    ) lv ON lv.product_id = p.id`;
+
     let orderClause: string;
 
     switch (sort) {
@@ -1923,14 +1934,31 @@ export const listAllProducts: RequestHandler = async (req, res) => {
       case 'most_ordered':
         orderClause = 'COALESCE(oc.order_count, 0) DESC, p.id DESC';
         break;
+      case 'most_live':
+        orderClause = 'COALESCE(lv.live_views, 0) DESC, p.id DESC';
+        break;
       case 'newest':
       default:
         orderClause = 'p.created_at DESC';
         break;
     }
 
-    const whereClause = hideTest ? `WHERE p.title NOT IN (${testTitles.map((_, i) => `$${i + 3}`).join(',')})` : '';
-    const countWhereClause = hideTest ? `WHERE p.title NOT IN (${testTitles.map((_, i) => `$${i + 1}`).join(',')})` : '';
+    let whereClauses: string[] = [];
+    if (hideTest) {
+      whereClauses.push(`p.title NOT IN (${testTitles.map((_, i) => `$${i + 3}`).join(',')})`);
+    }
+    if (liveFilter === 'live') {
+      whereClauses.push(`COALESCE(lv.live_views, 0) >= 30`);
+    } else if (liveFilter === 'not_live') {
+      whereClauses.push(`COALESCE(lv.live_views, 0) < 30`);
+    }
+    const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const countWhereClauses: string[] = [];
+    if (hideTest) {
+      countWhereClauses.push(`p.title NOT IN (${testTitles.map((_, i) => `$${i + 1}`).join(',')})`);
+    }
+    const countWhereClause = countWhereClauses.length > 0 ? `WHERE ${countWhereClauses.join(' AND ')}` : '';
 
     const countResult = await pool.query(
       `SELECT COUNT(*)::int as total FROM client_store_products p ${countWhereClause}`,
@@ -1947,18 +1975,50 @@ export const listAllProducts: RequestHandler = async (req, res) => {
         COALESCE(p.views, 0) as views, p.created_at,
         p.images,
         COALESCE(oc.order_count, 0) as order_count,
-        css.store_slug
+        css.store_slug,
+        COALESCE(lv.live_views, 0) as live_views,
+        CASE WHEN COALESCE(lv.live_views, 0) >= 30 THEN true ELSE false END as is_live
       FROM client_store_products p
       JOIN clients c ON p.client_id = c.id
       LEFT JOIN client_store_settings css ON css.client_id = p.client_id
       ${orderJoin}
+      ${liveViewsJoin}
       ${whereClause}
       ORDER BY ${orderClause}
       LIMIT $1 OFFSET $2`,
       params
     );
 
-    res.json({ products: result.rows, total, page, limit });
+    // Count live products across all stores
+    const liveCountResult = await pool.query(
+      `SELECT COUNT(*)::int as live_products FROM (
+        SELECT product_id
+        FROM pixel_events
+        WHERE event_name = 'ViewContent'
+          AND product_id IS NOT NULL
+          AND created_at > NOW() - INTERVAL '10 minutes'
+        GROUP BY product_id
+        HAVING COUNT(*) >= 30
+      ) sub`
+    );
+    const liveProducts = liveCountResult.rows[0]?.live_products || 0;
+
+    // Count live stores (stores with at least one live product)
+    const liveStoresResult = await pool.query(
+      `SELECT COUNT(DISTINCT csp.client_id)::int as live_stores FROM (
+        SELECT product_id
+        FROM pixel_events
+        WHERE event_name = 'ViewContent'
+          AND product_id IS NOT NULL
+          AND created_at > NOW() - INTERVAL '10 minutes'
+        GROUP BY product_id
+        HAVING COUNT(*) >= 30
+      ) live_p
+      JOIN client_store_products csp ON csp.id = live_p.product_id`
+    );
+    const liveStores = liveStoresResult.rows[0]?.live_stores || 0;
+
+    res.json({ products: result.rows, total, page, limit, liveProducts, liveStores });
   } catch (err) {
     console.error('Failed to list products:', err);
     return jsonError(res, 500, "Failed to list products");

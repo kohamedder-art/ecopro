@@ -303,6 +303,8 @@ interface Product {
   seller_email: string;
   status: string;
   views: number;
+  live_views: number;
+  is_live: boolean;
   created_at: string;
   images?: string[];
   flagged?: boolean;
@@ -392,6 +394,9 @@ export default function PlatformAdmin() {
   const [productSort, setProductSort] = useState('newest');
   const [productTotal, setProductTotal] = useState(0);
   const [hideTestProducts, setHideTestProducts] = useState(true);
+  const [liveFilter, setLiveFilter] = useState('');
+  const [liveProductsCount, setLiveProductsCount] = useState(0);
+  const [liveStoresCount, setLiveStoresCount] = useState(0);
   const [stores, setStores] = useState<Store[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -682,7 +687,7 @@ export default function PlatformAdmin() {
     try {
       const [usersRes, productsRes, statsRes, storesRes, activityRes, staffRes] = await Promise.all([
         fetch('/api/admin/users'),
-        fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}&hideTest=${hideTestProducts}`).catch(() => null),
+        fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}&hideTest=${hideTestProducts}&live=${liveFilter}`).catch(() => null),
         fetch('/api/admin/stats').catch(() => null),
         fetch('/api/admin/stores').catch(() => null),
         fetch('/api/admin/activity-logs').catch(() => null),
@@ -713,6 +718,8 @@ export default function PlatformAdmin() {
         const items = Array.isArray(data) ? data : (data.products || []);
         setProducts(items);
         setProductTotal(data.total ?? items.length);
+        setLiveProductsCount(data.liveProducts ?? 0);
+        setLiveStoresCount(data.liveStores ?? 0);
 
         const activeProducts = items.filter((p: Product) => p.status === 'active').length;
 
@@ -757,17 +764,19 @@ export default function PlatformAdmin() {
   // Separate product fetch for pagination/sort changes (avoids re-fetching everything)
   const loadProducts = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}&hideTest=${hideTestProducts}`);
+      const res = await fetch(`/api/admin/products?page=${productPage}&limit=50&sort=${productSort}&hideTest=${hideTestProducts}&live=${liveFilter}`);
       if (res.ok) {
         const data = await res.json();
         const items = Array.isArray(data) ? data : (data.products || []);
         setProducts(items);
         setProductTotal(data.total ?? items.length);
+        setLiveProductsCount(data.liveProducts ?? 0);
+        setLiveStoresCount(data.liveStores ?? 0);
       }
     } catch (e) {
       console.error('Failed to load products:', e);
     }
-  }, [productPage, productSort, hideTestProducts]);
+  }, [productPage, productSort, hideTestProducts, liveFilter]);
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
@@ -1679,9 +1688,12 @@ export default function PlatformAdmin() {
             page={productPage}
             sort={productSort}
             hideTest={hideTestProducts}
+            liveProducts={liveProductsCount}
+            liveStores={liveStoresCount}
             onPageChange={setProductPage}
             onSortChange={(sort) => { setProductSort(sort); setProductPage(1); }}
             onHideTestChange={(v) => { setHideTestProducts(v); setProductPage(1); }}
+            onLiveFilterChange={(f) => { setLiveFilter(f); setProductPage(1); }}
           />
         )}
 
