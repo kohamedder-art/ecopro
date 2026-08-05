@@ -93,23 +93,31 @@ export default function AITab() {
       state: churn,
       onRun: () => runEndpoint('churn-prediction', setChurn),
       renderResult: (data: any) => {
-        const result = data?.predictions || data?.result || data;
+        const result = data?.atRiskStores || data?.predictions || data?.result || data;
         if (typeof result === 'string') return <p className="text-gray-700 dark:text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{result}</p>;
+        if (Array.isArray(result) && result.length === 0) {
+          return (
+            <div className="text-center py-4">
+              <TrendingDown className="w-8 h-8 mx-auto text-emerald-500/50 mb-2" />
+              <p className="text-emerald-300 text-sm font-medium">{t('platformAdmin.ai.allClear')}</p>
+            </div>
+          );
+        }
         if (Array.isArray(result)) {
           return (
             <div className="space-y-2">
               {result.slice(0, 10).map((item: any, i: number) => (
                 <div key={i} className="flex items-center justify-between bg-gray-50/40 dark:bg-slate-900/40 rounded-lg px-3 py-2">
-                  <div>
-                    <p className="text-sm text-gray-900 dark:text-white font-medium">{item.name || item.email || `User ${i + 1}`}</p>
-                    {item.reason && <p className="text-xs text-gray-500 dark:text-slate-400">{item.reason}</p>}
+                  <div className="min-w-0">
+                    <p className="text-sm text-gray-900 dark:text-white font-medium truncate">{item.storeName || item.name || item.email || `Store ${i + 1}`}</p>
+                    {item.reason && <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{item.reason}</p>}
                   </div>
-                  <Badge className={`text-xs ${
+                  <Badge className={`text-xs flex-shrink-0 ml-2 ${
                     (item.risk || item.score || 0) > 0.7 ? 'bg-red-500/20 text-red-300 border-red-500/30' :
                     (item.risk || item.score || 0) > 0.4 ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
-                    'bg-green-500/20 text-green-300 border-green-500/30'
+                    'bg-red-500/20 text-red-300 border-red-500/30'
                   } border`}>
-                    {Math.round((item.risk || item.score || 0) * 100)}% risk
+                    {item.risk || item.score ? `${Math.round((item.risk || item.score) * 100)}% risk` : 'At risk'}
                   </Badge>
                 </div>
               ))}
@@ -130,8 +138,16 @@ export default function AITab() {
       state: fraud,
       onRun: () => runEndpoint('fraud-detection', setFraud),
       renderResult: (data: any) => {
-        const result = data?.findings || data?.result || data;
+        const result = data?.flaggedOrders || data?.findings || data?.result || data;
         if (typeof result === 'string') return <p className="text-gray-700 dark:text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{result}</p>;
+        if (Array.isArray(result) && result.length === 0) {
+          return (
+            <div className="text-center py-4">
+              <Shield className="w-8 h-8 mx-auto text-emerald-500/50 mb-2" />
+              <p className="text-emerald-300 text-sm font-medium">{t('platformAdmin.ai.allClear')}</p>
+            </div>
+          );
+        }
         if (Array.isArray(result)) {
           return (
             <div className="space-y-2">
@@ -141,8 +157,8 @@ export default function AITab() {
                     item.severity === 'high' ? 'text-red-400' : item.severity === 'medium' ? 'text-amber-400' : 'text-blue-400'
                   }`} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-gray-900 dark:text-white font-medium">{item.title || item.type || `Finding ${i + 1}`}</p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{item.description || item.details || ''}</p>
+                    <p className="text-sm text-gray-900 dark:text-white font-medium">{item.title || item.type || (item.id != null ? `Order #${item.id}` : `Finding ${i + 1}`)}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{item.description || item.details || item.reason || ''}</p>
                   </div>
                 </div>
               ))}
@@ -178,7 +194,10 @@ export default function AITab() {
             <div className="space-y-2">
               {result.slice(0, 10).map((item: any, i: number) => (
                 <div key={i} className="bg-gray-50/40 dark:bg-slate-900/40 rounded-lg px-3 py-2">
-                  <p className="text-sm text-gray-900 dark:text-white font-medium">{item.product || item.store || `Item ${i + 1}`}</p>
+                  <p className="text-sm text-gray-900 dark:text-white font-medium">
+                    {item.product || item.title || `Item ${i + 1}`}
+                    {item.store ? <span className="text-gray-500 dark:text-slate-400 font-normal"> — {item.store}</span> : null}
+                  </p>
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{item.violation || item.reason || ''}</p>
                 </div>
               ))}

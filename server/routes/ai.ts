@@ -843,7 +843,7 @@ Draft a professional, helpful reply (2–4 sentences). Be supportive and solutio
 let healthCache: { summary: string; ts: number } | null = null;
 const HEALTH_CACHE_MS = 60 * 60 * 1000; // 1 hour
 
-router.get('/admin/platform-health', authenticate, requireAdmin, authAiLimiter, async (_req: Request, res: Response) => {
+router.all('/admin/platform-health', authenticate, requireAdmin, authAiLimiter, async (_req: Request, res: Response) => {
   try {
     if (healthCache && Date.now() - healthCache.ts < HEALTH_CACHE_MS) {
       return res.json({ summary: healthCache.summary, cached: true });
@@ -884,7 +884,7 @@ Platform: EcoPro — Algerian e-commerce SaaS. Subscription price: $7/month.`;
  * GET /api/ai/admin/churn-prediction
  * Identifies stores at risk of churning based on activity.
  */
-router.get('/admin/churn-prediction', authenticate, requireAdmin, authAiLimiter, async (_req: Request, res: Response) => {
+router.all('/admin/churn-prediction', authenticate, requireAdmin, authAiLimiter, async (_req: Request, res: Response) => {
   try {
     const r = await pool.query(
       `SELECT css.client_id, css.store_name,
@@ -928,22 +928,39 @@ Only include genuinely at-risk stores.`;
 
 /**
  * POST /api/ai/admin/moderate-content
- * Scans product title + description for inappropriate content.
- * Body: { title, description }
+ * Full-platform content monitoring — scans recent store products server-side
+ * for policy violations. No body required.
  */
-router.post('/admin/moderate-content', authenticate, requireAdmin, authAiLimiter, async (req: Request, res: Response) => {
+router.post('/admin/moderate-content', authenticate, requireAdmin, authAiLimiter, async (_req: Request, res: Response) => {
   try {
-    const { title, description } = req.body;
-    if (!title) return res.status(400).json({ error: 'title is required' });
+    // Scan recent platform products server-side — never trust frontend for moderation input
+    const r = await pool.query(
+      `SELECT p.id, p.title, p.description, p.category, p.client_id, css.store_name
+       FROM client_store_products p
+       JOIN client_store_settings css ON css.client_id = p.client_id
+       WHERE p.status = 'active'
+       ORDER BY p.created_at DESC
+       LIMIT 50`
+    );
 
-    const prompt = `Review this product listing for an Algerian e-commerce platform and check if it violates content policies (illegal goods, counterfeit products, explicit content, misinformation, prohibited categories).
-Title: "${title}"
-Description: "${description || ''}"
+    if (r.rows.length === 0) return res.json({ violations: [] });
 
-Return JSON: {"safe": boolean, "reason": "explanation if not safe, null if safe", "flags": ["flag1","flag2"]}`;
+    const products = r.rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      description: (row.description || '').slice(0, 300),
+      category: row.category,
+      store: row.store_name,
+    }));
 
-    const result = await generateJSON<{ safe: boolean; reason: string | null; flags: string[] }>('admin', prompt);
-    return res.json(result);
+    const prompt = `Review these product listings on an Algerian e-commerce platform for content policy violations (illegal goods, counterfeit products, explicit/inappropriate content, misinformation, prohibited categories such as weapons, drugs, or stolen goods).
+Products: ${JSON.stringify(products)}
+
+Return JSON array: [{"product": "product title", "store": "store name", "violation": "brief reason"}]
+Only include products that genuinely violate policy. If none violate, return [].`;
+
+    const violations = await generateJSON<any[]>('admin', prompt);
+    return res.json({ violations: Array.isArray(violations) ? violations : [] });
   } catch (err) {
     return serverError(res, err);
   }
@@ -953,7 +970,7 @@ Return JSON: {"safe": boolean, "reason": "explanation if not safe, null if safe"
  * GET /api/ai/admin/fraud-detection
  * Flags suspicious order patterns.
  */
-router.get('/admin/fraud-detection', authenticate, requireAdmin, authAiLimiter, async (_req: Request, res: Response) => {
+router.all('/admin/fraud-detection', authenticate, requireAdmin, authAiLimiter, async (_req: Request, res: Response) => {
   try {
     // Aggregate patterns — no individual PII passed to AI
     const r = await pool.query(
