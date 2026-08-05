@@ -39,6 +39,10 @@ interface ConversationFacts {
   purchased_products: string[];
   preferences: Record<string, any>;
   summary: string;
+  likes: string[];
+  dislikes: string[];
+  wants: string[];
+  order_history: Array<{ product: string; price: number; qty: number; order_id: number | string; date: string; status?: string }>;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -451,6 +455,17 @@ export async function handleCustomerMessage(
               const phoneCol = platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
               await (await pool()).query(`INSERT INTO customer_messaging_ids (client_id, ${phoneCol}, customer_phone) VALUES ($1, $2, $3) ON CONFLICT (client_id, ${phoneCol}) DO UPDATE SET customer_phone = $3`, [clientId, platformChatId, data.customerPhone]);
             } catch {}
+            // Record the order into the memory card (keeps last 20)
+            const actionFacts = extractFactsFromAction(data);
+            actionFacts.order_history = [{
+              product: String(data.productTitle || '').trim() || 'منتج',
+              price: result.total,
+              qty: data.quantity || 1,
+              order_id: result.orderId,
+              date: new Date().toLocaleDateString('ar-DZ'),
+              status: 'pending',
+            }];
+            saveFacts(clientId, platform, platformChatId, actionFacts).catch(() => {});
           } else {
             clean = 'عذراً، حدث خطأ أثناء تسجيل الطلب. يرجى المحاولة مرة أخرى.';
           }
@@ -463,8 +478,10 @@ export async function handleCustomerMessage(
             clean = 'لم أجد أي طلبيات نشطة باسمك لتحديث عنوانها. إذا كنت تريد طلباً جديداً، أخبرني باسم المنتج وسأساعدك.';
           }
         }
-        // Save extracted facts from the action
-        saveFacts(clientId, platform, platformChatId, extractFactsFromAction(data)).catch(() => {});
+        // Save extracted facts from the action (create_customer_order already saved with order_history above)
+        if (data.type !== 'create_customer_order') {
+          saveFacts(clientId, platform, platformChatId, extractFactsFromAction(data)).catch(() => {});
+        }
       } catch (e) { console.error('[CustomerAI] Action parse error:', e); }
     }
 
@@ -700,7 +717,7 @@ async function loadFacts(clientId: number, platform: Platform, chatId: string, p
     const p = await pool();
     // Tier 1: exact chat match (highest priority)
     const res = await p.query(
-      `SELECT customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary
+      `SELECT customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary, likes, dislikes, wants, order_history
        FROM customer_conversation_facts WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 LIMIT 1`,
       [clientId, platform, chatId]
     );
@@ -714,12 +731,16 @@ async function loadFacts(clientId: number, platform: Platform, chatId: string, p
         purchased_products: res.rows[0].purchased_products || [],
         preferences: res.rows[0].preferences || {},
         summary: res.rows[0].summary || '',
+        likes: res.rows[0].likes || [],
+        dislikes: res.rows[0].dislikes || [],
+        wants: res.rows[0].wants || [],
+        order_history: res.rows[0].order_history || [],
       };
     }
     // Tier 2: same phone from any chat/platform (reliable identifier)
     if (phone) {
       const phoneRes = await p.query(
-        `SELECT customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary
+        `SELECT customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary, likes, dislikes, wants, order_history
          FROM customer_conversation_facts WHERE client_id = $1 AND customer_phone = $2
          ORDER BY updated_at DESC LIMIT 1`,
         [clientId, phone]
@@ -736,6 +757,10 @@ async function loadFacts(clientId: number, platform: Platform, chatId: string, p
           purchased_products: r.purchased_products || [],
           preferences: r.preferences || {},
           summary: '', // don't inherit other chat's summary
+          likes: r.likes || [],
+          dislikes: r.dislikes || [],
+          wants: r.wants || [],
+          order_history: r.order_history || [],
         };
       }
     }
@@ -755,14 +780,20 @@ async function saveFacts(clientId: number, platform: Platform, chatId: string, f
       purchased_products: [...new Set([...(existing?.purchased_products || []), ...(facts.purchased_products || [])])],
       preferences: { ...(existing?.preferences || {}), ...(facts.preferences || {}) },
       summary: newSummary ?? existing?.summary ?? '',
+      likes: [...new Set([...(existing?.likes || []), ...(facts.likes || [])])],
+      dislikes: [...new Set([...(existing?.dislikes || []), ...(facts.dislikes || [])])],
+      wants: [...new Set([...(existing?.wants || []), ...(facts.wants || [])])],
+      order_history: facts.order_history && facts.order_history.length > 0
+        ? [...(existing?.order_history || []), ...facts.order_history].slice(-20)
+        : (existing?.order_history || []),
     };
     const p = await pool();
     await p.query(
-      `INSERT INTO customer_conversation_facts (client_id, platform, platform_chat_id, customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      `INSERT INTO customer_conversation_facts (client_id, platform, platform_chat_id, customer_name, customer_phone, preferred_wilaya, preferred_commune, interests, purchased_products, preferences, summary, likes, dislikes, wants, order_history, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
        ON CONFLICT (client_id, platform, platform_chat_id)
-       DO UPDATE SET customer_name = $4, customer_phone = $5, preferred_wilaya = $6, preferred_commune = $7, interests = $8, purchased_products = $9, preferences = $10, summary = $11, updated_at = NOW()`,
-      [clientId, platform, chatId, merged.customer_name, merged.customer_phone, merged.preferred_wilaya, merged.preferred_commune, merged.interests, merged.purchased_products, merged.preferences, merged.summary]
+       DO UPDATE SET customer_name = $4, customer_phone = $5, preferred_wilaya = $6, preferred_commune = $7, interests = $8, purchased_products = $9, preferences = $10, summary = $11, likes = $12, dislikes = $13, wants = $14, order_history = $15, updated_at = NOW()`,
+      [clientId, platform, chatId, merged.customer_name, merged.customer_phone, merged.preferred_wilaya, merged.preferred_commune, merged.interests, merged.purchased_products, merged.preferences, merged.summary, merged.likes, merged.dislikes, merged.wants, JSON.stringify(merged.order_history)]
     );
   } catch {}
 }
@@ -803,6 +834,44 @@ function extractFactsFromMessage(msg: string, existing?: ConversationFacts | nul
       break;
     }
   }
+  // Extract likes: "أحب X", "يعجبني X", "نعجبني X", "مليحة X"
+  const likePatterns = [
+    /(?:أحب|نحب|يعجبني|نعجبني|عجبني|أعشق|نعشق)\s+[^\n.!؟؟]{1,40}/i,
+    /^(?:مليحة|رائعة|جيدة|حلوة)\s+[^\n.!؟؟]{1,40}/i,
+  ];
+  for (const pat of likePatterns) {
+    const m = msg.match(pat);
+    if (m) {
+      const like = m[0].replace(/^(?:أحب|نحب|يعجبني|نعجبني|عجبني|أعشق|نعشق)\s+/i, '').replace(/^(?:مليحة|رائعة|جيدة|حلوة)\s+/i, '').trim().slice(0, 60);
+      if (like.length > 2) facts.likes = [like];
+      break;
+    }
+  }
+  // Extract dislikes: "ما نحبش X", "ما يعجبنيش X", "ما أحبش X", "مزعج X", "غالية X"
+  const dislikePatterns = [
+    /(?:ما\s*نحبش|ما\s*أحبش|ما\s*يعجبنيش|ما\s*نعجبنيش|ما\s*عجبنيش|ما\s*نفهمش)\s+[^\n.!؟؟]{1,40}/i,
+    /(?:مزعج|بغيض|مقرف|قذر|رخيص|غالي|غالية)\s+[^\n.!؟؟]{1,40}/i,
+  ];
+  for (const pat of dislikePatterns) {
+    const m = msg.match(pat);
+    if (m) {
+      const dislike = m[0].replace(/^(?:ما\s*نحبش|ما\s*أحبش|ما\s*يعجبنيش|ما\s*نعجبنيش|ما\s*عجبنيش|ما\s*نفهمش)\s+/i, '').replace(/^(?:مزعج|بغيض|مقرف|قذر|رخيص|غالي|غالية)\s+/i, '').trim().slice(0, 60);
+      if (dislike.length > 2) facts.dislikes = [dislike];
+      break;
+    }
+  }
+  // Extract wants: "أريد X", "نريد X", "أبحث عن X", "نبحث على X", "بغيت X", "حابة X", "نحتاج X"
+  const wantPatterns = [
+    /(?:أريد|نريد|أريدُ|أبحث\s*عن|نبحث\s*(?:عن|على)|بغيت|بغات|حابة|حاب|نحتاج|أحتاج|أرغب|نرغب)\s+[^\n.!؟؟]{1,40}/i,
+  ];
+  for (const pat of wantPatterns) {
+    const m = msg.match(pat);
+    if (m) {
+      const want = m[0].replace(/^(?:أريد|نريد|أريدُ|أبحث\s*عن|نبحث\s*(?:عن|على)|بغيت|بغات|حابة|حاب|نحتاج|أحتاج|أرغب|نرغب)\s+/i, '').trim().slice(0, 60);
+      if (want.length > 2) facts.wants = [want];
+      break;
+    }
+  }
   // Track interaction count
   facts.preferences = { interaction_count: (existing?.preferences?.interaction_count || 0) + 1 };
   return facts;
@@ -833,8 +902,19 @@ function buildFactsSummary(facts: ConversationFacts | null): string {
   if (facts.customer_name) parts.push(`الاسم: ${facts.customer_name}`);
   if (facts.customer_phone) parts.push(`الهاتف: ${facts.customer_phone}`);
   if (facts.preferred_wilaya) parts.push(`الولاية: ${facts.preferred_wilaya}`);
-  if (facts.interests.length > 0) parts.push(`المنتجات التي أبدى اهتماماً بها: ${[...new Set(facts.interests)].join('، ')}`);
+  if (facts.preferred_commune) parts.push(`البلدية: ${facts.preferred_commune}`);
+  if (facts.interests.length > 0) parts.push(`أبدى اهتماماً بـ: ${[...new Set(facts.interests)].join('، ')}`);
+  if (facts.likes.length > 0) parts.push(`يحب: ${[...new Set(facts.likes)].join('، ')}`);
+  if (facts.dislikes.length > 0) parts.push(`لا يحب: ${[...new Set(facts.dislikes)].join('، ')}`);
+  if (facts.wants.length > 0) parts.push(`يريد: ${[...new Set(facts.wants)].join('، ')}`);
   if (facts.purchased_products.length > 0) parts.push(`المنتجات التي اشتراها: ${[...new Set(facts.purchased_products)].join('، ')}`);
+  if (facts.order_history.length > 0) {
+    const orders = facts.order_history.slice(-5).map(o => {
+      const when = o.date ? ` (${o.date})` : '';
+      return `#${o.order_id} ${o.product}${o.qty && o.qty > 1 ? ` ×${o.qty}` : ''} — ${o.price} دج${when}`;
+    });
+    parts.push(`سجل الطلبات:\n${orders.join('\n')}`);
+  }
   if (facts.preferences?.last_address) parts.push(`آخر عنوان شحن: ${facts.preferences.last_address}`);
   const count = facts.preferences?.interaction_count || 0;
   if (count > 1) parts.push(`عدد المرات التي تواصل فيها مع المتجر: ${count}`);

@@ -1174,8 +1174,17 @@ router.post('/chat', chatLimiter, async (req: Request, res: Response) => {
         parts: [{ text: m.content }],
       }));
 
+      // Extra context: last 8 turns persisted in store_owner_conversations (getOwnerHistory)
+      const ownerExtra = await getOwnerHistory(clientId);
+      let mergedHistory = geminiHistory;
+      if (ownerExtra.length > 0) {
+        const seen = new Set(geminiHistory.map(m => m.parts[0]?.text || ''));
+        const extra = ownerExtra.filter(m => !seen.has(m.parts[0]?.text || ''));
+        if (extra.length > 0) mergedHistory = [...geminiHistory, ...extra].slice(-20);
+      }
+
       // Use clean owner AI
-      const { answer, action } = await handleOwnerMessage(clientId, question, geminiHistory);
+      const { answer, action } = await handleOwnerMessage(clientId, question, mergedHistory);
 
       return res.json({ answer, ...(action ? { action } : {}) });
     }

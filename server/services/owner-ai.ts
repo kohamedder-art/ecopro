@@ -181,8 +181,12 @@ export async function handleOwnerMessage(
   const ctx = await loadSlimContext(clientId);
   if (!ctx) return { answer: 'لم يتم العثور على بيانات المتجر.', action: null };
 
+  // Load owner memory card (persistent facts) + merge into prompt context
+  const ownerFacts = await loadOwnerFacts(clientId);
+  const factsSummary = buildOwnerFactsSummary(ownerFacts);
+
   // Build user prompt
-  const prompt = buildUserPrompt(ctx, prevHistory, question);
+  const prompt = buildUserPrompt(ctx, prevHistory, question, factsSummary);
 
   try {
     const response = await generateText('store_owner', prompt, { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'owner' }, prevHistory, undefined, SYSTEM_PROMPT + '\n' + ACTION_INSTRUCTIONS);
@@ -217,6 +221,12 @@ export async function handleOwnerMessage(
 
     // Save conversation (non-blocking)
     saveOwnerHistory(clientId, question, answer, topic).catch(() => {});
+
+    // Save owner memory-card facts extracted from this message (non-blocking)
+    const ownerMsgFacts = extractOwnerFactsFromMessage(question, ownerFacts);
+    if (Object.keys(ownerMsgFacts).length > 0) {
+      saveOwnerFacts(clientId, ownerMsgFacts).catch(() => {});
+    }
 
     return { answer, action };
   } catch (err) {
@@ -1013,7 +1023,7 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
   };
 }
 
-function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: string): string {
+function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: string, factsSummary: string = ''): string {
   let p = `=== بيانات الصاحب ===\n`;
   p += `الاسم: ${ctx.ownerName || 'غير محدد'}\n`;
   p += `الإيميل: ${ctx.ownerEmail || 'غير محدد'}\n`;
@@ -1059,6 +1069,11 @@ function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: s
     .slice(-3);
   if (pastTopics.length) {
     p += `\n\n=== مواضيع سابقة ===\n- ${pastTopics.join('\n- ')}`;
+  }
+
+  // Owner memory card (persistent facts learned over time)
+  if (factsSummary) {
+    p += `\n\n${factsSummary}`;
   }
 
   p += `\n\nسؤال المستخدم: ${question || ''}`;
@@ -1129,4 +1144,155 @@ export async function saveOwnerHistory(clientId: number, message: string, respon
     await p.query(`INSERT INTO store_owner_conversations (client_id, role, message) VALUES ($1, 'owner', $2), ($1, 'assistant', $3)`, [clientId, message, tag + response]);
     await p.query(`DELETE FROM store_owner_conversations WHERE client_id = $1 AND id NOT IN (SELECT id FROM store_owner_conversations WHERE client_id = $1 ORDER BY created_at DESC LIMIT 50)`, [clientId]).catch(() => {});
   } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OWNER MEMORY CARD — persistent owner + store facts
+// ═══════════════════════════════════════════════════════════════
+
+interface OwnerFacts {
+  owner_name: string | null;
+  owner_phone: string | null;
+  owner_email: string | null;
+  store_name: string | null;
+  store_slug: string | null;
+  store_description: string | null;
+  template: string | null;
+  currency: string | null;
+  likes: string[];
+  dislikes: string[];
+  wants: string[];
+  preferences: Record<string, any>;
+  summary: string;
+}
+
+export async function loadOwnerFacts(clientId: number): Promise<OwnerFacts | null> {
+  try {
+    const p = await pool();
+    const res = await p.query(
+      `SELECT owner_name, owner_phone, owner_email, store_name, store_slug, store_description, template, currency, likes, dislikes, wants, preferences, summary
+       FROM store_owner_facts WHERE client_id = $1 LIMIT 1`,
+      [clientId]
+    );
+    if (!res.rows.length) return null;
+    const r = res.rows[0];
+    return {
+      owner_name: r.owner_name,
+      owner_phone: r.owner_phone,
+      owner_email: r.owner_email,
+      store_name: r.store_name,
+      store_slug: r.store_slug,
+      store_description: r.store_description,
+      template: r.template,
+      currency: r.currency,
+      likes: r.likes || [],
+      dislikes: r.dislikes || [],
+      wants: r.wants || [],
+      preferences: r.preferences || {},
+      summary: r.summary || '',
+    };
+  } catch { return null; }
+}
+
+export async function saveOwnerFacts(clientId: number, facts: Partial<OwnerFacts>): Promise<void> {
+  try {
+    const existing = await loadOwnerFacts(clientId);
+    const merged: OwnerFacts = {
+      owner_name: facts.owner_name ?? existing?.owner_name ?? null,
+      owner_phone: facts.owner_phone ?? existing?.owner_phone ?? null,
+      owner_email: facts.owner_email ?? existing?.owner_email ?? null,
+      store_name: facts.store_name ?? existing?.store_name ?? null,
+      store_slug: facts.store_slug ?? existing?.store_slug ?? null,
+      store_description: facts.store_description ?? existing?.store_description ?? null,
+      template: facts.template ?? existing?.template ?? null,
+      currency: facts.currency ?? existing?.currency ?? null,
+      likes: [...new Set([...(existing?.likes || []), ...(facts.likes || [])])],
+      dislikes: [...new Set([...(existing?.dislikes || []), ...(facts.dislikes || [])])],
+      wants: [...new Set([...(existing?.wants || []), ...(facts.wants || [])])],
+      preferences: { ...(existing?.preferences || {}), ...(facts.preferences || {}) },
+      summary: facts.summary ?? existing?.summary ?? '',
+    };
+    const p = await pool();
+    await p.query(
+      `INSERT INTO store_owner_facts (client_id, owner_name, owner_phone, owner_email, store_name, store_slug, store_description, template, currency, likes, dislikes, wants, preferences, summary, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+       ON CONFLICT (client_id)
+       DO UPDATE SET owner_name = $2, owner_phone = $3, owner_email = $4, store_name = $5, store_slug = $6, store_description = $7, template = $8, currency = $9, likes = $10, dislikes = $11, wants = $12, preferences = $13, summary = $14, updated_at = NOW()`,
+      [clientId, merged.owner_name, merged.owner_phone, merged.owner_email, merged.store_name, merged.store_slug, merged.store_description, merged.template, merged.currency, merged.likes, merged.dislikes, merged.wants, merged.preferences, merged.summary]
+    );
+  } catch {}
+}
+
+export function buildOwnerFactsSummary(facts: OwnerFacts | null): string {
+  if (!facts) return '';
+  const parts: string[] = [];
+  if (facts.owner_name) parts.push(`اسم الصاحب: ${facts.owner_name}`);
+  if (facts.owner_phone) parts.push(`هاتف الصاحب: ${facts.owner_phone}`);
+  if (facts.owner_email) parts.push(`إيميل الصاحب: ${facts.owner_email}`);
+  if (facts.store_name) parts.push(`اسم المتجر: ${facts.store_name}`);
+  if (facts.store_slug) parts.push(`الرابط: sahla4eco.com/store/${facts.store_slug}`);
+  if (facts.currency) parts.push(`العملة: ${facts.currency}`);
+  if (facts.template) parts.push(`القالب: ${facts.template}`);
+  if (facts.likes.length > 0) parts.push(`يحب: ${[...new Set(facts.likes)].join('، ')}`);
+  if (facts.dislikes.length > 0) parts.push(`لا يحب: ${[...new Set(facts.dislikes)].join('، ')}`);
+  if (facts.wants.length > 0) parts.push(`يريد: ${[...new Set(facts.wants)].join('، ')}`);
+  if (facts.preferences?.goals) parts.push(`أهدافه: ${String(facts.preferences.goals).slice(0, 200)}`);
+  if (facts.preferences?.language) parts.push(`لغة الحوار المفضلة: ${facts.preferences.language}`);
+  if (facts.summary) parts.push(`\nخلاصة تاريخ المحادثة:\n${facts.summary}`);
+  return parts.length > 0 ? `\n=== ملف الصاحب والمتجر ===\n${parts.join('\n')}\n=== نهاية الملف ===\n` : '';
+}
+
+// Extract owner memory-card facts from a raw message (name, phone, likes, dislikes, wants)
+function extractOwnerFactsFromMessage(msg: string, existing?: OwnerFacts | null): Partial<OwnerFacts> {
+  const facts: Partial<OwnerFacts> = {};
+  // Name: "اسمي X", "أنا X", "اسمي عبد الرحمن"
+  const namePatterns = [
+    /(?:اسمي|إسمي)\s+(\S+(?:\s+\S+){0,2})/i,
+    /^(?:أنا)\s+(\S+(?:\s+\S+){0,2})/i,
+  ];
+  for (const pat of namePatterns) {
+    const m = msg.match(pat);
+    if (m && m[1].length > 2) { facts.owner_name = m[1].trim(); break; }
+  }
+  // Phone
+  const phone = msg.match(/(0[567]\d{8})/);
+  if (phone) facts.owner_phone = phone[1];
+  // Likes
+  const likeMatch = msg.match(/(?:أحب|يعجبني|نعجبني|عجبني|مناسب لي|مناسبة لي)\s+[^\n.!؟؟]{1,50}/i);
+  if (likeMatch) {
+    const like = likeMatch[0].replace(/^(?:أحب|يعجبني|نعجبني|عجبني|مناسب لي|مناسبة لي)\s+/i, '').trim().slice(0, 60);
+    if (like.length > 2) facts.likes = [like];
+  }
+  // Dislikes
+  const dislikeMatch = msg.match(/(?:ما نحبش|ما يعجبنيش|ما نعجبنيش|ما عجبنيش|مزعج|معقد|باهظ|غالي|كثيرة|كثير)\s+[^\n.!؟؟]{1,50}/i);
+  if (dislikeMatch) {
+    const dislike = dislikeMatch[0].replace(/^(?:ما نحبش|ما يعجبنيش|ما نعجبنيش|ما عجبنيش|مزعج|معقد|باهظ|غالي|كثيرة|كثير)\s+/i, '').trim().slice(0, 60);
+    if (dislike.length > 2) facts.dislikes = [dislike];
+  }
+  // Wants / goals
+  const wantMatch = msg.match(/(?:أريد|نريد|أبحث عن|بغيت|حابة|حاب|أهدافي|هدفي|نحتاج)\s+[^\n.!؟؟]{1,50}/i);
+  if (wantMatch) {
+    const want = wantMatch[0].replace(/^(?:أريد|نريد|أبحث عن|بغيت|حابة|حاب|أهدافي|هدفي|نحتاج)\s+/i, '').trim().slice(0, 60);
+    if (want.length > 2) facts.wants = [want];
+  }
+  // Language preference hint
+  const lang = msg.match(/(الفرنسية|الانجليزية|العربية|français|english|arabic)/i);
+  if (lang) {
+    const raw = lang[1];
+    const map: Record<string, string> = {
+      'الفرنسية': 'fr', 'الانجليزية': 'en', 'العربية': 'ar',
+      'français': 'fr', 'english': 'en', 'arabic': 'ar',
+    };
+    facts.preferences = { language: map[raw.toLowerCase()] || 'ar' };
+  }
+  return facts;
+}
+
+// Store-owner conversation counter, incremented each turn
+export async function countOwnerInteractions(clientId: number): Promise<number> {
+  try {
+    const p = await pool();
+    const res = await p.query(`SELECT COUNT(*) as c FROM store_owner_conversations WHERE client_id = $1`, [clientId]);
+    return Number(res.rows[0]?.c || 0);
+  } catch { return 0; }
 }
