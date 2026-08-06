@@ -144,6 +144,15 @@ export default function PixelsTab() {
                   className="w-60 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 font-mono text-xs"
                 />
               )}
+              {pixel.platform === 'tiktok' && (
+                <input
+                  type="text"
+                  placeholder="Access Token (Events API)"
+                  value={pixel.access_token || ''}
+                  onChange={e => updatePixel(idx, 'access_token', e.target.value)}
+                  className="w-60 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 font-mono text-xs"
+                />
+              )}
               <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer shrink-0">
                 <input
                   type="checkbox"

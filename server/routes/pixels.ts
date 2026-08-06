@@ -83,11 +83,10 @@ function forwardToTikTokCAPI(opts: {
     if (ed.description) props.description = String(ed.description);
     if (ed.quantity != null) props.quantity = Number(ed.quantity);
   }
-  props.page_url = opts.pageUrl;
 
   fetch(TT_CAPI_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Access-Token': opts.accessToken },
     body: JSON.stringify({
       pixel_code: opts.pixelCode,
       event: opts.eventName,
@@ -95,9 +94,9 @@ function forwardToTikTokCAPI(opts: {
       context: {
         user_agent: opts.userAgent,
         ip: opts.ip,
+        page: { url: opts.pageUrl },
       },
       properties: props,
-      access_token: opts.accessToken,
     }),
   }).then(async (r) => {
     if (!r.ok) console.error(`[pixel-capi] TT error ${opts.pixelCode}/${opts.eventName}: ${r.status} ${await r.text()}`);
@@ -198,29 +197,8 @@ async function forwardEventToCAPI(pool: any, opts: {
               userAgent: opts.userAgent,
             });
           } else {
-            // Fallback: GET beacon to TikTok pixel endpoint (no token, server-side)
-            const params = new URLSearchParams({
-              pixel_code: pixelCode,
-              event_name: opts.eventName,
-              event_id: String(Date.now()),
-              timestamp: new Date().toISOString(),
-              url: opts.pageUrl,
-              user_agent: opts.userAgent,
-            });
-            if (opts.eventData?.content_ids) {
-              const cids = Array.isArray(opts.eventData.content_ids) ? opts.eventData.content_ids : [opts.eventData.content_ids];
-              params.set('content_ids', JSON.stringify(cids));
-            }
-            if (opts.eventData?.value) params.set('value', String(opts.eventData.value));
-            if (opts.eventData?.currency) params.set('currency', opts.eventData.currency);
-            if (opts.eventData?.content_name) params.set('content_name', opts.eventData.content_name);
-
-            fetch(`https://analytics.tiktok.com/i18n/pixel/?${params.toString()}`, {
-              method: 'GET',
-              headers: { 'User-Agent': opts.userAgent, 'Accept': '*/*' },
-            }).then((r) => {
-              if (!r.ok) console.error(`[pixel-capi] TikTok /i18n fallback failed ${pixelCode}/${opts.eventName}: ${r.status}`);
-            }).catch((e) => console.error(`[pixel-capi] TikTok /i18n fallback error ${pixelCode}/${opts.eventName}:`, e?.message));
+            // TikTok has no server-side no-token beacon — require Events API token
+            console.warn(`[pixel-capi] TikTok skip ${pixelCode}/${opts.eventName}: no access token configured`);
           }
         }
       }
@@ -1764,29 +1742,9 @@ export const pixelRelayHandler: RequestHandler = async (req, res) => {
           userAgent,
         });
       } else {
-        // ---- Fallback: GET beacon to TikTok pixel endpoint (no token) ----
-        const ttParams = new URLSearchParams({
-          pixel_code: pixelId,
-          event_name: eventName,
-          event_id: event_id || String(Date.now()),
-          timestamp: new Date().toISOString(),
-          url: url || req.headers.referer || '',
-          user_agent: userAgent,
-        });
-        if (params && typeof params === 'object') {
-          if (params.content_ids) ttParams.set('content_ids', JSON.stringify(Array.isArray(params.content_ids) ? params.content_ids : [params.content_ids]));
-          if (params.value != null) ttParams.set('value', String(params.value));
-          if (params.currency) ttParams.set('currency', String(params.currency));
-          if (params.content_name) ttParams.set('content_name', String(params.content_name));
-        }
-        fetch(`https://analytics.tiktok.com/i18n/pixel/?${ttParams.toString()}`, {
-          method: 'GET',
-          headers: { 'User-Agent': userAgent, 'Accept': '*/*' },
-        }).then((r) => {
-          if (!r.ok) console.error(`[pixel-relay] TikTok beacon failed ${pixelId}/${eventName}: ${r.status}`);
-        }).catch((err: any) => {
-          console.error(`[pixel-relay] TikTok beacon error ${pixelId}/${eventName}:`, err?.message || err);
-        });
+        // TikTok has no server-side no-token beacon — the /i18n/pixel GET
+        // only works from the browser SDK. Require an Events API token.
+        console.warn(`[pixel-relay] TikTok skip ${pixelId}/${eventName}: no access token configured`);
       }
       continue;
     }
