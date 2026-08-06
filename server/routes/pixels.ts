@@ -1703,38 +1703,98 @@ export const pixelRelayHandler: RequestHandler = async (req, res) => {
   const eventTime = Math.floor(Date.now() / 1000);
   const pool = await getPool();
 
-  // Build token map: pixel_id -> access_token
-  // 1) Check platform_settings (platform pixels)
+  // Build token + platform maps: pixel_id -> access_token / platform.
+  // 1) Check platform_settings (platform pixels) — carries the platform field.
   const platformPixels = await getPlatformPixelConfig(pool);
   const tokenMap: Record<string, string> = {};
+  const platformMap: Record<string, 'facebook' | 'tiktok'> = {};
   for (const p of platformPixels) {
     if (p.pixel_id && p.access_token) {
       tokenMap[p.pixel_id] = p.access_token;
     }
+    if (p.pixel_id && (p.platform === 'facebook' || p.platform === 'tiktok')) {
+      platformMap[p.pixel_id] = p.platform;
+    }
   }
 
-  // 2) Check client_pixel_settings (store pixels)
+  // 2) Check client_pixel_settings (store pixels) — both facebook + tiktok.
   try {
     const storefrontResult = await pool.query(
-      `SELECT facebook_pixel_id, facebook_access_token FROM client_pixel_settings
-       WHERE facebook_pixel_id = ANY($1) AND facebook_access_token IS NOT NULL
-       AND facebook_access_token != ''`,
+      `SELECT facebook_pixel_id, facebook_access_token, tiktok_pixel_id, tiktok_access_token
+       FROM client_pixel_settings
+       WHERE (facebook_pixel_id = ANY($1) AND facebook_access_token IS NOT NULL AND facebook_access_token != '')
+          OR (tiktok_pixel_id = ANY($1) AND tiktok_access_token IS NOT NULL AND tiktok_access_token != '')`,
       [ids]
     );
     for (const row of storefrontResult.rows) {
-      if (row.facebook_pixel_id && row.facebook_access_token) {
-        tokenMap[row.facebook_pixel_id] = row.facebook_access_token;
+      for (const fbId of String(row.facebook_pixel_id || '').split(',')) {
+        const id = fbId.trim();
+        if (id && row.facebook_access_token) {
+          tokenMap[id] = row.facebook_access_token;
+          platformMap[id] = 'facebook';
+        }
+      }
+      for (const ttId of String(row.tiktok_pixel_id || '').split(',')) {
+        const id = ttId.trim();
+        if (id && row.tiktok_access_token) {
+          tokenMap[id] = row.tiktok_access_token;
+          platformMap[id] = 'tiktok';
+        }
       }
     }
   } catch { /* ignore */ }
 
+  // TikTok uses "Pageview" for page views (Meta uses "PageView").
+  const eventName = event === 'PageView' ? 'Pageview' : event;
+
   for (const pixelId of ids) {
     const token = tokenMap[pixelId];
+    const platform = platformMap[pixelId] || 'facebook';
+
+    if (platform === 'tiktok') {
+      if (token) {
+        // ---- TikTok Events API (server-to-server, best accuracy) ----
+        forwardToTikTokCAPI({
+          pixelCode: pixelId,
+          accessToken: token,
+          eventName,
+          eventData: params || {},
+          pageUrl: url || req.headers.referer || '',
+          ip: clientIp,
+          userAgent,
+        });
+      } else {
+        // ---- Fallback: GET beacon to TikTok pixel endpoint (no token) ----
+        const ttParams = new URLSearchParams({
+          pixel_code: pixelId,
+          event_name: eventName,
+          event_id: event_id || String(Date.now()),
+          timestamp: new Date().toISOString(),
+          url: url || req.headers.referer || '',
+          user_agent: userAgent,
+        });
+        if (params && typeof params === 'object') {
+          if (params.content_ids) ttParams.set('content_ids', JSON.stringify(Array.isArray(params.content_ids) ? params.content_ids : [params.content_ids]));
+          if (params.value != null) ttParams.set('value', String(params.value));
+          if (params.currency) ttParams.set('currency', String(params.currency));
+          if (params.content_name) ttParams.set('content_name', String(params.content_name));
+        }
+        fetch(`https://analytics.tiktok.com/i18n/pixel/?${ttParams.toString()}`, {
+          method: 'GET',
+          headers: { 'User-Agent': userAgent, 'Accept': '*/*' },
+        }).then((r) => {
+          if (!r.ok) console.error(`[pixel-relay] TikTok beacon failed ${pixelId}/${eventName}: ${r.status}`);
+        }).catch((err: any) => {
+          console.error(`[pixel-relay] TikTok beacon error ${pixelId}/${eventName}:`, err?.message || err);
+        });
+      }
+      continue;
+    }
 
     if (token) {
       // ---- Conversions API (Graph API POST) ----
       const data: any = {
-        event_name: event,
+        event_name: eventName,
         event_time: eventTime,
         event_id: event_id || undefined,
         user_data: {

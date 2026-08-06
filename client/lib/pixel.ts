@@ -33,6 +33,7 @@ declare global {
     fbq?: any;
     _fbq?: any;
     ttq?: any;
+    TiktokAnalyticsObject?: string;
     __PIXEL_BACKEND_URL__?: string;
     __META_PIXEL_IDS__?: string[];
   }
@@ -40,7 +41,7 @@ declare global {
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve) => {
-    const existing = document.querySelector(`script[src="${src}"], script[src*="${src.split('/').pop()}"]`);
+    const existing = document.querySelector(`script[src="${src}"]`);
     if (existing) return resolve();
     const s = document.createElement('script');
     s.src = src;
@@ -74,24 +75,33 @@ export async function initTikTokPixels(ids: string[]): Promise<void> {
   const unique = Array.from(new Set(ids)).filter(Boolean);
   if (unique.length === 0) return;
 
-  await loadScript(TT_LIB);
-  if (!window.ttq) {
+  const w = window as any;
+
+  // TikTok's official bootstrap: before the SDK loads, expose the command
+  // queue as an array on window.ttq and tell events.js where to find it via
+  // TiktokAnalyticsObject. events.js replays the queued ['load', id] commands
+  // once it finishes loading, so pixel ids issued early are never lost.
+  if (!w.ttq) {
+    w.TiktokAnalyticsObject = 'ttq';
     const q: any[] = [];
-    // Bootstrap the official ttq API surface.
-    const ttq: any = (...args: any[]) => q.push(args);
-    ttq.load = (id: string) => q.push(['load', id]);
-    ttq.track = (ev: string, p?: any) => q.push(['track', ev, p]);
-    ttq.page = () => q.push(['track', 'PageView']);
-    ttq.unload = () => q.push(['unload']);
-    ttq.disablePushState = () => q.push(['disablePushState']);
-    ttq.instance = () => ttq;
-    ttq.pixelId = unique[0];
-    window.ttq = ttq;
+    const queue: any = q;
+    const methods = ['page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie'];
+    for (const m of methods) queue[m] = (...args: any[]) => q.push([m, ...args]);
+    queue.load = (id: string) => q.push(['load', id]);
+    queue.instance = () => queue;
+    w.ttq = queue;
   }
+
+  // Load the SDK exactly once (deduped by exact src). If it is already
+  // present this resolves instantly.
+  await loadScript(TT_LIB);
 
   for (const id of unique) {
     if (TT_INIT.has(id)) continue;
-    window.ttq.load(id);
+    // Once events.js has loaded, window.ttq is the real SDK and .load() runs
+    // immediately. If it is still loading (or blocked), the command is
+    // buffered in the queue and replayed when the SDK becomes ready.
+    w.ttq.load(id);
     TT_INIT.add(id);
   }
 }
@@ -106,7 +116,9 @@ export function trackFacebookEvent(event: string, params: Record<string, any> = 
 
 export function trackTikTokEvent(event: string, params: Record<string, any> = {}): void {
   if (!window.ttq) return;
-  window.ttq.track(event, params);
+  // TikTok's standard event name is "Pageview" (Meta uses "PageView").
+  const name = event === 'PageView' ? 'Pageview' : event;
+  window.ttq.track(name, params);
 }
 
 export function trackPixelEvent(event: string, params: Record<string, any> = {}): void {
