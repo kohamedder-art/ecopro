@@ -77,30 +77,47 @@ export async function initTikTokPixels(ids: string[]): Promise<void> {
 
   const w = window as any;
 
-  // TikTok's official bootstrap: before the SDK loads, expose the command
-  // queue as an array on window.ttq and tell events.js where to find it via
-  // TiktokAnalyticsObject. events.js replays the queued ['load', id] commands
-  // once it finishes loading, so pixel ids issued early are never lost.
+  // TikTok's official bootstrap (verbatim from analytics.tiktok.com sdk.js).
+  // The critical part is ttq.load(): it seeds ttq._i[pixelId] AND injects
+  // events.js?sdkid=<pixelId>&lib=ttq. The server only returns events.js with
+  // the pixel code embedded ("pixelCode":"...", _li["..."]) when sdkid is
+  // present; loading bare events.js yields pixelCode:"" so ttq._i stays empty
+  // and the SDK never initialises the pixel (no beacons fire, token or not).
   if (!w.ttq) {
     w.TiktokAnalyticsObject = 'ttq';
     const q: any[] = [];
     const queue: any = q;
-    const methods = ['page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie'];
+    const methods = ['page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie', 'holdConsent', 'revokeConsent', 'grantConsent'];
     for (const m of methods) queue[m] = (...args: any[]) => q.push([m, ...args]);
-    queue.load = (id: string) => q.push(['load', id]);
-    queue.instance = () => queue;
+    queue.instance = (id: string) => {
+      const perPixel: any = queue._i?.[id] ?? [];
+      for (const m of methods) perPixel[m] = (...args: any[]) => perPixel.push([m, ...args]);
+      return perPixel;
+    };
+    queue.load = (id: string, opts?: any) => {
+      queue._i = queue._i || {};
+      queue._i[id] = [];
+      queue._i[id]._u = TT_LIB;
+      queue._i[id]._partner = opts?.partner || '';
+      queue._t = queue._t || {};
+      queue._t[id] = +new Date();
+      queue._o = queue._o || {};
+      queue._o[id] = opts || {};
+      queue._partner = queue._partner || '';
+      const s = document.createElement('script');
+      s.type = 'text/javascript';
+      s.async = true;
+      s.src = `${TT_LIB}?sdkid=${encodeURIComponent(id)}&lib=ttq`;
+      (document.getElementsByTagName('script')[0])?.parentNode?.insertBefore(
+        s,
+        document.getElementsByTagName('script')[0],
+      );
+    };
     w.ttq = queue;
   }
 
-  // Load the SDK exactly once (deduped by exact src). If it is already
-  // present this resolves instantly.
-  await loadScript(TT_LIB);
-
   for (const id of unique) {
     if (TT_INIT.has(id)) continue;
-    // Once events.js has loaded, window.ttq is the real SDK and .load() runs
-    // immediately. If it is still loading (or blocked), the command is
-    // buffered in the queue and replayed when the SDK becomes ready.
     w.ttq.load(id);
     TT_INIT.add(id);
   }
