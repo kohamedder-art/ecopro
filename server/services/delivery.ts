@@ -70,6 +70,7 @@ import { EcomDeliveryService } from './couriers/ecom-delivery';
 import { ElogistiaService } from './couriers/elogistia';
 import { MdmService } from './couriers/mdm';
 import { HhdService } from './couriers/hhd';
+import { ProColisService } from './couriers/procolis';
 
 // ========================================
 // REGISTER REAL ALGERIAN DELIVERY PROVIDERS
@@ -114,6 +115,8 @@ registerCourierService('mdm-express', MdmService);
 registerCourierService('hhd', HhdService);
 registerCourierService('hhd express', HhdService);
 registerCourierService('hhd-express', HhdService);
+// ProColis
+registerCourierService('procolis', ProColisService);
 
 export class DeliveryService {
   /**

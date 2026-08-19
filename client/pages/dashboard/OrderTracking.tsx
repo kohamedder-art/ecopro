@@ -154,12 +154,11 @@ function StepBar({ status, t, locale }: { status: string; t: (key: string) => st
               </div>
               {/* Label — always below the circle */}
               <span
-                className="text-center mt-1 leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
+                className="w-full text-center mt-1 leading-tight whitespace-nowrap overflow-hidden text-ellipsis block"
                 style={{
                   fontSize: '8px',
                   fontWeight: isCurrentStep ? 800 : 600,
                   color: isCurrentStep ? step.color : done ? '#495057' : 'hsl(var(--muted-foreground))',
-                  maxWidth: '70px',
                 }}
               >
                 {t(step.labelKey)}
@@ -372,19 +371,19 @@ export default function OrderTracking() {
             <span className="flex-1 h-px bg-border" />
             <span className="text-[10px] text-muted-foreground">{orders.length} orders</span>
           </div>
-          <div className="grid grid-cols-6 divide-x divide-border">
+          <div className="grid grid-cols-3 sm:grid-cols-6 divide-x divide-border">
             {(["pending","transit","hub","ofd","done","bad"] as const).map(g => {
               const meta = GROUP_META[g];
               const count = liveCounts[g] || 0;
               const active = groupFilter === g;
               return (
                 <button key={g} onClick={() => setGroupFilter(g)}
-                  className="p-3 text-center transition-all relative"
+                  className="p-2.5 sm:p-3 text-center transition-all relative overflow-hidden"
                   style={{
                     background: active ? `linear-gradient(180deg, ${meta.color}15, ${meta.color}08)` : 'transparent',
                   }}>
-                  <div className="text-2xl font-black tabular-nums" style={{ color: meta.color }}>{count}</div>
-                  <div className="text-[9px] font-bold text-muted-foreground mt-0.5">{meta.label}</div>
+                  <div className="text-xl sm:text-2xl font-black tabular-nums" style={{ color: meta.color }}>{count}</div>
+                  <div className="text-[8px] sm:text-[9px] font-bold text-muted-foreground mt-0.5 truncate">{meta.label}</div>
                   {active && (
                     <div className="absolute bottom-0 left-0 right-0 h-[3px]"
                       style={{ background: `linear-gradient(90deg, ${meta.color}, ${meta.color}80)` }} />

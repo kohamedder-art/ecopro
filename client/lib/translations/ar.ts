@@ -2517,7 +2517,7 @@ export const ar = {
   "delivery.desc.dhd": "DHD Livraison Express — 55 ولاية. دفع عند الاستلام، تتبع وملصقات عبر Ecotrack.",
   "delivery.desc.ecom": "Ecom Delivery — 58 ولاية. دفع عند الاستلام، تتبع وملصقات.",
   "delivery.desc.elogistia": "تكامل Elogistia مع إنشاء شحنات تلقائي وتتبع فوري.",
-  "delivery.desc.procolis": "تكامل ProColis (تعيين يدوي).",
+  "delivery.desc.procolis": "تكامل ProColis عبر API — إنشاء الشحنات والتتبع.",
   "delivery.desc.colivraison": "تكامل Colivraison Express (تعيين يدوي).",
   "delivery.desc.mdm": "تكامل MDM Express (تعيين يدوي).",
   "delivery.desc.yalitec": "تكامل Yalitec (تعيين يدوي).",

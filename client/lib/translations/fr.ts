@@ -1097,7 +1097,7 @@ export const fr = {
   "delivery.desc.dhd": "DHD Livraison Express — 55 wilayas. COD, suivi et étiquettes via Ecotrack.",
   "delivery.desc.ecom": "Ecom Delivery — 58 wilayas. COD, suivi et étiquettes.",
   "delivery.desc.elogistia": "Intégration Elogistia avec création automatique et suivi en temps réel.",
-  "delivery.desc.procolis": "Intégration ProColis (assignation manuelle).",
+  "delivery.desc.procolis": "Intégration API ProColis — création et suivi des envois.",
   "delivery.desc.colivraison": "Intégration Colivraison Express (assignation manuelle).",
   "delivery.desc.mdm": "Intégration MDM Express (assignation manuelle).",
   "delivery.desc.yalitec": "Intégration Yalitec (assignation manuelle).",

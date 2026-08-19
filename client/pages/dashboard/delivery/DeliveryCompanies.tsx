@@ -67,7 +67,7 @@ export default function DeliveryCompanies() {
 
   // Only allow providers with working integrations to be configured.
   const isComingSoon = (company: DeliveryCompany) => {
-    const openIds = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'hhd-express', 'ecotrack', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro'];
+    const openIds = ['dolivroo', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'hhd-express', 'ecotrack', 'ecom-delivery', 'elogistia', 'procolis', 'mdm-express', 'maystro'];
     return !openIds.includes(company.id);
   };
   
@@ -77,7 +77,7 @@ export default function DeliveryCompanies() {
   // ========================================
   // List of company IDs that should appear first (working ones)
   // Order here is authoritative for the UI — keeps MDM before Maystro.
-  const workingCompanyOrder = ['hhd-express', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'ecom-delivery', 'elogistia', 'mdm-express', 'maystro', 'dolivroo', 'ecotrack'];
+  const workingCompanyOrder = ['hhd-express', 'zr-express', 'noest', 'anderson', 'zimou-express', 'dhd', 'ecom-delivery', 'elogistia', 'procolis', 'mdm-express', 'maystro', 'dolivroo', 'ecotrack'];
 
   const [companies, setCompanies] = useState<DeliveryCompany[]>(() => [
     // ⭐ TIER 1: Best API - Yalidine (Most documented, npm packages available)
@@ -287,16 +287,16 @@ export default function DeliveryCompanies() {
       id: "procolis",
       name: "ProColis",
       logo: getDeliveryCompanyLogoSrc("ProColis"),
-      description: "ProColis account integration (manual assignment-ready).",
+      description: "ProColis delivery integration — API-based shipment creation and tracking.",
       descriptionKey: "delivery.desc.procolis",
       apiFields: [
-        { label: "API Key / Client Code", placeholder: "Your ProColis API Key (or client code)", field: "apiKey" },
-        { label: "API Secret (optional)", placeholder: "Optional secret", field: "apiId" },
+        { label: "Token", placeholder: "Your ProColis API token", field: "apiKey" },
+        { label: "Key", placeholder: "Your ProColis API key", field: "apiId" },
       ],
-      enabled: false,
+      enabled: true,
       hasApi: true,
-      features: { createShipment: false, tracking: false, labels: false, cod: false, webhooks: false },
-      apiRating: 1,
+      features: { createShipment: true, tracking: true, labels: false, cod: true, webhooks: false },
+      apiRating: 3,
     },
     {
       id: "elogistia",
