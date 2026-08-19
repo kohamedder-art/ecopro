@@ -545,7 +545,7 @@ export async function sendDeliveryStatusNotification(params: {
     const settingsRes = await pool.query(
       `SELECT enabled, delivery_notifications_enabled, delivery_status_template,
               messenger_enabled, telegram_bot_token, fb_page_id,
-              whatsapp_enabled, whatsapp_cloud_enabled, whatsapp_token, whatsapp_phone_id
+              whatsapp_token, whatsapp_phone_id
        FROM bot_settings WHERE client_id = $1`,
       [clientId]
     );
@@ -577,7 +577,7 @@ export async function sendDeliveryStatusNotification(params: {
     if (bs.messenger_enabled && bs.fb_page_id) channels.push('messenger');
     const waToken = String(bs.whatsapp_token || '').trim() || getWaAccessToken();
     const waPhoneId = String(bs.whatsapp_phone_id || '').trim() || getWaPhoneNumberId();
-    if ((bs.whatsapp_enabled || bs.whatsapp_cloud_enabled) && waToken && waPhoneId) channels.push('whatsapp_cloud');
+    if (waToken && waPhoneId) channels.push('whatsapp_cloud');
 
     if (channels.length === 0) return;
 

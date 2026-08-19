@@ -73,6 +73,17 @@ export class ProColisService implements CourierService {
   ): Promise<CourierShipmentResponse> {
     try {
       const tracking = shipment.reference_id || `PRO-${Date.now()}`;
+      const wilayaId = resolveWilayaId(shipment.wilaya);
+
+      // ProColis /add_colis rejects these wilayas (API-side issue, confirmed 2026-08-19)
+      const UNSUPPORTED_WILAYAS = new Set(['6', '7', '8', '9']);
+      if (UNSUPPORTED_WILAYAS.has(wilayaId)) {
+        return {
+          success: false,
+          tracking_number: '',
+          error: 'ProColis لا يقبل حالياً ولايات: بجاية، بسكرة، بشار، البليدة. يرجى التواصل مع ProColis أو اختيار شركة توصيل أخرى لهذه الولايات.',
+        };
+      }
 
       const parcel: ProColisParcel = {
         Tracking: tracking,
@@ -83,7 +94,7 @@ export class ProColisService implements CourierService {
         MobileA: shipment.customer_phone || '',
         MobileB: '',
         Adresse: shipment.delivery_address || '',
-        IDWilaya: resolveWilayaId(shipment.wilaya),
+        IDWilaya: wilayaId,
         Commune: shipment.commune || '',
         Total: String(shipment.cod_amount || 0),
         Note: shipment.notes || '',
@@ -101,17 +112,19 @@ export class ProColisService implements CourierService {
       const data = await response.json().catch(() => ({}));
       console.log('[ProColis] /add_colis response:', response.status, JSON.stringify(data));
 
-      if (!response.ok) {
-        console.error('[ProColis] Create shipment error:', response.status, data);
+      // ProColis returns HTTP 200 with IDRetour != "0" to signal an error
+      const result = Array.isArray(data) ? data[0] : data;
+      const retourCode = String(result?.IDRetour ?? '');
+      if (!response.ok || (retourCode && retourCode !== '0')) {
+        const retourMsg = result?.MessageRetour || data?.message || data?.error || `API Error ${response.status}`;
+        console.error('[ProColis] Create shipment error:', response.status, retourCode, retourMsg);
         return {
           success: false,
           tracking_number: '',
-          error: data?.message || data?.error || `API Error ${response.status}`,
+          error: retourCode === '5' ? 'ProColis رفض الولاية (Wilaya Erreur)' : `ProColis: ${retourMsg}`,
         };
       }
 
-      // ProColis returns the created parcel(s) or a success indicator
-      const result = Array.isArray(data) ? data[0] : data;
       const returnedTracking = result?.Tracking || result?.tracking || tracking;
       console.log('[ProColis] Created parcel, tracking:', returnedTracking);
 
