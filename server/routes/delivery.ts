@@ -559,6 +559,7 @@ export const bulkAssignDelivery: RequestHandler = async (req, res) => {
     const companyFeatures = companyInfo.rows[0]?.features || {};
     const supportsApiUpload =
       companyName.trim().toLowerCase().includes('noest') ||
+      companyName.trim().toLowerCase().includes('procolis') ||
       Boolean(companyFeatures?.supports_tracking) ||
       Boolean(companyFeatures?.supports_labels) ||
       Boolean(companyFeatures?.supports_webhooks) ||
