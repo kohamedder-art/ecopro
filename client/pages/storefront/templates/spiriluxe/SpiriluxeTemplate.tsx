@@ -13,6 +13,7 @@ import VariantSelector, { SelectedVariant } from '@/components/storefront/Varian
 import { Truck, Shield, Trash2, Plus, Home, Building2, ChevronDown, User, Phone, MapPin, ShoppingBag } from 'lucide-react';
 import { uploadImage } from '@/lib/api';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { useABTestVariant, useABTestIdFromUrl } from '@/hooks/useABTest';
 
 export default function SpiriluxeTemplate({ 
   settings, 
@@ -105,13 +106,21 @@ export default function SpiriluxeTemplate({
   const { offers, loading: offersLoading } = useProductOffers(storeSlug, mainProduct?.id);
   const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
 
+  // A/B test: swap hero image if variant assigned
+  const abTestId = useABTestIdFromUrl();
+  const { variant: abVariant, imageUrl: abImageUrl, trackClick: abTrackClick } = useABTestVariant(abTestId);
+
   // When product changes: reset images and offer
   useEffect(() => {
     if (!mainProduct?.id) return;
-    const imgs = Array.isArray(mainProduct?.images) ? mainProduct.images.filter(Boolean) : [];
+    let imgs = Array.isArray(mainProduct?.images) ? mainProduct.images.filter(Boolean) : [];
+    // A/B test: replace first image with variant image
+    if (abImageUrl && imgs.length > 0) {
+      imgs = [abImageUrl, ...imgs.slice(1)];
+    }
     setProductImages(imgs);
     setSelectedOffer(null);
-  }, [mainProduct?.id]);
+  }, [mainProduct?.id, abImageUrl]);
 
   // Preload first above-form image to cut LCP resource load delay
   useEffect(() => {
@@ -150,6 +159,7 @@ export default function SpiriluxeTemplate({
   // ─── Order Handling ───
   const handleOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    abTrackClick();
     if (!mainProduct) return;
     
     const fd = new FormData(e.currentTarget);

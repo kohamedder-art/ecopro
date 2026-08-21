@@ -9,6 +9,7 @@ import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/sto
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { useABTestVariant, useABTestIdFromUrl } from '@/hooks/useABTest';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import { isValidAlgerianPhone } from '@/lib/utils';
 import { getFraudData } from '@/lib/fingerprint';
@@ -130,15 +131,27 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const submitText = settings?.zenith_submit_text || 'تأكيد الطلب';
 
   // Smart image classification: prefers tall images for landing strips
-  const { getSlotImages } = useImageClassifier(productImages, 'zenith');
+  const { getSlotImages, loading: classifyingImages } = useImageClassifier(productImages, 'zenith');
   const classifiedLanding = getSlotImages('landing');
+
+  // A/B test: swap hero image if variant assigned
+  const abTestId = useABTestIdFromUrl();
+  const { variant: abVariant, imageUrl: abImageUrl, trackClick: abTrackClick } = useABTestVariant(abTestId);
 
   // Landing images (stacked Canva slices)
   const landingImages: string[] = (() => {
-    if (settings?.zenith_landing_images && Array.isArray(settings.zenith_landing_images) && settings.zenith_landing_images.length > 0) {
-      return settings.zenith_landing_images;
+    const base = (() => {
+      if (settings?.zenith_landing_images && Array.isArray(settings.zenith_landing_images) && settings.zenith_landing_images.length > 0) {
+        return settings.zenith_landing_images;
+      }
+      // During classification, fall back to raw productImages to avoid showing stale old images
+      return !classifyingImages && classifiedLanding.length > 0 ? classifiedLanding : productImages;
+    })();
+    // A/B test: replace first image with variant image
+    if (abImageUrl && base.length > 0) {
+      return [abImageUrl, ...base.slice(1)];
     }
-    return classifiedLanding.length > 0 ? classifiedLanding : productImages;
+    return base;
   })();
 
   const displayPrice = (n: number) => Math.round(n);
@@ -170,6 +183,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
   const handleOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    abTrackClick();
     if (!customerName || !customerPhone || !selectedWilayaId || !mainProduct?.id) {
       setOrderError('الرجاء تعبئة جميع الحقول المطلوبة');
       return;
@@ -487,11 +501,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                 height="675"
               />
             ))
-          ) : (
+          ) : !videoUrl ? (
             <div className="w-full aspect-[3/4] bg-gradient-to-b from-gray-200 to-gray-300 flex items-center justify-center">
               <p className="text-sm" style={{ color: textMuted }}>أضف صور المنتج من لوحة التحكم</p>
             </div>
-          )}
+          ) : null}
         </div>
         
         {/* ── ORDER FORM ── */}

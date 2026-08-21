@@ -8,6 +8,7 @@ import VariantSelector, { SelectedVariant } from '@/components/storefront/Varian
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import PixelScripts from '@/components/storefront/PixelScripts';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
+import { useABTestVariant, useABTestIdFromUrl } from '@/hooks/useABTest';
 import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Eye, EyeOff } from 'lucide-react';
 import { getAlgeriaCommunesByWilayaId, communeDisplayName } from '@/lib/algeriaGeo';
@@ -89,6 +90,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
     const handleDefaultOrder = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        abTrackClick();
         if (!product) return;
         setIsSubmitting(true);
         try {
@@ -187,8 +189,21 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             `;
     // Smart image classification: routes square images to gallery, wide/tall to banner
     const { slots: imageSlots, loading: classifyingImages } = useImageClassifier(product?.images, 'dzshop');
-    const galleryImages = imageSlots.gallery?.length > 0 ? imageSlots.gallery : (product?.images?.filter(Boolean) || []);
-    const autoBannerImage = imageSlots.banner?.[0] || null;
+    const rawImages = useMemo(() => product?.images?.filter(Boolean) || [], [product?.images]);
+    const baseGalleryImages = !classifyingImages && imageSlots.gallery?.length > 0
+      ? imageSlots.gallery
+      : rawImages;
+    const autoBannerImage = !classifyingImages ? (imageSlots.banner?.[0] || null) : null;
+
+    // A/B test: swap hero image if variant assigned
+    const abTestId = useABTestIdFromUrl();
+    const { variant: abVariant, imageUrl: abImageUrl, trackClick: abTrackClick } = useABTestVariant(abTestId);
+    const galleryImages = useMemo(() => {
+      if (abImageUrl && baseGalleryImages.length > 0) {
+        return [abImageUrl, ...baseGalleryImages.slice(1)];
+      }
+      return baseGalleryImages;
+    }, [abImageUrl, baseGalleryImages]);
     const rawVideoUrl = (product as any)?.metadata?.video_url || '';
     const videoEmbed = useMemo(() => {
         if (!rawVideoUrl) return null;

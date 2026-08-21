@@ -34,8 +34,14 @@ export function useImageClassifier(
     if (urls.length === 0) {
       setClassified([]);
       setSlots({});
+      setLoading(false);
       return;
     }
+
+    // Clear old slots immediately so templates fall back to raw images
+    // instead of showing stale classified images from the previous product
+    setClassified([]);
+    setSlots({});
 
     let cancelled = false;
     setLoading(true);

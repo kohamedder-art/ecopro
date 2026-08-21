@@ -83,6 +83,7 @@ import deliveryPricesRouter, { getStorefrontDeliveryPrices } from "./routes/deli
 import mobileRouter, { getDownloadUrl } from "./routes/mobile";
 import notificationsRouter from "./routes/notifications";
 import * as abTestRoutes from "./routes/ab-tests";
+import { assignVariant as abAssignVariant } from "./routes/ab-assign";
 import {
   validate,
   registerValidation,
@@ -1511,6 +1512,11 @@ ${urls}
     "/api/ab/track",
     apiLimiter,
     abTestRoutes.trackEvent
+  );
+  app.get(
+    "/api/ab/assign/:testId",
+    apiLimiter,
+    abAssignVariant
   );
 
   // Client Store routes (private store for clients)
