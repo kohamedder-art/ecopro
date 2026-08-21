@@ -25,19 +25,19 @@ const READY_TEMPLATE_IDS = new Set(['dzshop', 'needdz', 'zenith', 'boutique', 'i
 // NOTE: Disabled templates (files kept but not selectable):
 // dzpremium, minimalist, aurora, sculptor, artisan, gallery, jewelheart, classicshop, vera, novadz, lumina, luxedrop, streetwear
 const TEMPLATE_PREVIEWS = [
-  { id: 'dzshop', name: 'متجر DZ — كلاسيكي جزائري', image: '/template-previews/dzshop.png', categories: ['popular', 'industry'] },
+  { id: 'dzshop', name: 'متجر DZ — كلاسيكي جزائري', image: '', categories: ['popular', 'industry'] },
   // NOTE: luxedrop disabled
   // { id: 'luxedrop', name: 'لوكس دروب — الوضع الداكن', image: '', categories: ['dark', 'landing'] },
-  { id: 'needdz', name: 'NeedDZ — تطبيق موبايل', image: '/template-previews/needdz.png', categories: ['mobile', 'popular'] },
-  { id: 'zenith', name: 'زينيث — هبوط نظيف', image: '/template-previews/zinith.png', categories: ['landing', 'minimal'] },
-  { id: 'boutique', name: 'بوتيك — متجر تشكيلة', image: '/template-previews/boutique.png', categories: ['popular', 'elegant'] },
+  { id: 'needdz', name: 'NeedDZ — تطبيق موبايل', image: '', categories: ['mobile', 'popular'] },
+  { id: 'zenith', name: 'زينيث — هبوط نظيف', image: '', categories: ['landing', 'minimal'] },
+  { id: 'boutique', name: 'بوتيك — متجر تشكيلة', image: '', categories: ['popular', 'elegant'] },
   // NOTE: streetwear disabled
   // { id: 'streetwear', name: 'ستريت وير — شبكة داكنة', image: '', categories: ['dark', 'popular'] },
-  { id: 'iyco', name: 'IYCO — ملابس عصرية', image: '/template-previews/iyco.png', categories: ['popular', 'landing'] },
-  { id: 'primo', name: 'بريمو — منتج احترافي', image: '/template-previews/primo.png', categories: ['popular', 'landing', 'elegant'] },
+  { id: 'iyco', name: 'IYCO — ملابس عصرية', image: '', categories: ['popular', 'landing'] },
+  { id: 'primo', name: 'بريمو — منتج احترافي', image: '', categories: ['popular', 'landing', 'elegant'] },
 
-  { id: 'spiriluxe', name: 'سبيريلوكس — هبوط + صور + فيديو', image: '/template-previews/spirilux.png', categories: ['landing', 'popular'] },
-  { id: 'leroishop', name: 'لوروا شوب — كتالوج متعدد المنتجات', image: '/template-previews/leroi.png', categories: ['popular', 'industry'] }
+  { id: 'spiriluxe', name: 'سبيريلوكس — هبوط + صور + فيديو', image: '', categories: ['landing', 'popular'] },
+  { id: 'leroishop', name: 'لوروا شوب — كتالوج متعدد المنتجات', image: '', categories: ['popular', 'industry'] }
 ];
 
 const TEMPLATE_CATEGORIES = [
@@ -2197,16 +2197,14 @@ export default function GoldTemplateEditor() {
                     <div className="grid gap-3">
                       {TEMPLATE_PREVIEWS.map((template) => (
                         <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden rounded-2xl border transition-all text-left p-4 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5' : previewTemplateId === template.id ? 'border-violet-400 bg-violet-500/5 dark:bg-violet-500/10' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825]'}`}>
-                          {template.image ? (
-                            <img src={template.image} alt={template.name} className="w-full h-24 object-cover rounded-xl mb-2" />
-                          ) : (
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mb-2 ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : previewTemplateId === template.id ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : previewTemplateId === template.id ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500'}`}>
                               <LayoutTemplate className="w-5 h-5" />
                             </div>
-                          )}
-                          <div className="min-w-0">
-                            <h4 className={`font-bold text-sm truncate ${effectiveTemplateId === template.id ? 'text-indigo-400' : previewTemplateId === template.id ? 'text-violet-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
-                            <p className="text-[10px] text-slate-500 mt-0.5">{effectiveTemplateId === template.id ? t('editor.activeFramework') : previewTemplateId === template.id ? t('editor.previewingTemplate') : t('editor.applyFramework')}</p>
+                            <div className="min-w-0">
+                              <h4 className={`font-bold text-sm truncate ${effectiveTemplateId === template.id ? 'text-indigo-400' : previewTemplateId === template.id ? 'text-violet-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
+                              <p className="text-[10px] text-slate-500 mt-0.5">{effectiveTemplateId === template.id ? t('editor.activeFramework') : previewTemplateId === template.id ? t('editor.previewingTemplate') : t('editor.applyFramework')}</p>
+                            </div>
                           </div>
                         </button>
                       ))}
@@ -2710,20 +2708,18 @@ export default function GoldTemplateEditor() {
                  )}
                    <div className="grid gap-3">
                      {TEMPLATE_PREVIEWS.map((template) => (
-                        <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden group rounded-xl border transition-all text-left p-4 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]' : previewTemplateId === template.id ? 'border-violet-400 bg-violet-500/5 dark:bg-violet-500/10 shadow-[0_0_10px_-3px_rgba(139,92,246,0.2)]' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825] hover:border-slate-300 dark:hover:border-white/20'}`}>
-                          {template.image ? (
-                            <img src={template.image} alt={template.name} className="w-full h-24 object-cover rounded-xl mb-2" />
-                          ) : (
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-inner mb-2 ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : previewTemplateId === template.id ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:bg-slate-300 dark:group-hover:bg-white/5'}`}>
+                       <button key={template.id} onClick={() => setPreviewTemplateId(template.id)} className={`relative overflow-hidden group rounded-xl border transition-all text-left p-4 ${effectiveTemplateId === template.id ? 'border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]' : previewTemplateId === template.id ? 'border-violet-400 bg-violet-500/5 dark:bg-violet-500/10 shadow-[0_0_10px_-3px_rgba(139,92,246,0.2)]' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#131825] hover:border-slate-300 dark:hover:border-white/20'}`}>
+                         <div className="flex items-center gap-3 relative z-10">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-inner ${effectiveTemplateId === template.id ? 'bg-indigo-500 text-white' : previewTemplateId === template.id ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-[#0B0F19] text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:bg-slate-300 dark:group-hover:bg-white/5'}`}>
                               <LayoutTemplate className="w-5 h-5" />
                             </div>
-                          )}
-                          <div>
-                            <h4 className={`font-bold text-sm ${effectiveTemplateId === template.id ? 'text-indigo-400' : previewTemplateId === template.id ? 'text-violet-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
-                            <p className="text-xs text-slate-500 mt-0.5">{effectiveTemplateId === template.id ? t('editor.activeFramework') : previewTemplateId === template.id ? t('editor.previewingTemplate') : t('editor.applyFramework')}</p>
-                          </div>
-                        </button>
-                     ))}
+                            <div>
+                              <h4 className={`font-bold text-sm ${effectiveTemplateId === template.id ? 'text-indigo-400' : previewTemplateId === template.id ? 'text-violet-400' : 'text-slate-700 dark:text-slate-200'}`}>{template.name}</h4>
+                              <p className="text-xs text-slate-500 mt-0.5">{effectiveTemplateId === template.id ? t('editor.activeFramework') : previewTemplateId === template.id ? t('editor.previewingTemplate') : t('editor.applyFramework')}</p>
+                            </div>
+                         </div>
+                       </button>
+                    ))}
                   </div>
               </div>
             )}
