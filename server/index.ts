@@ -509,7 +509,7 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
     // Never require CSRF for initial authentication endpoints.
     // (A stale/other auth cookie like ecopro_kernel_at should not block login.)
     const p = req.path;
-    if (p === '/api/auth/login' || p === '/api/auth/register' || p === '/api/admin/login') return next();
+    if (p === '/api/auth/login' || p === '/api/auth/register' || p === '/api/auth/refresh' || p === '/api/admin/login') return next();
 
     // Telemetry is write-only, rate-limited, and safe to accept without CSRF.
     // Important: sendBeacon cannot attach custom headers, so CSRF would block reports

@@ -9,7 +9,9 @@ function getJwtSecret(): string {
   return getOrGenerateSecret('JWT_SECRET') || 'dev-jwt-secret-change-me';
 }
 
-// Security: longer-lived access token for better UX + long-lived refresh token
+// Access token lives 7 days in the JWT, but the cookie maxAge is 15 minutes.
+// The client auto-refreshes every 5 minutes to keep the session alive.
+// Refresh token is 30 days (cookie + JWT).
 const JWT_EXPIRES_IN = '7d';
 const REFRESH_TOKEN_EXPIRES_IN = '30d';
 
@@ -70,14 +72,14 @@ export async function comparePassword(
 }
 
 /**
- * Generate JWT access token (short-lived, 15 minutes)
+ * Generate JWT access token (7 days; cookie maxAge is 15 minutes, auto-refreshed every 5 min)
  */
 export function generateToken(payload: JWTPayload): string {
   return jwt.sign(payload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
 }
 
 /**
- * Generate refresh token (long-lived, 7 days)
+ * Generate refresh token (30 days)
  */
 export function generateRefreshToken(payload: JWTPayload): string {
   return jwt.sign(payload, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
