@@ -509,10 +509,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
         
         {/* ── ORDER FORM ── */}
-        <div ref={formRef} className="px-[5px] py-5 pb-24" id="checkout-form">
-            <div className="rounded-2xl px-4 py-5 shadow-sm relative" style={{ backgroundColor: cardBg, border: `2px solid ${accentColor}` }}>
-            <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
-              أكمل البيانات للطلب
+        <div ref={formRef} className="px-3 py-5 pb-24" id="checkout-form">
+            <div className="rounded-[28px] px-4 py-6 shadow-xl relative overflow-hidden" style={{ backgroundColor: cardBg, border: `1.5px solid ${accentColor}18`, boxShadow: `0 20px 50px -12px ${accentColor}22, 0 8px 20px rgba(0,0,0,0.06)` }}>
+            <div className="absolute top-0 inset-x-0 h-1.5" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88)` }} />
+            <div className="absolute -top-3 right-6 text-white px-5 py-1.5 rounded-full text-xs font-black tracking-wide shadow-md flex items-center gap-1.5" style={{ backgroundColor: accentColor }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> أكمل البيانات للطلب
             </div>
             <h2
               className="text-xl font-black text-center mb-6 mt-2"
@@ -559,36 +560,36 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               )}
 
               {/* Name input with icon */}
-              <div className="relative">
+              <div className="relative group">
                 <input 
                   name="name" 
                   type="text" 
                   required 
-                  className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
-                  style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
-                  onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                  onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
+                  className="w-full pl-4 pr-12 py-4 rounded-2xl transition-all outline-none text-[15px] font-medium"
+                  style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.backgroundColor = cardBg; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.backgroundColor = surfaceMuted; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                   placeholder="الاسم الكامل"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
-                  <User size={20} />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: accentColor + '14', color: accentColor }}>
+                  <User size={16} />
                 </div>
               </div>
 
               {/* Phone input with icon */}
-              <div className="relative">
+              <div className="relative group">
                 <input 
                   name="phone" 
                   type="tel" 
                   required 
                   dir="ltr"
                   maxLength={10}
-                  className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
-                  style={{ border: `1.5px solid ${phoneError ? '#ef4444' : inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
-                  onFocus={e => e.currentTarget.style.borderColor = phoneError ? '#ef4444' : accentColor}
-                  onBlur={e => e.currentTarget.style.borderColor = phoneError ? '#ef4444' : inputBorderColor}
+                  className="w-full pl-4 pr-12 py-4 rounded-2xl transition-all outline-none text-[15px] font-medium"
+                  style={{ border: `1px solid ${phoneError ? '#ef444422' : inputBorderColor + '22'}`, backgroundColor: phoneError ? '#fef2f2' : surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = phoneError ? '#ef4444' : accentColor; e.currentTarget.style.boxShadow = `0 0 0 4px ${phoneError ? '#ef444414' : accentColor + '14'}`; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = phoneError ? '#ef444422' : inputBorderColor + '22'; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                   placeholder="رقم الهاتف"
                   value={customerPhone}
                   onChange={(e) => {
@@ -601,90 +602,90 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                     }
                   }}
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
-                  <Phone size={20} />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: phoneError ? '#fecaca' : accentColor + '14', color: phoneError ? '#ef4444' : accentColor }}>
+                  <Phone size={16} />
                 </div>
-                {phoneError && <p className="text-xs font-bold mt-1" style={{ color: '#ef4444' }}>{phoneError}</p>}
+                {phoneError && <p className="text-xs font-bold mt-1.5 mr-1" style={{ color: '#ef4444' }}>{phoneError}</p>}
               </div>
 
               {/* Wilaya select with icon */}
-              <div className="relative">
+              <div className="relative group">
                 <select 
                   value={selectedWilayaId || ''} 
                   onChange={e => setSelectedWilayaId(Number(e.target.value))}
                   required
-                  className="w-full pl-10 pr-12 py-3.5 rounded-xl transition-all appearance-none"
-                  style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: selectedWilayaId ? textColor : textColor + '99' }}
-                  onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                  onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
+                  className="w-full pl-10 pr-12 py-4 rounded-2xl transition-all appearance-none outline-none text-[15px] font-medium"
+                  style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: selectedWilayaId ? textColor : textMuted, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                 >
                   <option value="">اختر الولاية</option>
                   {wilayas.map(w => (
                     <option key={w.id} value={w.id}>{w.labelAR}</option>
                   ))}
                 </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
-                  <MapPin size={20} />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: accentColor + '14', color: accentColor }}>
+                  <MapPin size={16} />
                 </div>
-                <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textColor, opacity: 0.4 }} />
+                <ChevronDown size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
               </div>
 
               {/* Commune select with icon */}
               {showCommune && (
-                <div className="relative">
+                <div className="relative group">
                   <select 
                     name="commune"
                     required 
                     disabled={!selectedWilayaId}
                     value={communeId}
                     onChange={e => setCommuneId(e.target.value)}
-                    className="w-full pl-10 pr-12 py-3.5 rounded-xl transition-all appearance-none disabled:opacity-50"
-                    style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
-                    onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                    onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
+                    className="w-full pl-10 pr-12 py-4 rounded-2xl transition-all appearance-none outline-none text-[15px] font-medium disabled:opacity-50"
+                    style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                   >
                     <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
                     {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
                   </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
-                    <Building2 size={20} />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: accentColor + '14', color: accentColor }}>
+                    <Building2 size={16} />
                   </div>
-                  <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textColor, opacity: 0.4 }} />
+                  <ChevronDown size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
                 </div>
               )}
 
               {/* Address input with icon */}
               {showAddress && (
-                <div className="relative">
+                <div className="relative group">
                   <input 
                     name="address" 
                     type="text" 
-                    className="w-full pl-4 pr-12 py-3.5 rounded-xl transition-all"
-                    style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
-                    onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                    onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
+                    className="w-full pl-4 pr-12 py-4 rounded-2xl transition-all outline-none text-[15px] font-medium"
+                    style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.backgroundColor = cardBg; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.backgroundColor = surfaceMuted; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                     placeholder="عنوان التوصيل"
                     value={customerAddress}
                     onChange={e => setCustomerAddress(e.target.value)}
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: accentColor }}>
-                    <Building2 size={20} />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: accentColor + '14', color: accentColor }}>
+                    <Building2 size={16} />
                   </div>
                 </div>
               )}
 
               {/* Notes */}
               {showNotes && (
-                <div>
+                <div className="relative">
                   <textarea 
                     name="notes" 
                     rows={2}
                     value={customerNotes}
                     onChange={e => setCustomerNotes(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl transition-all resize-none"
-                    style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: cardBg, color: textColor }}
-                    onFocus={e => e.currentTarget.style.borderColor = accentColor}
-                    onBlur={e => e.currentTarget.style.borderColor = inputBorderColor}
+                    className="w-full px-4 py-4 rounded-2xl transition-all resize-none outline-none text-[15px]"
+                    style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                     placeholder="ملاحظات إضافية (اختياري)"
                   />
                 </div>
@@ -692,15 +693,15 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
 
               {/* Delivery Type Toggle */}
               {(showHomeDelivery || showDeskDelivery) && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   {showHomeDelivery && (
-                    <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : inputBorderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'home' ? accentColor : textColor }}>
+                    <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border transition-all text-sm font-black" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : inputBorderColor + '22', backgroundColor: selectedDeliveryType === 'home' ? accentColor : surfaceMuted, color: selectedDeliveryType === 'home' ? '#fff' : textColor, boxShadow: selectedDeliveryType === 'home' ? `0 4px 12px ${accentColor}30` : 'none' }}>
                       <Truck size={16} />
                       <span>توصيل للمنزل</span>
                     </button>
                   )}
                   {showDeskDelivery && (
-                    <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all text-sm font-bold" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : inputBorderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor + '10' : cardBg, color: selectedDeliveryType === 'desk' ? accentColor : textColor }}>
+                    <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border transition-all text-sm font-black" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : inputBorderColor + '22', backgroundColor: selectedDeliveryType === 'desk' ? accentColor : surfaceMuted, color: selectedDeliveryType === 'desk' ? '#fff' : textColor, boxShadow: selectedDeliveryType === 'desk' ? `0 4px 12px ${accentColor}30` : 'none' }}>
                       <Building2 size={16} />
                       <span>استلام من المكتب</span>
                     </button>
@@ -709,28 +710,29 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               )}
 
               {/* Quantity */}
-              <div className="flex items-center justify-between rounded-xl px-4 py-2.5" style={{ backgroundColor: cardBg, border: `1.5px solid ${inputBorderColor}` }}>
-                <span className="text-sm font-semibold" style={{ color: textColor }}>الكمية</span>
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-9 h-9 rounded-full font-bold text-xl flex items-center justify-center transition-all" style={{ backgroundColor: surfaceMuted, color: accentColor }}>−</button>
-                  <span className="font-bold text-lg min-w-[2rem] text-center" style={{ color: textColor }}>{String(quantity).padStart(2, '0')}</span>
-                  <button type="button" onClick={() => setQuantity(Math.min((safeProduct?.stock_quantity != null && safeProduct.stock_quantity > 0) ? safeProduct.stock_quantity : 999, quantity + 1))} className="w-9 h-9 rounded-full font-bold text-xl flex items-center justify-center transition-all" style={{ backgroundColor: surfaceMuted, color: accentColor }}>+</button>
+              <div className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ backgroundColor: surfaceMuted, border: `1px solid ${inputBorderColor}18` }}>
+                <span className="text-sm font-black flex items-center gap-2" style={{ color: textColor }}><span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }} /> الكمية</span>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-full font-black text-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: quantity > 1 ? accentColor : cardBg, color: quantity > 1 ? '#fff' : textMuted, border: `1px solid ${quantity > 1 ? accentColor : inputBorderColor}22`, boxShadow: quantity > 1 ? `0 2px 8px ${accentColor}30` : 'none' }}>−</button>
+                  <span className="font-black text-lg min-w-[2.5rem] text-center rounded-xl py-1" style={{ color: textColor, backgroundColor: cardBg, border: `1px solid ${inputBorderColor}18` }}>{String(quantity).padStart(2, '0')}</span>
+                  <button type="button" onClick={() => setQuantity(Math.min((safeProduct?.stock_quantity != null && safeProduct.stock_quantity > 0) ? safeProduct.stock_quantity : 999, quantity + 1))} className="w-10 h-10 rounded-full font-black text-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: accentColor, color: '#fff', boxShadow: `0 2px 8px ${accentColor}30` }}>+</button>
                 </div>
               </div>
 
               {/* Order Summary */}
-              <div className="p-3.5 rounded-xl text-sm space-y-2" style={{ backgroundColor: cardBg, border: `1px solid ${inputBorderColor}` }}>
-                <div className="flex justify-between">
-                  <span style={{ color: textMuted }}>سعر المنتج</span>
+              <div className="p-4 rounded-2xl text-sm space-y-2.5 overflow-hidden relative" style={{ backgroundColor: cardBg, border: `1px solid ${inputBorderColor}14`, boxShadow: `0 2px 12px rgba(0,0,0,0.04)` }}>
+                <div className="absolute top-0 inset-x-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}22, transparent)` }} />
+                <div className="flex justify-between items-center">
+                  <span className="text-[13px] font-medium" style={{ color: textMuted }}>سعر المنتج</span>
                   <span className="font-bold">{displayPrice(productPrice * quantity)} {currency}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span style={{ color: textMuted }}>اجمالى التوصيل</span>
-                  <span className="font-bold" style={{ color: accentColor }}>{deliveryFee === 0 ? 'مجاني' : `${displayPrice(deliveryFee)} ${currency}`}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-[13px] font-medium" style={{ color: textMuted }}>اجمالى التوصيل</span>
+                  <span className="font-bold px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: deliveryFee === 0 ? '#dcfce7' : accentColor + '14', color: deliveryFee === 0 ? '#16a34a' : accentColor }}>{deliveryFee === 0 ? 'مجاني ✓' : `${displayPrice(deliveryFee)} ${currency}`}</span>
                 </div>
-                <div className="flex justify-between pt-2 font-bold" style={{ borderTop: `1px solid ${inputBorderColor}` }}>
-                  <span>المجموع</span>
-                  <span className="text-base" style={{ color: accentColor }}>{displayPrice(totalCost)} {currency}</span>
+                <div className="flex justify-between items-center pt-3 font-black" style={{ borderTop: `1px dashed ${inputBorderColor}22` }}>
+                  <span className="text-[13px]" style={{ color: textColor }}>المجموع</span>
+                  <span className="text-base px-3 py-1.5 rounded-full" style={{ backgroundColor: accentColor, color: '#fff', boxShadow: `0 2px 8px ${accentColor}30` }}>{displayPrice(totalCost)} {currency}</span>
                 </div>
               </div>
 
@@ -738,8 +740,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               <button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="w-full py-4 rounded-xl font-bold text-base transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ backgroundColor: accentColor, color: '#ffffff', boxShadow: `0 4px 14px ${accentColor}40` }}
+                className="w-full py-4 rounded-2xl font-black text-[15px] transition-all disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98]"
+                style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`, color: '#ffffff', boxShadow: `0 8px 20px ${accentColor}35, 0 2px 8px ${accentColor}20` }}
               >
                 {isSubmitting ? (
                   <>
