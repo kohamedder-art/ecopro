@@ -2235,6 +2235,16 @@ ${urls}
                 if (storePixelRes.rows.length > 0) {
                   fbPixelIds = String(storePixelRes.rows[0].facebook_pixel_id).split(',').map((s: string) => s.trim()).filter(Boolean);
                 }
+              } else {
+                try {
+                  const platRes = await dbPoolNs.query(`SELECT setting_value FROM platform_settings WHERE setting_key='pixel_config' LIMIT 1`);
+                  if (platRes.rows.length) {
+                    const arr = JSON.parse(platRes.rows[0].setting_value);
+                    for (const p of (Array.isArray(arr)?arr:[])) if (p?.enabled && (p.platform==='facebook'||p.platform==='meta') && p.pixel_id) {
+                      const id=String(p.pixel_id).trim(); if (/^\d{8,20}$/.test(id)) fbPixelIds.push(id);
+                    }
+                  }
+                } catch {}
               }
 
               for (const pid of fbPixelIds) {
