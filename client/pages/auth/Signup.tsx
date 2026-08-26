@@ -366,7 +366,7 @@ export default function Signup() {
               <Button
                 type="submit"
                 disabled={loading || password.length < 6}
-                onClick={() => trackFacebookEvent('Purchase', { value: 3500, currency: 'DZD', content_name: 'Sahla4Eco Signup' })}
+                onClick={() => trackFacebookEvent('Purchase', { value: 3500, currency: 'USD', content_name: 'Sahla4Eco Signup' })}
                 className="w-full flex justify-center h-12 px-4 border border-transparent rounded-xl shadow-lg text-base font-black text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:-translate-y-0.5 group disabled:opacity-70 disabled:hover:translate-y-0"
               >
                 {loading ? (
