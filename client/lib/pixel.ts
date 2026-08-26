@@ -9,8 +9,9 @@ const FB_URL = "https://connect.facebook.net/en_US/fbevents.js";
 const TT_URL = "https://analytics.tiktok.com/i18n/pixel/events.js";
 
 declare global {
-  interface Window { fbq?: any; _fbq?: any; ttq?: any; TiktokAnalyticsObject?: string }
+  interface Window { fbq?: any; _fbq?: any; ttq?: any; TiktokAnalyticsObject?: string; __PIXEL_INJECTED__?: string[] }
 }
+try { for (const id of ((window as any).__PIXEL_INJECTED__||[])) FB_IDS.add(String(id)); } catch {}
 
 function loadScript(src: string): Promise<void> {
   return new Promise((r) => {

@@ -2260,11 +2260,17 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '${pid.replace(/'/g, "\\'")}');
+fbq('track', 'PageView');
 </script>
 <noscript><img height="1" width="1" style="display:none"
 src="https://www.facebook.com/tr?id=${encodeURIComponent(pid)}&ev=PageView&noscript=1"/>
 </noscript>`;
                 withPixel = withPixel.replace('</head>', pixelCode + '</head>');
+              }
+              if (fbPixelIds.length) {
+                const inj = JSON.stringify(fbPixelIds);
+                const n2 = nonce ? ` nonce="${nonce}"` : '';
+                withPixel = withPixel.replace('</head>', `<script${n2}>window.__PIXEL_INJECTED__=${inj}</script></head>`);
               }
             } catch { /* don't break page rendering */ }
 
