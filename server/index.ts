@@ -269,6 +269,9 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
           includeSubDomains: true,
           preload: true,
         },
+        crossOriginOpenerPolicy: false,
+        crossOriginResourcePolicy: false,
+        frameguard: false,
         referrerPolicy: { policy: 'no-referrer' },
         noSniff: true,
         contentSecurityPolicy: {
