@@ -272,7 +272,7 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
         crossOriginOpenerPolicy: false,
         crossOriginResourcePolicy: false,
         frameguard: false,
-        referrerPolicy: { policy: 'no-referrer' },
+        referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
         noSniff: true,
         contentSecurityPolicy: {
           useDefaults: true,
