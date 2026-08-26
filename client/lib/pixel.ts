@@ -68,8 +68,10 @@ export const initFacebookPixels = initFacebook;
 export const initTikTokPixels = initTiktok;
 
 export function track(event: string, params: Record<string, any> = {}) {
-  if (window.fbq) window.fbq("track", event, params);
-  if (window.ttq) window.ttq.track(event === "PageView" ? "Pageview" : event, params);
+  const clean: Record<string, any> = { ...params };
+  if (clean.currency != null && !/^[A-Z]{3}$/.test(String(clean.currency))) delete clean.currency;
+  if (window.fbq) window.fbq("track", event, clean);
+  if (window.ttq) window.ttq.track(event === "PageView" ? "Pageview" : event, clean);
 }
 export const trackFacebookEvent = track;
 export const trackPixelEvent = track;
