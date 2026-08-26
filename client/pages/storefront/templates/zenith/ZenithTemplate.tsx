@@ -445,11 +445,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
       <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-3xl mx-auto'} min-h-screen relative shadow-2xl`}>
 
         {/* ── STICKY HEADER ── */}
-        <div className="sticky top-0 z-50 backdrop-blur-md px-3 py-2.5 flex items-center justify-between transition-transform duration-300" style={{ backgroundColor: cardBg, borderBottom: `1px solid ${borderColor}`, transform: gridHeaderVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
+        <div className="sticky top-0 z-50 backdrop-blur-md px-3 py-2.5 flex items-center justify-between transition-transform duration-300" style={{ backgroundColor: cardBg, borderBottom: `1.5px solid #e2e8f0`, boxShadow: `0 2px 12px rgba(0,0,0,0.05)`, transform: gridHeaderVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
           <button onClick={goToStore} className="flex items-center gap-1.5">
             {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-10 h-10 rounded-full object-cover" />}
             <div
-              className="font-black text-2xl tracking-wider"
+              className="font-extrabold text-2xl tracking-tight"
               style={{ color: textColor }}
               contentEditable={canManage}
               suppressContentEditableWarning
@@ -510,8 +510,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         
         {/* ── ORDER FORM ── */}
         <div ref={formRef} className="px-3 py-5 pb-24" id="checkout-form">
-            <div className="rounded-[28px] px-4 py-6 shadow-xl relative overflow-hidden" style={{ backgroundColor: cardBg, border: `1.5px solid ${accentColor}30`, boxShadow: `0 20px 50px -12px ${accentColor}22, 0 8px 20px rgba(0,0,0,0.06)` }}>
-            <div className="absolute top-0 inset-x-0 h-1.5" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88)` }} />
+            <div className="rounded-[28px] px-4 py-6 shadow-xl relative" style={{ backgroundColor: cardBg, border: `2px solid #e2e8f0`, boxShadow: `0 20px 50px -12px rgba(0,0,0,0.08), 0 8px 20px rgba(0,0,0,0.06)` }}>
+            <div className="absolute top-0 inset-x-0 h-1.5 rounded-t-[28px] overflow-hidden" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88)` }} />
             <div className="absolute -top-3 right-6 text-white px-5 py-1.5 rounded-full text-xs font-black tracking-wide shadow-md flex items-center gap-1.5" style={{ backgroundColor: accentColor }}>
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> أكمل البيانات للطلب
             </div>
@@ -713,14 +713,14 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               <div className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ backgroundColor: surfaceMuted, border: `1px solid ${inputBorderColor}18` }}>
                 <span className="text-sm font-black flex items-center gap-2" style={{ color: textColor }}><span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }} /> الكمية</span>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-full font-black text-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: quantity > 1 ? accentColor : cardBg, color: quantity > 1 ? '#fff' : textMuted, border: `1px solid ${quantity > 1 ? accentColor : inputBorderColor}22`, boxShadow: quantity > 1 ? `0 2px 8px ${accentColor}30` : 'none' }}>−</button>
-                  <span className="font-black text-lg min-w-[2.5rem] text-center rounded-xl py-1" style={{ color: textColor, backgroundColor: cardBg, border: `1px solid ${inputBorderColor}18` }}>{String(quantity).padStart(2, '0')}</span>
+                  <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-full font-black text-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: quantity > 1 ? accentColor : cardBg, color: quantity > 1 ? '#fff' : textMuted, border: `1.5px solid ${quantity > 1 ? accentColor : '#e2e8f0'}`, boxShadow: quantity > 1 ? `0 2px 8px ${accentColor}30` : 'none' }}>−</button>
+                  <span className="font-black text-lg min-w-[2.5rem] text-center rounded-xl py-1" style={{ color: textColor, backgroundColor: cardBg, border: `1.5px solid #e2e8f0` }}>{String(quantity).padStart(2, '0')}</span>
                   <button type="button" onClick={() => setQuantity(Math.min((safeProduct?.stock_quantity != null && safeProduct.stock_quantity > 0) ? safeProduct.stock_quantity : 999, quantity + 1))} className="w-10 h-10 rounded-full font-black text-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: accentColor, color: '#fff', boxShadow: `0 2px 8px ${accentColor}30` }}>+</button>
                 </div>
               </div>
 
               {/* Order Summary */}
-              <div className="p-4 rounded-2xl text-sm space-y-2.5 overflow-hidden relative" style={{ backgroundColor: cardBg, border: `1px solid ${inputBorderColor}14`, boxShadow: `0 2px 12px rgba(0,0,0,0.04)` }}>
+              <div className="p-4 rounded-2xl text-sm space-y-2.5 overflow-hidden relative" style={{ backgroundColor: cardBg, border: `1.5px solid #e2e8f0`, boxShadow: `0 2px 12px rgba(0,0,0,0.05)` }}>
                 <div className="absolute top-0 inset-x-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}22, transparent)` }} />
                 <div className="flex justify-between items-center">
                   <span className="text-[13px] font-medium" style={{ color: textMuted }}>سعر المنتج</span>
@@ -730,7 +730,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <span className="text-[13px] font-medium" style={{ color: textMuted }}>اجمالى التوصيل</span>
                   <span className="font-bold px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: deliveryFee === 0 ? '#dcfce7' : accentColor + '14', color: deliveryFee === 0 ? '#16a34a' : accentColor }}>{deliveryFee === 0 ? 'مجاني ✓' : `${displayPrice(deliveryFee)} ${currency}`}</span>
                 </div>
-                <div className="flex justify-between items-center pt-3 font-black" style={{ borderTop: `1px dashed ${inputBorderColor}22` }}>
+                <div className="flex justify-between items-center pt-3 font-black" style={{ borderTop: `1.5px solid #e2e8f0` }}>
                   <span className="text-[13px]" style={{ color: textColor }}>المجموع</span>
                   <span className="text-base px-3 py-1.5 rounded-full" style={{ backgroundColor: accentColor, color: '#fff', boxShadow: `0 2px 8px ${accentColor}30` }}>{displayPrice(totalCost)} {currency}</span>
                 </div>

@@ -41,11 +41,11 @@ export default function SpiriluxeTemplate({
     const b = parseInt(hex.substring(4, 6), 16);
     return (r * 299 + g * 587 + b * 114) / 1000 < 128;
   }, [bgColor]);
-  const textColor = isDark ? '#f1f5f9' : '#1f2937';
-  const textMuted = isDark ? '#94a3b8' : '#6b7280';
-  const borderColor = isDark ? '#9ca3af' : '#94a3b8';
+  const textColor = isDark ? '#f1f5f9' : '#0f172a';
+  const textMuted = isDark ? '#94a3b8' : '#334155';
+  const borderColor = isDark ? '#64748b' : '#cbd5e1';
   const cardBg = isDark ? '#1e293b' : '#ffffff';
-  const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
+  const surfaceMuted = isDark ? '#1e293b' : '#ffffff';
   const currency = settings?.currency_code || 'د.ج';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
