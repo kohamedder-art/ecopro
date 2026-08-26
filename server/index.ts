@@ -2274,6 +2274,26 @@ src="https://www.facebook.com/tr?id=${encodeURIComponent(pid)}&ev=PageView&noscr
               );
             }
 
+            const r2Url = (process.env.R2_PUBLIC_URL || '').trim();
+            const cspNoncePart = nonce ? `'nonce-${nonce}'` : "'self'";
+            const cspValue = [
+              `default-src 'self'`,
+              `base-uri 'self'`,
+              `object-src 'none'`,
+              `frame-ancestors 'self' https://www.facebook.com https://www.instagram.com https://business.facebook.com https://web.facebook.com`,
+              `form-action 'self'`,
+              `block-all-mixed-content`,
+              `upgrade-insecure-requests`,
+              `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+              `font-src 'self' https://fonts.gstatic.com`,
+              `script-src 'self' ${cspNoncePart} https://connect.facebook.net https://unpkg.com https://analytics.tiktok.com`,
+              `img-src 'self' data: https:`,
+              `connect-src 'self' https:`,
+              `frame-src 'self' https://www.youtube.com https://youtube.com https://player.vimeo.com`,
+              `media-src 'self' https://res.cloudinary.com${r2Url ? ' ' + r2Url : ''} blob:`,
+              `script-src-attr 'none'`,
+            ].join(';');
+            res.setHeader('Content-Security-Policy', cspValue);
             res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
             res.setHeader('Vary', 'Accept-Encoding');
             res.setHeader('X-Content-Type-Options', 'nosniff');
