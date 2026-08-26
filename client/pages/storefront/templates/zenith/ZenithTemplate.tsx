@@ -31,12 +31,12 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     const b = parseInt(hex.substring(4, 6), 16);
     return (r * 299 + g * 587 + b * 114) / 1000 < 128;
   }, [bgColor]);
-  const textColor = isDark ? '#f1f5f9' : '#1f2937';
-  const textMuted = isDark ? '#94a3b8' : '#6b7280';
-  const borderColor = isDark ? '#334155' : '#e5e7eb';
-  const inputBorderColor = isDark ? '#475569' : '#9ca3af';
+  const textColor = isDark ? '#f1f5f9' : '#0f172a';
+  const textMuted = isDark ? '#94a3b8' : '#334155';
+  const borderColor = isDark ? '#334155' : '#cbd5e1';
+  const inputBorderColor = isDark ? '#64748b' : '#cbd5e1';
   const cardBg = isDark ? '#1e293b' : '#ffffff';
-  const surfaceMuted = isDark ? '#0f172a' : '#f9fafb';
+  const surfaceMuted = isDark ? '#1e293b' : '#ffffff';
   const formRef = useRef<HTMLDivElement>(null);
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -510,7 +510,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         
         {/* ── ORDER FORM ── */}
         <div ref={formRef} className="px-3 py-5 pb-24" id="checkout-form">
-            <div className="rounded-[28px] px-4 py-6 shadow-xl relative overflow-hidden" style={{ backgroundColor: cardBg, border: `1.5px solid ${accentColor}18`, boxShadow: `0 20px 50px -12px ${accentColor}22, 0 8px 20px rgba(0,0,0,0.06)` }}>
+            <div className="rounded-[28px] px-4 py-6 shadow-xl relative overflow-hidden" style={{ backgroundColor: cardBg, border: `1.5px solid ${accentColor}30`, boxShadow: `0 20px 50px -12px ${accentColor}22, 0 8px 20px rgba(0,0,0,0.06)` }}>
             <div className="absolute top-0 inset-x-0 h-1.5" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88)` }} />
             <div className="absolute -top-3 right-6 text-white px-5 py-1.5 rounded-full text-xs font-black tracking-wide shadow-md flex items-center gap-1.5" style={{ backgroundColor: accentColor }}>
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> أكمل البيانات للطلب
@@ -566,9 +566,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   type="text" 
                   required 
                   className="w-full pl-4 pr-12 py-4 rounded-2xl transition-all outline-none text-[15px] font-medium"
-                  style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                  style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
                   onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.backgroundColor = cardBg; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.backgroundColor = surfaceMuted; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor; e.currentTarget.style.backgroundColor = surfaceMuted; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                   placeholder="الاسم الكامل"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
@@ -587,9 +587,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   dir="ltr"
                   maxLength={10}
                   className="w-full pl-4 pr-12 py-4 rounded-2xl transition-all outline-none text-[15px] font-medium"
-                  style={{ border: `1px solid ${phoneError ? '#ef444422' : inputBorderColor + '22'}`, backgroundColor: phoneError ? '#fef2f2' : surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                  style={{ border: `1px solid ${phoneError ? '#ef444422' : inputBorderColor}`, backgroundColor: phoneError ? '#fef2f2' : surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
                   onFocus={e => { e.currentTarget.style.borderColor = phoneError ? '#ef4444' : accentColor; e.currentTarget.style.boxShadow = `0 0 0 4px ${phoneError ? '#ef444414' : accentColor + '14'}`; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = phoneError ? '#ef444422' : inputBorderColor + '22'; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = phoneError ? '#ef444422' : inputBorderColor; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                   placeholder="رقم الهاتف"
                   value={customerPhone}
                   onChange={(e) => {
@@ -615,9 +615,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   onChange={e => setSelectedWilayaId(Number(e.target.value))}
                   required
                   className="w-full pl-10 pr-12 py-4 rounded-2xl transition-all appearance-none outline-none text-[15px] font-medium"
-                  style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: selectedWilayaId ? textColor : textMuted, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                  style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: surfaceMuted, color: selectedWilayaId ? textColor : textMuted, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
                   onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                 >
                   <option value="">اختر الولاية</option>
                   {wilayas.map(w => (
@@ -640,9 +640,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                     value={communeId}
                     onChange={e => setCommuneId(e.target.value)}
                     className="w-full pl-10 pr-12 py-4 rounded-2xl transition-all appearance-none outline-none text-[15px] font-medium disabled:opacity-50"
-                    style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                    style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
                     onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                   >
                     <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
                     {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
@@ -661,9 +661,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                     name="address" 
                     type="text" 
                     className="w-full pl-4 pr-12 py-4 rounded-2xl transition-all outline-none text-[15px] font-medium"
-                    style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                    style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
                     onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.backgroundColor = cardBg; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.backgroundColor = surfaceMuted; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor; e.currentTarget.style.backgroundColor = surfaceMuted; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                     placeholder="عنوان التوصيل"
                     value={customerAddress}
                     onChange={e => setCustomerAddress(e.target.value)}
@@ -683,9 +683,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                     value={customerNotes}
                     onChange={e => setCustomerNotes(e.target.value)}
                     className="w-full px-4 py-4 rounded-2xl transition-all resize-none outline-none text-[15px]"
-                    style={{ border: `1px solid ${inputBorderColor}22`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                    style={{ border: `1.5px solid ${inputBorderColor}`, backgroundColor: surfaceMuted, color: textColor, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
                     onFocus={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.boxShadow = `0 0 0 4px ${accentColor}14`; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor + '22'; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = inputBorderColor; e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.04)'; }}
                     placeholder="ملاحظات إضافية (اختياري)"
                   />
                 </div>
@@ -695,13 +695,13 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               {(showHomeDelivery || showDeskDelivery) && (
                 <div className="grid grid-cols-2 gap-2.5">
                   {showHomeDelivery && (
-                    <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border transition-all text-sm font-black" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : inputBorderColor + '22', backgroundColor: selectedDeliveryType === 'home' ? accentColor : surfaceMuted, color: selectedDeliveryType === 'home' ? '#fff' : textColor, boxShadow: selectedDeliveryType === 'home' ? `0 4px 12px ${accentColor}30` : 'none' }}>
+                    <button type="button" onClick={() => setSelectedDeliveryType('home')} className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border transition-all text-sm font-black" style={{ borderColor: selectedDeliveryType === 'home' ? accentColor : inputBorderColor, backgroundColor: selectedDeliveryType === 'home' ? accentColor : surfaceMuted, color: selectedDeliveryType === 'home' ? '#fff' : textColor, boxShadow: selectedDeliveryType === 'home' ? `0 4px 12px ${accentColor}30` : 'none' }}>
                       <Truck size={16} />
                       <span>توصيل للمنزل</span>
                     </button>
                   )}
                   {showDeskDelivery && (
-                    <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border transition-all text-sm font-black" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : inputBorderColor + '22', backgroundColor: selectedDeliveryType === 'desk' ? accentColor : surfaceMuted, color: selectedDeliveryType === 'desk' ? '#fff' : textColor, boxShadow: selectedDeliveryType === 'desk' ? `0 4px 12px ${accentColor}30` : 'none' }}>
+                    <button type="button" onClick={() => setSelectedDeliveryType('desk')} className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border transition-all text-sm font-black" style={{ borderColor: selectedDeliveryType === 'desk' ? accentColor : inputBorderColor, backgroundColor: selectedDeliveryType === 'desk' ? accentColor : surfaceMuted, color: selectedDeliveryType === 'desk' ? '#fff' : textColor, boxShadow: selectedDeliveryType === 'desk' ? `0 4px 12px ${accentColor}30` : 'none' }}>
                       <Building2 size={16} />
                       <span>استلام من المكتب</span>
                     </button>
