@@ -64,7 +64,7 @@ import { initializeDatabase, createDefaultAdmin, runPendingMigrations, pool } fr
 import { handleHealth } from "./routes/health";
 import { handleDbCheck } from "./routes/db-check";
 import { hashPassword } from "./utils/auth";
-import { purgeOldSecurityEvents, securityMiddleware } from "./utils/security";
+import { purgeOldSecurityEvents, securityMiddleware, clearSecurityBlockCache } from "./utils/security";
 import { startScheduledMessageWorker } from "./utils/scheduled-messages";
 import { startBotMessageWorker } from "./utils/bot-messaging";
 import { startTelegramUpdatePoller } from "./utils/telegram-poller";
@@ -752,13 +752,14 @@ ${urls}
   );
 
   // One-time unblock endpoint — clears ALL IP blocks (auto + manual + geo)
-  app.get('/api/sys/clear-auto-blocks-x9k2m7', async (_req: any, res: any) => {
+  app.get('/api/sys/clear-auto-blocks-x9k2m7', async (req: any, res: any) => {
     try {
       const { pool } = await import('./utils/database');
       await pool.query(`UPDATE security_ip_blocks SET is_active = false`);
       await pool.query(`DELETE FROM security_ip_blocks`);
       await pool.query(`UPDATE admins SET is_blocked = false, blocked_reason = NULL, blocked_at = NULL, blocked_by_admin_id = NULL WHERE is_blocked = true`);
-      res.json({ ok: true, message: 'All blocks cleared' });
+      clearSecurityBlockCache();
+      res.json({ ok: true, message: 'All blocks cleared', clientIp: req.clientIp || null, ip: (req as any).getClientIp ? null : req.clientIp });
     } catch (e: any) {
       res.status(500).json({ ok: false, error: e.message });
     }
