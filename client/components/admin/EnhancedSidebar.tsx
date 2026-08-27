@@ -283,7 +283,7 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
             }
           }}
           className={cn(
-            "group relative flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200",
+            "group relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200",
             level > 0 && (isRTL ? "mr-3" : "ml-3"),
             active 
               ? "shadow-sm font-medium"
@@ -310,7 +310,7 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
           
           {!collapsed && (
             <>
-              <span className="flex-1 font-semibold text-[14px] leading-tight min-w-0">{t(item.titleKey)}</span>
+              <span className={`flex-1 leading-tight min-w-0 ${isRTL ? "font-['Cairo',sans-serif] font-semibold text-[14px]" : "font-medium text-[14px] tracking-tight"}`}>{t(item.titleKey)}</span>
 
               {badgeCount > 0 && (
                 <span
@@ -437,7 +437,7 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-1 min-w-0">
+      <nav className="flex-1 overflow-y-auto p-2 space-y-0.5 min-w-0">
         {menuItems.map(item => renderMenuItem(item))}
       </nav>
 
