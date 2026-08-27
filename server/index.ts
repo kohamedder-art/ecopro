@@ -220,7 +220,6 @@ export async function createServer(options?: { skipDbInit?: boolean }) {
       if (
         p === '/api/ping' ||
         p === '/api/health' ||
-        p === '/api/db-check' ||
         p === '/api/email-status'
       ) {
         return next();
@@ -694,8 +693,9 @@ ${urls}
   // Health check: confirms DB connectivity regardless of frontend port
   app.get("/api/health", handleHealth);
 
-  // DB details check (non-sensitive; shows current_database and socket)
-  app.get("/api/db-check", handleDbCheck);
+  // DB details check — leaks database name / postgres version / socket address.
+  // Restricted to authenticated admins to avoid exposing DB internals publicly.
+  app.get("/api/db-check", authenticate, requireAdmin, handleDbCheck);
 
   // Database connectivity ping (quick simple query)
   app.get('/api/db/ping', async (_req, res) => {
