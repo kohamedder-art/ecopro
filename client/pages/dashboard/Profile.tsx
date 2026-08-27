@@ -234,9 +234,9 @@ export default function Profile() {
 
       {/* ── Hero card ── */}
       <div className="rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-        <div className="bg-gradient-to-r from-blue-600 to-slate-700 px-4 py-3 flex items-center justify-between">
+        <div className="bg-slate-900 dark:bg-slate-800 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-lg font-bold text-white">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-lg font-bold text-white ring-1 ring-white/20">
               {loading ? <Loader className="w-5 h-5 animate-spin opacity-70" /> : initials}
             </div>
             <div>
@@ -266,9 +266,9 @@ export default function Profile() {
 
         {/* Account Info — wider */}
         <div className="lg:col-span-3 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-          <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2.5 flex items-center gap-2">
-            <User className="w-4 h-4 text-white" />
-            <span className="text-xs font-black text-white uppercase tracking-widest">{t('profile.accountInfo')}</span>
+          <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700">
+            <User className="w-4 h-4 text-slate-500" />
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t('profile.accountInfo')}</span>
           </div>
           <div className="bg-white dark:bg-[#111] p-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -324,9 +324,9 @@ export default function Profile() {
 
         {/* Security — narrower */}
         <div className="lg:col-span-2 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-          <div className="bg-gradient-to-r from-orange-500 to-red-600 px-4 py-2.5 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-white" />
-            <span className="text-xs font-black text-white uppercase tracking-widest">{t('profile.security')}</span>
+          <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700">
+            <ShieldCheck className="w-4 h-4 text-slate-500" />
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t('profile.security')}</span>
           </div>
           <form onSubmit={handleChangePassword} className="bg-white dark:bg-[#111] p-4 space-y-3">
             {weakPassword && (
@@ -416,10 +416,10 @@ export default function Profile() {
       {/* ── Voucher + Referral (compact row) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Voucher */}
-        <div className="rounded-xl overflow-hidden shadow-sm border border-blue-200 dark:border-blue-900/40">
-          <div className="bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2.5 flex items-center gap-2">
-            <Ticket className="w-4 h-4 text-white" />
-            <span className="text-xs font-black text-white uppercase tracking-widest">{t('profile.redeemCode')}</span>
+        <div className="rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+          <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700">
+            <Ticket className="w-4 h-4 text-slate-500" />
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t('profile.redeemCode')}</span>
           </div>
           <div className="bg-white dark:bg-[#111] p-4 space-y-3">
             <input type="text" value={voucherCode}
@@ -437,10 +437,10 @@ export default function Profile() {
         </div>
 
         {/* Referral */}
-        <div className="rounded-xl overflow-hidden shadow-sm border border-emerald-200 dark:border-emerald-900/40">
-          <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-2.5 flex items-center gap-2">
-            <Gift className="w-4 h-4 text-white" />
-            <span className="text-xs font-black text-white uppercase tracking-widest">{t('profile.referral')}</span>
+        <div className="rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+          <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700">
+            <Gift className="w-4 h-4 text-slate-500" />
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t('profile.referral')}</span>
           </div>
           <div className="bg-white dark:bg-[#111] p-4 space-y-3">
             {affiliateInfo?.has_referral ? (
@@ -470,9 +470,9 @@ export default function Profile() {
 
       {/* ── Mobile App ── */}
       <div className="rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-        <div className="bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2.5 flex items-center gap-2">
-          <Smartphone className="w-4 h-4 text-white" />
-          <span className="text-xs font-black text-white uppercase tracking-widest">{t('admin.enhanced.ourApps')}</span>
+        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700">
+          <Smartphone className="w-4 h-4 text-slate-500" />
+          <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t('admin.enhanced.ourApps')}</span>
         </div>
         <div className="bg-white dark:bg-[#111] px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
