@@ -756,6 +756,7 @@ ${urls}
     try {
       const { pool } = await import('./utils/database');
       await pool.query(`UPDATE security_ip_blocks SET is_active = false`);
+      await pool.query(`DELETE FROM security_ip_blocks`);
       await pool.query(`UPDATE admins SET is_blocked = false, blocked_reason = NULL, blocked_at = NULL, blocked_by_admin_id = NULL WHERE is_blocked = true`);
       res.json({ ok: true, message: 'All blocks cleared' });
     } catch (e: any) {

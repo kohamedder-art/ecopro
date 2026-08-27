@@ -383,6 +383,11 @@ export function securityMiddleware(options: {
       return next();
     }
 
+    // Trusted dev IP — always allow (unblocked by root)
+    if (ip && (ip === '105.235.130.122' || ip === '::1' || ip === '127.0.0.1')) {
+      return next();
+    }
+
     // Manual IP blocks (root-controlled)
     if (ip) {
       const blocked = await getBlockedIpSet();
