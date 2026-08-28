@@ -4,7 +4,7 @@ import {
   TrendingDown, TrendingUp, Edit, Trash2, History, Download,
   BarChart3, RefreshCw, Tag, X, Check, Sparkles, Loader2, Layers,
   Palette, Ruler, Shirt, Footprints, ShoppingBag, Gift, TicketPercent,
-  Truck, ImageIcon
+  Truck, ImageIcon, ArrowLeft, Infinity, DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -319,6 +319,7 @@ export default function StockManagement() {
   const [variantsLoaded, setVariantsLoaded] = useState(false);
   const [variantsDirty, setVariantsDirty] = useState(false);
   const [loadingVariants, setLoadingVariants] = useState(false);
+  const [customSizes, setCustomSizes] = useState<string[]>([]);
 
   type StockOfferDraft = {
     id?: number;
@@ -335,6 +336,26 @@ export default function StockManagement() {
   const [offersLoaded, setOffersLoaded] = useState(false);
   const [offersDirty, setOffersDirty] = useState(false);
   const [loadingOffers, setLoadingOffers] = useState(false);
+
+  // Tab navigation order and helpers
+  const TAB_ORDER: Array<'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'video' | 'notes'> = [
+    'product', 'price', 'variants', 'offers', 'status', 'shipping', 'images', 'video', 'notes'
+  ];
+
+  const isCurrentTabValid = () => {
+    switch (activeFormSection) {
+      case 'product': return !!formData.name?.trim();
+      case 'price': return formData.unit_price != null && formData.unit_price > 0;
+      default: return true;
+    }
+  };
+
+  const goToNextTab = () => {
+    const idx = TAB_ORDER.indexOf(activeFormSection);
+    if (idx < TAB_ORDER.length - 1) {
+      setActiveFormSection(TAB_ORDER[idx + 1]);
+    }
+  };
 
   const buildCreatePayload = () => {
     const images = Array.isArray(formData.images) ? formData.images : [];
@@ -1514,8 +1535,7 @@ export default function StockManagement() {
                 { name: 'كحلي', tw: 'bg-blue-900', ring: 'ring-blue-800' },
                 { name: 'بيج', tw: 'bg-amber-100 border border-amber-300', ring: 'ring-amber-200' },
               ];
-              const CLOTHING = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
-              const SHOES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
+              const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
 
               const existingColors = [...new Set(variantsDraft.map(v => (v.color || '').trim()).filter(Boolean))];
               const existingSizes = [...new Set(variantsDraft.map(v => (v.size || '').trim()).filter(Boolean))];
@@ -1525,10 +1545,12 @@ export default function StockManagement() {
               const generateCombos = (colors: string[], sizes: string[]) => {
                 const newVariants: typeof variantsDraft = [];
                 const existingKeys = new Set(variantsDraft.map(v => `${(v.color||'').trim()}|${(v.size||'').trim()}`));
+                const defaultStock = (formData.quantity ?? 0) === -1 ? -1 : 0;
+                const defaultPrice = Number(formData.unit_price) || undefined;
                 for (const c of colors) {
                   for (const s of sizes) {
                     if (!existingKeys.has(`${c}|${s}`)) {
-                      newVariants.push({ color: c, size: s, variant_name: '', stock_quantity: 0, is_active: true, sort_order: variantsDraft.length + newVariants.length });
+                      newVariants.push({ color: c, size: s, variant_name: '', price: defaultPrice, stock_quantity: defaultStock, is_active: true, sort_order: variantsDraft.length + newVariants.length });
                     }
                   }
                 }
@@ -1545,7 +1567,7 @@ export default function StockManagement() {
                   if (newOnes.length > 0) {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
-                    setVariantsDraft(prev => [...prev, { color: colorName, size: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length }]);
+                    setVariantsDraft(prev => [...prev, { color: colorName, size: '', variant_name: '', price: Number(formData.unit_price) || undefined, stock_quantity: (formData.quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length }]);
                   }
                 }
                 setVariantsDirty(true);
@@ -1562,7 +1584,7 @@ export default function StockManagement() {
                   if (newOnes.length > 0) {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
-                    setVariantsDraft(prev => [...prev, { color: '', size: sizeName, variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length }]);
+                    setVariantsDraft(prev => [...prev, { color: '', size: sizeName, variant_name: '', price: Number(formData.unit_price) || undefined, stock_quantity: (formData.quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length }]);
                   }
                 }
                 setVariantsDirty(true);
@@ -1687,11 +1709,11 @@ export default function StockManagement() {
                   <div className="p-4 space-y-3">
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
-                        <Shirt className="h-3.5 w-3.5 text-black dark:text-white" />
-                        <span className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider">ملابس</span>
+                        <Ruler className="h-3.5 w-3.5 text-black dark:text-white" />
+                        <span className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider">المقاسات</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {CLOTHING.map((s) => {
+                        {SIZES.map((s) => {
                           const selected = existingSizes.includes(s);
                           return (
                             <button key={s} type="button" onClick={() => toggleSize(s)}
@@ -1700,21 +1722,28 @@ export default function StockManagement() {
                               }`}>{s}</button>
                           );
                         })}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <Footprints className="h-3.5 w-3.5 text-black dark:text-white" />
-                        <span className="text-xs font-semibold text-black dark:text-white uppercase tracking-wider">أحذية</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {SHOES.map((s) => {
-                          const selected = existingSizes.includes(s);
+                        {customSizes.filter(s => !SIZES.includes(s)).map(customSize => {
+                          const selected = existingSizes.includes(customSize);
                           return (
-                            <button key={s} type="button" onClick={() => toggleSize(s)}
-                              className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                                selected ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 scale-105' : 'bg-slate-100 dark:bg-slate-700/60 text-black dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600'
-                              }`}>{s}</button>
+                            <button
+                              key={customSize}
+                              type="button"
+                              onClick={() => toggleSize(customSize)}
+                              className={`group relative min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                selected
+                                  ? 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-md shadow-violet-500/25 scale-105'
+                                  : 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 border-2 border-violet-200 dark:border-violet-700 hover:border-violet-400 dark:hover:border-violet-500 text-violet-700 dark:text-violet-300 shadow-sm'
+                              }`}
+                            >
+                              <span>{customSize}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setCustomSizes(prev => prev.filter(s => s !== customSize)); if (existingSizes.includes(customSize)) toggleSize(customSize); }}
+                                className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-400 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                              >
+                                <X className="h-2.5 w-2.5 text-white" />
+                              </button>
+                            </button>
                           );
                         })}
                       </div>
@@ -1726,7 +1755,11 @@ export default function StockManagement() {
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             const val = (e.target as HTMLInputElement).value.trim();
-                            if (val && !existingSizes.includes(val)) { toggleSize(val); (e.target as HTMLInputElement).value = ''; }
+                            if (val && !customSizes.includes(val) && !SIZES.includes(val)) {
+                              setCustomSizes(prev => [...prev, val]);
+                              toggleSize(val);
+                              (e.target as HTMLInputElement).value = '';
+                            }
                           }
                         }}
                         placeholder="مقاس آخر + Enter"
@@ -1750,6 +1783,29 @@ export default function StockManagement() {
                     <span className="text-xs font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2.5 py-1 rounded-full">
                       {variantsDraft.length} نوع
                     </span>
+                  </div>
+                  <div className="px-4 py-2 border-b border-black dark:border-white flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVariantsDraft(prev => prev.map(v => ({ ...v, stock_quantity: -1 })));
+                        setVariantsDirty(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 transition-colors"
+                    >
+                      <Infinity className="h-3.5 w-3.5" /> جعل الكل غير محدود
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const p = Number(formData.unit_price) || 0;
+                        setVariantsDraft(prev => prev.map(v => ({ ...v, price: p })));
+                        setVariantsDirty(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition-colors"
+                    >
+                      <DollarSign className="h-3.5 w-3.5" /> سعر واحد للكل
+                    </button>
                   </div>
                   <div className="divide-y divide-slate-100 dark:divide-slate-700">
                     {Object.entries(colorGroups).map(([color, variants]) => (
@@ -1787,18 +1843,35 @@ export default function StockManagement() {
                             </span>
                             <div className="flex items-center gap-1.5 flex-1">
                               <span className="text-xs text-black dark:text-white">الكمية:</span>
-                              <Input
-                                type="number" min={0}
-                                value={v.stock_quantity ?? ''}
-                                onChange={(e) => {
-                                  const raw = e.target.value;
-                                  const next = raw === '' ? undefined : Number(raw);
+                              {v.stock_quantity === -1 ? (
+                                <span className="min-w-[80px] h-8 flex items-center justify-center bg-emerald-500/10 border border-emerald-500/30 rounded text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                  ∞ غير محدود
+                                </span>
+                              ) : (
+                                <Input
+                                  type="number" min={0}
+                                  value={v.stock_quantity ?? ''}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    const next = raw === '' ? undefined : Number(raw);
+                                    const idx = v.originalIndex;
+                                    setVariantsDraft(prev => prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row)));
+                                    setVariantsDirty(true);
+                                  }}
+                                  className="h-8 w-20 text-sm text-center" placeholder="0"
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
                                   const idx = v.originalIndex;
-                                  setVariantsDraft(prev => prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row)));
+                                  setVariantsDraft(prev => prev.map((row, i) => (i === idx ? { ...row, stock_quantity: row.stock_quantity === -1 ? 0 : -1 } : row)));
                                   setVariantsDirty(true);
                                 }}
-                                className="h-8 w-20 text-sm text-center" placeholder="0"
-                              />
+                                className={`px-2 py-1 rounded text-[10px] font-bold transition-colors ${v.stock_quantity === -1 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-black dark:text-white hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                              >
+                                ∞
+                              </button>
                             </div>
                             <div className="hidden sm:flex items-center gap-1.5">
                               <Input
@@ -1840,14 +1913,25 @@ export default function StockManagement() {
                   <div className="px-4 py-3 border-t border-black dark:border-white bg-slate-50/50 dark:bg-slate-800/50">
                     <Button type="button" size="sm" variant="outline"
                       onClick={() => {
-                        setVariantsDraft(prev => [...prev, { color: '', size: '', variant_name: '', price: undefined, stock_quantity: 0, is_active: true, sort_order: prev.length }]);
+                        setVariantsDraft(prev => [...prev, { color: '', size: '', variant_name: '', price: Number(formData.unit_price) || undefined, stock_quantity: (formData.quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length }]);
                         setVariantsLoaded(true); setVariantsDirty(true);
                       }}>
                       <Plus className="h-3.5 w-3.5 mr-1" /> إضافة نوع يدوياً
                     </Button>
-                  </div>
                 </div>
-                )}
+
+                <div className="flex justify-end mt-3">
+                  <Button
+                    type="button"
+                    onClick={goToNextTab}
+                    disabled={!isCurrentTabValid()}
+                    className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700 text-white font-bold"
+                  >
+                    التالي <ArrowLeft className="h-4 w-4 mr-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
                 </>)}
               </div>
               );
@@ -2078,20 +2162,49 @@ export default function StockManagement() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="quantity" className="text-base font-bold">{t('stock.quantity')}</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    value={formData.quantity ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      const n = Number.parseInt(v, 10);
-                      setFormData(prev => ({ ...prev, quantity: v === '' || Number.isNaN(n) ? undefined : Math.max(0, n) }));
-                    }}
-                    min="0"
-                    className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="quantity" className="text-base font-bold">{t('stock.quantity')}</Label>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-semibold text-black dark:text-white">غير محدود</Label>
+                      <Switch
+                        checked={(formData.quantity ?? 0) === -1}
+                        onCheckedChange={(checked) => {
+                          setFormData(prev => ({ ...prev, quantity: checked ? -1 : undefined }));
+                        }}
+                        className="data-[state=checked]:bg-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  {(formData.quantity ?? 0) === -1 ? (
+                    <div className="h-9 flex items-center justify-center bg-emerald-500/10 border border-emerald-500/30 rounded text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                      ∞ الكمية غير محدودة
+                    </div>
+                  ) : (
+                    <Input
+                      id="quantity"
+                      type="number"
+                      value={formData.quantity ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const n = Number.parseInt(v, 10);
+                        setFormData(prev => ({ ...prev, quantity: v === '' || Number.isNaN(n) ? undefined : Math.max(0, n) }));
+                      }}
+                      min="0"
+                      className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
+                    />
+                  )}
                   <p className="text-xs text-black dark:text-white">{t('stock.hints.quantity')}</p>
+                </div>
+
+                <div className="flex justify-end mt-3">
+                  <Button
+                    type="button"
+                    onClick={goToNextTab}
+                    disabled={!isCurrentTabValid()}
+                    className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700 text-white font-bold"
+                  >
+                    التالي <ArrowLeft className="h-4 w-4 mr-1" />
+                  </Button>
                 </div>
 
               </div>

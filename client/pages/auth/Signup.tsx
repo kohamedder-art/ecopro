@@ -46,7 +46,7 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export default function Signup() {
-  const { t, locale } = useTranslation();
+  const { t, locale, setLocale } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
@@ -218,6 +218,30 @@ export default function Signup() {
             </div>
             <span className="text-xl font-black tracking-tighter uppercase text-slate-900 dark:text-white">Sahla<span className="text-indigo-500">4</span>Eco</span>
           </Link>
+
+          {/* Language Selector */}
+          <div className="flex items-center justify-center gap-2 mb-3">
+            {([
+              { code: 'ar' as const, label: 'عربي', flag: '🇩🇿' },
+              { code: 'en' as const, label: 'English', flag: '🇬🇧' },
+              { code: 'fr' as const, label: 'Français', flag: '🇫🇷' },
+            ]).map((lang) => (
+              <button
+                key={lang.code}
+                type="button"
+                onClick={() => setLocale(lang.code)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+                  locale === lang.code
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/25'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                <span>{lang.flag}</span>
+                <span>{lang.label}</span>
+              </button>
+            ))}
+          </div>
+
           <h2 className="text-center text-xl font-black text-slate-900 dark:text-white tracking-tight">
             {t('signup.title')}
           </h2>

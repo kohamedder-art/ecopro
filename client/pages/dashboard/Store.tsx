@@ -7,7 +7,7 @@ import {
   Link as LinkIcon, Check, Share2, Grid, List, Store as StoreIcon,
   Sparkles, Loader2, Layers, Palette, Hash, AlertTriangle,
   ChevronDown, X, Wand2, ShoppingBag, Ruler, Shirt, Footprints,
-  Tag, Gift, Percent, Truck, Zap, Flame, TicketPercent
+  Tag, Gift, Percent, Truck, Zap, Flame, TicketPercent, ArrowLeft, Infinity
 } from 'lucide-react';
 import { useAI } from '@/hooks/useAI';
 import { AIGenerateDescription, AISuggestTitles } from './StoreAIGenerate';
@@ -259,6 +259,7 @@ export default function Store() {
   const [variantsDirty, setVariantsDirty] = useState(false);
   const [loadingVariants, setLoadingVariants] = useState(false);
   const [inventoryImageErrors, setInventoryImageErrors] = useState<Record<string, boolean>>({});
+  const [customSizes, setCustomSizes] = useState<string[]>([]);
 
   type ProductOfferDraft = {
     id?: number;
@@ -276,6 +277,26 @@ export default function Store() {
   const [offersLoaded, setOffersLoaded] = useState(false);
   const [offersDirty, setOffersDirty] = useState(false);
   const [loadingOffers, setLoadingOffers] = useState(false);
+
+  // Tab navigation order and helpers
+  const TAB_ORDER: Array<'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'video' | 'notes'> = [
+    'product', 'price', 'variants', 'offers', 'status', 'shipping', 'images', 'video', 'notes'
+  ];
+
+  const isCurrentTabValid = () => {
+    switch (productFormSection) {
+      case 'product': return !!formData.title?.trim();
+      case 'price': return formData.price != null && formData.price > 0;
+      default: return true;
+    }
+  };
+
+  const goToNextTab = () => {
+    const idx = TAB_ORDER.indexOf(productFormSection);
+    if (idx < TAB_ORDER.length - 1) {
+      setProductFormSection(TAB_ORDER[idx + 1]);
+    }
+  };
 
   const loadProductOffers = async (productId: number) => {
     setLoadingOffers(true);
@@ -2189,6 +2210,17 @@ export default function Store() {
                     className="border-primary/30 focus:border-primary/60 transition-colors h-9 text-base"
                   />
                 </div>
+
+                <div className="flex justify-end mt-3">
+                  <Button
+                    type="button"
+                    onClick={goToNextTab}
+                    disabled={!isCurrentTabValid()}
+                    className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700 text-white font-bold"
+                  >
+                    التالي <ArrowLeft className="h-4 w-4 mr-1" />
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -2278,20 +2310,49 @@ export default function Store() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="stock_quantity" className="text-base font-bold">{t('store.productForm.stockQuantity')}</Label>
-                  <Input
-                    id="stock_quantity"
-                    type="number"
-                    value={formData.stock_quantity ?? ''}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const parsed = raw === '' ? undefined : Number(raw);
-                      setFormData({ ...formData, stock_quantity: typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined });
-                    }}
-                    min="0"
-                    className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="stock_quantity" className="text-base font-bold">{t('store.productForm.stockQuantity')}</Label>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-semibold text-black dark:text-white">غير محدود</Label>
+                      <Switch
+                        checked={(formData.stock_quantity ?? 0) === -1}
+                        onCheckedChange={(checked) => {
+                          setFormData({ ...formData, stock_quantity: checked ? -1 : undefined });
+                        }}
+                        className="data-[state=checked]:bg-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  {(formData.stock_quantity ?? 0) === -1 ? (
+                    <div className="h-9 flex items-center justify-center bg-emerald-500/10 border border-emerald-500/30 rounded text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                      ∞ الكمية غير محدودة
+                    </div>
+                  ) : (
+                    <Input
+                      id="stock_quantity"
+                      type="number"
+                      value={formData.stock_quantity ?? ''}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const parsed = raw === '' ? undefined : Number(raw);
+                        setFormData({ ...formData, stock_quantity: typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined });
+                      }}
+                      min="0"
+                      className="border-emerald-500/30 focus:border-emerald-500/60 transition-colors h-9 text-base"
+                    />
+                  )}
                   <p className="text-xs text-muted-foreground">{t('store.productForm.stockHint')}</p>
+                </div>
+
+                <div className="flex justify-end mt-3">
+                  <Button
+                    type="button"
+                    onClick={goToNextTab}
+                    disabled={!isCurrentTabValid()}
+                    className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700 text-white font-bold"
+                  >
+                    التالي <ArrowLeft className="h-4 w-4 mr-1" />
+                  </Button>
                 </div>
               </div>
             )}
@@ -2312,8 +2373,7 @@ export default function Store() {
                 { name: 'كحلي', tw: 'bg-blue-900', ring: 'ring-blue-800' },
                 { name: 'بيج', tw: 'bg-amber-100 border border-amber-300', ring: 'ring-amber-200' },
               ];
-              const CLOTHING = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
-              const SHOES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
+              const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
 
               // Derive selected colors, sizes & sizes2 from existing draft
               const existingColors = [...new Set(variantsDraft.map(v => (v.color || '').trim()).filter(Boolean))];
@@ -2329,6 +2389,8 @@ export default function Store() {
                 const cArr = colors.length > 0 ? colors : [''];
                 const sArr = sizes.length > 0 ? sizes : [''];
                 const s2Arr = sizes2.length > 0 ? sizes2 : [''];
+                const defaultStock = (formData.stock_quantity ?? 0) === -1 ? -1 : 0;
+                const defaultPrice = Number(formData.price) || undefined;
                 for (const c of cArr) {
                   for (const s of sArr) {
                     for (const s2 of s2Arr) {
@@ -2338,7 +2400,8 @@ export default function Store() {
                           size: s || '',
                           size2: s2 || '',
                           variant_name: '',
-                          stock_quantity: 0,
+                          price: defaultPrice,
+                          stock_quantity: defaultStock,
                           is_active: true,
                           sort_order: variantsDraft.length + newVariants.length,
                         });
@@ -2360,7 +2423,7 @@ export default function Store() {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
                     setVariantsDraft(prev => [...prev, {
-                      color: colorName, size: '', size2: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
+                      color: colorName, size: '', size2: '', variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length,
                     }]);
                   }
                 }
@@ -2379,7 +2442,7 @@ export default function Store() {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
                     setVariantsDraft(prev => [...prev, {
-                      color: '', size: sizeName, size2: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
+                      color: '', size: sizeName, size2: '', variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length,
                     }]);
                   }
                 }
@@ -2398,7 +2461,7 @@ export default function Store() {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
                     setVariantsDraft(prev => [...prev, {
-                      color: '', size: '', size2: size2Name, variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length,
+                      color: '', size: '', size2: size2Name, variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length,
                     }]);
                   }
                 }
@@ -2550,14 +2613,14 @@ export default function Store() {
                     )}
                   </div>
                   <div className="p-4 space-y-3">
-                    {/* Clothing */}
+                    {/* Sizes */}
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
-                        <Shirt className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ملابس</span>
+                        <Ruler className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">المقاسات</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {CLOTHING.map((s) => {
+                        {SIZES.map((s) => {
                           const selected = existingSizes.includes(s);
                           return (
                             <button
@@ -2574,6 +2637,30 @@ export default function Store() {
                             </button>
                           );
                         })}
+                        {customSizes.filter(s => !SIZES.includes(s)).map(customSize => {
+                          const selected = existingSizes.includes(customSize);
+                          return (
+                            <button
+                              key={customSize}
+                              type="button"
+                              onClick={() => toggleSize(customSize)}
+                              className={`group relative min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                selected
+                                  ? 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-md shadow-violet-500/25 scale-105'
+                                  : 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 border-2 border-violet-200 dark:border-violet-700 hover:border-violet-400 dark:hover:border-violet-500 text-violet-700 dark:text-violet-300 shadow-sm'
+                              }`}
+                            >
+                              <span>{customSize}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setCustomSizes(prev => prev.filter(s => s !== customSize)); if (existingSizes.includes(customSize)) toggleSize(customSize); }}
+                                className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-400 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                              >
+                                <X className="h-2.5 w-2.5 text-white" />
+                              </button>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                     {/* Custom size */}
@@ -2585,7 +2672,8 @@ export default function Store() {
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             const val = (e.target as HTMLInputElement).value.trim();
-                            if (val && !existingSizes.includes(val)) {
+                            if (val && !customSizes.includes(val) && !SIZES.includes(val)) {
+                              setCustomSizes(prev => [...prev, val]);
                               toggleSize(val);
                               (e.target as HTMLInputElement).value = '';
                             }
@@ -2599,89 +2687,13 @@ export default function Store() {
                         onClick={() => {
                           const input = document.getElementById('customSizeInput') as HTMLInputElement;
                           const val = input?.value.trim();
-                          if (val && !existingSizes.includes(val)) {
+                          if (val && !customSizes.includes(val) && !SIZES.includes(val)) {
+                            setCustomSizes(prev => [...prev, val]);
                             toggleSize(val);
                             input.value = '';
                           }
                         }}
                         className="text-xs font-bold text-violet-600 dark:text-violet-400 hover:text-violet-800 px-1.5 py-0.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors"
-                      >+</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ═══ STEP 3: Pick Number Sizes (Shoe sizes) ═══ */}
-                <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                      <Footprints className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-sm font-bold text-slate-800 dark:text-white">③ اختر المقاسات الرقمية (اختياري)</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 block">مثل 39, 40, 41 للأحذية</span>
-                    </div>
-                    {existingSizes2.length > 0 && (
-                      <span className="text-xs font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2.5 py-1 rounded-full">
-                        {existingSizes2.length} مقاس
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-4 space-y-3">
-                    {/* Shoes */}
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <Footprints className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">أحذية</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {SHOES.map((s) => {
-                          const selected = existingSizes2.includes(s);
-                          return (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() => toggleSize2(s)}
-                              className={`min-w-[44px] px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                                selected
-                                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25 scale-105'
-                                  : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-                              }`}
-                            >
-                              {s}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    {/* Custom size2 */}
-                    <div className="flex items-center gap-1.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 w-fit">
-                      <Plus className="h-4 w-4 text-slate-400" />
-                      <Input
-                        id="customSize2Input"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const val = (e.target as HTMLInputElement).value.trim();
-                            if (val && !existingSizes2.includes(val)) {
-                              toggleSize2(val);
-                              (e.target as HTMLInputElement).value = '';
-                            }
-                          }
-                        }}
-                        placeholder="مقاس رقمي آخر"
-                        className="h-7 w-28 border-0 p-0 text-sm bg-transparent focus-visible:ring-0 shadow-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const input = document.getElementById('customSize2Input') as HTMLInputElement;
-                          const val = input?.value.trim();
-                          if (val && !existingSizes2.includes(val)) {
-                            toggleSize2(val);
-                            input.value = '';
-                          }
-                        }}
-                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 px-1.5 py-0.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
                       >+</button>
                     </div>
                   </div>
@@ -2702,7 +2714,29 @@ export default function Store() {
                       {variantsDraft.length} نوع
                     </span>
                   </div>
-
+                  <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVariantsDraft(prev => prev.map(v => ({ ...v, stock_quantity: -1 })));
+                        setVariantsDirty(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 transition-colors"
+                    >
+                      <Infinity className="h-3.5 w-3.5" /> جعل الكل غير محدود
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const p = Number(formData.price) || 0;
+                        setVariantsDraft(prev => prev.map(v => ({ ...v, price: p })));
+                        setVariantsDirty(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition-colors"
+                    >
+                      <DollarSign className="h-3.5 w-3.5" /> سعر واحد للكل
+                    </button>
+                  </div>
                   <div className="divide-y divide-slate-100 dark:divide-slate-700">
                     {Object.entries(colorGroups).map(([color, variants]) => (
                       <div key={color}>
@@ -2737,35 +2771,45 @@ export default function Store() {
                           </div>
                         )}
                         {/* Individual variants */}
-                        {variants.map((v) => (
+                        {variants.map((v, vIdx) => (
                           <div key={v.originalIndex} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors min-w-0 overflow-hidden">
-                            {/* Image thumbnail + upload for this color */}
-                            <div className="relative group flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700">
+                            {/* Image thumbnail — upload only on first variant per color */}
+                            <div className={`relative group flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 ${
+                              vIdx === 0
+                                ? 'border-2 border-dashed border-indigo-400 dark:border-indigo-500'
+                                : 'border border-slate-200 dark:border-slate-600'
+                            }`}>
                               {v.images?.[0] ? (
                                 <>
                                   <img src={v.images[0]} alt="" className="w-full h-full object-cover" />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const firstImage = v.images![0];
-                                      const rowColor = (v.color || '').trim();
-                                      setVariantsDraft(prev =>
-                                        prev.map((r) => {
-                                          if ((r.color || '').trim() === rowColor && r.images) {
-                                            return { ...r, images: r.images.filter(img => img !== firstImage) };
-                                          }
-                                          return r;
-                                        })
-                                      );
-                                      setVariantsDirty(true);
-                                    }}
-                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
+                                  {vIdx === 0 ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const firstImage = v.images![0];
+                                        const rowColor = (v.color || '').trim();
+                                        setVariantsDraft(prev =>
+                                          prev.map((r) => {
+                                            if ((r.color || '').trim() === rowColor && r.images) {
+                                              return { ...r, images: r.images.filter(img => img !== firstImage) };
+                                            }
+                                            return r;
+                                          })
+                                        );
+                                        setVariantsDirty(true);
+                                      }}
+                                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  ) : (
+                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <span className="text-[8px] text-white font-bold bg-black/50 px-1 rounded">نفس الصورة</span>
+                                    </div>
+                                  )}
                                 </>
-                              ) : (
-                                <label className="cursor-pointer w-full h-full flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                              ) : vIdx === 0 ? (
+                                <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center gap-0.5 text-indigo-400 hover:text-indigo-600 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
                                   <input type="file" accept="image/*,.avif" className="hidden" onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (!file) return;
@@ -2790,7 +2834,13 @@ export default function Store() {
                                     e.target.value = '';
                                   }} />
                                   <ImageIcon className="w-5 h-5" />
+                                  <span className="text-[7px] font-bold leading-none">صورة</span>
                                 </label>
+                              ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-600 gap-0.5">
+                                  <ImageIcon className="w-3.5 h-3.5" />
+                                  <span className="text-[7px] font-bold">تلقائي</span>
+                                </div>
                               )}
                             </div>
                             {/* Size badge */}
@@ -2810,22 +2860,39 @@ export default function Store() {
                             {/* Stock input */}
                             <div className="flex flex-col items-center gap-0.5 flex-1">
                               <span className="text-[10px] text-slate-400">الكمية</span>
-                              <Input
-                                type="number"
-                                min={0}
-                                value={v.stock_quantity ?? ''}
-                                onChange={(e) => {
-                                  const raw = e.target.value;
-                                  const next = raw === '' ? undefined : Number(raw);
+                              {v.stock_quantity === -1 ? (
+                                <span className="min-w-[80px] h-8 flex items-center justify-center bg-emerald-500/10 border border-emerald-500/30 rounded text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                  ∞ غير محدود
+                                </span>
+                              ) : (
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={v.stock_quantity ?? ''}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    const next = raw === '' ? undefined : Number(raw);
+                                    const idx = v.originalIndex;
+                                    setVariantsDraft(prev =>
+                                      prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row))
+                                    );
+                                    setVariantsDirty(true);
+                                  }}
+                                  className="h-8 w-20 text-sm text-center"
+                                  placeholder="0"
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
                                   const idx = v.originalIndex;
-                                  setVariantsDraft(prev =>
-                                    prev.map((row, i) => (i === idx ? { ...row, stock_quantity: next } : row))
-                                  );
+                                  setVariantsDraft(prev => prev.map((row, i) => (i === idx ? { ...row, stock_quantity: row.stock_quantity === -1 ? 0 : -1 } : row)));
                                   setVariantsDirty(true);
                                 }}
-                                className="h-8 w-20 text-sm text-center"
-                                placeholder="0"
-                              />
+                                className={`px-2 py-1 rounded text-[10px] font-bold transition-colors ${v.stock_quantity === -1 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                              >
+                                ∞
+                              </button>
                             </div>
 
                             {/* Price (optional) */}
@@ -2892,7 +2959,7 @@ export default function Store() {
                       onClick={() => {
                         setVariantsDraft((prev) => [
                           ...prev,
-                          { color: '', size: '', variant_name: '', stock_quantity: 0, is_active: true, sort_order: prev.length },
+                          { color: '', size: '', variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length },
                         ]);
                         setVariantsDirty(true);
                         setVariantsLoaded(true);
