@@ -326,20 +326,19 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
       <div className="min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', fontFamily: "'Tajawal', sans-serif" }} dir="rtl">
         {/* Header */}
         <div
-          className="sticky top-0 z-50 px-6 py-2 flex items-center justify-between gap-4"
+          className="sticky top-0 z-50 transition-transform duration-300"
           style={{
-            backgroundColor: cardBg,
-            borderBottom: `1px solid ${borderColor}`,
             transform: gridHeaderVisible ? 'translateY(0)' : 'translateY(-100%)',
-            transition: 'transform 0.3s ease-in-out',
           }}
         >
-          <div className="flex items-center gap-2 shrink-0">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" width="36" height="36" />}
-            <div className="font-bold text-lg" style={{ color: textColor }}>
-              {storeName}
+          <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88, ${accentColor}44)` }} />
+          <div className="px-6 py-2 flex items-center justify-between gap-4" style={{ backgroundColor: cardBg, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div className="flex items-center gap-2 shrink-0">
+              {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-lg object-cover" loading="lazy" decoding="async" width="36" height="36" />}
+              <div className="font-bold text-lg" style={{ color: textColor }}>
+                {storeName}
+              </div>
             </div>
-          </div>
           {/* Search bar */}
           <div className="hidden md:flex flex-1 max-w-md items-center gap-2 px-4 py-2.5 rounded-full" style={{ backgroundColor: surfaceMuted }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -347,7 +346,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             </svg>
             <span className="text-sm" style={{ color: textMuted }}>ابحث في المنتجات...</span>
           </div>
-          <span className="text-sm shrink-0" style={{ color: textMuted }}>{products?.length} منتج</span>
+            <span className="text-sm shrink-0" style={{ color: textMuted }}>{products?.length} منتج</span>
+          </div>
         </div>
 
         {/* Product Grid — Leroi style */}
@@ -445,36 +445,49 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
       <div className={`${settings?.template_desktop_layout ? 'max-w-7xl mx-auto' : 'max-w-3xl mx-auto'} min-h-screen relative shadow-2xl`}>
 
         {/* ── STICKY HEADER ── */}
-        <div className="sticky top-0 z-50 backdrop-blur-md px-3 py-2.5 flex items-center justify-between transition-transform duration-300" style={{ backgroundColor: cardBg, borderBottom: `1.5px solid #e2e8f0`, boxShadow: `0 2px 12px rgba(0,0,0,0.05)`, transform: gridHeaderVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
-          <button onClick={goToStore} className="flex items-center gap-1.5">
-            {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-10 h-10 rounded-full object-cover" />}
-            <div
-              className="font-extrabold text-2xl tracking-tight"
-              style={{ color: textColor }}
-              contentEditable={canManage}
-              suppressContentEditableWarning
-              onBlur={handleTextEdit('zenith_store_name')}
-            >
-              {storeName}
-            </div>
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="text-left flex flex-col">
-              <span className="text-xs font-bold" style={{ color: textMuted }}>السعر</span>
-              <span className="font-black text-lg leading-none" dir="ltr">
-                {displayPrice(productPrice)} {currency}
-              </span>
-            </div>
-            <button
-              onClick={scrollToForm}
-              className="text-white px-5 py-2 rounded-full font-bold text-sm shadow-md active:scale-95 transition-transform"
-              style={{ backgroundColor: accentColor }}
-              contentEditable={canManage}
-              suppressContentEditableWarning
-              onBlur={handleTextEdit('zenith_cta_text')}
-            >
-              {ctaText}
+        <div className="sticky top-0 z-50 transition-transform duration-300" style={{ transform: gridHeaderVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
+          {/* Accent top line */}
+          <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88, ${accentColor}44)` }} />
+          <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: cardBg, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)' }}>
+            {/* Left: Logo + Product Name */}
+            <button onClick={goToStore} className="flex items-center gap-2 min-w-0">
+              {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />}
+              <div className="flex flex-col items-start min-w-0">
+                <span className="font-bold text-xs leading-none" style={{ color: textMuted }}>{storeName}</span>
+                <span
+                  className="font-black text-sm leading-tight truncate max-w-[160px]"
+                  style={{ color: textColor }}
+                  contentEditable={canManage}
+                  suppressContentEditableWarning
+                  onBlur={handleTextEdit('zenith_product_title')}
+                >
+                  {mainProduct?.title || 'اسم المنتج'}
+                </span>
+              </div>
             </button>
+
+            {/* Right: Delivery Badge + Price + CTA */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full" style={{ backgroundColor: `${accentColor}12` }}>
+                <Truck size={13} style={{ color: accentColor }} />
+                <span className="text-[10px] font-bold" style={{ color: accentColor }}>توصيل</span>
+              </div>
+              <div className="text-left flex flex-col">
+                <span className="font-black text-base leading-none" dir="ltr">
+                  {displayPrice(productPrice)} {currency}
+                </span>
+              </div>
+              <button
+                onClick={scrollToForm}
+                className="text-white px-4 py-2 rounded-xl font-bold text-xs shadow-lg active:scale-95 transition-all"
+                style={{ backgroundColor: accentColor, boxShadow: `0 4px 14px ${accentColor}44` }}
+                contentEditable={canManage}
+                suppressContentEditableWarning
+                onBlur={handleTextEdit('zenith_cta_text')}
+              >
+                {ctaText}
+              </button>
+            </div>
           </div>
         </div>
 
