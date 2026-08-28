@@ -781,6 +781,66 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           </div>
         </div>
 
+        {/* ── SIMILAR PRODUCTS ── */}
+        {(() => {
+          const otherProducts = (products || []).filter((p: any) => String(p.id) !== String(mainProduct?.id));
+          if (otherProducts.length === 0) return null;
+          return (
+            <div className="px-3 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-black" style={{ color: textColor }}>منتجات أخرى من المتجر</h3>
+                <span className="text-xs font-bold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: accentColor }} onClick={goToStore}>
+                  عرض الكل ←
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {otherProducts.map((p: any) => {
+                  const thumb = p.images?.[0] || '';
+                  const price = p.price || 0;
+                  const disc = p.original_price && p.original_price > price
+                    ? Math.round(((p.original_price - price) / p.original_price) * 100)
+                    : 0;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => goToProduct(p)}
+                      className="group cursor-pointer rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+                      style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
+                    >
+                      <div className="relative overflow-hidden" style={{ aspectRatio: '1 / 1', backgroundColor: surfaceMuted }}>
+                        {thumb ? (
+                          <img
+                            src={thumb}
+                            alt={p.title || ''}
+                            loading="lazy"
+                            decoding="async"
+                            width="288"
+                            height="288"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-3xl" style={{ backgroundColor: surfaceMuted }}>📦</div>
+                        )}
+                        {disc > 0 && (
+                          <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full shadow">
+                            -{disc}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-2">
+                        <p className="text-xs font-bold truncate" style={{ color: textColor }}>{p.title}</p>
+                        <p className="text-xs font-black mt-1" style={{ color: accentColor }}>
+                          {displayPrice(price)} {currency}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ── FOOTER ── */}
         <footer className="py-6 text-center text-xs" style={{ color: textMuted, borderTop: `1px solid ${borderColor}` }}>
           © {new Date().getFullYear()} {settings?.store_name || 'متجري'}. جميع الحقوق محفوظة · صنع بواسطة <a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: accentColor, textDecoration: 'none' }}>Sahla4Eco</a>
