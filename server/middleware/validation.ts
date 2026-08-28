@@ -16,6 +16,7 @@ export const registerBodySchema = z
 		email: emailSchema,
 		password: passwordSchema,
 		name: z.string().trim().min(1).max(200).optional(),
+		store_name: z.string().trim().max(200).optional(),
 		role: z.enum(['client', 'seller', 'admin']).optional(),
 		voucher_code: z.string().trim().max(50).optional(),
 	})
