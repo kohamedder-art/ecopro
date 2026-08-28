@@ -522,7 +522,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
         
         {/* ── ORDER FORM ── */}
-        <div ref={formRef} className="px-3 py-5 pb-24" id="checkout-form">
+        <div ref={formRef} className="px-3 py-5 pb-12" id="checkout-form">
             <div className="rounded-[28px] px-4 py-6 shadow-xl relative" style={{ backgroundColor: cardBg, border: `2px solid #e2e8f0`, boxShadow: `0 20px 50px -12px rgba(0,0,0,0.08), 0 8px 20px rgba(0,0,0,0.06)` }}>
             <div className="absolute top-0 inset-x-0 h-1.5 rounded-t-[28px] overflow-hidden" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88)` }} />
             <div className="absolute -top-3 right-6 text-white px-5 py-1.5 rounded-full text-xs font-black tracking-wide shadow-md flex items-center gap-1.5" style={{ backgroundColor: accentColor }}>
@@ -786,7 +786,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           const otherProducts = (products || []).filter((p: any) => String(p.id) !== String(mainProduct?.id));
           if (otherProducts.length === 0) return null;
           return (
-            <div className="px-3 py-5">
+            <div className="px-3 pt-1 pb-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-black" style={{ color: textColor }}>منتجات أخرى من المتجر</h3>
                 <span className="text-xs font-bold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: accentColor }} onClick={goToStore}>
@@ -800,6 +800,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   const disc = p.original_price && p.original_price > price
                     ? Math.round(((p.original_price - price) / p.original_price) * 100)
                     : 0;
+                  const isLowStock = p.stock_quantity > 0 && p.stock_quantity <= 5;
                   return (
                     <div
                       key={p.id}
@@ -807,31 +808,53 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       className="group cursor-pointer rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
                       style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
                     >
-                      <div className="relative overflow-hidden" style={{ aspectRatio: '1 / 1', backgroundColor: surfaceMuted }}>
+                      <div className="relative overflow-hidden" style={{ aspectRatio: '5 / 7', backgroundColor: surfaceMuted }}>
                         {thumb ? (
                           <img
                             src={thumb}
                             alt={p.title || ''}
                             loading="lazy"
                             decoding="async"
-                            width="288"
-                            height="288"
+                            width="400"
+                            height="560"
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-3xl" style={{ backgroundColor: surfaceMuted }}>📦</div>
+                          <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: surfaceMuted }}>📦</div>
                         )}
-                        {disc > 0 && (
-                          <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full shadow">
-                            -{disc}%
-                          </span>
-                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="absolute top-1.5 right-1.5 flex flex-col gap-1">
+                          {disc > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow">
+                              -{disc}%
+                            </span>
+                          )}
+                          {isLowStock && (
+                            <span className="bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow">
+                              ⚡ {p.stock_quantity} left
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="p-2">
-                        <p className="text-xs font-bold truncate" style={{ color: textColor }}>{p.title}</p>
-                        <p className="text-xs font-black mt-1" style={{ color: accentColor }}>
-                          {displayPrice(price)} {currency}
-                        </p>
+                      <div className="p-3">
+                        <h3 className="text-xs font-semibold leading-snug mb-2 line-clamp-2 text-right" style={{ color: textColor }}>
+                          {p.title || p.name || 'منتج'}
+                        </h3>
+                        {p.original_price && p.original_price > price && (
+                          <div className="text-[10px] line-through text-right mb-0.5" style={{ color: textMuted }}>
+                            {displayPrice(p.original_price)} {currency}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-base" style={{ color: accentColor }}>
+                            {displayPrice(price)} <span className="text-xs font-semibold">{currency}</span>
+                          </span>
+                          {p.views > 0 && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: textMuted }}>
+                              🔥 {p.views > 1000 ? `${Math.floor(p.views/1000)}K+` : `${p.views}+`} sold
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
