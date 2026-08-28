@@ -2,10 +2,10 @@ import { useState } from 'react';
 import {
   BarChart3, Users, Store, Package, CreditCard, Gift, Receipt,
   HeartPulse, AlertTriangle, Activity, Brain, Zap, Settings, StickyNote,
-  TrendingUp, Menu, X, ShoppingBag, MessageCircle
+  TrendingUp, Menu, X, ShoppingBag, MessageCircle, Link
 } from 'lucide-react';
 
-type TabKey = 'overview' | 'users' | 'stores' | 'products' | 'activity' | 'errors' | 'health' | 'settings' | 'billing' | 'payment-failures' | 'codes' | 'tools' | 'affiliates' | 'notes' | 'ai' | 'bills' | 'pixels' | 'chat';
+type TabKey = 'overview' | 'users' | 'stores' | 'products' | 'activity' | 'errors' | 'health' | 'settings' | 'billing' | 'payment-failures' | 'codes' | 'tools' | 'affiliates' | 'notes' | 'ai' | 'bills' | 'pixels' | 'chat' | 'contacts';
 
 interface Props {
   activeTab: TabKey;
@@ -73,6 +73,7 @@ export default function PlatformAdminSidebar({ activeTab, onTabChange, onBilling
       title: 'Other',
       items: [
         { key: 'affiliates', label: 'Affiliates', icon: <TrendingUp className="w-4 h-4" /> },
+        { key: 'contacts', label: 'Contacts', icon: <Link className="w-4 h-4" /> },
         { key: 'chat', label: 'Chat', icon: <MessageCircle className="w-4 h-4" />, onClick: () => window.location.href = '/platform-admin/chat' },
       ],
     },

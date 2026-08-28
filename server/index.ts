@@ -82,6 +82,7 @@ import * as platformBillsRoutes from "./routes/platform-bills";
 import deliveryPricesRouter, { getStorefrontDeliveryPrices } from "./routes/delivery-prices";
 import mobileRouter, { getDownloadUrl } from "./routes/mobile";
 import notificationsRouter from "./routes/notifications";
+import adminContactsRouter from "./routes/admin-contacts";
 import * as abTestRoutes from "./routes/ab-tests";
 import { assignVariant as abAssignVariant } from "./routes/ab-assign";
 import {
@@ -1871,6 +1872,9 @@ ${urls}
 
   // Push notification device registration (authenticated clients)
   app.use('/api/notifications', authenticate, notificationsRouter);
+
+  // Platform admin contacts (router handles auth internally — public endpoint for bubble)
+  app.use('/api/admin-contacts', adminContactsRouter);
 
   // Landing page live tracking feed (public)
   app.get("/api/landing/tracking-feed", async (_req, res) => {
