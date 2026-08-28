@@ -196,22 +196,9 @@ export default function IycoTemplate({
   const [showCart, setShowCart] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const [showOrderForm, setShowOrderForm] = useState(false);
+  const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
 
-  // ── Scroll-aware Header ──
-  const [showHeader, setShowHeader] = useState(true);
-  const lastScrollY = useRef(0);
-  useEffect(() => {
-    const handleScroll = () => {
-      const sy = window.scrollY;
-      const dy = sy - lastScrollY.current;
-      if (Math.abs(dy) > 10) {
-        setShowHeader(dy < 0);
-        lastScrollY.current = sy;
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // ── Scroll-aware Header ── (removed — header always sticky)
 
   // ── Product Detail State ──
   const [selectedMainImage, setSelectedMainImage] = useState(0);
@@ -466,7 +453,7 @@ export default function IycoTemplate({
 
       {/* ── TOP NAVIGATION ── */}
       {mainProduct ? (
-        <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: '#f1f3f4', borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
+        <nav className="sticky top-0 z-50" style={{ backgroundColor: '#f1f3f4', borderBottom: `1px solid ${borderColor}` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 flex items-center gap-3">
             <Home
               size={16}
@@ -478,7 +465,7 @@ export default function IycoTemplate({
           </div>
         </nav>
       ) : (
-        <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: bgImageCss ? 'transparent' : surfaceColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
+        <nav className="sticky top-0 z-50" style={{ backgroundColor: bgImageCss ? 'transparent' : surfaceColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-center relative">
             {/* Center: Logo / Store Name */}
             <div
@@ -950,12 +937,14 @@ export default function IycoTemplate({
               </h2>
             </div>
 
-            {/* Desktop: grid | Mobile: horizontal scroll carousel */}
+            {/* Desktop: grid */}
             <div className="hidden md:grid grid-cols-4" style={{ gap: '18px', contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {otherProducts.map(prod => (
                 <button
                   key={prod.id}
                   className="group block text-center"
+                  onMouseEnter={() => setHoveredProduct(prod.id)}
+                  onMouseLeave={() => setHoveredProduct(null)}
                   onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
                 >
                   <div className="relative overflow-hidden flex items-center justify-center" style={{ minHeight: '370px', backgroundColor: '#f5f5f5' }}>
@@ -967,13 +956,13 @@ export default function IycoTemplate({
                       : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                         : <img
-                            src={prod.images?.[0] || '/placeholder.png'}
+                            src={hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : (prod.images?.[0] || '/placeholder.png')}
                             alt={prod.title}
                             loading="lazy"
                             decoding="async"
                             width="400"
                             height="400"
-                            className="max-w-full max-h-full object-contain"
+                            className="max-w-full max-h-full object-contain transition-opacity duration-300"
                           />
                     }
                     {prod.original_price ? (
@@ -999,6 +988,8 @@ export default function IycoTemplate({
                 <button
                   key={prod.id}
                   className="group block text-center"
+                  onMouseEnter={() => setHoveredProduct(prod.id)}
+                  onMouseLeave={() => setHoveredProduct(null)}
                   onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
                 >
                   <div className="relative overflow-hidden flex items-center justify-center" style={{ minHeight: '370px', backgroundColor: '#f5f5f5' }}>
@@ -1010,13 +1001,13 @@ export default function IycoTemplate({
                       : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                         : <img
-                            src={prod.images?.[0] || '/placeholder.png'}
+                            src={hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : (prod.images?.[0] || '/placeholder.png')}
                             alt={prod.title}
                             loading="lazy"
                             decoding="async"
                             width="400"
                             height="400"
-                            className="max-w-full max-h-full object-contain"
+                            className="max-w-full max-h-full object-contain transition-opacity duration-300"
                           />
                     }
                     {prod.original_price ? (
