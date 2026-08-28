@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { init, loadPlatform, loadStore, trackPageView } from "../lib/pixel";
+import { init, loadPlatform, loadStore, trackPageView, trackTikTokEvent } from "../lib/pixel";
 import { getResolvedStoreSlug } from "../lib/resolvedStore";
 
 export default function PixelManager() {
@@ -17,7 +17,13 @@ export default function PixelManager() {
       if (dead) return;
       await init(cfg);
       if (dead) return;
-      if (isPlatform && isFirst && (window as any).__PIXEL_INJECTED__?.length) return;
+      if (isPlatform && isFirst && (window as any).__PIXEL_INJECTED__?.length) {
+        // Facebook was already server-side fired — only fire TikTok client-side if configured
+        if (cfg.tiktok?.length) {
+          trackTikTokEvent("PageView");
+        }
+        return;
+      }
       trackPageView(loc.pathname + loc.search);
     })();
     return () => { dead = true; };
