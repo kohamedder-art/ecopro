@@ -1730,6 +1730,7 @@ export const en = {
   "orders.variant": "Variant",
   "orders.quantity": "Quantity",
   "orders.unitPrice": "Unit Price",
+  "orders.totalPrice": "Total Price",
   "orders.internalNote": "Internal Note",
   "orders.addNotePlaceholder": "Add a private note about this order...",
   "orders.editOrder": "Edit Order",

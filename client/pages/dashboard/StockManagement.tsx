@@ -999,12 +999,14 @@ export default function StockManagement() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Name', 'Category', 'Quantity', 'Unit Price'];
+    const headers = ['Name', 'Category', 'Quantity', 'Min Stock', 'Unit Price', 'Status'];
     const rows = filteredStock.map(item => [
       item.name,
       item.category || '',
       item.quantity,
+      item.reorder_level,
       item.unit_price || 0,
+      item.status === 'out_of_stock' ? 'Out of Stock' : item.is_low_stock ? 'Low Stock' : item.status === 'discontinued' ? 'Discontinued' : 'Active',
     ]);
 
     const csvContent = [
@@ -1012,7 +1014,7 @@ export default function StockManagement() {
       ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1250,34 +1252,25 @@ export default function StockManagement() {
           )}
         </div>
 
-        {/* ── Desktop table (Excel-like grid) ── */}
-        <div className="hidden md:block overflow-auto">
-          <table className="w-full text-xs border-collapse" style={{ tableLayout: 'fixed' }}>
-            <colgroup>
-              <col className="w-[5%]" />
-              <col className="w-[30%]" />
-              <col className="w-[12%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-              <col className="w-[13%]" />
-            </colgroup>
+        {/* ── Desktop table ── */}
+        <div className="hidden md:block overflow-x-hidden">
+          <table className="w-full text-sm border-separate" style={{ borderSpacing: 0 }}>
             <thead className="sticky top-0 z-10">
-              <tr className="bg-gray-100 dark:bg-slate-800">
-                <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">#</th>
-                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.product')}</th>
-                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.category')}</th>
-                <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.qty')}</th>
-                <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.status')}</th>
-                <th className="px-3 py-2 text-right text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.price')}</th>
-                <th className="px-3 py-2 text-center text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-300 dark:border-slate-600">{t('stock.actions')}</th>
+              <tr className="bg-muted/50">
+                <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground" style={{ borderBottom: '1px solid hsl(var(--border))' }}>#</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>{t('stock.product')}</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>{t('stock.category')}</th>
+                <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>{t('stock.qty')}</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>{t('stock.status')}</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>{t('stock.price')}</th>
+                <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>{t('stock.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filteredStock.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-black dark:text-white border border-gray-300 dark:border-slate-600">
-                    <PackageX className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                  <td colSpan={7} className="text-center py-16 text-muted-foreground">
+                    <PackageX className="w-10 h-10 mx-auto opacity-20 mb-3" />
                     <p className="text-sm font-medium">
                       {searchQuery || categoryFilter !== 'all' || showLowStock
                         ? t('stock.noProductsMatch')
@@ -1287,57 +1280,50 @@ export default function StockManagement() {
                 </tr>
               ) : (
                 filteredStock.map((item, idx) => {
-                  const stockPct = item.reorder_level > 0 ? Math.min(100, Math.round((item.quantity / (item.reorder_level * 3)) * 100)) : 100;
-                  const barColor = item.status === 'out_of_stock' ? 'bg-red-500' : item.is_low_stock ? 'bg-amber-500' : 'bg-emerald-500';
                   const isEven = idx % 2 === 0;
                   return (
-                    <tr key={item.id} className={`transition-colors group ${isEven ? 'bg-white dark:bg-slate-900/50' : 'bg-gray-50/50 dark:bg-slate-800/30'} hover:bg-blue-50 dark:hover:bg-slate-800/60`}>
-                      <td className="px-3 py-3 text-center font-black text-base text-slate-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600">{idx + 1}</td>
-                      <td className="px-3 py-2 min-w-0 border border-gray-300 dark:border-slate-600">
-                        <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded flex-shrink-0 bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 overflow-hidden">
+                    <tr key={item.id} className={`transition-colors group hover:bg-muted/30 ${isEven ? 'bg-background' : 'bg-muted/10'}`}>
+                      <td className="px-4 py-3 text-center text-sm font-semibold text-muted-foreground" style={{ borderBottom: '1px solid hsl(var(--border))' }}>{idx + 1}</td>
+                      <td className="px-4 py-3 min-w-0 max-w-[200px]" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg flex-shrink-0 bg-muted overflow-hidden">
                             {item.images?.[0]
                               ? <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
-                              : <div className="w-full h-full flex items-center justify-center text-gray-400"><Package className="w-3.5 h-3.5" /></div>
+                              : <div className="w-full h-full flex items-center justify-center text-muted-foreground"><Package className="w-4 h-4" /></div>
                             }
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-xs truncate leading-tight text-black dark:text-white">{item.name}</p>
+                            <p className="font-semibold text-sm truncate text-foreground" title={item.name}>{item.name}</p>
                             {item.description && (
-                              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[170px] leading-tight">{item.description}</p>
+                              <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-2 border border-gray-300 dark:border-slate-600">
+                      <td className="px-4 py-3" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>
                         {item.category
-                          ? <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400 text-[10px] font-semibold border border-blue-200 dark:border-blue-500/30">{item.category}</span>
-                          : <span className="text-gray-400 dark:text-gray-500">—</span>
+                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">{item.category}</span>
+                          : <span className="text-muted-foreground">—</span>
                         }
                       </td>
-                      <td className="px-3 py-2 text-center border border-gray-300 dark:border-slate-600">
-                        <span className={`tabular-nums font-bold text-xs block ${
+                      <td className="px-4 py-3 text-center" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>
+                        <span className={`tabular-nums font-bold text-sm ${
                           item.status === 'out_of_stock' ? 'text-red-600 dark:text-red-400'
                           : item.is_low_stock ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-black dark:text-white'
+                          : 'text-foreground'
                         }`}>{item.quantity}</span>
-                        <div className="flex items-center justify-center gap-1 mt-0.5">
-                          <span className="inline-block w-12 h-1 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
-                            <span className={`h-full rounded-full block ${barColor}`} style={{ width: `${stockPct}%` }} />
-                          </span>
-                          <span className="text-[9px] text-gray-500 dark:text-gray-400 tabular-nums">min {item.reorder_level}</span>
-                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">min {item.reorder_level}</p>
                       </td>
-                      <td className="px-3 py-2 border border-gray-300 dark:border-slate-600">
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                          item.status === 'out_of_stock' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30'
-                          : item.status === 'discontinued' ? 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-slate-600'
-                          : item.is_low_stock ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30'
-                          : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30'
+                      <td className="px-4 py-3" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ${
+                          item.status === 'out_of_stock' ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                          : item.status === 'discontinued' ? 'bg-muted text-muted-foreground'
+                          : item.is_low_stock ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${
                             item.status === 'out_of_stock' ? 'bg-red-500'
-                            : item.status === 'discontinued' ? 'bg-gray-400'
+                            : item.status === 'discontinued' ? 'bg-muted-foreground'
                             : item.is_low_stock ? 'bg-amber-500'
                             : 'bg-emerald-500'
                           }`} />
@@ -1347,25 +1333,25 @@ export default function StockManagement() {
                             : t('stock.active')}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums border border-gray-300 dark:border-slate-600">
+                      <td className="px-4 py-3 text-right tabular-nums" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>
                         {item.unit_price
-                          ? <span className="font-bold text-xs text-black dark:text-white">{Math.round(Number(item.unit_price)).toLocaleString()} <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">DA</span></span>
-                          : <span className="text-gray-400 dark:text-gray-500 text-xs">—</span>
+                          ? <span className="font-bold text-sm text-foreground">{Math.round(Number(item.unit_price)).toLocaleString()} <span className="text-xs font-medium text-muted-foreground">DA</span></span>
+                          : <span className="text-muted-foreground text-sm">—</span>
                         }
                       </td>
-                      <td className="px-2 py-2 border border-gray-300 dark:border-slate-600">
-                        <div className="flex items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => openAdjustModal(item)} title={t('stock.adjustQuantity')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-gray-500 dark:text-gray-400 hover:text-emerald-600 transition-colors">
-                            <TrendingUp className="w-3.5 h-3.5" />
+                      <td className="px-4 py-3" style={{ borderBottom: '1px solid hsl(var(--border))', borderLeft: '1px solid hsl(var(--border))' }}>
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => openAdjustModal(item)} title={t('stock.adjustQuantity')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-600 transition-colors">
+                            <TrendingUp className="w-4 h-4" />
                           </button>
-                          <button onClick={() => openHistoryModal(item)} title={t('stock.history')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 text-gray-500 dark:text-gray-400 hover:text-blue-600 transition-colors">
-                            <History className="w-3.5 h-3.5" />
+                          <button onClick={() => openHistoryModal(item)} title={t('stock.history')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-blue-500/10 text-muted-foreground hover:text-blue-600 transition-colors">
+                            <History className="w-4 h-4" />
                           </button>
-                          <button onClick={() => openEditModal(item)} title={t('stock.editProduct')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-gray-500 dark:text-gray-400 hover:text-indigo-600 transition-colors">
-                            <Edit className="w-3.5 h-3.5" />
+                          <button onClick={() => openEditModal(item)} title={t('stock.editProduct')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                            <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => openDeleteDialog(item)} title={t('stock.deleteProduct')} className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-500 dark:text-gray-400 hover:text-red-600 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
+                          <button onClick={() => openDeleteDialog(item)} title={t('stock.deleteProduct')} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -1379,12 +1365,12 @@ export default function StockManagement() {
 
         {/* Footer */}
         {filteredStock.length > 0 && (
-          <div className="px-3 py-1.5 border-t border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/50 flex items-center gap-4 text-[10px] font-semibold text-gray-600 dark:text-gray-400">
+          <div className="px-4 py-2 border-t border-border/40 bg-muted/20 flex items-center gap-4 text-xs font-medium text-muted-foreground">
             <span>{filteredStock.length}/{stock.length} {t('stock.items')}</span>
             <span className="text-emerald-600 dark:text-emerald-400">{inStockCount} {t('stock.active')}</span>
             <span className="text-amber-600 dark:text-amber-400">{lowStockCount} {t('stock.low')}</span>
             <span className="text-red-600 dark:text-red-400">{outOfStockCount} {t('stock.outOfStock')}</span>
-            <span className="ml-auto">{t('stock.totalValue')}: <span className="font-bold text-black dark:text-white">{Math.round(totalValue).toLocaleString()} DA</span></span>
+            <span className="ml-auto">{t('stock.totalValue')}: <span className="font-bold text-foreground">{Math.round(totalValue).toLocaleString()} DA</span></span>
           </div>
         )}
       </div>

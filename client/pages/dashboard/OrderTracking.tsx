@@ -1,13 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/i18n";
-
-/*
- * ── CRITICAL: Only in-delivery orders show here ──────
- * Matches the 🚚 عند شركة التوصيل tab in the Orders page.
- * Filter:
- *   list.filter(o => o.status === 'in_delivery' || o.status === 'at_delivery')
- * ──────────────────────────────────────────────────────
- */
+import { Loader2, Search, RefreshCw, Package, MapPin, Truck, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 
 const TRACKING_STEPS = [
   { key: "confirmed",      labelKey: "tracking.stepConfirmed",    color: "#2b8a3e" },
@@ -36,13 +29,13 @@ const STATUS_GROUP: Record<string, string> = {
   cancelled: "bad", returned: "bad", failed: "bad", fake: "bad", duplicate: "bad",
 };
 
-const GROUP_META: Record<string, { label: string; color: string }> = {
-  pending: { label: "قيد الانتظار", color: "#0d9488" },
-  transit: { label: "في الطريق",    color: "#d97706" },
-  hub:     { label: "في المحطة",    color: "#7c3aed" },
-  ofd:     { label: "قيد التوصيل",  color: "#e11d48" },
-  done:    { label: "تم التسليم",   color: "#059669" },
-  bad:     { label: "مشكلة",        color: "#dc2626" },
+const GROUP_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  pending: { label: "قيد الانتظار", color: "#0d9488", icon: <Clock className="w-3.5 h-3.5" /> },
+  transit: { label: "في الطريق",    color: "#d97706", icon: <Truck className="w-3.5 h-3.5" /> },
+  hub:     { label: "في المحطة",    color: "#7c3aed", icon: <MapPin className="w-3.5 h-3.5" /> },
+  ofd:     { label: "قيد التوصيل",  color: "#e11d48", icon: <Package className="w-3.5 h-3.5" /> },
+  done:    { label: "تم التسليم",   color: "#059669", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+  bad:     { label: "مشكلة",        color: "#dc2626", icon: <AlertCircle className="w-3.5 h-3.5" /> },
 };
 
 interface TrackingOrder {
@@ -84,24 +77,17 @@ function getEffectiveStatus(order: TrackingOrder): string {
   return (order.tracking_number && order.delivery_status) ? order.delivery_status : order.status;
 }
 
-// ─── Step bar — RTL-aware with labels always under circles ───
 function StepBar({ status, t, locale }: { status: string; t: (key: string) => string; locale: string }) {
   const rawStep = STATUS_TO_STEP[status] ?? 0;
   const isBad = rawStep === -1;
   const currentStep = isBad ? 0 : rawStep;
   const isRTL = locale === "ar";
-
-  // In RTL, we reverse the visual order but keep logic the same
   const steps = isRTL ? [...TRACKING_STEPS].reverse() : TRACKING_STEPS;
-  const logicalCurrentStep = isBad ? 0 : (TRACKING_STEPS.length - 1 - currentStep);
-
   const pct = (currentStep / (TRACKING_STEPS.length - 1)) * 100;
 
   return (
     <div className="w-full" dir="ltr">
-      {/* Progress bar — always LTR internally, steps rendered in RTL order */}
-      <div className="relative w-full h-[6px] bg-muted rounded-full overflow-hidden border border-border/50"
-        style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.08)' }}>
+      <div className="relative w-full h-1.5 rounded-full bg-muted overflow-hidden">
         <div
           className="absolute inset-y-0 rounded-full transition-all duration-700"
           style={{
@@ -109,58 +95,29 @@ function StepBar({ status, t, locale }: { status: string; t: (key: string) => st
             [isRTL ? 'right' : 'left']: 0,
             [isRTL ? 'left' : 'right']: 'auto',
             background: "linear-gradient(90deg, #34d399, #6366f1, #f97316)",
-            boxShadow: "0 1px 4px rgba(99,102,241,0.3)",
           }}
         />
       </div>
-
-      {/* Step circles + labels — always arranged in display order */}
       <div className="flex items-start justify-between mt-2" style={{ direction: 'ltr' }}>
         {steps.map((step, displayIdx) => {
           const logicalIdx = isRTL ? (TRACKING_STEPS.length - 1 - displayIdx) : displayIdx;
           const done = !isBad && logicalIdx < currentStep;
           const active = !isBad && logicalIdx === currentStep;
-          const isCurrentStep = active;
-
           return (
             <div key={step.key} className="flex flex-col items-center" style={{ flex: 1, minWidth: 0 }}>
-              {/* Circle */}
-              <div className="relative">
-                <div
-                  className="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300"
-                  style={{
-                    background: done ? step.color : isCurrentStep ? "#fff" : "hsl(var(--muted))",
-                    border: isCurrentStep
-                      ? `3px solid ${step.color}`
-                      : done
-                        ? "none"
-                        : "2px solid hsl(var(--border))",
-                    boxShadow: isCurrentStep
-                      ? `0 0 0 4px ${step.color}20, 0 2px 8px ${step.color}30`
-                      : done
-                        ? `0 1px 4px ${step.color}25`
-                        : "0 1px 2px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  {done && (
-                    <svg width="10" height="10" viewBox="0 0 13 13" fill="none">
-                      <path d="M4 6.5L5.5 8L9.5 4.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                  {isCurrentStep && (
-                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: step.color }} />
-                  )}
-                </div>
-              </div>
-              {/* Label — always below the circle */}
-              <span
-                className="w-full text-center mt-1 leading-tight whitespace-nowrap overflow-hidden text-ellipsis block"
+              <div
+                className="w-4 h-4 rounded-full flex items-center justify-center transition-all duration-300"
                 style={{
-                  fontSize: '8px',
-                  fontWeight: isCurrentStep ? 800 : 600,
-                  color: isCurrentStep ? step.color : done ? '#495057' : 'hsl(var(--muted-foreground))',
+                  background: done ? step.color : active ? "#fff" : "hsl(var(--muted))",
+                  border: active ? `2.5px solid ${step.color}` : done ? "none" : "1.5px solid hsl(var(--border))",
+                  boxShadow: active ? `0 0 0 3px ${step.color}20` : "none",
                 }}
               >
+                {done && <svg width="8" height="8" viewBox="0 0 13 13" fill="none"><path d="M4 6.5L5.5 8L9.5 4.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                {active && <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: step.color }} />}
+              </div>
+              <span className="w-full text-center mt-1 leading-tight whitespace-nowrap overflow-hidden text-ellipsis block"
+                style={{ fontSize: '8px', fontWeight: active ? 700 : 500, color: active ? step.color : done ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}>
                 {t(step.labelKey)}
               </span>
             </div>
@@ -171,12 +128,9 @@ function StepBar({ status, t, locale }: { status: string; t: (key: string) => st
   );
 }
 
-// ─── Order card — Web 2.0 + modern hybrid ────────────────────
 function OrderCard({ order, t, locale }: { order: TrackingOrder; t: (key: string) => string; locale: string }) {
   const [copied, setCopied] = useState<'none' | 'id' | 'trk'>('none');
   const effectiveStatus = getEffectiveStatus(order);
-  const stepIdx = STATUS_TO_STEP[effectiveStatus] ?? 0;
-  const isBad = stepIdx === -1;
   const group = STATUS_GROUP[effectiveStatus] || "pending";
   const meta = GROUP_META[group];
   const hasCourier = !!order.tracking_number;
@@ -187,85 +141,46 @@ function OrderCard({ order, t, locale }: { order: TrackingOrder; t: (key: string
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden transition-shadow hover:shadow-md"
-      style={{
-        background: 'hsl(var(--card))',
-        border: `2px solid hsl(var(--border))`,
-        borderRight: `4px solid ${meta.color}`,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-      }}>
-      {/* Header — Web 2.0 colored bar */}
-      <div className="flex items-center gap-3 px-4 py-2"
-        style={{
-          background: `linear-gradient(135deg, ${meta.color}12, ${meta.color}06)`,
-          borderBottom: `1px solid ${meta.color}20`,
-        }}>
-        <span className="text-sm font-black tabular-nums" style={{ color: meta.color }}>
-          #{order.reference_id || order.id}
-        </span>
-        <span className="text-sm font-bold text-foreground truncate">{order.customer_name}</span>
+    <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
+        <span className="text-sm font-bold tabular-nums text-foreground">#{order.reference_id || order.id}</span>
+        <span className="text-sm font-semibold text-foreground truncate">{order.customer_name}</span>
         <span className="text-xs text-muted-foreground hidden sm:inline">{order.customer_phone}</span>
         <div className="flex-1" />
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border"
-          style={{
-            backgroundColor: `${meta.color}15`,
-            borderColor: `${meta.color}40`,
-            color: meta.color,
-          }}>
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: meta.color, boxShadow: `0 0 6px ${meta.color}60` }} />
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium" style={{ backgroundColor: `${meta.color}15`, color: meta.color }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.color }} />
           {meta.label}
         </span>
-        <span className="text-sm font-black tabular-nums" style={{ color: isBad ? "#ef4444" : "#22c55e" }}>
-          {formatPrice(price, locale)}
-        </span>
+        <span className="text-sm font-bold tabular-nums text-foreground">{formatPrice(price, locale)}</span>
       </div>
-
-      {/* Body */}
       <div className="px-4 py-3">
-        {/* Info row */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-border"
-              style={{ background: `${meta.color}08` }}>
-              {order.product_image ? (
-                <img src={order.product_image} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-lg">📦</span>
-              )}
+            <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center shrink-0 bg-muted">
+              {order.product_image ? <img src={order.product_image} alt="" className="w-full h-full object-cover" /> : <Package className="w-4 h-4 text-muted-foreground" />}
             </div>
             <div className="flex flex-col items-end gap-1 shrink-0">
               {hasCourier && (
                 <button onClick={() => handleCopy(order.tracking_number!, 'trk')}
-                  className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 border transition-colors"
-                  style={{
-                    background: `hsl(var(--primary))10`,
-                    borderColor: `hsl(var(--primary))25`,
-                    color: 'hsl(var(--primary))',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = `hsl(var(--primary))20`}
-                  onMouseLeave={e => e.currentTarget.style.background = `hsl(var(--primary))10`}>
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                   🚚 {order.delivery_company}
-                  {copied === 'trk' && <span className="text-green-500">✓</span>}
+                  {copied === 'trk' && <span className="text-emerald-500 ml-1">✓</span>}
                 </button>
               )}
               <span className="text-[10px] text-muted-foreground">{timeAgo(order.created_at, locale)}</span>
             </div>
           </div>
-          <div className="w-full">
-            <StepBar status={effectiveStatus} t={t} locale={locale} />
-          </div>
+          <div className="w-full"><StepBar status={effectiveStatus} t={t} locale={locale} /></div>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────
 export default function OrderTracking() {
   const { t, locale } = useTranslation();
   const isRTL = locale === "ar";
   const [orders, setOrders] = useState<TrackingOrder[]>([]);
-  const [events, setEvents] = useState<Record<number, TrackingEvent[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -292,21 +207,6 @@ export default function OrderTracking() {
       }));
       const tracked = list.filter(o => o.status === 'in_delivery' || o.status === 'at_delivery');
       setOrders(tracked);
-      if (tracked.length > 0) {
-        try {
-          const ids = tracked.map(o => o.id).join(',');
-          const evRes = await fetch(`/api/delivery/orders/tracking-events-batch?ids=${ids}`, { credentials: "include" });
-          if (evRes.ok) {
-            const evData = await evRes.json();
-            const parsed: Record<number, TrackingEvent[]> = {};
-            const raw = evData.events || {};
-            for (const [oid, evts] of Object.entries(raw)) {
-              parsed[Number(oid)] = (evts as any[]).map(e => ({ event_type: e.event_type, timestamp: e.timestamp, description: e.description ?? null, location: e.location ?? null }));
-            }
-            setEvents(parsed);
-          }
-        } catch (evErr) { console.warn('[OrderTracking] Failed to load events:', evErr); }
-      }
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }, []);
@@ -332,157 +232,128 @@ export default function OrderTracking() {
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"}>
-      <div className="max-w-screen-xl mx-auto px-2 md:px-3 pt-4 pb-20 lg:pb-6 space-y-3">
+    <div className="min-h-screen bg-background px-3 sm:px-5 lg:px-6 py-4 space-y-3" dir={isRTL ? "rtl" : "ltr"}>
 
-        {/* Toolbar — matches Orders page style */}
-        <div className="flex items-center justify-between bg-gradient-to-r from-muted/20 to-transparent rounded-xl border border-border px-4 py-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md shadow-primary/25">
-              <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-                <rect x="1" y="4" width="10" height="10" rx="1.5" stroke="#fff" strokeWidth="1.5"/>
-                <path d="M11 8H15L17 10.5V15H11V8Z" stroke="#fff" strokeWidth="1.5"/>
-                <circle cx="5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/>
-                <circle cx="13.5" cy="15" r="2.5" stroke="#fff" strokeWidth="1.5"/>
-              </svg>
-            </div>
-            <h1 className="text-lg font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/25">
+            <MapPin className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg sm:text-xl font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               {t("tracking.title")}
             </h1>
-            <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
-              {t("tracking.subtitle")}
-            </span>
-          </div>
-          <button onClick={load} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-border bg-background hover:bg-muted transition-colors disabled:opacity-40">
-            <svg className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} viewBox="0 0 14 14" fill="none">
-              <path d="M12 7A5 5 0 117 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-            {t("tracking.refresh")}
-          </button>
-        </div>
-
-        {/* Pipeline counters — Web 2.0 dashboard style */}
-        <div className="rounded-xl border-2 border-border overflow-hidden"
-          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)' }}>
-          <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" style={{ boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">LIVE</span>
-            <span className="flex-1 h-px bg-border" />
-            <span className="text-[10px] text-muted-foreground">{orders.length} orders</span>
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 divide-x divide-border">
-            {(["pending","transit","hub","ofd","done","bad"] as const).map(g => {
-              const meta = GROUP_META[g];
-              const count = liveCounts[g] || 0;
-              const active = groupFilter === g;
-              return (
-                <button key={g} onClick={() => setGroupFilter(g)}
-                  className="p-2.5 sm:p-3 text-center transition-all relative overflow-hidden"
-                  style={{
-                    background: active ? `linear-gradient(180deg, ${meta.color}15, ${meta.color}08)` : 'transparent',
-                  }}>
-                  <div className="text-xl sm:text-2xl font-black tabular-nums" style={{ color: meta.color }}>{count}</div>
-                  <div className="text-[8px] sm:text-[9px] font-bold text-muted-foreground mt-0.5 truncate">{meta.label}</div>
-                  {active && (
-                    <div className="absolute bottom-0 left-0 right-0 h-[3px]"
-                      style={{ background: `linear-gradient(90deg, ${meta.color}, ${meta.color}80)` }} />
-                  )}
-                </button>
-              );
-            })}
+            <p className="text-[11px] text-muted-foreground font-medium">{t("tracking.subtitle")}</p>
           </div>
         </div>
+        <button onClick={load} disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border bg-background hover:bg-muted transition-colors disabled:opacity-40">
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          {t("tracking.refresh")}
+        </button>
+      </div>
 
-        {/* Search + Filter pills */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder={t("tracking.searchPlaceholder")}
-              className="w-full pl-9 pr-4 h-9 text-sm rounded-lg border border-border bg-muted/30 text-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none transition-all" />
-          </div>
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide bg-muted/40 p-1 rounded-lg border border-border">
-            {PIPELINE_GROUPS.map(g => {
-              const meta = g === "all" ? null : GROUP_META[g];
-              const active = groupFilter === g;
-              const count = liveCounts[g] || 0;
-              return (
-                <button key={g} onClick={() => { setGroupFilter(g); setPage(1); }}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all
-                    ${active ? 'text-white shadow-md' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}`}
-                  style={active && meta ? { background: meta.color, boxShadow: `0 2px 8px ${meta.color}30` } : active && g === "all" ? { background: 'hsl(var(--primary))', boxShadow: '0 2px 8px hsl(var(--primary) / 0.3)' } : undefined}>
-                  {g === "all" ? t("tracking.all") : meta!.label}
-                  <span className={active ? 'opacity-80' : 'opacity-50'}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Orders list */}
-        {loading ? (
-          <div className="space-y-3">
-            {[1,2,3].map(i => (
-              <div key={i} className="rounded-2xl bg-card border border-border p-4 animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-muted" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3 bg-muted rounded w-1/3" />
-                    <div className="h-2 bg-muted rounded w-1/2" />
-                  </div>
-                  <div className="w-16 h-6 bg-muted rounded-full" />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        {(["pending","transit","hub","ofd","done","bad"] as const).map(g => {
+          const meta = GROUP_META[g];
+          const count = liveCounts[g] || 0;
+          const active = groupFilter === g;
+          return (
+            <button key={g} onClick={() => setGroupFilter(g)}
+              className={`bg-card rounded-xl border border-border p-3 text-center transition-all shadow-sm ${active ? 'ring-2' : 'hover:border-primary/30'}`}
+              style={active ? { borderColor: meta.color, ringColor: `${meta.color}30` } : undefined}>
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: `${meta.color}15`, color: meta.color }}>
+                  {meta.icon}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : error ? (
-          <div className="rounded-2xl bg-card border-2 border-red-200 dark:border-red-500/20 p-4 flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-500/10 flex items-center justify-center shrink-0 border border-red-200 dark:border-red-500/10">
-              <span className="text-red-500 text-lg">⚠️</span>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-red-700 dark:text-red-400">{t("tracking.loadFailed")}</p>
-              <p className="text-xs mt-1 text-red-500/70 dark:text-red-400/60">{error}</p>
-            </div>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl bg-card border-2 border-border shadow-sm flex flex-col items-center justify-center py-16 text-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center border border-border">
-              <span className="text-3xl">📭</span>
-            </div>
-            <p className="text-sm font-bold text-foreground">{t("tracking.noOrders")}</p>
-            <p className="text-xs text-muted-foreground">{search ? t("tracking.noResults") : t("tracking.noFilterResults")}</p>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                {t("tracking.showing")} <span className="font-bold text-foreground">{paginated.length}</span> {t("tracking.of")} <span className="font-bold text-foreground">{filtered.length}</span> {t("tracking.orders")}
-              </p>
-            </div>
-            <div className="space-y-2">
-              {paginated.map((order, i) => <OrderCard key={order.id} order={order} t={t} locale={locale} />)}
-            </div>
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold border border-border bg-background hover:bg-muted transition-colors disabled:opacity-20 disabled:pointer-events-none">
-                  {isRTL ? '→' : '←'} {t("tracking.prev")}
-                </button>
-                <span className="text-sm font-bold text-muted-foreground px-2">{page} / {totalPages}</span>
-                <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold border border-border bg-background hover:bg-muted transition-colors disabled:opacity-20 disabled:pointer-events-none">
-                  {t("tracking.next")} {isRTL ? '←' : '→'}
-                </button>
-              </div>
-            )}
-          </>
-        )}
+              <p className="text-lg font-black tabular-nums" style={{ color: meta.color }}>{count}</p>
+              <p className="text-[9px] font-semibold text-muted-foreground mt-0.5 truncate">{meta.label}</p>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Search + Filter */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder={t("tracking.searchPlaceholder")}
+            className="w-full pl-9 pr-4 h-10 text-sm rounded-xl border border-border bg-muted/30 text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all" />
+        </div>
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide bg-muted/40 p-1 rounded-xl border border-border/40">
+          {PIPELINE_GROUPS.map(g => {
+            const meta = g === "all" ? null : GROUP_META[g];
+            const active = groupFilter === g;
+            const count = liveCounts[g] || 0;
+            return (
+              <button key={g} onClick={() => { setGroupFilter(g); setPage(1); }}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${active ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}`}>
+                {g === "all" ? t("tracking.all") : meta!.label}
+                <span className={active ? 'opacity-80' : 'opacity-50'}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Orders */}
+      {loading ? (
+        <div className="space-y-2">
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-card rounded-xl border border-border p-4 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-muted" />
+                <div className="flex-1 space-y-2"><div className="h-3 bg-muted rounded w-1/3" /><div className="h-2 bg-muted rounded w-1/2" /></div>
+                <div className="w-16 h-6 bg-muted rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="bg-card rounded-xl border border-border p-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+            <AlertCircle className="w-4 h-4 text-red-500" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-red-600">{t("tracking.loadFailed")}</p>
+            <p className="text-xs mt-1 text-red-500/70">{error}</p>
+          </div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-card rounded-xl border border-border flex flex-col items-center justify-center py-16 text-center gap-3">
+          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+            <Package className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-bold text-foreground">{t("tracking.noOrders")}</p>
+          <p className="text-xs text-muted-foreground">{search ? t("tracking.noResults") : t("tracking.noFilterResults")}</p>
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            {t("tracking.showing")} <span className="font-bold text-foreground">{paginated.length}</span> {t("tracking.of")} <span className="font-bold text-foreground">{filtered.length}</span> {t("tracking.orders")}
+          </p>
+          <div className="space-y-2">
+            {paginated.map(order => <OrderCard key={order.id} order={order} t={t} locale={locale} />)}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold border border-border bg-background hover:bg-muted transition-colors disabled:opacity-20 disabled:pointer-events-none">
+                {isRTL ? '→' : '←'} {t("tracking.prev")}
+              </button>
+              <span className="text-sm font-bold text-muted-foreground px-2">{page} / {totalPages}</span>
+              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold border border-border bg-background hover:bg-muted transition-colors disabled:opacity-20 disabled:pointer-events-none">
+                {t("tracking.next")} {isRTL ? '←' : '→'}
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

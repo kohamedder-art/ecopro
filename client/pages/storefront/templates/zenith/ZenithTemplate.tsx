@@ -479,7 +479,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
 
         {/* ── LONG IMAGE STACK ── */}
-        <div className="w-full flex flex-col pt-1.5">
+        <div className="w-full flex flex-col pt-1.5" key={`landing-${mainProduct?.id || 'none'}`}>
           {videoUrl && (
             <LazyVideo
               src={videoUrl}
@@ -490,12 +490,12 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           {landingImages.length > 0 ? (
             landingImages.map((imgUrl, index) => (
               <img
-                key={index}
+                key={`${mainProduct?.id}-${index}`}
                 src={imgUrl}
                 alt={`Landing slice ${index + 1}`}
                 className="w-full h-auto block"
-                loading={index === 0 ? 'eager' : 'lazy'}
-                fetchpriority={index === 0 ? 'high' : 'low'}
+                loading={index < 2 ? 'eager' : 'lazy'}
+                fetchpriority={index === 0 ? 'high' : index === 1 ? 'high' : 'low'}
                 decoding="async"
                 width="1200"
                 height="675"

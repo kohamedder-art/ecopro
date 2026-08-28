@@ -507,7 +507,7 @@ export default function IycoTemplate({
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 pt-6 lg:pt-10">
 
             {/* LEFT: Image Gallery */}
-            <div className="w-full lg:w-[55%] flex flex-col gap-4 lg:mt-3">
+            <div className="w-full lg:w-[55%] flex flex-col gap-4 lg:mt-3" key={`gallery-${mainProduct?.id || 'none'}`}>
               <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[95vh]" style={{ backgroundColor: '#ffffff', border: `1px solid ${borderColor}` }}>
                 <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', direction: 'ltr' }} onScroll={handleScroll}>
                   {videoEmbed && (
@@ -522,10 +522,10 @@ export default function IycoTemplate({
                     </div>
                   )}
                   {mainImages.length > 0 ? mainImages.map((img, i) => (
-                    <img key={i} src={img} alt={mainProduct.title}
+                    <img key={`${mainProduct?.id}-${i}`} src={img} alt={mainProduct.title}
                       className="w-full h-full object-contain shrink-0 cursor-pointer"
-                      loading={i === 0 ? 'eager' : 'lazy'}
-                      fetchpriority={i === 0 ? 'high' : 'low'}
+                      loading={i < 2 ? 'eager' : 'lazy'}
+                      fetchpriority={i < 2 ? 'high' : 'low'}
                       decoding="async"
                       width="600"
                       height="600"

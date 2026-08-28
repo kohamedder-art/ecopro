@@ -305,7 +305,7 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
           
           {!collapsed && (
             <>
-              <span className="text-sm text-foreground" style={{ fontFamily: "'Cairo', sans-serif", fontWeight: 650 }}>{t(item.titleKey)}</span>
+              <span className="text-sm text-foreground" style={{ fontFamily: "'Cairo', sans-serif", fontWeight: 620 }}>{t(item.titleKey)}</span>
 
               {badgeCount > 0 && (
                 <span

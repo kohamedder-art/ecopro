@@ -2331,6 +2331,7 @@ export const ar = {
   "orders.variant": "المتغير",
   "orders.quantity": "الكمية",
   "orders.unitPrice": "سعر الوحدة",
+  "orders.totalPrice": "السعر الكلي",
   "orders.internalNote": "ملاحظة داخلية",
   "orders.addNotePlaceholder": "أضف ملاحظة خاصة عن هذا الطلب...",
   "orders.editOrder": "✎ تعديل الطلب",

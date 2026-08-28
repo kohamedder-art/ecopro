@@ -1355,131 +1355,153 @@ export default function OrdersAdmin() {
                   {expandedOrderId === o.id && (
                     <tr className="border-b border-border">
                       <td colSpan={9} className="p-0">
-                        {/* ── Temu/Shopify style card ── */}
-                        <div className="mx-1 mb-2 rounded-xl overflow-hidden border border-border shadow-lg" style={{ background: 'hsl(var(--card))' }}>
-                          {/* Dark header */}
-                          <div className="flex items-center justify-between px-4 py-2.5" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
+                        <div className="mx-1 mb-2 rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                          {/* Header */}
+                          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
                             <div className="flex items-center gap-3">
-                              <span className="text-white font-black text-sm">#{o.id}</span>
-                              <span className="text-slate-300 text-xs font-medium">{o.customer}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-lg font-black text-emerald-400 tabular-nums">{Math.round(Number(o.total) || 0)} DZD</span>
+                              <span className="text-sm font-bold text-foreground">#{o.id}</span>
+                              <span className="text-sm text-muted-foreground">{o.customer}</span>
                               {(() => {
                                 const risk = getOrderRisk(o);
                                 if (risk.level !== 'safe') {
                                   return (
-                                    <span title={risk.reason} className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                      risk.level === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
-                                    }`}>
+                                    <span title={risk.reason} className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md ${risk.level === 'high' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'}`}>
                                       <ShieldAlert className="h-3 w-3" /> {risk.label}
                                     </span>
                                   );
                                 }
                                 return null;
                               })()}
+                            </div>
+                            <div className="flex items-center gap-3">
                               {(() => {
                                 const statusInfo = getStatusDisplay(o.status);
                                 return (
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full"
-                                    style={{ backgroundColor: `${statusInfo.color}30`, color: statusInfo.color }}>
+                                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md" style={{ backgroundColor: `${statusInfo.color}15`, color: statusInfo.color }}>
                                     {statusInfo.icon} {statusInfo.name}
                                   </span>
                                 );
                               })()}
+                              <span className="text-base font-bold text-foreground tabular-nums">{Math.round(Number(o.total) || 0)} DZD</span>
                             </div>
                           </div>
 
-                          {/* Product section */}
-                          <div className="flex gap-4 p-4 border-b border-border">
-                            {o.product_image ? (
-                              <img src={o.product_image} alt={o.product_title || 'Product'} className="w-20 h-20 rounded-lg object-cover border border-border shrink-0" />
-                            ) : (
-                              <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center border border-border shrink-0">
-                                <ShoppingBag className="w-8 h-8 text-muted-foreground" />
+                          <div className="p-4 space-y-4">
+                            {/* Product + Customer in two columns */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              {/* Product */}
+                              <div className="bg-muted/30 rounded-xl border border-border/50 p-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
+                                  <span className="text-sm font-bold text-foreground">{t('orders.product')}</span>
+                                </div>
+                                <div className="flex gap-3">
+                                  {o.product_image ? (
+                                    <img src={o.product_image} alt="" className="w-16 h-16 rounded-lg object-cover border border-border shrink-0" />
+                                  ) : (
+                                    <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center border border-border shrink-0">
+                                      <ShoppingBag className="w-5 h-5 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-sm truncate text-foreground">{o.product_title || t('orders.notAvailable')}</p>
+                                    {(o.variant_name || o.variant_color || o.variant_size) && (
+                                      <p className="text-xs text-muted-foreground mt-0.5">{o.variant_name || [o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ')}</p>
+                                    )}
+                                    <div className="space-y-1 mt-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">{t('orders.quantity')}</span>
+                                        <span className="text-sm font-bold text-foreground">{Number(o.quantity || 0)}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">{t('orders.unitPrice')}</span>
+                                        <span className="text-sm font-bold text-foreground">{Math.round(Number(o.unit_price || 0))} DZD</span>
+                                      </div>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">{t('orders.totalPrice')}</span>
+                                        <span className="text-sm font-bold text-foreground">{Math.round(Number(o.total) || 0)} DZD</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-sm truncate">{o.product_title || t('orders.notAvailable')}</p>
-                              <p className="text-xs text-foreground/60 mt-1">
-                                {o.variant_name || [o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ') || ''}
-                              </p>
-                              <div className="flex items-center gap-4 mt-2">
-                                <span className="text-xs text-foreground/60">{t('orders.quantity')}: <b className="text-foreground">{Number(o.quantity || 0)}</b></span>
-                                <span className="text-xs text-foreground/60">{t('orders.unitPrice')}: <b className="text-foreground">{Math.round(Number(o.unit_price || 0))} DZD</b></span>
-                              </div>
-                            </div>
-                          </div>
 
-                          {/* Customer info — compact rows */}
-                          <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-border">
-                            <div className="px-3 py-2">
-                              <div className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-0.5">{t('orders.customerName')}</div>
-                              <div className="text-sm font-bold truncate">{o.customer}</div>
-                            </div>
-                            <div className="px-3 py-2">
-                              <div className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-0.5">{t('orders.phoneNumber')}</div>
-                              <div className="text-sm font-bold">{o.phone || t('orders.notAvailable')}</div>
-                            </div>
-                            <div className="px-3 py-2">
-                              <div className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-0.5">{t('orders.address')}</div>
-                              <div className="text-sm font-bold truncate">{o.address || t('orders.notAvailable')}</div>
-                            </div>
-                            <div className="px-3 py-2">
-                              <div className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-0.5">{t('orders.deliveryType')}</div>
-                              <div className="text-sm font-bold">
-                                {o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}
+                              {/* Customer */}
+                              <div className="bg-muted/30 rounded-xl border border-border/50 p-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-violet-500 to-purple-500" />
+                                  <span className="text-sm font-bold text-foreground">{t('orders.customer')}</span>
+                                </div>
+                                <div className="space-y-2.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">{t('orders.customerName')}</span>
+                                    <span className="text-sm font-semibold text-foreground truncate max-w-[180px]">{o.customer}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">{t('orders.phoneNumber')}</span>
+                                    <span className="text-sm font-semibold text-foreground">{o.phone || t('orders.notAvailable')}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">{t('orders.address')}</span>
+                                    <span className="text-sm font-semibold text-foreground truncate max-w-[180px]">{o.address || t('orders.notAvailable')}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">{t('orders.deliveryType')}</span>
+                                    <span className="text-sm font-semibold text-foreground">{o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}</span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Notes + Actions */}
-                          <div className="px-4 py-3 border-t border-border flex items-start gap-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-foreground/40 font-bold mb-1">
-                                <StickyNote className="h-3 w-3" /> {t('orders.internalNote')}
+                            {/* Note */}
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+                                <span className="text-sm font-bold text-foreground">{t('orders.internalNote')}</span>
                               </div>
                               <textarea
                                 value={orderNotes[o.raw_id] || ''}
                                 onChange={e => setOrderNotes(prev => ({ ...prev, [o.raw_id]: e.target.value }))}
                                 onClick={e => e.stopPropagation()}
                                 placeholder={t('orders.addNotePlaceholder')}
-                                rows={1}
-                                className="w-full text-xs rounded-lg border border-border bg-muted/20 px-2.5 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
+                                rows={2}
+                                className="w-full text-sm rounded-xl border border-border bg-muted/30 px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                               />
                             </div>
-                          </div>
-                          <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-                            {customStatuses.map(status => {
-                              const translatedName = t(`orders.status.${status.key}`) || status.name;
-                              return (
-                                <button key={status.id} onClick={() => setStatus(o.id, status.key)}
-                                  disabled={o.status === status.key}
-                                  className="inline-flex items-center rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-colors h-8 disabled:opacity-30"
-                                  style={{ backgroundColor: status.color, color: 'white' }}>
-                                  {status.icon} {translatedName}
-                                </button>
-                              );
-                            })}
-                            <button onClick={() => setStatus(o.id, 'cancelled')}
-                              className="inline-flex items-center rounded-lg bg-red-500 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-600 transition-colors h-8">
-                              ✕ {t('orders.action.cancel')}
-                            </button>
-                            <span className="flex-1" />
-                            <button onClick={(e) => { e.stopPropagation(); setDeliveryOrder(o); }}
-                              className="inline-flex items-center gap-1 rounded-lg bg-indigo-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-indigo-600 transition-colors h-8">
-                              <Truck className="h-3.5 w-3.5" /> {t('orders.delivery')}
-                            </button>
-                            {localStorage.getItem('isStaff') !== 'true' && (
-                              <button onClick={(e) => { e.stopPropagation(); openEditModal(o); }}
-                                className="inline-flex items-center gap-1 rounded-lg bg-primary/10 text-primary px-3 py-1.5 text-[11px] font-bold hover:bg-primary/20 transition-colors h-8">
-                                ✎ {t('orders.editOrder')}
+
+                            {/* Actions */}
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                              {customStatuses.map(status => {
+                                const translatedName = t(`orders.status.${status.key}`) || status.name;
+                                return (
+                                  <button key={status.id} onClick={() => setStatus(o.id, status.key)}
+                                    disabled={o.status === status.key}
+                                    className="inline-flex items-center rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-colors h-8 disabled:opacity-30"
+                                    style={{ backgroundColor: status.color, color: 'white' }}>
+                                    {status.icon} {translatedName}
+                                  </button>
+                                );
+                              })}
+                              <button onClick={() => setStatus(o.id, 'cancelled')}
+                                className="inline-flex items-center rounded-lg bg-red-500 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-600 transition-colors h-8">
+                                ✕ {t('orders.action.cancel')}
                               </button>
-                            )}
-                            <button onClick={() => handleDeleteOrder(o.raw_id)}
-                              className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 text-red-500 px-3 py-1.5 text-[11px] font-bold hover:bg-red-500/20 transition-colors h-8">
-                              <Trash2 className="h-3.5 w-3.5" /> {t('orders.delete')}
-                            </button>
+                              <span className="flex-1" />
+                              <button onClick={(e) => { e.stopPropagation(); setDeliveryOrder(o); }}
+                                className="inline-flex items-center gap-1 rounded-lg bg-indigo-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-indigo-600 transition-colors h-8">
+                                <Truck className="h-3.5 w-3.5" /> {t('orders.delivery')}
+                              </button>
+                              {localStorage.getItem('isStaff') !== 'true' && (
+                                <button onClick={(e) => { e.stopPropagation(); openEditModal(o); }}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-primary/10 text-primary px-3 py-1.5 text-[11px] font-bold hover:bg-primary/20 transition-colors h-8">
+                                  ✎ {t('orders.editOrder')}
+                                </button>
+                              )}
+                              <button onClick={() => handleDeleteOrder(o.raw_id)}
+                                className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 text-red-500 px-3 py-1.5 text-[11px] font-bold hover:bg-red-500/20 transition-colors h-8">
+                                <Trash2 className="h-3.5 w-3.5" /> {t('orders.delete')}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1564,55 +1586,67 @@ export default function OrdersAdmin() {
                   </div>
                 </div>
                 {expandedOrderId === o.id && (
-                  <div className="mt-1 rounded-xl overflow-hidden border border-border shadow-lg" style={{ background: 'hsl(var(--card))' }}>
-                    {/* Dark header */}
-                    <div className="flex items-center justify-between px-3 py-2" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
+                  <div className="mt-1 rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/50">
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-black text-xs">#{o.id}</span>
-                        <span className="text-slate-300 text-[11px]">{o.customer}</span>
+                        <span className="text-xs font-bold text-foreground">#{o.id}</span>
+                        <span className="text-xs text-muted-foreground">{o.customer}</span>
                       </div>
-                      <span className="text-base font-black text-emerald-400 tabular-nums">{Math.round(Number(o.total) || 0)} DZD</span>
+                      <span className="text-sm font-bold text-foreground tabular-nums">{Math.round(Number(o.total) || 0)} DZD</span>
                     </div>
 
-                    {/* Product */}
-                    <div className="flex gap-3 p-3 border-b border-border">
-                      {o.product_image ? (
-                        <img src={o.product_image} alt={o.product_title || ''} className="w-16 h-16 rounded-lg object-cover border border-border shrink-0" />
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center border border-border shrink-0">
-                          <ShoppingBag className="w-6 h-6 text-muted-foreground" />
+                    <div className="p-3 space-y-3">
+                      {/* Product */}
+                      <div className="bg-muted/30 rounded-xl border border-border/50 p-3">
+                        <div className="flex gap-3">
+                          {o.product_image ? (
+                            <img src={o.product_image} alt="" className="w-14 h-14 rounded-lg object-cover border border-border shrink-0" />
+                          ) : (
+                            <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center border border-border shrink-0">
+                              <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold truncate text-foreground">{o.product_title || t('orders.noProduct')}</p>
+                            {(o.variant_name || o.variant_color || o.variant_size) && (
+                              <p className="text-[11px] text-muted-foreground mt-0.5">{o.variant_name || [o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ')}</p>
+                            )}
+                            <div className="space-y-1 mt-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] text-muted-foreground">{t('orders.quantity')}</span>
+                                <span className="text-xs font-bold text-foreground">{Number(o.quantity || 0)}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] text-muted-foreground">{t('orders.unitPrice')}</span>
+                                <span className="text-xs font-bold text-foreground">{Math.round(Number(o.unit_price || 0))} DZD</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] text-muted-foreground">{t('orders.totalPrice')}</span>
+                                <span className="text-xs font-bold text-foreground">{Math.round(Number(o.total) || 0)} DZD</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold truncate">{o.product_title || t('orders.noProduct')}</p>
-                        <p className="text-[11px] text-foreground/60 mt-0.5">
-                          {o.variant_name || [o.variant_color, o.variant_size, o.variant_size2].filter(Boolean).join(' / ') || ''}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[11px] text-foreground/60">×{Number(o.quantity || 0)}</span>
-                          <span className="text-[11px] font-bold">{Math.round(Number(o.unit_price || 0))} DZD</span>
+                      </div>
+
+                      {/* Customer */}
+                      <div className="bg-muted/30 rounded-xl border border-border/50 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-muted-foreground">{t('orders.phoneNumber')}</span>
+                          <span className="text-xs font-semibold text-foreground">{o.phone || '-'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-muted-foreground">{t('orders.deliveryType')}</span>
+                          <span className="text-xs font-semibold text-foreground">{o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-muted-foreground">{t('orders.address')}</span>
+                          <span className="text-xs font-semibold text-foreground truncate max-w-[60%] text-right">{o.address || '-'}</span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Customer info */}
-                    <div className="divide-y divide-border">
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold">{t('orders.phoneNumber')}</span>
-                        <span className="text-xs font-bold">{o.phone || '-'}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold">{t('orders.deliveryType')}</span>
-                        <span className="text-xs font-bold">{o.delivery_type === 'desk' ? t('orders.deliveryDesk') : t('orders.deliveryHome')}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold">{t('orders.address')}</span>
-                        <span className="text-xs font-bold truncate max-w-[60%] text-right">{o.address || '-'}</span>
-                      </div>
-                    </div>
-
-                    {/* Status actions */}
-                    <div className="px-3 py-2 border-t border-border">
+                      {/* Status actions */}
                       <div className="flex flex-wrap gap-1">
                         {customStatuses.map(status => {
                           const translatedName = t(`orders.status.${status.key}`) || status.name;
@@ -1630,22 +1664,22 @@ export default function OrdersAdmin() {
                           ✕ {t('orders.action.cancel')}
                         </button>
                       </div>
-                    </div>
 
-                    {/* Action buttons */}
-                    <div className="flex gap-1.5 px-3 pb-3 pt-1">
-                      <button onClick={() => setDeliveryOrder(o)}
-                        className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-bold bg-indigo-500 text-white flex-1 justify-center">
-                        <Truck className="h-3 w-3" /> {t('orders.delivery')}
-                      </button>
-                      <button onClick={() => openEditModal(o)}
-                        className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-bold bg-primary/10 text-primary flex-1 justify-center">
-                        ✎ {t('orders.editOrder')}
-                      </button>
-                      <button onClick={() => handleDeleteOrder(o.raw_id)}
-                        className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-bold bg-red-500/10 text-red-500 flex-1 justify-center">
-                        <Trash2 className="h-3 w-3" /> {t('orders.delete')}
-                      </button>
+                      {/* Action buttons */}
+                      <div className="flex gap-1.5">
+                        <button onClick={() => setDeliveryOrder(o)}
+                          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-bold bg-indigo-500 text-white flex-1 justify-center">
+                          <Truck className="h-3 w-3" /> {t('orders.delivery')}
+                        </button>
+                        <button onClick={() => openEditModal(o)}
+                          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-bold bg-primary/10 text-primary flex-1 justify-center">
+                          ✎ {t('orders.editOrder')}
+                        </button>
+                        <button onClick={() => handleDeleteOrder(o.raw_id)}
+                          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-bold bg-red-500/10 text-red-500 flex-1 justify-center">
+                          <Trash2 className="h-3 w-3" /> {t('orders.delete')}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
