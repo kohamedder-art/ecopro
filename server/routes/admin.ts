@@ -1948,9 +1948,9 @@ export const listAllProducts: RequestHandler = async (req, res) => {
       whereClauses.push(`p.title NOT IN (${testTitles.map((_, i) => `$${i + 3}`).join(',')})`);
     }
     if (liveFilter === 'live') {
-      whereClauses.push(`COALESCE(lv.live_views, 0) >= 30`);
+      whereClauses.push(`COALESCE(lv.live_views, 0) >= 3`);
     } else if (liveFilter === 'not_live') {
-      whereClauses.push(`COALESCE(lv.live_views, 0) < 30`);
+      whereClauses.push(`COALESCE(lv.live_views, 0) < 3`);
     }
     const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
@@ -1977,7 +1977,7 @@ export const listAllProducts: RequestHandler = async (req, res) => {
         COALESCE(oc.order_count, 0) as order_count,
         css.store_slug,
         COALESCE(lv.live_views, 0) as live_views,
-        CASE WHEN COALESCE(lv.live_views, 0) >= 30 THEN true ELSE false END as is_live
+        CASE WHEN COALESCE(lv.live_views, 0) >= 3 THEN true ELSE false END as is_live
       FROM client_store_products p
       JOIN clients c ON p.client_id = c.id
       LEFT JOIN client_store_settings css ON css.client_id = p.client_id
@@ -1998,7 +1998,7 @@ export const listAllProducts: RequestHandler = async (req, res) => {
           AND product_id IS NOT NULL
           AND created_at > NOW() - INTERVAL '10 minutes'
         GROUP BY product_id
-        HAVING COUNT(*) >= 30
+        HAVING COUNT(*) >= 3
       ) sub`
     );
     const liveProducts = liveCountResult.rows[0]?.live_products || 0;
@@ -2012,7 +2012,7 @@ export const listAllProducts: RequestHandler = async (req, res) => {
           AND product_id IS NOT NULL
           AND created_at > NOW() - INTERVAL '10 minutes'
         GROUP BY product_id
-        HAVING COUNT(*) >= 30
+        HAVING COUNT(*) >= 3
       ) live_p
       JOIN client_store_products csp ON csp.id = live_p.product_id`
     );
