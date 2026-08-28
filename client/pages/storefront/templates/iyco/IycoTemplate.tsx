@@ -11,11 +11,9 @@ import {
   Search,
   User,
   ShoppingBag,
-  Star,
   Phone,
   MapPin,
   ChevronDown,
-  ChevronUp,
   ShoppingCart,
   CheckCircle2,
   Truck,
@@ -98,8 +96,8 @@ export default function IycoTemplate({
   const textColor = isDark ? (isLight(primaryColor) ? primaryColor : '#f1f5f9') : primaryColor;
   const textMuted = isDark ? (isLight(primaryColor) ? primaryColor + 'aa' : '#94a3b8') : '#64748b';
   const surfaceColor = headerColor;
-  const surfaceMuted = isDark ? '#0f172a' : '#f1f5f9';
-  const borderColor = isDark ? '#475569' : '#94a3b8';
+  const surfaceMuted = isDark ? '#0f172a' : '#f5f5f5';
+  const borderColor = isDark ? '#475569' : '#e5e7eb';
   const surfaceTextColor = isHeaderDark ? (isLight(primaryColor) ? primaryColor : '#f1f5f9') : primaryColor;
   const surfaceTextMuted = isHeaderDark ? (isLight(primaryColor) ? primaryColor + 'aa' : '#94a3b8') : '#64748b';
 
@@ -110,11 +108,9 @@ export default function IycoTemplate({
       const bySlug = products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug);
       if (bySlug) return bySlug;
     }
-    const mainId = settings?.dzp_main_product_id;
-    return mainId
-      ? products?.find((p: any) => String(p.id) === String(mainId))
-      : products?.[0];
-  }, [products, settings?.dzp_main_product_id, initialProductSlug]);
+    if (activeMainProduct) return activeMainProduct;
+    return null;
+  }, [products, initialProductSlug, activeMainProduct]);
   // Clear activeMainProduct when navigating back to store grid
   useEffect(() => { if (!initialProductSlug) setActiveMainProduct(null); }, [initialProductSlug]);
   const mainProduct = activeMainProduct ?? baseMainProduct;
@@ -199,6 +195,7 @@ export default function IycoTemplate({
   const [lastTelegramUrl, setLastTelegramUrl] = useState<string | null>(null);
   const [showCart, setShowCart] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
+  const [showOrderForm, setShowOrderForm] = useState(false);
 
   // ── Scroll-aware Header ──
   const [showHeader, setShowHeader] = useState(true);
@@ -222,7 +219,6 @@ export default function IycoTemplate({
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const [selectedSize, setSelectedSize] = useState('');
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const mainImages = mainProduct?.images?.length ? mainProduct.images : ['/placeholder.png'];
   const videoUrl = (mainProduct as any)?.metadata?.video_url || '';
@@ -274,7 +270,7 @@ export default function IycoTemplate({
     if (carouselRef.current) carouselRef.current.scrollLeft = 0;
   }, [mainProduct?.id]);
 
-  // Inject Google Fonts (Tajawal)
+  // Inject Google Fonts (Tajawal + Poppins + Open Sans)
   useEffect(() => {
     const doc = document;
     if (!doc.getElementById('tajawal-font')) {
@@ -283,6 +279,20 @@ export default function IycoTemplate({
       link.href = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap';
       link.rel = 'stylesheet';
       doc.head.appendChild(link);
+    }
+    if (!doc.getElementById('poppins-font')) {
+      const link2 = doc.createElement('link');
+      link2.id = 'poppins-font';
+      link2.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap';
+      link2.rel = 'stylesheet';
+      doc.head.appendChild(link2);
+    }
+    if (!doc.getElementById('opensans-font')) {
+      const link3 = doc.createElement('link');
+      link3.id = 'opensans-font';
+      link3.href = 'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap';
+      link3.rel = 'stylesheet';
+      doc.head.appendChild(link3);
     }
   }, []);
 
@@ -401,13 +411,6 @@ export default function IycoTemplate({
     }
   };
 
-  // ── FAQ Data ──
-  const faqs = [
-    { q: settings?.iyco_faq1_q || 'هل مقاسات مضبوطة (صحيحة)؟', a: settings?.iyco_faq1_a || 'نعم، مقاساتنا قياسية وتتوافق مع المقاسات العالمية.' },
-    { q: settings?.iyco_faq2_q || 'هل التوصيل سريع؟', a: settings?.iyco_faq2_a || 'نوفر توصيل سريع يتراوح بين 24 إلى 72 ساعة كأقصى تقدير لجميع الولايات.' },
-    { q: settings?.iyco_faq3_q || 'هل يوجد ضمان (استبدال مقاس)؟', a: settings?.iyco_faq3_a || 'نعم، نضمن لك استبدال المقاس مجاناً إذا لم يكن مناسباً لك.' },
-  ];
-
   // ── Other products (everything except main) ──
   const otherProducts = useMemo(() => {
     if (!products) return [];
@@ -462,43 +465,61 @@ export default function IycoTemplate({
     <div className="min-h-screen" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Tajawal', sans-serif" }} dir="rtl">
 
       {/* ── TOP NAVIGATION ── */}
-      <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: bgImageCss ? 'transparent' : surfaceColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-{settings?.store_logo ? (
-  <img 
-    src={settings.store_logo} 
-    alt={storeName} 
-    className="w-12 h-12 rounded-full object-cover"
-    loading="lazy"
-    decoding="async"
-    width="32"
-    height="32"
-    style={{ contentVisibility: 'auto' }}
-  />
-) : (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: accentColor }}>
-                {storeName.charAt(0)}
-              </div>
-            )}
-            <span
-              className="font-black tracking-tighter"
-              style={{ color: surfaceTextColor, fontSize: '25px' }}
-              contentEditable={canManage}
-              suppressContentEditableWarning
-              onBlur={handleTextEdit('store_name')}
+      {mainProduct ? (
+        <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: '#f1f3f4', borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 flex items-center gap-3">
+            <Home
+              size={16}
+              className="cursor-pointer hover:opacity-70 transition-opacity"
+              style={{ color: '#555' }}
+              onClick={() => { setActiveMainProduct(null); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug)); }}
+            />
+            <span style={{ color: '#333', fontSize: '14px', fontWeight: 500 }} className="truncate max-w-[200px]">{mainProduct.title}</span>
+          </div>
+        </nav>
+      ) : (
+        <nav className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: bgImageCss ? 'transparent' : surfaceColor, backdropFilter: bgImageCss ? 'blur(12px)' : 'none', WebkitBackdropFilter: bgImageCss ? 'blur(12px)' : 'none', borderBottom: `1px solid ${borderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-center relative">
+            {/* Center: Logo / Store Name */}
+            <div
+              className="flex items-center justify-center cursor-pointer"
+              onClick={() => { setActiveMainProduct(null); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug)); }}
             >
-              {storeName}
-            </span>
+              {settings?.store_logo ? (
+                <img
+                  src={settings.store_logo}
+                  alt={storeName}
+                  className="h-[66px] w-auto object-contain"
+                  loading="lazy"
+                  decoding="async"
+                  width="145"
+                  height="66"
+                />
+              ) : (
+                <span
+                  className="font-bold tracking-wide"
+                  style={{ color: surfaceTextColor, fontSize: '20px', fontFamily: "'Poppins', sans-serif" }}
+                  contentEditable={canManage}
+                  suppressContentEditableWarning
+                  onBlur={handleTextEdit('store_name')}
+                >
+                  {storeName}
+                </span>
+              )}
+            </div>
+            {/* Right: Home */}
+            <div className="absolute right-4 flex items-center" style={{ color: surfaceTextMuted }}>
+              <Home size={20} className="cursor-pointer hover:opacity-70 transition-opacity" onClick={() => { setActiveMainProduct(null); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug)); }} />
+            </div>
+            {/* Left: Cart */}
+            <div className="absolute left-4 flex items-center" style={{ color: surfaceTextMuted }}>
+              <ShoppingBag size={20} className="cursor-pointer hover:opacity-70 transition-opacity" />
+            </div>
           </div>
-          <div className="flex items-center gap-3" style={{ color: surfaceTextMuted }}>
-            <span className="text-[10px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-full animate-pulse">14</span>
-            <ShoppingBag size={20} className="cursor-pointer hover:opacity-70 transition-opacity" />
-          </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* ── canManage: empty products placeholder ── */}
         {canManage && (!products || products.length === 0) && (
@@ -510,11 +531,11 @@ export default function IycoTemplate({
 
         {/* ── PRODUCT SECTION (SPLIT LAYOUT) ── */}
         {mainProduct && (
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 pt-6 lg:pt-10">
 
             {/* LEFT: Image Gallery */}
-            <div className="w-full lg:w-[55%] flex flex-col gap-4">
-              <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[95vh]" style={{ backgroundColor: surfaceMuted }}>
+            <div className="w-full lg:w-[55%] flex flex-col gap-4 lg:mt-3">
+              <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[95vh]" style={{ backgroundColor: '#ffffff', border: `1px solid ${borderColor}` }}>
                 <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', direction: 'ltr' }} onScroll={handleScroll}>
                   {videoEmbed && (
                     <div key="video" className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}>
@@ -580,51 +601,96 @@ export default function IycoTemplate({
               )}
             </div>
 
-            {/* RIGHT: Product Details & Checkout Form */}
+            {/* RIGHT: Product Details */}
             <div className="w-full lg:w-[45%] flex flex-col">
 
-              {/* Title & Badge */}
-              <div className="mb-6">
-                <h1 className="text-2xl md:text-3xl font-black mb-2" style={{ color: textColor }}>{mainProduct.title}</h1>
-                <div className="flex items-center gap-2 mb-3 flex-wrap">
-                  <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full flex items-center gap-1">👀 14 شخص يشاهد هذا</span>
-                  {mainProduct.stock_quantity > 0 && mainProduct.stock_quantity <= 5 && (
-                    <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">⚠️ متبقي {mainProduct.stock_quantity} فقط</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 mb-4 flex-wrap">
-                  <span
-                    className="text-white text-[11px] font-bold px-3 py-1 rounded-sm shadow-sm"
-                    style={{ backgroundColor: accentColor }}
-                    contentEditable={canManage}
-                    suppressContentEditableWarning
-                    onBlur={handleTextEdit('template_hero_heading')}
-                  >
-                    {heroTitle}
+              {/* Title */}
+              <h1 className="text-2xl md:text-3xl font-black mb-2" style={{ color: '#0f172a' }}>{mainProduct.title}</h1>
+
+              {/* Description */}
+              {mainProduct.description && (
+                <div className="text-sm leading-relaxed mb-4" style={{ color: '#4b5563' }} dangerouslySetInnerHTML={{ __html: mainProduct.description }} />
+              )}
+
+              {/* Price */}
+              <div className="flex items-baseline gap-3 mb-4">
+                <span className="text-2xl font-black" style={{ color: '#0f172a' }}>
+                  {Math.round(mainProduct.price ?? 0).toLocaleString()} {currency}
+                </span>
+                {mainProduct.original_price && (
+                  <span className="text-base line-through font-bold" style={{ color: '#9ca3af' }}>
+                    {Math.round(mainProduct.original_price).toLocaleString()} {currency}
                   </span>
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
-                  </div>
-                </div>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-4xl font-black" style={{ color: accentColor }}>
-                    {Math.round(mainProduct.price ?? 0).toLocaleString()} {currency}
-                  </span>
-                  {mainProduct.original_price && (
-                    <span className="text-lg line-through font-bold" style={{ color: textMuted }}>
-                      {Math.round(mainProduct.original_price).toLocaleString()} {currency}
-                    </span>
-                  )}
-                </div>
-                {mainProduct.stock_quantity > 0 && (
-                  <div className="flex items-center gap-1 text-xs font-bold mt-2" style={{ color: accentColor }}>
-                    <CheckCircle2 size={12} /> <span>متوفر</span>
-                  </div>
                 )}
               </div>
 
-              {/* ── THE ORDER FORM ── */}
-              <form id="orderForm" className="rounded-xl p-4 md:p-5 shadow-sm mb-4" style={{ backgroundColor: surfaceColor, border: `1px solid ${borderColor}` }} onSubmit={handleOrder} noValidate>
+              <div className="border-t" style={{ borderColor }}></div>
+
+              {/* Variants */}
+              {mainProduct?.variants && mainProduct.variants.length > 0 && (
+                <div className="mt-4">
+                  <VariantSelector
+                    variants={mainProduct.variants}
+                    selected={selectedVariant}
+                    onSelect={setSelectedVariant}
+                    accentColor={accentColor}
+                    currency={currency}
+                    basePrice={mainProduct.price}
+                  />
+                </div>
+              )}
+
+              {/* Offers */}
+              {offers.length > 0 && (
+                <div className="mt-4">
+                  <OfferSelector
+                    offers={offers}
+                    unitPrice={mainProduct?.price || 0}
+                    currency={currency}
+                    selectedOfferId={selectedOffer?.offer_id ?? null}
+                    onSelect={handleOfferSelect}
+                    accentColor={accentColor}
+                    textColor={surfaceTextColor}
+                    borderColor={borderColor}
+                    bgColor={surfaceMuted}
+                    className="space-y-3"
+                  />
+                </div>
+              )}
+
+              {/* Quantity */}
+              <div className="mt-4">
+                <label className="block text-sm font-bold mb-1.5" style={{ color: '#555' }}>الكمية:</label>
+                <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${borderColor}`, width: 'fit-content' }}>
+                  <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 flex items-center justify-center font-bold text-lg" style={{ color: '#555', borderRight: `1px solid ${borderColor}` }}>−</button>
+                  <span className="w-12 text-center font-bold text-base" style={{ color: '#111' }}>{quantity}</span>
+                  <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 flex items-center justify-center font-bold text-lg" style={{ color: '#555', borderLeft: `1px solid ${borderColor}` }}>+</button>
+                </div>
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  className="flex-1 py-3 rounded-lg font-bold text-sm transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: '#333', color: '#fff' }}
+                  onClick={() => { addToCart(mainProduct, selectedVariant); setShowCart(true); }}
+                >
+                  أضف للسلة
+                </button>
+                <button
+                  type="button"
+                  className="flex-1 py-3 rounded-lg font-bold text-sm border-2 transition-all active:scale-[0.98]"
+                  style={{ borderColor: '#333', backgroundColor: '#fff', color: '#333' }}
+                  onClick={() => setShowOrderForm(true)}
+                >
+                  اطلب الآن
+                </button>
+              </div>
+
+              {/* Order Form — hidden until clicked */}
+              {showOrderForm && (
+              <form id="orderForm" className="rounded-xl p-4 md:p-5 shadow-sm mt-6" style={{ backgroundColor: surfaceColor, border: `1px solid ${borderColor}` }} onSubmit={handleOrder} noValidate>
                 <h3 className="font-black text-center text-sm mb-3 pb-2" style={{ color: surfaceTextColor, borderBottom: `1px solid ${borderColor}` }}>إستمارة الطلب</h3>
                 {offers.length > 0 && (
                   <div className="mb-4">
@@ -782,82 +848,117 @@ export default function IycoTemplate({
                 </div>
               )}
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full mt-1 py-3 text-white rounded-md font-black text-base shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ backgroundColor: accentColor }}
-              >
-                {isSubmitting ? 'جاري المعالجة...' : buttonText}
-                {!isSubmitting && <ShoppingCart size={20} fill="currentColor" className="mt-0.5" />}
-              </button>
+              {/* Submit Buttons */}
+              <div className="flex gap-3 mt-3">
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    if (!customerName || !customerPhone || !selectedWilayaId) {
+                      setOrderError('يرجى ملء جميع الحقول');
+                      return;
+                    }
+                    addToCart(mainProduct, selectedVariant);
+                    setShowCart(true);
+                  }}
+                  className="flex-1 py-3 rounded-lg font-bold text-sm border-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                  style={{ borderColor: '#0f172a', backgroundColor: '#0f172a', color: '#fff' }}
+                >
+                  {isSubmitting ? 'جاري المعالجة...' : 'إضافة للسلة'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  form="orderForm"
+                  className="flex-1 py-3 rounded-lg font-bold text-sm border-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                  style={{ borderColor: '#0f172a', backgroundColor: '#fff', color: '#0f172a' }}
+                >
+                  {isSubmitting ? 'جاري المعالجة...' : 'اطلب الآن'}
+                </button>
+              </div>
                 </div>
               </form>
+              )}
 
-              <p
-                className="text-center text-xs font-bold mb-6"
-                style={{ color: textMuted }}
-                contentEditable={canManage}
-                suppressContentEditableWarning
-                onBlur={handleTextEdit('template_hero_subtitle')}
-              >
-                {heroSubtitle}
-              </p>
+              {/* Product Metadata */}
+              {(mainProduct.category || mainProduct.tags || (mainProduct as any).brand) && (
+                <div className="mt-6 space-y-2">
+                  {mainProduct.category && (
+                    <div className="flex items-center gap-2 text-sm" style={{ color: '#6b7280' }}>
+                      <span className="font-semibold" style={{ color: '#0f172a' }}>الفئة</span>
+                      <span className="flex-1 border-b" style={{ borderColor: '#e5e7eb' }}></span>
+                      <span>{mainProduct.category}</span>
+                    </div>
+                  )}
+                  {mainProduct.tags && (
+                    <div className="flex items-center gap-2 text-sm" style={{ color: '#6b7280' }}>
+                      <span className="font-semibold" style={{ color: '#0f172a' }}>الوسوم</span>
+                      <span className="flex-1 border-b" style={{ borderColor: '#e5e7eb' }}></span>
+                      <span>{Array.isArray(mainProduct.tags) ? mainProduct.tags.join(', ') : mainProduct.tags}</span>
+                    </div>
+                  )}
+                  {(mainProduct as any).brand && (
+                    <div className="flex items-center gap-2 text-sm" style={{ color: '#6b7280' }}>
+                      <span className="font-semibold" style={{ color: '#0f172a' }}>الماركة</span>
+                      <span className="flex-1 border-b" style={{ borderColor: '#e5e7eb' }}></span>
+                      <span>{(mainProduct as any).brand}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              {/* FAQs Accordion */}
-              <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${borderColor}` }}>
-                {faqs.map((faq, idx) => (
-                  <div key={idx} style={{ borderBottom: idx < faqs.length - 1 ? `1px solid ${borderColor}` : 'none' }}>
-                    <button
-                      onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                      className="w-full flex items-center justify-between p-4 transition-colors text-right"
-                      style={{ backgroundColor: surfaceColor, color: surfaceTextColor }}
-                    >
-                      <span
-                        className="font-bold text-sm"
-                        contentEditable={canManage}
-                        suppressContentEditableWarning
-                        onBlur={handleTextEdit(`iyco_faq${idx + 1}_q`)}
-                        style={{ color: surfaceTextColor }}
-                      >{faq.q}</span>
-                      {openFaq === idx ? <ChevronUp size={16} style={{ color: surfaceTextMuted }} /> : <ChevronDown size={16} style={{ color: surfaceTextMuted }} />}
-                    </button>
-                    {openFaq === idx && (
-                      <div
-                        className="p-4 text-sm"
-                        contentEditable={canManage}
-                        suppressContentEditableWarning
-                        onBlur={handleTextEdit(`iyco_faq${idx + 1}_a`)}
-                        style={{ backgroundColor: surfaceMuted, color: textMuted, borderTop: `1px solid ${borderColor}` }}
-                      >
-                        {faq.a}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {/* Description */}
+              {mainProduct.description && (
+                <div className="mt-8">
+                  <h3 className="text-base font-bold mb-4 text-center tracking-wide" style={{ color: '#0f172a', borderBottom: `1px solid ${borderColor}`, paddingBottom: '0.75rem' }}>DESCRIPTION</h3>
+                  <div
+                    className="text-sm leading-relaxed whitespace-pre-line"
+                    style={{ color: '#4b5563' }}
+                    dangerouslySetInnerHTML={{ __html: mainProduct.description }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* ── RELATED PRODUCTS GRID ── */}
         {otherProducts.length > 0 && (
-          <section className="mt-16 lg:mt-24">
-            <div className="flex items-center gap-4 mb-8">
-              <h2 className="text-3xl font-black tracking-tight" style={{ color: textColor }}>{storeName}</h2>
-              <div className="h-px flex-1 mt-2" style={{ backgroundColor: borderColor }}></div>
-              <span className="text-sm font-bold whitespace-nowrap" style={{ color: textMuted }}>{otherProducts.length} منتجات</span>
+          <section style={{ padding: '60px 20px', maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
+            <div className="relative mb-8" style={{ position: 'relative', minHeight: '31px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ position: 'absolute', top: '50%', left: 0, width: '100%', height: '2px', backgroundColor: '#232323', zIndex: 1, transform: 'translateY(-50%)' }}></div>
+              <h2
+                className="relative z-10 text-center"
+                style={{
+                  fontFamily: "'Poppins', sans-serif",
+                  fontWeight: 600,
+                  fontSize: '22px',
+                  letterSpacing: 0,
+                  lineHeight: 1,
+                  textTransform: 'uppercase',
+                  background: 'white',
+                  display: 'inline-block',
+                  margin: 0,
+                  padding: '0 10%',
+                  color: '#232323',
+                }}
+                contentEditable={canManage}
+                suppressContentEditableWarning
+                onBlur={handleTextEdit('template_grid_title')}
+              >
+                {settings?.template_grid_title || 'New Arivage'}
+              </h2>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
+            {/* Desktop: grid | Mobile: horizontal scroll carousel */}
+            <div className="hidden md:grid grid-cols-4" style={{ gap: '18px', contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
               {otherProducts.map(prod => (
                 <button
                   key={prod.id}
-                  className="group block text-right"
+                  className="group block text-center"
                   onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
                 >
-                  <div className="relative aspect-[5/7] rounded-xl overflow-hidden mb-3" style={{ backgroundColor: surfaceMuted }}>
+                  <div className="relative overflow-hidden flex items-center justify-center" style={{ minHeight: '370px', backgroundColor: '#f5f5f5' }}>
                     {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                       ? <LazyVideo src={(prod as any).metadata.video_url} poster={prod.images?.[0] || '/placeholder.png'}
                           onMouseEnter={e => (e.target as HTMLVideoElement).play()}
@@ -870,34 +971,74 @@ export default function IycoTemplate({
                             alt={prod.title}
                             loading="lazy"
                             decoding="async"
-                            width="600"
-                            height="600"
-                            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+                            width="400"
+                            height="400"
+                            className="max-w-full max-h-full object-contain"
                           />
                     }
-                    {prod.original_price && (
-                      <div className="absolute top-2 right-2 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded shadow-sm" style={{ backgroundColor: surfaceColor + 'e6', color: textColor }}>
-                        تخفيض
+                    {prod.original_price ? (
+                      <div className="absolute top-2 left-2 font-bold uppercase px-2.5 text-white" style={{ backgroundColor: '#17469e', borderRadius: '3px', height: '26px', display: 'flex', alignItems: 'center', fontFamily: "'Lato', sans-serif", fontSize: '16px' }}>
+                        -{Math.round(((prod.original_price - prod.price) / prod.original_price) * 100)}%
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                      <span className="text-white text-xs font-bold flex items-center justify-center gap-1">
-                        عرض المنتج →
-                      </span>
-                    </div>
+                    ) : (prod as any)?.metadata?.promo_label ? (
+                      <div className="absolute top-2 left-2 font-bold uppercase px-2.5 text-white" style={{ backgroundColor: '#17469e', borderRadius: '3px', height: '26px', display: 'flex', alignItems: 'center', fontFamily: "'Lato', sans-serif", fontSize: '16px' }}>
+                        {(prod as any).metadata.promo_label}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="px-1">
-                    <h3 className="text-sm font-bold mb-1 truncate" style={{ color: textColor }}>{prod.title}</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-black" style={{ color: accentColor }}>{Math.round(prod.price ?? 0).toLocaleString()} {currency}</span>
-                      {prod.original_price && (
-                        <span className="text-xs font-bold line-through" style={{ color: textMuted }}>{Math.round(prod.original_price).toLocaleString()} {currency}</span>
-                      )}
-                    </div>
+                  <div className="pt-3 pb-1">
+                    <h3 className="truncate" style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 400, fontSize: '17px', lineHeight: '24px', color: '#555555', marginTop: 0, textAlign: 'center', display: 'block' }}>{prod.title}</h3>
+                    <p style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: '14px', lineHeight: '21px', color: '#555555', marginTop: '2px', textAlign: 'center' }}>{Number(prod.price ?? 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} DA</p>
                   </div>
                 </button>
               ))}
+            </div>
+            {/* Mobile: one product per row */}
+            <div className="md:hidden flex flex-col" style={{ gap: '14px' }}>
+              {otherProducts.map(prod => (
+                <button
+                  key={prod.id}
+                  className="group block text-center"
+                  onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
+                >
+                  <div className="relative overflow-hidden flex items-center justify-center" style={{ minHeight: '370px', backgroundColor: '#f5f5f5' }}>
+                    {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
+                      ? <LazyVideo src={(prod as any).metadata.video_url} poster={prod.images?.[0] || '/placeholder.png'}
+                          onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                          className="w-full h-full object-cover" />
+                      : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+                        ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                        : <img
+                            src={prod.images?.[0] || '/placeholder.png'}
+                            alt={prod.title}
+                            loading="lazy"
+                            decoding="async"
+                            width="400"
+                            height="400"
+                            className="max-w-full max-h-full object-contain"
+                          />
+                    }
+                    {prod.original_price ? (
+                      <div className="absolute top-2 left-2 font-bold uppercase px-2.5 text-white" style={{ backgroundColor: '#17469e', borderRadius: '3px', height: '26px', display: 'flex', alignItems: 'center', fontFamily: "'Lato', sans-serif", fontSize: '14px' }}>
+                        -{Math.round(((prod.original_price - prod.price) / prod.original_price) * 100)}%
+                      </div>
+                    ) : (prod as any)?.metadata?.promo_label ? (
+                      <div className="absolute top-2 left-2 font-bold uppercase px-2.5 text-white" style={{ backgroundColor: '#17469e', borderRadius: '3px', height: '26px', display: 'flex', alignItems: 'center', fontFamily: "'Lato', sans-serif", fontSize: '14px' }}>
+                        {(prod as any).metadata.promo_label}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="pt-3 pb-1">
+                    <h3 className="truncate" style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 400, fontSize: '17px', lineHeight: '24px', color: '#555555', marginTop: 0, textAlign: 'center', display: 'block' }}>{prod.title}</h3>
+                    <p style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: '14px', lineHeight: '21px', color: '#555555', marginTop: '2px', textAlign: 'center' }}>{Number(prod.price ?? 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} DA</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-center gap-1.5 mt-6">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#6b7280' }}></span>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#d1d5db' }}></span>
             </div>
           </section>
         )}
