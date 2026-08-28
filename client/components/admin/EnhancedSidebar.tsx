@@ -285,18 +285,13 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
           className={cn(
             "group relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200",
             level > 0 && (isRTL ? "mr-3" : "ml-3"),
-            active 
-              ? "shadow-sm font-medium"
-              : "hover:bg-white hover:bg-opacity-50 text-muted-foreground hover:text-foreground",
+            active
+              ? "bg-muted/50"
+              : "hover:bg-muted/30",
             collapsed && level === 0 && "justify-center",
             !hasAccess && "opacity-50"
           )}
-          style={{
-            backgroundColor: active ? `${categoryColor}20` : 'transparent',
-            color: active ? categoryColor : theme.text,
-            borderLeft: active && !isRTL ? `3px solid ${categoryColor}` : 'none',
-            borderRight: active && isRTL ? `3px solid ${categoryColor}` : 'none',
-          }}
+          style={{ color: active ? 'hsl(var(--foreground))' : theme.text }}
           title={!hasAccess ? 'No permission' : undefined}
         >
           {/* Icon with category color */}
@@ -310,7 +305,7 @@ export function EnhancedSidebar({ onCollapseChange, mobileOpen: controlledMobile
           
           {!collapsed && (
             <>
-              <span className={`flex-1 leading-tight min-w-0 ${isRTL ? "font-['Cairo',sans-serif] font-semibold text-[14px]" : "font-medium text-[14px] tracking-tight"}`}>{t(item.titleKey)}</span>
+              <span className="text-sm text-foreground" style={{ fontFamily: "'Cairo', sans-serif", fontWeight: 650 }}>{t(item.titleKey)}</span>
 
               {badgeCount > 0 && (
                 <span
