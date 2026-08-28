@@ -162,15 +162,15 @@ export default function FloatingChatBubble() {
       .catch(() => {});
   }, [chatMode, historyLoaded]);
 
-  // Fetch admin contacts when contact tab is opened
+  // Fetch admin contacts when bubble opens
   useEffect(() => {
-    if (chatMode !== 'contact' || contactsLoaded) return;
+    if (!open || contactsLoaded) return;
     setContactsLoaded(true);
     fetch('/api/admin-contacts/public')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.contacts?.length) setAdminContacts(d.contacts); })
       .catch(() => {});
-  }, [chatMode, contactsLoaded]);
+  }, [open, contactsLoaded]);
 
   const SUGGESTED_QUESTIONS = [
     t('chat.suggest1'),
@@ -450,6 +450,29 @@ export default function FloatingChatBubble() {
 
   return (
     <>
+      {/* Floating contact bubbles — fan out vertically above the main button */}
+      {!isAdmin && open && adminContacts.length > 0 && (
+        <div className={`fixed z-[9999] flex flex-col-reverse gap-3 ${isEditorPage ? 'left-4' : 'right-4'}`} style={{ bottom: '88px' }}>
+          {adminContacts.map((ch, i) => (
+            <a
+              key={ch.platform + ch.url}
+              href={ch.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all"
+              style={{
+                backgroundColor: CONTACT_COLORS[ch.platform] || '#6366f1',
+                animation: `fcb-bubble-in 200ms ease ${i * 50}ms both`,
+                boxShadow: `0 4px 14px ${CONTACT_COLORS[ch.platform] || '#6366f1'}44`,
+              }}
+              title={ch.label}
+            >
+              {CONTACT_ICONS[ch.platform] || <MessageCircle className="w-5 h-5" />}
+            </a>
+          ))}
+        </div>
+      )}
+
       {/* Floating trigger button */}
       <div className={`fixed bottom-20 sm:bottom-4 z-[9999] ${isEditorPage ? 'left-4' : 'right-4'}`}>
         <div className="relative">
@@ -458,7 +481,7 @@ export default function FloatingChatBubble() {
           )}
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => setOpen(v => !v)}
             className="relative w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-slate-900 dark:bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95"
             style={{
               boxShadow: unreadMessagesCount > 0
@@ -467,7 +490,7 @@ export default function FloatingChatBubble() {
             }}
             aria-label={t('chat.openAssistant')}
           >
-            <MessageBubbleIcon />
+            {open ? <X className="w-5 h-5" /> : <MessageBubbleIcon />}
           </button>
           {unreadMessagesCount > 0 && (
             <div
@@ -479,9 +502,11 @@ export default function FloatingChatBubble() {
           )}
         </div>
       </div>
+        </div>
+      </div>
 
       {/* Chat panel */}
-      {open && (
+      {open && adminContacts.length === 0 && (
         <>
           <div className="fixed inset-0 z-[9999] bg-black/20 backdrop-blur-[2px] sm:hidden" onClick={closeMessenger} />
 
@@ -602,60 +627,12 @@ export default function FloatingChatBubble() {
                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-slate-900 dark:bg-white rounded-full" />
                   )}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setChatMode('contact')}
-                  className={`flex-1 py-2 text-[12px] font-medium relative transition-colors ${
-                    chatMode === 'contact'
-                      ? 'text-white'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Contact
-                  {chatMode === 'contact' && (
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-white rounded-full" />
-                  )}
-                </button>
               </div>
             )}
 
             {/* ── Body ── */}
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
-              {(!isAdmin && chatMode === 'contact') ? (
-                /* ── Contact tab ── */
-                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
-                  <div className="space-y-4">
-                    <div className="text-center pb-2">
-                      <p className="text-[13px] text-slate-500 dark:text-slate-400">Contact us through any of these channels</p>
-                    </div>
-                    {adminContacts.length === 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-sm text-slate-400 dark:text-slate-500">No contact channels available yet.</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-3 justify-center">
-                        {adminContacts.map((ch) => (
-                          <a
-                            key={ch.platform + ch.url}
-                            href={ch.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all hover:scale-105 min-w-[80px]"
-                          >
-                            <div
-                              className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg"
-                              style={{ backgroundColor: CONTACT_COLORS[ch.platform] || '#6366f1' }}
-                            >
-                              {CONTACT_ICONS[ch.platform] || <MessageCircle className="w-5 h-5" />}
-                            </div>
-                            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{ch.label}</span>
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (!isAdmin && chatMode === 'ai') ? (
+              {(!isAdmin && chatMode === 'ai') ? (
                 <div className="flex-1 flex flex-col min-h-0">
                   {/* Messages area */}
                   <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-0 scroll-smooth">
@@ -936,6 +913,10 @@ export default function FloatingChatBubble() {
         @keyframes fcb-slide-up {
           from { opacity: 0; transform: translateY(12px) scale(0.97); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes fcb-bubble-in {
+          from { opacity: 0; transform: scale(0.3) translateY(20px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
     </>
