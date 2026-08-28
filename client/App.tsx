@@ -6,7 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { getCurrentUser, removeAuthToken, syncAuthState, startAutoRefresh } from "@/lib/auth";
+import { getCurrentUser, removeAuthToken, syncAuthState, startAutoRefresh, refreshAuthToken } from "@/lib/auth";
 import Layout from "@/components/layout/Layout";
 import React, { Suspense, lazy } from "react";
 import { isSubdomainStore } from "@/lib/resolvedStore";
@@ -129,18 +129,33 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 // Initialize security probes (fingerprinting, WebRTC leak detection)
 initSecurityProbes({ autoSend: true });
 
-// Global 401 interceptor — redirect to login on any expired session
+// Global 401 interceptor — attempt a refresh before logging out on an expired session
 if (typeof window !== 'undefined') {
-  const LOGIN_PATHS = ['/login', '/signup', '/auth/login', '/auth/register', '/auth/refresh'];
-  const originalFetch = window.fetch;
-  window.fetch = async (...args) => {
-    const response = await originalFetch.apply(window, args);
+  const LOGIN_PATHS = ['/login', '/signup', '/auth/login', '/auth/register', '/auth/refresh', '/auth/me'];
+
+  const getUrl = (args: any[]): string =>
+    typeof args[0] === 'string' ? args[0] : String(args[0]?.url || '');
+
+  const handleUnauthorized = async (): Promise<boolean> => {
+    // Try to refresh the access token via the refresh cookie first.
+    const refreshed = await refreshAuthToken();
+    if (refreshed) return true;
+    removeAuthToken();
+    window.location.href = '/login';
+    return false;
+  };
+
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (...args: any[]) => {
+    const response = await originalFetch(...args);
     if (response.status === 401) {
-      const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+      const url = getUrl(args);
       const isLoginPath = LOGIN_PATHS.some(p => url.includes(p));
-      if (!isLoginPath && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/store') && !window.location.pathname.startsWith('/s/')) {
-        removeAuthToken();
-        window.location.href = '/login';
+      const onLoginPage = window.location.pathname.startsWith('/login');
+      const onStorefront = window.location.pathname.startsWith('/store') || window.location.pathname.startsWith('/s/');
+      if (!isLoginPath && !onLoginPage && !onStorefront) {
+        console.log('[Auth] 401 received, attempting refresh before logout...');
+        await handleUnauthorized();
       }
     }
     return response;
