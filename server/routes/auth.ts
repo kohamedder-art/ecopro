@@ -55,6 +55,62 @@ function normalizeEmail(raw: unknown): string {
   return String(raw ?? '').toLowerCase().trim();
 }
 
+// Reserved subdomains (mirrors client-store.ts so signup can't claim platform URLs)
+const RESERVED_SUBDOMAINS = new Set([
+  'www', 'api', 'admin', 'mail', 'ftp', 'app', 'store', 'dev', 'test', 'blog',
+  'shop', 'help', 'support', 'status', 'webmail', 'smtp', 'imap', 'pop', 'm',
+  'dashboard', 'docs', 'wiki', 'forum', 'cdn', 'static', 'assets', 'img',
+  'images', 'upload', 'uploads', 'files', 'media', 'video', 'videos', 'player',
+  'stream', 'live', 'tv', 'radio', 'news', 'info', 'legal', 'terms', 'privacy',
+  'security', 'login', 'signup', 'register', 'auth', 'oauth', 'api', 'graphql',
+  'socket', 'ws', 'wss', 'chat', 'mail', 'email', 'webmail', 'calendar', 'drive',
+  'docs', 'sheets', 'slides', 'meet', 'zoom', 'team', 'teams', 'community',
+  'podcast', 'music', 'event', 'events', 'ticket', 'tickets', 'payment', 'pay',
+  'billing', 'invoice', 'invoices', 'subscription', 'subscriptions', 'checkout',
+  'cart', 'shop', 'order', 'orders', 'track', 'tracking', 'support', 'help',
+]);
+
+// Arabic -> Latin transliteration for generating a slug/subdomain from a store name
+const ARABIC_TRANSLITERATION: Record<string, string> = {
+  'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'aa', 'ب': 'b', 'ت': 't', 'ث': 'th',
+  'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
+  'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
+  'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+  'ه': 'h', 'و': 'w', 'ي': 'y', 'ء': '', 'ئ': 'y', 'ؤ': 'w', 'ة': 'h',
+  'ى': 'a'
+};
+
+function slugifyStoreName(storeName: string): string {
+  let slug = String(storeName || '').toLowerCase().trim();
+  for (const [arabic, latin] of Object.entries(ARABIC_TRANSLITERATION)) {
+    slug = slug.split(arabic).join(latin);
+  }
+  slug = slug
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-')
+    .substring(0, 50);
+  return slug;
+}
+
+// Generate a unique, non-reserved subdomain/slug from a store name.
+// Tries base name first, then appends suffixes (e.g. -shop, -store, -1, -2).
+async function generateAvailableStoreHandle(db: any, storeName: string): Promise<string | null> {
+  const base = slugifyStoreName(storeName);
+  if (!base || !/^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$/.test(base) || RESERVED_SUBDOMAINS.has(base)) {
+    return null;
+  }
+  const candidates = [base, ...['-shop', '-store', '-dz', '-algeria', '-1', '-2', '-3'].map(s => base + s)];
+  for (const candidate of candidates) {
+    const exists = await db.query(
+      `SELECT 1 FROM client_store_settings WHERE subdomain = $1 OR store_slug = $1 LIMIT 1`,
+      [candidate]
+    );
+    if (exists.rows.length === 0) return candidate;
+  }
+  return null;
+}
+
 function inferLockType(dbLockType: unknown, lockedReason: unknown): 'payment' | 'critical' {
   if (dbLockType === 'payment' || dbLockType === 'critical') return dbLockType;
   const reason = typeof lockedReason === 'string' ? lockedReason : '';
@@ -106,7 +162,7 @@ function setAuthCookies(res: any, accessToken: string, refreshToken: string) {
 // POST /api/auth/register
 export const register: RequestHandler = async (req, res) => {
   try {
-    const { email, password, name, role, voucher_code } = req.body;
+    const { email, password, name, role, voucher_code, store_name } = req.body;
     const normalizedEmail = normalizeEmail(email);
 
     // Password policy check
@@ -226,7 +282,31 @@ export const register: RequestHandler = async (req, res) => {
         console.warn("[REGISTER] Could not create client record:", clientError);
         // Not critical - continue with registration
       }
-      
+
+      // Provision the store (client_store_settings) with the chosen store name and
+      // auto-generated subdomain link (e.g. <name>.sahla4eco.com).
+      try {
+        const storeName = String(store_name || '').trim();
+        const handle = storeName ? await generateAvailableStoreHandle(pool, storeName) : null;
+        const subdomain = handle || null;
+        const storeSlug = handle || ('store-' + crypto.randomBytes(6).toString('base64url'));
+        await pool.query(
+          `INSERT INTO client_store_settings (client_id, store_name, subdomain, store_slug, is_public, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, false, NOW(), NOW())
+           ON CONFLICT (client_id) DO UPDATE
+             SET store_name = COALESCE(EXCLUDED.store_name, client_store_settings.store_name),
+                 subdomain = COALESCE(EXCLUDED.subdomain, client_store_settings.subdomain),
+                 updated_at = NOW()`,
+          [user.id, storeName || 'My Store', subdomain, storeSlug]
+        );
+        if (handle) {
+          console.log(`[REGISTER] Created store "${storeName}" for client ${user.id} -> ${handle}.sahla4eco.com`);
+        }
+      } catch (storeError) {
+        console.warn('[REGISTER] Could not provision store settings:', storeError);
+        // Not critical - continue with registration
+      }
+
       // Create affiliate referral record if user came from an affiliate
       if (affiliateId && validatedVoucherCode) {
         try {

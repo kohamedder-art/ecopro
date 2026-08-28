@@ -14,7 +14,9 @@ import {
   Tag, 
   AlertCircle,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Store,
+  Link2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { trackFacebookEvent } from "@/lib/pixel";
@@ -48,6 +50,7 @@ export default function Signup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
+  const [storeName, setStoreName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -100,6 +103,23 @@ export default function Signup() {
     return () => clearTimeout(timer);
   }, [voucherCode]);
 
+  function getStoreLinkPreview(): string {
+    if (!storeName.trim()) return '';
+    const raw = storeName.trim().toLowerCase();
+    const translit: Record<string, string> = {
+      'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'aa', 'ب': 'b', 'ت': 't', 'ث': 'th',
+      'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
+      'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
+      'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+      'ه': 'h', 'و': 'w', 'ي': 'y', 'ء': '', 'ئ': 'y', 'ؤ': 'w', 'ة': 'h',
+      'ى': 'a'
+    };
+    let slug = raw;
+    for (const [ar, la] of Object.entries(translit)) slug = slug.split(ar).join(la);
+    slug = slug.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-').slice(0, 50);
+    return slug ? `https://${slug}.sahla4eco.com` : '';
+  }
+
   async function handleGoogleSignup() {
     setGoogleLoading(true);
     try {
@@ -132,6 +152,7 @@ export default function Signup() {
           email, 
           password, 
           name, 
+          store_name: storeName.trim(),
           role: 'client',
           voucher_code: voucherCode.trim() || undefined 
         })
@@ -245,6 +266,37 @@ export default function Signup() {
                   placeholder={t('signup.namePlaceholder')}
                 />
               </div>
+            </div>
+
+            {/* Store Name */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                {t('signup.storeNameLabel')}
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <Store className="h-4 w-4 text-slate-400" />
+                </div>
+                <Input
+                  id="storeName"
+                  type="text"
+                  required
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  className="block w-full bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-indigo-500 focus:border-indigo-500 pr-10 py-2.5 text-base rounded-xl font-medium transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/50"
+                  placeholder={t('signup.storeNamePlaceholder')}
+                />
+              </div>
+              {getStoreLinkPreview() ? (
+                <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5">
+                  <Link2 className="h-3.5 w-3.5 shrink-0 text-indigo-500" />
+                  <span dir="ltr" className="text-indigo-600 dark:text-indigo-400">{getStoreLinkPreview()}</span>
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500 font-semibold">
+                  {t('signup.storeLinkHint')}
+                </p>
+              )}
             </div>
 
             {/* Email */}
