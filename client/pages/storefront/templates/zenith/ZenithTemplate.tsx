@@ -81,6 +81,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
     } else if (product?.id) {
       setCurrentSlug(String(product.id));
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [storeSlug, navigate]);
 
   // Go to full store page
@@ -492,7 +493,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
 
         {/* ── LONG IMAGE STACK ── */}
-        <div className="w-full flex flex-col pt-1.5" key={`landing-${mainProduct?.id || 'none'}`}>
+        <div className="w-full flex flex-col" key={`landing-${mainProduct?.id || 'none'}`}>
           {videoUrl && (
             <LazyVideo
               src={videoUrl}
@@ -522,7 +523,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         </div>
         
         {/* ── ORDER FORM ── */}
-        <div ref={formRef} className="px-3 py-5 pb-12" id="checkout-form">
+        <div ref={formRef} className="px-3 pb-12" id="checkout-form">
             <div className="rounded-[28px] px-4 py-6 shadow-xl relative" style={{ backgroundColor: cardBg, border: `2px solid #e2e8f0`, boxShadow: `0 20px 50px -12px rgba(0,0,0,0.08), 0 8px 20px rgba(0,0,0,0.06)` }}>
             <div className="absolute top-0 inset-x-0 h-1.5 rounded-t-[28px] overflow-hidden" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88)` }} />
             <div className="absolute -top-3 right-6 text-white px-5 py-1.5 rounded-full text-xs font-black tracking-wide shadow-md flex items-center gap-1.5" style={{ backgroundColor: accentColor }}>

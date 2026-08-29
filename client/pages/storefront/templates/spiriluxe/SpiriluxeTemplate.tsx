@@ -450,7 +450,7 @@ export default function SpiriluxeTemplate({
           onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload('below', f); e.target.value=''; }} />
 
         {/* Order Form */}
-        <div className="px-2 py-2">
+        <div className="px-2">
           <div className="rounded-2xl shadow-sm px-4 py-5 relative" style={{ backgroundColor: cardBg }}>
             <div className="absolute -top-3 right-6 text-white px-4 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: accentColor }}>
               أكمل البيانات للطلب

@@ -502,8 +502,6 @@ export default function FloatingChatBubble() {
           )}
         </div>
       </div>
-        </div>
-      </div>
 
       {/* Chat panel */}
       {open && adminContacts.length === 0 && (
