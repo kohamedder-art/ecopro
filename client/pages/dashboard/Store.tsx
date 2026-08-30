@@ -29,7 +29,7 @@ import { useStoreProducts } from '@/hooks/useStoreProducts';
 import { useAISettings } from '@/hooks/useAISettings';
 import { markOnboardingStepComplete } from '@/lib/onboarding';
 import { formatPriceForInput } from '@/lib/formatPrice';
-import { uploadFileWithProgress } from '@/lib/api';
+import { uploadFileWithProgress, compressImage } from '@/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -239,6 +239,7 @@ export default function Store() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFileName, setUploadFileName] = useState('');
+  const [uploadCount, setUploadCount] = useState<{ done: number; total: number } | null>(null);
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [creatingSampleProducts, setCreatingSampleProducts] = useState(false);
 
@@ -1189,9 +1190,8 @@ export default function Store() {
     }
 
     const uploadOne = async (file: File): Promise<string> => {
-      setUploadFileName(file.name);
-      setUploadProgress(0);
-      const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct));
+      const compressed = await compressImage(file);
+      const data = await uploadFileWithProgress(compressed, () => {});
       const url = String((data as any)?.url || '').trim();
       if (!url) throw new Error('Upload succeeded but server returned invalid url');
       return url;
@@ -1215,19 +1215,27 @@ export default function Store() {
     };
 
     setUploading(true);
+    setUploadCount({ done: 0, total: toUpload.length });
     try {
-      const uploadedUrls: string[] = [];
-      for (const file of toUpload) {
+      let doneCount = 0;
+      // Upload all images in parallel
+      const uploadedUrls = await Promise.all(toUpload.map(async (file) => {
         const url = await uploadOne(file);
-        uploadedUrls.push(url);
-        // Generate alt text if enabled
-        const altText = await generateAltText(url);
-        if (altText) {
-          setFormData((prev) => ({
-            ...prev,
-            alt_texts: { ...(prev.alt_texts || {}), [url]: altText },
-          }));
-        }
+        doneCount++;
+        setUploadCount({ done: doneCount, total: toUpload.length });
+        return url;
+      }));
+      // Generate alt text in parallel (non-blocking, fire-and-forget)
+      if (aiSettings?.auto_alt_text && formData.title) {
+        Promise.all(uploadedUrls.map(async (url) => {
+          const altText = await generateAltText(url);
+          if (altText) {
+            setFormData((prev) => ({
+              ...prev,
+              alt_texts: { ...(prev.alt_texts || {}), [url]: altText },
+            }));
+          }
+        }));
       }
 
       setFormData((prev) => {
@@ -1250,6 +1258,7 @@ export default function Store() {
       });
     } finally {
       setUploading(false);
+      setUploadCount(null);
       e.target.value = '';
     }
   };
@@ -1271,27 +1280,37 @@ export default function Store() {
       if (!file.type.startsWith('image/')) { toast({ variant: 'destructive', title: 'Upload failed', description: 'Please select image files only.' }); e.target.value = ''; return; }
     }
     const uploadOne = async (file: File): Promise<string> => {
-      setUploadFileName(file.name);
-      setUploadProgress(0);
-      const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct));
+      const compressed = await compressImage(file);
+      const data = await uploadFileWithProgress(compressed, () => {});
       return String((data as any)?.url || '').trim();
     };
     setUploading(true);
+    setUploadCount({ done: 0, total: toUpload.length });
     try {
-      const uploadedUrls: string[] = [];
-      for (const file of toUpload) {
-        const url = await uploadOne(file);
-        if (url) uploadedUrls.push(url);
-      }
+      let doneCount = 0;
+      const uploadedUrls = await Promise.all(toUpload.map(async (file) => {
+        try {
+          const url = await uploadOne(file);
+          doneCount++;
+          setUploadCount({ done: doneCount, total: toUpload.length });
+          return url || null;
+        } catch {
+          doneCount++;
+          setUploadCount({ done: doneCount, total: toUpload.length });
+          return null;
+        }
+      }));
+      const validUrls = uploadedUrls.filter(Boolean) as string[];
       setFormData((prev) => {
         const base = Array.isArray(prev.landing_images) ? prev.landing_images : [];
-        return { ...prev, landing_images: [...base, ...uploadedUrls].slice(0, MAX_IMAGES) };
+        return { ...prev, landing_images: [...base, ...validUrls].slice(0, MAX_IMAGES) };
       });
-      toast({ title: 'Uploaded', description: `${uploadedUrls.length} landing images uploaded.` });
+      toast({ title: 'Uploaded', description: `${validUrls.length} landing images uploaded.` });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Upload failed', description: error instanceof Error ? error.message : 'Failed to upload image' });
     } finally {
       setUploading(false);
+      setUploadCount(null);
       e.target.value = '';
     }
   };

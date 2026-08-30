@@ -193,7 +193,7 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
           db.query(
             `SELECT 
               p.id, p.title, p.description, p.price, p.original_price, 
-              p.images, p.category, p.stock_quantity, p.is_featured, 
+              p.images, p.landing_images, p.category, p.stock_quantity, p.is_featured, 
               p.slug, p.views, p.created_at, p.metadata,
               s.store_name, s.owner_name AS seller_name
             FROM client_store_products p
@@ -1477,7 +1477,7 @@ export const getProductWithStoreInfo: RequestHandler = async (req, res) => {
     const result = await pool.query(
       `SELECT 
         p.id, p.client_id, p.title, p.description, p.price, p.original_price,
-        p.images, p.category, p.stock_quantity, p.slug, p.status, p.metadata,
+        p.images, p.landing_images, p.category, p.stock_quantity, p.slug, p.status, p.metadata,
         s.store_name, s.store_slug, s.primary_color, s.template_accent_color
       FROM client_store_products p
       INNER JOIN client_store_settings s ON p.client_id = s.client_id

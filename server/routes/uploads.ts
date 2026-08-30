@@ -101,7 +101,7 @@ export const uploadImage: RequestHandler = async (req, res) => {
         const sharpedPath = req.file.path + '_sharp.avif';
         await sharp(req.file.path)
           .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-          .avif({ quality: 65, effort: 6 })
+          .avif({ quality: 65, effort: 3 })
           .toFile(sharpedPath);
         await fs.unlink(req.file.path).catch(() => null);
         await fs.rename(sharpedPath, req.file.path);

@@ -82,7 +82,7 @@ export const getStoreProducts: RequestHandler = async (req, res) => {
     }
 
     let query = `
-      SELECT id, title, description, price, original_price, images, 
+      SELECT id, title, description, price, original_price, images, landing_images,
              category, stock_quantity, status, is_featured, metadata, slug, views,
              created_at, updated_at
       FROM client_store_products

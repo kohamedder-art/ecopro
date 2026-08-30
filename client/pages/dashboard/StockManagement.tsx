@@ -47,7 +47,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { markOnboardingStepComplete } from '@/lib/onboarding';
 import { formatPriceForInput } from '@/lib/formatPrice';
-import { uploadFileWithProgress } from '@/lib/api';
+import { uploadFileWithProgress, compressImage } from '@/lib/api';
 import { useAI } from '@/hooks/useAI';
 
 interface StockItem {
@@ -309,6 +309,7 @@ export default function StockManagement() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFileName, setUploadFileName] = useState('');
+  const [uploadCount, setUploadCount] = useState<{ done: number; total: number } | null>(null);
   const [activeFormSection, setActiveFormSection] = useState<'product' | 'price' | 'variants' | 'offers' | 'status' | 'shipping' | 'images' | 'video' | 'notes'>('product');
   const [adjustData, setAdjustData] = useState({
     adjustment: undefined as number | undefined,
@@ -675,17 +676,15 @@ export default function StockManagement() {
   };
 
   const uploadSingleImage = async (file: File): Promise<string> => {
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
+    const compressed = await compressImage(file);
+    if (compressed.size > 10 * 1024 * 1024) {
       throw new Error('Image must be less than 10MB');
     }
-    if (!file.type.startsWith('image/')) {
+    if (!compressed.type.startsWith('image/')) {
       throw new Error('Please select an image file');
     }
 
-    setUploadFileName(file.name);
-    setUploadProgress(0);
-    const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct));
+    const data = await uploadFileWithProgress(compressed, () => {});
     return data.url;
   };
 
@@ -708,12 +707,15 @@ export default function StockManagement() {
     const toUpload = files.slice(0, remaining);
 
     setUploading(true);
+    setUploadCount({ done: 0, total: toUpload.length });
     try {
-      const uploadedUrls: string[] = [];
-      for (const file of toUpload) {
+      let doneCount = 0;
+      const uploadedUrls = await Promise.all(toUpload.map(async (file) => {
         const url = await uploadSingleImage(file);
-        uploadedUrls.push(url);
-      }
+        doneCount++;
+        setUploadCount({ done: doneCount, total: toUpload.length });
+        return url;
+      }));
 
       const nextImages = [...existing, ...uploadedUrls].slice(0, 10);
       setFormData(prev => ({ ...prev, images: nextImages }));
@@ -784,12 +786,15 @@ export default function StockManagement() {
 
     const toUpload = files.slice(0, remaining);
     setUploading(true);
+    setUploadCount({ done: 0, total: toUpload.length });
     try {
-      const uploadedUrls: string[] = [];
-      for (const file of toUpload) {
+      let doneCount = 0;
+      const uploadedUrls = await Promise.all(toUpload.map(async (file) => {
         const url = await uploadSingleImage(file);
-        uploadedUrls.push(url);
-      }
+        doneCount++;
+        setUploadCount({ done: doneCount, total: toUpload.length });
+        return url;
+      }));
       const nextImages = [...existing, ...uploadedUrls].slice(0, 10);
       setFormData(prev => ({ ...prev, landing_images: nextImages }));
 
@@ -810,6 +815,7 @@ export default function StockManagement() {
       toast({ variant: 'destructive', title: t('stock.toast.uploadErrorTitle'), description: error instanceof Error ? error.message : t('stock.toast.uploadErrorDesc') });
     } finally {
       setUploading(false);
+      setUploadCount(null);
       e.target.value = '';
     }
   };
@@ -2379,11 +2385,10 @@ export default function StockManagement() {
                 {uploading && (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-xs text-black dark:text-white">
-                      <span className="truncate max-w-[200px]">{uploadFileName}</span>
-                      <span dir="ltr">{uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
+                      <span dir="ltr">{uploadCount ? `${uploadCount.done}/${uploadCount.total}` : uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                      <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                      <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: uploadCount ? `${(uploadCount.done / uploadCount.total) * 100}%` : `${uploadProgress}%` }} />
                     </div>
                   </div>
                 )}
@@ -2430,10 +2435,11 @@ export default function StockManagement() {
                           toast({ title: 'تم رفع الفيديو ✓' });
                         } catch {
                           toast({ variant: 'destructive', title: 'فشل رفع الفيديو', description: 'حاول مرة أخرى' });
-                        } finally {
-                          setUploadingVideo(false);
-                          e.target.value = '';
-                        }
+    } finally {
+      setUploading(false);
+      setUploadCount(null);
+      e.target.value = '';
+    }
                       }}
                     />
                   </label>
