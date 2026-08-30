@@ -788,19 +788,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                         )}
                         
                         {/* Landing Page Style Images (stacked full-width) */}
-                        {(settings?.banner_url || landingImages.length > 0 || canManage) ? (
+                        {(landingImages.length > 0 || settings?.banner_url || canManage) ? (
                         <>
-                          {settings?.banner_url ? (
-                            <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative">
-                              <img 
-                                src={settings.banner_url} 
-                                className="w-full h-full object-cover" 
-                                loading="lazy"
-                                decoding="async"
-                                style={{ contentVisibility: 'auto' }}
-                              />
-                            </div>
-                          ) : landingImages.length > 0 ? (
+                          {landingImages.length > 0 ? (
                             landingImages.map((url: string, idx: number) => (
                               <div key={idx} className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative">
                                 <img 
@@ -812,6 +802,16 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 />
                               </div>
                             ))
+                          ) : settings?.banner_url ? (
+                            <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative">
+                              <img 
+                                src={settings.banner_url} 
+                                className="w-full h-full object-cover" 
+                                loading="lazy"
+                                decoding="async"
+                                style={{ contentVisibility: 'auto' }}
+                              />
+                            </div>
                           ) : canManage ? (
                             <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative">
                               <div className="p-10 flex flex-col items-center justify-center pointer-events-none">
