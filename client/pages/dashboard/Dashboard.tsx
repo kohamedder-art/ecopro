@@ -6,7 +6,6 @@ import {
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from '@/components/ui/use-toast';
 import { getCurrentUser } from '@/lib/auth';
-import { OnboardingWizard } from '@/components/admin/OnboardingWizard';
 
 interface DashboardStats {
   products: number;
@@ -258,8 +257,6 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
-
-      <OnboardingWizard />
 
       {/* ── Main Content ── */}
       <div className="flex-1 overflow-y-auto px-3 md:px-5 py-4 space-y-3 max-w-[1400px] mx-auto w-full">

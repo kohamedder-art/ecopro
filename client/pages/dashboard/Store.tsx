@@ -1814,7 +1814,7 @@ export default function Store() {
         }
       }}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
+          <DialogHeader className="text-right">
             <DialogTitle>{t('stock.addFromStockTitle')}</DialogTitle>
             <DialogDescription className="text-sm">
               {t('stock.addFromStockDesc')}
@@ -1905,7 +1905,7 @@ export default function Store() {
                 </div>
 
                 {selectedInventoryProduct && (
-                  <div className="space-y-3 border-t pt-3 bg-muted/30 rounded-lg p-3 -mx-1">
+                  <div className="space-y-3 border-t pt-3 bg-muted/30 rounded-lg p-3">
                     <div className="flex items-center gap-2">
                       <div className="w-10 h-10 rounded-md overflow-hidden bg-muted flex-shrink-0">
                         {(selectedInventoryProduct as any).images?.[0] ? (
