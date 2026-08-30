@@ -676,7 +676,7 @@ export default function DeliveryCompanies() {
           updated_at: new Date().toISOString(),
         },
       }));
-      setSaveSuccess('تم الحفظ بنجاح');
+      setSaveSuccess(t('delivery.savedSuccess'));
 
       // ── Step 3: Try to register webhook ──
       const integrationId = data.integration_id;
@@ -690,7 +690,7 @@ export default function DeliveryCompanies() {
           const whBody = await whRes.json().catch(() => ({}));
           setWebhookState({ loading: false, result: whBody });
         } catch {
-          setWebhookState({ loading: false, result: { success: false, supported: false, registered: false, webhookUrl: '', message: 'فشل الاتصال بالخادم' } });
+          setWebhookState({ loading: false, result: { success: false, supported: false, registered: false, webhookUrl: '', message: t('delivery.serverError') } });
         }
       }
     } catch (e: any) {
@@ -930,7 +930,7 @@ export default function DeliveryCompanies() {
                     {testResult?.success ? <CheckCircle2 className="w-4 h-4" /> : '1'}
                   </div>
                   <span className={`text-xs font-bold ${testResult?.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
-                    إدخال البيانات
+                    {t('delivery.step.dataEntry')}
                   </span>
                 </div>
                 <div className={`flex-1 h-0.5 mx-3 rounded-full transition-all duration-500 ${testResult?.success ? 'bg-emerald-400' : 'bg-gray-200 dark:bg-gray-800'}`} />
@@ -943,7 +943,7 @@ export default function DeliveryCompanies() {
                     {testResult?.success ? <CheckCircle2 className="w-4 h-4" /> : '2'}
                   </div>
                   <span className={`text-xs font-bold ${testResult?.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-600'}`}>
-                    {testResult?.success ? 'تم التحقق' : 'التفعيل'}
+                    {testResult?.success ? t('delivery.verified') : t('delivery.activation')}
                   </span>
                 </div>
               </div>
@@ -958,23 +958,7 @@ export default function DeliveryCompanies() {
               const currentValue = credentials[field.field] || '';
               const placeholder = isSavedHidden && !currentValue ? t('delivery.savedHidden') : field.placeholder;
 
-              const arabicLabels: Record<string, string> = {
-                apiToken: 'رمز API',
-                apiId: 'معرف API',
-                apiKey: 'مفتاح API',
-                secretKey: 'المفتاح السري',
-                tenantId: 'معرف المستأجر',
-                storeId: 'معرف المتجر',
-                accountId: 'معرف الحساب',
-                productId: 'معرف المنتج',
-                connectionLabel: 'تسمية الاتصال',
-                apiUrl: 'رابط API',
-                apiSecret: 'المفتاح السري',
-                merchantId: 'معرف التاجر',
-                webhookSecret: 'مفتاح Webhook السري',
-                guid: 'المعرف الفريد (GUID)',
-              };
-              const label = arabicLabels[field.field] || field.label;
+              const label = t(`delivery.field.${field.field}`) || field.label;
 
               return (
                 <div key={field.field} className="space-y-2">
@@ -983,7 +967,7 @@ export default function DeliveryCompanies() {
                       {label}
                     </Label>
                     {isSavedHidden && !currentValue && (
-                      <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">محفوظ</span>
+                      <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">{t('delivery.saved')}</span>
                     )}
                   </div>
                   <Input
@@ -1049,9 +1033,9 @@ export default function DeliveryCompanies() {
                           : 'text-amber-900 dark:text-amber-100'
                     }`}>
                       {webhookState.result?.registered
-                        ? 'تم تسجيل Webhook تلقائياً'
+                        ? t('delivery.webhookRegistered')
                         : webhookState.loading
-                          ? 'جاري تسجيل Webhook...'
+                          ? t('delivery.webhookRegistering')
                           : t('delivery.webhookUrl')}
                     </p>
                     <p className={`text-[11px] mt-0.5 ${
@@ -1088,8 +1072,8 @@ export default function DeliveryCompanies() {
                   <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-blue-900 dark:text-blue-100">تتبع تلقائي</p>
-                  <p className="text-[11px] text-blue-600/70 dark:text-blue-400/50 mt-0.5">التتبع يتم عبر Polling كل 3 دقائق.</p>
+                  <p className="text-sm font-black text-blue-900 dark:text-blue-100">{t('delivery.autoTracking')}</p>
+                  <p className="text-[11px] text-blue-600/70 dark:text-blue-400/50 mt-0.5">{t('delivery.pollingNote')}</p>
                 </div>
               </div>
             )}
@@ -1123,7 +1107,7 @@ export default function DeliveryCompanies() {
               >
                 {(saving || testing) && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
                 {!saving && !testing && <CheckCircle2 className="w-4 h-4 ml-2" />}
-                {testing ? 'جاري التحقق...' : saving ? 'جاري الحفظ...' : canConnectSelectedCompany ? t('delivery.connectActivate') : t('delivery.comingSoon')}
+                {testing ? t('delivery.verifying') : saving ? t('delivery.saving') : canConnectSelectedCompany ? t('delivery.connectActivate') : t('delivery.comingSoon')}
               </Button>
               <Button
                 variant="outline"
