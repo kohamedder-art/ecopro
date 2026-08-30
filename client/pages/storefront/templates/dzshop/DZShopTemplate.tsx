@@ -11,6 +11,7 @@ import { useABTestVariant, useABTestIdFromUrl } from '@/hooks/useABTest';
 import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Eye, EyeOff } from 'lucide-react';
 import { getAlgeriaCommunesByWilayaId, communeDisplayName } from '@/lib/algeriaGeo';
+import { buildStoreUrl } from '@/lib/resolvedStore';
 
 function parseColor(color: string): [number, number, number, number] | null {
     if (!color) return null;
@@ -34,7 +35,7 @@ function isLightBg(color: string): boolean {
     return luminance > 0.5;
 }
 
-export default function DZShopTemplate({ settings, products, canManage, storeSlug }: TemplateProps) {
+export default function DZShopTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate, onProductView }: TemplateProps) {
     const rootRef = useRef<HTMLDivElement>(null);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [orderSuccess, setOrderSuccess] = React.useState(false);
@@ -52,6 +53,49 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     // Section visibility toggles
     const showBanner = settings?.dzshop_show_banner !== false;
     const showTrustBadges = settings?.dzshop_show_trust !== false;
+
+    // ── Product navigation (Temu-style) ──
+    const [currentSlug, setCurrentSlug] = useState<string | null>(initialProductSlug || null);
+    const showStoreGrid = !currentSlug && !initialProductSlug && (products?.length || 0) > 1;
+
+    const product = useMemo(() => {
+      if (currentSlug) {
+        const found = products?.find((p: any) => p.slug === currentSlug || String(p.id) === currentSlug);
+        if (found) return found;
+      }
+      if (settings?.dzp_main_product_id) {
+        const found = products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id));
+        if (found) return found;
+      }
+      return products?.[0] || null;
+    }, [currentSlug, products, settings?.dzp_main_product_id]);
+
+    const otherProducts = useMemo(() => {
+      if (!product) return products || [];
+      return (products || []).filter((p: any) => p.id !== product.id);
+    }, [product, products]);
+
+    const goToProduct = useCallback((p: any) => {
+      if (p?.slug && navigate) {
+        navigate(buildStoreUrl(storeSlug, p.slug));
+      } else if (p?.id) {
+        setCurrentSlug(String(p.id));
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [storeSlug, navigate]);
+
+    const goToStore = useCallback(() => {
+      setCurrentSlug(null);
+      if (navigate) navigate(buildStoreUrl(storeSlug, '/'));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [storeSlug, navigate]);
+
+    useEffect(() => {
+      const next = initialProductSlug || null;
+      if (next !== currentSlug) setCurrentSlug(next);
+    }, [initialProductSlug]);
+
+    useEffect(() => { if (product && onProductView) onProductView(product); }, [product?.id, onProductView]);
 
     // Header: visible only at the very top of the page, hidden when scrolled
     const [headerVisible, setHeaderVisible] = useState(true);
@@ -72,9 +116,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
     useEffect(() => { setCustomerCommune(''); }, [selectedWilayaId]);
     const [quantity, setQuantity] = useState(1);
-
-    // Get product first (needed for variant/offer hooks)
-    const product = (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
 
     // Variant and Offer support
     const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
@@ -359,64 +400,186 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             <PixelScripts storeSlug={storeSlug} />
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
-            {/* Top Bar Notice */}
-            {(showBanner || canManage) && (
-            <div className="text-white text-center py-2 text-sm font-bold relative z-20 overflow-visible" style={{ backgroundColor: (accentColor || 'var(--dz-primary)') + 'cc', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} data-edit-path="top-notice">
-                {canManage && (
-                    <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-50">
-                        <button
-                            onClick={() => window.parent.postMessage({ type: 'TEMPLATE_UPDATE_SETTING', key: 'dzshop_show_banner', value: !showBanner }, '*')}
-                            className="flex items-center gap-1 font-bold"
-                        >
-                            {showBanner ? <><Eye className="w-3 h-3"/> إخفاء</> : <><EyeOff className="w-3 h-3"/> إظهار</>}
-                        </button>
-                    </div>
-                )}
-                {showBanner && (
-                <span contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_top_notice" onBlur={handleTextEdit('template_top_notice')}>
-                    {settings?.template_top_notice || "التوصيل متوفر لـ 58 ولاية - الدفع عند الاستلام"}
-                </span>
-                )}
-                {canManage && !showBanner && (
-                    <span className="text-white/70 text-[10px]">📢 Banner hidden</span>
-                )}
-            </div>
-            )}
-
-            {/* Header — hides on scroll down, shows on scroll up */}
-            <header className={`fixed top-0 left-0 right-0 z-50 px-3 py-1 flex justify-between items-center shadow-sm transition-transform duration-300`} style={{ backgroundColor: (accentColor || 'var(--dz-primary)'), backdropFilter: 'none', WebkitBackdropFilter: 'none', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
-                <div className="flex items-center gap-3">
-{settings?.store_logo ? (
-  <img 
-    src={settings.store_logo} 
-    alt={settings?.store_name || "متجري"} 
-    className="rounded-full object-cover border shadow-sm"
-    style={{ width: 45, height: 45, borderColor: 'rgba(255,255,255,0.3)', contentVisibility: 'auto' }}
-    loading="lazy"
-    decoding="async"
-    width="45"
-    height="45"
-  />
-) : (
-                        <div className="rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ width: 45, height: 45, backgroundColor: 'rgba(255,255,255,0.2)' }}>
+            {/* Header — only on grid home page */}
+            {showStoreGrid && (
+            <header className={`fixed top-0 left-0 right-0 z-50 px-3 h-[48px] flex justify-between items-center shadow-sm transition-transform duration-300 overflow-hidden`} style={{ backgroundColor: (accentColor || 'var(--dz-primary)'), backdropFilter: 'none', WebkitBackdropFilter: 'none', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
+                <div className="flex items-center gap-2 shrink-0">
+                    {settings?.store_logo ? (
+                      <img 
+                        src={settings.store_logo} 
+                        alt={settings?.store_name || "متجري"} 
+                        className="rounded-full object-cover border shadow-sm"
+                        style={{ width: 38, height: 38, borderColor: 'rgba(255,255,255,0.3)' }}
+                        loading="lazy"
+                        decoding="async"
+                        width="38"
+                        height="38"
+                      />
+                    ) : (
+                        <div className="rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ width: 38, height: 38, backgroundColor: 'rgba(255,255,255,0.2)' }}>
                             {(settings?.store_name || 'م').charAt(0)}
                         </div>
                     )}
-                    <span className="text-xl font-bold text-white">{settings?.store_name || "متجري"}</span>
+                    <span className="text-lg font-bold text-white">{settings?.store_name || "متجري"}</span>
                 </div>
-                <div className="flex gap-3">
-                    <i className="ph ph-shopping-cart text-xl text-white"></i>
-                    <i className="ph ph-list text-xl text-white md:hidden"></i>
+                <div className="flex items-center gap-2 shrink-0">
+                    <i className="ph ph-shopping-cart text-lg text-white"></i>
                 </div>
             </header>
+            )}
 
-            <main className="w-full px-3 py-6 md:py-10 grid grid-cols-1 md:grid-cols-[5fr_3fr] gap-8 relative z-10 pt-14 md:min-h-[80vh]">
+            {/* ═══════════════════════════════════════════════════════════
+                TEMU-STYLE PRODUCT GRID (Home Page)
+               ═══════════════════════════════════════════════════════════ */}
+            {showStoreGrid ? (
+                <div className="relative z-10 pt-[56px]">
+                {/* Category Pills */}
+                <div className="px-3 py-2 flex gap-2 overflow-x-auto hide-scrollbar" style={{ backgroundColor: '#fff' }}>
+                  <button className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold text-white transition-all" style={{ backgroundColor: accentColor }}>
+                    الكل
+                  </button>
+                  {(settings?.categories || []).slice(0, 8).map((cat: string) => (
+                    <button key={cat} className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-gray-100 text-gray-700">
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Product Grid */}
+                <div className="px-1 py-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[6px]">
+                    {(products || []).map((p: any) => {
+                      const thumb = p.images?.[0] || '';
+                      const price = p.price || 0;
+                      const discount = p.original_price && p.original_price > price
+                        ? Math.round(((p.original_price - price) / p.original_price) * 100)
+                        : 0;
+                      const isLowStock = p.stock_quantity > 0 && p.stock_quantity <= 5;
+
+                      return (
+                        <div
+                          key={p.id}
+                          className="cursor-pointer bg-white rounded-sm overflow-hidden"
+                          onClick={() => goToProduct(p)}
+                        >
+                          {/* Image — 1:1 square like Temu */}
+                          <div className="relative overflow-hidden bg-white" style={{ aspectRatio: '1 / 1' }}>
+                            {thumb ? (
+                              <img
+                                src={thumb}
+                                alt={p.title || ''}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                                width="300"
+                                height="300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-3xl bg-gray-50">📦</div>
+                            )}
+                            {/* Discount badge — top right like Temu */}
+                            {discount > 0 && (
+                              <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded">
+                                -{discount}%
+                              </span>
+                            )}
+                            {isLowStock && (
+                              <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                ⚡ {p.stock_quantity}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Info — Temu style */}
+                          <div className="p-2">
+                            {/* Title */}
+                            <h3 className="text-xs font-normal leading-snug mb-1.5 line-clamp-2 text-left" style={{ color: '#222' }}>
+                              {p.title || 'منتج'}
+                            </h3>
+                            {/* Price row */}
+                            <div className="flex items-baseline justify-between mb-0.5">
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="font-extrabold text-base" style={{ color: '#222' }}>
+                                  {Math.round(price).toLocaleString()}
+                                </span>
+                                <span className="text-[10px] font-medium" style={{ color: '#222' }}>
+                                  {settings?.currency_code || 'دج'}
+                                </span>
+                              </div>
+                              {/* Cart button — always visible, small circle */}
+                              <button
+                                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                                style={{ backgroundColor: '#f5f5f5', border: '1px solid #e5e5e5' }}
+                                onClick={(e) => { e.stopPropagation(); goToProduct(p); }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                                </svg>
+                              </button>
+                            </div>
+                            {/* Original price + sold count */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1">
+                                {p.original_price && p.original_price > price && (
+                                  <span className="text-[10px] line-through" style={{ color: '#999' }}>
+                                    {Math.round(p.original_price).toLocaleString()}
+                                  </span>
+                                )}
+                                {p.views > 0 && (
+                                  <span className="text-[10px]" style={{ color: '#999' }}>
+                                    {p.views > 1000 ? `${Math.floor(p.views/1000)}K+` : `${p.views}+`} sold
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+            <>
+            {/* Product Header — part of content, scrolls with page */}
+            <div className="w-full flex items-center justify-between px-3 h-[48px] shadow-sm overflow-hidden" style={{ backgroundColor: (accentColor || 'var(--dz-primary)') }}>
+                <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={goToStore} className="text-white p-1 rounded-lg hover:bg-white/20 transition-colors">
+                        <ChevronRight className="w-5 h-5" />
+                    </button>
+                    {settings?.store_logo ? (
+                      <img 
+                        src={settings.store_logo} 
+                        alt={settings?.store_name || "متجري"} 
+                        className="rounded-full object-cover border shadow-sm"
+                        style={{ width: 34, height: 34, borderColor: 'rgba(255,255,255,0.3)' }}
+                        loading="lazy"
+                        decoding="async"
+                        width="34"
+                        height="34"
+                      />
+                    ) : (
+                        <div className="rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm" style={{ width: 34, height: 34, backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                            {(settings?.store_name || 'م').charAt(0)}
+                        </div>
+                    )}
+                </div>
+                <span className="text-[11px] md:text-xs font-bold text-white text-center truncate px-2">
+                    {settings?.template_top_notice || "التوصيل متوفر لـ 58 ولاية - الدفع عند الاستلام"}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                    <i className="ph ph-shopping-cart text-lg text-white"></i>
+                </div>
+            </div>
+
+            <main className="w-full px-1.5 py-0 md:py-10 grid grid-cols-1 md:grid-cols-[5fr_3fr] gap-8 relative z-10 pt-4 md:min-h-[80vh]">
                 
                 {/* Left Column: Product Visuals */}
                 <div className="md:h-full">
                 <div className="flex flex-col md:flex-row gap-4 md:h-full">
                     {/* Main Product Image (LeRoiShop-style translateX gallery) */}
-                    <div className="h-[65vh] md:flex-1 md:h-[90vh] rounded-2xl overflow-hidden relative group" style={{ boxShadow: `0 4px 30px rgba(0,0,0,0.06), 0 0 0 1px ${cardBorder} inset`, backgroundColor: light ? 'rgba(255,255,255,0.6)' : 'rgba(20,20,20,0.6)', backdropFilter: 'blur(4px)' }}>
+                    <div className="h-[65vh] md:flex-1 md:h-[90vh] rounded-2xl overflow-hidden relative group" style={{ boxShadow: `0 4px 30px rgba(0,0,0,0.06)`, backgroundColor: 'transparent', backdropFilter: 'blur(4px)' }}>
                         {allMedia.length > 0 ? (
                             <div className="h-full relative select-none" style={{ touchAction: 'pan-y' }}
                               onTouchStart={e => { (e.currentTarget as any)._ts = e.touches[0].clientX; (e.currentTarget as any)._tsy = e.touches[0].clientY; }}
@@ -867,7 +1030,90 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 )}
             </main>
 
-            {/* Sticky Mobile Order Bar */}
+            {/* ═══ Similar Products (Temu-style, full width) ═══ */}
+            {!showStoreGrid && otherProducts.length > 0 && (
+            <div className="w-full px-2 py-6" style={{ borderTop: `1px solid ${cardBorder}` }}>
+              <h3 className="text-lg font-bold mb-4 text-center" style={{ color: tx }}>منتجات مشابهة</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[6px]">
+                {otherProducts.slice(0, 10).map((p: any) => {
+                  const thumb = p.images?.[0] || '';
+                  const price = p.price || 0;
+                  const discount = p.original_price && p.original_price > price
+                    ? Math.round(((p.original_price - price) / p.original_price) * 100)
+                    : 0;
+                  const isLowStock = p.stock_quantity > 0 && p.stock_quantity <= 5;
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="cursor-pointer bg-white rounded-sm overflow-hidden"
+                      onClick={() => goToProduct(p)}
+                    >
+                      <div className="relative overflow-hidden bg-white" style={{ aspectRatio: '1 / 1' }}>
+                        {thumb ? (
+                          <img src={thumb} alt={p.title || ''} className="w-full h-full object-cover" loading="lazy" decoding="async" width="300" height="300" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-3xl bg-gray-50">📦</div>
+                        )}
+                        {discount > 0 && (
+                          <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded">
+                            -{discount}%
+                          </span>
+                        )}
+                        {isLowStock && (
+                          <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            ⚡ {p.stock_quantity}
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-2">
+                        <h3 className="text-xs font-normal leading-snug mb-1.5 line-clamp-2 text-left" style={{ color: '#222' }}>
+                          {p.title || 'منتج'}
+                        </h3>
+                        <div className="flex items-baseline justify-between mb-0.5">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-extrabold text-base" style={{ color: '#222' }}>
+                              {Math.round(price).toLocaleString()}
+                            </span>
+                            <span className="text-[10px] font-medium" style={{ color: '#222' }}>
+                              {settings?.currency_code || 'دج'}
+                            </span>
+                          </div>
+                          <button
+                            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: '#f5f5f5', border: '1px solid #e5e5e5' }}
+                            onClick={(e) => { e.stopPropagation(); goToProduct(p); }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {p.original_price && p.original_price > price && (
+                            <span className="text-[10px] line-through" style={{ color: '#999' }}>
+                              {Math.round(p.original_price).toLocaleString()}
+                            </span>
+                          )}
+                          {p.views > 0 && (
+                            <span className="text-[10px]" style={{ color: '#999' }}>
+                              {p.views > 1000 ? `${Math.floor(p.views/1000)}K+` : `${p.views}+`} sold
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            )}
+            </>
+            )}
+
+            {/* Sticky Mobile Order Bar — only on product detail */}
+            {!showStoreGrid && product && (
             <div className="fixed bottom-0 left-0 right-0 dz-sticky-order-bar p-3 md:hidden z-[100] flex gap-3 shadow-lg" style={{ backgroundColor: mobileBarBg, borderTop: `1px solid ${mobileBarBorder}` }}>
                 <div className="flex-1 flex flex-col justify-center px-2">
                     <span className="font-black text-xl" style={{ color: 'var(--dz-primary)' }}>{Math.round(Number(product?.price || 4500)).toLocaleString()} دج</span>
@@ -877,6 +1123,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     أطلب الآن
                 </button>
             </div>
+            )}
 
             {/* Image Preview Lightbox */}
             {lightboxOpen && (
