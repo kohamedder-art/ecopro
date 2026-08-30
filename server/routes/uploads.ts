@@ -465,8 +465,9 @@ export const deleteClientImage: RequestHandler = async (req, res) => {
     await pool.query(
       `UPDATE client_store_products 
        SET images = array_remove(images, $2),
+           landing_images = array_remove(landing_images, $2),
            updated_at = NOW()
-       WHERE client_id = $1 AND $2 = ANY(images)`,
+       WHERE client_id = $1 AND ($2 = ANY(images) OR $2 = ANY(landing_images))`,
       [clientId, imageUrl]
     );
     
@@ -474,8 +475,9 @@ export const deleteClientImage: RequestHandler = async (req, res) => {
     await pool.query(
       `UPDATE client_stock_products 
        SET images = array_remove(images, $2),
+           landing_images = array_remove(landing_images, $2),
            updated_at = NOW()
-       WHERE client_id = $1 AND $2 = ANY(images)`,
+       WHERE client_id = $1 AND ($2 = ANY(images) OR $2 = ANY(landing_images))`,
       [clientId, imageUrl]
     );
     

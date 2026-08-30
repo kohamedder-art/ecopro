@@ -66,6 +66,7 @@ interface StoreProduct {
   unit_price?: number; // From inventory API
   original_price?: number;
   images?: string[];
+  landing_images?: string[];
   category?: string;
   stock_quantity: number;
   status: 'active' | 'draft' | 'archived';
@@ -1253,12 +1254,64 @@ export default function Store() {
     }
   };
 
+  const handleLandingImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const MAX_IMAGES = 10;
+    const existing = Array.isArray(formData.landing_images) ? formData.landing_images : [];
+    const remaining = Math.max(0, MAX_IMAGES - existing.length);
+    if (remaining <= 0) {
+      toast({ variant: 'destructive', title: 'Max landing images reached', description: `You can upload up to ${MAX_IMAGES} landing images.` });
+      e.target.value = '';
+      return;
+    }
+    const toUpload = files.slice(0, remaining);
+    for (const file of toUpload) {
+      if (file.size > 10 * 1024 * 1024) { toast({ variant: 'destructive', title: 'Upload failed', description: 'Each image must be less than 10MB.' }); e.target.value = ''; return; }
+      if (!file.type.startsWith('image/')) { toast({ variant: 'destructive', title: 'Upload failed', description: 'Please select image files only.' }); e.target.value = ''; return; }
+    }
+    const uploadOne = async (file: File): Promise<string> => {
+      setUploadFileName(file.name);
+      setUploadProgress(0);
+      const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct));
+      return String((data as any)?.url || '').trim();
+    };
+    setUploading(true);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of toUpload) {
+        const url = await uploadOne(file);
+        if (url) uploadedUrls.push(url);
+      }
+      setFormData((prev) => {
+        const base = Array.isArray(prev.landing_images) ? prev.landing_images : [];
+        return { ...prev, landing_images: [...base, ...uploadedUrls].slice(0, MAX_IMAGES) };
+      });
+      toast({ title: 'Uploaded', description: `${uploadedUrls.length} landing images uploaded.` });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Upload failed', description: error instanceof Error ? error.message : 'Failed to upload image' });
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeLandingImageAt = (idx: number) => {
+    setFormData((prev) => {
+      const base = Array.isArray(prev.landing_images) ? prev.landing_images : [];
+      return { ...prev, landing_images: base.filter((_, i) => i !== idx) };
+    });
+  };
+
   const openEditModal = (product: StoreProduct) => {
     const metadata = product?.metadata && typeof product.metadata === 'object' ? product.metadata : {};
     const shippingMeta = metadata?.shipping && typeof metadata.shipping === 'object' ? metadata.shipping : {};
     setSelectedProduct(product);
+    const allImages = Array.isArray(product.images) ? product.images : [];
+    const existingLanding = Array.isArray((product as any).landing_images) ? (product as any).landing_images : [];
     setFormData({
       ...product,
+      landing_images: existingLanding,
       shipping_mode: (shippingMeta.mode as ProductShippingMode) || 'delivery_pricing',
       shipping_flat_fee: shippingMeta.flat_fee == null ? null : Number(shippingMeta.flat_fee),
       notes: typeof metadata.notes === 'string' ? metadata.notes : '',
@@ -3296,7 +3349,7 @@ export default function Store() {
             )}
 
             {productFormSection === 'images' && (
-              <div className="space-y-2 bg-sky-500/5 dark:bg-sky-900/10 p-2 md:p-3 rounded border border-sky-500/20">
+              <div className="space-y-4 bg-sky-500/5 dark:bg-sky-900/10 p-2 md:p-3 rounded border border-sky-500/20">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-sky-700 dark:text-sky-300">{t('store.productForm.imagesTitle')}</h3>
                   {(formData.images?.length || 0) > 0 && (
@@ -3314,132 +3367,70 @@ export default function Store() {
                   )}
                 </div>
 
-                <div
-                  className="space-y-3"
-                  tabIndex={0}
-                  onPaste={async (e) => {
-                    const items = Array.from(e.clipboardData?.items || []);
-                    const imageItem = items.find(item => item.type.startsWith('image/'));
-                    if (!imageItem) return;
-                    e.preventDefault();
-                    const file = imageItem.getAsFile();
-                    if (!file) return;
-                    const MAX_IMAGES = 10;
-                    const existing = Array.isArray(formData.images) ? formData.images : [];
-                    if (existing.length >= MAX_IMAGES) {
-                      toast({ variant: 'destructive', title: 'Max images reached', description: `You can upload up to ${MAX_IMAGES} images.` });
-                      return;
-                    }
-                    setUploading(true);
-                    setUploadFileName('Pasted image');
-                    setUploadProgress(0);
-                    try {
-                      const data = await uploadFileWithProgress(file, (pct) => setUploadProgress(pct));
-                      const url = String((data as any)?.url || '').trim();
-                      if (!url) throw new Error('Upload failed');
-                      setFormData(prev => ({ ...prev, images: [...(Array.isArray(prev.images) ? prev.images : []), url].slice(0, MAX_IMAGES) }));
-                      toast({ title: 'Image pasted & uploaded ✓' });
-                    } catch {
-                      toast({ variant: 'destructive', title: 'Upload failed', description: 'Try again' });
-                    } finally {
-                      setUploading(false);
-                    }
-                  }}
-                >
-                  {(formData.images?.length || 0) > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {(formData.images || []).slice(0, 10).map((url, idx) => (
-                        <div key={`${url}-${idx}`} className="relative w-full h-28 border rounded-lg overflow-hidden">
-                          <img
-                            src={url}
-                            alt="Product"
-                            className="w-full h-full object-cover"
-                          />
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="absolute top-1 right-1 h-7 px-2"
-                            onClick={() =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                images: (prev.images || []).filter((_, i) => i !== idx),
-                              }))
-                            }
-                          >
-                            {t('store.productForm.removeImage')}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Normal images */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">صور عادية <span className="font-normal text-xs text-muted-foreground">(معرض صور)</span></h4>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(Array.isArray(formData.images) ? formData.images : []).slice(0, 10).map((url, idx) => (
+                        <div key={`${url}-${idx}`} className="relative w-full aspect-square border rounded-lg overflow-hidden">
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                          <Button size="sm" variant="destructive" className="absolute top-0.5 right-0.5 h-6 px-1"
+                            onClick={() => setFormData((prev) => ({ ...prev, images: (prev.images || []).filter((_, i) => i !== idx) }))}>
+                            <X className="w-3 h-3" />
                           </Button>
                         </div>
                       ))}
                     </div>
-                  )}
-
-                    <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
-                      <Input
-                        id="image-upload"
-                        type="file"
-                        accept="image/*,.avif"
-                        multiple
-                        onChange={handleImageUpload}
-                        disabled={uploading || ((formData.images?.length || 0) >= 10)}
-                        className="cursor-pointer"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={uploading || ((formData.images?.length || 0) >= 10)}
-                        onClick={() => document.getElementById('image-upload')?.click()}
-                      >
+                      <Input id="image-upload" type="file" accept="image/*,.avif" multiple onChange={handleImageUpload}
+                        disabled={uploading || ((formData.images?.length || 0) >= 10)} className="cursor-pointer text-xs" />
+                      <Button type="button" variant="outline" disabled={uploading || ((formData.images?.length || 0) >= 10)}
+                        onClick={() => document.getElementById('image-upload')?.click()}>
                         {uploading ? t('store.productForm.uploading') : t('store.productForm.upload')}
                       </Button>
                     </div>
-
-                    {uploading && (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="truncate max-w-[200px]">{uploadFileName}</span>
-                          <span dir="ltr">{uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
-                        </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all duration-200"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <p className="text-xs text-muted-foreground">
-                      {t('store.productForm.imageUrlHint')}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Upload up to 10 images. Each image must be &lt; 10MB. You can also paste an image from clipboard (Ctrl+V).
-                    </p>
                     <div className="flex gap-2">
-                      <Input
-                        id="imageUrlInput"
-                        value={imageUrlInput}
-                        onChange={(e) => setImageUrlInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addImageUrl();
-                          }
-                        }}
-                        placeholder="https://example.com/image.jpg"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addImageUrl}
-                        disabled={!imageUrlInput.trim()}
-                        className="shrink-0"
-                      >
-                        Add
-                      </Button>
+                      <Input id="imageUrlInput" value={imageUrlInput} onChange={(e) => setImageUrlInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addImageUrl(); } }}
+                        placeholder="https://example.com/image.jpg" className="text-xs" />
+                      <Button type="button" variant="outline" onClick={addImageUrl} disabled={!imageUrlInput.trim()} className="shrink-0 text-xs">Add</Button>
                     </div>
                   </div>
+
+                  {/* Landing images */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">صور الصفحة الم镉ية <span className="font-normal text-xs text-muted-foreground">(أعلى الطلب)</span></h4>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(Array.isArray(formData.landing_images) ? formData.landing_images : []).slice(0, 10).map((url, idx) => (
+                        <div key={`${url}-${idx}`} className="relative w-full aspect-[3/4] border rounded-lg overflow-hidden">
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                          <Button size="sm" variant="destructive" className="absolute top-0.5 right-0.5 h-6 px-1"
+                            onClick={() => removeLandingImageAt(idx)}>
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <Input type="file" accept="image/*,.avif" multiple onChange={handleLandingImageUpload}
+                      disabled={uploading || ((formData.landing_images?.length || 0) >= 10)} className="cursor-pointer text-xs" />
+                  </div>
                 </div>
+
+                {uploading && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="truncate max-w-[200px]">{uploadFileName}</span>
+                      <span dir="ltr">{uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                      <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  صور عادية: معرض الصور القابل للتمرير. صور الصفحة الم镉ية: صور طويلة تتكدس فوق نموذج الطلب.
+                </p>
               </div>
             )}
 

@@ -66,6 +66,7 @@ const createStockBodySchema = z
     shipping_flat_fee: zNumberFromAny({ min: 0 }).optional(),
     notes: z.string().trim().max(10000).optional(),
     images: z.array(z.string().trim().max(2048)).max(10).optional(),
+    landing_images: z.array(z.string().trim().max(2048)).max(10).optional(),
   })
   .strict();
 
@@ -87,6 +88,7 @@ const updateStockBodySchema = z
     shipping_flat_fee: zNumberFromAny({ min: 0 }).optional(),
     notes: z.string().trim().max(10000).optional(),
     images: z.array(z.string().trim().max(2048)).max(10).optional(),
+    landing_images: z.array(z.string().trim().max(2048)).max(10).optional(),
   })
   .strict();
 
@@ -284,6 +286,7 @@ export const createStock: RequestHandler = async (req, res) => {
       shipping_flat_fee,
       notes,
       images,
+      landing_images,
     } = parsedBody.data;
 
     const parsedQuantity = quantity == null ? 0 : quantity;
@@ -301,8 +304,8 @@ export const createStock: RequestHandler = async (req, res) => {
         quantity, unit_price, reorder_level, location,
         supplier_name, supplier_contact, status,
         shipping_mode, shipping_flat_fee,
-        notes, images
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        notes, images, landing_images
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *`,
       [
         clientId,
@@ -323,6 +326,7 @@ export const createStock: RequestHandler = async (req, res) => {
         shipping_flat_fee == null ? null : shipping_flat_fee,
         notes || null,
         Array.isArray(images) ? images : [],
+        Array.isArray(landing_images) ? landing_images : [],
       ]
     );
 
@@ -411,6 +415,7 @@ export const updateStock: RequestHandler = async (req, res) => {
       shipping_flat_fee,
       notes,
       images,
+      landing_images,
     } = parsedBody.data;
 
     const result = await pool.query(
@@ -431,6 +436,7 @@ export const updateStock: RequestHandler = async (req, res) => {
         shipping_flat_fee = COALESCE($14, shipping_flat_fee),
         notes = COALESCE($15, notes),
         images = CASE WHEN $18::text[] IS NOT NULL THEN $18::text[] ELSE images END,
+        landing_images = CASE WHEN $19::text[] IS NOT NULL THEN $19::text[] ELSE landing_images END,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $16 AND client_id = $17
       RETURNING *`,
@@ -453,6 +459,7 @@ export const updateStock: RequestHandler = async (req, res) => {
         id,
         clientId,
         Array.isArray(images) ? images : null,
+        Array.isArray(landing_images) ? landing_images : null,
       ]
     );
 

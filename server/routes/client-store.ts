@@ -190,6 +190,7 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
       price,
       original_price,
       images,
+      landing_images,
       category,
       stock_quantity,
       status,
@@ -215,6 +216,7 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
 
     // Ensure images is a proper array
     const imagesArray = Array.isArray(images) ? images : (images ? [images] : []);
+    const landingImagesArray = Array.isArray(landing_images) ? landing_images : (landing_images ? [landing_images] : []);
     console.log('[createStoreProduct] Images to save:', imagesArray);
 
     const importStockId = source_stock_id == null ? null : Number(source_stock_id);
@@ -227,9 +229,9 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
 
     const result = await client.query(
       `INSERT INTO client_store_products 
-       (client_id, title, description, price, original_price, images, 
+       (client_id, title, description, price, original_price, images, landing_images,
         category, stock_quantity, status, is_featured, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         clientId,
@@ -238,6 +240,7 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
         price,
         original_price || null,
         imagesArray,
+        landingImagesArray,
         category || null,
         importFromStockVariants ? 0 : (stock_quantity || 0),
         status || "active",
@@ -662,7 +665,7 @@ export const updateStoreProduct: RequestHandler = async (req, res) => {
 
     // Whitelist of allowed columns to update
     const allowedColumns = [
-      'title', 'description', 'price', 'original_price', 'images',
+      'title', 'description', 'price', 'original_price', 'images', 'landing_images',
       'category', 'stock_quantity', 'status', 'is_featured', 'metadata'
     ];
 

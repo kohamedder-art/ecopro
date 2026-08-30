@@ -845,94 +845,170 @@ export default function IycoTemplate({
             </div>
 
             {/* Desktop: grid */}
-            <div className="hidden md:grid grid-cols-4" style={{ gap: '18px', contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
-              {otherProducts.map(prod => (
-                <button
-                  key={prod.id}
-                  className="group block text-center"
-                  onMouseEnter={() => setHoveredProduct(prod.id)}
-                  onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
-                >
-                  <div className="relative overflow-hidden flex items-center justify-center" style={{ minHeight: '370px', backgroundColor: '#f5f5f5' }}>
-                    {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                      ? <LazyVideo src={(prod as any).metadata.video_url} poster={prod.images?.[0] || '/placeholder.png'}
-                          onMouseEnter={e => (e.target as HTMLVideoElement).play()}
-                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                          className="w-full h-full object-cover" />
-                      : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
-                        ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
-                        : <img
-                            src={hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : (prod.images?.[0] || '/placeholder.png')}
-                            alt={prod.title}
-                            loading="lazy"
-                            decoding="async"
-                            width="400"
-                            height="400"
-                            className="max-w-full max-h-full object-contain transition-opacity duration-300"
-                          />
-                    }
-                    {prod.original_price ? (
-                      <div className="absolute top-2 left-2 font-bold uppercase px-2.5 text-white" style={{ backgroundColor: '#17469e', borderRadius: '3px', height: '26px', display: 'flex', alignItems: 'center', fontFamily: "'Lato', sans-serif", fontSize: '16px' }}>
-                        -{Math.round(((prod.original_price - prod.price) / prod.original_price) * 100)}%
+            <div className="hidden md:grid grid-cols-5" style={{ gap: '10px', contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
+              {otherProducts.map(prod => {
+                const thumb = prod.images?.[0] || '/placeholder.png';
+                const price = Number(prod.price ?? 0);
+                const origPrice = prod.original_price ? Number(prod.original_price) : 0;
+                const disc = origPrice > price ? Math.round(((origPrice - price) / origPrice) * 100) : 0;
+                const soldCount = (prod as any).views || 0;
+                return (
+                  <div
+                    key={prod.id}
+                    className="group block text-left relative"
+                    onMouseEnter={() => setHoveredProduct(prod.id)}
+                    onMouseLeave={() => setHoveredProduct(null)}
+                  >
+                    <div
+                      className="relative overflow-hidden bg-white cursor-pointer"
+                      onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
+                    >
+                      <div className="relative" style={{ aspectRatio: '3 / 4' }}>
+                        {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
+                          ? <LazyVideo src={(prod as any).metadata.video_url} poster={thumb}
+                              onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                              onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                              className="w-full h-full object-cover" />
+                          : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+                            ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                            : <img
+                                src={hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : thumb}
+                                alt={prod.title}
+                                loading="lazy"
+                                decoding="async"
+                                width="400"
+                                height="533"
+                                className="w-full h-full object-cover transition-opacity duration-300"
+                              />
+                        }
+                        {/* Badges */}
+                        {(disc > 0 || (prod as any)?.metadata?.promo_label) && (
+                          <div className="absolute top-0 left-0 z-10">
+                            <span className="inline-block bg-[#ff4d4f] text-white text-[11px] font-bold px-1.5 py-0.5 leading-tight">
+                              {disc > 0 ? `-${disc}%` : (prod as any).metadata.promo_label}
+                            </span>
+                          </div>
+                        )}
+                        {/* SAVINGS label */}
+                        {disc > 0 && (
+                          <div className="absolute top-0 left-0 mt-5 z-10">
+                            <span className="inline-block bg-[#ff4d4f] text-white text-[9px] font-bold px-1.5 py-0.5 leading-tight">
+                              SAVINGS
+                            </span>
+                          </div>
+                        )}
+                        {/* Add to cart button */}
+                        <button
+                          className="absolute bottom-2 right-2 z-10 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                          onClick={(e) => { e.stopPropagation(); addToCart(prod); }}
+                          title="أضف إلى السلة"
+                        >
+                          <ShoppingCart size={14} style={{ color: '#333' }} />
+                        </button>
                       </div>
-                    ) : (prod as any)?.metadata?.promo_label ? (
-                      <div className="absolute top-2 left-2 font-bold uppercase px-2.5 text-white" style={{ backgroundColor: '#17469e', borderRadius: '3px', height: '26px', display: 'flex', alignItems: 'center', fontFamily: "'Lato', sans-serif", fontSize: '16px' }}>
-                        {(prod as any).metadata.promo_label}
+                    </div>
+                    {/* Info */}
+                    <div className="px-0.5 pt-1.5 pb-1">
+                      <h3 className="text-xs font-normal truncate leading-tight" style={{ color: '#333', margin: 0 }}>{prod.title}</h3>
+                      <div className="flex items-baseline gap-1 mt-0.5 flex-wrap">
+                        <span className="text-sm font-bold" style={{ color: '#222' }}>{price.toLocaleString()} DA</span>
+                        {origPrice > price && (
+                          <span className="text-[10px] line-through" style={{ color: '#999' }}>{origPrice.toLocaleString()} DA</span>
+                        )}
                       </div>
-                    ) : null}
+                      {disc > 0 && (
+                        <span className="text-[10px] font-semibold" style={{ color: '#ff4d4f' }}>Last day {price.toLocaleString()} DA</span>
+                      )}
+                      {soldCount > 0 && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[10px]" style={{ color: '#999' }}>🔥 {soldCount >= 1000 ? `${(soldCount / 1000).toFixed(1)}K+` : `${soldCount}+`} sold</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="pt-3 pb-1">
-                    <h3 className="truncate" style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 400, fontSize: '17px', lineHeight: '24px', color: '#555555', marginTop: 0, textAlign: 'center', display: 'block' }}>{prod.title}</h3>
-                    <p style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: '14px', lineHeight: '21px', color: '#555555', marginTop: '2px', textAlign: 'center' }}>{Number(prod.price ?? 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} DA</p>
-                  </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
-            {/* Mobile: one product per row */}
-            <div className="md:hidden flex flex-col" style={{ gap: '14px' }}>
-              {otherProducts.map(prod => (
-                <button
-                  key={prod.id}
-                  className="group block text-center"
-                  onMouseEnter={() => setHoveredProduct(prod.id)}
-                  onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
-                >
-                  <div className="relative overflow-hidden flex items-center justify-center" style={{ minHeight: '370px', backgroundColor: '#f5f5f5' }}>
-                    {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                      ? <LazyVideo src={(prod as any).metadata.video_url} poster={prod.images?.[0] || '/placeholder.png'}
-                          onMouseEnter={e => (e.target as HTMLVideoElement).play()}
-                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                          className="w-full h-full object-cover" />
-                      : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
-                        ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
-                        : <img
-                            src={hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : (prod.images?.[0] || '/placeholder.png')}
-                            alt={prod.title}
-                            loading="lazy"
-                            decoding="async"
-                            width="400"
-                            height="400"
-                            className="max-w-full max-h-full object-contain transition-opacity duration-300"
-                          />
-                    }
-                    {prod.original_price ? (
-                      <div className="absolute top-2 left-2 font-bold uppercase px-2.5 text-white" style={{ backgroundColor: '#17469e', borderRadius: '3px', height: '26px', display: 'flex', alignItems: 'center', fontFamily: "'Lato', sans-serif", fontSize: '14px' }}>
-                        -{Math.round(((prod.original_price - prod.price) / prod.original_price) * 100)}%
+            {/* Mobile: 2-column grid */}
+            <div className="md:hidden grid grid-cols-2" style={{ gap: '8px' }}>
+              {otherProducts.map(prod => {
+                const thumb = prod.images?.[0] || '/placeholder.png';
+                const price = Number(prod.price ?? 0);
+                const origPrice = prod.original_price ? Number(prod.original_price) : 0;
+                const disc = origPrice > price ? Math.round(((origPrice - price) / origPrice) * 100) : 0;
+                const soldCount = (prod as any).views || 0;
+                return (
+                  <div
+                    key={prod.id}
+                    className="group block text-left relative"
+                    onMouseEnter={() => setHoveredProduct(prod.id)}
+                    onMouseLeave={() => setHoveredProduct(null)}
+                  >
+                    <div
+                      className="relative overflow-hidden bg-white cursor-pointer"
+                      onClick={() => { setActiveMainProduct(prod); setSelectedMainImage(0); onProductView?.(prod); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, prod?.slug || String(prod.id))); }}
+                    >
+                      <div className="relative" style={{ aspectRatio: '3 / 4' }}>
+                        {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
+                          ? <LazyVideo src={(prod as any).metadata.video_url} poster={thumb}
+                              onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                              onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                              className="w-full h-full object-cover" />
+                          : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+                            ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
+                            : <img
+                                src={hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : thumb}
+                                alt={prod.title}
+                                loading="lazy"
+                                decoding="async"
+                                width="400"
+                                height="533"
+                                className="w-full h-full object-cover transition-opacity duration-300"
+                              />
+                        }
+                        {(disc > 0 || (prod as any)?.metadata?.promo_label) && (
+                          <div className="absolute top-0 left-0 z-10">
+                            <span className="inline-block bg-[#ff4d4f] text-white text-[10px] font-bold px-1.5 py-0.5 leading-tight">
+                              {disc > 0 ? `-${disc}%` : (prod as any).metadata.promo_label}
+                            </span>
+                          </div>
+                        )}
+                        {disc > 0 && (
+                          <div className="absolute top-0 left-0 mt-4 z-10">
+                            <span className="inline-block bg-[#ff4d4f] text-white text-[8px] font-bold px-1.5 py-0.5 leading-tight">
+                              SAVINGS
+                            </span>
+                          </div>
+                        )}
+                        <button
+                          className="absolute bottom-2 right-2 z-10 w-7 h-7 rounded-full bg-white shadow-md flex items-center justify-center"
+                          onClick={(e) => { e.stopPropagation(); addToCart(prod); }}
+                          title="أضف إلى السلة"
+                        >
+                          <ShoppingCart size={12} style={{ color: '#333' }} />
+                        </button>
                       </div>
-                    ) : (prod as any)?.metadata?.promo_label ? (
-                      <div className="absolute top-2 left-2 font-bold uppercase px-2.5 text-white" style={{ backgroundColor: '#17469e', borderRadius: '3px', height: '26px', display: 'flex', alignItems: 'center', fontFamily: "'Lato', sans-serif", fontSize: '14px' }}>
-                        {(prod as any).metadata.promo_label}
+                    </div>
+                    <div className="px-0.5 pt-1 pb-0.5">
+                      <h3 className="text-[11px] font-normal truncate leading-tight" style={{ color: '#333', margin: 0 }}>{prod.title}</h3>
+                      <div className="flex items-baseline gap-1 mt-0.5 flex-wrap">
+                        <span className="text-xs font-bold" style={{ color: '#222' }}>{price.toLocaleString()} DA</span>
+                        {origPrice > price && (
+                          <span className="text-[9px] line-through" style={{ color: '#999' }}>{origPrice.toLocaleString()} DA</span>
+                        )}
                       </div>
-                    ) : null}
+                      {disc > 0 && (
+                        <span className="text-[9px] font-semibold" style={{ color: '#ff4d4f' }}>Last day {price.toLocaleString()} DA</span>
+                      )}
+                      {soldCount > 0 && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[9px]" style={{ color: '#999' }}>🔥 {soldCount >= 1000 ? `${(soldCount / 1000).toFixed(1)}K+` : `${soldCount}+`} sold</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="pt-3 pb-1">
-                    <h3 className="truncate" style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 400, fontSize: '17px', lineHeight: '24px', color: '#555555', marginTop: 0, textAlign: 'center', display: 'block' }}>{prod.title}</h3>
-                    <p style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: '14px', lineHeight: '21px', color: '#555555', marginTop: '2px', textAlign: 'center' }}>{Number(prod.price ?? 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} DA</p>
-                  </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
             <div className="flex justify-center gap-1.5 mt-6">
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#6b7280' }}></span>

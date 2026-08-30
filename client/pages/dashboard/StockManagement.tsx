@@ -64,6 +64,7 @@ interface StockItem {
   notes?: string;
   is_low_stock?: boolean;
   images?: string[];
+  landing_images?: string[];
   video_url?: string;
   created_at: string;
   updated_at: string;
@@ -359,6 +360,7 @@ export default function StockManagement() {
 
   const buildCreatePayload = () => {
     const images = Array.isArray(formData.images) ? formData.images : [];
+    const landing_images = Array.isArray(formData.landing_images) ? formData.landing_images : [];
 
     return {
       name: (formData.name || '').toString(),
@@ -377,11 +379,13 @@ export default function StockManagement() {
       notes: formData.notes ? String(formData.notes) : undefined,
       video_url: (formData as any).video_url ? String((formData as any).video_url) : undefined,
       images,
+      landing_images,
     };
   };
 
   const buildUpdatePayload = () => {
     const images = Array.isArray(formData.images) ? formData.images : [];
+    const landing_images = Array.isArray(formData.landing_images) ? formData.landing_images : [];
 
     return {
       name: formData.name ? String(formData.name) : undefined,
@@ -399,6 +403,7 @@ export default function StockManagement() {
       notes: formData.notes ? String(formData.notes) : undefined,
       video_url: (formData as any).video_url ? String((formData as any).video_url) : undefined,
       images,
+      landing_images,
     };
   };
 
@@ -765,6 +770,69 @@ export default function StockManagement() {
     }
   };
 
+  const handleLandingImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const existing = Array.isArray(formData.landing_images) ? formData.landing_images : [];
+    const remaining = Math.max(0, 10 - existing.length);
+    if (remaining <= 0) {
+      toast({ variant: 'destructive', title: t('stock.toast.maxImagesTitle'), description: 'Maximum 10 landing images' });
+      e.target.value = '';
+      return;
+    }
+
+    const toUpload = files.slice(0, remaining);
+    setUploading(true);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of toUpload) {
+        const url = await uploadSingleImage(file);
+        uploadedUrls.push(url);
+      }
+      const nextImages = [...existing, ...uploadedUrls].slice(0, 10);
+      setFormData(prev => ({ ...prev, landing_images: nextImages }));
+
+      if (selectedItem?.id) {
+        try {
+          const updateRes = await fetch(`/api/client/stock/${selectedItem.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ landing_images: nextImages }),
+          });
+          if (updateRes.ok) await loadStock();
+        } catch (autoSaveErr) {
+          console.warn('[handleLandingImageUpload] Auto-save error:', autoSaveErr);
+        }
+      }
+      toast({ title: t('stock.toast.imagesUploadedTitle'), description: 'Landing images uploaded' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: t('stock.toast.uploadErrorTitle'), description: error instanceof Error ? error.message : t('stock.toast.uploadErrorDesc') });
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeLandingImageAt = async (idx: number) => {
+    const existing = Array.isArray(formData.landing_images) ? formData.landing_images : [];
+    const nextImages = existing.filter((_, i) => i !== idx);
+    setFormData(prev => ({ ...prev, landing_images: nextImages }));
+
+    if (selectedItem?.id) {
+      try {
+        const updateRes = await fetch(`/api/client/stock/${selectedItem.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ landing_images: nextImages }),
+        });
+        if (updateRes.ok) await loadStock();
+      } catch (autoSaveErr) {
+        console.warn('[removeLandingImageAt] Auto-save error:', autoSaveErr);
+      }
+    }
+  };
+
   const handleCreateStock = async () => {
     try {
       const payload = buildCreatePayload();
@@ -981,9 +1049,22 @@ export default function StockManagement() {
 
   const openEditModal = (item: StockItem) => {
     setSelectedItem(item);
+    const allImages = Array.isArray((item as any).images) ? (item as any).images : [];
+    const existingLanding = Array.isArray((item as any).landing_images) ? (item as any).landing_images : [];
+
+    // Auto-detect: if no landing_images set, classify tall images (aspect ratio < 0.8) as landing
+    let normalImages = allImages;
+    let landingImages = existingLanding;
+    if (existingLanding.length === 0 && allImages.length > 0) {
+      // We'll do async detection — for now set all as normal
+      // The auto-detect effect will fire after render
+      landingImages = [];
+    }
+
     setFormData({
       ...item,
-      images: Array.isArray((item as any).images) ? (item as any).images : [],
+      images: normalImages,
+      landing_images: landingImages,
       shipping_mode: ((item as any).shipping_mode as any) || 'delivery_pricing',
       shipping_flat_fee: (item as any).shipping_flat_fee ?? null,
       video_url: (item as any).video_url || '',
@@ -2259,51 +2340,56 @@ export default function StockManagement() {
             )}
 
             {activeFormSection === 'images' && (
-              <div className="space-y-2 bg-purple-500/5 dark:bg-purple-900/10 p-2 md:p-3 rounded border border-purple-500/20">
-                <h3 className="text-lg font-bold text-purple-600 dark:text-purple-400">Images (max 10)</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {(Array.isArray(formData.images) ? formData.images : []).map((url, idx) => (
-                    <div key={`${url}-${idx}`} className="relative w-full h-28 border rounded-lg overflow-hidden">
-                      <img src={url} alt="" className="w-full h-full object-cover" />
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="destructive"
-                        className="absolute top-1 right-1 h-7 w-7"
-                        onClick={() => removeImageAt(idx)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+              <div className="space-y-4 bg-purple-500/5 dark:bg-purple-900/10 p-2 md:p-3 rounded border border-purple-500/20">
+                <h3 className="text-lg font-bold text-purple-600 dark:text-purple-400">الصور</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Normal images */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">صور عادية <span className="font-normal text-xs text-muted-foreground">(معرض صور)</span></h4>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(Array.isArray(formData.images) ? formData.images : []).map((url, idx) => (
+                        <div key={`${url}-${idx}`} className="relative w-full aspect-square border rounded-lg overflow-hidden">
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                          <Button type="button" size="icon" variant="destructive" className="absolute top-0.5 right-0.5 h-6 w-6" onClick={() => removeImageAt(idx)}>
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Input
-                    type="file"
-                    accept="image/*,.avif"
-                    multiple
-                    onChange={handleImageUpload}
-                    disabled={uploading || ((formData.images?.length || 0) >= 10)}
-                    className="cursor-pointer"
-                  />
-                  {uploading && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-black dark:text-white">
-                        <span className="truncate max-w-[200px]">{uploadFileName}</span>
-                        <span dir="ltr">{uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all duration-200"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
+                    <Input type="file" accept="image/*,.avif" multiple onChange={handleImageUpload}
+                      disabled={uploading || ((formData.images?.length || 0) >= 10)} className="cursor-pointer text-xs" />
+                  </div>
+                  {/* Landing images */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">صور الصفحة الم镉ية <span className="font-normal text-xs text-muted-foreground">(أعلى الطلب)</span></h4>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(Array.isArray(formData.landing_images) ? formData.landing_images : []).map((url, idx) => (
+                        <div key={`${url}-${idx}`} className="relative w-full aspect-[3/4] border rounded-lg overflow-hidden">
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                          <Button type="button" size="icon" variant="destructive" className="absolute top-0.5 right-0.5 h-6 w-6" onClick={() => removeLandingImageAt(idx)}>
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  )}
-                  <p className="text-xs text-black dark:text-white">
-                    Upload up to 10 images. Each image must be &lt; 10MB.
-                  </p>
+                    <Input type="file" accept="image/*,.avif" multiple onChange={handleLandingImageUpload}
+                      disabled={uploading || ((formData.landing_images?.length || 0) >= 10)} className="cursor-pointer text-xs" />
+                  </div>
                 </div>
+                {uploading && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-black dark:text-white">
+                      <span className="truncate max-w-[200px]">{uploadFileName}</span>
+                      <span dir="ltr">{uploadProgress >= 100 ? 'Processing...' : `${uploadProgress}%`}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                      <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-black dark:text-white">
+                  صور عادية: معرض الصور القابل للتمرير. صور الصفحة الم镉ية: صور طويلة تتكدس فوق نموذج الطلب.
+                </p>
               </div>
             )}
 

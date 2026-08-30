@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { TemplateProps, StoreProduct } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
-import { useImageClassifier } from '@/hooks/useImageClassifier';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
@@ -187,13 +186,13 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 .dz-description * { font-family: inherit; }
                 .dz-description img { max-width: 100%; height: auto; border-radius: 0.75rem; }
             `;
-    // Smart image classification: routes square images to gallery, wide/tall to banner
-    const { slots: imageSlots, loading: classifyingImages } = useImageClassifier(product?.images, 'dzshop');
+    // Explicit landing images from seller upload; falls back to empty
+    const landingImages = useMemo(() => {
+      const li = (product as any)?.landing_images;
+      return Array.isArray(li) ? li.filter(Boolean) : [];
+    }, [(product as any)?.landing_images]);
     const rawImages = useMemo(() => product?.images?.filter(Boolean) || [], [product?.images]);
-    const baseGalleryImages = !classifyingImages && imageSlots.gallery?.length > 0
-      ? imageSlots.gallery
-      : rawImages;
-    const autoBannerImage = !classifyingImages ? (imageSlots.banner?.[0] || null) : null;
+    const baseGalleryImages = rawImages;
 
     // A/B test: swap hero image if variant assigned
     const abTestId = useABTestIdFromUrl();
@@ -264,11 +263,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const mainImagePlaceholderRef = useRef<HTMLDivElement>(null);
     const mainFileInputRef = useRef<HTMLInputElement>(null);
     
-    const bottomImagePlaceholderRef = useRef<HTMLDivElement>(null);
-    const bottomFileInputRef = useRef<HTMLInputElement>(null);
-
     const handleMainImageClick = () => { if(!canManage) return;  mainFileInputRef.current?.click(); }
-    const handleBottomImageClick = () => { if(!canManage) return;  bottomFileInputRef.current?.click(); }
 
     const handleMainFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -279,21 +274,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     mainImagePlaceholderRef.current.innerHTML = `<img src="${evt.target.result}" class="w-full h-full object-cover">`;
                     mainImagePlaceholderRef.current.classList.remove('image-placeholder');
                     mainImagePlaceholderRef.current.classList.remove('dz-image-placeholder');
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleBottomFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file && bottomImagePlaceholderRef.current) {
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                if (bottomImagePlaceholderRef.current && evt.target) {
-                    bottomImagePlaceholderRef.current.innerHTML = `<img src="${evt.target.result}" class="w-full h-full object-cover">`;
-                    bottomImagePlaceholderRef.current.classList.remove('image-placeholder');
-                    bottomImagePlaceholderRef.current.classList.remove('dz-image-placeholder');
                 }
             };
             reader.readAsDataURL(file);
@@ -807,34 +787,41 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                             </div>
                         )}
                         
-                        {/* Landing Page Style Image (Bottom image) */}
-                        {(settings?.banner_url || autoBannerImage || canManage) ? (
-                        <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative" ref={bottomImagePlaceholderRef} onClick={handleBottomImageClick}>
-{settings?.banner_url ? (
-  <img 
-    src={settings.banner_url} 
-    className="w-full h-full object-cover" 
-    loading="lazy"
-    decoding="async"
-    style={{ contentVisibility: 'auto' }}
-  />
-) : autoBannerImage ? (
-  <img 
-    src={autoBannerImage} 
-    className="w-full h-full object-cover" 
-    loading="lazy"
-    decoding="async"
-    style={{ contentVisibility: 'auto' }}
-  />
-                            ) : canManage ? (
-                                <div className="p-10 flex flex-col items-center justify-center pointer-events-none">
-                                    <i className="ph ph-plus-circle text-3xl mb-2 text-gray-400"></i>
-                                    <span className="text-sm font-bold text-gray-500">أضف صورة توضيحية للمميزات</span>
-                                </div>
-                            ) : null}
-                        </div>
+                        {/* Landing Page Style Images (stacked full-width) */}
+                        {(settings?.banner_url || landingImages.length > 0 || canManage) ? (
+                        <>
+                          {settings?.banner_url ? (
+                            <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative">
+                              <img 
+                                src={settings.banner_url} 
+                                className="w-full h-full object-cover" 
+                                loading="lazy"
+                                decoding="async"
+                                style={{ contentVisibility: 'auto' }}
+                              />
+                            </div>
+                          ) : landingImages.length > 0 ? (
+                            landingImages.map((url: string, idx: number) => (
+                              <div key={idx} className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative">
+                                <img 
+                                  src={url} 
+                                  className="w-full h-full object-cover" 
+                                  loading="lazy"
+                                  decoding="async"
+                                  style={{ contentVisibility: 'auto' }}
+                                />
+                              </div>
+                            ))
+                          ) : canManage ? (
+                            <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative">
+                              <div className="p-10 flex flex-col items-center justify-center pointer-events-none">
+                                  <i className="ph ph-plus-circle text-3xl mb-2 text-gray-400"></i>
+                                  <span className="text-sm font-bold text-gray-500">أضف صورة توضيحية للمميزات</span>
+                              </div>
+                            </div>
+                          ) : null}
+                        </>
                         ) : null}
-                        {canManage && <input type="file" ref={bottomFileInputRef} className="hidden" accept="image/*" onChange={handleBottomFileChange} /> }
                     </div>
                     </div>
 
