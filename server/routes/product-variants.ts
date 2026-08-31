@@ -14,7 +14,7 @@ const VariantSchema = z
     price: z
       .preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().positive())
       .optional(),
-    stock_quantity: z.preprocess((v) => Number(v), z.number().int().nonnegative()),
+    stock_quantity: z.preprocess((v) => (v === '' || v === null || v === undefined ? 0 : Number(v)), z.number().int().nonnegative()),
     images: z.array(z.string().min(1).max(2000)).optional(),
     is_active: z.preprocess((v) => (v === undefined ? undefined : Boolean(v)), z.boolean()).optional(),
     sort_order: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().int()).optional(),

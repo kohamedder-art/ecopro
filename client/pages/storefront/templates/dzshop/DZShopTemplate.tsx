@@ -226,6 +226,19 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 .dz-description { font-size: 1.125rem; line-height: 1.8; }
                 .dz-description * { font-family: inherit; }
                 .dz-description img { max-width: 100%; height: auto; border-radius: 0.75rem; }
+                .dz-masonry { column-count: 2; column-gap: 4px; }
+                .dz-masonry > * { break-inside-avoid; margin-bottom: 4px; }
+                .dz-grid-desktop { display: none; }
+                @media (min-width: 640px) {
+                    .dz-masonry { column-count: 3 !important; }
+                }
+                @media (min-width: 768px) {
+                    .dz-masonry { display: none !important; }
+                    .dz-grid-desktop { display: grid !important; }
+                }
+                @media (min-width: 1024px) {
+                    .dz-grid-desktop { grid-template-columns: repeat(5, 1fr) !important; }
+                }
             `;
     // Explicit landing images from seller upload; falls back to empty
     const landingImages = useMemo(() => {
@@ -434,36 +447,107 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             {showStoreGrid ? (
                 <div className="relative z-10 pt-[56px]">
                 {/* Category Pills */}
-                <div className="px-3 py-2 flex gap-2 overflow-x-auto hide-scrollbar" style={{ backgroundColor: '#fff' }}>
+                <div className="px-3 py-2 flex gap-2 overflow-x-auto hide-scrollbar" style={{ backgroundColor: 'transparent' }}>
                   <button className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold text-white transition-all" style={{ backgroundColor: accentColor }}>
                     الكل
                   </button>
                   {(settings?.categories || []).slice(0, 8).map((cat: string) => (
-                    <button key={cat} className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-gray-100 text-gray-700">
+                    <button key={cat} className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all" style={{ backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
                       {cat}
                     </button>
                   ))}
                 </div>
 
-                {/* Product Grid */}
-                <div className="px-1 py-2">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[6px]">
+                {/* Product Grid — masonry on mobile */}
+                <div className="dz-masonry px-[3px] pb-2">
                     {(products || []).map((p: any) => {
                       const thumb = p.images?.[0] || '';
                       const price = p.price || 0;
                       const discount = p.original_price && p.original_price > price
                         ? Math.round(((p.original_price - price) / p.original_price) * 100)
                         : 0;
-                      const isLowStock = p.stock_quantity > 0 && p.stock_quantity <= 5;
 
                       return (
                         <div
-                          key={p.id}
-                          className="cursor-pointer bg-white rounded-sm overflow-hidden"
+                          key={p.id + '-mobile'}
+                          className="cursor-pointer overflow-hidden mb-[4px] break-inside-avoid"
                           onClick={() => goToProduct(p)}
                         >
-                          {/* Image — 1:1 square like Temu */}
-                          <div className="relative overflow-hidden bg-white" style={{ aspectRatio: '1 / 1' }}>
+                          <div className="relative overflow-hidden">
+                            {thumb ? (
+                              <img
+                                src={thumb}
+                                alt={p.title || ''}
+                                className="w-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                                width="300"
+                              />
+                            ) : (
+                              <div className="w-full flex items-center justify-center text-3xl" style={{ backgroundColor: '#f0f0f0', aspectRatio: '1 / 1' }}>📦</div>
+                            )}
+                            {discount > 0 && (
+                              <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded">
+                                -{discount}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="px-1 pt-1 pb-1.5">
+                            <h3 className="text-[11px] font-normal leading-snug mb-0.5 line-clamp-1" style={{ color: '#555' }}>
+                              {p.title || 'منتج'}
+                            </h3>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-baseline gap-1">
+                                <span className="font-extrabold text-sm" style={{ color: '#222' }}>
+                                  {Math.round(price).toLocaleString()}
+                                </span>
+                                <span className="text-[9px] font-medium" style={{ color: '#999' }}>
+                                  {settings?.currency_code || 'دج'}
+                                </span>
+                                {p.original_price && p.original_price > price && (
+                                  <span className="text-[9px] line-through" style={{ color: '#bbb' }}>
+                                    {Math.round(p.original_price).toLocaleString()}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                                style={{ backgroundColor: accentColor }}
+                                onClick={(e) => { e.stopPropagation(); goToProduct(p); }}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                                </svg>
+                              </button>
+                            </div>
+                            {p.views > 0 && (
+                              <div className="text-[9px] mt-0.5" style={{ color: accentColor }}>
+                                {p.views > 1000 ? `${Math.floor(p.views/1000)}K+` : `${p.views}+`} sold
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* Product Grid — uniform on desktop like Temu */}
+                <div className="dz-grid-desktop px-2 pb-4 gap-[7px]" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                    {(products || []).map((p: any) => {
+                      const thumb = p.images?.[0] || '';
+                      const price = p.price || 0;
+                      const discount = p.original_price && p.original_price > price
+                        ? Math.round(((p.original_price - price) / p.original_price) * 100)
+                        : 0;
+
+                      return (
+                        <div
+                          key={p.id + '-desktop'}
+                          className="cursor-pointer overflow-hidden"
+                          onClick={() => goToProduct(p)}
+                        >
+                          <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 4' }}>
                             {thumb ? (
                               <img
                                 src={thumb}
@@ -472,72 +556,55 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 loading="lazy"
                                 decoding="async"
                                 width="300"
-                                height="300"
+                                height="400"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-3xl bg-gray-50">📦</div>
+                              <div className="w-full h-full flex items-center justify-center text-3xl" style={{ backgroundColor: '#f0f0f0' }}>📦</div>
                             )}
-                            {/* Discount badge — top right like Temu */}
                             {discount > 0 && (
-                              <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded">
+                              <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded">
                                 -{discount}%
                               </span>
                             )}
-                            {isLowStock && (
-                              <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                                ⚡ {p.stock_quantity}
-                              </span>
-                            )}
                           </div>
-
-                          {/* Info — Temu style */}
-                          <div className="p-2">
-                            {/* Title */}
-                            <h3 className="text-xs font-normal leading-snug mb-1.5 line-clamp-2 text-left" style={{ color: '#222' }}>
+                          <div className="px-1 pt-1.5 pb-2">
+                            <h3 className="text-[11px] font-normal leading-snug mb-0.5 line-clamp-1" style={{ color: '#555' }}>
                               {p.title || 'منتج'}
                             </h3>
-                            {/* Price row */}
-                            <div className="flex items-baseline justify-between mb-0.5">
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="font-extrabold text-base" style={{ color: '#222' }}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-baseline gap-1">
+                                <span className="font-extrabold text-sm" style={{ color: '#222' }}>
                                   {Math.round(price).toLocaleString()}
                                 </span>
-                                <span className="text-[10px] font-medium" style={{ color: '#222' }}>
+                                <span className="text-[9px] font-medium" style={{ color: '#999' }}>
                                   {settings?.currency_code || 'دج'}
                                 </span>
+                                {p.original_price && p.original_price > price && (
+                                  <span className="text-[9px] line-through" style={{ color: '#bbb' }}>
+                                    {Math.round(p.original_price).toLocaleString()}
+                                  </span>
+                                )}
                               </div>
-                              {/* Cart button — always visible, small circle */}
                               <button
-                                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                                style={{ backgroundColor: '#f5f5f5', border: '1px solid #e5e5e5' }}
+                                className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                                style={{ backgroundColor: accentColor }}
                                 onClick={(e) => { e.stopPropagation(); goToProduct(p); }}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                   <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                                   <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                                 </svg>
                               </button>
                             </div>
-                            {/* Original price + sold count */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1">
-                                {p.original_price && p.original_price > price && (
-                                  <span className="text-[10px] line-through" style={{ color: '#999' }}>
-                                    {Math.round(p.original_price).toLocaleString()}
-                                  </span>
-                                )}
-                                {p.views > 0 && (
-                                  <span className="text-[10px]" style={{ color: '#999' }}>
-                                    {p.views > 1000 ? `${Math.floor(p.views/1000)}K+` : `${p.views}+`} sold
-                                  </span>
-                                )}
+                            {p.views > 0 && (
+                              <div className="text-[9px] mt-0.5" style={{ color: accentColor }}>
+                                {p.views > 1000 ? `${Math.floor(p.views/1000)}K+` : `${p.views}+`} sold
                               </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       );
                     })}
-                  </div>
                 </div>
               </div>
             ) : (
