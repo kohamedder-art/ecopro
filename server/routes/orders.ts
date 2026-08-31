@@ -270,11 +270,10 @@ export const createOrder: RequestHandler = async (req, res) => {
         return res.status(400).json({ error: 'الخيار المحدد غير صالح' });
       }
       variantRow = vRes.rows[0];
-      if (variantRow.stock_quantity !== null) {
-        const vStock = Number(variantRow.stock_quantity);
-        if (!Number.isFinite(vStock) || vStock < quantity) {
-          return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
-        }
+      const vStock = Number(variantRow.stock_quantity);
+      const isUnlimited = !Number.isFinite(vStock) || vStock === null || vStock < 0 || vStock >= 999999;
+      if (!isUnlimited && vStock < quantity) {
+        return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
       }
     }
 
@@ -303,9 +302,10 @@ export const createOrder: RequestHandler = async (req, res) => {
       }
     }
 
-    if (!variantRow && productRow.stock_quantity !== null) {
+    if (!variantRow) {
       const availableStock = Number(productRow.stock_quantity);
-      if (!Number.isFinite(availableStock) || availableStock < quantity) {
+      const isUnlimited = !Number.isFinite(availableStock) || availableStock < 0 || availableStock >= 999999;
+      if (!isUnlimited && availableStock < quantity) {
         return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
       }
     }
@@ -459,28 +459,45 @@ export const createOrder: RequestHandler = async (req, res) => {
     );
 
     if (variantRow) {
-      const vUpdate = await client.query(
-        'UPDATE product_variants SET stock_quantity = CASE WHEN stock_quantity IS NULL THEN NULL ELSE stock_quantity - $1 END WHERE id = $2 AND product_id = $3 AND client_id = $4 AND (stock_quantity IS NULL OR stock_quantity >= $1) RETURNING stock_quantity',
-        [quantity, Number(variantRow.id), product_id, resolvedClientId]
-      );
-      const pUpdate = await client.query(
-        'UPDATE client_store_products SET stock_quantity = CASE WHEN stock_quantity IS NULL THEN NULL ELSE stock_quantity - $1 END WHERE id = $2 AND client_id = $3 AND (stock_quantity IS NULL OR stock_quantity >= $1) RETURNING stock_quantity',
-        [quantity, product_id, resolvedClientId]
-      );
-      if (vUpdate.rows.length === 0 || pUpdate.rows.length === 0) {
-        await client.query('ROLLBACK');
-        inTransaction = false;
-        return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
+      const vStock = Number(variantRow.stock_quantity);
+      const vUnlimited = !Number.isFinite(vStock) || vStock < 0 || vStock >= 999999;
+      if (!vUnlimited) {
+        const vUpdate = await client.query(
+          'UPDATE product_variants SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND product_id = $3 AND client_id = $4 AND stock_quantity >= $1 RETURNING stock_quantity',
+          [quantity, Number(variantRow.id), product_id, resolvedClientId]
+        );
+        if (vUpdate.rows.length === 0) {
+          await client.query('ROLLBACK');
+          inTransaction = false;
+          return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
+        }
+      }
+      const pStock = Number(productRow.stock_quantity);
+      const pUnlimited = !Number.isFinite(pStock) || pStock < 0 || pStock >= 999999;
+      if (!pUnlimited) {
+        const pUpdate = await client.query(
+          'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
+          [quantity, product_id, resolvedClientId]
+        );
+        if (pUpdate.rows.length === 0) {
+          await client.query('ROLLBACK');
+          inTransaction = false;
+          return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
+        }
       }
     } else {
-      const stockUpdate = await client.query(
-        'UPDATE client_store_products SET stock_quantity = CASE WHEN stock_quantity IS NULL THEN NULL ELSE stock_quantity - $1 END WHERE id = $2 AND client_id = $3 AND (stock_quantity IS NULL OR stock_quantity >= $1) RETURNING stock_quantity',
-        [quantity, product_id, resolvedClientId]
-      );
-      if (stockUpdate.rows.length === 0) {
-        await client.query('ROLLBACK');
-        inTransaction = false;
-        return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
+      const pStock = Number(productRow.stock_quantity);
+      const pUnlimited = !Number.isFinite(pStock) || pStock < 0 || pStock >= 999999;
+      if (!pUnlimited) {
+        const stockUpdate = await client.query(
+          'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
+          [quantity, product_id, resolvedClientId]
+        );
+        if (stockUpdate.rows.length === 0) {
+          await client.query('ROLLBACK');
+          inTransaction = false;
+          return res.status(400).json({ error: 'الكمية المطلوبة غير متوفرة في المخزون' });
+        }
       }
     }
 

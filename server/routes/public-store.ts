@@ -853,8 +853,20 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
          LIMIT 1`,
         [Number(variant_id), product_id]
       );
-      const vStock = Number(variantRow.stock_quantity ?? 0);
-      if (!Number.isFinite(vStock) || vStock < Number(quantity)) {
+      if (vRes.rows.length > 0) {
+        variantRow = vRes.rows[0];
+        const vStock = Number(variantRow.stock_quantity ?? 0);
+        const vUnlimited = !Number.isFinite(vStock) || vStock < 0 || vStock >= 999999;
+        if (!vUnlimited && vStock < Number(quantity)) {
+          return res.status(400).json({ error: 'Insufficient stock.' });
+        }
+      }
+    }
+
+    if (!variantRow) {
+      const pStock = Number(productRow.stock_quantity ?? 0);
+      const pUnlimited = !Number.isFinite(pStock) || pStock < 0 || pStock >= 999999;
+      if (!pUnlimited && pStock < Number(quantity)) {
         return res.status(400).json({ error: 'Insufficient stock.' });
       }
     }
@@ -1081,30 +1093,47 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       customerName: String(customer_name),
     }).catch(() => ({ startToken: '', startUrl: null } as any));
 
-    // Decrease stock after successful order creation (scoped + guarded)
+    // Decrease stock after successful order creation (skip unlimited: < 0 or >= 999999)
     if (variantRow) {
-      const vUpdate = await client.query(
-        'UPDATE product_variants SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND product_id = $3 AND client_id = $4 AND stock_quantity >= $1 RETURNING stock_quantity',
-        [quantity, Number(variantRow.id), product_id, clientId]
-      );
-      const pUpdate = await client.query(
-        'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
-        [quantity, product_id, clientId]
-      );
-      if (vUpdate.rows.length === 0 || pUpdate.rows.length === 0) {
-        await client.query('ROLLBACK');
-        inTransaction = false;
-        return res.status(400).json({ error: 'Insufficient stock.' });
+      const vStock = Number(variantRow.stock_quantity ?? 0);
+      const vUnlimited = !Number.isFinite(vStock) || vStock < 0 || vStock >= 999999;
+      if (!vUnlimited) {
+        const vUpdate = await client.query(
+          'UPDATE product_variants SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND product_id = $3 AND client_id = $4 AND stock_quantity >= $1 RETURNING stock_quantity',
+          [quantity, Number(variantRow.id), product_id, clientId]
+        );
+        if (vUpdate.rows.length === 0) {
+          await client.query('ROLLBACK');
+          inTransaction = false;
+          return res.status(400).json({ error: 'Insufficient stock.' });
+        }
+      }
+      const pStock = Number(productRow.stock_quantity ?? 0);
+      const pUnlimited = !Number.isFinite(pStock) || pStock < 0 || pStock >= 999999;
+      if (!pUnlimited) {
+        const pUpdate = await client.query(
+          'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
+          [quantity, product_id, clientId]
+        );
+        if (pUpdate.rows.length === 0) {
+          await client.query('ROLLBACK');
+          inTransaction = false;
+          return res.status(400).json({ error: 'Insufficient stock.' });
+        }
       }
     } else {
-      const stockUpdate = await client.query(
-        'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
-        [quantity, product_id, clientId]
-      );
-      if (stockUpdate.rows.length === 0) {
-        await client.query('ROLLBACK');
-        inTransaction = false;
-        return res.status(400).json({ error: 'Insufficient stock.' });
+      const pStock = Number(productRow.stock_quantity ?? 0);
+      const pUnlimited = !Number.isFinite(pStock) || pStock < 0 || pStock >= 999999;
+      if (!pUnlimited) {
+        const stockUpdate = await client.query(
+          'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
+          [quantity, product_id, clientId]
+        );
+        if (stockUpdate.rows.length === 0) {
+          await client.query('ROLLBACK');
+          inTransaction = false;
+          return res.status(400).json({ error: 'Insufficient stock.' });
+        }
       }
     }
     if (!isProduction) {

@@ -1632,7 +1632,7 @@ export default function StockManagement() {
               const generateCombos = (colors: string[], sizes: string[]) => {
                 const newVariants: typeof variantsDraft = [];
                 const existingKeys = new Set(variantsDraft.map(v => `${(v.color||'').trim()}|${(v.size||'').trim()}`));
-                const defaultStock = (formData.quantity ?? 0) === -1 ? -1 : 0;
+                const defaultStock = (formData.quantity ?? 0) === -1 ? null : Number(formData.quantity) || 0;
                 const defaultPrice = Number(formData.unit_price) || undefined;
                 for (const c of colors) {
                   for (const s of sizes) {
@@ -1654,7 +1654,7 @@ export default function StockManagement() {
                   if (newOnes.length > 0) {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
-                    setVariantsDraft(prev => [...prev, { color: colorName, size: '', variant_name: '', price: Number(formData.unit_price) || undefined, stock_quantity: (formData.quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length }]);
+                    setVariantsDraft(prev => [...prev, { color: colorName, size: '', variant_name: '', price: Number(formData.unit_price) || undefined, stock_quantity: (formData.quantity ?? 0) === -1 ? null : Number(formData.quantity) || 0, is_active: true, sort_order: prev.length }]);
                   }
                 }
                 setVariantsDirty(true);
@@ -1671,7 +1671,7 @@ export default function StockManagement() {
                   if (newOnes.length > 0) {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
-                    setVariantsDraft(prev => [...prev, { color: '', size: sizeName, variant_name: '', price: Number(formData.unit_price) || undefined, stock_quantity: (formData.quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length }]);
+                    setVariantsDraft(prev => [...prev, { color: '', size: sizeName, variant_name: '', price: Number(formData.unit_price) || undefined, stock_quantity: (formData.quantity ?? 0) === -1 ? null : Number(formData.quantity) || 0, is_active: true, sort_order: prev.length }]);
                   }
                 }
                 setVariantsDirty(true);
@@ -2000,7 +2000,7 @@ export default function StockManagement() {
                   <div className="px-4 py-3 border-t border-black dark:border-white bg-slate-50/50 dark:bg-slate-800/50">
                     <Button type="button" size="sm" variant="outline"
                       onClick={() => {
-                        setVariantsDraft(prev => [...prev, { color: '', size: '', variant_name: '', price: Number(formData.unit_price) || undefined, stock_quantity: (formData.quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length }]);
+                        setVariantsDraft(prev => [...prev, { color: '', size: '', variant_name: '', price: Number(formData.unit_price) || undefined, stock_quantity: (formData.quantity ?? 0) === -1 ? null : Number(formData.quantity) || 0, is_active: true, sort_order: prev.length }]);
                         setVariantsLoaded(true); setVariantsDirty(true);
                       }}>
                       <Plus className="h-3.5 w-3.5 mr-1" /> إضافة نوع يدوياً

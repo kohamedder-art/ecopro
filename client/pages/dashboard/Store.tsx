@@ -2461,7 +2461,7 @@ export default function Store() {
                 const cArr = colors.length > 0 ? colors : [''];
                 const sArr = sizes.length > 0 ? sizes : [''];
                 const s2Arr = sizes2.length > 0 ? sizes2 : [''];
-                const defaultStock = (formData.stock_quantity ?? 0) === -1 ? -1 : 0;
+                const defaultStock = (formData.stock_quantity ?? 0) === -1 ? null : Number(formData.stock_quantity) || 0;
                 const defaultPrice = Number(formData.price) || undefined;
                 for (const c of cArr) {
                   for (const s of sArr) {
@@ -2495,7 +2495,7 @@ export default function Store() {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
                     setVariantsDraft(prev => [...prev, {
-                      color: colorName, size: '', size2: '', variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length,
+                      color: colorName, size: '', size2: '', variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? null : Number(formData.stock_quantity) || 0, is_active: true, sort_order: prev.length,
                     }]);
                   }
                 }
@@ -2514,7 +2514,7 @@ export default function Store() {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
                     setVariantsDraft(prev => [...prev, {
-                      color: '', size: sizeName, size2: '', variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length,
+                      color: '', size: sizeName, size2: '', variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? null : Number(formData.stock_quantity) || 0, is_active: true, sort_order: prev.length,
                     }]);
                   }
                 }
@@ -2533,7 +2533,7 @@ export default function Store() {
                     setVariantsDraft(prev => [...prev, ...newOnes]);
                   } else {
                     setVariantsDraft(prev => [...prev, {
-                      color: '', size: '', size2: size2Name, variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length,
+                      color: '', size: '', size2: size2Name, variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? null : Number(formData.stock_quantity) || 0, is_active: true, sort_order: prev.length,
                     }]);
                   }
                 }
@@ -3031,7 +3031,7 @@ export default function Store() {
                       onClick={() => {
                         setVariantsDraft((prev) => [
                           ...prev,
-                          { color: '', size: '', variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? -1 : 0, is_active: true, sort_order: prev.length },
+                           { color: '', size: '', variant_name: '', price: Number(formData.price) || undefined, stock_quantity: (formData.stock_quantity ?? 0) === -1 ? null : Number(formData.stock_quantity) || 0, is_active: true, sort_order: prev.length },
                         ]);
                         setVariantsDirty(true);
                         setVariantsLoaded(true);

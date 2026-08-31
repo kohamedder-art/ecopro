@@ -910,7 +910,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 <div className="flex items-center gap-4">
                                     <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all text-lg" style={{ color: txMut, border: `1px solid ${inputBorder}`, backgroundColor: inputBg }}>-</button>
                                     <span className="font-bold text-lg min-w-[24px] text-center">{quantity}</span>
-                                    <button type="button" onClick={() => setQuantity(Math.min(product?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all text-lg" style={{ color: txMut, border: `1px solid ${inputBorder}`, backgroundColor: inputBg }}>+</button>
+                                    <button type="button" onClick={() => setQuantity(Math.min(!product?.stock_quantity || product.stock_quantity < 0 || product.stock_quantity >= 999999 ? 999 : product.stock_quantity, quantity + 1))} className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all text-lg" style={{ color: txMut, border: `1px solid ${inputBorder}`, backgroundColor: inputBg }}>+</button>
                                 </div>
                             </div>
 
