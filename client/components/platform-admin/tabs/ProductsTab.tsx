@@ -16,10 +16,21 @@ interface Product {
   order_count: number;
   created_at: string;
   images?: string[];
+  video_url?: string | null;
   flagged?: boolean;
   flag_reason?: string;
   store_slug?: string;
   product_slug?: string;
+}
+
+function getVideoThumb(videoUrl: string): string | null {
+  if (!videoUrl) return null;
+  const yt = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (yt) return `https://img.youtube.com/vi/${yt[1]}/mqdefault.jpg`;
+  if (/cloudinary\.com\/.*\/video\/upload\//i.test(videoUrl)) {
+    return videoUrl.replace('/video/upload/', '/video/upload/so_0/').replace(/\.(mp4|webm|mov)(\?.*)?$/i, '.jpg$2');
+  }
+  return null;
 }
 
 interface Props {
@@ -178,15 +189,28 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
           {filtered.map(p => (
             <div key={p.id} className={`group bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-xl border ${p.flagged ? 'border-red-500/40' : 'border-slate-700/40'} overflow-hidden shadow-md hover:shadow-lg transition-all`}>
-              {/* Image */}
+              {/* Image — falls back to video thumbnail */}
               <div className="aspect-square bg-slate-900/60 relative overflow-hidden">
-                {p.images?.[0] ? (
-                  <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Package className="w-6 h-6 text-slate-700" />
-                  </div>
-                )}
+                {(() => {
+                  const thumb = p.images?.[0] || (p.video_url ? getVideoThumb(p.video_url) : null);
+                  const isVideoFallback = !p.images?.[0] && !!thumb;
+                  return thumb ? (
+                    <div className="w-full h-full relative">
+                      <img src={thumb} alt={p.title} className="w-full h-full object-cover" loading="lazy" />
+                      {isVideoFallback && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <div className="w-7 h-7 rounded-full bg-black/60 flex items-center justify-center">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21" /></svg>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Package className="w-6 h-6 text-slate-700" />
+                    </div>
+                  );
+                })()}
                 {p.is_live && (
                   <div className="absolute top-1 left-1">
                     <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-lg shadow-red-500/50 animate-pulse">
@@ -248,11 +272,14 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
             {filtered.map(p => (
               <div key={p.id} className="group flex items-center gap-3 p-3 hover:bg-gray-50/30 dark:bg-slate-900/30 transition-colors">
                 <div className="w-10 h-10 rounded-lg bg-slate-900/60 overflow-hidden flex-shrink-0 relative">
-                  {p.images?.[0] ? (
-                    <img src={p.images[0]} alt="" className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center"><Package className="w-4 h-4 text-slate-700" /></div>
-                  )}
+                  {(() => {
+                    const thumb = p.images?.[0] || (p.video_url ? getVideoThumb(p.video_url) : null);
+                    return thumb ? (
+                      <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><Package className="w-4 h-4 text-slate-700" /></div>
+                    );
+                  })()}
                   {p.is_live && (
                     <div className="absolute top-0.5 left-0.5">
                       <Radio className="w-2.5 h-2.5 text-red-400 animate-pulse" />

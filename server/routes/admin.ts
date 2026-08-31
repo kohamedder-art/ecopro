@@ -1974,6 +1974,7 @@ export const listAllProducts: RequestHandler = async (req, res) => {
         c.email as seller_email,
         COALESCE(p.views, 0) as views, p.created_at,
         p.images,
+        p.metadata->>'video_url' as video_url,
         COALESCE(oc.order_count, 0) as order_count,
         css.store_slug,
         COALESCE(lv.live_views, 0) as live_views,

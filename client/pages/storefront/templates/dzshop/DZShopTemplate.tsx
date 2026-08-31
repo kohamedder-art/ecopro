@@ -994,14 +994,14 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     </div>
                 )}
 
-                    {/* Product Description */}
-                    <div className="mt-8 space-y-6" style={{ color: txSec }}>
-                        <h3 className="text-2xl font-bold border-b-2 inline-block pb-1" style={{ borderColor: 'var(--dz-primary)' }}>وصف المنتج</h3>
-                        
+                    {/* Product Description — fixed white card so black text is always readable */}
+                    <div className="mt-8">
+                        <h3 className="text-2xl font-bold border-b-2 inline-block pb-1 mb-4" style={{ borderColor: 'var(--dz-primary)', color: tx }}>وصف المنتج</h3>
+                        <div className="rounded-2xl p-5 md:p-6" style={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                         {product?.description ? (
-                            <div className="dz-description" dangerouslySetInnerHTML={{ __html: product.description }} />
+                            <div className="dz-description" style={{ color: '#1e293b' }} dangerouslySetInnerHTML={{ __html: product.description }} />
                         ) : (
-                            <div contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_description_text" className="dz-description" onBlur={handleTextEdit('template_description_text')}>
+                            <div contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_description_text" className="dz-description" style={{ color: '#1e293b' }} onBlur={handleTextEdit('template_description_text')}>
                                 {settings?.template_description_text ? (
                                     <div dangerouslySetInnerHTML={{ __html: settings.template_description_text }} />
                                 ) : (
@@ -1016,6 +1016,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 )}
                             </div>
                         )}
+                        </div>
                         
                         {/* Landing Page Style Images (stacked full-width) */}
                         {(landingImages.length > 0 || settings?.banner_url || canManage) ? (
