@@ -355,7 +355,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
         <div className="max-w-7xl mx-auto px-2 py-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
             {products?.map((product: any, index: number) => {
-              const thumb = product.images?.[gridImageIndex[product.id] || 0] || product.images?.[0] || '';
+              const allImages = product.images || [];
+              const firstImage = allImages.find((img: string) => !/\.(mp4|webm|ogg)(\?|$)/i.test(img)) || '';
+              const thumb = (gridImageIndex[product.id] || 0) === 0 ? firstImage : (allImages[gridImageIndex[product.id] || 0] || firstImage);
               const price = product.price || 0;
               const hasVideo = product.metadata?.video_url;
               const discount = product.original_price && product.original_price > price
@@ -373,7 +375,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   {/* Image */}
                   <div className="relative overflow-hidden" style={{ aspectRatio: '5 / 7', backgroundColor: surfaceMuted }}>
                     {hasVideo && (gridImageIndex[product.id] || 0) === 0 && hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
-                      <LazyVideo src={hasVideo} poster={thumb}
+                      <LazyVideo src={hasVideo} poster={firstImage}
                         onMouseEnter={e => (e.target as HTMLVideoElement).play()}
                         onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
                         className="w-full h-full object-cover" />
@@ -497,7 +499,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           {videoUrl && (
             <LazyVideo
               src={videoUrl}
-              poster={landingImages[0] || ''}
+              poster={landingImages[0] || productImages[0] || ''}
               className="w-full h-auto"
             />
           )}
@@ -796,7 +798,9 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {otherProducts.map((p: any) => {
-                  const thumb = p.images?.[0] || '';
+                  const allImages = p.images || [];
+                  const firstImage = allImages.find((img: string) => !/\.(mp4|webm|ogg)(\?|$)/i.test(img)) || '';
+                  const hasVideo = p.metadata?.video_url;
                   const price = p.price || 0;
                   const disc = p.original_price && p.original_price > price
                     ? Math.round(((p.original_price - price) / p.original_price) * 100)
@@ -810,9 +814,23 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
                     >
                       <div className="relative overflow-hidden" style={{ aspectRatio: '5 / 7', backgroundColor: surfaceMuted }}>
-                        {thumb ? (
+                        {hasVideo && hasVideo.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
+                          <LazyVideo
+                            src={hasVideo}
+                            poster={firstImage}
+                            className="w-full h-full"
+                          />
+                        ) : hasVideo && hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
+                          <div className="relative w-full h-full">
+                            {firstImage ? (
+                              <img src={firstImage} alt={p.title || ''} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: surfaceMuted }}>📦</div>
+                            )}
+                          </div>
+                        ) : firstImage ? (
                           <img
-                            src={thumb}
+                            src={firstImage}
                             alt={p.title || ''}
                             loading="lazy"
                             decoding="async"
