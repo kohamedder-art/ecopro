@@ -807,11 +807,12 @@ export default function ProductCheckout() {
       ? (variants.find((v) => Number(v.id) === Number(selectedVariantId)) || null)
       : null;
     const currentStock = hasVariants ? Number(selectedVariant?.stock_quantity ?? 0) : Number(product?.stock_quantity ?? 0);
-    if (Number.isFinite(currentStock) && currentStock <= 0) {
+    const isUnlimited = !Number.isFinite(currentStock) || currentStock < 0 || currentStock >= 999999;
+    if (Number.isFinite(currentStock) && currentStock === 0) {
       toast({ variant: 'destructive', title: t('checkout.error.outOfStockTitle'), description: t('checkout.error.outOfStockDesc') });
       return;
     }
-    if (Number.isFinite(currentStock) && quantity > currentStock) {
+    if (!isUnlimited && quantity > currentStock) {
       toast({ variant: 'destructive', title: t('checkout.error.insufficientStockTitle'), description: t('checkout.error.insufficientStockDesc') });
       return;
     }

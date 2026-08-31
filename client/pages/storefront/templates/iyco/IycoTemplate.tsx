@@ -637,7 +637,7 @@ export default function IycoTemplate({
                 <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${borderColor}`, width: 'fit-content' }}>
                   <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 flex items-center justify-center font-bold text-lg" style={{ color: '#555', borderRight: `1px solid ${borderColor}` }}>−</button>
                   <span className="w-12 text-center font-bold text-base" style={{ color: '#111' }}>{quantity}</span>
-                  <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-10 h-10 flex items-center justify-center font-bold text-lg" style={{ color: '#555', borderLeft: `1px solid ${borderColor}` }}>+</button>
+                  <button type="button" onClick={() => setQuantity(Math.min((mainProduct?.stock_quantity != null && mainProduct.stock_quantity > 0) ? mainProduct.stock_quantity : 999, quantity + 1))} className="w-10 h-10 flex items-center justify-center font-bold text-lg" style={{ color: '#555', borderLeft: `1px solid ${borderColor}` }}>+</button>
                 </div>
               </div>
 
@@ -708,7 +708,7 @@ export default function IycoTemplate({
                     <div className="flex items-center gap-0 rounded-xl overflow-hidden" style={{ border: '1px solid #e5e7eb', width: 'fit-content' }}>
                       <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-11 h-11 flex items-center justify-center font-bold text-lg transition-colors" style={{ color: '#555', backgroundColor: '#f9fafb', borderRight: '1px solid #e5e7eb' }}>−</button>
                       <span className="w-12 text-center font-bold text-base" style={{ color: '#111' }}>{quantity}</span>
-                      <button type="button" onClick={() => setQuantity(Math.min(mainProduct?.stock_quantity ?? 999, quantity + 1))} className="w-11 h-11 flex items-center justify-center font-bold text-lg transition-colors" style={{ color: '#555', backgroundColor: '#f9fafb', borderLeft: '1px solid #e5e7eb' }}>+</button>
+                      <button type="button" onClick={() => setQuantity(Math.min((mainProduct?.stock_quantity != null && mainProduct.stock_quantity > 0) ? mainProduct.stock_quantity : 999, quantity + 1))} className="w-11 h-11 flex items-center justify-center font-bold text-lg transition-colors" style={{ color: '#555', backgroundColor: '#f9fafb', borderLeft: '1px solid #e5e7eb' }}>+</button>
                     </div>
                   </div>
 
