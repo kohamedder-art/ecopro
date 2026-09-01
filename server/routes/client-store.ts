@@ -801,19 +801,33 @@ export const getStoreSettings: RequestHandler = async (req, res) => {
     const user = (req as any).user;
     if (user && (user.role === 'admin' || user.user_type === 'admin')) return res.status(403).json({ error: 'Admins do not have a client store' });
     const clientId = (req as any).user.id;
+    const activeStoreId = (req as any).activeStoreId;
     
     // Check cache first for faster response
     const cached = getCachedSettings(clientId);
     if (cached) {
-      return res.json(cached);
+      // If we have an active store, verify the cached settings match
+      if (!activeStoreId || cached.id === activeStoreId) {
+        return res.json(cached);
+      }
     }
     
-    logStoreSettings('getStoreSettings:start', { clientId });
+    logStoreSettings('getStoreSettings:start', { clientId, activeStoreId });
 
-    let result = await pool.query(
-      `SELECT * FROM client_store_settings WHERE client_id = $1`,
-      [clientId]
-    );
+    let result;
+    if (activeStoreId) {
+      // Multi-store: query by specific store id
+      result = await pool.query(
+        `SELECT * FROM client_store_settings WHERE id = $1 AND client_id = $2`,
+        [activeStoreId, clientId]
+      );
+    } else {
+      // Legacy: query by client_id (first store)
+      result = await pool.query(
+        `SELECT * FROM client_store_settings WHERE client_id = $1 ORDER BY id ASC LIMIT 1`,
+        [clientId]
+      );
+    }
 
     if (result.rows.length === 0) {
       // Check platform store limit before creating new store.
@@ -2063,6 +2077,190 @@ export const deleteMediaImage: RequestHandler = async (req, res) => {
   } catch (error) {
     console.error("Delete media image error:", error);
     res.status(500).json({ error: "Failed to delete image" });
+  }
+};
+
+/**
+ * POST /api/client/stores — create a new store (multi-store support)
+ * Creates an empty store by copying template/settings from an existing store.
+ */
+export const createStore: RequestHandler = async (req, res) => {
+  try {
+    const clientId = (req as any).user?.id;
+    if (!clientId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const pool = await ensureConnection();
+    const { name, sourceStoreId } = req.body as { name?: string; sourceStoreId?: number };
+
+    // Get the source store to copy settings from
+    let sourceStore = null;
+    if (sourceStoreId) {
+      const src = await pool.query(
+        'SELECT * FROM client_store_settings WHERE id = $1 AND client_id = $2',
+        [sourceStoreId, clientId]
+      );
+      sourceStore = src.rows[0] || null;
+    }
+    if (!sourceStore) {
+      // Fall back to the user's first store
+      const src = await pool.query(
+        'SELECT * FROM client_store_settings WHERE client_id = $1 ORDER BY id ASC LIMIT 1',
+        [clientId]
+      );
+      sourceStore = src.rows[0] || null;
+    }
+
+    // Generate unique slug
+    const baseSlug = name
+      ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      : 'store';
+    let slug = baseSlug + '-' + randomBytes(4).toString('base64url');
+    // Ensure uniqueness
+    const slugCheck = await pool.query('SELECT 1 FROM client_store_settings WHERE store_slug = $1', [slug]);
+    if (slugCheck.rows.length > 0) {
+      slug = baseSlug + '-' + randomBytes(6).toString('base64url');
+    }
+
+    // Create the new store row (copy template/color settings from source)
+    const newStore = await pool.query(
+      `INSERT INTO client_store_settings (
+        client_id, store_name, store_slug, template,
+        primary_color, secondary_color, store_description,
+        store_logo, banner_url, currency_code,
+        template_settings, template_settings_by_template, global_settings,
+        is_public, is_custom_slug
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+      RETURNING *`,
+      [
+        clientId,
+        name || 'New Store',
+        slug,
+        sourceStore?.template || 'classic',
+        sourceStore?.primary_color || '#a0876a',
+        sourceStore?.secondary_color || '#8B7355',
+        sourceStore?.store_description || '',
+        sourceStore?.store_logo || '',
+        sourceStore?.banner_url || '',
+        sourceStore?.currency_code || 'DZD',
+        JSON.stringify(sourceStore?.template_settings || {}),
+        JSON.stringify(sourceStore?.template_settings_by_template || {}),
+        JSON.stringify(sourceStore?.global_settings || {}),
+        false,
+        false,
+      ]
+    );
+
+    const storeId = newStore.rows[0].id;
+
+    // Copy bot_settings from source store
+    if (sourceStore) {
+      try {
+        const bs = await pool.query('SELECT * FROM bot_settings WHERE client_id = $1 LIMIT 1', [clientId]);
+        if (bs.rows.length > 0) {
+          const s = bs.rows[0];
+          await pool.query(
+            `INSERT INTO bot_settings (
+              client_id, store_id, whatsapp_token, whatsapp_phone_id, whatsapp_business_account_id,
+              telegram_bot_token, viber_access_token, messenger_page_access_token,
+              messenger_verify_token, messenger_page_id, messenger_psid,
+              enable_whatsapp, enable_telegram, enable_viber, enable_messenger,
+              welcome_message, order_confirmation_message, delivery_update_message,
+              language, updated_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW())`,
+            [
+              clientId, storeId,
+              s.whatsapp_token, s.whatsapp_phone_id, s.whatsapp_business_account_id,
+              s.telegram_bot_token, s.viber_access_token, s.messenger_page_access_token,
+              s.messenger_verify_token, s.messenger_page_id, s.messenger_psid,
+              s.enable_whatsapp, s.enable_telegram, s.enable_viber, s.enable_messenger,
+              s.welcome_message, s.order_confirmation_message, s.delivery_update_message,
+              s.language,
+            ]
+          );
+        }
+      } catch (e) {
+        console.warn('[createStore] bot_settings copy failed:', (e as Error)?.message);
+      }
+
+      // Copy delivery_prices from source store
+      try {
+        const dp = await pool.query(
+          'SELECT * FROM delivery_prices WHERE client_id = $1 AND store_id = $2',
+          [clientId, sourceStore.id]
+        );
+        for (const row of dp.rows) {
+          await pool.query(
+            `INSERT INTO delivery_prices (
+              client_id, store_id, wilaya_id, home_delivery_price, desk_delivery_price,
+              estimated_days, is_active, delivery_company_id
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            [
+              clientId, storeId,
+              row.wilaya_id, row.home_delivery_price, row.desk_delivery_price,
+              row.estimated_days, row.is_active, row.delivery_company_id,
+            ]
+          );
+        }
+      } catch (e) {
+        console.warn('[createStore] delivery_prices copy failed:', (e as Error)?.message);
+      }
+
+      // Copy ai_settings from source store
+      try {
+        const ai = await pool.query('SELECT * FROM ai_settings WHERE client_id = $1 LIMIT 1', [clientId]);
+        if (ai.rows.length > 0) {
+          const s = ai.rows[0];
+          await pool.query(
+            `INSERT INTO ai_settings (
+              client_id, store_id, auto_reply_enabled, ai_model,
+              max_daily_replies, reply_delay_min, reply_delay_max,
+              knowledge_base, custom_instructions, updated_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())`,
+            [
+              clientId, storeId,
+              s.auto_reply_enabled, s.ai_model, s.max_daily_replies,
+              s.reply_delay_min, s.reply_delay_max,
+              s.knowledge_base, s.custom_instructions,
+            ]
+          );
+        }
+      } catch (e) {
+        console.warn('[createStore] ai_settings copy failed:', (e as Error)?.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      store: newStore.rows[0],
+      message: `Store "${name || 'New Store'}" created successfully`,
+    });
+  } catch (error) {
+    console.error('Create store error:', error);
+    res.status(500).json({ error: 'Failed to create store' });
+  }
+};
+
+/**
+ * GET /api/client/stores — list all stores for the current account
+ */
+export const listStores: RequestHandler = async (req, res) => {
+  try {
+    const clientId = (req as any).user?.id;
+    if (!clientId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const pool = await ensureConnection();
+    const result = await pool.query(
+      `SELECT id, store_name, store_slug, template, primary_color, is_public, created_at
+       FROM client_store_settings
+       WHERE client_id = $1
+       ORDER BY id ASC`,
+      [clientId]
+    );
+
+    res.json({ stores: result.rows });
+  } catch (error) {
+    console.error('List stores error:', error);
+    res.status(500).json({ error: 'Failed to list stores' });
   }
 };
 

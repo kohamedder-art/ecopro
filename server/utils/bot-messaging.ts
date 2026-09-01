@@ -970,13 +970,23 @@ function defaultWhatsAppTemplate(): string {
  * Background job to send pending messages
  * Call this periodically (e.g., every 5 minutes)
  */
-export async function processPendingMessages(): Promise<void> {
+export async function processPendingMessages(): Promise<boolean> {
   // Use a single dedicated client for the entire batch to avoid pool exhaustion.
   // Previously each pool.query() in the loop checked out/returned a connection,
   // creating massive churn that starved other callers (e.g., getClientOrders).
   const pool = await ensureConnection();
   const client = await pool.connect();
   try {
+    // A lightweight existence check first lets the worker skip the full SELECT
+    // (and its connection-holding batch) when nothing is pending — keeps idle
+    // CPU/DB usage near zero between message bursts.
+    const hasPeek = await client.query(
+      `SELECT 1 FROM bot_messages WHERE status = 'pending' AND send_at <= NOW() LIMIT 1`
+    );
+    if (hasPeek.rowCount === 0) {
+      return false;
+    }
+
     // Get all messages that are due to be sent (ordered by send_at and id for consistency)
     const result = await client.query(
       `SELECT * FROM bot_messages 
@@ -1193,8 +1203,13 @@ export async function processPendingMessages(): Promise<void> {
     }
 
     console.log(`[Bot] Processed ${result.rows.length} pending messages`);
+
+    // If we hit the batch cap, there may be more due — signal the caller to keep
+    // polling at the fast interval instead of backing off.
+    return result.rows.length >= 100;
   } catch (error) {
     console.error("Error in processPendingMessages:", error);
+    return false;
   } finally {
     client.release();
   }
@@ -1202,21 +1217,36 @@ export async function processPendingMessages(): Promise<void> {
 
 let botMessageWorkerInterval: ReturnType<typeof setInterval> | null = null;
 
+const BOT_WORKER_FAST_MS = 10_000;   // poll fast while a burst is being drained
+const BOT_WORKER_IDLE_MS = 5 * 60 * 1000; // go quiet when nothing is pending
+
 export function startBotMessageWorker(options?: { intervalMs?: number }): void {
   if (botMessageWorkerInterval) {
     console.log('[BotMessages] Worker already running');
     return;
   }
 
-  const intervalMs = Math.max(5_000, Number(options?.intervalMs ?? 30_000));
-  console.log(`[BotMessages] Starting worker (${Math.round(intervalMs / 1000)}s interval)`);
+  const fastMs = Math.max(5_000, Number(options?.intervalMs ?? BOT_WORKER_FAST_MS));
+  console.log(`[BotMessages] Starting adaptive worker (fast ${Math.round(fastMs / 1000)}s, idle ${Math.round(BOT_WORKER_IDLE_MS / 60_000)}min)`);
 
-  // Run immediately on start
-  processPendingMessages().catch((err) => console.error('[BotMessages] Worker error:', err));
+  let intervalMs = fastMs;
+  const setIntervalFn = () => {
+    botMessageWorkerInterval = setInterval(tick, intervalMs);
+  };
 
-  botMessageWorkerInterval = setInterval(() => {
-    processPendingMessages().catch((err) => console.error('[BotMessages] Worker error:', err));
-  }, intervalMs);
+  const tick = async () => {
+    clearInterval(botMessageWorkerInterval as ReturnType<typeof setInterval>);
+    try {
+      const morePending = await processPendingMessages();
+      intervalMs = morePending ? fastMs : BOT_WORKER_IDLE_MS;
+    } catch {
+      intervalMs = BOT_WORKER_IDLE_MS;
+    }
+    setIntervalFn();
+  };
+
+  // First run immediately
+  void tick();
 }
 
 export function stopBotMessageWorker(): void {

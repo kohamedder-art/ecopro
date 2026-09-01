@@ -23,7 +23,12 @@ function readStoredSettings(): StoreSettingsLike | null {
 }
 
 async function fetchStoreSettings(): Promise<StoreSettingsLike> {
-  const res = await fetch('/api/client/store/settings', { credentials: 'include' });
+  const headers: Record<string, string> = { credentials: 'include' };
+  const activeStoreId = localStorage.getItem('activeStoreId');
+  if (activeStoreId) {
+    headers['X-Store-Id'] = activeStoreId;
+  }
+  const res = await fetch('/api/client/store/settings', { credentials: 'include', headers });
 
   if (res.status === 401 || res.status === 403) {
     throw new HttpError(res.status, 'Unauthorized');
@@ -40,8 +45,9 @@ async function fetchStoreSettings(): Promise<StoreSettingsLike> {
 }
 
 export function useStoreSettings(options?: { enabled?: boolean; onUnauthorized?: () => void }) {
+  const activeStoreId = typeof window !== 'undefined' ? localStorage.getItem('activeStoreId') : null;
   const query = useQuery({
-    queryKey: ['storeSettings'],
+    queryKey: ['storeSettings', activeStoreId],
     queryFn: fetchStoreSettings,
     enabled: options?.enabled ?? true,
     retry: (failureCount, error) => {

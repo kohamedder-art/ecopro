@@ -4,7 +4,7 @@ import geoip from 'geoip-lite';
 import os from 'os';
 import { ensureConnection } from './database';
 import { emitSecurityEvent } from './eventBus';
-import { getSettingBool } from './securitySettings';
+import { getSettingBool, getSettingInt } from './securitySettings';
 
 export type SecurityEventType =
   | 'geo_block'
@@ -46,6 +46,14 @@ type HitCounter = {
 
 const suspiciousProbeCounters = new Map<string, HitCounter>();
 const adminProbeCounters = new Map<string, HitCounter>();
+// Tracks the last time an anonymous sensitive-probe was counted per IP, so that a
+// burst of parallel requests within a few seconds is treated as a single probe.
+const adminLastProbe = new Map<string, number>();
+
+function getAdminProbeWindowMs(): number {
+  // 10-minute window by default; may be overridden via settings (probe_window_minutes).
+  return 10 * 60 * 1000;
+}
 
 function bumpCounter(map: Map<string, HitCounter>, key: string, now: number, windowMs: number): number {
   const existing = map.get(key);
@@ -504,30 +512,41 @@ export function securityMiddleware(options: {
         (status === 401 || status === 403) &&
         !u;
       if (isAnonSensitiveProbe && ip && !isPrivateIp(ip)) {
-        const windowMs = 10 * 60 * 1000;
-        cleanupCounters(adminProbeCounters, now, windowMs);
-        const n = bumpCounter(adminProbeCounters, ip, now, windowMs);
-        // Threshold: 12 failed hits within 10 minutes => block
-        if (n >= 12) {
-          getSettingBool('auto_block_enabled', true).then(enabled => {
-            if (enabled) autoBlockIp(ip, 'AUTO:admin_kernel_probe');
-          });
-          void logSecurityEvent({
-            event_type: 'ip_block',
-            severity: 'error',
-            request_id: requestId,
-            method: req.method,
-            path,
-            status_code: status,
-            ip,
-            user_agent: userAgent,
-            fingerprint,
-            country_code: geo.country_code,
-            region: geo.region,
-            city: geo.city,
-            metadata: { reason: 'AUTO:admin_kernel_probe', hits: n, windowMs, ms: dur },
+        // A logged-out admin page legitimately fires a burst of parallel dashboard
+        // calls (stats, products, stores, users, ...) that all return 401 at once.
+        // Count a close-together burst as a SINGLE probe so that a normal page load
+        // can never auto-block a real admin, while sustained scanning still accrues.
+        const burstGapMs = 5 * 1000;
+        const last = adminLastProbe.get(ip) || 0;
+        let n = 0;
+        if (now - last > burstGapMs) {
+          adminLastProbe.set(ip, now);
+          const windowMs = getAdminProbeWindowMs();
+          cleanupCounters(adminProbeCounters, now, windowMs);
+          n = bumpCounter(adminProbeCounters, ip, now, windowMs);
+          getSettingInt('admin_probe_threshold', 30).then((threshold) => {
+            if (n >= threshold) {
+              getSettingBool('auto_block_enabled', true).then(enabled => {
+                if (enabled) autoBlockIp(ip, 'AUTO:admin_kernel_probe');
+              });
+            }
           });
         }
+        void logSecurityEvent({
+          event_type: 'ip_block',
+          severity: 'error',
+          request_id: requestId,
+          method: req.method,
+          path,
+          status_code: status,
+          ip,
+          user_agent: userAgent,
+          fingerprint,
+          country_code: geo.country_code,
+          region: geo.region,
+          city: geo.city,
+          metadata: { reason: 'AUTO:admin_kernel_probe', hits: n, windowMs: getAdminProbeWindowMs(), ms: dur },
+        });
       }
 
       // Log obvious suspicious probes (noisy but valuable)

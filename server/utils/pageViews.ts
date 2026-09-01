@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 
 const PAGE_VIEW_FLUSH_INTERVAL = 5000;
+const PAGE_VIEW_FLUSH_IDLE_INTERVAL = 30_000;
+const PAGE_VIEW_BATCH_MAX = 500;
 type PageViewKey = string;
 const buffer = new Map<PageViewKey, number>();
 
@@ -13,28 +15,49 @@ function getDateStr(d?: Date): string {
   return dt.toISOString().slice(0, 10);
 }
 
-async function flushBuffer(): Promise<void> {
-  if (buffer.size === 0) return;
+async function flushBuffer(): Promise<boolean> {
+  if (buffer.size === 0) return false;
   const entries = Array.from(buffer.entries());
   buffer.clear();
   try {
     const { pool } = await import('./database');
-    for (const [key, count] of entries) {
-      const [viewDate, pathGroup, isStore, storeSlug] = key.split('|');
+    for (let i = 0; i < entries.length; i += PAGE_VIEW_BATCH_MAX) {
+      const slice = entries.slice(i, i + PAGE_VIEW_BATCH_MAX);
+      const values: any[] = [];
+      const rows: string[] = [];
+      slice.forEach(([, count], idx) => {
+        const [viewDate, pathGroup, isStore, storeSlug] = slice[idx][0].split('|');
+        const base = idx * 5;
+        rows.push(`($${base + 1}, $${base + 2}, $${base + 3}::boolean, NULLIF($${base + 4}, ''), $${base + 5})`);
+        values.push(viewDate, pathGroup, isStore === 'true', storeSlug || null, count);
+      });
       await pool.query(
         `INSERT INTO platform_daily_page_views (view_date, path_group, is_store, store_slug, count)
-         VALUES ($1, $2, $3::boolean, NULLIF($4, ''), $5)
+         VALUES ${rows.join(', ')}
          ON CONFLICT (view_date, path_group)
-         DO UPDATE SET count = platform_daily_page_views.count + $5`,
-        [viewDate, pathGroup, isStore === 'true', storeSlug || null, count]
+         DO UPDATE SET count = platform_daily_page_views.count + EXCLUDED.count`,
+        values
       );
     }
   } catch (e) {
     console.error('[pageViews] flush failed:', (e as Error)?.message);
   }
+  return true;
 }
 
-setInterval(flushBuffer, PAGE_VIEW_FLUSH_INTERVAL);
+let pageViewFlushInterval: ReturnType<typeof setInterval> | null = null;
+let lastFlushHadData = false;
+
+function scheduleFlush() {
+  clearInterval(pageViewFlushInterval as ReturnType<typeof setInterval>);
+  const nextMs = lastFlushHadData ? PAGE_VIEW_FLUSH_INTERVAL : PAGE_VIEW_FLUSH_IDLE_INTERVAL;
+  pageViewFlushInterval = setInterval(async () => {
+    lastFlushHadData = await flushBuffer();
+    scheduleFlush();
+  }, nextMs);
+}
+
+scheduleFlush();
 
 export function pageViewMiddleware(req: Request, _res: Response, next: NextFunction) {
   const path = (req.originalUrl || req.url || '').split('?')[0] || '';
@@ -58,7 +81,13 @@ export function pageViewMiddleware(req: Request, _res: Response, next: NextFunct
   }
 
   const key = getKey(getDateStr(), group, isStore, slug);
+  const wasEmpty = buffer.size === 0;
   buffer.set(key, (buffer.get(key) || 0) + 1);
+  // If we just went from idle (empty buffer) to having data, flush promptly so
+  // a single visit isn't held in RAM for the whole idle window.
+  if (wasEmpty) {
+    setTimeout(() => { void flushBuffer(); }, 1000);
+  }
   next();
 }
 

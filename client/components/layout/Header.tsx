@@ -26,6 +26,7 @@ import { authApi } from "@/lib/auth";
 import { safeJsonParse } from "@/utils/safeJson";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useStore } from "@/contexts/StoreContext";
 
 export default function Header() {
   const { toggle, theme } = useTheme();
@@ -211,7 +212,9 @@ export default function Header() {
               </button>
               
               {userMenuOpen && (
-                <div className="absolute top-12 left-0 w-48 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl shadow-xl py-2 z-50 overflow-hidden">
+                <div className="absolute top-12 left-0 w-56 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl shadow-xl py-2 z-50 overflow-hidden">
+                  {/* Store Switcher */}
+                  {isClient && <StoreSwitcher />}
                   <Link to={getDashboardLink()} className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200">
                     <LayoutDashboard className="w-4 h-4 text-indigo-500" />
                     {t("nav.dashboard") || "لوحة التحكم"}
@@ -333,5 +336,87 @@ export default function Header() {
     <nav dir={locale === 'ar' ? 'rtl' : 'ltr'} className="sticky top-0 w-full z-[100] h-[64px] px-4 md:px-6 flex items-center border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md font-['Noto_Sans_Arabic'] transition-colors duration-300">
       {navContent}
     </nav>
+  );
+}
+
+// Store Switcher component (inside header dropdown)
+function StoreSwitcher() {
+  const { stores, activeStore, setActiveStore, createStore } = useStore();
+  const [showCreate, setShowCreate] = useState(false);
+  const [newStoreName, setNewStoreName] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
+    if (!newStoreName.trim()) return;
+    setCreating(true);
+    const store = await createStore(newStoreName.trim(), activeStore?.id);
+    setCreating(false);
+    if (store) {
+      setNewStoreName('');
+      setShowCreate(false);
+    }
+  };
+
+  if (stores.length <= 1 && !showCreate) return null;
+
+  return (
+    <div className="border-b border-slate-100 dark:border-slate-700 mb-1">
+      <div className="px-4 py-2">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+          المتجر النشط
+        </div>
+        {stores.map(store => (
+          <button
+            key={store.id}
+            onClick={() => setActiveStore(store)}
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-1 ${
+              activeStore?.id === store.id
+                ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: store.primary_color || '#a0876a' }} />
+              {store.store_name}
+            </span>
+          </button>
+        ))}
+        {!showCreate ? (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+          >
+            + متجر جديد
+          </button>
+        ) : (
+          <div className="px-3 py-2">
+            <input
+              type="text"
+              value={newStoreName}
+              onChange={e => setNewStoreName(e.target.value)}
+              placeholder="اسم المتجر الجديد"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm mb-2"
+              onKeyDown={e => e.key === 'Enter' && handleCreate()}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleCreate}
+                disabled={creating || !newStoreName.trim()}
+                className="px-3 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-bold hover:bg-indigo-600 disabled:opacity-50"
+              >
+                {creating ? '...' : 'إنشاء'}
+              </button>
+              <button
+                onClick={() => { setShowCreate(false); setNewStoreName(''); }}
+                className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-600"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -92,6 +92,7 @@ import {
 } from "./middleware/validation";
 import { deleteStoreImage } from "./routes/store";
 import { validateProductionEnv } from "./utils/required-env";
+import { resolveActiveStore } from "./utils/store-scope";
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -934,6 +935,7 @@ ${urls}
   app.get(
     "/api/dashboard/stats",
     authenticate,
+    resolveActiveStore,
     apiLimiter,
     dashboardRoutes.getDashboardStats
   );
@@ -942,6 +944,7 @@ ${urls}
   app.get(
     "/api/dashboard/analytics",
     authenticate,
+    resolveActiveStore,
     apiLimiter,
     dashboardRoutes.getDashboardAnalytics
   );
@@ -1365,6 +1368,7 @@ ${urls}
     "/api/client/stock",
     authenticate,
     requireClient,
+    resolveActiveStore,
     apiLimiter,
     stockRoutes.getClientStock
   );
@@ -1372,24 +1376,28 @@ ${urls}
     "/api/client/stock/alerts/low-stock",
     authenticate,
     requireClient,
+    resolveActiveStore,
     stockRoutes.getLowStockAlerts
   );
   app.get(
     "/api/client/stock/categories",
     authenticate,
     requireClient,
+    resolveActiveStore,
     stockRoutes.getStockCategories
   );
   app.get(
     "/api/client/stock/categories/all",
     authenticate,
     requireClient,
+    resolveActiveStore,
     stockRoutes.getAllStockCategories
   );
   app.post(
     "/api/client/stock/categories",
     authenticate,
     requireClient,
+    resolveActiveStore,
     apiLimiter,
     stockRoutes.createStockCategory
   );
@@ -1539,18 +1547,21 @@ ${urls}
     "/api/client/store/products",
     authenticate,
     requireClient,
+    resolveActiveStore,
     clientStoreRoutes.getStoreProducts
   );
   app.get(
     "/api/client/store/products/:id",
     authenticate,
     requireClient,
+    resolveActiveStore,
     clientStoreRoutes.getStoreProduct
   );
   app.post(
     "/api/client/store/products",
     authenticate,
     requireClient,
+    resolveActiveStore,
     apiLimiter,
     clientStoreRoutes.createStoreProduct
   );
@@ -1558,6 +1569,7 @@ ${urls}
     "/api/client/store/products/:id",
     authenticate,
     requireClient,
+    resolveActiveStore,
     apiLimiter,
     clientStoreRoutes.updateStoreProduct
   );
@@ -1565,6 +1577,7 @@ ${urls}
     "/api/client/store/products/:id",
     authenticate,
     requireClient,
+    resolveActiveStore,
     clientStoreRoutes.deleteStoreProduct
   );
 
@@ -1622,12 +1635,14 @@ ${urls}
     "/api/client/store/settings",
     authenticate,
     requireClient,
+    resolveActiveStore,
     clientStoreRoutes.getStoreSettings
   );
   app.put(
     "/api/client/store/settings",
     authenticate,
     requireClient,
+    resolveActiveStore,
     apiLimiter,
     clientStoreRoutes.updateStoreSettings
   );
@@ -1636,12 +1651,14 @@ ${urls}
     "/api/client/store/template",
     authenticate,
     requireClient,
+    resolveActiveStore,
     clientStoreRoutes.updateStoreTemplate
   );
   app.get(
     "/api/client/store/stats",
     authenticate,
     requireClient,
+    resolveActiveStore,
     clientStoreRoutes.getStoreStats
   );
   app.get(
@@ -1649,6 +1666,20 @@ ${urls}
     authenticate,
     requireClient,
     clientStoreRoutes.getProductShareLink
+  );
+
+  // Multi-store: list and create stores
+  app.get(
+    "/api/client/stores",
+    authenticate,
+    requireClient,
+    clientStoreRoutes.listStores
+  );
+  app.post(
+    "/api/client/stores",
+    authenticate,
+    requireClient,
+    clientStoreRoutes.createStore
   );
 
   // One-time repair: fix Arabic store slug + bad product slugs for authenticated client
@@ -1790,11 +1821,10 @@ ${urls}
   // Order routes
   app.post("/api/orders/create", storefrontOrderLimiter, orderRoutes.createOrder); // Public - buyers can create orders
   app.post("/api/client/orders", authenticate, requireClient, orderRoutes.createClientOrder); // Authenticated - store owner creates order manually
-  app.get("/api/client/orders", authenticate, requireClient, orderRoutes.getClientOrders);
-  app.get("/api/client/orders/chat", authenticate, requireClient, orderRoutes.getChatOrders);
-  app.get("/api/orders/new-count", authenticate, requireClient, orderRoutes.getNewOrdersCount); // Get count of new orders;
-
-  app.get("/api/client/orders/flagged-count", authenticate, requireClient, orderRoutes.getFlaggedOrdersCount); // Get count of flagged orders
+  app.get("/api/client/orders", authenticate, requireClient, resolveActiveStore, orderRoutes.getClientOrders);
+  app.get("/api/client/orders/chat", authenticate, requireClient, resolveActiveStore, orderRoutes.getChatOrders);
+  app.get("/api/orders/new-count", authenticate, requireClient, resolveActiveStore, orderRoutes.getNewOrdersCount); // Get count of new orders;
+  app.get("/api/client/orders/flagged-count", authenticate, requireClient, resolveActiveStore, orderRoutes.getFlaggedOrdersCount); // Get count of flagged orders
 
   app.get("/api/orders/:id/risk", authenticate, requireClient, orderRoutes.getOrderRisk);
   app.post("/api/orders/check-risk", authenticate, requireClient, orderRoutes.checkPhoneRisk);
