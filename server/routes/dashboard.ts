@@ -24,6 +24,9 @@ async function storeOrdersHasColumn(columnName: string): Promise<boolean> {
 export const getDashboardStats: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 365);
     const dateFilter = `AND created_at >= NOW() - INTERVAL '${days} days'`;
 
@@ -42,24 +45,24 @@ export const getDashboardStats: RequestHandler = async (req, res) => {
     
     const [productsRes, ordersRes, revenueRes, pendingRes, completedRes, adSpendRes] = await Promise.all([
       pool.query(
-        `SELECT COUNT(*)::int AS products FROM client_store_products WHERE client_id = $1 AND status = 'active'`,
-        [clientId]
+        `SELECT COUNT(*)::int AS products FROM client_store_products WHERE ${storeFilter} = $1 AND status = 'active'`,
+        [storeIdVal]
       ),
       pool.query(
-        `SELECT COUNT(*)::int AS orders FROM store_orders WHERE client_id = $1 ${dateFilter}`,
-        [clientId]
+        `SELECT COUNT(*)::int AS orders FROM store_orders WHERE ${storeFilter} = $1 ${dateFilter}`,
+        [storeIdVal]
       ),
       pool.query(
-        `SELECT COALESCE(SUM(${revenueExpr}),0)::float AS revenue FROM store_orders WHERE client_id = $1 AND status = ANY($2) ${dateFilter}`,
-        [clientId, revenueStatuses]
+        `SELECT COALESCE(SUM(${revenueExpr}),0)::float AS revenue FROM store_orders WHERE ${storeFilter} = $1 AND status = ANY($2) ${dateFilter}`,
+        [storeIdVal, revenueStatuses]
       ),
       pool.query(
-        `SELECT COUNT(*)::int AS pending FROM store_orders WHERE status = 'pending' AND client_id = $1 ${dateFilter}`,
-        [clientId]
+        `SELECT COUNT(*)::int AS pending FROM store_orders WHERE status = 'pending' AND ${storeFilter} = $1 ${dateFilter}`,
+        [storeIdVal]
       ),
       pool.query(
-        `SELECT COUNT(*)::int AS completed FROM store_orders WHERE client_id = $1 AND status = ANY($2) ${dateFilter}`,
-        [clientId, revenueStatuses]
+        `SELECT COUNT(*)::int AS completed FROM store_orders WHERE ${storeFilter} = $1 AND status = ANY($2) ${dateFilter}`,
+        [storeIdVal, revenueStatuses]
       ),
       pool.query(
         `SELECT COALESCE(SUM(spend),0)::float AS ad_spend FROM creative_spend_entries WHERE client_id = $1 AND entry_date >= CURRENT_DATE - INTERVAL '${days} days'`,

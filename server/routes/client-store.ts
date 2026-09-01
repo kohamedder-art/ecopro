@@ -70,6 +70,7 @@ export const getStoreProducts: RequestHandler = async (req, res) => {
     const user = (req as any).user;
     if (user && (user.role === 'admin' || user.user_type === 'admin')) return res.status(403).json({ error: 'Admins are not allowed to manage client storefronts' });
     const clientId = (req as any).user.id;
+    const activeStoreId = (req as any).activeStoreId;
     const { status, category, search } = req.query;
 
     // Use cache only for unfiltered requests (most common case)
@@ -86,9 +87,9 @@ export const getStoreProducts: RequestHandler = async (req, res) => {
              category, stock_quantity, status, is_featured, metadata, slug, views,
              created_at, updated_at
       FROM client_store_products
-      WHERE client_id = $1
+      WHERE ${activeStoreId ? 'store_id = $1' : 'client_id = $1'}
     `;
-    const params: any[] = [clientId];
+    const params: any[] = [activeStoreId || clientId];
     let paramCount = 2;
 
     if (status) {
@@ -229,12 +230,13 @@ export const createStoreProduct: RequestHandler = async (req, res) => {
 
     const result = await client.query(
       `INSERT INTO client_store_products 
-       (client_id, title, description, price, original_price, images, landing_images,
+       (client_id, store_id, title, description, price, original_price, images, landing_images,
         category, stock_quantity, status, is_featured, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         clientId,
+        (req as any).activeStoreId || null,
         title,
         description || null,
         price,
@@ -779,13 +781,16 @@ export const getStoreCategories: RequestHandler = async (req, res) => {
     const user = (req as any).user;
     if (user && (user.role === 'admin' || user.user_type === 'admin')) return res.status(403).json({ error: 'Admins are not allowed to manage client storefronts' });
     const clientId = (req as any).user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
 
     const result = await pool.query(
       `SELECT DISTINCT category 
        FROM client_store_products 
-       WHERE client_id = $1 AND category IS NOT NULL
+       WHERE ${storeFilter} = $1 AND category IS NOT NULL
        ORDER BY category`,
-      [clientId]
+      [storeIdVal]
     );
 
     res.json(result.rows.map(r => r.category));
@@ -1827,6 +1832,9 @@ export const getStoreStats: RequestHandler = async (req, res) => {
     const user = (req as any).user;
     if (user && (user.role === 'admin' || user.user_type === 'admin')) return res.status(403).json({ error: 'Admins do not have a client store' });
     const clientId = (req as any).user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     
     // Get product stats
     const productStatsRes = await pool.query(
@@ -1836,8 +1844,8 @@ export const getStoreStats: RequestHandler = async (req, res) => {
         COUNT(*) FILTER (WHERE status='draft') AS draft_products,
         COALESCE(SUM(views),0) AS total_product_views
        FROM client_store_products
-       WHERE client_id = $1`,
-      [clientId]
+       WHERE ${storeFilter} = $1`,
+      [storeIdVal]
     );
     
     // Get page views from store settings

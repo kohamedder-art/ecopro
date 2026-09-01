@@ -152,6 +152,7 @@ export const getClientStock: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
     
     if (!clientId) {
       console.error('[getClientStock] No clientId in request');
@@ -170,6 +171,9 @@ export const getClientStock: RequestHandler = async (req, res) => {
       if (!parsedStatus.success) return res.status(400).json({ error: 'Invalid status' });
     }
 
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
+
     let query = `
       SELECT 
         id, client_id, name, sku, description, category,
@@ -180,10 +184,10 @@ export const getClientStock: RequestHandler = async (req, res) => {
         created_at, updated_at,
         CASE WHEN quantity <= reorder_level THEN true ELSE false END as is_low_stock
       FROM client_stock_products
-      WHERE client_id = $1
+      WHERE ${storeFilter} = $1
     `;
 
-    const params: any[] = [clientId];
+    const params: any[] = [storeIdVal];
     let paramIndex = 2;
 
     if (category) {

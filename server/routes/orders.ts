@@ -965,6 +965,7 @@ export const getClientOrders: RequestHandler = async (req, res) => {
 
     // One-time backfill: flag existing duplicate-phone orders for this client
     const clientIdNum = Number((req.user as any).id);
+    const activeStoreId = (req as any).activeStoreId;
     backfillDuplicateOrders(clientIdNum).catch(() => {});
 
     // Get pagination params
@@ -979,6 +980,9 @@ export const getClientOrders: RequestHandler = async (req, res) => {
         return res.json(cached.data);
       }
     }
+
+    const storeFilter = activeStoreId ? 'o.store_id' : 'o.client_id';
+    const storeIdVal = activeStoreId || req.user.id;
 
     // Run queries sequentially to avoid competing for pool connections under load.
     // A single connection is reused, which prevents "timeout exceeded when trying to connect" errors
@@ -1040,17 +1044,17 @@ export const getClientOrders: RequestHandler = async (req, res) => {
       FROM store_orders o
       LEFT JOIN client_store_products cp ON o.product_id = cp.id
       LEFT JOIN delivery_companies dc ON o.delivery_company_id = dc.id
-      WHERE o.client_id = $1
+      WHERE ${storeFilter} = $1
         AND o.deleted_at IS NULL
         AND (o.order_source IS NULL OR o.order_source != 'ai_chat')
       ORDER BY o.created_at DESC
       LIMIT $2 OFFSET $3`,
-      [req.user.id, limit, offset]
+      [storeIdVal, limit, offset]
     );
 
     const countResult = await queryWithRetry(
-      `SELECT COUNT(*) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND (order_source IS NULL OR order_source != 'ai_chat')`,
-      [req.user.id]
+      `SELECT COUNT(*) as total FROM store_orders WHERE ${storeFilter} = $1 AND deleted_at IS NULL AND (order_source IS NULL OR order_source != 'ai_chat')`,
+      [storeIdVal]
     );
 
     // Build duplicate detection maps from the fetched orders
