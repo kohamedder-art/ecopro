@@ -665,6 +665,7 @@ export const getCurrentUser: RequestHandler = async (req, res) => {
       email: user.email,
       name: user.name,
       role: user.role as "user" | "admin",
+      user_type: (user as any).user_type || (user.role === "admin" ? "admin" : "client"),
       is_blocked: !!(user as any).is_blocked,
       blocked_reason: (user as any).blocked_reason || null,
       is_locked: !!(user as any).is_locked,
