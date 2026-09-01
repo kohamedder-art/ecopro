@@ -41,7 +41,7 @@ export default function Header() {
   const user = userStr ? safeJsonParse(userStr, null as any) : null;
   const isAdmin = user?.role === "admin";
   const isSeller = user?.role === "seller";
-  const isClient = user?.role === "client";
+  const isClient = user?.user_type === "client" || user?.role === "admin";
   
   const { storeSlug } = useStoreSettings({ enabled: Boolean(user && isClient) });
 
@@ -357,7 +357,7 @@ function StoreSwitcher() {
     }
   };
 
-  if (stores.length <= 1 && !showCreate) return null;
+  if (stores.length === 0 && !showCreate) return null;
 
   return (
     <div className="border-b border-slate-100 dark:border-slate-700 mb-1">

@@ -28,7 +28,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
   const user = userStr ? JSON.parse(userStr) : null;
-  const isClient = user?.role === 'client' || user?.user_type === 'client';
+  const isClient = user?.user_type === 'client' || user?.role === 'admin';
 
   const fetchStores = useCallback(async () => {
     if (!isClient) {
