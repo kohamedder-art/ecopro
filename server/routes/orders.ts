@@ -1053,7 +1053,7 @@ export const getClientOrders: RequestHandler = async (req, res) => {
     );
 
     const countResult = await queryWithRetry(
-      `SELECT COUNT(*) as total FROM store_orders WHERE ${storeFilter} = $1 AND deleted_at IS NULL AND (order_source IS NULL OR order_source != 'ai_chat')`,
+      `SELECT COUNT(*) as total FROM store_orders o WHERE ${storeFilter} = $1 AND o.deleted_at IS NULL AND (o.order_source IS NULL OR o.order_source != 'ai_chat')`,
       [storeIdVal]
     );
 
