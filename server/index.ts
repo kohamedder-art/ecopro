@@ -894,6 +894,7 @@ ${urls}
     "/api/client/staff/create",
     authenticate,
     requireStoreOwner,
+    resolveActiveStore,
     apiLimiter,
     staffRoutes.createStaff
   );
@@ -901,6 +902,7 @@ ${urls}
     "/api/client/staff/invite",
     authenticate,
     requireStoreOwner,
+    resolveActiveStore,
     apiLimiter,
     staffRoutes.inviteStaff
   );
@@ -908,12 +910,14 @@ ${urls}
     "/api/client/staff",
     authenticate,
     requireStoreOwner,
+    resolveActiveStore,
     staffRoutes.getStaffList
   );
   app.patch(
     "/api/client/staff/:id/permissions",
     authenticate,
     requireStoreOwner,
+    resolveActiveStore,
     apiLimiter,
     staffRoutes.updateStaffPermissions
   );
@@ -921,6 +925,7 @@ ${urls}
     "/api/client/staff/:id",
     authenticate,
     requireStoreOwner,
+    resolveActiveStore,
     apiLimiter,
     staffRoutes.removeStaff
   );
@@ -928,6 +933,7 @@ ${urls}
     "/api/client/staff/:id/activity",
     authenticate,
     requireStoreOwner,
+    resolveActiveStore,
     staffRoutes.getActivityLog
   );
 
@@ -1865,7 +1871,7 @@ ${urls}
   app.use('/api/google', authenticate, googleSheetsRouter);
 
   // Chat routes (authenticated - handles both client and seller roles)
-  app.use('/api/chat', authenticate, chatRouter);
+  app.use('/api/chat', authenticate, resolveActiveStore, chatRouter);
 
   // AI routes (mixed auth - each sub-route enforces its own role)
   app.use('/api/ai', aiRouter);

@@ -110,12 +110,15 @@ const ANALYTICS_CACHE_TTL = 10 * 1000; // 10 seconds cache
 export const getDashboardAnalytics: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 365);
     const dateFilter = `AND created_at >= NOW() - INTERVAL '${days} days'`;
     const dateFilterO = `AND o.created_at >= NOW() - INTERVAL '${days} days'`;
     
     // Check cache first (include days in cache key)
-    const cacheKey = `${clientId}_${days}`;
+    const cacheKey = `${storeIdVal}_${days}`;
     const cached = analyticsCache.get(cacheKey as any);
     if (cached && Date.now() - cached.timestamp < ANALYTICS_CACHE_TTL) {
       return res.json(cached.data);
@@ -123,8 +126,8 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
     
     // Get revenue statuses first (needed for other queries)
     const revenueStatusesRes = await pool.query(
-      `SELECT key, name FROM order_statuses WHERE client_id = $1 AND counts_as_revenue = true`,
-      [clientId]
+      `SELECT key, name FROM order_statuses WHERE ${storeFilter} = $1 AND counts_as_revenue = true`,
+      [storeIdVal]
     );
     const revenueStatuses = revenueStatusesRes.rows.map(r => r.key || r.name);
     revenueStatuses.push('completed');
@@ -153,8 +156,8 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
     ] = await Promise.all([
       // Custom statuses
       pool.query(
-        `SELECT key, name, color, icon FROM order_statuses WHERE client_id = $1 ORDER BY sort_order`,
-        [clientId]
+        `SELECT key, name, color, icon FROM order_statuses WHERE ${storeFilter} = $1 ORDER BY sort_order`,
+        [storeIdVal]
       ),
       // Daily orders & revenue for selected day range (Algeria timezone)
       pool.query(
@@ -164,18 +167,18 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COALESCE(SUM(${revenueExpr}), 0)::float as total_value,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 ${dateFilter}
+         WHERE ${storeFilter} = $1 ${dateFilter}
          GROUP BY (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date
          ORDER BY date ASC`,
-        [clientId, revenueStatuses]
+        [storeIdVal, revenueStatuses]
       ),
       // Daily page views
       pool.query(
         `SELECT view_date as date, views
          FROM client_store_daily_views
-         WHERE client_id = $1 AND view_date >= CURRENT_DATE - INTERVAL '${days} days'
+         WHERE ${storeFilter} = $1 AND view_date >= CURRENT_DATE - INTERVAL '${days} days'
          ORDER BY view_date ASC`,
-        [clientId]
+        [storeIdVal]
       ),
       // Today — use Algeria timezone (UTC+1) since platform is DZD-focused
       pool.query(
@@ -183,8 +186,8 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as orders,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date = (NOW() AT TIME ZONE 'Africa/Algiers')::date`,
-        [clientId, revenueStatuses]
+         WHERE ${storeFilter} = $1 AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date = (NOW() AT TIME ZONE 'Africa/Algiers')::date`,
+        [storeIdVal, revenueStatuses]
       ),
       // Yesterday — Algeria timezone
       pool.query(
@@ -192,8 +195,8 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as orders,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date = ((NOW() AT TIME ZONE 'Africa/Algiers') - INTERVAL '1 day')::date`,
-        [clientId, revenueStatuses]
+         WHERE ${storeFilter} = $1 AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date = ((NOW() AT TIME ZONE 'Africa/Algiers') - INTERVAL '1 day')::date`,
+        [storeIdVal, revenueStatuses]
       ),
       // This week
       pool.query(
@@ -201,8 +204,8 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as orders,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 AND created_at >= DATE_TRUNC('week', CURRENT_DATE)`,
-        [clientId, revenueStatuses]
+         WHERE ${storeFilter} = $1 AND created_at >= DATE_TRUNC('week', CURRENT_DATE)`,
+        [storeIdVal, revenueStatuses]
       ),
       // Last week
       pool.query(
@@ -210,10 +213,10 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as orders,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 
+         WHERE ${storeFilter} = $1 
            AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
            AND created_at < DATE_TRUNC('week', CURRENT_DATE)`,
-        [clientId, revenueStatuses]
+        [storeIdVal, revenueStatuses]
       ),
       // This month
       pool.query(
@@ -221,8 +224,8 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as orders,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`,
-        [clientId, revenueStatuses]
+         WHERE ${storeFilter} = $1 AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`,
+        [storeIdVal, revenueStatuses]
       ),
       // Last month
       pool.query(
@@ -230,10 +233,10 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as orders,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 
+         WHERE ${storeFilter} = $1 
            AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
            AND created_at < DATE_TRUNC('month', CURRENT_DATE)`,
-        [clientId, revenueStatuses]
+        [storeIdVal, revenueStatuses]
       ),
       
       // All Time
@@ -242,8 +245,8 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as orders,
           COALESCE(SUM(CASE WHEN status = ANY($2) THEN ${revenueExpr} ELSE 0 END), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1`,
-        [clientId, revenueStatuses]
+         WHERE ${storeFilter} = $1`,
+        [storeIdVal, revenueStatuses]
       ),
       // Top products
       pool.query(
@@ -254,12 +257,12 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COALESCE(SUM(o.quantity), 0)::int as total_quantity,
           COALESCE(SUM(CASE WHEN o.status = ANY($2) THEN ${revenueExprO} ELSE 0 END), 0)::float as total_revenue
          FROM client_store_products p
-         LEFT JOIN store_orders o ON o.product_id = p.id AND o.client_id = $1 ${dateFilterO}
-         WHERE p.client_id = $1
+         LEFT JOIN store_orders o ON o.product_id = p.id AND o.${storeFilter} = $1 ${dateFilterO}
+         WHERE p.${storeFilter} = $1
          GROUP BY p.id, p.title, p.price, p.images
          ORDER BY total_orders DESC
          LIMIT 5`,
-        [clientId, revenueStatuses]
+        [storeIdVal, revenueStatuses]
       ),
       // Recent orders
       pool.query(
@@ -268,10 +271,10 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COALESCE(p.title, 'Unknown Product') as product_title
          FROM store_orders o
          LEFT JOIN client_store_products p ON o.product_id = p.id
-         WHERE o.client_id = $1 ${dateFilter.replace('created_at', 'o.created_at')}
+         WHERE o.${storeFilter} = $1 ${dateFilter.replace('created_at', 'o.created_at')}
          ORDER BY o.created_at DESC 
          LIMIT 10`,
-        [clientId]
+        [storeIdVal]
       ),
       // Status breakdown
       pool.query(
@@ -280,10 +283,10 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as count,
           COALESCE(SUM(${revenueExpr}), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 ${dateFilter}
+         WHERE ${storeFilter} = $1 ${dateFilter}
          GROUP BY status
          ORDER BY count DESC`,
-        [clientId]
+        [storeIdVal]
       ),
       // City breakdown
       pool.query(
@@ -296,11 +299,11 @@ export const getDashboardAnalytics: RequestHandler = async (req, res) => {
           COUNT(*)::int as count,
           COALESCE(SUM(${revenueExpr}), 0)::float as revenue
          FROM store_orders 
-         WHERE client_id = $1 ${dateFilter}
+         WHERE ${storeFilter} = $1 ${dateFilter}
          GROUP BY shipping_wilaya_id
          ORDER BY count DESC
          LIMIT 10`,
-        [clientId]
+        [storeIdVal]
       )
     ]);
 

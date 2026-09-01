@@ -744,6 +744,9 @@ export const createOrder: RequestHandler = async (req, res) => {
  */
 export const createClientOrder: RequestHandler = async (req, res) => {
   const clientId = (req as any).user?.id;
+  const activeStoreId = (req as any).activeStoreId;
+  const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+  const storeIdVal = activeStoreId || clientId;
   if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
 
   const {
@@ -837,6 +840,7 @@ export const createClientOrder: RequestHandler = async (req, res) => {
       : (unitPrice * resolvedQty) + deliveryFee;
 
     addCol('client_id', clientId);
+    addCol('store_id', storeIdVal);
     addCol('product_id', resolvedProductId);
     addCol('quantity', resolvedQty);
     addCol('total_price', orderTotal);
@@ -853,7 +857,7 @@ export const createClientOrder: RequestHandler = async (req, res) => {
     // Fraud + duplicate detection
     let clientOrderStatus = 'pending';
     try {
-      const risk = await assessOrderRisk(Number(clientId), trimPhone, customer_address || undefined);
+      const risk = await assessOrderRisk(Number(storeIdVal), trimPhone, customer_address || undefined);
       if (risk.level === 'critical' || risk.level === 'high') {
         clientOrderStatus = 'fake';
       }
@@ -862,10 +866,10 @@ export const createClientOrder: RequestHandler = async (req, res) => {
       try {
         const dupCheck = await pool.query(
           `SELECT id FROM store_orders
-           WHERE client_id = $1 AND customer_phone = $2
+           WHERE ${storeFilter} = $1 AND customer_phone = $2
              AND status NOT IN ('cancelled','failed','fake','duplicate','completed','delivered','returned')
            LIMIT 1`,
-          [clientId, trimPhone]
+          [storeIdVal, trimPhone]
         );
         if (dupCheck.rows.length > 0) clientOrderStatus = 'duplicate';
       } catch {}
@@ -1104,11 +1108,14 @@ export const getChatOrders: RequestHandler = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
     const clientId = Number((req.user as any).id);
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'o.store_id' : 'o.client_id';
+    const storeIdVal = activeStoreId || clientId;
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
     const offset = parseInt(req.query.offset as string) || 0;
     const platformFilter = req.query.platform as string | undefined;
 
-    const baseParams: any[] = [clientId];
+    const baseParams: any[] = [storeIdVal];
     const platformClause = platformFilter ? ` AND o.source_platform = $2` : '';
     if (platformFilter) baseParams.push(platformFilter);
 
@@ -1124,7 +1131,7 @@ export const getChatOrders: RequestHandler = async (req, res) => {
         COALESCE(cp.images, '{}') as product_images
        FROM store_orders o
        LEFT JOIN client_store_products cp ON o.product_id = cp.id
-       WHERE o.client_id = $1
+       WHERE ${storeFilter} = $1
          AND o.order_source = 'ai_chat'
          AND o.deleted_at IS NULL
          ${platformClause}
@@ -1134,8 +1141,8 @@ export const getChatOrders: RequestHandler = async (req, res) => {
     );
 
     const countResult = await pool.query(
-      `SELECT COUNT(*) as total FROM store_orders WHERE client_id = $1 AND order_source = 'ai_chat' AND deleted_at IS NULL${platformFilter ? ` AND source_platform = $2` : ''}`,
-      platformFilter ? [clientId, platformFilter] : [clientId]
+      `SELECT COUNT(*) as total FROM store_orders WHERE ${storeFilter} = $1 AND order_source = 'ai_chat' AND deleted_at IS NULL${platformFilter ? ` AND source_platform = $2` : ''}`,
+      platformFilter ? [storeIdVal, platformFilter] : [storeIdVal]
     );
 
     res.json({
@@ -1229,6 +1236,9 @@ export const getProductForCheckout: RequestHandler = async (req, res) => {
 export const deleteOrder: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const orderId = parseInt(req.params.id, 10);
     if (!clientId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -1240,8 +1250,8 @@ export const deleteOrder: RequestHandler = async (req, res) => {
     }
     // Soft delete: set deleted_at timestamp
     const result = await pool.query(
-      `UPDATE store_orders SET deleted_at = NOW() WHERE id = $1 AND client_id = $2 AND deleted_at IS NULL RETURNING id`,
-      [orderId, clientId]
+      `UPDATE store_orders SET deleted_at = NOW() WHERE id = $1 AND ${storeFilter} = $2 AND deleted_at IS NULL RETURNING id`,
+      [orderId, storeIdVal]
     );
     if (result.rows.length === 0) {
       res.status(404).json({ error: "Order not found or already deleted" });
@@ -1272,6 +1282,9 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
     const { id } = req.params;
     const { status: rawStatus } = req.body;
     const status = rawStatus?.trim();
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || req.user.id;
     
     if (!status) {
       res.status(400).json({ error: "Status is required" });
@@ -1294,8 +1307,8 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
       // Check custom statuses in the database
       if (!isProduction) console.log('[updateOrderStatus] Checking custom status for client_id:', req.user.id, 'status:', status);
       const customStatusCheck = await pool.query(
-        'SELECT id FROM order_statuses WHERE client_id = $1 AND name = $2',
-        [req.user.id, status]
+        `SELECT id FROM order_statuses WHERE ${storeFilter} = $1 AND name = $2`,
+        [storeIdVal, status]
       );
       if (!isProduction) console.log('[updateOrderStatus] Custom status query result:', customStatusCheck.rows);
       isValidStatus = customStatusCheck.rows.length > 0;
@@ -1310,9 +1323,9 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
     const result = await pool.query(
       `UPDATE store_orders 
        SET status = $1, updated_at = NOW() 
-       WHERE id = $2 AND client_id = $3
+       WHERE id = $2 AND ${storeFilter} = $3
        RETURNING *`,
-      [status, id, req.user.id]
+      [status, id, storeIdVal]
     );
     
     if (!isProduction) console.log('[updateOrderStatus] Update result rows:', result.rows.length);
@@ -1721,6 +1734,9 @@ export const updateClientOrder: RequestHandler = async (req, res) => {
 export const restorePresetStatus: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     if (!clientId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
     const { key } = req.body;
@@ -1747,16 +1763,16 @@ export const restorePresetStatus: RequestHandler = async (req, res) => {
 
     // Check not already exists
     const existing = await pool.query(
-      'SELECT id FROM order_statuses WHERE client_id = $1 AND key = $2 LIMIT 1',
-      [clientId, key]
+      `SELECT id FROM order_statuses WHERE ${storeFilter} = $1 AND key = $2 LIMIT 1`,
+      [storeIdVal, key]
     );
     if (existing.rows.length) { res.status(409).json({ error: 'Status already exists' }); return; }
 
     const result = await pool.query(
-      `INSERT INTO order_statuses (client_id, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue)
+      `INSERT INTO order_statuses (${storeFilter}, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue)
        VALUES ($1, $2, $3, $4, $5, $6, false, true, $7)
        RETURNING id, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue`,
-      [clientId, preset.name, key, preset.color, preset.icon, preset.sort_order, preset.counts_as_revenue]
+      [storeIdVal, preset.name, key, preset.color, preset.icon, preset.sort_order, preset.counts_as_revenue]
     );
 
     res.json(result.rows[0]);
@@ -1773,6 +1789,9 @@ export const restorePresetStatus: RequestHandler = async (req, res) => {
 export const getOrderStatuses: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     if (!clientId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -1781,7 +1800,7 @@ export const getOrderStatuses: RequestHandler = async (req, res) => {
     // Backfill missing system/bot statuses for existing accounts as well.
     // This keeps the UI and bots aligned even if the account was created before new statuses were added.
     try {
-      await ensureSystemOrderStatuses(Number(clientId));
+      await ensureSystemOrderStatuses(Number(storeIdVal));
     } catch (e) {
       console.warn('[getOrderStatuses] Failed to ensure system statuses:', (e as any)?.message || e);
     }
@@ -1789,9 +1808,9 @@ export const getOrderStatuses: RequestHandler = async (req, res) => {
     let result = await pool.query(
       `SELECT id, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue 
        FROM order_statuses 
-       WHERE client_id = $1 
+       WHERE ${storeFilter} = $1 
        ORDER BY sort_order ASC, id ASC`,
-      [clientId]
+      [storeIdVal]
     );
 
     const allowedSystemKeys = new Set([
@@ -1838,6 +1857,9 @@ export const getOrderStatuses: RequestHandler = async (req, res) => {
 export const createOrderStatus: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     if (!clientId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -1870,8 +1892,8 @@ export const createOrderStatus: RequestHandler = async (req, res) => {
     let suffix = 1;
     while (true) {
       const exists = await pool.query(
-        'SELECT 1 FROM order_statuses WHERE client_id = $1 AND key = $2 LIMIT 1',
-        [clientId, uniqueKey]
+        `SELECT 1 FROM order_statuses WHERE ${storeFilter} = $1 AND key = $2 LIMIT 1`,
+        [storeIdVal, uniqueKey]
       );
       if (!exists.rows.length) break;
       uniqueKey = `${newKey}_${suffix++}`;
@@ -1879,15 +1901,15 @@ export const createOrderStatus: RequestHandler = async (req, res) => {
 
     // Get max sort_order
     const maxOrder = await pool.query(
-      'SELECT COALESCE(MAX(sort_order), -1) as max_order FROM order_statuses WHERE client_id = $1',
-      [clientId]
+      `SELECT COALESCE(MAX(sort_order), -1) as max_order FROM order_statuses WHERE ${storeFilter} = $1`,
+      [storeIdVal]
     );
 
     const result = await pool.query(
-      `INSERT INTO order_statuses (client_id, name, key, color, icon, sort_order, counts_as_revenue)
+      `INSERT INTO order_statuses (${storeFilter}, name, key, color, icon, sort_order, counts_as_revenue)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, name, key, color, icon, sort_order, is_default, counts_as_revenue`,
-      [clientId, trimmedName, uniqueKey, color || '#6b7280', icon || '●', (maxOrder.rows[0].max_order || 0) + 1, counts_as_revenue || false]
+      [storeIdVal, trimmedName, uniqueKey, color || '#6b7280', icon || '●', (maxOrder.rows[0].max_order || 0) + 1, counts_as_revenue || false]
     );
 
     res.json(result.rows[0]);
@@ -1904,6 +1926,9 @@ export const createOrderStatus: RequestHandler = async (req, res) => {
 export const updateCustomOrderStatus: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const statusId = req.params.id;
     if (!clientId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -1920,9 +1945,9 @@ export const updateCustomOrderStatus: RequestHandler = async (req, res) => {
            sort_order = COALESCE($4, sort_order),
            counts_as_revenue = COALESCE($5, counts_as_revenue),
            updated_at = NOW()
-       WHERE id = $6 AND client_id = $7
+       WHERE id = $6 AND ${storeFilter} = $7
        RETURNING id, name, color, icon, sort_order, is_default, counts_as_revenue`,
-      [name, color, icon, sort_order, counts_as_revenue, statusId, clientId]
+      [name, color, icon, sort_order, counts_as_revenue, statusId, storeIdVal]
     );
 
     if (result.rows.length === 0) {
@@ -1944,6 +1969,9 @@ export const updateCustomOrderStatus: RequestHandler = async (req, res) => {
 export const deleteOrderStatus: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const statusId = req.params.id;
     if (!clientId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -1954,8 +1982,8 @@ export const deleteOrderStatus: RequestHandler = async (req, res) => {
     const CORE_LOCKED = ['pending', 'confirmed', 'in_delivery', 'at_delivery', 'completed'];
 
     const checkResult = await pool.query(
-      'SELECT is_system, key FROM order_statuses WHERE id = $1 AND client_id = $2',
-      [statusId, clientId]
+      `SELECT is_system, key FROM order_statuses WHERE id = $1 AND ${storeFilter} = $2`,
+      [statusId, storeIdVal]
     );
 
     if (checkResult.rows.length === 0) {
@@ -1970,8 +1998,8 @@ export const deleteOrderStatus: RequestHandler = async (req, res) => {
     }
 
     const result = await pool.query(
-      'DELETE FROM order_statuses WHERE id = $1 AND client_id = $2 RETURNING id',
-      [statusId, clientId]
+      `DELETE FROM order_statuses WHERE id = $1 AND ${storeFilter} = $2 RETURNING id`,
+      [statusId, storeIdVal]
     );
 
     if (result.rows.length === 0) {
@@ -1993,6 +2021,9 @@ export const deleteOrderStatus: RequestHandler = async (req, res) => {
 export const getNewOrdersCount: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     if (!clientId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -2004,11 +2035,11 @@ export const getNewOrdersCount: RequestHandler = async (req, res) => {
     let params: any[];
 
     if (since) {
-      query = `SELECT COUNT(*)::int AS count FROM store_orders WHERE client_id = $1 AND created_at > $2 AND (order_source IS NULL OR order_source != 'ai_chat')`;
-      params = [clientId, since];
+      query = `SELECT COUNT(*)::int AS count FROM store_orders WHERE ${storeFilter} = $1 AND created_at > $2 AND (order_source IS NULL OR order_source != 'ai_chat')`;
+      params = [storeIdVal, since];
     } else {
-      query = `SELECT COUNT(*)::int AS count FROM store_orders WHERE client_id = $1 AND status = 'pending' AND (order_source IS NULL OR order_source != 'ai_chat')`;
-      params = [clientId];
+      query = `SELECT COUNT(*)::int AS count FROM store_orders WHERE ${storeFilter} = $1 AND status = 'pending' AND (order_source IS NULL OR order_source != 'ai_chat')`;
+      params = [storeIdVal];
     }
 
     const result = await pool.query(query, params);
@@ -2026,6 +2057,9 @@ export const getNewOrdersCount: RequestHandler = async (req, res) => {
 export const getOrderRisk: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     if (!clientId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -2039,8 +2073,8 @@ export const getOrderRisk: RequestHandler = async (req, res) => {
 
     // Get order details
     const orderResult = await pool.query(
-      `SELECT customer_phone, customer_address FROM store_orders WHERE id = $1 AND client_id = $2`,
-      [orderId, clientId]
+      `SELECT customer_phone, customer_address FROM store_orders WHERE id = $1 AND ${storeFilter} = $2`,
+      [orderId, storeIdVal]
     );
 
     if (orderResult.rows.length === 0) {
@@ -2049,7 +2083,7 @@ export const getOrderRisk: RequestHandler = async (req, res) => {
     }
 
     const order = orderResult.rows[0];
-    const risk = await assessOrderRisk(clientId, order.customer_phone, order.customer_address);
+    const risk = await assessOrderRisk(Number(storeIdVal), order.customer_phone, order.customer_address);
 
     res.json({
       order_id: orderId,
@@ -2121,13 +2155,16 @@ export const getHighRiskOrdersHandler: RequestHandler = async (req, res) => {
 export const getFlaggedOrdersCount: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     if (!clientId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
     const result = await pool.query(
-      `SELECT COUNT(*)::int AS count FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND status IN ('fake', 'duplicate', 'returned')`,
-      [clientId]
+      `SELECT COUNT(*)::int AS count FROM store_orders WHERE ${storeFilter} = $1 AND deleted_at IS NULL AND status IN ('fake', 'duplicate', 'returned')`,
+      [storeIdVal]
     );
     res.json({ count: result.rows[0]?.count || 0 });
   } catch (error) {
@@ -2143,6 +2180,8 @@ export const getFlaggedOrdersCount: RequestHandler = async (req, res) => {
 export const checkPhoneRisk: RequestHandler = async (req, res) => {
   try {
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeIdVal = activeStoreId || clientId;
     if (!clientId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -2154,7 +2193,7 @@ export const checkPhoneRisk: RequestHandler = async (req, res) => {
       return;
     }
 
-    const risk = await assessOrderRisk(clientId, phone.trim(), address?.trim() || null);
+    const risk = await assessOrderRisk(Number(storeIdVal), phone.trim(), address?.trim() || null);
     res.json(risk);
   } catch (error) {
     console.error("Check phone risk error:", error);

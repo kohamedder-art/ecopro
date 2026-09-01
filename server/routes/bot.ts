@@ -112,10 +112,14 @@ export const getBotSettings: RequestHandler = async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
+
     // Get bot settings from database
     const result = await pool.query(
-      `SELECT * FROM bot_settings WHERE client_id = $1`,
-      [clientId]
+      `SELECT * FROM bot_settings WHERE ${storeFilter} = $1`,
+      [storeIdVal]
     );
 
     if (result.rows.length === 0) {
@@ -128,7 +132,7 @@ export const getBotSettings: RequestHandler = async (req, res) => {
         console.warn('[getBotSettings] Failed to ensure bot_settings row:', (e as any)?.message || e);
       }
 
-      const refetch = await pool.query(`SELECT * FROM bot_settings WHERE client_id = $1`, [clientId]);
+      const refetch = await pool.query(`SELECT * FROM bot_settings WHERE ${storeFilter} = $1`, [storeIdVal]);
       if (refetch.rows.length === 0) {
         // Fallback: preserve old behavior if the DB insert failed for any reason.
         return res.json({
@@ -179,8 +183,8 @@ export const getBotSettings: RequestHandler = async (req, res) => {
     if (!access.allowBot && settings.enabled) {
       // Hard-stop the bot at the source so it cannot run while locked.
       await pool.query(
-        `UPDATE bot_settings SET enabled = false, updated_at = NOW() WHERE client_id = $1`,
-        [clientId]
+        `UPDATE bot_settings SET enabled = false, updated_at = NOW() WHERE ${storeFilter} = $1`,
+        [storeIdVal]
       );
     }
 
@@ -207,7 +211,7 @@ export const getBotSettings: RequestHandler = async (req, res) => {
     try {
       const igRes = await pool.query(
         `SELECT instagram_account_id, page_access_token_encrypted FROM facebook_tokens
-         WHERE client_id = $1 AND is_active = TRUE AND instagram_account_id IS NOT NULL AND instagram_account_id != ''
+         WHERE ${storeFilter} = $1 AND is_active = TRUE AND instagram_account_id IS NOT NULL AND instagram_account_id != ''
          LIMIT 1`,
         [clientId]
       );
@@ -284,12 +288,16 @@ export const testBotConnection: RequestHandler = async (req, res) => {
     const clientId = (req as any).user?.id;
     if (!clientId) return res.status(401).json({ error: 'Unauthorized' });
 
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
+
     const { platform } = req.body;
     if (!platform) return res.status(400).json({ error: 'platform required' });
 
     const row = await pool.query(
-      `SELECT telegram_bot_token, fb_page_id, fb_page_access_token FROM bot_settings WHERE client_id = $1 LIMIT 1`,
-      [clientId]
+      `SELECT telegram_bot_token, fb_page_id, fb_page_access_token FROM bot_settings WHERE ${storeFilter} = $1 LIMIT 1`,
+      [storeIdVal]
     );
     const s = row.rows[0];
     if (!s) return res.json({ success: false, error: 'No bot settings found' });
@@ -337,8 +345,8 @@ export const testBotConnection: RequestHandler = async (req, res) => {
 
     if (platform === 'instagram') {
       const fbRow = await pool.query(
-        `SELECT instagram_account_id, page_access_token_encrypted FROM facebook_tokens WHERE client_id = $1 AND is_active = TRUE LIMIT 1`,
-        [clientId]
+        `SELECT instagram_account_id, page_access_token_encrypted FROM facebook_tokens WHERE ${storeFilter} = $1 AND is_active = TRUE LIMIT 1`,
+        [storeIdVal]
       );
       if (!fbRow.rows[0]?.instagram_account_id) return res.json({ success: false, error: 'No Instagram credentials configured' });
       const igId = fbRow.rows[0].instagram_account_id;
@@ -369,6 +377,10 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
     if (!clientId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
 
     const {
       enabled,
@@ -425,8 +437,8 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
       `      SELECT whatsapp_phone_id, whatsapp_token, telegram_bot_token, telegram_bot_username, fb_page_id, fb_page_access_token,
               updates_enabled, tracking_enabled, delivery_notifications_enabled,
               instagram_business_account_id
-       FROM bot_settings WHERE client_id = $1`,
-      [clientId]
+       FROM bot_settings WHERE ${storeFilter} = $1`,
+      [storeIdVal]
     );
     const existingSecrets = existingSecretsRes.rows[0] || {};
 
@@ -556,15 +568,15 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
 
     // Check if settings exist
     const existingResult = await pool.query(
-      `SELECT id FROM bot_settings WHERE client_id = $1`,
-      [clientId]
+      `SELECT id FROM bot_settings WHERE ${storeFilter} = $1`,
+      [storeIdVal]
     );
 
     if (existingResult.rows.length === 0) {
       // Insert new settings
       await pool.query(
         `INSERT INTO bot_settings (
-          client_id, enabled, updates_enabled, tracking_enabled, provider, whatsapp_phone_id, whatsapp_token, whatsapp_display_phone,
+          client_id, store_id, enabled, updates_enabled, tracking_enabled, provider, whatsapp_phone_id, whatsapp_token, whatsapp_display_phone,
           telegram_bot_token, telegram_delay_minutes, auto_expire_hours, viber_auth_token, viber_sender_name,
           telegram_bot_username, telegram_webhook_secret,
           template_greeting, template_instant_order, template_pin_instructions, template_order_confirmation, template_payment, template_shipping,
@@ -572,9 +584,10 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           delivery_notifications_enabled, delivery_status_template,
           instagram_business_account_id,
           created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, NOW(), NOW())`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, NOW(), NOW())`,
         [
           clientId,
+          activeStoreId || null,
           effectiveEnabled,
           effectiveUpdatesEnabled,
           effectiveTrackingEnabled,
@@ -635,9 +648,9 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
           whatsapp_display_phone = $26,
           instagram_business_account_id = $27,
           updated_at = NOW()
-        WHERE client_id = $1`,
+        WHERE ${storeFilter} = $1`,
         [
-          clientId,
+          storeIdVal,
           effectiveEnabled,
           effectiveUpdatesEnabled,
           effectiveTrackingEnabled,
@@ -675,8 +688,8 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
       try {
         const encryptedToken = encryptData(normalizedIgPageToken);
         const existing = await pool.query(
-          `SELECT id FROM facebook_tokens WHERE client_id = $1 LIMIT 1`,
-          [clientId]
+          `SELECT id FROM facebook_tokens WHERE ${storeFilter} = $1 LIMIT 1`,
+          [storeIdVal]
         );
         if (existing.rows.length) {
           // Update existing row — set Instagram fields + page token.
@@ -684,23 +697,23 @@ export const updateBotSettings: RequestHandler = async (req, res) => {
             `UPDATE facebook_tokens SET
                instagram_account_id = $1,
                page_access_token_encrypted = $2,
-               is_active = TRUE,
-               updated_at = NOW()
-             WHERE client_id = $3`,
-            [normalizedIgAccountId, encryptedToken, clientId]
+              is_active = TRUE,
+              updated_at = NOW()
+             WHERE ${storeFilter} = $3`,
+            [normalizedIgAccountId, encryptedToken, storeIdVal]
           );
         } else {
           // Insert new row — fill NOT NULL cols with manual-entry placeholders.
           await pool.query(
             `INSERT INTO facebook_tokens
-               (client_id, fb_user_id, user_access_token_encrypted, page_id, page_access_token_encrypted,
+               (client_id, store_id, fb_user_id, user_access_token_encrypted, page_id, page_access_token_encrypted,
                 instagram_account_id, is_active, created_at, updated_at)
-             VALUES ($1, 'manual', $2, 'manual', $2, $3, TRUE, NOW(), NOW())
-             ON CONFLICT (client_id) DO UPDATE SET
+             VALUES ($1, $2, 'manual', $3, 'manual', $3, $4, TRUE, NOW(), NOW())
+             ON CONFLICT (store_id) DO UPDATE SET
                instagram_account_id = EXCLUDED.instagram_account_id,
                page_access_token_encrypted = EXCLUDED.page_access_token_encrypted,
                is_active = TRUE, updated_at = NOW()`,
-            [clientId, encryptedToken, normalizedIgAccountId]
+            [clientId, activeStoreId || null, encryptedToken, normalizedIgAccountId]
           );
         }
         console.log(`[Bot] Manual Instagram credentials saved for client ${clientId}, IG Account: ${normalizedIgAccountId}`);

@@ -232,6 +232,7 @@ export const getStockById: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
     
     if (!clientId) {
       console.error('[getStockById] No clientId in request');
@@ -241,8 +242,8 @@ export const getStockById: RequestHandler = async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT * FROM client_stock_products WHERE id = $1 AND client_id = $2`,
-      [id, clientId]
+      `SELECT * FROM client_stock_products WHERE id = $1 AND store_id = $2`,
+      [id, activeStoreId || clientId]
     );
 
     if (result.rows.length === 0) {
@@ -264,6 +265,7 @@ export const createStock: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
     
     if (!clientId) {
       console.error('[createStock] No clientId in request');
@@ -303,7 +305,7 @@ export const createStock: RequestHandler = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO client_stock_products (
-        client_id, name, sku, description, category,
+        store_id, name, sku, description, category,
         sizes, colors,
         quantity, unit_price, reorder_level, location,
         supplier_name, supplier_contact, status,
@@ -312,7 +314,7 @@ export const createStock: RequestHandler = async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *`,
       [
-        clientId,
+        activeStoreId || clientId,
         name,
         sku || null,
         description || null,
@@ -339,9 +341,9 @@ export const createStock: RequestHandler = async (req, res) => {
       try {
         await pool.query(
           `INSERT INTO client_stock_history (
-            stock_id, client_id, quantity_before, quantity_after, adjustment, reason, created_by
+            stock_id, store_id, quantity_before, quantity_after, adjustment, reason, created_by
           ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [result.rows[0].id, clientId, 0, parsedQuantity, parsedQuantity, 'initial_stock', clientId]
+          [result.rows[0].id, activeStoreId || clientId, 0, parsedQuantity, parsedQuantity, 'initial_stock', clientId]
         );
       } catch (historyError) {
         console.warn('[createStock] Failed to log stock history:', historyError);
@@ -381,6 +383,7 @@ export const updateStock: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
     
     if (!clientId) {
       console.error('[updateStock] No clientId in request');
@@ -391,8 +394,8 @@ export const updateStock: RequestHandler = async (req, res) => {
 
     // Verify ownership
     const ownerCheck = await pool.query(
-      'SELECT * FROM client_stock_products WHERE id = $1 AND client_id = $2',
-      [id, clientId]
+      'SELECT * FROM client_stock_products WHERE id = $1 AND store_id = $2',
+      [id, activeStoreId || clientId]
     );
 
     if (ownerCheck.rows.length === 0) {
@@ -442,8 +445,8 @@ export const updateStock: RequestHandler = async (req, res) => {
         images = CASE WHEN $18::text[] IS NOT NULL THEN $18::text[] ELSE images END,
         landing_images = CASE WHEN $19::text[] IS NOT NULL THEN $19::text[] ELSE landing_images END,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $16 AND client_id = $17
-      RETURNING *`,
+       WHERE id = $16 AND store_id = $17
+       RETURNING *`,
       [
         name ?? null,
         sku ?? null,
@@ -461,7 +464,7 @@ export const updateStock: RequestHandler = async (req, res) => {
         shipping_flat_fee ?? null,
         notes ?? null,
         id,
-        clientId,
+        activeStoreId || clientId,
         Array.isArray(images) ? images : null,
         Array.isArray(landing_images) ? landing_images : null,
       ]
@@ -489,6 +492,7 @@ export const adjustStockQuantity: RequestHandler = async (req, res) => {
     pool = await ensureConnection();
     client = await pool.connect();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
     const { id } = req.params;
     const parsedBody = validateBody(adjustStockBodySchema, req.body);
     if (parsedBody.ok === false) return res.status(400).json({ error: parsedBody.message });
@@ -506,8 +510,8 @@ export const adjustStockQuantity: RequestHandler = async (req, res) => {
 
     // Get current stock (lock row to avoid races)
     const stockResult = await client.query(
-      'SELECT * FROM client_stock_products WHERE id = $1 AND client_id = $2 FOR UPDATE',
-      [id, clientId]
+      'SELECT * FROM client_stock_products WHERE id = $1 AND store_id = $2 FOR UPDATE',
+      [id, activeStoreId || clientId]
     );
 
     if (stockResult.rows.length === 0) {
@@ -529,19 +533,19 @@ export const adjustStockQuantity: RequestHandler = async (req, res) => {
        SET quantity = $1, 
            status = CASE WHEN $1 = 0 THEN 'out_of_stock' ELSE status END,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2 AND client_id = $3
+       WHERE id = $2 AND store_id = $3
        RETURNING *`,
-      [newQuantity, id, clientId]
+      [newQuantity, id, activeStoreId || clientId]
     );
 
     // Log adjustment in history
     await client.query(
       `INSERT INTO client_stock_history (
-        stock_id, client_id, quantity_before, quantity_after, 
+        stock_id, store_id, quantity_before, quantity_after, 
         adjustment, reason, notes, created_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
-        id, clientId, currentStock.quantity, newQuantity,
+        id, activeStoreId || clientId, currentStock.quantity, newQuantity,
         adjustmentNum, reasonText, notes || null, clientId
       ]
     );
@@ -573,6 +577,7 @@ export const getStockHistory: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
     const { id } = req.params;
 
     if (!clientId) {
@@ -581,8 +586,8 @@ export const getStockHistory: RequestHandler = async (req, res) => {
 
     // Verify ownership
     const ownerCheck = await pool.query(
-      'SELECT id FROM client_stock_products WHERE id = $1 AND client_id = $2',
-      [id, clientId]
+      'SELECT id FROM client_stock_products WHERE id = $1 AND store_id = $2',
+      [id, activeStoreId || clientId]
     );
 
     if (ownerCheck.rows.length === 0) {
@@ -596,9 +601,9 @@ export const getStockHistory: RequestHandler = async (req, res) => {
       FROM client_stock_history h
       LEFT JOIN staff s ON h.created_by = s.id
       LEFT JOIN clients c ON h.created_by = c.id
-      WHERE h.stock_id = $1 AND h.client_id = $2
+      WHERE h.stock_id = $1 AND h.store_id = $2
       ORDER BY h.created_at DESC`,
-      [id, clientId]
+      [id, activeStoreId || clientId]
     );
 
     res.json(result.rows);
@@ -616,13 +621,14 @@ export const getClientStockVariants: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = Number((req as any).user?.id);
+    const activeStoreId = (req as any).activeStoreId;
     if (!clientId) return res.status(401).json({ error: 'Not authenticated' });
 
     const stockId = StockIdSchema.parse((req.params as any).id);
 
     const owns = await pool.query(
-      'SELECT 1 FROM client_stock_products WHERE id = $1 AND client_id = $2 LIMIT 1',
-      [stockId, clientId]
+      'SELECT 1 FROM client_stock_products WHERE id = $1 AND store_id = $2 LIMIT 1',
+      [stockId, activeStoreId || clientId]
     );
     if (!owns.rowCount) return res.status(404).json({ error: 'Stock item not found' });
 
@@ -630,9 +636,9 @@ export const getClientStockVariants: RequestHandler = async (req, res) => {
       const result = await pool.query(
         `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
          FROM client_stock_variants
-         WHERE stock_id = $1 AND client_id = $2
+         WHERE stock_id = $1 AND store_id = $2
          ORDER BY sort_order ASC, id ASC`,
-        [stockId, clientId]
+        [stockId, activeStoreId || clientId]
       );
       return res.json({ variants: result.rows });
     } catch (err: any) {
@@ -658,6 +664,7 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = Number((req as any).user?.id);
+    const activeStoreId = (req as any).activeStoreId;
     if (!clientId) return res.status(401).json({ error: 'Not authenticated' });
 
     const stockId = StockIdSchema.parse((req.params as any).id);
@@ -666,8 +673,8 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
     client = await pool.connect();
 
     const owns = await client.query(
-      'SELECT id, quantity FROM client_stock_products WHERE id = $1 AND client_id = $2 LIMIT 1',
-      [stockId, clientId]
+      'SELECT id, quantity FROM client_stock_products WHERE id = $1 AND store_id = $2 LIMIT 1',
+      [stockId, activeStoreId || clientId]
     );
     if (!owns.rowCount) return res.status(404).json({ error: 'Stock item not found' });
 
@@ -687,8 +694,8 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
     }
 
     const existing = await client.query(
-      'SELECT id FROM client_stock_variants WHERE stock_id = $1 AND client_id = $2',
-      [stockId, clientId]
+      'SELECT id FROM client_stock_variants WHERE stock_id = $1 AND store_id = $2',
+      [stockId, activeStoreId || clientId]
     );
     const existingIds = new Set<number>(existing.rows.map((r: any) => Number(r.id)));
     const keepIds = new Set<number>();
@@ -725,16 +732,16 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
                is_active = $8,
                sort_order = $9,
                updated_at = NOW()
-           WHERE id = $10 AND stock_id = $11 AND client_id = $12`,
-          [color, size, size2, variantName, price, stockQty, images, isActive, sortOrder, v.id, stockId, clientId]
+           WHERE id = $10 AND stock_id = $11 AND store_id = $12`,
+          [color, size, size2, variantName, price, stockQty, images, isActive, sortOrder, v.id, stockId, activeStoreId || clientId]
         );
       } else {
         const inserted = await client.query(
           `INSERT INTO client_stock_variants
-           (client_id, stock_id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order)
+           (store_id, stock_id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
            RETURNING id`,
-          [clientId, stockId, color, size, size2, variantName, price, stockQty, images, isActive, sortOrder]
+          [activeStoreId || clientId, stockId, color, size, size2, variantName, price, stockQty, images, isActive, sortOrder]
         );
         keepIds.add(Number(inserted.rows[0].id));
       }
@@ -743,8 +750,8 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
     const idsToDelete = [...existingIds].filter((id) => !keepIds.has(id));
     if (idsToDelete.length) {
       await client.query(
-        'DELETE FROM client_stock_variants WHERE client_id = $1 AND stock_id = $2 AND id = ANY($3::bigint[])',
-        [clientId, stockId, idsToDelete]
+        'DELETE FROM client_stock_variants WHERE store_id = $1 AND stock_id = $2 AND id = ANY($3::bigint[])',
+        [activeStoreId || clientId, stockId, idsToDelete]
       );
     }
 
@@ -752,8 +759,8 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
     const sumRes = await client.query(
       `SELECT COALESCE(SUM(stock_quantity), 0)::int AS total
        FROM client_stock_variants
-       WHERE client_id = $1 AND stock_id = $2 AND is_active = true`,
-      [clientId, stockId]
+       WHERE store_id = $1 AND stock_id = $2 AND is_active = true`,
+      [activeStoreId || clientId, stockId]
     );
     const total = Number(sumRes.rows?.[0]?.total || 0);
 
@@ -763,8 +770,8 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
         ARRAY_REMOVE(ARRAY_AGG(DISTINCT size), NULL) AS sizes,
         ARRAY_REMOVE(ARRAY_AGG(DISTINCT color), NULL) AS colors
        FROM client_stock_variants
-       WHERE client_id = $1 AND stock_id = $2 AND is_active = true`,
-      [clientId, stockId]
+       WHERE store_id = $1 AND stock_id = $2 AND is_active = true`,
+      [activeStoreId || clientId, stockId]
     );
     const sizes = Array.isArray(optRes.rows?.[0]?.sizes) ? optRes.rows[0].sizes : [];
     const colors = Array.isArray(optRes.rows?.[0]?.colors) ? optRes.rows[0].colors : [];
@@ -776,8 +783,8 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
            colors = $3::text[],
            status = CASE WHEN $1 = 0 THEN 'out_of_stock' ELSE status END,
            updated_at = NOW()
-       WHERE id = $4 AND client_id = $5`,
-      [total, sizes, colors, stockId, clientId]
+       WHERE id = $4 AND store_id = $5`,
+      [total, sizes, colors, stockId, activeStoreId || clientId]
     );
 
     await client.query('COMMIT');
@@ -786,9 +793,9 @@ export const putClientStockVariants: RequestHandler = async (req, res) => {
     const out = await pool.query(
       `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, is_active, sort_order
        FROM client_stock_variants
-       WHERE stock_id = $1 AND client_id = $2
+       WHERE stock_id = $1 AND store_id = $2
        ORDER BY sort_order ASC, id ASC`,
-      [stockId, clientId]
+      [stockId, activeStoreId || clientId]
     );
 
     res.json({ success: true, variants: out.rows, quantity: total, sizes, colors });
@@ -815,6 +822,7 @@ export const deleteStock: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
     
     if (!clientId) {
       console.error('[deleteStock] No clientId in request');
@@ -824,8 +832,8 @@ export const deleteStock: RequestHandler = async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      'DELETE FROM client_stock_products WHERE id = $1 AND client_id = $2 RETURNING id',
-      [id, clientId]
+      'DELETE FROM client_stock_products WHERE id = $1 AND store_id = $2 RETURNING id',
+      [id, activeStoreId || clientId]
     );
 
     if (result.rows.length === 0) {
@@ -847,6 +855,7 @@ export const getLowStockAlerts: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
 
     if (!clientId) {
       return res.status(401).json({ error: 'Not authenticated' });
@@ -857,11 +866,11 @@ export const getLowStockAlerts: RequestHandler = async (req, res) => {
         id, name, sku, quantity, reorder_level, category, location,
         (reorder_level - quantity) as shortage
       FROM client_stock_products
-      WHERE client_id = $1 
+      WHERE store_id = $1 
         AND status = 'active'
         AND quantity <= reorder_level
       ORDER BY shortage DESC, name ASC`,
-      [clientId]
+      [activeStoreId || clientId]
     );
 
     res.json(result.rows);
@@ -879,6 +888,7 @@ export const getStockCategories: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
 
     if (!clientId) {
       return res.status(401).json({ error: 'Not authenticated' });
@@ -887,10 +897,10 @@ export const getStockCategories: RequestHandler = async (req, res) => {
     const result = await pool.query(
       `SELECT DISTINCT category, COUNT(*) as count
        FROM client_stock_products
-       WHERE client_id = $1 AND category IS NOT NULL
+       WHERE store_id = $1 AND category IS NOT NULL
        GROUP BY category
        ORDER BY category ASC`,
-      [clientId]
+      [activeStoreId || clientId]
     );
 
     res.json(result.rows);
@@ -908,6 +918,7 @@ export const createStockCategory: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
     const parsedBody = validateBody(createCategoryBodySchema, req.body);
     if (parsedBody.ok === false) return res.status(400).json({ error: parsedBody.message });
     const { name, color, icon } = parsedBody.data;
@@ -920,8 +931,8 @@ export const createStockCategory: RequestHandler = async (req, res) => {
 
     // Check if category already exists for this client
     const existingCheck = await pool.query(
-      `SELECT id FROM client_stock_categories WHERE client_id = $1 AND LOWER(name) = LOWER($2)`,
-      [clientId, categoryName]
+      `SELECT id FROM client_stock_categories WHERE store_id = $1 AND LOWER(name) = LOWER($2)`,
+      [activeStoreId || clientId, categoryName]
     );
 
     if (existingCheck.rows.length > 0) {
@@ -930,10 +941,10 @@ export const createStockCategory: RequestHandler = async (req, res) => {
 
     // Insert new category
     const result = await pool.query(
-      `INSERT INTO client_stock_categories (client_id, name, color, icon, created_at)
+      `INSERT INTO client_stock_categories (store_id, name, color, icon, created_at)
        VALUES ($1, $2, $3, $4, NOW())
        RETURNING id, name, color, icon, created_at`,
-      [clientId, categoryName, color || '#3b82f6', icon || '📦']
+      [activeStoreId || clientId, categoryName, color || '#3b82f6', icon || '📦']
     );
 
     res.status(201).json(result.rows[0]);
@@ -955,6 +966,7 @@ export const deleteStockCategory: RequestHandler = async (req, res) => {
     pool = await ensureConnection();
     client = await pool.connect();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
     const categoryId = req.params.id;
 
     if (!clientId) {
@@ -963,8 +975,8 @@ export const deleteStockCategory: RequestHandler = async (req, res) => {
 
     // Get the category name first
     const categoryResult = await pool.query(
-      `SELECT name FROM client_stock_categories WHERE id = $1 AND client_id = $2`,
-      [categoryId, clientId]
+      `SELECT name FROM client_stock_categories WHERE id = $1 AND store_id = $2`,
+      [categoryId, activeStoreId || clientId]
     );
 
     if (categoryResult.rows.length === 0) {
@@ -978,14 +990,14 @@ export const deleteStockCategory: RequestHandler = async (req, res) => {
 
     // Remove category from products (set to null)
     await client.query(
-      `UPDATE client_stock_products SET category = NULL WHERE client_id = $1 AND category = $2`,
-      [clientId, categoryName]
+      `UPDATE client_stock_products SET category = NULL WHERE store_id = $1 AND category = $2`,
+      [activeStoreId || clientId, categoryName]
     );
 
     // Delete the category
     await client.query(
-      `DELETE FROM client_stock_categories WHERE id = $1 AND client_id = $2`,
-      [categoryId, clientId]
+      `DELETE FROM client_stock_categories WHERE id = $1 AND store_id = $2`,
+      [categoryId, activeStoreId || clientId]
     );
 
     await client.query('COMMIT');
@@ -1015,6 +1027,7 @@ export const getAllStockCategories: RequestHandler = async (req, res) => {
   try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
+    const activeStoreId = (req as any).activeStoreId;
 
     if (!clientId) {
       return res.status(401).json({ error: 'Not authenticated' });
@@ -1028,18 +1041,18 @@ export const getAllStockCategories: RequestHandler = async (req, res) => {
          (
            SELECT images[1]
            FROM client_stock_products
-           WHERE client_id = c.client_id
+           WHERE store_id = c.store_id
              AND category = c.name
              AND images IS NOT NULL
              AND array_length(images, 1) > 0
            LIMIT 1
          ) as sample_image
        FROM client_stock_categories c
-       LEFT JOIN client_stock_products p ON p.client_id = c.client_id AND p.category = c.name
-       WHERE c.client_id = $1
+       LEFT JOIN client_stock_products p ON p.store_id = c.store_id AND p.category = c.name
+       WHERE c.store_id = $1
        GROUP BY c.id, c.name, c.color, c.icon, c.created_at
        ORDER BY c.name ASC`,
-      [clientId]
+      [activeStoreId || clientId]
     );
 
     res.json(result.rows);

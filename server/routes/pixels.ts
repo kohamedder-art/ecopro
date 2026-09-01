@@ -1,6 +1,7 @@
 import { Router, RequestHandler } from "express";
 import { ensureConnection } from "../utils/database";
 import { authenticate, requireClient } from "../middleware/auth";
+import { resolveActiveStore } from "../utils/store-scope";
 import { z } from 'zod';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -110,6 +111,7 @@ function forwardToTikTokCAPI(opts: {
  */
 async function forwardEventToCAPI(pool: any, opts: {
   clientId: number;
+  storeId?: number | null;
   pixelType: string;
   eventName: string;
   eventData: Record<string, any>;
@@ -120,12 +122,15 @@ async function forwardEventToCAPI(pool: any, opts: {
   fbp?: string;
 }) {
   try {
+    const storeFilter = opts.storeId ? 'store_id' : 'client_id';
+    const storeIdVal = opts.storeId || opts.clientId;
+
     if (opts.pixelType === 'facebook') {
       const result = await pool.query(
         `SELECT facebook_pixel_id, facebook_access_token FROM client_pixel_settings
-         WHERE client_id = $1 AND is_facebook_enabled = true
+         WHERE ${storeFilter} = $1 AND is_facebook_enabled = true
          AND facebook_pixel_id IS NOT NULL AND facebook_pixel_id != ''`,
-        [opts.clientId]
+        [storeIdVal]
       );
       if (result.rows.length > 0) {
         const { facebook_pixel_id, facebook_access_token } = result.rows[0];
@@ -177,9 +182,9 @@ async function forwardEventToCAPI(pool: any, opts: {
     } else if (opts.pixelType === 'tiktok') {
       const result = await pool.query(
         `SELECT tiktok_pixel_id, tiktok_access_token FROM client_pixel_settings
-         WHERE client_id = $1 AND is_tiktok_enabled = true
+         WHERE ${storeFilter} = $1 AND is_tiktok_enabled = true
          AND tiktok_pixel_id IS NOT NULL AND tiktok_pixel_id != ''`,
-        [opts.clientId]
+        [storeIdVal]
       );
       if (result.rows.length > 0) {
         const { tiktok_pixel_id, tiktok_access_token } = result.rows[0];
@@ -320,11 +325,14 @@ export const getPixelSettings: RequestHandler = async (req, res) => {
     }
     
     const clientId = user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     
     const pool = await getPool();
     const result = await pool.query(
-      `SELECT * FROM client_pixel_settings WHERE client_id = $1`,
-      [clientId]
+      `SELECT * FROM client_pixel_settings WHERE ${storeFilter} = $1`,
+      [storeIdVal]
     );
     
     if (result.rows.length === 0) {
@@ -360,6 +368,9 @@ export const updatePixelSettings: RequestHandler = async (req, res) => {
     }
     
     const clientId = user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const {
       facebook_pixel_id,
       facebook_access_token,
@@ -398,42 +409,54 @@ export const updatePixelSettings: RequestHandler = async (req, res) => {
     
     const pool = await getPool();
     
-    const upsertResult = await pool.query(
-      `INSERT INTO client_pixel_settings (
-        client_id, facebook_pixel_id, facebook_access_token,
-        tiktok_pixel_id, tiktok_access_token,
-        is_facebook_enabled, is_tiktok_enabled,
-        additional_pixels
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
-      ON CONFLICT (client_id) DO UPDATE SET
-        facebook_pixel_id = EXCLUDED.facebook_pixel_id,
-        facebook_access_token = CASE
-          WHEN EXCLUDED.facebook_access_token IS NOT NULL THEN EXCLUDED.facebook_access_token
-          ELSE client_pixel_settings.facebook_access_token
-        END,
-        tiktok_pixel_id = EXCLUDED.tiktok_pixel_id,
-        tiktok_access_token = CASE
-          WHEN EXCLUDED.tiktok_access_token IS NOT NULL THEN EXCLUDED.tiktok_access_token
-          ELSE client_pixel_settings.tiktok_access_token
-        END,
-        is_facebook_enabled = EXCLUDED.is_facebook_enabled,
-        is_tiktok_enabled = EXCLUDED.is_tiktok_enabled,
-        additional_pixels = EXCLUDED.additional_pixels,
-        updated_at = NOW()
-      RETURNING *`,
-      [
-        clientId,
-        facebook_pixel_id || null,
-        facebook_access_token === '***configured***' ? null : (facebook_access_token || null),
-        tiktok_pixel_id || null,
-        tiktok_access_token === '***configured***' ? null : (tiktok_access_token || null),
-        is_facebook_enabled ?? false,
-        is_tiktok_enabled ?? false,
-        JSON.stringify(additional_pixels || [])
-      ]
+    const fbToken = facebook_access_token === '***configured***' ? null : (facebook_access_token || null);
+    const ttToken = tiktok_access_token === '***configured***' ? null : (tiktok_access_token || null);
+    const fbEnabled = is_facebook_enabled ?? false;
+    const ttEnabled = is_tiktok_enabled ?? false;
+    const apJson = JSON.stringify(additional_pixels || []);
+
+    const existing = await pool.query(
+      `SELECT id FROM client_pixel_settings WHERE ${storeFilter} = $1`,
+      [storeIdVal]
     );
-    
-    const settings = upsertResult.rows[0];
+
+    let settings;
+    if (existing.rows.length > 0) {
+      const updateResult = await pool.query(
+        `UPDATE client_pixel_settings SET
+          facebook_pixel_id = $2,
+          facebook_access_token = CASE
+            WHEN $3 IS NOT NULL THEN $3
+            ELSE facebook_access_token
+          END,
+          tiktok_pixel_id = $4,
+          tiktok_access_token = CASE
+            WHEN $5 IS NOT NULL THEN $5
+            ELSE tiktok_access_token
+          END,
+          is_facebook_enabled = $6,
+          is_tiktok_enabled = $7,
+          additional_pixels = $8::jsonb,
+          updated_at = NOW()
+        WHERE ${storeFilter} = $1
+        RETURNING *`,
+        [storeIdVal, facebook_pixel_id || null, fbToken, tiktok_pixel_id || null, ttToken, fbEnabled, ttEnabled, apJson]
+      );
+      settings = updateResult.rows[0];
+    } else {
+      const insertResult = await pool.query(
+        `INSERT INTO client_pixel_settings (
+          ${storeFilter}, facebook_pixel_id, facebook_access_token,
+          tiktok_pixel_id, tiktok_access_token,
+          is_facebook_enabled, is_tiktok_enabled,
+          additional_pixels
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+        RETURNING *`,
+        [storeIdVal, facebook_pixel_id || null, fbToken, tiktok_pixel_id || null, ttToken, fbEnabled, ttEnabled, apJson]
+      );
+      settings = insertResult.rows[0];
+    }
+
     res.json({
       ...settings,
       facebook_access_token: settings.facebook_access_token ? '***configured***' : null,
@@ -601,6 +624,7 @@ export const trackPixelEvent: RequestHandler = async (req, res) => {
     if (pixel_type === 'facebook' || pixel_type === 'tiktok') {
       forwardEventToCAPI(pool, {
         clientId,
+        storeId: resolvedStore.storeId,
         pixelType: pixel_type,
         eventName: event_name,
         eventData: mergedEventData,
@@ -742,6 +766,9 @@ export const getPixelStats: RequestHandler = async (req, res) => {
     }
     
     const clientId = user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const { days = 30, pixel_type } = req.query;
     const numDays = Math.min(90, Math.max(1, parseInt(String(days)) || 30));
     
@@ -759,11 +786,11 @@ export const getPixelStats: RequestHandler = async (req, res) => {
         purchases,
         total_revenue
       FROM pixel_stats_daily
-      WHERE client_id = $1 
+      WHERE ${storeFilter} = $1 
         AND stat_date >= CURRENT_DATE - INTERVAL '${numDays} days'
     `;
     
-    const params: any[] = [clientId];
+    const params: any[] = [storeIdVal];
     if (pixel_type && ['facebook', 'tiktok'].includes(String(pixel_type))) {
       statsQuery += ` AND pixel_type = $2`;
       params.push(pixel_type);
@@ -784,12 +811,12 @@ export const getPixelStats: RequestHandler = async (req, res) => {
         SUM(purchases) as total_purchases,
         SUM(total_revenue) as total_revenue
       FROM pixel_stats_daily
-      WHERE client_id = $1 
+      WHERE ${storeFilter} = $1 
         AND stat_date >= CURRENT_DATE - INTERVAL '${numDays} days'
       GROUP BY pixel_type
     `;
     
-    const totalsResult = await pool.query(totalsQuery, [clientId]);
+    const totalsResult = await pool.query(totalsQuery, [storeIdVal]);
     
     // Calculate conversion rates
     const facebookTotals = totalsResult.rows.find(r => r.pixel_type === 'facebook') || {};
@@ -860,6 +887,9 @@ export const getRecentPixelEvents: RequestHandler = async (req, res) => {
     }
     
     const clientId = user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const { limit = 50, pixel_type, event_name } = req.query;
     const numLimit = Math.min(200, Math.max(1, parseInt(String(limit)) || 50));
     
@@ -870,10 +900,10 @@ export const getRecentPixelEvents: RequestHandler = async (req, res) => {
         id, pixel_type, event_name, event_data, page_url,
         product_id, order_id, revenue, currency, created_at
       FROM pixel_events
-      WHERE client_id = $1
+      WHERE ${storeFilter} = $1
     `;
     
-    const params: any[] = [clientId];
+    const params: any[] = [storeIdVal];
     let paramCount = 2;
     
     if (pixel_type && ['facebook', 'tiktok'].includes(String(pixel_type))) {
@@ -910,6 +940,9 @@ export const getPixelFunnel: RequestHandler = async (req, res) => {
     }
     
     const clientId = user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const { days = 30, pixel_type = 'facebook' } = req.query;
     const numDays = Math.min(90, Math.max(1, parseInt(String(days)) || 30));
     
@@ -925,12 +958,12 @@ export const getPixelFunnel: RequestHandler = async (req, res) => {
         SUM(purchases) as purchases,
         SUM(total_revenue) as total_revenue
       FROM pixel_stats_daily
-      WHERE client_id = $1 
+      WHERE ${storeFilter} = $1 
         AND pixel_type = $2
         AND stat_date >= CURRENT_DATE - INTERVAL '${numDays} days'
     `;
     
-    const result = await pool.query(funnelQuery, [clientId, pixel_type]);
+    const result = await pool.query(funnelQuery, [storeIdVal, pixel_type]);
     const data = result.rows[0] || {};
     
     const pageViews = parseInt(data.page_views) || 0;
@@ -970,7 +1003,7 @@ export const getOmniOverviewHandler: RequestHandler = async (req, res) => {
     }
 
     const numDays = Math.min(3650, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
-    const snapshot = await getOmniOverview(user.id, numDays);
+    const snapshot = await getOmniOverview(user.id, numDays, (req as any).activeStoreId);
     return res.json(snapshot);
   } catch (error) {
     console.error('Get Omni overview error:', error);
@@ -986,7 +1019,7 @@ export const getCustomerAnalyticsHandler: RequestHandler = async (req, res) => {
     }
 
     const numDays = Math.min(3650, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
-    const analytics = await getCustomerAnalytics(user.id, numDays);
+    const analytics = await getCustomerAnalytics(user.id, numDays, (req as any).activeStoreId);
     return res.json(analytics);
   } catch (error) {
     console.error('Get customer analytics error:', error);
@@ -1001,7 +1034,7 @@ export const getGenderAnalyticsHandler: RequestHandler = async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
     const numDays = Math.min(3650, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
-    const analytics = await getGenderAnalytics(user.id, numDays);
+    const analytics = await getGenderAnalytics(user.id, numDays, (req as any).activeStoreId);
     return res.json(analytics);
   } catch (error) {
     console.error('Get gender analytics error:', error);
@@ -1016,7 +1049,7 @@ export const getOmniInputsHandler: RequestHandler = async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const inputs = await getOmniInputs(user.id);
+    const inputs = await getOmniInputs(user.id, (req as any).activeStoreId);
     return res.json(inputs);
   } catch (error) {
     console.error('Get Omni inputs error:', error);
@@ -1036,7 +1069,7 @@ export const saveProductEconomicsHandler: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: 'Invalid product economics payload', details: parsed.error.flatten() });
     }
 
-    const row = await upsertProductEconomics(user.id, parsed.data);
+    const row = await upsertProductEconomics(user.id, parsed.data, (req as any).activeStoreId);
     return res.json(row);
   } catch (error) {
     console.error('Save product economics error:', error);
@@ -1056,7 +1089,7 @@ export const saveCreativeCatalogHandler: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: 'Invalid creative payload', details: parsed.error.flatten() });
     }
 
-    const row = await upsertCreativeCatalogEntry(user.id, parsed.data);
+    const row = await upsertCreativeCatalogEntry(user.id, parsed.data, (req as any).activeStoreId);
     return res.json(row);
   } catch (error) {
     console.error('Save creative catalog error:', error);
@@ -1076,7 +1109,7 @@ export const deleteCreativeCatalogHandler: RequestHandler = async (req, res) => 
       return res.status(400).json({ error: 'Invalid creative id' });
     }
 
-    await deleteCreativeCatalogEntry(user.id, entryId);
+    await deleteCreativeCatalogEntry(user.id, entryId, (req as any).activeStoreId);
     return res.json({ success: true });
   } catch (error) {
     console.error('Delete creative catalog error:', error);
@@ -1096,7 +1129,7 @@ export const saveCreativeSpendHandler: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: 'Invalid spend payload', details: parsed.error.flatten() });
     }
 
-    const row = await upsertCreativeSpendEntry(user.id, parsed.data);
+    const row = await upsertCreativeSpendEntry(user.id, parsed.data, (req as any).activeStoreId);
     return res.json(row);
   } catch (error) {
     console.error('Save creative spend error:', error);
@@ -1116,7 +1149,7 @@ export const deleteCreativeSpendHandler: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: 'Invalid spend entry id' });
     }
 
-    await deleteCreativeSpendEntry(user.id, entryId);
+    await deleteCreativeSpendEntry(user.id, entryId, (req as any).activeStoreId);
     return res.json({ success: true });
   } catch (error) {
     console.error('Delete creative spend error:', error);
@@ -1136,7 +1169,7 @@ export const backfillHistoricalSessionsHandler: RequestHandler = async (req, res
       return res.status(400).json({ error: 'Invalid historical import payload', details: parsed.error.flatten() });
     }
 
-    const result = await backfillHistoricalSessions(user.id, parsed.data.days);
+    const result = await backfillHistoricalSessions(user.id, parsed.data.days, (req as any).activeStoreId);
     return res.json(result);
   } catch (error) {
     console.error('Backfill historical sessions error:', error);
@@ -1152,7 +1185,7 @@ export const getProductPerformanceHandler: RequestHandler = async (req, res) => 
     }
 
     const numDays = Math.min(3650, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
-    const products = await getProductPerformance(user.id, numDays);
+    const products = await getProductPerformance(user.id, numDays, (req as any).activeStoreId);
     return res.json({ products });
   } catch (error) {
     console.error('Get product performance error:', error);
@@ -1170,10 +1203,14 @@ export const getPricingConfigHandler: RequestHandler = async (req, res) => {
     if (!user || user.role === 'admin') {
       return res.status(403).json({ error: 'Access denied' });
     }
+    const clientId = user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const db = await ensureConnection();
     const result = await db.query(
-      'SELECT daily_ad_spend FROM ai_settings WHERE client_id = $1 LIMIT 1',
-      [user.id]
+      `SELECT daily_ad_spend FROM ai_settings WHERE ${storeFilter} = $1 LIMIT 1`,
+      [storeIdVal]
     );
     return res.json({ daily_ad_spend: Number(result.rows[0]?.daily_ad_spend || 0) });
   } catch (error) {
@@ -1188,17 +1225,31 @@ export const savePricingConfigHandler: RequestHandler = async (req, res) => {
     if (!user || user.role === 'admin') {
       return res.status(403).json({ error: 'Access denied' });
     }
+    const clientId = user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const { daily_ad_spend } = req.body;
     if (typeof daily_ad_spend !== 'number' || daily_ad_spend < 0) {
       return res.status(400).json({ error: 'daily_ad_spend must be a non-negative number' });
     }
     const db = await ensureConnection();
-    await db.query(
-      `INSERT INTO ai_settings (client_id, daily_ad_spend, created_at, updated_at)
-       VALUES ($1, $2, NOW(), NOW())
-       ON CONFLICT (client_id) DO UPDATE SET daily_ad_spend = $2, updated_at = NOW()`,
-      [user.id, daily_ad_spend]
+    const existing = await db.query(
+      `SELECT id FROM ai_settings WHERE ${storeFilter} = $1`,
+      [storeIdVal]
     );
+    if (existing.rows.length > 0) {
+      await db.query(
+        `UPDATE ai_settings SET daily_ad_spend = $2, updated_at = NOW() WHERE ${storeFilter} = $1`,
+        [storeIdVal, daily_ad_spend]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO ai_settings (${storeFilter}, daily_ad_spend, created_at, updated_at)
+         VALUES ($1, $2, NOW(), NOW())`,
+        [storeIdVal, daily_ad_spend]
+      );
+    }
     return res.json({ daily_ad_spend });
   } catch (error) {
     console.error('Save pricing config error:', error);
@@ -1214,10 +1265,13 @@ export const getCodPricingHandler: RequestHandler = async (req, res) => {
   try {
     const db = await ensureConnection();
     const clientId = (req as any).user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
 
     const configRes = await db.query(
-      'SELECT daily_ad_spend FROM ai_settings WHERE client_id = $1 LIMIT 1',
-      [clientId]
+      `SELECT daily_ad_spend FROM ai_settings WHERE ${storeFilter} = $1 LIMIT 1`,
+      [storeIdVal]
     );
     const dailyAdSpend = Number(configRes.rows[0]?.daily_ad_spend || 0);
 
@@ -1226,8 +1280,8 @@ export const getCodPricingHandler: RequestHandler = async (req, res) => {
          COUNT(*)::int AS total_orders,
          COUNT(*) FILTER (WHERE status IN ('delivered','completed'))::int AS delivered_orders,
          COUNT(*) FILTER (WHERE status IN ('cancelled','declined','returned','refunded'))::int AS returned_orders
-       FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL`,
-      [clientId]
+       FROM store_orders WHERE ${storeFilter} = $1 AND deleted_at IS NULL`,
+      [storeIdVal]
     );
     const stats = statsRes.rows[0] || { total_orders: 0, delivered_orders: 0, returned_orders: 0 };
     const totalOrders = stats.total_orders;
@@ -1250,21 +1304,21 @@ export const getCodPricingHandler: RequestHandler = async (req, res) => {
          COALESCE(pe.return_cost, 0) AS return_cost,
          COALESCE(pe.other_costs, 0) AS other_costs,
          (SELECT COUNT(*)::int FROM store_orders o
-            WHERE o.client_id = $1 AND o.product_id = p.id
+            WHERE o.${storeFilter} = $1 AND o.product_id = p.id
               AND o.deleted_at IS NULL
               AND (o.status IN ('delivered','completed'))
          ) AS delivered_count,
          (SELECT COUNT(*)::int FROM store_orders o
-            WHERE o.client_id = $1 AND o.product_id = p.id
+            WHERE o.${storeFilter} = $1 AND o.product_id = p.id
               AND o.deleted_at IS NULL
               AND (o.status IN ('cancelled','declined','returned','refunded'))
          ) AS returned_count
        FROM client_store_products p
-       LEFT JOIN product_economics pe ON pe.client_id = p.client_id AND pe.product_id = p.id
-       WHERE p.client_id = $1 AND COALESCE(p.status, 'active') <> 'archived'
+       LEFT JOIN product_economics pe ON pe.${storeFilter} = p.${storeFilter} AND pe.product_id = p.id
+       WHERE p.${storeFilter} = $1 AND COALESCE(p.status, 'active') <> 'archived'
        ORDER BY p.created_at DESC
        LIMIT 50`,
-      [clientId]
+      [storeIdVal]
     );
 
     const products = productsRes.rows.map((r: any) => {
@@ -1388,25 +1442,25 @@ export const getPublicPixelConfig: RequestHandler = async (req, res) => {
 // =====================
 
 // Protected routes (require auth + client role)
-router.get('/settings', authenticate, requireClient, getPixelSettings);
-router.put('/settings', authenticate, requireClient, updatePixelSettings);
-router.get('/stats', authenticate, requireClient, getPixelStats);
-router.get('/events', authenticate, requireClient, getRecentPixelEvents);
-router.get('/funnel', authenticate, requireClient, getPixelFunnel);
-router.get('/omni/overview', authenticate, requireClient, getOmniOverviewHandler);
-router.get('/omni/customers', authenticate, requireClient, getCustomerAnalyticsHandler);
-router.get('/omni/gender', authenticate, requireClient, getGenderAnalyticsHandler);
-router.get('/omni/inputs', authenticate, requireClient, getOmniInputsHandler);
-router.get('/omni/products', authenticate, requireClient, getProductPerformanceHandler);
-router.put('/omni/product-economics', authenticate, requireClient, saveProductEconomicsHandler);
-router.post('/omni/creative-catalog', authenticate, requireClient, saveCreativeCatalogHandler);
-router.delete('/omni/creative-catalog/:id', authenticate, requireClient, deleteCreativeCatalogHandler);
-router.post('/omni/creative-spend', authenticate, requireClient, saveCreativeSpendHandler);
-router.delete('/omni/creative-spend/:id', authenticate, requireClient, deleteCreativeSpendHandler);
-router.post('/omni/import-historical-sessions', authenticate, requireClient, backfillHistoricalSessionsHandler);
-router.get('/omni/pricing-config', authenticate, requireClient, getPricingConfigHandler);
-router.put('/omni/pricing-config', authenticate, requireClient, savePricingConfigHandler);
-router.get('/omni/cod-pricing', authenticate, requireClient, getCodPricingHandler);
+router.get('/settings', authenticate, requireClient, resolveActiveStore, getPixelSettings);
+router.put('/settings', authenticate, requireClient, resolveActiveStore, updatePixelSettings);
+router.get('/stats', authenticate, requireClient, resolveActiveStore, getPixelStats);
+router.get('/events', authenticate, requireClient, resolveActiveStore, getRecentPixelEvents);
+router.get('/funnel', authenticate, requireClient, resolveActiveStore, getPixelFunnel);
+router.get('/omni/overview', authenticate, requireClient, resolveActiveStore, getOmniOverviewHandler);
+router.get('/omni/customers', authenticate, requireClient, resolveActiveStore, getCustomerAnalyticsHandler);
+router.get('/omni/gender', authenticate, requireClient, resolveActiveStore, getGenderAnalyticsHandler);
+router.get('/omni/inputs', authenticate, requireClient, resolveActiveStore, getOmniInputsHandler);
+router.get('/omni/products', authenticate, requireClient, resolveActiveStore, getProductPerformanceHandler);
+router.put('/omni/product-economics', authenticate, requireClient, resolveActiveStore, saveProductEconomicsHandler);
+router.post('/omni/creative-catalog', authenticate, requireClient, resolveActiveStore, saveCreativeCatalogHandler);
+router.delete('/omni/creative-catalog/:id', authenticate, requireClient, resolveActiveStore, deleteCreativeCatalogHandler);
+router.post('/omni/creative-spend', authenticate, requireClient, resolveActiveStore, saveCreativeSpendHandler);
+router.delete('/omni/creative-spend/:id', authenticate, requireClient, resolveActiveStore, deleteCreativeSpendHandler);
+router.post('/omni/import-historical-sessions', authenticate, requireClient, resolveActiveStore, backfillHistoricalSessionsHandler);
+router.get('/omni/pricing-config', authenticate, requireClient, resolveActiveStore, getPricingConfigHandler);
+router.put('/omni/pricing-config', authenticate, requireClient, resolveActiveStore, savePricingConfigHandler);
+router.get('/omni/cod-pricing', authenticate, requireClient, resolveActiveStore, getCodPricingHandler);
 
 // Public routes (no auth required)
 router.post('/track', trackPixelEvent);
@@ -1496,13 +1550,16 @@ export const pixelDiagnosticHandler: RequestHandler = async (req, res) => {
     }
 
     const clientId = user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const pool = await getPool();
 
     // 1. Get pixel configuration
     const pixelRes = await pool.query(
       `SELECT facebook_pixel_id, tiktok_pixel_id, is_facebook_enabled, is_tiktok_enabled, facebook_access_token
-       FROM client_pixel_settings WHERE client_id = $1`,
-      [clientId]
+       FROM client_pixel_settings WHERE ${storeFilter} = $1`,
+      [storeIdVal]
     );
     const config = pixelRes.rows[0] || null;
 
@@ -1586,21 +1643,21 @@ export const pixelDiagnosticHandler: RequestHandler = async (req, res) => {
       `SELECT pixel_type, event_name, COUNT(*) as count,
         MIN(created_at) as first_seen, MAX(created_at) as last_seen
        FROM pixel_events
-       WHERE client_id = $1
+       WHERE ${storeFilter} = $1
          AND created_at > NOW() - INTERVAL '7 days'
        GROUP BY pixel_type, event_name
        ORDER BY last_seen DESC
        LIMIT 20`,
-      [clientId]
+      [storeIdVal]
     );
 
     const recentEventsRaw = await pool.query(
       `SELECT id, pixel_type, event_name, page_url, created_at
        FROM pixel_events
-       WHERE client_id = $1
+       WHERE ${storeFilter} = $1
        ORDER BY created_at DESC
        LIMIT 5`,
-      [clientId]
+      [storeIdVal]
     );
 
     result.recentEvents = {
@@ -1829,6 +1886,6 @@ export const pixelRelayHandler: RequestHandler = async (req, res) => {
 };
 
 router.post('/relay', pixelRelayHandler);
-router.get('/diagnose', authenticate, requireClient, pixelDiagnosticHandler);
+router.get('/diagnose', authenticate, requireClient, resolveActiveStore, pixelDiagnosticHandler);
 
 export default router;

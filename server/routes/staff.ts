@@ -771,6 +771,9 @@ export const getStaffOrders: RequestHandler = async (req, res) => {
     const pool = await ensureConnection();
     const clientId = req.user?.clientId;
     const staffId = req.user?.staffId;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
 
     if (!clientId || !staffId) {
       return res.status(401).json({ error: 'Invalid authentication' });
@@ -805,9 +808,9 @@ export const getStaffOrders: RequestHandler = async (req, res) => {
         p.title as product_title, p.images as product_images
       FROM store_orders o
       LEFT JOIN client_store_products p ON o.product_id = p.id
-      WHERE o.client_id = $1
+      WHERE o.${storeFilter} = $1
       ORDER BY o.created_at DESC`,
-      [clientId]
+      [storeIdVal]
     );
 
     res.json(orders.rows);
@@ -831,6 +834,9 @@ export const getStaffOrderStatuses: RequestHandler = async (req, res) => {
     const pool = await ensureConnection();
     const clientId = req.user?.clientId;
     const staffId = req.user?.staffId;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
 
     if (!clientId || !staffId) {
       return res.status(401).json({ error: 'Invalid authentication' });
@@ -862,9 +868,9 @@ export const getStaffOrderStatuses: RequestHandler = async (req, res) => {
     const statuses = await pool.query(
       `SELECT id, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue
        FROM order_statuses
-       WHERE client_id = $1
+       WHERE ${storeFilter} = $1
        ORDER BY sort_order ASC, id ASC`,
-      [clientId]
+      [storeIdVal]
     );
 
     const allowedSystemKeys = new Set([
@@ -923,6 +929,9 @@ export const updateStaffOrderStatus: RequestHandler = async (req, res) => {
     const pool = await ensureConnection();
     const clientId = req.user?.clientId;
     const staffId = req.user?.staffId;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     const bodyOrderId = (req.body as any)?.orderId;
     const bodyStatus = (req.body as any)?.status;
 
@@ -977,8 +986,8 @@ export const updateStaffOrderStatus: RequestHandler = async (req, res) => {
     let isValidStatus = builtInStatuses.includes(nextStatus);
     if (!isValidStatus) {
       const customStatusCheck = await pool.query(
-        'SELECT id FROM order_statuses WHERE client_id = $1 AND (key = $2 OR name = $2) LIMIT 1',
-        [clientId, nextStatus]
+        `SELECT id FROM order_statuses WHERE ${storeFilter} = $1 AND (key = $2 OR name = $2) LIMIT 1`,
+        [storeIdVal, nextStatus]
       );
       isValidStatus = customStatusCheck.rows.length > 0;
     }
@@ -1008,8 +1017,8 @@ export const updateStaffOrderStatus: RequestHandler = async (req, res) => {
 
     // Get current order and verify it belongs to this store
     const orderResult = await pool.query(
-      'SELECT id, status as current_status FROM store_orders WHERE id = $1 AND client_id = $2',
-      [numericOrderId, clientId]
+      `SELECT id, status as current_status FROM store_orders WHERE id = $1 AND ${storeFilter} = $2`,
+      [numericOrderId, storeIdVal]
     );
 
     if (orderResult.rows.length === 0) {
@@ -1020,8 +1029,8 @@ export const updateStaffOrderStatus: RequestHandler = async (req, res) => {
 
     // Update order status
     await pool.query(
-      'UPDATE store_orders SET status = $1, updated_at = NOW() WHERE id = $2 AND client_id = $3',
-      [nextStatus, numericOrderId, clientId]
+      `UPDATE store_orders SET status = $1, updated_at = NOW() WHERE id = $2 AND ${storeFilter} = $3`,
+      [nextStatus, numericOrderId, storeIdVal]
     );
 
     // Log activity

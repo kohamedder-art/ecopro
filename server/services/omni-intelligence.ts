@@ -146,6 +146,7 @@ function classifySessionRow(row: {
 
 export interface AnalyticEventInput {
   clientId: number;
+  storeId?: number | null;
   storeSlug: string;
   pixelType: string;
   eventName: string;
@@ -172,7 +173,10 @@ async function saveSessionTouch(sessionDbId: string | number, clientId: number, 
   fbclid?: NullableText;
   ttclid?: NullableText;
   gclid?: NullableText;
-}) {
+}, storeId?: number | null) {
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
+
   const creativeKey = buildCreativeKey({
     platform: data.pixelType,
     campaignName: data.campaignName,
@@ -188,11 +192,11 @@ async function saveSessionTouch(sessionDbId: string | number, clientId: number, 
   const db = await ensureConnection();
   await db.query(
     `INSERT INTO analytic_session_touches (
-       analytic_session_id, client_id, touch_position, platform, source, medium,
+       analytic_session_id, ${storeFilter}, touch_position, platform, source, medium,
        campaign_name, adset_name, creative_name, creative_key, landing_page,
        fbclid, ttclid, gclid, is_entry, created_at, updated_at
      ) VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, NOW(), NOW())
-     ON CONFLICT (client_id, analytic_session_id, touch_position) DO UPDATE SET
+     ON CONFLICT (${storeFilter}, analytic_session_id, touch_position) DO UPDATE SET
        platform = COALESCE(analytic_session_touches.platform, EXCLUDED.platform),
        source = COALESCE(analytic_session_touches.source, EXCLUDED.source),
        medium = COALESCE(analytic_session_touches.medium, EXCLUDED.medium),
@@ -207,7 +211,7 @@ async function saveSessionTouch(sessionDbId: string | number, clientId: number, 
        updated_at = NOW()`,
     [
       sessionDbId,
-      clientId,
+      storeVal,
       normalizePlatform(data.pixelType),
       toOptionalText(data.source),
       toOptionalText(data.medium),
@@ -240,6 +244,9 @@ export async function upsertAnalyticSessionFromEvent(input: AnalyticEventInput) 
   const sessionId = toOptionalText(input.sessionId);
   if (!sessionId) return null;
 
+  const storeFilter = input.storeId ? 'store_id' : 'client_id';
+  const storeVal = input.storeId || input.clientId;
+
   const eventData = input.eventData && typeof input.eventData === 'object' ? input.eventData : {};
   const pagePath = parsePagePath(input.pageUrl, eventData.page_path);
   const rawSource = toOptionalText(eventData.source) || toOptionalText(eventData.utm_source) || 'direct';
@@ -258,7 +265,7 @@ export async function upsertAnalyticSessionFromEvent(input: AnalyticEventInput) 
   const db = await ensureConnection();
   const result = await db.query(
     `INSERT INTO analytic_sessions (
-       client_id, store_slug, session_id, visitor_id, status,
+       ${storeFilter}, store_slug, session_id, visitor_id, status,
        first_seen_at, last_seen_at, landing_page, exit_page,
        entry_referrer, entry_source, entry_medium, entry_campaign,
        entry_content, entry_term, platform_hint,
@@ -276,7 +283,7 @@ export async function upsertAnalyticSessionFromEvent(input: AnalyticEventInput) 
        $20, $21, $22, $23,
        $24, $25, $26, false, NOW(), NOW()
      )
-     ON CONFLICT (client_id, session_id) DO UPDATE SET
+     ON CONFLICT (${storeFilter}, session_id) DO UPDATE SET
        visitor_id = COALESCE(analytic_sessions.visitor_id, EXCLUDED.visitor_id),
        status = CASE WHEN EXCLUDED.purchase_count > 0 THEN 'completed' ELSE analytic_sessions.status END,
        last_seen_at = NOW(),
@@ -305,7 +312,7 @@ export async function upsertAnalyticSessionFromEvent(input: AnalyticEventInput) 
        updated_at = NOW()
      RETURNING id, page_views, product_views, add_to_cart_count, checkout_count, purchase_count, max_scroll_depth, active_time_seconds, exit_page`,
     [
-      input.clientId,
+      storeVal,
       input.storeSlug,
       sessionId,
       toOptionalText(input.visitorId),
@@ -348,7 +355,7 @@ export async function upsertAnalyticSessionFromEvent(input: AnalyticEventInput) 
     fbclid: eventData.fbclid,
     ttclid: eventData.ttclid,
     gclid: eventData.gclid,
-  });
+  }, input.storeId);
   await persistSessionDiagnostic(row.id, row);
 
   return row.id;
@@ -356,6 +363,7 @@ export async function upsertAnalyticSessionFromEvent(input: AnalyticEventInput) 
 
 export async function upsertAnalyticSessionSummary(input: {
   clientId: number;
+  storeId?: number | null;
   storeSlug: string;
   sessionId?: string | null;
   visitorId?: string | null;
@@ -373,11 +381,14 @@ export async function upsertAnalyticSessionSummary(input: {
   const sessionId = toOptionalText(input.sessionId);
   if (!sessionId) return null;
 
+  const storeFilter = input.storeId ? 'store_id' : 'client_id';
+  const storeVal = input.storeId || input.clientId;
+
   const pagePath = parsePagePath(input.pageUrl, input.pagePath);
   const db = await ensureConnection();
   const result = await db.query(
     `INSERT INTO analytic_sessions (
-       client_id, store_slug, session_id, visitor_id, status,
+       ${storeFilter}, store_slug, session_id, visitor_id, status,
        first_seen_at, last_seen_at, ended_at,
        landing_page, exit_page,
        entry_referrer, entry_source, entry_medium, entry_campaign,
@@ -391,7 +402,7 @@ export async function upsertAnalyticSessionSummary(input: {
        $13, $14,
        $15, $16, false, NOW(), NOW()
      )
-     ON CONFLICT (client_id, session_id) DO UPDATE SET
+     ON CONFLICT (${storeFilter}, session_id) DO UPDATE SET
        visitor_id = COALESCE(analytic_sessions.visitor_id, EXCLUDED.visitor_id),
        status = CASE WHEN $6 THEN 'completed' ELSE analytic_sessions.status END,
        last_seen_at = NOW(),
@@ -409,7 +420,7 @@ export async function upsertAnalyticSessionSummary(input: {
        updated_at = NOW()
      RETURNING id, page_views, product_views, add_to_cart_count, checkout_count, purchase_count, max_scroll_depth, active_time_seconds, exit_page`,
     [
-      input.clientId,
+      storeVal,
       input.storeSlug,
       sessionId,
       toOptionalText(input.visitorId),
@@ -572,7 +583,10 @@ function buildOverviewRecommendations(snapshot: OmniOverviewResponse): OmniRecom
   return recommendations.slice(0, 5);
 }
 
-export async function getOmniInputs(clientId: number) {
+export async function getOmniInputs(clientId: number, storeId?: number | null) {
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
+
   const db = await ensureConnection();
   const [products, creativeCatalog, spendEntries, importJobs] = await Promise.all([
     db.query(
@@ -591,22 +605,22 @@ export async function getOmniInputs(clientId: number) {
          pe.notes
        FROM client_store_products p
        LEFT JOIN product_economics pe
-         ON pe.client_id = p.client_id
+         ON pe.${storeFilter} = p.${storeFilter}
         AND pe.product_id = p.id
-       WHERE p.client_id = $1
+       WHERE p.${storeFilter} = $1
          AND COALESCE(p.status, 'active') <> 'archived'
        ORDER BY p.created_at DESC
        LIMIT 100`,
-      [clientId]
+      [storeVal]
     ),
     db.query(
       `SELECT id, platform, campaign_name, adset_name, creative_name, creative_key, landing_page,
               promise_angle, target_persona, notes, is_active, created_at, updated_at
        FROM creative_catalog
-       WHERE client_id = $1
+       WHERE ${storeFilter} = $1
        ORDER BY updated_at DESC, created_at DESC
        LIMIT 100`,
-      [clientId]
+      [storeVal]
     ),
     db.query(
       `SELECT cse.id, cse.entry_date, cse.platform, cse.product_id, cse.campaign_name, cse.adset_name, cse.creative_name, cse.creative_key,
@@ -614,18 +628,18 @@ export async function getOmniInputs(clientId: number) {
               p.title AS product_title
        FROM creative_spend_entries cse
        LEFT JOIN client_store_products p ON p.id = cse.product_id
-       WHERE cse.client_id = $1
+       WHERE cse.${storeFilter} = $1
        ORDER BY cse.entry_date DESC, cse.created_at DESC
        LIMIT 120`,
-      [clientId]
+      [storeVal]
     ),
     db.query(
       `SELECT id, job_type, status, source_label, started_at, completed_at, processed_rows, partial_rows, notes, payload, created_at
        FROM historical_import_jobs
-       WHERE client_id = $1
+       WHERE ${storeFilter} = $1
        ORDER BY created_at DESC
        LIMIT 20`,
-      [clientId]
+      [storeVal]
     ),
   ]);
 
@@ -647,14 +661,17 @@ export async function upsertProductEconomics(clientId: number, input: {
   returnCost?: number;
   otherCosts?: number;
   notes?: string | null;
-}) {
+}, storeId?: number | null) {
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
+
   const db = await ensureConnection();
   const result = await db.query(
     `INSERT INTO product_economics (
-       client_id, product_id, buy_cost, packaging_cost, handling_cost, fallback_shipping_cost,
+       ${storeFilter}, product_id, buy_cost, packaging_cost, handling_cost, fallback_shipping_cost,
        call_center_cost, return_cost, other_costs, notes, created_at, updated_at
      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-     ON CONFLICT (client_id, product_id) DO UPDATE SET
+     ON CONFLICT (${storeFilter}, product_id) DO UPDATE SET
        buy_cost = EXCLUDED.buy_cost,
        packaging_cost = EXCLUDED.packaging_cost,
        handling_cost = EXCLUDED.handling_cost,
@@ -666,7 +683,7 @@ export async function upsertProductEconomics(clientId: number, input: {
        updated_at = NOW()
      RETURNING *`,
     [
-      clientId,
+      storeVal,
       input.productId,
       toNumber(input.buyCost),
       toNumber(input.packagingCost),
@@ -693,7 +710,10 @@ export async function upsertCreativeCatalogEntry(clientId: number, input: {
   targetPersona?: string | null;
   notes?: string | null;
   isActive?: boolean;
-}) {
+}, storeId?: number | null) {
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
+
   const db = await ensureConnection();
   const creativeKey = buildCreativeKey({
     platform: input.platform,
@@ -708,10 +728,10 @@ export async function upsertCreativeCatalogEntry(clientId: number, input: {
 
   const result = await db.query(
     `INSERT INTO creative_catalog (
-       client_id, platform, campaign_name, adset_name, creative_name, creative_key,
+       ${storeFilter}, platform, campaign_name, adset_name, creative_name, creative_key,
        landing_page, promise_angle, target_persona, notes, is_active, created_at, updated_at
      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-     ON CONFLICT (client_id, creative_key) DO UPDATE SET
+     ON CONFLICT (${storeFilter}, creative_key) DO UPDATE SET
        platform = EXCLUDED.platform,
        campaign_name = EXCLUDED.campaign_name,
        adset_name = EXCLUDED.adset_name,
@@ -724,7 +744,7 @@ export async function upsertCreativeCatalogEntry(clientId: number, input: {
        updated_at = NOW()
      RETURNING *`,
     [
-      clientId,
+      storeVal,
       normalizePlatform(input.platform),
       toOptionalText(input.campaignName),
       toOptionalText(input.adsetName),
@@ -741,9 +761,11 @@ export async function upsertCreativeCatalogEntry(clientId: number, input: {
   return result.rows[0];
 }
 
-export async function deleteCreativeCatalogEntry(clientId: number, entryId: number) {
+export async function deleteCreativeCatalogEntry(clientId: number, entryId: number, storeId?: number | null) {
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
   const db = await ensureConnection();
-  await db.query('DELETE FROM creative_catalog WHERE client_id = $1 AND id = $2', [clientId, entryId]);
+  await db.query(`DELETE FROM creative_catalog WHERE ${storeFilter} = $1 AND id = $2`, [storeVal, entryId]);
 }
 
 export async function upsertCreativeSpendEntry(clientId: number, input: {
@@ -758,7 +780,10 @@ export async function upsertCreativeSpendEntry(clientId: number, input: {
   clicks?: number | null;
   linkClicks?: number | null;
   notes?: string | null;
-}) {
+}, storeId?: number | null) {
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
+
   const db = await ensureConnection();
   const creativeKey = buildCreativeKey({
     platform: input.platform,
@@ -769,12 +794,12 @@ export async function upsertCreativeSpendEntry(clientId: number, input: {
 
   const result = await db.query(
     `INSERT INTO creative_spend_entries (
-       client_id, entry_date, platform, product_id, campaign_name, adset_name, creative_name,
+       ${storeFilter}, entry_date, platform, product_id, campaign_name, adset_name, creative_name,
        creative_key, spend, impressions, clicks, link_clicks, notes, created_at, updated_at
      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
      RETURNING *`,
     [
-      clientId,
+      storeVal,
       input.entryDate,
       normalizePlatform(input.platform),
       input.productId || null,
@@ -793,26 +818,31 @@ export async function upsertCreativeSpendEntry(clientId: number, input: {
   return result.rows[0];
 }
 
-export async function deleteCreativeSpendEntry(clientId: number, entryId: number) {
+export async function deleteCreativeSpendEntry(clientId: number, entryId: number, storeId?: number | null) {
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
   const db = await ensureConnection();
-  await db.query('DELETE FROM creative_spend_entries WHERE client_id = $1 AND id = $2', [clientId, entryId]);
+  await db.query(`DELETE FROM creative_spend_entries WHERE ${storeFilter} = $1 AND id = $2`, [storeVal, entryId]);
 }
 
-export async function backfillHistoricalSessions(clientId: number, days?: number) {
+export async function backfillHistoricalSessions(clientId: number, days?: number, storeId?: number | null) {
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
+
   const db = await ensureConnection();
   const jobInsert = await db.query(
     `INSERT INTO historical_import_jobs (
-       client_id, job_type, status, source_label, started_at, created_at, updated_at, payload
+       ${storeFilter}, job_type, status, source_label, started_at, created_at, updated_at, payload
      ) VALUES ($1, 'historical_session_backfill', 'running', 'pixel_events', NOW(), NOW(), NOW(), $2)
      RETURNING id`,
-    [clientId, JSON.stringify({ days: days || null })]
+    [storeVal, JSON.stringify({ days: days || null })]
   );
 
   const jobId = jobInsert.rows[0]?.id;
 
   try {
-    const params: any[] = [clientId];
-    let whereClause = 'WHERE client_id = $1';
+    const params: any[] = [storeVal];
+    let whereClause = `WHERE ${storeFilter} = $1`;
     if (days && Number.isFinite(days) && days > 0) {
       whereClause += ` AND created_at >= NOW() - INTERVAL '${Math.min(3650, Math.max(1, Math.round(days)))} days'`;
     }
@@ -890,7 +920,7 @@ export async function backfillHistoricalSessions(clientId: number, days?: number
     for (const aggregate of grouped.values()) {
       const sessionResult = await db.query(
         `INSERT INTO analytic_sessions (
-           client_id, session_id, visitor_id, status, first_seen_at, last_seen_at, ended_at,
+           ${storeFilter}, session_id, visitor_id, status, first_seen_at, last_seen_at, ended_at,
            landing_page, exit_page, entry_referrer, entry_source, entry_medium, entry_campaign,
            platform_hint, page_views, product_views, add_to_cart_count, checkout_count, purchase_count,
            last_event_name, last_product_id, last_order_id, locale, is_partial, created_at, updated_at
@@ -900,7 +930,7 @@ export async function backfillHistoricalSessions(clientId: number, days?: number
            $14, $15, $16, $17, $18, $19,
            $20, $21, $22, $23, true, NOW(), NOW()
          )
-         ON CONFLICT (client_id, session_id) DO UPDATE SET
+         ON CONFLICT (${storeFilter}, session_id) DO UPDATE SET
            visitor_id = COALESCE(analytic_sessions.visitor_id, EXCLUDED.visitor_id),
            status = EXCLUDED.status,
            first_seen_at = LEAST(analytic_sessions.first_seen_at, EXCLUDED.first_seen_at),
@@ -926,7 +956,7 @@ export async function backfillHistoricalSessions(clientId: number, days?: number
            updated_at = NOW()
          RETURNING id, page_views, product_views, add_to_cart_count, checkout_count, purchase_count, max_scroll_depth, active_time_seconds, exit_page`,
         [
-          clientId,
+          storeVal,
           aggregate.sessionId,
           aggregate.visitorId,
           aggregate.purchaseCount > 0 ? 'completed' : 'completed',
@@ -952,7 +982,7 @@ export async function backfillHistoricalSessions(clientId: number, days?: number
         ]
       );
       const sessionRow = sessionResult.rows[0];
-      await saveSessionTouch(sessionRow.id, clientId, aggregate.touch);
+      await saveSessionTouch(sessionRow.id, clientId, aggregate.touch, storeId);
       await persistSessionDiagnostic(sessionRow.id, sessionRow);
     }
 
@@ -987,8 +1017,10 @@ export async function backfillHistoricalSessions(clientId: number, days?: number
   }
 }
 
-export async function getOmniOverview(clientId: number, days: number): Promise<OmniOverviewResponse> {
+export async function getOmniOverview(clientId: number, days: number, storeId?: number | null): Promise<OmniOverviewResponse> {
   const safeDays = Math.min(3650, Math.max(1, Math.round(days || 30)));
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
   const db = await ensureConnection();
 
   const [sessionResult, ordersResult, spendResult, catalogResult, coverageResult] = await Promise.all([
@@ -1029,10 +1061,10 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
         AND t.touch_position = 1
        LEFT JOIN client_store_products p
          ON p.id = s.last_product_id
-       WHERE s.client_id = $1
+       WHERE s.${storeFilter} = $1
          AND s.first_seen_at >= NOW() - INTERVAL '${safeDays} days'
        ORDER BY s.first_seen_at DESC`,
-      [clientId]
+      [storeVal]
     ),
     db.query(
       `SELECT
@@ -1053,39 +1085,39 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
        LEFT JOIN client_store_products p
          ON p.id = o.product_id
        LEFT JOIN product_economics pe
-         ON pe.client_id = o.client_id
+         ON pe.${storeFilter} = o.${storeFilter}
         AND pe.product_id = o.product_id
        LEFT JOIN LATERAL (
          SELECT home_delivery_price
          FROM delivery_prices dp
-         WHERE dp.client_id = o.client_id
+         WHERE dp.${storeFilter} = o.${storeFilter}
            AND dp.wilaya_id = o.shipping_wilaya_id
            AND dp.is_active = true
          ORDER BY dp.home_delivery_price ASC
          LIMIT 1
        ) pricing ON true
        LEFT JOIN analytic_sessions s
-         ON s.client_id = o.client_id
+         ON s.${storeFilter} = o.${storeFilter}
         AND s.last_order_id = o.id
-       WHERE o.client_id = $1
+       WHERE o.${storeFilter} = $1
          AND o.created_at >= NOW() - INTERVAL '${safeDays} days'
          AND o.deleted_at IS NULL
        ORDER BY o.created_at DESC`,
-      [clientId]
+      [storeVal]
     ),
     db.query(
       `SELECT entry_date, platform, campaign_name, adset_name, creative_name, creative_key, spend, clicks, impressions, link_clicks
        FROM creative_spend_entries
-       WHERE client_id = $1
+       WHERE ${storeFilter} = $1
          AND entry_date >= CURRENT_DATE - INTERVAL '${safeDays} days'
        ORDER BY entry_date DESC`,
-      [clientId]
+      [storeVal]
     ),
     db.query(
       `SELECT creative_key, promise_angle, target_persona, landing_page
        FROM creative_catalog
-       WHERE client_id = $1`,
-      [clientId]
+       WHERE ${storeFilter} = $1`,
+      [storeVal]
     ),
     db.query(
       `SELECT
@@ -1093,11 +1125,11 @@ export async function getOmniOverview(clientId: number, days: number): Promise<O
          COUNT(*) FILTER (WHERE pe.product_id IS NULL)::int AS missing_economics_products
        FROM client_store_products p
        LEFT JOIN product_economics pe
-         ON pe.client_id = p.client_id
+         ON pe.${storeFilter} = p.${storeFilter}
         AND pe.product_id = p.id
-       WHERE p.client_id = $1
+       WHERE p.${storeFilter} = $1
          AND COALESCE(p.status, 'active') <> 'archived'`,
-      [clientId]
+      [storeVal]
     ),
   ]);
 
@@ -1480,8 +1512,10 @@ export interface CustomerAnalytics {
   cartAbandonmentRate: number;
 }
 
-export async function getCustomerAnalytics(clientId: number, days: number): Promise<CustomerAnalytics> {
+export async function getCustomerAnalytics(clientId: number, days: number, storeId?: number | null): Promise<CustomerAnalytics> {
   const safeDays = Math.min(3650, Math.max(1, Math.round(days || 30)));
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
   const db = await ensureConnection();
   const { getAlgeriaWilayaNameById } = await import('../utils/algeria-geo');
 
@@ -1504,7 +1538,7 @@ export async function getCustomerAnalytics(clientId: number, days: number): Prom
           COUNT(*) AS order_count,
           SUM(total_price) AS total_spent
         FROM store_orders
-        WHERE client_id = $1
+        WHERE ${storeFilter} = $1
           AND deleted_at IS NULL
           AND status NOT IN ('cancelled', 'declined', 'fake')
           AND created_at >= ${cutoff}
@@ -1517,7 +1551,7 @@ export async function getCustomerAnalytics(clientId: number, days: number): Prom
         COALESCE(AVG(order_count), 0) AS avg_orders_per_customer,
         COALESCE(SUM(total_spent), 0) AS total_revenue
       FROM customer_orders
-    `, [clientId]),
+    `, [storeVal]),
 
     // 2. Top 10 customers
     db.query(`
@@ -1528,14 +1562,14 @@ export async function getCustomerAnalytics(clientId: number, days: number): Prom
         SUM(total_price) AS total_spent,
         MAX(created_at) AS last_order
       FROM store_orders
-      WHERE client_id = $1
+      WHERE ${storeFilter} = $1
         AND deleted_at IS NULL
         AND status NOT IN ('cancelled', 'declined', 'fake')
         AND created_at >= ${cutoff}
       GROUP BY customer_phone, customer_name
       ORDER BY total_spent DESC
       LIMIT 10
-    `, [clientId]),
+    `, [storeVal]),
 
     // 3. Wilaya breakdown
     db.query(`
@@ -1545,14 +1579,14 @@ export async function getCustomerAnalytics(clientId: number, days: number): Prom
         SUM(total_price) AS revenue,
         COUNT(DISTINCT customer_phone) AS customers
       FROM store_orders
-      WHERE client_id = $1
+      WHERE ${storeFilter} = $1
         AND deleted_at IS NULL
         AND status NOT IN ('cancelled', 'declined', 'fake')
         AND shipping_wilaya_id IS NOT NULL
         AND created_at >= ${cutoff}
       GROUP BY shipping_wilaya_id
       ORDER BY orders DESC
-    `, [clientId]),
+    `, [storeVal]),
 
     // 4. Device breakdown from sessions
     db.query(`
@@ -1560,11 +1594,11 @@ export async function getCustomerAnalytics(clientId: number, days: number): Prom
         COALESCE(device_type, 'unknown') AS device,
         COUNT(*) AS sessions
       FROM analytic_sessions
-      WHERE client_id = $1
+      WHERE ${storeFilter} = $1
         AND first_seen_at >= ${cutoff}
       GROUP BY COALESCE(device_type, 'unknown')
       ORDER BY sessions DESC
-    `, [clientId]),
+    `, [storeVal]),
 
     // 5. Daily orders + revenue (last N days)
     db.query(`
@@ -1573,20 +1607,20 @@ export async function getCustomerAnalytics(clientId: number, days: number): Prom
         COUNT(*) AS orders,
         COALESCE(SUM(total_price), 0) AS revenue
       FROM store_orders
-      WHERE client_id = $1
+      WHERE ${storeFilter} = $1
         AND deleted_at IS NULL
         AND status NOT IN ('cancelled', 'declined', 'fake')
         AND created_at >= ${cutoff}
       GROUP BY DATE(created_at)
       ORDER BY date ASC
-    `, [clientId]),
+    `, [storeVal]),
 
     // 6. New vs returning customers
     db.query(`
       WITH first_orders AS (
         SELECT customer_phone, MIN(created_at) AS first_order_date
         FROM store_orders
-        WHERE client_id = $1 AND deleted_at IS NULL AND status NOT IN ('cancelled', 'declined', 'fake')
+        WHERE ${storeFilter} = $1 AND deleted_at IS NULL AND status NOT IN ('cancelled', 'declined', 'fake')
         GROUP BY customer_phone
       ),
       period_orders AS (
@@ -1596,7 +1630,7 @@ export async function getCustomerAnalytics(clientId: number, days: number): Prom
           CASE WHEN fo.first_order_date >= ${cutoff} THEN 'new' ELSE 'returning' END AS customer_type
         FROM store_orders o
         JOIN first_orders fo ON fo.customer_phone = o.customer_phone
-        WHERE o.client_id = $1
+        WHERE o.${storeFilter} = $1
           AND o.deleted_at IS NULL
           AND o.status NOT IN ('cancelled', 'declined', 'fake')
           AND o.created_at >= ${cutoff}
@@ -1607,7 +1641,7 @@ export async function getCustomerAnalytics(clientId: number, days: number): Prom
         COALESCE(SUM(total_price) FILTER (WHERE customer_type = 'new'), 0) AS new_revenue,
         COALESCE(SUM(total_price) FILTER (WHERE customer_type = 'returning'), 0) AS returning_revenue
       FROM period_orders
-    `, [clientId]),
+    `, [storeVal]),
 
     // 7. Funnel for conversion & cart abandonment
     db.query(`
@@ -1616,9 +1650,9 @@ export async function getCustomerAnalytics(clientId: number, days: number): Prom
         COUNT(*) FILTER (WHERE add_to_cart_count > 0) AS cart_sessions,
         COUNT(*) FILTER (WHERE purchase_count > 0) AS purchase_sessions
       FROM analytic_sessions
-      WHERE client_id = $1
+      WHERE ${storeFilter} = $1
         AND first_seen_at >= ${cutoff}
-    `, [clientId]),
+    `, [storeVal]),
   ]);
 
   const cs = customerStatsResult.rows[0] || {};
@@ -1770,8 +1804,10 @@ export interface GenderAnalytics {
   byProduct: { productId: number; productTitle: string; male: number; female: number; unknown: number }[];
 }
 
-export async function getGenderAnalytics(clientId: number, days: number): Promise<GenderAnalytics> {
+export async function getGenderAnalytics(clientId: number, days: number, storeId?: number | null): Promise<GenderAnalytics> {
   const safeDays = Math.min(3650, Math.max(1, Math.round(days || 30)));
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
   const db = await ensureConnection();
   const cutoff = `NOW() - INTERVAL '${safeDays} days'`;
 
@@ -1779,11 +1815,11 @@ export async function getGenderAnalytics(clientId: number, days: number): Promis
     db.query(`
       SELECT customer_name
       FROM store_orders
-      WHERE client_id = $1
+      WHERE ${storeFilter} = $1
         AND deleted_at IS NULL
         AND status NOT IN ('cancelled', 'declined', 'fake', 'duplicate')
         AND created_at >= ${cutoff}
-    `, [clientId]),
+    `, [storeVal]),
 
     db.query(`
       SELECT
@@ -1792,12 +1828,12 @@ export async function getGenderAnalytics(clientId: number, days: number): Promis
         so.customer_name
       FROM store_orders so
       LEFT JOIN client_store_products csp ON csp.id = so.product_id
-      WHERE so.client_id = $1
+      WHERE so.${storeFilter} = $1
         AND so.deleted_at IS NULL
         AND so.status NOT IN ('cancelled', 'declined', 'fake', 'duplicate')
         AND so.created_at >= ${cutoff}
       ORDER BY so.product_id
-    `, [clientId]),
+    `, [storeVal]),
   ]);
 
   let male = 0, female = 0, unknown = 0;
@@ -1858,8 +1894,10 @@ export interface ProductPerformance {
   roi: number;
 }
 
-export async function getProductPerformance(clientId: number, days: number): Promise<ProductPerformance[]> {
+export async function getProductPerformance(clientId: number, days: number, storeId?: number | null): Promise<ProductPerformance[]> {
   const safeDays = Math.min(3650, Math.max(1, Math.round(days || 30)));
+  const storeFilter = storeId ? 'store_id' : 'client_id';
+  const storeVal = storeId || clientId;
   const db = await ensureConnection();
 
   const result = await db.query(`
@@ -1874,7 +1912,7 @@ export async function getProductPerformance(clientId: number, days: number): Pro
         COUNT(*) FILTER (WHERE o.status IN ('cancelled','declined','returned','refunded')) AS returned_orders
       FROM store_orders o
       LEFT JOIN client_store_products p ON p.id = o.product_id
-      WHERE o.client_id = $1
+      WHERE o.${storeFilter} = $1
         AND o.created_at >= NOW() - INTERVAL '${safeDays} days'
         AND o.deleted_at IS NULL
         AND o.status NOT IN ('fake')
@@ -1884,7 +1922,7 @@ export async function getProductPerformance(clientId: number, days: number): Pro
     total_ad AS (
       SELECT COALESCE(SUM(spend), 0) AS total_spend
       FROM creative_spend_entries
-      WHERE client_id = $1
+      WHERE ${storeFilter} = $1
         AND entry_date >= CURRENT_DATE - INTERVAL '${safeDays} days'
     )
     SELECT
@@ -1898,11 +1936,11 @@ export async function getProductPerformance(clientId: number, days: number): Pro
       COALESCE(pe.return_cost, 0) AS return_cost,
       ta.total_spend
     FROM product_orders po
-    LEFT JOIN product_economics pe ON pe.client_id = $1 AND pe.product_id = po.product_id
+    LEFT JOIN product_economics pe ON pe.${storeFilter} = $1 AND pe.product_id = po.product_id
     CROSS JOIN total_ad ta
     ORDER BY po.revenue DESC
     LIMIT 20
-  `, [clientId]);
+  `, [storeVal]);
 
   return result.rows.map((r: any) => {
     const totalOrders = Number(r.total_orders);

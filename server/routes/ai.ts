@@ -484,7 +484,7 @@ router.post('/analyze-behavior', authenticate, requireClient, authAiLimiter, asy
     const user = (req as any).user;
     const requestedDays = Number(req.body?.days ?? 30);
     const days = Number.isFinite(requestedDays) ? Math.min(3650, Math.max(1, Math.round(requestedDays))) : 30;
-    const snapshot = await getOmniOverview(user.id, days);
+    const snapshot = await getOmniOverview(user.id, days, (req as any).activeStoreId);
 
     const toxicSuccessFlags = snapshot.creativeComparison
       .filter((creative) => creative.toxicSuccess)
