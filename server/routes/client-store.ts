@@ -2126,10 +2126,10 @@ export const createStore: RequestHandler = async (req, res) => {
       `INSERT INTO client_store_settings (
         client_id, store_name, store_slug, template,
         primary_color, secondary_color, store_description,
-        store_logo, banner_url, currency_code,
+        store_logo, banner_url,
         template_settings, template_settings_by_template, global_settings,
         is_public, is_custom_slug
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
       RETURNING *`,
       [
         clientId,
@@ -2141,7 +2141,6 @@ export const createStore: RequestHandler = async (req, res) => {
         sourceStore?.store_description || '',
         sourceStore?.store_logo || '',
         sourceStore?.banner_url || '',
-        sourceStore?.currency_code || 'DZD',
         JSON.stringify(sourceStore?.template_settings || {}),
         JSON.stringify(sourceStore?.template_settings_by_template || {}),
         JSON.stringify(sourceStore?.global_settings || {}),
