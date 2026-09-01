@@ -1056,6 +1056,14 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
         if (reserved.has(sd)) {
           return res.status(400).json({ error: `"${sd}" is a reserved subdomain. Please choose a different one.` });
         }
+        // Check subdomain uniqueness across ALL stores (not just other clients)
+        const sdConflict = await pool.query(
+          `SELECT id, store_name, store_slug FROM client_store_settings WHERE subdomain = $1 AND id != $2`,
+          [sd, (req as any).activeStoreId]
+        );
+        if (sdConflict.rows.length > 0) {
+          return res.status(409).json({ error: `Subdomain "${sd}" is already used by store "${sdConflict.rows[0].store_name}". Please choose a different one.` });
+        }
         updates.subdomain = sd;
       }
     }
@@ -1400,12 +1408,12 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
     if (columnUpdates.store_slug) {
       const normalizedSlug = String(columnUpdates.store_slug).trim().toLowerCase();
       const conflict = await pool.query(
-        `SELECT client_id, store_name, store_slug FROM client_store_settings
-         WHERE client_id != $1
+        `SELECT id, client_id, store_name, store_slug FROM client_store_settings
+         WHERE id != $1
            AND (store_slug = $2
              OR LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = $2)
          LIMIT 1`,
-        [clientId, normalizedSlug]
+        [(req as any).activeStoreId, normalizedSlug]
       );
       if (conflict.rows.length > 0) {
         return res.status(409).json({
