@@ -2222,7 +2222,7 @@ ${urls}
                     `SELECT p.id, p.title, p.description, p.price, p.original_price, p.images,
                             p.stock_quantity, p.is_featured, p.slug, p.views, p.created_at, p.metadata
                      FROM client_store_products p
-                     INNER JOIN client_store_settings s ON p.client_id = s.client_id
+                     INNER JOIN client_store_settings s ON p.store_id = s.id
                      WHERE s.store_slug = $1 AND p.status = 'active'
                      ORDER BY p.is_featured DESC, p.created_at DESC`,
                     [targetSlug]
