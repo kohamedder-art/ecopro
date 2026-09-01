@@ -209,6 +209,11 @@ export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
     ...getAuthHeaders(),
   };
 
+  const activeStoreId = typeof window !== 'undefined' ? localStorage.getItem('activeStoreId') : null;
+  if (activeStoreId && /^\/api\//.test(url)) {
+    headers['X-Store-Id'] = activeStoreId;
+  }
+
   if (init?.headers) {
     const extra = new Headers(init.headers as any);
     extra.forEach((value, key) => {

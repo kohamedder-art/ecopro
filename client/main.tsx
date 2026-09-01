@@ -62,6 +62,20 @@ if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
       if (!headers.has('X-CSRF-Token')) headers.set('X-CSRF-Token', csrf);
     }
 
+    // Attach the active store id (multi-store) to dashboard API calls so the
+    // backend scopes queries to the selected store. Only applied for same-origin
+    // API requests; storefront endpoints ignore it (they resolve by slug).
+    if (isApi) {
+      try {
+        const activeStoreId = window.localStorage.getItem('activeStoreId');
+        if (activeStoreId && !headers.has('X-Store-Id')) {
+          headers.set('X-Store-Id', activeStoreId);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     const auth = headers.get('Authorization') || headers.get('authorization');
     if (auth) {
       // Always prefer HttpOnly cookies for our own API requests.
