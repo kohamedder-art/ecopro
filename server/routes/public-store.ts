@@ -169,14 +169,14 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
       // Try indexed store_slug exact match first, then fall back only if needed.
       let clientCheck = await withDbRetry<any>((db) =>
         db.query(
-          `SELECT client_id FROM client_store_settings WHERE store_slug = $1`,
+          `SELECT id, client_id FROM client_store_settings WHERE store_slug = $1`,
           [storeSlug]
         ) as any
       );
       if (clientCheck.rows.length === 0) {
         clientCheck = await withDbRetry<any>((db) =>
           db.query(
-            `SELECT client_id FROM client_store_settings 
+            `SELECT id, client_id FROM client_store_settings 
              WHERE LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)`,
             [storeSlug]
           ) as any
@@ -185,8 +185,9 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
 
       if (clientCheck.rows.length > 0) {
         const clientId = clientCheck.rows[0].client_id;
+        const storeId = clientCheck.rows[0].id;
         if (!isProduction) {
-          console.log(`Loading client store ${storeSlug} for client ID ${clientId}`);
+          console.log(`Loading client store ${storeSlug} for client ID ${clientId}, store ID ${storeId}`);
         }
         // Include store-level fields so product cards can show owner/store info without extra round-trip
         const result = await withDbRetry<any>((db) =>
@@ -197,10 +198,10 @@ export const getStorefrontProducts: RequestHandler = async (req, res) => {
               p.slug, p.views, p.created_at, p.metadata,
               s.store_name, s.owner_name AS seller_name
             FROM client_store_products p
-            INNER JOIN client_store_settings s ON p.client_id = s.client_id
-            WHERE p.client_id = $1 AND p.status = 'active'
+            INNER JOIN client_store_settings s ON p.store_id = s.id
+            WHERE p.store_id = $1 AND p.status = 'active'
             ORDER BY p.is_featured DESC, p.created_at DESC`,
-            [clientId]
+            [storeId]
           ) as any
         );
         if (!isProduction) {
@@ -531,10 +532,11 @@ export const getPublicProduct: RequestHandler = async (req, res) => {
         s.owner_name AS seller_name,
         s.owner_email AS seller_email
       FROM client_store_products p
-      INNER JOIN client_store_settings s ON p.client_id = s.client_id
+      INNER JOIN client_store_settings s ON p.store_id = s.id
       WHERE (s.store_slug = $1
           OR LOWER(REGEXP_REPLACE(s.store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1))
-        AND p.slug = $2`,
+        AND p.slug = $2
+        AND p.status = 'active'`,
       [storeSlug, productSlug]
     );
     if (!isProduction) {
@@ -633,10 +635,11 @@ export const getStorefrontProductById: RequestHandler = async (req, res) => {
         s.owner_name AS seller_name,
         s.owner_email AS seller_email
       FROM client_store_products p
-      INNER JOIN client_store_settings s ON p.client_id = s.client_id
+      INNER JOIN client_store_settings s ON p.store_id = s.id
       WHERE (s.store_slug = $1
           OR LOWER(REGEXP_REPLACE(s.store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1))
-        AND p.id = $2`,
+        AND p.id = $2
+        AND p.status = 'active'`,
       [storeSlug, productId]
     );
 
@@ -792,7 +795,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
 
     // Match by exact store_slug OR normalized store_name (same as storefront loading)
     const cs = await pool.query(
-      `SELECT client_id, store_name
+      `SELECT id, client_id, store_name
        FROM client_store_settings
        WHERE store_slug = $1
           OR LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)`,
@@ -800,13 +803,15 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     );
     
     let clientId: number | string;
+    let storeId: number;
     let storeName: string;
     
     if (cs.rows.length > 0) {
       clientId = cs.rows[0].client_id;
+      storeId = cs.rows[0].id;
       storeName = cs.rows[0].store_name || 'EcoPro Store';
       if (!isProduction) {
-        console.log('[createPublicStoreOrder] Found client store, client_id:', clientId);
+        console.log('[createPublicStoreOrder] Found client store, client_id:', clientId, 'store_id:', storeId);
       }
     } else {
       // NOTE: This endpoint is for client storefronts only.
@@ -829,9 +834,9 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
     const productRes = await pool.query(
       `SELECT id, price, stock_quantity
        FROM client_store_products
-       WHERE id = $1 AND client_id = $2 AND status = 'active'
+       WHERE id = $1 AND store_id = $2 AND status = 'active'
        LIMIT 1`,
-      [product_id, clientId]
+      [product_id, storeId]
     );
 
     if (productRes.rows.length === 0) {
@@ -880,9 +885,9 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
         const offerRes = await pool.query(
           `SELECT id, quantity, bundle_price, compare_price, free_delivery
            FROM product_offers
-           WHERE id = $1 AND product_id = $2 AND client_id = $3 AND is_active = true
+           WHERE id = $1 AND product_id = $2 AND store_id = $3 AND is_active = true
            LIMIT 1`,
-          [Number(offer_id), product_id, clientId]
+          [Number(offer_id), product_id, storeId]
         );
         if (offerRes.rows.length === 0) {
           return res.status(400).json({ error: 'Invalid offer' });
@@ -904,10 +909,10 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
         const feeRes = await pool.query(
           `SELECT home_delivery_price, desk_delivery_price
            FROM delivery_prices
-           WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true
+           WHERE store_id = $1 AND wilaya_id = $2 AND is_active = true
            ORDER BY home_delivery_price ASC
            LIMIT 1`,
-          [clientId, Number(shipping_wilaya_id)]
+          [storeId, Number(shipping_wilaya_id)]
         );
         if (feeRes.rows.length === 0) {
           deliveryAmount = 500;
@@ -956,6 +961,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
 
     addCol('product_id', product_id);
     addCol('client_id', clientId);
+    addCol('store_id', storeId);
     addCol('quantity', quantity);
     addCol('total_price', expectedTotalPrice);
     addCol('delivery_fee', deliveryAmount);
@@ -1099,8 +1105,8 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       const vUnlimited = !Number.isFinite(vStock) || vStock < 0 || vStock >= 999999;
       if (!vUnlimited) {
         const vUpdate = await client.query(
-          'UPDATE product_variants SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND product_id = $3 AND client_id = $4 AND stock_quantity >= $1 RETURNING stock_quantity',
-          [quantity, Number(variantRow.id), product_id, clientId]
+          'UPDATE product_variants SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND product_id = $3 AND store_id = $4 AND stock_quantity >= $1 RETURNING stock_quantity',
+          [quantity, Number(variantRow.id), product_id, storeId]
         );
         if (vUpdate.rows.length === 0) {
           await client.query('ROLLBACK');
@@ -1112,8 +1118,8 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       const pUnlimited = !Number.isFinite(pStock) || pStock < 0 || pStock >= 999999;
       if (!pUnlimited) {
         const pUpdate = await client.query(
-          'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
-          [quantity, product_id, clientId]
+          'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND store_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
+          [quantity, product_id, storeId]
         );
         if (pUpdate.rows.length === 0) {
           await client.query('ROLLBACK');
@@ -1126,8 +1132,8 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       const pUnlimited = !Number.isFinite(pStock) || pStock < 0 || pStock >= 999999;
       if (!pUnlimited) {
         const stockUpdate = await client.query(
-          'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND client_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
-          [quantity, product_id, clientId]
+          'UPDATE client_store_products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND store_id = $3 AND stock_quantity >= $1 RETURNING stock_quantity',
+          [quantity, product_id, storeId]
         );
         if (stockUpdate.rows.length === 0) {
           await client.query('ROLLBACK');
@@ -1505,11 +1511,11 @@ export const getProductWithStoreInfo: RequestHandler = async (req, res) => {
     // Try client store product first - search by ID or slug
     const result = await pool.query(
       `SELECT 
-        p.id, p.client_id, p.title, p.description, p.price, p.original_price,
+        p.id, p.client_id, p.store_id, p.title, p.description, p.price, p.original_price,
         p.images, p.landing_images, p.category, p.stock_quantity, p.slug, p.status, p.metadata,
         s.store_name, s.store_slug, s.primary_color, s.template_accent_color
       FROM client_store_products p
-      INNER JOIN client_store_settings s ON p.client_id = s.client_id
+      INNER JOIN client_store_settings s ON p.store_id = s.id
       WHERE ${isNumericId ? 'p.id = $1' : 'p.slug = $1'}`,
       [idOrSlug]
     );
@@ -1522,9 +1528,9 @@ export const getProductWithStoreInfo: RequestHandler = async (req, res) => {
         const vRes = await pool.query(
           `SELECT id, color, size, size2, variant_name, price, stock_quantity, images, sort_order
            FROM product_variants
-           WHERE product_id = $1 AND client_id = $2 AND is_active = true
+           WHERE product_id = $1 AND store_id = $2 AND is_active = true
            ORDER BY sort_order ASC, id ASC`,
-          [p.id, p.client_id]
+          [p.id, p.store_id]
         );
         variants = vRes.rows || [];
       } catch {
