@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getAlgeriaCommunesByWilayaId, getAlgeriaWilayas } from "@/lib/algeriaGeo";
 import { useToast } from "@/components/ui/use-toast";
+import { useStore } from '@/contexts/StoreContext';
 
 interface DeliveryCompany {
   id: number;
@@ -35,6 +36,7 @@ export default function OrdersAdmin() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeStore } = useStore();
   const [orders, setOrders] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -539,7 +541,7 @@ export default function OrdersAdmin() {
     loadStatuses();
     loadDeliveryCompanies();
     loadStoreProducts();
-  },[]);
+  },[activeStore?.id]);
 
   const loadStoreProducts = async () => {
     try {

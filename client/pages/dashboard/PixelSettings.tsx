@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Switch } from '@/components/ui/switch';
+import { useStore } from '@/contexts/StoreContext';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
@@ -48,11 +49,12 @@ export default function PixelSettings() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeStore } = useStore();
   const [pixels, setPixels] = useState<PixelItem[]>([]);
   const [newPixel, setNewPixel] = useState<Partial<PixelItem>>({ type: 'facebook', pixel_id: '', access_token: '', enabled: true, name: '' });
 
   const { data: settings, isLoading } = useQuery<any>({
-    queryKey: ['pixel-settings'],
+    queryKey: ['pixel-settings', activeStore?.id],
     queryFn: () => apiFetch<any>('/api/pixels/settings'),
   });
 
@@ -73,7 +75,7 @@ export default function PixelSettings() {
   const saveSettings = useMutation({
     mutationFn: (payload: any) => apiFetch('/api/pixels/settings', { method: 'PUT', body: JSON.stringify(payload) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pixel-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['pixel-settings', activeStore?.id] });
       toast({ title: 'تم حفظ الإعدادات' });
     },
     onError: () => toast({ title: 'خطأ في الحفظ', variant: 'destructive' }),

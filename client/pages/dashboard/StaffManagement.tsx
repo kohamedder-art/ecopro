@@ -13,6 +13,7 @@ import { StaffMember } from '@shared/staff';
 import { PermissionEditor } from '@/components/staff/PermissionEditor';
 import { ActivityLog } from '@/components/staff/ActivityLog';
 import { CredentialsDialog } from '@/components/staff/CredentialsDialog';
+import { useStore } from '@/contexts/StoreContext';
 
 // ─── Design Tokens ──────────────────────────────────────────────
 const surfaceCard =
@@ -26,6 +27,7 @@ export default function StaffManagement() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
+  const { activeStore } = useStore();
 
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ export default function StaffManagement() {
   const [showCreatedDialog, setShowCreatedDialog] = useState(false);
   const [createdStaff, setCreatedStaff] = useState<{ username: string; password: string } | null>(null);
 
-  useEffect(() => { loadStaffList(); }, []);
+  useEffect(() => { loadStaffList(); }, [activeStore?.id]);
 
   const loadStaffList = async () => {
     try {

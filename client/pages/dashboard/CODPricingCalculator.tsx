@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import ProductCostsSection from '@/components/ProductCostsSection';
+import { useStore } from '@/contexts/StoreContext';
 import { Save, TrendingUp, TrendingDown, DollarSign, Package, Percent, BarChart3, Truck, RotateCcw, Smartphone, CreditCard, RefreshCw } from 'lucide-react';
 
 const fmtNum = (n: number | null | undefined) => n != null ? String(Math.round(n)) : '0';
@@ -10,15 +11,16 @@ const fmtPct = (n: number | null | undefined) => n != null ? `${Math.round(n)}%`
 
 export default function CODPricingCalculator() {
   const qc = useQueryClient();
+  const { activeStore } = useStore();
   const [dailySpend, setDailySpend] = useState<number>(0);
 
   const { data: config, isLoading: loadingConfig } = useQuery<any>({
-    queryKey: ['pricing-config'],
+    queryKey: ['pricing-config', activeStore?.id],
     queryFn: () => apiFetch<any>('/api/pixels/omni/pricing-config'),
   });
 
   const { data: codData, isLoading: loadingCod, refetch: refetchCod } = useQuery<any>({
-    queryKey: ['cod-pricing', dailySpend],
+    queryKey: ['cod-pricing', activeStore?.id, dailySpend],
     queryFn: () => apiFetch<any>(`/api/pixels/omni/cod-pricing`),
   });
 
@@ -34,8 +36,8 @@ export default function CODPricingCalculator() {
       body: JSON.stringify({ daily_ad_spend: val }),
     }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['pricing-config'] });
-      qc.invalidateQueries({ queryKey: ['cod-pricing'] });
+      qc.invalidateQueries({ queryKey: ['pricing-config', activeStore?.id] });
+      qc.invalidateQueries({ queryKey: ['cod-pricing', activeStore?.id] });
     },
   });
 
@@ -190,7 +192,7 @@ export default function CODPricingCalculator() {
           <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500" />
           <span className="text-sm font-bold text-foreground">تعديل تكاليف المنتجات</span>
         </div>
-        <ProductCostsSection onSave={() => qc.invalidateQueries({ queryKey: ['cod-pricing'] })} />
+        <ProductCostsSection onSave={() => qc.invalidateQueries({ queryKey: ['cod-pricing', activeStore?.id] })} />
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import CustomerBot from './CustomerBot';
+import { useStore } from '@/contexts/StoreContext';
 
 interface BotSettings {
   enabled: boolean;
@@ -22,6 +23,7 @@ export default function AdminBotSettings() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
+  const { activeStore } = useStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeBot, setActiveBot] = useState<'confirmation' | 'updates' | 'tracking' | null>(null);
@@ -46,7 +48,7 @@ export default function AdminBotSettings() {
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [activeStore?.id]);
 
   const loadSettings = async () => {
     setLoading(true);

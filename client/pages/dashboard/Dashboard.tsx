@@ -6,6 +6,7 @@ import {
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from '@/components/ui/use-toast';
 import { getCurrentUser } from '@/lib/auth';
+import { useStore } from '@/contexts/StoreContext';
 
 interface DashboardStats {
   products: number;
@@ -35,6 +36,7 @@ interface Analytics {
 export default function Dashboard() {
   const { t, locale } = useTranslation();
   const { toast } = useToast();
+  const { activeStore } = useStore();
   const user = getCurrentUser();
   const userName = user?.name || 'User';
   const [stats, setStats] = useState<DashboardStats>({
@@ -56,13 +58,13 @@ export default function Dashboard() {
     loadDashboardData();
     const interval = setInterval(loadDashboardData, 30000);
     return () => clearInterval(interval);
-  }, [dayRange]);
+  }, [dayRange, activeStore?.id]);
 
   useEffect(() => {
     loadNewOrderCount();
     const interval = setInterval(loadNewOrderCount, 60000);
     return () => clearInterval(interval);
-  }, [lastSeenAt]);
+  }, [lastSeenAt, activeStore?.id]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from '@/lib/i18n';
+import { useStore } from '@/contexts/StoreContext';
 import {
   CreditCard,
   Calendar,
@@ -125,9 +126,10 @@ const AdminBilling = () => {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
+  const { activeStore } = useStore();
 
   const { data: subscription, isLoading: subLoading, refetch: refetchSub } = useQuery({
-    queryKey: ['billing-subscription'],
+    queryKey: ['billing-subscription', activeStore?.id],
     queryFn: async () => {
       const res = await fetch('/api/billing/subscription');
       if (!res.ok) throw new Error('Failed to fetch subscription');
@@ -136,7 +138,7 @@ const AdminBilling = () => {
   });
 
   const { data: publicBilling } = useQuery({
-    queryKey: ['billing-public'],
+    queryKey: ['billing-public', activeStore?.id],
     queryFn: async () => {
       const res = await fetch('/api/billing/public');
       if (!res.ok) throw new Error('Failed to fetch billing info');
@@ -148,7 +150,7 @@ const AdminBilling = () => {
   const subscriptionPrice = publicBilling?.subscriptionPrice ?? 3500;
 
   const { data: paymentData, isLoading: payLoading } = useQuery({
-    queryKey: ['billing-payments'],
+    queryKey: ['billing-payments', activeStore?.id],
     queryFn: async () => {
       const res = await fetch('/api/billing/payments');
       if (!res.ok) throw new Error('Failed to fetch payments');

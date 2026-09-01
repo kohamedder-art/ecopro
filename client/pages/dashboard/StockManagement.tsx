@@ -49,6 +49,7 @@ import { markOnboardingStepComplete } from '@/lib/onboarding';
 import { formatPriceForInput } from '@/lib/formatPrice';
 import { uploadFileWithProgress, compressImage } from '@/lib/api';
 import { useAI } from '@/hooks/useAI';
+import { useStore } from '@/contexts/StoreContext';
 
 interface StockItem {
   id: number;
@@ -281,6 +282,7 @@ function AIVisionSuggest({
 export default function StockManagement() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { activeStore } = useStore();
   const [stock, setStock] = useState<StockItem[]>([]);
   const [filteredStock, setFilteredStock] = useState<StockItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -532,7 +534,7 @@ export default function StockManagement() {
   useEffect(() => {
     loadStock();
     loadCategories();
-  }, []);
+  }, [activeStore?.id]);
 
   useEffect(() => {
     filterStock();

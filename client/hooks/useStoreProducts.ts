@@ -27,8 +27,9 @@ async function fetchStoreProducts(): Promise<any[]> {
 }
 
 export function useStoreProducts(options?: { enabled?: boolean; onUnauthorized?: () => void }) {
+  const activeStoreId = typeof window !== 'undefined' ? localStorage.getItem('activeStoreId') : null;
   const query = useQuery({
-    queryKey: ['storeProducts'],
+    queryKey: ['storeProducts', activeStoreId],
     queryFn: fetchStoreProducts,
     enabled: options?.enabled ?? true,
     retry: (failureCount, error) => {
