@@ -2495,28 +2495,5 @@ src="https://www.facebook.com/tr?id=${encodeURIComponent(pid)}&ev=PageView&noscr
     return res.status(status).json({ error: message, status });
   });
 
-  // TEMP: Fix email for user 64 — remove after use
-  app.get('/api/_tmp/fix-email', async (_req, res) => {
-    try {
-      const { ensureConnection: getPool } = await import('./utils/database');
-      const pool = await getPool();
-      const r = await pool.query('SELECT id, email, name FROM clients WHERE id = 64');
-      res.json(r.rows);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-  app.post('/api/_tmp/fix-email', async (req, res) => {
-    try {
-      const { email } = req.body;
-      const { ensureConnection: getPool } = await import('./utils/database');
-      const pool = await getPool();
-      const r = await pool.query('UPDATE clients SET email = $1, updated_at = NOW() WHERE id = 64 RETURNING id, email, name', [email]);
-      res.json(r.rows);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
   return app;
 }
