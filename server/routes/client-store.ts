@@ -886,8 +886,8 @@ export const getStoreSettings: RequestHandler = async (req, res) => {
     if (result.rows[0].store_slug == null) {
       const newSlug = 'store-' + randomBytes(6).toString('base64url');
       const updated = await pool.query(
-        `UPDATE client_store_settings SET store_slug = $1 WHERE client_id = $2 RETURNING *`,
-        [newSlug, clientId]
+        `UPDATE client_store_settings SET store_slug = $1 WHERE id = $2 RETURNING *`,
+        [newSlug, result.rows[0].id]
       );
       result.rows[0] = updated.rows[0];
     }
@@ -1035,7 +1035,7 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
 
     // Load current row so we can merge JSON settings and support template switching.
     // Wrap in retry for transient connection errors
-    let existingRes = await withRetry((db) => db.query('SELECT * FROM client_store_settings WHERE client_id = $1', [clientId]));
+    let existingRes = await withRetry((db) => db.query('SELECT * FROM client_store_settings WHERE id = $1 AND client_id = $2', [(req as any).activeStoreId, clientId]));
     if (existingRes.rows.length === 0) {
       const randomSlug = 'store-' + randomBytes(6).toString('base64url');
       existingRes = await withRetry((db) => db.query(
@@ -1447,8 +1447,8 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
     if (fields.length === 0) {
       // No fields to update - still return success with current settings
       const result = await withRetry((db) => db.query(
-        'SELECT * FROM client_store_settings WHERE client_id = $1',
-        [clientId]
+        'SELECT * FROM client_store_settings WHERE id = $1 AND client_id = $2',
+        [(req as any).activeStoreId, clientId]
       ));
       const row = result.rows[0];
       const templateSettings = row?.template_settings && typeof row.template_settings === 'object' ? row.template_settings : {};
@@ -1458,11 +1458,13 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
     }
 
     fields.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push((req as any).activeStoreId);
+    paramCount++;
     values.push(clientId);
 
     const queryText = `UPDATE client_store_settings 
        SET ${fields.join(", ")}
-       WHERE client_id = $${paramCount}
+       WHERE id = $${paramCount - 1} AND client_id = $${paramCount}
        RETURNING *`;
     
     logStoreSettings('updateStoreSettings:query', { 
@@ -1516,8 +1518,8 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
           candidate = `${baseName}-${suffix++}`;
         }
         await pool.query(
-          `UPDATE client_store_settings SET store_slug = $1 WHERE client_id = $2`,
-          [candidate, clientId]
+          `UPDATE client_store_settings SET store_slug = $1 WHERE id = $2`,
+          [candidate, (req as any).activeStoreId]
         );
         updatedRow.store_slug = candidate;
       }

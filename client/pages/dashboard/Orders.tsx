@@ -296,9 +296,9 @@ export default function OrdersAdmin() {
   }, [filterTab]);
 
   // Load custom statuses
-  const loadStatuses = async () => {
+  const loadStatuses = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/client/order-statuses');
+      const res = await fetch('/api/client/order-statuses', { signal });
       if (res.ok) {
         const data = await res.json();
         // Merge at_delivery into in_delivery (both mean the same thing)
@@ -311,15 +311,16 @@ export default function OrdersAdmin() {
         }
         setCustomStatuses(merged);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
       console.error('Failed to load statuses:', error);
     }
   };
 
   // Load delivery companies with integration status
-  const loadDeliveryCompanies = async () => {
+  const loadDeliveryCompanies = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/delivery/companies');
+      const res = await fetch('/api/delivery/companies', { signal });
       if (res.ok) {
         const data = await res.json();
         setDeliveryCompanies(data);
@@ -332,7 +333,8 @@ export default function OrdersAdmin() {
           setSelectedDeliveryCompany(null);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
       console.error('Failed to load delivery companies:', error);
     }
   };
@@ -537,20 +539,25 @@ export default function OrdersAdmin() {
   };
 
   useEffect(()=>{
-    loadOrders();
-    loadStatuses();
-    loadDeliveryCompanies();
-    loadStoreProducts();
+    const controller = new AbortController();
+    const { signal } = controller;
+    loadOrders(false, signal);
+    loadStatuses(signal);
+    loadDeliveryCompanies(signal);
+    loadStoreProducts(signal);
+    return () => controller.abort();
   },[activeStore?.id]);
 
-  const loadStoreProducts = async () => {
+  const loadStoreProducts = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/client/store/products?limit=500');
+      const res = await fetch('/api/client/store/products?limit=500', { signal });
       if (res.ok) {
         const data = await res.json();
         setStoreProducts(Array.isArray(data) ? data : (data.products || []));
       }
-    } catch {}
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
+    }
   };
 
   const loadAddVariants = async (productId: number) => {
@@ -602,7 +609,7 @@ export default function OrdersAdmin() {
       // After load, compare (orders state is stale here — use a callback approach via ref)
     }, 30000); // 30 seconds instead of 5 seconds
     return () => clearInterval(id);
-  }, []);
+  }, [activeStore?.id]);
 
   // Track new orders by comparing order count after silent reload
   useEffect(() => {
@@ -625,7 +632,7 @@ export default function OrdersAdmin() {
     return () => clearInterval(id);
   }, []);
 
-  const loadOrders = async (silent = false) => {
+  const loadOrders = async (silent = false, signal?: AbortSignal) => {
     try {
       if (!silent) {
         setIsRefreshing(true);
@@ -635,7 +642,7 @@ export default function OrdersAdmin() {
       const isStaff = localStorage.getItem('isStaff') === 'true';
       const authToken = localStorage.getItem('auth_token');
       const authHeaders = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
-      const res = await fetch(isStaff ? '/api/staff/orders' : '/api/client/orders?limit=99999', { headers: authHeaders });
+      const res = await fetch(isStaff ? '/api/staff/orders' : '/api/client/orders?limit=99999', { headers: authHeaders, signal });
 
       if (res.status === 401) {
         setError('Authentication failed. Please log in again.');
@@ -702,7 +709,8 @@ export default function OrdersAdmin() {
       });
       setOrders(transformedOrders);
       setError(null);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
       console.error('Failed to load orders:', error);
       setError(error instanceof Error ? error.message : 'Failed to load orders. Please try again.');
     } finally {
@@ -2285,7 +2293,9 @@ export default function OrdersAdmin() {
                       body: JSON.stringify({ key }),
                     });
                     if (res.ok) await loadStatuses();
-                  } catch {}
+                  } catch (error) {
+                    console.error('Failed to load statuses:', error);
+                  }
                 };
 
                 const CORE_LOCKED_KEYS = new Set(['pending','confirmed','in_delivery','at_delivery','completed','fake','duplicate']);

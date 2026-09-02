@@ -532,8 +532,11 @@ export default function StockManagement() {
   };
 
   useEffect(() => {
-    loadStock();
-    loadCategories();
+    const controller = new AbortController();
+    const { signal } = controller;
+    loadStock(signal);
+    loadCategories(signal);
+    return () => controller.abort();
   }, [activeStore?.id]);
 
   useEffect(() => {
@@ -555,38 +558,39 @@ export default function StockManagement() {
     setTotalValue(value);
   }, [stock]);
 
-  const loadStock = async () => {
+  const loadStock = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/client/stock');
+      const res = await fetch('/api/client/stock', { signal });
       if (res.ok) {
         const data = await res.json();
         setStock(data);
       } else {
         console.error('[loadStock] Failed with status:', res.status);
       }
-    } catch (error) {
-      console.error('Failed to load stock:', error);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.error('Failed to load stock:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadCategories = async () => {
+  const loadCategories = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/client/stock/categories');
+      const res = await fetch('/api/client/stock/categories', { signal });
       if (res.ok) {
         const data = await res.json();
         setCategories(data.map((c: any) => c.category).filter(Boolean));
       }
-      
-      // Also load all categories with details
-      const allRes = await fetch('/api/client/stock/categories/all');
+
+      const allRes = await fetch('/api/client/stock/categories/all', { signal });
       if (allRes.ok) {
         const allData = await allRes.json();
         setAllCategories(allData);
       }
-    } catch (error) {
-      console.error('Failed to load categories:', error);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.error('Failed to load categories:', err);
     }
   };
 

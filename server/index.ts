@@ -1839,12 +1839,12 @@ ${urls}
   app.delete("/api/client/orders/:id", authenticate, requireClient, orderRoutes.deleteOrder);
   
   // Order statuses routes (authenticated - client only)
-  app.post("/api/client/order-statuses/restore-preset", authenticate, requireClient, orderRoutes.restorePresetStatus as any);
-  app.get("/api/client/order-statuses", authenticate, requireClient, orderRoutes.getOrderStatuses);
-  app.post("/api/client/order-statuses", authenticate, requireClient, orderRoutes.createOrderStatus);
-  app.patch("/api/client/order-statuses/:id", authenticate, requireClient, orderRoutes.updateCustomOrderStatus as any);
-  app.delete("/api/client/order-statuses/:id", authenticate, requireClient, orderRoutes.deleteOrderStatus as any);
+  app.post("/api/client/order-statuses/restore-preset", authenticate, requireClient, resolveActiveStore, orderRoutes.restorePresetStatus as any);
 
+  app.get("/api/client/order-statuses", authenticate, requireClient, resolveActiveStore, orderRoutes.getOrderStatuses);
+  app.post("/api/client/order-statuses", authenticate, requireClient, resolveActiveStore, orderRoutes.createOrderStatus);
+  app.patch("/api/client/order-statuses/:id", authenticate, requireClient, resolveActiveStore, orderRoutes.updateCustomOrderStatus as any);
+  app.delete("/api/client/order-statuses/:id", authenticate, requireClient, resolveActiveStore, orderRoutes.deleteOrderStatus as any);
   // Order confirmation routes (public - no auth required)
   app.get("/api/storefront/:storeSlug/order/:orderId", orderConfirmationRoutes.getOrderForConfirmation);
   app.post("/api/storefront/:storeSlug/order/:orderId/confirm", orderConfirmationRoutes.confirmOrder);

@@ -55,9 +55,14 @@ export default function Dashboard() {
   const dayPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadDashboardData();
-    const interval = setInterval(loadDashboardData, 30000);
-    return () => clearInterval(interval);
+    const controller = new AbortController();
+    const { signal } = controller;
+    loadDashboardData(signal);
+    const interval = setInterval(() => loadDashboardData(signal), 30000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [dayRange, activeStore?.id]);
 
   useEffect(() => {
@@ -75,15 +80,18 @@ export default function Dashboard() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (signal?: AbortSignal) => {
     try {
       const [statsRes, analyticsRes] = await Promise.all([
-        fetch(`/api/dashboard/stats?days=${dayRange}`),
-        fetch(`/api/dashboard/analytics?days=${dayRange}`)
+        fetch(`/api/dashboard/stats?days=${dayRange}`, { signal }),
+        fetch(`/api/dashboard/analytics?days=${dayRange}`, { signal })
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       if (analyticsRes.ok) setAnalytics(await analyticsRes.json());
-    } catch (error) { console.error(error); }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.error(err);
+    }
   };
 
   const loadNewOrderCount = async () => {
