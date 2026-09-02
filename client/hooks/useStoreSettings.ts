@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { safeJsonParse } from '@/utils/safeJson';
 import { storeNameToSlug } from '@/utils/storeUrl';
+import { useStore } from '@/contexts/StoreContext';
 import type { StoreSettingsLike } from '@/lib/storeSchema';
 
 class HttpError extends Error {
@@ -45,7 +46,8 @@ async function fetchStoreSettings(): Promise<StoreSettingsLike> {
 }
 
 export function useStoreSettings(options?: { enabled?: boolean; onUnauthorized?: () => void }) {
-  const activeStoreId = typeof window !== 'undefined' ? localStorage.getItem('activeStoreId') : null;
+  const { activeStore } = useStore();
+  const activeStoreId = activeStore?.id ?? null;
   const query = useQuery({
     queryKey: ['storeSettings', activeStoreId],
     queryFn: fetchStoreSettings,

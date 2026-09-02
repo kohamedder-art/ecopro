@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useStore } from '@/contexts/StoreContext';
 
 class HttpError extends Error {
   status: number;
@@ -27,7 +28,8 @@ async function fetchStoreProducts(): Promise<any[]> {
 }
 
 export function useStoreProducts(options?: { enabled?: boolean; onUnauthorized?: () => void }) {
-  const activeStoreId = typeof window !== 'undefined' ? localStorage.getItem('activeStoreId') : null;
+  const { activeStore } = useStore();
+  const activeStoreId = activeStore?.id ?? null;
   const query = useQuery({
     queryKey: ['storeProducts', activeStoreId],
     queryFn: fetchStoreProducts,
