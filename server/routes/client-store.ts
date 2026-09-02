@@ -1385,17 +1385,16 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       columnUpdates.template = normalizedRequested;
     }
 
-    // Validate store_name doesn't conflict with another store's slug or name
+    // Validate store_name doesn't conflict with another store's name
     if (columnUpdates.store_name) {
       const normalizedName = columnUpdates.store_name
         .trim()
         .toLowerCase()
         .replace(/[^a-zA-Z0-9]/g, '');
       const conflict = await pool.query(
-        `SELECT id, client_id, store_name, store_slug FROM client_store_settings
+        `SELECT id, store_name FROM client_store_settings
          WHERE id != $1
-           AND (LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = $2
-             OR store_slug = $2)
+           AND LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = $2
          LIMIT 1`,
         [(req as any).activeStoreId, normalizedName]
       );
@@ -1407,14 +1406,13 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
       }
     }
 
-    // Validate store_slug doesn't conflict with another store's normalized name
+    // Validate store_slug doesn't conflict with another store's slug
     if (columnUpdates.store_slug) {
       const normalizedSlug = String(columnUpdates.store_slug).trim().toLowerCase();
       const conflict = await pool.query(
-        `SELECT id, client_id, store_name, store_slug FROM client_store_settings
+        `SELECT id, store_name FROM client_store_settings
          WHERE id != $1
-           AND (store_slug = $2
-             OR LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = $2)
+           AND store_slug = $2
          LIMIT 1`,
         [(req as any).activeStoreId, normalizedSlug]
       );
@@ -1506,10 +1504,10 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
           .replace(/^-|-$/g, '')
           .slice(0, 50)
           || `store-${clientId}`;
-        // Single query: find all taken slugs that match baseName prefix
+        // Single query: find all taken slugs that match baseName prefix (check ALL stores, not just other clients)
         const taken = await pool.query(
-          `SELECT store_slug FROM client_store_settings WHERE store_slug ~ $1 AND client_id != $2`,
-          [`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(-\\d+)?$`, clientId]
+          `SELECT store_slug FROM client_store_settings WHERE store_slug ~ $1 AND id != $2`,
+          [`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(-\\d+)?$`, (req as any).activeStoreId]
         );
         const takenSet = new Set(taken.rows.map((r: any) => r.store_slug));
         let candidate = baseName;
