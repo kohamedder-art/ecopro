@@ -122,6 +122,8 @@ export default function LeRoiShopTemplate({
     }
   }, [lightboxOpen]);
   const [emblaApi, setEmblaApi] = useState<any>(null);
+  const [imgLoaded, setImgLoaded] = useState<Record<number, boolean>>({});
+  const [thumbLoaded, setThumbLoaded] = useState<Record<number, boolean>>({});
   const galleryStripRef = useRef<HTMLDivElement>(null);
   const thumbnailRowRef = useRef<HTMLDivElement>(null);
   const galleryIdxRef = useRef(0);
@@ -420,7 +422,7 @@ export default function LeRoiShopTemplate({
   }) => (
     <div className={`relative ${className}`} style={{ backgroundColor: surfaceMuted, minHeight: src ? undefined : 200 }}>
       {src ? (
-        <img src={src} alt="" className="w-full h-auto block" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
+        <img src={src.includes('cloudinary.com') && !src.includes('?tr=') ? `${src}?tr=w_400,q_auto,f_auto,c_limit` : src} alt="" className="w-full h-auto block" loading="lazy" decoding="async" style={{ contentVisibility: 'auto', filter: imgLoaded[-3] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, '-3': true}))} />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2" style={{ color: textMuted }}>
           <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
@@ -485,7 +487,7 @@ export default function LeRoiShopTemplate({
           </div>
           <div className="flex items-center gap-2 cursor-pointer" onClick={goToCatalog}>
             {settings?.store_logo ? (
-              <img src={settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" width="32" height="32" style={{ contentVisibility: 'auto' }} />
+              <img src={settings.store_logo.includes('cloudinary.com') && !settings.store_logo.includes('?tr=') ? `${settings.store_logo}?tr=w_400,q_auto,f_auto,c_limit` : settings.store_logo} alt="" className="w-8 h-8 rounded-full object-cover" loading="eager" fetchPriority="high" decoding="async" width="32" height="32" style={{ contentVisibility: 'auto', filter: imgLoaded['-1'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, '-1': true}))} />
             ) : null}
             <span className="text-xl md:text-2xl font-black tracking-tight" style={{ color: surfaceTextColor }}>
               {settings?.store_name || 'متجري'}
@@ -551,7 +553,7 @@ export default function LeRoiShopTemplate({
                       : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                         ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                         : <img
-                            src={product.images?.[0] || '/placeholder.png'}
+                            src={(product.images?.[0] || '/placeholder.png').includes('cloudinary.com') && !(product.images?.[0] || '/placeholder.png').includes('?tr=') ? `${product.images?.[0] || '/placeholder.png'}?tr=w_400,q_auto,f_auto,c_limit` : (product.images?.[0] || '/placeholder.png')}
                             alt={product.title}
                             loading={idx === 0 ? 'eager' : 'lazy'}
                             fetchpriority={idx === 0 ? 'high' : 'low'}
@@ -559,6 +561,8 @@ export default function LeRoiShopTemplate({
                             width="600"
                             height="600"
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            style={{ filter: imgLoaded[product.id] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                            onLoad={() => setImgLoaded(prev => ({...prev, [product.id]: true}))}
                           />
                       }
                       <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -659,12 +663,12 @@ export default function LeRoiShopTemplate({
                                 item.embed.type === 'youtube' ? (
                                   <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${item.embed.id}?autoplay=1&mute=1&loop=1&playlist=${item.embed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                                 ) : item.embed.type === 'video' ? (
-                                  <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline preload="metadata" />
+                                  <video className="w-full h-full object-cover" src={item.embed.url} autoPlay muted loop playsInline preload="metadata" poster={activeProduct?.images?.[0] || ''} />
                                 ) : (
                                   <iframe className="w-full h-full" src={item.embed.url} allowFullScreen />
                                 )
                               ) : (
-                                <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', cursor: 'pointer' }} loading="lazy" decoding="async" />
+                                <img src={item.src.includes('cloudinary.com') && !item.src.includes('?tr=') ? `${item.src}?tr=w_800,q_auto,f_auto,c_limit` : item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', cursor: 'pointer', filter: imgLoaded[i] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} loading={i === 0 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : 'low'} decoding="async" onLoad={() => setImgLoaded(prev => ({...prev, [i]: true}))} />
                               )}
                             </div>
                           ))}
@@ -690,7 +694,7 @@ export default function LeRoiShopTemplate({
                             {item.type === 'video' ? (
                               <div className="w-full h-full relative">
                                 {item.embed.type === 'youtube' ? (
-                                  <img src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
+                                  <img src={`https://img.youtube.com/vi/${item.embed.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" style={{ contentVisibility: 'auto', filter: thumbLoaded[i] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setThumbLoaded(prev => ({...prev, [i]: true}))} />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }} />
                                 )}
@@ -699,7 +703,7 @@ export default function LeRoiShopTemplate({
                                 </div>
                               </div>
                             ) : (
-                              <img src={item.src} alt="" className="w-full h-full object-contain" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
+                              <img src={item.src.includes('cloudinary.com') && !item.src.includes('?tr=') ? `${item.src}?tr=w_100,q_auto,f_auto,c_limit` : item.src} alt="" className="w-full h-full object-contain" loading="lazy" decoding="async" style={{ contentVisibility: 'auto', filter: thumbLoaded[i] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setThumbLoaded(prev => ({...prev, [i]: true}))} />
                             )}
                           </button>
                         ))}
@@ -980,13 +984,15 @@ export default function LeRoiShopTemplate({
                           : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                             ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                             : <img
-                                src={product.images?.[0] || '/placeholder.png'}
+                                src={(product.images?.[0] || '/placeholder.png').includes('cloudinary.com') && !(product.images?.[0] || '/placeholder.png').includes('?tr=') ? `${product.images?.[0] || '/placeholder.png'}?tr=w_400,q_auto,f_auto,c_limit` : (product.images?.[0] || '/placeholder.png')}
                                 alt={product.title}
                                 loading="lazy"
                                 decoding="async"
                                 width="600"
                                 height="600"
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                style={{ filter: imgLoaded[product.id] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                                onLoad={() => setImgLoaded(prev => ({...prev, [product.id]: true}))}
                               />
                           }
                           <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1059,10 +1065,12 @@ export default function LeRoiShopTemplate({
             </>
           )}
           <img
-            src={activeProduct.images?.[lightboxImgIdx] || activeProduct.images?.[0] || '/placeholder.png'}
+            src={(activeProduct.images?.[lightboxImgIdx] || activeProduct.images?.[0] || '/placeholder.png').includes('cloudinary.com') && !(activeProduct.images?.[lightboxImgIdx] || activeProduct.images?.[0] || '/placeholder.png').includes('?tr=') ? `${activeProduct.images?.[lightboxImgIdx] || activeProduct.images?.[0] || '/placeholder.png'}?tr=w_800,q_auto,f_auto,c_limit` : (activeProduct.images?.[lightboxImgIdx] || activeProduct.images?.[0] || '/placeholder.png')}
             alt={activeProduct.title}
             className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
+            style={{ filter: imgLoaded[-4] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+            onLoad={() => setImgLoaded(prev => ({...prev, '-4': true}))}
           />
         </div>
       )}

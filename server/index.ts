@@ -2204,7 +2204,10 @@ ${urls}
                 const { ensureConnection: getPool2 } = await import('./utils/database');
                 const dbPool2 = await getPool2();
                 const settingsRes = await dbPool2.query(
-                  `SELECT *, 'DZD' as currency_code
+                  `SELECT id, client_id, store_name, store_slug, store_logo, store_description,
+                          primary_color, secondary_color, template, banner_url, 'DZD' as currency_code,
+                          custom_domain, subdomain, is_public, template_settings, global_settings,
+                          created_at, updated_at
                    FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
                   [targetSlug]
                 );
@@ -2219,8 +2222,8 @@ ${urls}
                 // Also inject products to eliminate the second API call
                 try {
                   const productsRes = await dbPool2.query(
-                    `SELECT p.id, p.title, p.description, p.price, p.original_price, p.images,
-                            p.stock_quantity, p.is_featured, p.slug, p.views, p.created_at, p.metadata
+                    `SELECT p.id, p.title, LEFT(p.description, 500) as description, p.price, p.original_price, p.images,
+                            p.stock_quantity, p.is_featured, p.slug, p.views, p.created_at
                      FROM client_store_products p
                      INNER JOIN client_store_settings s ON p.store_id = s.id
                      WHERE s.store_slug = $1 AND p.status = 'active'
@@ -2263,6 +2266,44 @@ ${urls}
                   }
                 } catch { /* ignore — client will fetch products normally */ }
               } catch { /* ignore — client will fetch normally */ }
+
+              // Inject skeleton into <div id="root"> so users see store layout instantly while JS loads
+              if (targetSlug) {
+                try {
+                  if (row?.store_name) {
+                    const skName = (row.store_name || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                    const skLogo = row.store_logo || '';
+                    const skBanner = row.banner_url || '';
+                    const skPrimary = row.primary_color || '#0f172a';
+                    const skSkeleton = `
+<style>
+  .ssk{font-family:Inter,system-ui,sans-serif;direction:rtl;min-height:100vh;background:#fff}
+  .ssk-h{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid #f0f0f0;background:#fff}
+  .ssk-h img{width:40px;height:40px;border-radius:8px;object-fit:contain;background:#f5f5f5}
+  .ssk-h span{font-size:18px;font-weight:700;color:${skPrimary}}
+  .ssk-b{width:100%;height:280px;background:linear-gradient(135deg,#f0f0f0,#e8e8e8);animation:sskp 1.5s ease-in-out infinite}
+  .ssk-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;padding:24px}
+  .ssk-c{border-radius:12px;overflow:hidden;background:#fff;border:1px solid #f0f0f0}
+  .ssk-ci{width:100%;height:180px;background:linear-gradient(135deg,#f0f0f0,#e8e8e8);animation:sskp 1.5s ease-in-out infinite}
+  .ssk-ct{padding:12px}
+  .ssk-ctx{height:14px;background:#f0f0f0;border-radius:6px;margin-bottom:8px;animation:sskp 1.5s ease-in-out infinite;width:80%}
+  .ssk-cp{height:18px;background:#f0f0f0;border-radius:6px;animation:sskp 1.5s ease-in-out infinite;width:40%}
+  @keyframes sskp{0%,100%{opacity:1}50%{opacity:.5}}
+</style>
+<div class="ssk">
+  <div class="ssk-h">
+    ${skLogo ? `<img src="${skLogo.replace(/"/g, '&quot;')}" alt="">` : '<div style="width:40px;height:40px;border-radius:8px;background:#f0f0f0"></div>'}
+    <span>${skName}</span>
+  </div>
+  ${skBanner ? `<img src="${skBanner.replace(/"/g, '&quot;')}" style="width:100%;height:280px;object-fit:cover" alt="">` : '<div class="ssk-b"></div>'}
+  <div class="ssk-g">
+    ${Array(6).fill(0).map(() => `<div class="ssk-c"><div class="ssk-ci"></div><div class="ssk-ct"><div class="ssk-ctx"></div><div class="ssk-cp"></div></div></div>`).join('')}
+  </div>
+</div>`;
+                    withMeta = withMeta.replace('<div id="root"></div>', `<div id="root">${skSkeleton}</div>`);
+                  }
+                } catch { /* ignore — skeleton is non-critical */ }
+              }
             }
 
             // Inject CSP nonce on module scripts

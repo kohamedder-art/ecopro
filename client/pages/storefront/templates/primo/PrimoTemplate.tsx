@@ -194,6 +194,11 @@ const goBackToCatalog = () => {
   // ── Image / FAQ state ──
   const [selectedMainImage, setSelectedMainImage] = useState(0);
   const [zoomState, setZoomState] = useState<{ images: string[]; idx: number } | null>(null);
+  const [imgLoaded, setImgLoaded] = useState<Record<string, boolean>>({});
+  const optimizeImg = (src: string, size: 'small' | 'large' = 'small') => {
+    if (!src || !src.includes('cloudinary.com') || src.includes('?tr=')) return src;
+    return `${src}?tr=${size === 'large' ? 'w_800,q_auto,f_auto,c_limit' : 'w_400,q_auto,f_auto,c_limit'}`;
+  };
   const touchStartX = useRef<number | null>(null);
 
   const totalSlides = (videoEmbed ? 1 : 0) + mainImages.length;
@@ -391,7 +396,7 @@ const goBackToCatalog = () => {
               </button>
             )}
             {settings?.store_logo ? (
-              <img src={settings.store_logo} alt={storeName} className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" width="32" height="32" style={{ contentVisibility: 'auto' }} />
+              <img src={optimizeImg(settings.store_logo)} alt={storeName} className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" width="32" height="32" style={{ contentVisibility: 'auto', filter: imgLoaded['logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, 'logo': true}))} />
             ) : (
               <div onClick={goBackToCatalog} className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm cursor-pointer" style={{ backgroundColor: accentColor }}>
                 {storeName.charAt(0)}
@@ -453,7 +458,7 @@ const goBackToCatalog = () => {
                   return (
                     <div key={product.id} className="flex-shrink-0 w-40 cursor-pointer rounded-xl overflow-hidden transition-all hover:shadow-lg" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }} onClick={() => openProduct(product)}>
                   <div className="relative" style={{ aspectRatio: '2 / 3', backgroundColor: surfaceMuted }}>
-                        <img src={product.images?.[0] || '/placeholder.png'} alt={product.title} loading="lazy" decoding="async" className="w-full h-full object-contain" style={{ backgroundColor: '#fff' }} />
+                        <img src={optimizeImg(product.images?.[0] || '/placeholder.png')} alt={product.title} loading="lazy" decoding="async" className="w-full h-full object-contain" style={{ backgroundColor: '#fff', filter: imgLoaded[String(product.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [String(product.id)]: true}))} />
                         {discount > 0 && (
                           <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
                             -{discount}%
@@ -503,7 +508,7 @@ const goBackToCatalog = () => {
                           <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', width: `${imgCount * 100}%`, transition: 'transform 0.4s ease', transform: `translateX(-${(currentIdx / imgCount) * 100}%)` }}>
                             {product.images.map((img: string, i: number) => (
                               <div key={i} style={{ width: `${100 / imgCount}%`, flexShrink: 0, height: '100%' }}>
-                                <img src={img} alt={product.title} loading="lazy" decoding="async" width="600" height="600" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff' }} />
+                                <img src={optimizeImg(img)} alt={product.title} loading="lazy" decoding="async" width="600" height="600" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff', filter: imgLoaded[String(product.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [String(product.id)]: true}))} />
                               </div>
                             ))}
                           </div>
@@ -580,7 +585,7 @@ const goBackToCatalog = () => {
                 )}
                 {mainImages.map((img, i) => (
                   <button key={i} onClick={() => slideTo(videoEmbed ? i + 1 : i)} className="flex-shrink-0 w-[60px] h-[60px] rounded-lg overflow-hidden" style={{ border: `2px solid ${selectedMainImage === (videoEmbed ? i + 1 : i) ? accentColor : 'transparent'}` }}>
-                    <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
+                    <img src={optimizeImg(img, 'small')} className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" style={{ contentVisibility: 'auto', filter: imgLoaded[`thumb-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [`thumb-${i}`]: true}))} />
                   </button>
                 ))}
               </div>
@@ -604,21 +609,22 @@ const goBackToCatalog = () => {
                       {videoEmbed.type === 'youtube' ? (
                         <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                       ) : videoEmbed.type === 'video' ? (
-                        <video className="w-full h-full object-contain" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" />
+                        <video className="w-full h-full object-contain" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" poster={mainImages?.[0] || ''} />
                       ) : (
                         <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
                       )}
                     </div>
                   )}
                   {mainImages.length > 0 ? mainImages.map((img, i) => (
-                    <img key={i} src={img} alt={mainProduct.title}
+                    <img key={i} src={optimizeImg(img, 'large')} alt={mainProduct.title}
                       className="h-full object-contain shrink-0 cursor-pointer"
                       loading={i === 0 ? 'eager' : 'lazy'}
                       fetchpriority={i === 0 ? 'high' : 'low'}
                       decoding="async"
                       width="600"
                       height="600"
-                      style={{ width: `${100 / totalSlides}%` }}
+                      style={{ width: `${100 / totalSlides}%`, filter: imgLoaded[`main-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                      onLoad={() => setImgLoaded(prev => ({...prev, [`main-${i}`]: true}))}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
                     />
                   )) : (
@@ -652,7 +658,7 @@ const goBackToCatalog = () => {
                 )}
                 {mainImages.map((img, i) => (
                   <button key={i} onClick={() => slideTo(videoEmbed ? i + 1 : i)} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden" style={{ border: `2px solid ${selectedMainImage === (videoEmbed ? i + 1 : i) ? accentColor : 'transparent'}` }}>
-                    <img src={img} className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" style={{ contentVisibility: 'auto' }} />
+                    <img src={optimizeImg(img, 'small')} className="w-full h-full object-cover" alt="" loading="lazy" decoding="async" style={{ contentVisibility: 'auto', filter: imgLoaded[`mthumb-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [`mthumb-${i}`]: true}))} />
                   </button>
                 ))}
               </div>
@@ -812,7 +818,7 @@ const goBackToCatalog = () => {
                         <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', width: `${otherImgCount * 100}%`, transition: 'transform 0.4s ease', transform: `translateX(-${(otherIdx / otherImgCount) * 100}%)` }}>
                           {product.images.map((img: string, i: number) => (
                             <div key={i} style={{ width: `${100 / otherImgCount}%`, flexShrink: 0, height: '100%' }}>
-                              <img src={img} alt={product.title} loading="lazy" decoding="async" width="600" height="600" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff' }} />
+                              <img src={optimizeImg(img)} alt={product.title} loading="lazy" decoding="async" width="600" height="600" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff', filter: imgLoaded[String(product.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [String(product.id)]: true}))} />
                             </div>
                           ))}
                         </div>
@@ -927,13 +933,13 @@ const goBackToCatalog = () => {
               setZoomState({ ...zoomState, idx: n });
             }}
           >
-            <img key={zoomState.idx} src={zoomState.images[zoomState.idx]} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" />
+            <img key={zoomState.idx} src={optimizeImg(zoomState.images[zoomState.idx], 'large')} alt="Preview" className="max-w-full max-h-[75vh] object-contain rounded-2xl" style={{ filter: imgLoaded['zoom'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, 'zoom': true}))} />
           </div>
           {zoomState.images.length > 1 && (
             <div className="shrink-0 flex gap-2 px-4 pt-2 overflow-x-auto justify-center" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
               {zoomState.images.map((img, i) => (
                 <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 opacity-50 hover:opacity-80'}`}>
-                  <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" width="56" height="56" style={{ contentVisibility: 'auto' }} />
+                  <img src={optimizeImg(img, 'small')} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" width="56" height="56" style={{ contentVisibility: 'auto', filter: imgLoaded[`zoom-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [`zoom-${i}`]: true}))} />
                 </button>
               ))}
             </div>

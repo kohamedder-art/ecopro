@@ -2,12 +2,14 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
 import { useProductOffers } from '@/components/storefront/OfferSelector';
-import { getAlgeriaCommunesByWilayaId, communeDisplayName } from '@/lib/algeriaGeo';
 import { isValidAlgerianPhone } from '@/lib/utils';
 import { getFraudData } from '@/lib/fingerprint';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { buildStoreUrl } from '@/lib/resolvedStore';
 import type { TemplateProps, StoreProduct } from '@/pages/storefront/templates/types';
+import type { AlgeriaCommune } from '@/lib/algeriaGeo';
+
+const loadAlgeriaGeo = () => import('@/lib/algeriaGeo');
 
 export type SelectedVariant = {
   id: number;
@@ -52,7 +54,15 @@ export function useTemplateSkeleton(props: TemplateProps) {
   const { showAddress, showCommune, showNotes, showHomeDelivery, showDeskDelivery } = useOrderFields(settings, selectedDeliveryType);
 
   const selectedWilaya = useMemo(() => wilayas.find(w => w.id === selectedWilayaId), [wilayas, selectedWilayaId]);
-  const communes = useMemo(() => getAlgeriaCommunesByWilayaId(selectedWilayaId), [selectedWilayaId]);
+  const [communes, setCommunes] = useState<AlgeriaCommune[]>([]);
+  useEffect(() => {
+    if (!selectedWilayaId) { setCommunes([]); return; }
+    let cancelled = false;
+    loadAlgeriaGeo().then(m => {
+      if (!cancelled) setCommunes(m.getAlgeriaCommunesByWilayaId(selectedWilayaId));
+    });
+    return () => { cancelled = true; };
+  }, [selectedWilayaId]);
   const baseDeliveryFee = selectedWilaya
     ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice))
     : 0;
@@ -127,9 +137,10 @@ export function useTemplateSkeleton(props: TemplateProps) {
     try {
       const wilaya = wilayas.find(w => w.id === selectedWilayaId);
       const commune = communes.find(c => String(c.id) === communeId);
+      const geo = await loadAlgeriaGeo();
       const fullAddress = [
         wilaya?.labelAR || '',
-        commune ? communeDisplayName(commune) : '',
+        commune ? geo.communeDisplayName(commune) : '',
         customerAddress.trim(),
       ].filter(Boolean).join(' - ');
 

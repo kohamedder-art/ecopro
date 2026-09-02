@@ -197,6 +197,14 @@ export default function IycoTemplate({
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
+  const [imgLoaded, setImgLoaded] = useState<Record<number, boolean>>({});
+  const [thumbLoaded, setThumbLoaded] = useState<Record<number, boolean>>({});
+
+  const optImg = (url: string, size: 'small' | 'medium' | 'large' = 'medium') => {
+    if (!url || !url.includes('cloudinary.com') || url.includes('?tr=')) return url;
+    const w = size === 'small' ? 100 : size === 'large' ? 800 : 400;
+    return `${url}?tr=w_${w},q_auto,f_auto,c_limit`;
+  };
 
   // ── Scroll-aware Header ── (removed — header always sticky)
 
@@ -461,13 +469,16 @@ export default function IycoTemplate({
           >
             {settings?.store_logo ? (
               <img
-                src={settings.store_logo}
+                src={settings.store_logo.includes('cloudinary.com') && !settings.store_logo.includes('?tr=') ? `${settings.store_logo}?tr=w_400,q_auto,f_auto,c_limit` : settings.store_logo}
                 alt={storeName}
                 className="h-[66px] w-auto object-contain"
-                loading="lazy"
+                loading="eager"
+                fetchPriority="high"
                 decoding="async"
                 width="145"
                 height="66"
+                style={{ filter: imgLoaded['-1'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                onLoad={() => setImgLoaded(prev => ({...prev, '-1': true}))}
               />
             ) : (
               <span
@@ -515,24 +526,27 @@ export default function IycoTemplate({
                       {videoEmbed.type === 'youtube' ? (
                         <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
                       ) : videoEmbed.type === 'video' ? (
-                        <video className="w-full h-full object-contain" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" />
+                        <video className="w-full h-full object-contain" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" poster={mainImages?.[0] || ''} />
                       ) : (
                         <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
                       )}
                     </div>
                   )}
-                  {mainImages.length > 0 ? mainImages.map((img, i) => (
-                    <img key={`${mainProduct?.id}-${i}`} src={img} alt={mainProduct.title}
+                  {mainImages.length > 0 ? mainImages.map((img, i) => {
+                    const srcUrl = img.includes('cloudinary.com') && !img.includes('?tr=') ? `${img}?tr=w_800,q_auto,f_auto,c_limit` : img;
+                    return (
+                    <img key={`${mainProduct?.id}-${i}`} src={srcUrl} alt={mainProduct.title}
                       className="w-full h-full object-contain shrink-0 cursor-pointer"
                       loading={i < 2 ? 'eager' : 'lazy'}
                       fetchpriority={i < 2 ? 'high' : 'low'}
                       decoding="async"
                       width="600"
                       height="600"
-                      style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}
+                      style={{ flex: '0 0 100%', scrollSnapAlign: 'start', filter: imgLoaded[i] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                      onLoad={() => setImgLoaded(prev => ({...prev, [i]: true}))}
                       onClick={() => setZoomState({ images: mainImages, idx: i })}
-                    />
-                  )) : (
+                    />);
+                  }) : (
                     <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'start', color: textMuted }}>
                       <ShoppingBag size={48} strokeWidth={1} />
                     </div>
@@ -556,20 +570,24 @@ export default function IycoTemplate({
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
                     </div>
                   )}
-                  {mainImages.map((img, idx) => (
+                  {mainImages.map((img, idx) => {
+                    const srcUrl = img.includes('cloudinary.com') && !img.includes('?tr=') ? `${img}?tr=w_100,q_auto,f_auto,c_limit` : img;
+                    return (
                     <button key={idx} onClick={() => goToSlide(videoEmbed ? idx + 1 : idx)} className="w-[100px] h-[100px] shrink-0 rounded-lg overflow-hidden border-2 transition-all cursor-pointer" style={{ borderColor: !showVideo && selectedMainImage === idx ? accentColor : 'transparent', opacity: !showVideo && selectedMainImage === idx ? 1 : 0.6 }}>
                       <img 
-  src={img} 
+  src={srcUrl} 
   className="w-full h-full object-cover" 
   alt="thumb" 
   loading="lazy"
   decoding="async"
   width="100"
   height="100"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: thumbLoaded[idx] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setThumbLoaded(prev => ({...prev, [idx]: true}))}
 />
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -872,13 +890,15 @@ export default function IycoTemplate({
                           : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                             ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                             : <img
-                                src={hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : thumb}
+                                src={optImg(hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : thumb)}
                                 alt={prod.title}
                                 loading="lazy"
                                 decoding="async"
                                 width="400"
                                 height="533"
                                 className="w-full h-full object-cover transition-opacity duration-300"
+                                style={{ filter: imgLoaded[prod.id] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                                onLoad={() => setImgLoaded(prev => ({...prev, [prod.id]: true}))}
                               />
                         }
                         {/* Badges */}
@@ -957,13 +977,15 @@ export default function IycoTemplate({
                           : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                             ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                             : <img
-                                src={hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : thumb}
+                                src={optImg(hoveredProduct === prod.id && prod.images?.[1] ? prod.images[1] : thumb)}
                                 alt={prod.title}
                                 loading="lazy"
                                 decoding="async"
                                 width="400"
                                 height="533"
                                 className="w-full h-full object-cover transition-opacity duration-300"
+                                style={{ filter: imgLoaded[prod.id] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                                onLoad={() => setImgLoaded(prev => ({...prev, [prod.id]: true}))}
                               />
                         }
                         {(disc > 0 || (prod as any)?.metadata?.promo_label) && (
@@ -1091,29 +1113,34 @@ export default function IycoTemplate({
           >
             <img 
   key={zoomState.idx} 
-  src={zoomState.images[zoomState.idx]} 
+  src={zoomState.images[zoomState.idx].includes('cloudinary.com') && !zoomState.images[zoomState.idx].includes('?tr=') ? `${zoomState.images[zoomState.idx]}?tr=w_800,q_auto,f_auto,c_limit` : zoomState.images[zoomState.idx]} 
   alt="Preview" 
   className="max-w-full max-h-[95vh] object-contain rounded-2xl" 
   decoding="async"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: imgLoaded[-2] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setImgLoaded(prev => ({...prev, '-2': true}))}
 />
           </div>
           {zoomState.images.length > 1 && (
             <div className="shrink-0 flex gap-2 px-4 pt-2 overflow-x-auto justify-center" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
-              {zoomState.images.map((img, i) => (
+              {zoomState.images.map((img, i) => {
+                const srcUrl = img.includes('cloudinary.com') && !img.includes('?tr=') ? `${img}?tr=w_100,q_auto,f_auto,c_limit` : img;
+                return (
                 <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 opacity-50 hover:opacity-80'}`}>
                   <img 
-  src={img} 
+  src={srcUrl} 
   alt="" 
   className="w-full h-full object-cover" 
   loading="lazy"
   decoding="async"
   width="56"
   height="56"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: thumbLoaded[i] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setThumbLoaded(prev => ({...prev, [i]: true}))}
 />
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
           {zoomState.images.length > 1 && (

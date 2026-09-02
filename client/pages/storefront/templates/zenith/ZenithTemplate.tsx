@@ -4,7 +4,6 @@ import LazyVideo from '@/components/storefront/LazyVideo';
 import { TemplateProps } from '../types';
 import { useStoreDeliveryPrices, resolveDeliveryFee } from '@/hooks/useStoreDeliveryPrices';
 import { useOrderFields } from '@/hooks/useOrderFields';
-import { useImageClassifier } from '@/hooks/useImageClassifier';
 import OfferSelector, { useProductOffers, SelectedOffer } from '@/components/storefront/OfferSelector';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
@@ -131,24 +130,15 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const formTitle = settings?.zenith_form_title || 'اطلب الان';
   const submitText = settings?.zenith_submit_text || 'تأكيد الطلب';
 
-  // Smart image classification: prefers tall images for landing strips
-  const { getSlotImages, loading: classifyingImages } = useImageClassifier(productImages, 'zenith');
-  const classifiedLanding = getSlotImages('landing');
-
   // A/B test: swap hero image if variant assigned
   const abTestId = useABTestIdFromUrl();
   const { variant: abVariant, imageUrl: abImageUrl, trackClick: abTrackClick } = useABTestVariant(abTestId);
 
   // Landing images (stacked Canva slices)
   const landingImages: string[] = (() => {
-    const base = (() => {
-      if (settings?.zenith_landing_images && Array.isArray(settings.zenith_landing_images) && settings.zenith_landing_images.length > 0) {
-        return settings.zenith_landing_images;
-      }
-      // During classification, fall back to raw productImages to avoid showing stale old images
-      return !classifyingImages && classifiedLanding.length > 0 ? classifiedLanding : productImages;
-    })();
-    // A/B test: replace first image with variant image
+    const base = settings?.zenith_landing_images && Array.isArray(settings.zenith_landing_images) && settings.zenith_landing_images.length > 0
+      ? settings.zenith_landing_images
+      : productImages;
     if (abImageUrl && base.length > 0) {
       return [abImageUrl, ...base.slice(1)];
     }
@@ -256,6 +246,11 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   // ── STORE GRID VIEW (multi-product, no product selected) ──
   const showStoreGrid = !currentSlug && (products?.length || 0) > 1;
   const [gridImageIndex, setGridImageIndex] = useState<Record<number, number>>({});
+  const [imgLoaded, setImgLoaded] = useState<Record<string, boolean>>({});
+  const optimizeImg = (src: string, size: 'small' | 'large' = 'small') => {
+    if (!src || !src.includes('cloudinary.com') || src.includes('?tr=')) return src;
+    return `${src}?tr=${size === 'large' ? 'w_800,q_auto,f_auto,c_limit' : 'w_400,q_auto,f_auto,c_limit'}`;
+  };
 
   // Scroll direction detection for hiding header
   const gridLastScrollYRef = useRef(0);
@@ -335,7 +330,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88, ${accentColor}44)` }} />
           <div className="px-6 py-2 flex items-center justify-between gap-4" style={{ backgroundColor: cardBg, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)' }}>
             <div className="flex items-center gap-2 shrink-0">
-              {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-lg object-cover" loading="lazy" decoding="async" width="36" height="36" />}
+              {settings?.store_logo && <img src={optimizeImg(settings.store_logo)} alt="" className="w-9 h-9 rounded-lg object-cover" loading="lazy" decoding="async" width="36" height="36" style={{ filter: imgLoaded['logo-grid'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, 'logo-grid': true}))} />}
               <div className="font-bold text-lg" style={{ color: textColor }}>
                 {storeName}
               </div>
@@ -383,13 +378,15 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                       <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                     ) : thumb ? (
                       <img
-                        src={thumb}
+                        src={optimizeImg(thumb)}
                         alt={product.title || ''}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
                         decoding="async"
                         width="600"
                         height="600"
+                        style={{ filter: imgLoaded[String(product.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                        onLoad={() => setImgLoaded(prev => ({...prev, [String(product.id)]: true}))}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: surfaceMuted }}>
@@ -454,7 +451,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
           <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: cardBg, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)' }}>
             {/* Left: Logo + Product Name */}
             <button onClick={goToStore} className="flex items-center gap-2 min-w-0">
-              {settings?.store_logo && <img src={settings.store_logo} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />}
+              {settings?.store_logo && <img src={optimizeImg(settings.store_logo)} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" loading="lazy" decoding="async" style={{ filter: imgLoaded['logo-product'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, 'logo-product': true}))} />}
               <div className="flex flex-col items-start min-w-0">
                 <span className="font-bold text-xs leading-none" style={{ color: textMuted }}>{storeName}</span>
                 <span
@@ -507,14 +504,16 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             landingImages.map((imgUrl, index) => (
               <img
                 key={`${mainProduct?.id}-${index}`}
-                src={imgUrl}
+                src={optimizeImg(imgUrl, 'large')}
                 alt={`Landing slice ${index + 1}`}
                 className="w-full h-auto block"
-                loading={index < 2 ? 'eager' : 'lazy'}
-                fetchpriority={index === 0 ? 'high' : index === 1 ? 'high' : 'low'}
+                loading={index === 0 ? 'eager' : 'lazy'}
+                fetchpriority={index === 0 ? 'high' : 'low'}
                 decoding="async"
                 width="1200"
                 height="675"
+                style={{ filter: imgLoaded[`landing-${index}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                onLoad={() => setImgLoaded(prev => ({...prev, [`landing-${index}`]: true}))}
               />
             ))
           ) : !videoUrl ? (
@@ -823,20 +822,22 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                         ) : hasVideo && hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
                           <div className="relative w-full h-full">
                             {firstImage ? (
-                              <img src={firstImage} alt={p.title || ''} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                              <img src={optimizeImg(firstImage)} alt={p.title || ''} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" style={{ filter: imgLoaded[String(p.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [String(p.id)]: true}))} />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: surfaceMuted }}>📦</div>
                             )}
                           </div>
                         ) : firstImage ? (
                           <img
-                            src={firstImage}
+                            src={optimizeImg(firstImage)}
                             alt={p.title || ''}
                             loading="lazy"
                             decoding="async"
                             width="400"
                             height="560"
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            style={{ filter: imgLoaded[String(p.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                            onLoad={() => setImgLoaded(prev => ({...prev, [String(p.id)]: true}))}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: surfaceMuted }}>📦</div>

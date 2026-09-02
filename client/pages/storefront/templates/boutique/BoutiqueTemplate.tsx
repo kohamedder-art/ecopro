@@ -32,6 +32,7 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
 }) {
   const [idx, setIdx] = React.useState(0);
   const [showVideo, setShowVideo] = React.useState(true);
+  const [imgLoaded, setImgLoaded] = React.useState<Record<number, boolean>>({});
   const imgs: string[] = product.images?.filter(Boolean) || [];
   const galleryRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -71,19 +72,20 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
               {videoEmbed.type === 'youtube' ? (
                 <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1&mute=1&loop=1&playlist=${videoEmbed.id}`} allow="autoplay; encrypted-media" allowFullScreen />
               ) : videoEmbed.type === 'video' ? (
-                <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" />
+                <video className="w-full h-full object-cover" src={videoEmbed.url} autoPlay muted loop playsInline preload="metadata" poster={imgs?.[0] || ''} />
               ) : (
                 <iframe className="w-full h-full" src={videoEmbed.url} allowFullScreen />
               )}
             </div>
           )}
           {imgs.length > 0 ? imgs.map((img, i) => (
-            <img key={i} src={img} alt=""
+            <img key={i} src={img?.includes('cloudinary.com') && !img.includes('?tr=') ? `${img}?tr=w_800,q_auto,f_auto,c_limit` : img} alt=""
               className="w-full h-full object-contain shrink-0 cursor-pointer"
               loading={i === 0 ? 'eager' : 'lazy'}
               decoding="async"
-              style={{ flex: '0 0 100%', contentVisibility: i === 0 ? 'visible' : 'auto' }}
+              style={{ flex: '0 0 100%', contentVisibility: i === 0 ? 'visible' : 'auto', filter: imgLoaded[i] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
               onClick={() => onZoom(img)}
+              onLoad={() => setImgLoaded(prev => ({...prev, [i]: true}))}
             />
           )) : (
             <div className="w-full h-full flex items-center justify-center shrink-0" style={{ flex: '0 0 100%', color: surfaceTextMuted }}>
@@ -127,12 +129,13 @@ function BoutiqueImageGallery({ product, surfaceMuted, accentColor, surfaceTextM
                 className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 transition-all"
                 style={{ borderColor: !showVideo && i === idx ? accentColor : 'transparent', opacity: !showVideo && i === idx ? 1 : 0.6 }}>
                 <img 
-  src={img} 
+  src={img?.includes('cloudinary.com') && !img.includes('?tr=') ? `${img}?tr=w_100,q_auto,f_auto,c_limit` : img} 
   alt="" 
   className="w-full h-full object-cover" 
   loading="lazy"
   decoding="async"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: imgLoaded[`thumb-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setImgLoaded(prev => ({...prev, [`thumb-${i}`]: true}))}
 />
               </button>
             );
@@ -173,6 +176,7 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
   const [orderProduct, setOrderProduct] = useState<any>(null);
   const [orderVariant, setOrderVariant] = useState<SelectedVariant | null>(null);
   const [orderQty, setOrderQty] = useState(1);
+  const [imgLoaded, setImgLoaded] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (!initialProductSlug) { setDetailProduct(null); return; }
     if (products?.length) { const p = products.find((x: any) => x.slug === initialProductSlug || String(x.id) === initialProductSlug); if (p) setDetailProduct(p); }
@@ -469,7 +473,7 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
           {/* Left — logo + store name */}
           <div className="flex items-center gap-3">
             {settings?.store_logo ? (
-              <img src={settings.store_logo} alt={brandName} className="h-8 md:h-9 object-contain" />
+              <img src={settings.store_logo?.includes('cloudinary.com') && !settings.store_logo.includes('?tr=') ? `${settings.store_logo}?tr=w_100,q_auto,f_auto,c_limit` : settings.store_logo} alt={brandName} className="h-8 md:h-9 object-contain" style={{ filter: imgLoaded['btq-logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, 'btq-logo': true}))} />
             ) : (
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 flex items-center justify-center font-black text-sm" style={{ backgroundColor: themeColor, color: isLight(themeColor) ? '#111' : '#fff' }}>
@@ -596,13 +600,15 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                         : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                           ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
                           : <img
-                              src={product.images?.[0] || ''}
+                              src={product.images?.[0]?.includes('cloudinary.com') && !product.images?.[0]?.includes('?tr=') ? `${product.images[0]}?tr=w_400,q_auto,f_auto,c_limit` : product.images?.[0] || ''}
                               alt={product.title}
                               className="w-full h-full object-cover"
                               loading="lazy"
                               decoding="async"
                               width="600"
                               height="800"
+                              style={{ filter: imgLoaded[`btq-grid-${product.id}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                              onLoad={() => setImgLoaded(prev => ({...prev, [`btq-grid-${product.id}`]: true}))}
                             />
                       }
                     </div>
@@ -731,14 +737,15 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
                   <div className="flex gap-2.5 p-2.5 rounded-xl border" style={{ backgroundColor: '#f9fafb', borderColor: '#e5e7eb' }}>
                     {orderProduct.images?.[0] && (
   <img 
-    src={orderProduct.images[0]} 
+    src={orderProduct.images[0]?.includes('cloudinary.com') && !orderProduct.images[0].includes('?tr=') ? `${orderProduct.images[0]}?tr=w_100,q_auto,f_auto,c_limit` : orderProduct.images[0]} 
     className="w-16 h-16 object-cover rounded-lg shrink-0" 
     alt={orderProduct.title}
     loading="lazy"
     decoding="async"
     width="64"
     height="64"
-    style={{ contentVisibility: 'auto' }}
+    style={{ contentVisibility: 'auto', filter: imgLoaded['btq-order-thumb'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+    onLoad={() => setImgLoaded(prev => ({...prev, 'btq-order-thumb': true}))}
   />
 )}
                     <div className="flex-1 min-w-0">
@@ -1152,11 +1159,12 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
           >
             <img 
   key={zoomState.idx} 
-  src={zoomState.images[zoomState.idx]} 
+  src={zoomState.images[zoomState.idx]?.includes('cloudinary.com') && !zoomState.images[zoomState.idx].includes('?tr=') ? `${zoomState.images[zoomState.idx]}?tr=w_800,q_auto,f_auto,c_limit` : zoomState.images[zoomState.idx]} 
   alt="Preview" 
   className="max-w-full max-h-[95vh] object-contain rounded-2xl" 
   decoding="async"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: imgLoaded['btq-zoom'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setImgLoaded(prev => ({...prev, 'btq-zoom': true}))}
 />
           </div>
           {zoomState.images.length > 1 && (
@@ -1164,14 +1172,15 @@ export default function BoutiqueTemplate({ settings, products, categories, searc
               {zoomState.images.map((img, i) => (
                 <button key={i} onClick={() => setZoomState({ ...zoomState, idx: i })} className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${i === zoomState.idx ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 opacity-50 hover:opacity-80'}`}>
                   <img 
-  src={img} 
+  src={img?.includes('cloudinary.com') && !img.includes('?tr=') ? `${img}?tr=w_100,q_auto,f_auto,c_limit` : img} 
   alt="" 
   className="w-full h-full object-cover" 
   loading="lazy"
   decoding="async"
   width="56"
   height="56"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: imgLoaded[`btq-zoom-thumb-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setImgLoaded(prev => ({...prev, [`btq-zoom-thumb-${i}`]: true}))}
 />
                 </button>
               ))}

@@ -86,6 +86,7 @@ export default function SpiriluxeTemplate({
   const baseDeliveryFee = selectedWilaya ? (selectedDeliveryType === 'home' ? selectedWilaya.homePrice : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice)) : 0;
 
   const [videoFailed, setVideoFailed] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState<Record<number, boolean>>({});
   // ─── Product Selection ───
   const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug) : null) || (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
 
@@ -357,7 +358,7 @@ export default function SpiriluxeTemplate({
         const globalIndex = startIndex + i;
         return (
           <div key={url + globalIndex} className="relative group">
-            <img src={url} alt="" className="w-full block object-contain" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" width="1200" height="675" style={{ contentVisibility: 'auto' }} />
+            <img src={url.includes('cloudinary.com') && !url.includes('?tr=') ? `${url}?tr=w_400,q_auto,f_auto,c_limit` : url} alt="" className="w-full block object-contain" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" width="1200" height="675" style={{ contentVisibility: 'auto', filter: imgLoaded[globalIndex] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [globalIndex]: true}))} />
             {canManage && (
               <div className="absolute top-2 right-2 flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}

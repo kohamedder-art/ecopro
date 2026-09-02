@@ -16,7 +16,11 @@ const aiGeneratedTemplates: Record<string, React.LazyExoticComponent<React.Compo
 
 function TemplateFallback() {
   return (
-    <div className="min-h-screen bg-white" />
+    <div className="min-h-screen bg-white">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
+        <div className="w-6 h-6 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />
+      </div>
+    </div>
   );
 }
 

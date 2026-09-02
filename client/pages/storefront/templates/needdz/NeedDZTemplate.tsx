@@ -211,6 +211,7 @@ export default function NeedDZTemplate({ settings, products, canManage, storeSlu
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [previewProduct, setPreviewProduct] = useState<any>(null);
   const [expandedDescs, setExpandedDescs] = useState<Record<number, boolean>>({});
+  const [imgLoaded, setImgLoaded] = useState<Record<string, boolean>>({});
   const galleryIdxRef = useRef<Record<string, number>>({});
   galleryIdxRef.current = currentImgIdx as Record<string, number>;
   const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
@@ -391,14 +392,15 @@ const parseVideoEmbed = (videoUrl: string) => {
           <div className="flex items-center gap-2 cursor-pointer" onClick={handleBackToFeed}>
 {settings?.store_logo ? (
   <img 
-    src={settings.store_logo} 
+    src={settings.store_logo?.includes('cloudinary.com') && !settings.store_logo.includes('?tr=') ? `${settings.store_logo}?tr=w_100,q_auto,f_auto,c_limit` : settings.store_logo} 
     alt={settings?.store_name || "متجري"} 
     className="w-9 h-9 rounded-full object-cover border-2 shadow-sm" 
     loading="lazy"
     decoding="async"
     width="36"
     height="36"
-    style={{ borderColor: accentColor + '4d', contentVisibility: 'auto' }}
+    style={{ borderColor: accentColor + '4d', contentVisibility: 'auto', filter: imgLoaded['ndz-logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+    onLoad={() => setImgLoaded(prev => ({...prev, 'ndz-logo': true}))}
   />
 ) : (
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ backgroundColor: accentColor }}>
@@ -496,11 +498,13 @@ const parseVideoEmbed = (videoUrl: string) => {
                               )}
                             </>
                           ) : (
-                            <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
+                            <img src={item.src?.includes('cloudinary.com') && !item.src.includes('?tr=') ? `${item.src}?tr=w_800,q_auto,f_auto,c_limit` : item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
                               onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
                               loading={productIdx === 0 && i === 0 ? 'eager' : 'lazy'}
                               fetchpriority={productIdx === 0 && i === 0 ? 'high' : 'low'}
-                              decoding="async" width="600" height="600" />
+                              decoding="async" width="600" height="600"
+                              style={{ filter: imgLoaded[`feed-${product.id}-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                              onLoad={() => setImgLoaded(prev => ({...prev, [`feed-${product.id}-${i}`]: true}))} />
                           )}
                         </div>
                       ))}
@@ -643,9 +647,11 @@ const parseVideoEmbed = (videoUrl: string) => {
                         )}
                       </>
                     ) : (
-                      <img src={item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
+                      <img src={item.src?.includes('cloudinary.com') && !item.src.includes('?tr=') ? `${item.src}?tr=w_800,q_auto,f_auto,c_limit` : item.src} alt={product.name} className="w-full h-full object-contain relative cursor-pointer"
                         onClick={() => { setPreviewImg(item.src); setPreviewProduct(product); }}
-                        loading="lazy" decoding="async" width="600" height="600" />
+                        loading="lazy" decoding="async" width="600" height="600"
+                        style={{ filter: imgLoaded[`detail-${product.id}-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                        onLoad={() => setImgLoaded(prev => ({...prev, [`detail-${product.id}-${i}`]: true}))} />
                     )}
                   </div>
                 ))}
@@ -948,12 +954,13 @@ const parseVideoEmbed = (videoUrl: string) => {
               setPreviewImg(imgs[n]);
             }}>
             <img 
-  src={previewImg} 
+  src={previewImg?.includes('cloudinary.com') && !previewImg.includes('?tr=') ? `${previewImg}?tr=w_800,q_auto,f_auto,c_limit` : previewImg} 
   alt="" 
   className="max-w-full max-h-[90vh] object-contain px-2" 
   onClick={e => e.stopPropagation()}
   decoding="async"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: imgLoaded['lightbox-preview'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setImgLoaded(prev => ({...prev, 'lightbox-preview': true}))}
 />
             {previewProduct.images.length > 1 && (
               <>
@@ -974,14 +981,15 @@ const parseVideoEmbed = (videoUrl: string) => {
                 <button key={i} onClick={(e) => { e.stopPropagation(); setPreviewImg(img); }}
                   className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${previewImg === img ? 'border-white opacity-100' : 'border-transparent opacity-50'}`}>
                   <img 
-  src={img} 
+  src={img?.includes('cloudinary.com') && !img.includes('?tr=') ? `${img}?tr=w_100,q_auto,f_auto,c_limit` : img} 
   alt="" 
   className="w-full h-full object-cover" 
   loading="lazy"
   decoding="async"
   width="64"
   height="64"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: imgLoaded[`lb-thumb-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setImgLoaded(prev => ({...prev, [`lb-thumb-${i}`]: true}))}
 />
                 </button>
               ))}

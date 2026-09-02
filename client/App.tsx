@@ -479,6 +479,10 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
 
 // Loading spinner for lazy-loaded pages
 function PageLoader() {
+  // For store routes, return null so the SSR-injected skeleton stays visible
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/store/')) {
+    return null;
+  }
   return (
     <div className="flex items-center justify-center min-h-[50vh]">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

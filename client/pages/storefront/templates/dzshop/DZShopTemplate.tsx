@@ -122,6 +122,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
     const { offers, loading: offersLoading } = useProductOffers(storeSlug, product?.id);
     const [selectedOffer, setSelectedOffer] = useState<SelectedOffer | null>(null);
     const [orderError, setOrderError] = useState<string | null>(null);
+    const [imgLoaded, setImgLoaded] = useState<Record<string, boolean>>({});
     const handleOfferSelect = (o: SelectedOffer | null) => { setSelectedOffer(o); };
 
     const deliveryFee = resolveDeliveryFee(product, selectedOffer, baseDeliveryFee);
@@ -419,14 +420,15 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 <div className="flex items-center gap-2 shrink-0">
                     {settings?.store_logo ? (
                       <img 
-                        src={settings.store_logo} 
+                        src={settings.store_logo?.includes('cloudinary.com') && !settings.store_logo.includes('?tr=') ? `${settings.store_logo}?tr=w_100,q_auto,f_auto,c_limit` : settings.store_logo} 
                         alt={settings?.store_name || "متجري"} 
                         className="rounded-full object-cover border shadow-sm"
-                        style={{ width: 38, height: 38, borderColor: 'rgba(255,255,255,0.3)' }}
+                        style={{ width: 38, height: 38, borderColor: 'rgba(255,255,255,0.3)', filter: imgLoaded['header-logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
                         loading="lazy"
                         decoding="async"
                         width="38"
                         height="38"
+                        onLoad={() => setImgLoaded(prev => ({...prev, 'header-logo': true}))}
                       />
                     ) : (
                         <div className="rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ width: 38, height: 38, backgroundColor: 'rgba(255,255,255,0.2)' }}>
@@ -476,12 +478,14 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                           <div className="relative overflow-hidden">
                             {thumb ? (
                               <img
-                                src={thumb}
+                                src={thumb?.includes('cloudinary.com') && !thumb.includes('?tr=') ? `${thumb}?tr=w_400,q_auto,f_auto,c_limit` : thumb}
                                 alt={p.title || ''}
                                 className="w-full object-cover"
                                 loading="lazy"
                                 decoding="async"
                                 width="300"
+                                style={{ filter: imgLoaded[`grid-${p.id}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                                onLoad={() => setImgLoaded(prev => ({...prev, [`grid-${p.id}`]: true}))}
                               />
                             ) : (
                               <div className="w-full flex items-center justify-center text-3xl" style={{ backgroundColor: '#f0f0f0', aspectRatio: '1 / 1' }}>📦</div>
@@ -550,13 +554,15 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                           <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 4' }}>
                             {thumb ? (
                               <img
-                                src={thumb}
+                                src={thumb?.includes('cloudinary.com') && !thumb.includes('?tr=') ? `${thumb}?tr=w_400,q_auto,f_auto,c_limit` : thumb}
                                 alt={p.title || ''}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
                                 decoding="async"
                                 width="300"
                                 height="400"
+                                style={{ filter: imgLoaded[`desktop-${p.id}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                                onLoad={() => setImgLoaded(prev => ({...prev, [`desktop-${p.id}`]: true}))}
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-3xl" style={{ backgroundColor: '#f0f0f0' }}>📦</div>
@@ -617,14 +623,15 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     </button>
                     {settings?.store_logo ? (
                       <img 
-                        src={settings.store_logo} 
+                        src={settings.store_logo?.includes('cloudinary.com') && !settings.store_logo.includes('?tr=') ? `${settings.store_logo}?tr=w_100,q_auto,f_auto,c_limit` : settings.store_logo} 
                         alt={settings?.store_name || "متجري"} 
                         className="rounded-full object-cover border shadow-sm"
-                        style={{ width: 34, height: 34, borderColor: 'rgba(255,255,255,0.3)' }}
+                        style={{ width: 34, height: 34, borderColor: 'rgba(255,255,255,0.3)', filter: imgLoaded['detail-logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
                         loading="lazy"
                         decoding="async"
                         width="34"
                         height="34"
+                        onLoad={() => setImgLoaded(prev => ({...prev, 'detail-logo': true}))}
                       />
                     ) : (
                         <div className="rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm" style={{ width: 34, height: 34, backgroundColor: 'rgba(255,255,255,0.2)' }}>
@@ -684,15 +691,16 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                                 })()
                                             ) : (
                                                 <img 
-  src={item.src} 
+  src={item.src?.includes('cloudinary.com') && !item.src.includes('?tr=') ? `${item.src}?tr=w_800,q_auto,f_auto,c_limit` : item.src} 
   alt="" 
-  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', contentVisibility: i === 0 ? 'visible' : 'auto', cursor: 'pointer' }} 
+  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', contentVisibility: i === 0 ? 'visible' : 'auto', cursor: 'pointer', filter: imgLoaded[`gallery-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} 
   loading={i === 0 ? 'eager' : 'lazy'}
   fetchpriority={i === 0 ? 'high' : 'low'}
   decoding="async"
   width="600"
   height="600"
   onClick={() => setLightboxOpen(item.src)}
+  onLoad={() => setImgLoaded(prev => ({...prev, [`gallery-${i}`]: true}))}
 />
                                             )}
                                         </div>
@@ -735,7 +743,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
   className="w-full h-full object-cover" 
   loading="lazy"
   decoding="async"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: imgLoaded[`thumb-yt-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setImgLoaded(prev => ({...prev, [`thumb-yt-${i}`]: true}))}
 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#000' }} />
@@ -746,12 +755,13 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                         </div>
                                     ) : (
                                         <img 
-  src={item.src} 
+  src={item.src?.includes('cloudinary.com') && !item.src.includes('?tr=') ? `${item.src}?tr=w_100,q_auto,f_auto,c_limit` : item.src} 
   alt="" 
   className="w-full h-full object-contain" 
   loading="lazy"
   decoding="async"
-  style={{ contentVisibility: 'auto' }}
+  style={{ contentVisibility: 'auto', filter: imgLoaded[`thumb-${i}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+  onLoad={() => setImgLoaded(prev => ({...prev, [`thumb-${i}`]: true}))}
 />
                                     )}
                                 </button>
@@ -973,7 +983,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
                             <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: priceBarBg, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: `1px solid ${inputBorder}` }}>
                                 {product?.images?.[0] && (
-                                    <img src={product.images[0]} alt="" className="w-14 h-14 rounded-lg object-contain bg-white" />
+                                    <img src={product.images[0]?.includes('cloudinary.com') && !product.images[0].includes('?tr=') ? `${product.images[0]}?tr=w_100,q_auto,f_auto,c_limit` : product.images[0]} alt="" className="w-14 h-14 rounded-lg object-contain bg-white" style={{ filter: imgLoaded['pricebar'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, 'pricebar': true}))} />
                                 )}
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-bold truncate">{product?.title || 'المنتج'}</p>
@@ -1025,22 +1035,24 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                             landingImages.map((url: string, idx: number) => (
                               <div key={idx} className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative">
                                 <img 
-                                  src={url} 
+                                  src={url?.includes('cloudinary.com') && !url.includes('?tr=') ? `${url}?tr=w_800,q_auto,f_auto,c_limit` : url} 
                                   className="w-full h-full object-cover" 
                                   loading="lazy"
                                   decoding="async"
-                                  style={{ contentVisibility: 'auto' }}
+                                  style={{ contentVisibility: 'auto', filter: imgLoaded[`landing-${idx}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                                  onLoad={() => setImgLoaded(prev => ({...prev, [`landing-${idx}`]: true}))}
                                 />
                               </div>
                             ))
                           ) : settings?.banner_url ? (
                             <div className="rounded-xl overflow-hidden bg-gray-100 dz-image-placeholder min-h-64 mt-4 relative">
                               <img 
-                                src={settings.banner_url} 
+                                src={settings.banner_url?.includes('cloudinary.com') && !settings.banner_url.includes('?tr=') ? `${settings.banner_url}?tr=w_800,q_auto,f_auto,c_limit` : settings.banner_url} 
                                 className="w-full h-full object-cover" 
                                 loading="lazy"
                                 decoding="async"
-                                style={{ contentVisibility: 'auto' }}
+                                style={{ contentVisibility: 'auto', filter: imgLoaded['banner'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                                onLoad={() => setImgLoaded(prev => ({...prev, 'banner': true}))}
                               />
                             </div>
                           ) : canManage ? (
@@ -1119,7 +1131,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     >
                       <div className="relative overflow-hidden bg-white" style={{ aspectRatio: '1 / 1' }}>
                         {thumb ? (
-                          <img src={thumb} alt={p.title || ''} className="w-full h-full object-cover" loading="lazy" decoding="async" width="300" height="300" />
+                          <img src={thumb?.includes('cloudinary.com') && !thumb.includes('?tr=') ? `${thumb}?tr=w_400,q_auto,f_auto,c_limit` : thumb} alt={p.title || ''} className="w-full h-full object-cover" loading="lazy" decoding="async" width="300" height="300" style={{ filter: imgLoaded[`similar-${p.id}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [`similar-${p.id}`]: true}))} />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-3xl bg-gray-50">📦</div>
                         )}
