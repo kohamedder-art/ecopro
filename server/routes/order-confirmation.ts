@@ -56,12 +56,12 @@ const UpdateOrderDetailsSchema = z
 async function resolvePendingConfirmableOrder(args: { storeSlug: string; orderId: number }) {
   const { storeSlug, orderId } = args;
   const result = await pool.query(
-    `SELECT o.id, o.client_id, o.product_id, o.status, o.quantity, o.total_price,
+    `SELECT o.id, o.client_id, o.store_id, o.product_id, o.status, o.quantity, o.total_price,
             o.variant_id, o.variant_color, o.variant_size, o.variant_size2, o.variant_name, o.unit_price,
             p.title as product_title, p.price as product_price,
             s.store_name
      FROM store_orders o
-     INNER JOIN client_store_settings s ON o.client_id = s.client_id
+     INNER JOIN client_store_settings s ON o.store_id = s.id
      LEFT JOIN client_store_products p ON o.product_id = p.id
      WHERE o.id = $1
        AND (s.store_slug = $2
@@ -125,7 +125,7 @@ export const getOrderForConfirmation: RequestHandler = async (req, res) => {
       `SELECT o.*, p.title as product_title, s.store_name, s.store_slug
        FROM store_orders o
        LEFT JOIN client_store_products p ON o.product_id = p.id
-       LEFT JOIN client_store_settings s ON o.client_id = s.client_id
+       LEFT JOIN client_store_settings s ON o.store_id = s.id
        WHERE o.id = $1
          AND (s.store_slug = $2
            OR LOWER(REGEXP_REPLACE(s.store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($2))
@@ -225,14 +225,15 @@ export const confirmOrder: RequestHandler = async (req, res) => {
     }
 
     const clientId = Number(orderRow.client_id);
+    const storeId = Number(orderRow.store_id);
 
     if (action === "approve") {
       // Update order status to confirmed
       const updateResult = await pool.query(
         `UPDATE store_orders SET status = 'confirmed', updated_at = NOW()
-         WHERE id = $1 AND client_id = $2 AND status = 'pending'
+         WHERE id = $1 AND client_id = $2 AND store_id = $3 AND status = 'pending'
          RETURNING *`,
-        [orderId, clientId]
+        [orderId, clientId, storeId]
       );
 
       if (updateResult.rows.length === 0) {
@@ -251,9 +252,9 @@ export const confirmOrder: RequestHandler = async (req, res) => {
       // Mark order as cancelled
       const updateResult = await pool.query(
         `UPDATE store_orders SET status = 'cancelled', updated_at = NOW()
-         WHERE id = $1 AND client_id = $2 AND status = 'pending'
+         WHERE id = $1 AND client_id = $2 AND store_id = $3 AND status = 'pending'
          RETURNING *`,
-        [orderId, clientId]
+        [orderId, clientId, storeId]
       );
 
       if (updateResult.rows.length === 0) {
@@ -339,6 +340,7 @@ export const updateOrderDetails: RequestHandler = async (req, res) => {
     }
 
     const clientId = Number(orderRow.client_id);
+    const storeId = Number(orderRow.store_id);
     const unitPrice = Number(orderRow.product_price || 0);
     const expectedTotal = unitPrice > 0
       ? unitPrice * Number(data.quantity)
@@ -349,7 +351,7 @@ export const updateOrderDetails: RequestHandler = async (req, res) => {
       `UPDATE store_orders 
        SET customer_name = $1, customer_email = $2, customer_phone = $3, 
            shipping_address = $4, quantity = $5, total_price = $6, updated_at = NOW()
-       WHERE id = $7 AND client_id = $8 AND status = 'pending'
+       WHERE id = $7 AND client_id = $8 AND store_id = $9 AND status = 'pending'
        RETURNING *`,
       [
         data.customer_name,
@@ -360,6 +362,7 @@ export const updateOrderDetails: RequestHandler = async (req, res) => {
         expectedTotal,
         orderId,
         clientId,
+        storeId,
       ]
     );
 
@@ -389,7 +392,7 @@ export async function sendBotMessagesForOrder(
   productName: string,
   price: number,
   storeSlug: string,
-  options?: { skipTelegram?: boolean; quantity?: number; address?: string }
+  options?: { skipTelegram?: boolean; quantity?: number; address?: string; storeId?: number }
 ): Promise<void> {
   try {
     // Reuse existing unexpired link token if possible (prevents duplicates)

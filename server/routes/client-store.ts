@@ -139,17 +139,20 @@ export const getStoreProduct: RequestHandler = async (req, res) => {
     const user = (req as any).user;
     if (user && (user.role === 'admin' || user.user_type === 'admin')) return res.status(403).json({ error: 'Admins are not allowed to manage client storefronts' });
     const clientId = (req as any).user.id;
+    const activeStoreId = (req as any).activeStoreId;
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
     try {
       const statsRes = await pool.query(
         `SELECT
-          (SELECT COUNT(*)::int FROM client_store_products WHERE client_id = $1) AS total_products,
-          (SELECT COUNT(*)::int FROM client_store_products WHERE client_id = $1 AND status='active') AS active_products,
-          (SELECT COUNT(*)::int FROM client_store_products WHERE client_id = $1 AND status='draft') AS draft_products,
-          (SELECT COALESCE(SUM(views), 0)::int FROM client_store_products WHERE client_id = $1) AS total_product_views,
+          (SELECT COUNT(*)::int FROM client_store_products WHERE ${storeFilter} = $1) AS total_products,
+          (SELECT COUNT(*)::int FROM client_store_products WHERE ${storeFilter} = $1 AND status='active') AS active_products,
+          (SELECT COUNT(*)::int FROM client_store_products WHERE ${storeFilter} = $1 AND status='draft') AS draft_products,
+          (SELECT COALESCE(SUM(views), 0)::int FROM client_store_products WHERE ${storeFilter} = $1) AS total_product_views,
           (SELECT COALESCE(page_views, 0)::int FROM client_store_settings WHERE client_id = $1) AS page_views,
           -- Backward-compatible field name (historically meant product views)
-          (SELECT COALESCE(SUM(views), 0)::int FROM client_store_products WHERE client_id = $1) AS total_views`,
-        [clientId]
+          (SELECT COALESCE(SUM(views), 0)::int FROM client_store_products WHERE ${storeFilter} = $1) AS total_views`,
+        [storeIdVal]
       );
       res.json(statsRes.rows[0]);
     } catch (err: any) {
@@ -157,13 +160,13 @@ export const getStoreProduct: RequestHandler = async (req, res) => {
       if (err?.code === '42703') {
         const statsRes = await pool.query(
           `SELECT
-            (SELECT COUNT(*)::int FROM client_store_products WHERE client_id = $1) AS total_products,
-            (SELECT COUNT(*)::int FROM client_store_products WHERE client_id = $1 AND status='active') AS active_products,
-            (SELECT COUNT(*)::int FROM client_store_products WHERE client_id = $1 AND status='draft') AS draft_products,
-            (SELECT COALESCE(SUM(views), 0)::int FROM client_store_products WHERE client_id = $1) AS total_product_views,
+            (SELECT COUNT(*)::int FROM client_store_products WHERE ${storeFilter} = $1) AS total_products,
+            (SELECT COUNT(*)::int FROM client_store_products WHERE ${storeFilter} = $1 AND status='active') AS active_products,
+            (SELECT COUNT(*)::int FROM client_store_products WHERE ${storeFilter} = $1 AND status='draft') AS draft_products,
+            (SELECT COALESCE(SUM(views), 0)::int FROM client_store_products WHERE ${storeFilter} = $1) AS total_product_views,
             0::int AS page_views,
-            (SELECT COALESCE(SUM(views), 0)::int FROM client_store_products WHERE client_id = $1) AS total_views`,
-          [clientId]
+            (SELECT COALESCE(SUM(views), 0)::int FROM client_store_products WHERE ${storeFilter} = $1) AS total_views`,
+          [storeIdVal]
         );
         res.json(statsRes.rows[0]);
       } else {
@@ -1888,6 +1891,7 @@ export const getProductShareLink: RequestHandler = async (req, res) => {
     const user = (req as any).user;
     if (user && (user.role === 'admin' || user.user_type === 'admin')) return res.status(403).json({ error: 'Admins do not have a client store' });
     const clientId = (req as any).user.id;
+    const activeStoreId = (req as any).activeStoreId;
     const { id } = req.params;
 
     const result = await pool.query(
@@ -1917,10 +1921,18 @@ export const getProductShareLink: RequestHandler = async (req, res) => {
     }
 
     // Fetch store slug + subdomain to build human-friendly URL
-    const settingsRes = await pool.query(
-      `SELECT store_slug, subdomain FROM client_store_settings WHERE client_id = $1`,
-      [clientId]
-    );
+    let settingsRes;
+    if (activeStoreId) {
+      settingsRes = await pool.query(
+        `SELECT store_slug, subdomain FROM client_store_settings WHERE id = $1`,
+        [activeStoreId]
+      );
+    } else {
+      settingsRes = await pool.query(
+        `SELECT store_slug, subdomain FROM client_store_settings WHERE client_id = $1 ORDER BY id ASC LIMIT 1`,
+        [clientId]
+      );
+    }
     const storeSlug = settingsRes.rows[0]?.store_slug || clientId;
     const subdomain = settingsRes.rows[0]?.subdomain || null;
     const { getStoreFullUrl } = await import('../utils/store-url');

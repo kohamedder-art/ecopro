@@ -196,7 +196,7 @@ export async function syncCustomerProfiles(clientId: number): Promise<number> {
         GROUP BY o.customer_phone
       )
       INSERT INTO customer_profiles (
-        client_id, customer_phone, customer_name,
+        client_id, store_id, customer_phone, customer_name,
         total_orders, total_spent, avg_order_value,
         first_order_date, last_order_date, days_between_orders,
         preferred_wilaya, preferred_categories,
@@ -205,6 +205,7 @@ export async function syncCustomerProfiles(clientId: number): Promise<number> {
       )
       SELECT
         $1,
+        (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1),
         cs.customer_phone,
         cs.customer_name,
         cs.total_orders,

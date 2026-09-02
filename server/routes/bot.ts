@@ -213,7 +213,7 @@ export const getBotSettings: RequestHandler = async (req, res) => {
         `SELECT instagram_account_id, page_access_token_encrypted FROM facebook_tokens
          WHERE ${storeFilter} = $1 AND is_active = TRUE AND instagram_account_id IS NOT NULL AND instagram_account_id != ''
          LIMIT 1`,
-        [clientId]
+        [storeIdVal]
       );
       if (igRes.rows.length) {
         instagramAccountIdStored = igRes.rows[0].instagram_account_id || '';

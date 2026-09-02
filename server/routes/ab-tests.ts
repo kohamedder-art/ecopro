@@ -76,7 +76,7 @@ export const getTest: RequestHandler = async (req, res) => {
     );
 
     const store = await pool.query(
-      `SELECT store_slug, subdomain FROM client_store_settings WHERE client_id = $1`,
+      `SELECT store_slug, subdomain FROM client_store_settings WHERE id = (SELECT id FROM client_store_settings WHERE client_id = $1 ORDER BY id ASC LIMIT 1)`,
       [clientId]
     );
 
@@ -325,7 +325,7 @@ async function getVariantRedirect(code: string, pool: any) {
     const product = await pool.query(
       `SELECT p.slug, s.store_slug, s.subdomain
        FROM client_store_products p
-       LEFT JOIN client_store_settings s ON s.client_id = p.client_id
+       LEFT JOIN client_store_settings s ON p.store_id = s.id
        WHERE p.id = $1`,
       [v.product_id]
     );

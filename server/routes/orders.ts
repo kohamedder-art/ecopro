@@ -686,7 +686,7 @@ export const createOrder: RequestHandler = async (req, res) => {
             productTitle,
             Number(order.total_price ?? expectedTotalPrice),
             storeSlug,
-            { skipTelegram: true, quantity, address: customer_address || undefined }
+            { skipTelegram: true, quantity, address: customer_address || undefined, storeId: resolvedStoreId }
           ).catch(() => {/* swallow errors */});
 
           // Always schedule confirmation message with buttons (worker will wait for chat link if needed)
@@ -699,10 +699,10 @@ export const createOrder: RequestHandler = async (req, res) => {
             // Use PostgreSQL NOW() + INTERVAL to avoid timezone issues between JS and DB
             await pool.query(
               `INSERT INTO scheduled_messages
-               (client_id, order_id, telegram_chat_id, message_content, message_type, scheduled_at, status)
-               VALUES ($1, $2, $3, $4, $5, NOW() + ($6 || ' minutes')::INTERVAL, 'pending')
+               (client_id, store_id, order_id, telegram_chat_id, message_content, message_type, scheduled_at, status)
+               VALUES ($1, $2, $3, $4, $5, $6, NOW() + ($7 || ' minutes')::INTERVAL, 'pending')
                ON CONFLICT DO NOTHING`,
-              [resolvedClientId, order.id, telegramChatId, confirmationMessage, 'order_confirmation', delayMinutes]
+              [resolvedClientId, resolvedStoreId, order.id, telegramChatId, confirmationMessage, 'order_confirmation', delayMinutes]
             );
           }
         } catch (e) {
@@ -716,7 +716,7 @@ export const createOrder: RequestHandler = async (req, res) => {
             productTitle,
             Number(order.total_price ?? expectedTotalPrice),
             storeSlug,
-            { quantity, address: customer_address || undefined }
+            { quantity, address: customer_address || undefined, storeId: resolvedStoreId }
           ).catch(() => {/* swallow errors */});
         }
       }

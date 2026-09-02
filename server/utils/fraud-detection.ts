@@ -296,8 +296,8 @@ export async function logFraudSignal(
   try {
     const pool = await ensureConnection();
     await pool.query(
-      `INSERT INTO fraud_signals(client_id, order_id, signal_type, signal_value, risk_score, details, created_at)
-       VALUES($1,$2,$3,$4,$5,$6,NOW())`,
+      `INSERT INTO fraud_signals(client_id, store_id, order_id, signal_type, signal_value, risk_score, details, created_at)
+       VALUES($1, (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1), $2,$3,$4,$5,$6,NOW())`,
       [clientId, orderId || null, signalType, signalValue, riskScore, details ? JSON.stringify(details) : null]
     );
   } catch {

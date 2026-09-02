@@ -376,6 +376,7 @@ export class DeliveryService {
             trackingNumber,
             eventType: 'uploaded',
             description: `تم تسليم الطلب إلى ${order.company_name || 'شركة التوصيل'}`,
+            storeId: order.store_id ?? undefined,
           }).catch(() => {});
         }
       } catch {
@@ -612,7 +613,7 @@ export class DeliveryService {
 
       // Find order by tracking number first
       let orderResult = await pool.query(
-        'SELECT id, client_id, customer_phone, customer_name, tracking_number FROM store_orders WHERE tracking_number = $1',
+        'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number FROM store_orders WHERE tracking_number = $1',
         [trackingNumber]
       );
 
@@ -620,7 +621,7 @@ export class DeliveryService {
       if (orderResult.rows.length === 0 && data?.id) {
         console.log(`[Webhook] Tracking "${trackingNumber}" not found, trying parcel UUID: ${data.id}`);
         orderResult = await pool.query(
-          'SELECT id, client_id, customer_phone, customer_name, tracking_number FROM store_orders WHERE tracking_number = $1',
+          'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number FROM store_orders WHERE tracking_number = $1',
           [data.id]
         );
         // Update tracking number to the real one if found by UUID
@@ -638,7 +639,7 @@ export class DeliveryService {
         return { success: true }; // Don't fail, just log
       }
 
-      const { id: orderId, client_id: clientId, customer_phone: customerPhone, customer_name: customerName } = orderResult.rows[0];
+      const { id: orderId, client_id: clientId, store_id: storeId, customer_phone: customerPhone, customer_name: customerName } = orderResult.rows[0];
 
       // Verify webhook signature if signature is provided
       let webhookVerified = false;
@@ -705,6 +706,7 @@ export class DeliveryService {
           eventType: event.status,
           description: event.description,
           location: event.location,
+          storeId: storeId ?? undefined,
         }).catch(err => console.error('[Webhook] Bot notification failed:', err?.message || err));
       }
 

@@ -535,19 +535,29 @@ export async function sendDeliveryStatusNotification(params: {
   eventType: string;
   description?: string;
   location?: string;
+  storeId?: number;
 }): Promise<void> {
-  const { orderId, clientId, customerPhone, customerName, trackingNumber, eventType, description, location } = params;
+  const { orderId, clientId, customerPhone, customerName, trackingNumber, eventType, description, location, storeId: providedStoreId } = params;
 
   try {
     const pool = await ensureConnection();
 
-    // Check bot settings
+    let storeId = providedStoreId;
+    if (!storeId) {
+      const storeRes = await pool.query(
+        `SELECT store_id FROM store_orders WHERE id = $1 LIMIT 1`,
+        [orderId]
+      );
+      storeId = storeRes.rows[0]?.store_id;
+    }
+    if (!storeId) return;
+
     const settingsRes = await pool.query(
       `SELECT enabled, delivery_notifications_enabled, delivery_status_template,
               messenger_enabled, telegram_bot_token, fb_page_id,
               whatsapp_token, whatsapp_phone_id
-       FROM bot_settings WHERE client_id = $1`,
-      [clientId]
+       FROM bot_settings WHERE store_id = $1 AND enabled = true`,
+      [storeId]
     );
     if (!settingsRes.rows.length) return;
     const bs = settingsRes.rows[0];
@@ -629,10 +639,12 @@ export async function sendOrderConfirmationMessages(
   productName: string,
   price: number,
   confirmationLink: string,
-  options?: { skipTelegram?: boolean; quantity?: number; address?: string }
+  options?: { skipTelegram?: boolean; quantity?: number; address?: string; storeId?: number }
 ): Promise<void> {
   try {
     const pool = await ensureConnection();
+
+    const storeId = options?.storeId;
 
     // Historical issue: some clients never get a bot_settings row unless they open Bot Settings.
     // Many bot codepaths expect a row to exist, so ensure one here.
@@ -708,10 +720,15 @@ export async function sendOrderConfirmationMessages(
     }
 
     // Get bot settings for this store owner
-    const settingsResult = await pool.query(
-      `SELECT * FROM bot_settings WHERE client_id = $1 AND enabled = true`,
-      [clientId]
-    );
+    const settingsResult = storeId
+      ? await pool.query(
+          `SELECT * FROM bot_settings WHERE store_id = $1 AND enabled = true`,
+          [storeId]
+        )
+      : await pool.query(
+          `SELECT * FROM bot_settings WHERE client_id = $1 AND enabled = true`,
+          [clientId]
+        );
 
     if (settingsResult.rows.length === 0) {
       console.log(`[Bot] Bot disabled for client ${clientId}, skipping message send`);
@@ -762,10 +779,15 @@ export async function sendOrderConfirmationMessages(
         console.log(`[Bot] Telegram scheduled for ${customerPhone} at ${sendAt}`);
       } else {
         // Fallback: if the phone matches the store owner's support phone, notify the owner
-        const ownerRes = await pool.query(
-          `SELECT owner_telegram_chat_id, support_phone FROM bot_settings WHERE client_id = $1 LIMIT 1`,
-          [clientId]
-        );
+        const ownerRes = storeId
+          ? await pool.query(
+              `SELECT owner_telegram_chat_id, support_phone FROM bot_settings WHERE store_id = $1 LIMIT 1`,
+              [storeId]
+            )
+          : await pool.query(
+              `SELECT owner_telegram_chat_id, support_phone FROM bot_settings WHERE client_id = $1 LIMIT 1`,
+              [clientId]
+            );
         if (ownerRes.rows.length && ownerRes.rows[0].owner_telegram_chat_id) {
           const supportPhone = String(ownerRes.rows[0].support_phone || '').replace(/\D/g, '');
           if (supportPhone && supportPhone === customerPhone) {
@@ -1016,8 +1038,8 @@ export async function processPendingMessages(): Promise<boolean> {
         if (message.message_type === "whatsapp") {
           // Get WhatsApp token from bot settings (presence only; Twilio creds come from env)
           const settingsResult = await client.query(
-            `SELECT whatsapp_token FROM bot_settings WHERE client_id = $1`,
-            [message.client_id]
+            `SELECT whatsapp_token FROM bot_settings WHERE store_id = $1`,
+            [message.store_id]
           );
 
           if (settingsResult.rows.length > 0 && settingsResult.rows[0].whatsapp_token) {
@@ -1028,8 +1050,8 @@ export async function processPendingMessages(): Promise<boolean> {
           }
         } else if (message.message_type === 'telegram') {
           const settingsResult = await client.query(
-            `SELECT telegram_bot_token FROM bot_settings WHERE client_id = $1`,
-            [message.client_id]
+            `SELECT telegram_bot_token FROM bot_settings WHERE store_id = $1`,
+            [message.store_id]
           );
           const token = String(settingsResult.rows[0]?.telegram_bot_token || '').trim() || (isPlatformTelegramAvailable() ? getPlatformTelegramBotToken() : '');
           const chatRes = await client.query(
@@ -1077,8 +1099,8 @@ export async function processPendingMessages(): Promise<boolean> {
           }
         } else if (message.message_type === 'viber') {
           const settingsResult = await client.query(
-            `SELECT viber_auth_token, viber_sender_name FROM bot_settings WHERE client_id = $1`,
-            [message.client_id]
+            `SELECT viber_auth_token, viber_sender_name FROM bot_settings WHERE store_id = $1`,
+            [message.store_id]
           );
           const token = settingsResult.rows[0]?.viber_auth_token;
           const senderName = settingsResult.rows[0]?.viber_sender_name;
@@ -1093,8 +1115,8 @@ export async function processPendingMessages(): Promise<boolean> {
         } else if (message.message_type === 'whatsapp_cloud') {
           // WhatsApp Cloud API handling — phone number IS the recipient
           const settingsResult = await client.query(
-            `SELECT whatsapp_phone_id, whatsapp_token FROM bot_settings WHERE client_id = $1`,
-            [message.client_id]
+            `SELECT whatsapp_phone_id, whatsapp_token FROM bot_settings WHERE store_id = $1`,
+            [message.store_id]
           );
           const phoneNumberId = String(settingsResult.rows[0]?.whatsapp_phone_id || '').trim() || getWaPhoneNumberId();
           const accessToken = String(settingsResult.rows[0]?.whatsapp_token || '').trim() || getWaAccessToken();
@@ -1119,8 +1141,8 @@ export async function processPendingMessages(): Promise<boolean> {
     } else if (message.message_type === 'messenger') {
       // Facebook Messenger handling
       const settingsResult = await client.query(
-        `SELECT fb_page_access_token FROM bot_settings WHERE client_id = $1`,
-        [message.client_id]
+        `SELECT fb_page_access_token FROM bot_settings WHERE store_id = $1`,
+        [message.store_id]
       );
       const row = settingsResult.rows[0];
       const pageAccessToken = String(row?.fb_page_access_token || '').trim() || getPlatformFbPageAccessToken();

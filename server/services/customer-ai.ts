@@ -696,7 +696,7 @@ async function getHistory(clientId: number, platform: Platform, chatId: string):
   try {
     const p = await pool();
     const res = await p.query(
-      `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 ORDER BY created_at DESC LIMIT 5`,
+      `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND store_id = (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1) AND platform = $2 AND platform_chat_id = $3 ORDER BY created_at DESC LIMIT 5`,
       [clientId, platform, chatId]
     );
     return res.rows.reverse().map((r: any) => ({ role: r.role === 'customer' ? 'user' as const : 'model' as const, parts: [{ text: r.message }] }));
@@ -706,10 +706,10 @@ async function getHistory(clientId: number, platform: Platform, chatId: string):
 async function saveHistory(clientId: number, platform: Platform, chatId: string, msg: string, response: string): Promise<void> {
   const p = await pool();
   await p.query(
-    `INSERT INTO customer_conversations (client_id, platform, platform_chat_id, role, message) VALUES ($1, $2, $3, 'customer', $4), ($1, $2, $3, 'assistant', $5)`,
+    `INSERT INTO customer_conversations (client_id, store_id, platform, platform_chat_id, role, message) VALUES ($1, (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1), $2, $3, 'customer', $4), ($1, (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1), $2, $3, 'assistant', $5)`,
     [clientId, platform, chatId, msg, response]
   );
-  await p.query(`DELETE FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 AND created_at < NOW() - INTERVAL '7 days'`, [clientId, platform, chatId]).catch(() => {});
+    await p.query(`DELETE FROM customer_conversations WHERE client_id = $1 AND store_id = (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1) AND platform = $2 AND platform_chat_id = $3 AND created_at < NOW() - INTERVAL '7 days'`, [clientId, platform, chatId]).catch(() => {});
 }
 
 async function loadFacts(clientId: number, platform: Platform, chatId: string, phone?: string | null): Promise<ConversationFacts | null> {

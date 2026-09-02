@@ -191,7 +191,7 @@ export const assignDeliveryToOrder: RequestHandler = async (req, res) => {
     // Notify customer about delivery assignment (fire-and-forget)
     try {
       const orderRes = await pool.query(
-        `SELECT customer_phone, customer_name FROM store_orders WHERE id = $1 AND client_id = $2`,
+        `SELECT customer_phone, customer_name, store_id FROM store_orders WHERE id = $1 AND client_id = $2`,
         [orderId, clientId]
       );
       if (orderRes.rows.length) {
@@ -205,6 +205,7 @@ export const assignDeliveryToOrder: RequestHandler = async (req, res) => {
             trackingNumber: '',
             eventType: 'assigned',
             description: 'تم تعيين طلبك لشركة التوصيل',
+            storeId: orderRes.rows[0].store_id ?? undefined,
           }).catch(() => {});
         }
       }

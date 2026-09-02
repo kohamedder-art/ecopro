@@ -23,6 +23,7 @@ let pollWorkerInterval: NodeJS.Timeout | null = null;
 interface PollableOrder {
   order_id: number;
   client_id: number;
+  store_id: number | null;
   tracking_number: string;
   delivery_status: string | null;
   company_name: string;
@@ -38,6 +39,7 @@ async function fetchPollableOrders(): Promise<PollableOrder[]> {
     SELECT
       so.id AS order_id,
       so.client_id,
+      so.store_id,
       so.tracking_number,
       so.delivery_status,
       dc.name AS company_name,
@@ -152,6 +154,7 @@ async function pollOrderStatus(order: PollableOrder): Promise<void> {
         eventType: newStatus,
         description: statusResponse.description,
         location: statusResponse.location,
+        storeId: order.store_id ?? undefined,
       }).catch(err => console.error(`[TrackingPoll] Notification failed for order ${order.order_id}:`, err?.message));
     }
 

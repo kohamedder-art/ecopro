@@ -1332,10 +1332,10 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
           // Use PostgreSQL NOW() + INTERVAL to avoid timezone issues between JS and DB
           await pool.query(
             `INSERT INTO scheduled_messages 
-             (client_id, order_id, telegram_chat_id, message_content, message_type, scheduled_at, status)
-             VALUES ($1, $2, $3, $4, $5, NOW() + ($6 || ' minutes')::INTERVAL, 'pending')
+             (client_id, store_id, order_id, telegram_chat_id, message_content, message_type, scheduled_at, status)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW() + ($7 || ' minutes')::INTERVAL, 'pending')
              ON CONFLICT DO NOTHING`,
-            [clientId, orderId, chatId, confirmationMessage, 'order_confirmation', delayMinutes]
+            [clientId, storeId, orderId, chatId, confirmationMessage, 'order_confirmation', delayMinutes]
           );
           if (!isProduction) {
             console.log(`[createPublicStoreOrder] Scheduled confirmation message for ${delayMinutes} minutes later`);
@@ -1363,7 +1363,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
             productTitle,
             orderTotalPrice,
             storefrontSlugForLinks,
-            { skipTelegram: true, quantity, address: customer_address || undefined }
+            { skipTelegram: true, quantity, address: customer_address || undefined, storeId }
           ).catch(() => {});
         }
       } else {
@@ -1377,7 +1377,7 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
           productTitle,
           orderTotalPrice,
           storefrontSlugForLinks,
-          { quantity, address: customer_address || undefined }
+          { quantity, address: customer_address || undefined, storeId }
         ).catch(() => {});
       }
     }
@@ -1649,7 +1649,7 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
 
     // Look up client_id and store name from store slug
     const storeRes = await pool.query(
-      `SELECT client_id, store_name FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
+      `SELECT id, client_id, store_name FROM client_store_settings WHERE store_slug = $1 LIMIT 1`,
       [storeSlug]
     );
 
@@ -1658,6 +1658,7 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     }
 
     const clientId = storeRes.rows[0].client_id;
+    const storeId = storeRes.rows[0].id;
     const storeName = String(storeRes.rows[0].store_name || '').trim() || storeSlug;
 
     // Fetch bot settings — match exactly what the dashboard GET /api/bot-settings returns
@@ -1666,8 +1667,8 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
               telegram_bot_token, telegram_bot_username,
               viber_auth_token, viber_sender_name, support_phone,
               messenger_enabled, fb_page_id, fb_page_access_token
-       FROM bot_settings WHERE client_id = $1 LIMIT 1`,
-      [clientId]
+       FROM bot_settings WHERE store_id = $1 LIMIT 1`,
+      [storeId]
     );
 
     if (botRes.rows.length === 0) {
@@ -1783,8 +1784,8 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
           }
           if (effectiveWaPhone) {
             await pool.query(
-              `UPDATE bot_settings SET whatsapp_display_phone = $1 WHERE client_id = $2`,
-              [effectiveWaPhone, clientId]
+              `UPDATE bot_settings SET whatsapp_display_phone = $1 WHERE store_id = $2`,
+              [effectiveWaPhone, storeId]
             );
             break;
           }
@@ -1798,8 +1799,8 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     if (whatsappConnected && !effectiveWaPhone) {
       try {
         const storeSettingsFallback = await pool.query(
-          `SELECT template_settings, global_settings FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
-          [clientId]
+          `SELECT template_settings, global_settings FROM client_store_settings WHERE id = $1 LIMIT 1`,
+          [storeId]
         );
         if (storeSettingsFallback.rows.length) {
           const ts = storeSettingsFallback.rows[0].template_settings || {};
@@ -1858,8 +1859,8 @@ export const getStorefrontContactChannels: RequestHandler = async (req, res) => 
     // --- Phone (from template/global settings) ---
     try {
       const storeSettingsRes = await pool.query(
-        `SELECT template_settings, global_settings FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
-        [clientId]
+        `SELECT template_settings, global_settings FROM client_store_settings WHERE id = $1 LIMIT 1`,
+        [storeId]
       );
       if (storeSettingsRes.rows.length) {
         const ts = storeSettingsRes.rows[0].template_settings || {};

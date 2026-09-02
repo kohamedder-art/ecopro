@@ -36,8 +36,8 @@ export const getDashboardStats: RequestHandler = async (req, res) => {
     
     // Get custom statuses that count as revenue
     const revenueStatusesRes = await pool.query(
-      `SELECT key, name FROM order_statuses WHERE client_id = $1 AND counts_as_revenue = true`,
-      [clientId]
+      `SELECT key, name FROM order_statuses WHERE ${storeFilter} = $1 AND counts_as_revenue = true`,
+      [storeIdVal]
     );
     const revenueStatuses = revenueStatusesRes.rows.map(r => r.key || r.name);
     // Include built-in 'completed' status (مكتملة) for revenue calculation
@@ -65,15 +65,15 @@ export const getDashboardStats: RequestHandler = async (req, res) => {
         [storeIdVal, revenueStatuses]
       ),
       pool.query(
-        `SELECT COALESCE(SUM(spend),0)::float AS ad_spend FROM creative_spend_entries WHERE client_id = $1 AND entry_date >= CURRENT_DATE - INTERVAL '${days} days'`,
-        [clientId]
+        `SELECT COALESCE(SUM(spend),0)::float AS ad_spend FROM creative_spend_entries WHERE ${storeFilter} = $1 AND entry_date >= CURRENT_DATE - INTERVAL '${days} days'`,
+        [storeIdVal]
       ),
     ]);
 
     // Get store page views count for the selected date range
     const viewsRes = await pool.query(
-      `SELECT COALESCE(SUM(views), 0)::int AS total_views FROM client_store_daily_views WHERE client_id = $1 AND view_date >= CURRENT_DATE - INTERVAL '${days} days'`,
-      [clientId]
+      `SELECT COALESCE(SUM(views), 0)::int AS total_views FROM client_store_daily_views WHERE ${storeFilter} = $1 AND view_date >= CURRENT_DATE - INTERVAL '${days} days'`,
+      [storeIdVal]
     );
 
     const stats = {
