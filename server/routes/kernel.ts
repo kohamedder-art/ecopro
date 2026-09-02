@@ -122,11 +122,17 @@ export const kernelLogin: RequestHandler = async (req, res) => {
 
   // "root" username now authenticates against the platform admin account
   if (String(username) === 'root') {
-    const adminRow = await pool.query(
-      'SELECT id, email, password_hash as password, is_blocked, blocked_reason FROM admins WHERE user_type = $1 OR role = $1 LIMIT 1',
-      ['admin']
-    );
-    const admin = adminRow.rows[0];
+    // Find any admin user — try password column then password_hash
+    let admin: any = null;
+    try {
+      const r = await pool.query(`SELECT id, email, password as pw, is_blocked FROM admins WHERE user_type = 'admin' OR role = 'admin' LIMIT 1`);
+      admin = r.rows[0];
+    } catch {
+      try {
+        const r2 = await pool.query(`SELECT id, email, password_hash as pw, is_blocked FROM admins WHERE user_type = 'admin' OR role = 'admin' LIMIT 1`);
+        admin = r2.rows[0];
+      } catch { /* no admin table at all */ }
+    }
     if (!admin || admin.is_blocked) {
       await logSecurityEvent({
         event_type: 'auth_login_failed',
@@ -140,7 +146,7 @@ export const kernelLogin: RequestHandler = async (req, res) => {
       });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    const ok = await comparePassword(String(password), admin.password);
+    const ok = await comparePassword(String(password), admin.pw);
     if (!ok) {
       await logSecurityEvent({
         event_type: 'auth_login_failed',
