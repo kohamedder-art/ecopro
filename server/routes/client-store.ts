@@ -1389,12 +1389,12 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
         .toLowerCase()
         .replace(/[^a-zA-Z0-9]/g, '');
       const conflict = await pool.query(
-        `SELECT client_id, store_name, store_slug FROM client_store_settings
-         WHERE client_id != $1
+        `SELECT id, client_id, store_name, store_slug FROM client_store_settings
+         WHERE id != $1
            AND (LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = $2
              OR store_slug = $2)
          LIMIT 1`,
-        [clientId, normalizedName]
+        [(req as any).activeStoreId, normalizedName]
       );
       if (conflict.rows.length > 0) {
         return res.status(409).json({
