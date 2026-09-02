@@ -16,6 +16,7 @@ interface StoreContextType {
   stores: Store[];
   activeStore: Store | null;
   loading: boolean;
+  storeVersion: number;
   setActiveStore: (store: Store) => void;
   refreshStores: () => Promise<void>;
   createStore: (name: string, sourceStoreId?: number) => Promise<Store | null>;
@@ -27,6 +28,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [stores, setStores] = useState<Store[]>([]);
   const [activeStore, setActiveStoreState] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
+  const [storeVersion, setStoreVersion] = useState(0);
   const queryClient = useQueryClient();
 
   const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
@@ -56,8 +58,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('activeStoreId', String(store.id));
     localStorage.setItem('activeStoreSlug', store.store_slug);
 
-    // Clear ALL cached data so every page fetches fresh for the new store
-    queryClient.clear();
+    // Bump version so query keys change → React Query treats it as a brand new fetch
+    setStoreVersion(v => v + 1);
+
+    // Also remove stale queries
+    queryClient.removeQueries();
     try {
       localStorage.removeItem(STOREFRONT_SETTINGS_KEY);
       localStorage.removeItem(STOREFRONT_TEMPLATE_KEY);
@@ -114,7 +119,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [stores, activeStore]);
 
   return (
-    <StoreContext.Provider value={{ stores, activeStore, loading, setActiveStore, refreshStores: fetchStores, createStore }}>
+    <StoreContext.Provider value={{ stores, activeStore, loading, storeVersion, setActiveStore, refreshStores: fetchStores, createStore }}>
       {children}
     </StoreContext.Provider>
   );

@@ -28,10 +28,10 @@ async function fetchStoreProducts(): Promise<any[]> {
 }
 
 export function useStoreProducts(options?: { enabled?: boolean; onUnauthorized?: () => void }) {
-  const { activeStore } = useStore();
+  const { activeStore, storeVersion } = useStore();
   const activeStoreId = activeStore?.id ?? null;
   const query = useQuery({
-    queryKey: ['storeProducts', activeStoreId],
+    queryKey: ['storeProducts', activeStoreId, storeVersion],
     queryFn: fetchStoreProducts,
     enabled: options?.enabled ?? true,
     retry: (failureCount, error) => {

@@ -73,19 +73,19 @@ const ALGERIA_OUTLINE = `M 20 256.9 L 20.3 252.1 L 20.3 250.5 L 20.2 221.6 L 48.
 
 // ─── Component ──────────────────────────────────────────────
 export default function MarketingAnalytics() {
-  const { activeStore } = useStore();
+  const { activeStore, storeVersion } = useStore();
   const [days, setDays] = useState('30');
 
   const { data: omni, isLoading: l1 } = useQuery<any>({
-    queryKey: ['omni-overview', activeStore?.id, days],
+    queryKey: ['omni-overview', activeStore?.id, storeVersion, days],
     queryFn: () => apiFetch<any>(`/api/pixels/omni/overview?days=${days}`),
   });
   const { data: cust, isLoading: l2 } = useQuery<any>({
-    queryKey: ['omni-customers', activeStore?.id, days],
+    queryKey: ['omni-customers', activeStore?.id, storeVersion, days],
     queryFn: () => apiFetch<any>(`/api/pixels/omni/customers?days=${days}`),
   });
   const { data: prodData, isLoading: l3 } = useQuery<any>({
-    queryKey: ['omni-products', activeStore?.id, days],
+    queryKey: ['omni-products', activeStore?.id, storeVersion, days],
     queryFn: () => apiFetch<any>(`/api/pixels/omni/products?days=${days}`),
   });
 

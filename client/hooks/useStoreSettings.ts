@@ -46,10 +46,10 @@ async function fetchStoreSettings(): Promise<StoreSettingsLike> {
 }
 
 export function useStoreSettings(options?: { enabled?: boolean; onUnauthorized?: () => void }) {
-  const { activeStore } = useStore();
+  const { activeStore, storeVersion } = useStore();
   const activeStoreId = activeStore?.id ?? null;
   const query = useQuery({
-    queryKey: ['storeSettings', activeStoreId],
+    queryKey: ['storeSettings', activeStoreId, storeVersion],
     queryFn: fetchStoreSettings,
     enabled: options?.enabled ?? true,
     retry: (failureCount, error) => {

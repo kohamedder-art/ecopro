@@ -67,7 +67,7 @@ function formatDate(dateStr: string | null): string {
 export default function ImageManager() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { activeStore } = useStore();
+  const { activeStore, storeVersion } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'orphaned' | 'inUse'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -77,7 +77,7 @@ export default function ImageManager() {
 
   // Fetch images
   const { data, isLoading, error, refetch } = useQuery<ImagesResponse>({
-    queryKey: ['client-images', activeStore?.id],
+    queryKey: ['client-images', activeStore?.id, storeVersion],
     queryFn: async () => {
       const res = await fetch('/api/client/images', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch images');
@@ -104,7 +104,7 @@ export default function ImageManager() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['client-images', activeStore?.id] });
+      queryClient.invalidateQueries({ queryKey: ['client-images', activeStore?.id, storeVersion] });
       toast.success('Image deleted from all locations');
       setDeleteDialogOpen(false);
       setImageToDelete(null);

@@ -11,16 +11,16 @@ const fmtPct = (n: number | null | undefined) => n != null ? `${Math.round(n)}%`
 
 export default function CODPricingCalculator() {
   const qc = useQueryClient();
-  const { activeStore } = useStore();
+  const { activeStore, storeVersion } = useStore();
   const [dailySpend, setDailySpend] = useState<number>(0);
 
   const { data: config, isLoading: loadingConfig } = useQuery<any>({
-    queryKey: ['pricing-config', activeStore?.id],
+    queryKey: ['pricing-config', activeStore?.id, storeVersion],
     queryFn: () => apiFetch<any>('/api/pixels/omni/pricing-config'),
   });
 
   const { data: codData, isLoading: loadingCod, refetch: refetchCod } = useQuery<any>({
-    queryKey: ['cod-pricing', activeStore?.id, dailySpend],
+    queryKey: ['cod-pricing', activeStore?.id, storeVersion, dailySpend],
     queryFn: () => apiFetch<any>(`/api/pixels/omni/cod-pricing`),
   });
 
@@ -36,8 +36,8 @@ export default function CODPricingCalculator() {
       body: JSON.stringify({ daily_ad_spend: val }),
     }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['pricing-config', activeStore?.id] });
-      qc.invalidateQueries({ queryKey: ['cod-pricing', activeStore?.id] });
+      qc.invalidateQueries({ queryKey: ['pricing-config', activeStore?.id, storeVersion] });
+      qc.invalidateQueries({ queryKey: ['cod-pricing', activeStore?.id, storeVersion] });
     },
   });
 
@@ -192,7 +192,7 @@ export default function CODPricingCalculator() {
           <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500" />
           <span className="text-sm font-bold text-foreground">تعديل تكاليف المنتجات</span>
         </div>
-        <ProductCostsSection onSave={() => qc.invalidateQueries({ queryKey: ['cod-pricing', activeStore?.id] })} />
+        <ProductCostsSection onSave={() => qc.invalidateQueries({ queryKey: ['cod-pricing', activeStore?.id, storeVersion] })} />
       </div>
     </div>
   );

@@ -126,10 +126,10 @@ const AdminBilling = () => {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
-  const { activeStore } = useStore();
+  const { activeStore, storeVersion } = useStore();
 
   const { data: subscription, isLoading: subLoading, refetch: refetchSub } = useQuery({
-    queryKey: ['billing-subscription', activeStore?.id],
+    queryKey: ['billing-subscription', activeStore?.id, storeVersion],
     queryFn: async () => {
       const res = await fetch('/api/billing/subscription');
       if (!res.ok) throw new Error('Failed to fetch subscription');
@@ -138,7 +138,7 @@ const AdminBilling = () => {
   });
 
   const { data: publicBilling } = useQuery({
-    queryKey: ['billing-public', activeStore?.id],
+    queryKey: ['billing-public', activeStore?.id, storeVersion],
     queryFn: async () => {
       const res = await fetch('/api/billing/public');
       if (!res.ok) throw new Error('Failed to fetch billing info');
@@ -150,7 +150,7 @@ const AdminBilling = () => {
   const subscriptionPrice = publicBilling?.subscriptionPrice ?? 3500;
 
   const { data: paymentData, isLoading: payLoading } = useQuery({
-    queryKey: ['billing-payments', activeStore?.id],
+    queryKey: ['billing-payments', activeStore?.id, storeVersion],
     queryFn: async () => {
       const res = await fetch('/api/billing/payments');
       if (!res.ok) throw new Error('Failed to fetch payments');

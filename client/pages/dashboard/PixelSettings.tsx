@@ -49,12 +49,12 @@ export default function PixelSettings() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { activeStore } = useStore();
+  const { activeStore, storeVersion } = useStore();
   const [pixels, setPixels] = useState<PixelItem[]>([]);
   const [newPixel, setNewPixel] = useState<Partial<PixelItem>>({ type: 'facebook', pixel_id: '', access_token: '', enabled: true, name: '' });
 
   const { data: settings, isLoading } = useQuery<any>({
-    queryKey: ['pixel-settings', activeStore?.id],
+    queryKey: ['pixel-settings', activeStore?.id, storeVersion],
     queryFn: () => apiFetch<any>('/api/pixels/settings'),
   });
 
@@ -75,7 +75,7 @@ export default function PixelSettings() {
   const saveSettings = useMutation({
     mutationFn: (payload: any) => apiFetch('/api/pixels/settings', { method: 'PUT', body: JSON.stringify(payload) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pixel-settings', activeStore?.id] });
+      queryClient.invalidateQueries({ queryKey: ['pixel-settings', activeStore?.id, storeVersion] });
       toast({ title: 'تم حفظ الإعدادات' });
     },
     onError: () => toast({ title: 'خطأ في الحفظ', variant: 'destructive' }),
