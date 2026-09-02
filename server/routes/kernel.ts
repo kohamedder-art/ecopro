@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { Router } from 'express';
 import { ensureConnection } from '../utils/database';
-import { generateToken, verifyToken } from '../utils/auth';
+import { generateToken, verifyToken, comparePassword } from '../utils/auth';
 import { hashKernelPassword, verifyKernelPassword, logSecurityEvent, getClientIp, getGeo, computeFingerprint, parseCookie } from '../utils/security';
 import { randomBytes } from 'crypto';
 import os from 'os';
@@ -114,16 +114,65 @@ export const kernelLogin: RequestHandler = async (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'username and password required' });
 
   const pool = await ensureConnection();
-  const row = await pool.query(
-    'SELECT id, username, password_hash, is_active FROM kernel_users WHERE username = $1',
-    [String(username)]
-  );
-
   const ip = getClientIp(req);
   const ua = (req.headers['user-agent'] as string | undefined) || null;
   const geo = getGeo(req, ip);
   const fpCookie = parseCookie(req, 'ecopro_fp');
   const fingerprint = computeFingerprint({ ip, userAgent: ua, cookie: fpCookie });
+
+  // "root" username now authenticates against the platform admin account
+  if (String(username) === 'root') {
+    const adminRow = await pool.query(
+      'SELECT id, email, password_hash as password, is_blocked, blocked_reason FROM admins WHERE user_type = $1 OR role = $1 LIMIT 1',
+      ['admin']
+    );
+    const admin = adminRow.rows[0];
+    if (!admin || admin.is_blocked) {
+      await logSecurityEvent({
+        event_type: 'auth_login_failed',
+        severity: 'warn',
+        method: req.method,
+        path: req.path,
+        status_code: 401,
+        ip, user_agent: ua, fingerprint,
+        country_code: geo.country_code, region: geo.region, city: geo.city,
+        metadata: { scope: 'kernel', reason: 'no_admin_account', username: String(username) },
+      });
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const ok = await comparePassword(String(password), admin.password);
+    if (!ok) {
+      await logSecurityEvent({
+        event_type: 'auth_login_failed',
+        severity: 'warn',
+        method: req.method,
+        path: req.path,
+        status_code: 401,
+        ip, user_agent: ua, fingerprint,
+        country_code: geo.country_code, region: geo.region, city: geo.city,
+        metadata: { scope: 'kernel', reason: 'bad_admin_password', username: String(username) },
+      });
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = generateToken({
+      id: `kernel:admin:${admin.id}`,
+      email: admin.email,
+      role: 'root',
+      user_type: 'root',
+    });
+    setKernelAuthCookie(res, token);
+    return res.json({
+      token,
+      user: { username: 'root', role: 'root', user_type: 'root' },
+    });
+  }
+
+  // Legacy kernel_users path for non-root usernames
+  const row = await pool.query(
+    'SELECT id, username, password_hash, is_active FROM kernel_users WHERE username = $1',
+    [String(username)]
+  );
 
   if (!row.rows[0] || !row.rows[0].is_active) {
     await logSecurityEvent({
