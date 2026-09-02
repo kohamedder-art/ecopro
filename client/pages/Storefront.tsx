@@ -63,7 +63,20 @@ export default function Storefront() {
   });
   const [categories, setCategories] = useState<string[]>([]);
   
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const inj = (window as any).__STORE_SETTINGS;
+    const injP = (window as any).__STORE_PRODUCTS;
+    const hasInjected = inj && String(inj.store_slug) === storeSlug;
+    const hasProducts = Array.isArray(injP) && injP.length > 0;
+    if (hasInjected && hasProducts) {
+      (window as any).__STOREFRONT_INJECTED_SETTINGS = inj;
+      (window as any).__STOREFRONT_INJECTED_PRODUCTS = injP;
+      (window as any).__STORE_SETTINGS = null;
+      (window as any).__STORE_PRODUCTS = null;
+      return false;
+    }
+    return true;
+  });
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -172,6 +185,18 @@ export default function Storefront() {
         if (isMounted) {
           setError('Missing store slug');
           setLoading(false);
+        }
+        return;
+      }
+
+      // If SSR data was already consumed (loading started as false), set up state and return
+      if (!loading) {
+        const settings = (window as any).__STOREFRONT_INJECTED_SETTINGS;
+        const prods = (window as any).__STOREFRONT_INJECTED_PRODUCTS;
+        if (settings) {
+          setStoreSettings(settings);
+          setProducts(prods?.map((p: any) => ({ ...p, category: undefined })) || []);
+          setCategories([]);
         }
         return;
       }
