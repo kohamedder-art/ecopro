@@ -5,9 +5,13 @@ import { useTranslation } from '@/lib/i18n';
 
 interface StoreData {
   id: number;
+  client_id: number;
   email: string;
   store_name: string;
   store_slug: string;
+  subdomain?: string;
+  language?: string;
+  product_count?: number;
   subscription_status?: string;
   paid_until?: string;
   created_at: string;
@@ -131,6 +135,24 @@ export default function StoresTab({ stores, loading }: Props) {
                   <span>{t('platformAdmin.stores.owner')}</span>
                   <span className="text-gray-600 dark:text-slate-300 truncate ml-2">{store.email}</span>
                 </div>
+                {store.subdomain && (
+                  <div className="flex items-center justify-between text-gray-500 dark:text-slate-400">
+                    <span>{t('platformAdmin.stores.subdomain') || 'Subdomain'}</span>
+                    <span className="text-gray-600 dark:text-slate-300 truncate ml-2">{store.subdomain}</span>
+                  </div>
+                )}
+                {store.language && (
+                  <div className="flex items-center justify-between text-gray-500 dark:text-slate-400">
+                    <span>{t('platformAdmin.stores.language') || 'Language'}</span>
+                    <span className="text-gray-600 dark:text-slate-300 truncate ml-2">{store.language}</span>
+                  </div>
+                )}
+                {typeof store.product_count === 'number' && (
+                  <div className="flex items-center justify-between text-gray-500 dark:text-slate-400">
+                    <span>{t('platformAdmin.stores.products') || 'Products'}</span>
+                    <span className="text-gray-600 dark:text-slate-300">{store.product_count}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-gray-500 dark:text-slate-400">
                   <span>{t('platformAdmin.stores.created')}</span>
                   <span className="text-gray-600 dark:text-slate-300">{new Date(store.created_at).toLocaleDateString()}</span>

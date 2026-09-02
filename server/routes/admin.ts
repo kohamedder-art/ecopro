@@ -1638,13 +1638,19 @@ export const listAllStores: RequestHandler = async (_req, res) => {
   try {
     const result = await pool.query(
       `SELECT 
-        c.id, c.email, c.name as store_name,
-        COALESCE(css.store_slug, '') as store_slug,
+        css.id,
+        css.client_id,
+        c.email,
+        COALESCE(css.store_name, c.name, c.email) as store_name,
+        css.store_slug,
+        css.subdomain,
+        css.language,
         'active' as subscription_status,
-        c.created_at
-      FROM clients c
-      LEFT JOIN client_store_settings css ON c.id = css.client_id
-      ORDER BY c.created_at DESC`
+        css.created_at,
+        (SELECT COUNT(*) FROM client_store_products p WHERE p.store_id = css.id) as product_count
+      FROM client_store_settings css
+      JOIN clients c ON css.client_id = c.id
+      ORDER BY css.created_at DESC`
     );
     res.json(result.rows);
   } catch (err) {
@@ -1978,10 +1984,12 @@ export const listAllProducts: RequestHandler = async (req, res) => {
         COALESCE(oc.order_count, 0) as order_count,
         css.store_slug,
         COALESCE(lv.live_views, 0) as live_views,
-        CASE WHEN COALESCE(lv.live_views, 0) >= 3 THEN true ELSE false END as is_live
+        CASE WHEN COALESCE(lv.live_views, 0) >= 3 THEN true ELSE false END as is_live,
+        p.store_id,
+        css.store_name
       FROM client_store_products p
       JOIN clients c ON p.client_id = c.id
-      LEFT JOIN client_store_settings css ON css.client_id = p.client_id
+      LEFT JOIN client_store_settings css ON css.id = p.store_id
       ${orderJoin}
       ${liveViewsJoin}
       ${whereClause}
@@ -2651,8 +2659,8 @@ export const getGrowthMetrics: RequestHandler = async (_req, res) => {
              MAX(o.created_at) AS last_order_at
       FROM client_store_settings css
       JOIN clients c ON c.id = css.client_id
-      LEFT JOIN store_orders o ON o.client_id = css.client_id
-      LEFT JOIN client_store_products p ON p.client_id = css.client_id
+      LEFT JOIN store_orders o ON o.store_id = css.id
+      LEFT JOIN client_store_products p ON p.store_id = css.id
       GROUP BY css.client_id, css.store_name, css.store_slug, c.email, c.subscription_status
       ORDER BY orders_30d DESC
       LIMIT 50

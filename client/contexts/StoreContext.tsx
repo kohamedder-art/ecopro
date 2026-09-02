@@ -52,8 +52,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setActiveStoreState(store);
     localStorage.setItem('activeStoreId', String(store.id));
     localStorage.setItem('activeStoreSlug', store.store_slug);
-    // Trigger a page reload to re-fetch all data with the new store
-    window.location.reload();
   }, []);
 
   const createStore = useCallback(async (name: string, sourceStoreId?: number): Promise<Store | null> => {

@@ -20,6 +20,7 @@ interface Product {
   flagged?: boolean;
   flag_reason?: string;
   store_slug?: string;
+  store_name?: string;
   product_slug?: string;
 }
 
@@ -262,6 +263,9 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
                   </div>
                 </div>
                 <p className="text-[9px] text-gray-500 dark:text-slate-500 mt-0.5 truncate leading-tight">{p.seller_name}</p>
+                {(p.store_slug || p.store_name) && (
+                  <p className="text-[9px] text-indigo-400 dark:text-indigo-300 mt-0.5 truncate leading-tight">{p.store_name || p.store_slug}</p>
+                )}
               </div>
             </div>
           ))}
@@ -297,6 +301,9 @@ export default function ProductsTab({ products, loading, total, page, sort, hide
                     )}
                   </div>
                   <p className="text-[11px] text-gray-500 dark:text-slate-500">{p.seller_name} · {p.views} views · {p.order_count} orders</p>
+                  {(p.store_slug || p.store_name) && (
+                    <p className="text-[10px] text-indigo-400 dark:text-indigo-300">{p.store_name || p.store_slug}</p>
+                  )}
                 </div>
                 <span className="text-xs font-bold text-emerald-400">{Number(p.price).toLocaleString()} دج</span>
                 {p.flagged && <Badge className="bg-red-500/20 text-red-300 text-[10px]">{t('platformAdmin.products.flagged')}</Badge>}
